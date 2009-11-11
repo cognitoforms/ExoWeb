@@ -5,18 +5,23 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb", "ExoWeb\ExoWeb.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoGraph", "..\ExoGraph\ExoGraph\ExoGraph.csproj", "{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.Samples", "ExoWeb.Samples\ExoWeb.Samples.csproj", "{8FFBF556-E856-469E-8E6E-E88A6165766B}"
+EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 3
+		SccNumberOfProjects = 4
 		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 		SccTeamFoundationServer = http://appdev-build:8080/
-		SccProjectUniqueName0 = ..\\ExoGraph\\ExoGraph\\ExoGraph.csproj
-		SccProjectName0 = ../ExoGraph/ExoGraph
-		SccLocalPath0 = ..\\ExoGraph\\ExoGraph
-		SccLocalPath1 = .
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = ..\\ExoGraph\\ExoGraph\\ExoGraph.csproj
+		SccProjectName1 = ../ExoGraph/ExoGraph
+		SccLocalPath1 = ..\\ExoGraph\\ExoGraph
 		SccProjectUniqueName2 = ExoWeb\\ExoWeb.csproj
 		SccProjectName2 = ExoWeb
 		SccLocalPath2 = ExoWeb
+		SccProjectUniqueName3 = ExoWeb.Samples\\ExoWeb.Samples.csproj
+		SccProjectName3 = ExoWeb.Samples
+		SccLocalPath3 = ExoWeb.Samples
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,6 +36,10 @@ Global
 		{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FFBF556-E856-469E-8E6E-E88A6165766B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FFBF556-E856-469E-8E6E-E88A6165766B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FFBF556-E856-469E-8E6E-E88A6165766B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FFBF556-E856-469E-8E6E-E88A6165766B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
