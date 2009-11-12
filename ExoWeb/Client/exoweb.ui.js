@@ -106,7 +106,7 @@ ExoWeb.UI.Content.prototype = {
 			ctx.initializeComponents();
 		}
 		catch (e) {
-			alert(e);
+			(console && console.log ? console.log : alert)(e);
 		}
 	},
 	initialize: function() {
@@ -173,9 +173,18 @@ ExoWeb.UI.Field.prototype = {
 		if (!this._data) {
 			var ctx = this.findContext();
 			var target = ctx.dataItem;
-			var prop = target.meta.property(this.get_source());
-			
-			this._data = new ExoWeb.Model.Adapter(target, prop);
+			var props = target.meta.property(this.get_source());
+
+			if (!props)
+				throw ($format("Property \"{p}\" could not be found.", { p: this.get_source() }));
+
+			var dt = props.last().get_dataType();
+
+			var format;
+			if (!(format = props.last().get_format()) && dt.formats)
+				format = dt.formats.$default;
+
+			this._data = new ExoWeb.Model.Adapter(target, props, format, { label: this.get_label(), readonly: this.get_isReadOnly() });
 		}
 		return this._data;
 	},

@@ -93,7 +93,10 @@
     <Content Include="Scripts\MsAjax\MicrosoftAjaxWebServices.js" />
     <Content Include="Scripts\MsAjax\start.debug.js" />
     <Content Include="Scripts\MsAjax\start.js" />
+    <Content Include="Scripts\QUnit\qunit.js" />
     <Content Include="Scripts\sample-data.js" />
+    <Content Include="Styles\QUnit\qunit.css" />
+    <Content Include="UnitTests\field.htm" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>

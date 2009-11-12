@@ -1350,8 +1350,6 @@ ExoWeb.Model.Adapter = function(target, property, format, options) {
 				var type = this._property.last().get_containingType();
 				this["get_" + opt] = type._makeGetter(this, function() { return this[_opt]; });
 			}
-
-
 		}
 	}
 
