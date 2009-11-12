@@ -40,6 +40,9 @@ Model.prototype.addType = function(name, baseClass, properties) {
 		};
 	}
 
+	// TODO: make this a method that uses the pool?
+	jstype.All = [];
+
 	if (baseClass) {
 		if (typeof (baseClass) == "string")
 			baseClass = window[baseClass];
@@ -60,6 +63,9 @@ Model.prototype.get_validatedQueue = function()
 	return this._validatedQueue;
 }
 
+Model.prototype.get_type = function(name) {
+	return this._types[name];
+}
 
 //////////////////////////////////////////////////////////////////////////////////////
 function ModelType(jstype, fullName)
@@ -155,9 +161,32 @@ ModelType.prototype.get_jstype = function()
 	return this._jstype;
 }
 
-ModelType.prototype.property = function(name)
-{
-	return this._properties[name];
+ModelType.prototype.property = function(name) {
+	var p = (name.indexOf(".") >= 0) ? name.substring(0, name.indexOf(".")) : name;
+
+	var prop = this._properties[p];
+
+	// evaluate the remainder of the property path
+	if (prop && name.indexOf(".") >= 0) {
+		var remainder = name.substring(name.indexOf(".") + 1);
+		var propType = prop.get_typeName();
+		var type = this._model.get_type(propType);
+
+		var children = type.property(remainder);
+		if (children) {
+			prop = [prop];
+			children = children.length ? children : [children];
+			Array.addRange(prop, children);
+		}
+		else {
+			// if finding a child property failed then return null
+			// TODO: should this be more lax and burden consuming 
+			// code with checking the property chain for nulls?
+			prop = null;
+		}
+	}
+
+	return prop;
 }
 
 ModelType.prototype.rule = function(inputs, func, async, issues)
@@ -275,7 +304,7 @@ ModelTypeClass = { Intrinsic: "intrinsic", Entity: "entity", EntityList: "entity
 function ModelProperty(name, dataType, label, format, allowedValues)
 {
 	this._name = name;
-	this._dataTypeName = dataType;
+	this._fullTypeName = dataType;
 	this._label = label;
 	this._format = format;
 	this._allowedValues = allowedValues;
@@ -306,14 +335,25 @@ ModelProperty.prototype.get_containingType = function()
 	return this._containingType;
 }
 
+ModelProperty.prototype.get_fullTypeName = function() {
+	return this._fullTypeName;
+}
+
 ModelProperty.prototype.get_typeName = function() {
-	return this._dataTypeName;
+	if (!this._typeName) {
+		this._typeName = this._fullTypeName;
+		
+		if (this._typeName.indexOf("|") >= 0)
+			this._typeName = this._typeName.split("|")[1];
+	}
+
+	return this._typeName;
 }
 
 ModelProperty.prototype.get_typeClass = function() {
 	if (!this._typeClass) {
-		if (this._dataTypeName.indexOf("|") > 0) {
-			var multiplicity = this._dataTypeName.split("|")[0];
+		if (this._fullTypeName.indexOf("|") > 0) {
+			var multiplicity = this._fullTypeName.split("|")[0];
 
 			if (multiplicity == "One")
 				this._typeClass = ModelTypeClass.Entity;
@@ -334,7 +374,7 @@ ModelProperty.prototype.get_typeClass = function() {
 
 ModelProperty.prototype.get_dataType = function() {
 	if (!this._dataType) {
-		var dt = this._dataTypeName.indexOf("|") > 0 ? this._dataTypeName.split("|")[1] : this._dataTypeName;
+		var dt = this._fullTypeName.indexOf("|") > 0 ? this._fullTypeName.split("|")[1] : this._fullTypeName;
 
 		if (window[dt])
 			this._dataType = window[dt];
@@ -1052,7 +1092,7 @@ function $load(metadata, data) {
 
 			for (var prop in objectData) {
 				
-				var propType = obj.type.property(prop).get_typeName();
+				var propType = obj.type.property(prop).get_fullTypeName();
 
 				if (typeof (objectData[prop]) == "undefined" || objectData[prop] == null) {
 					obj[prop] = null;
@@ -1118,9 +1158,10 @@ function $load(metadata, data) {
 			var ctor = window[type];
 			for (var id in data[type]) {
 				var obj = new ctor(id);
-				if (!obj._loaded) {
+				if (!Array.contains(ctor.All, obj))
+					Array.add(ctor.All, obj);
+				if (!obj._loaded)
 					loadObject(obj, type, id, 0);
-				}
 			}
 		}
 	}
@@ -1298,27 +1339,78 @@ ExoWeb.Model.Adapter.prototype = {
 		return this._helptext || "";
 	},
 	get_options: function() {
-		if (this._property.get_typeClass() == ModelTypeClass.Intrinsic)
-			return null;
+		if (!this._options) {
+			if (this._property.get_typeClass() == ModelTypeClass.Intrinsic)
+				return null;
 
-		var value = this.get_value();
+			// TODO: handle allowed values in multiple forms (function, websvc call, string path)
+			var allowed = null;
+			var path = this._property.get_allowedValues();
+			if (path && path.length > 0) {
+				var root = this._target;
+				var prop = root.type.property(path);
 
-		// TODO: handle allowed values in multiple forms (function, websvc call, string path)
-		var allowed = this._property.get_allowedValues();
+				if (prop) {
+					// get the allowed values from the property chain
+					var props = prop.length ? prop : [prop];
+					for (var p = 0; p < props.length; p++) {
+						var prop = props[p];
+						root = prop.value(root);
+					}
+				}
+				else {
+					// if the property is not defined look for a global object by that name
+					var root = window;
+					var names = path.split(".");
+					for (var n = 0; root && n < names.length; n++)
+						root = root[names[n]];
+				}
 
-		if (allowed && allowed.length > 0) {
-			var root = allowed.split(".")[0];
-			var allowedValuesSource = this._sourceObject;
-			for (var p = 0; p < path.length; p++)
-				allowedValuesSource = allowedValuesSource[path[p]];
+				// TODO: verify list?
+				if (!root) {
+					this._options = $format("Allowed values property \"{p}\" could not be found.", { p: path });
+					throw (this._options);
+				}
+
+				allowed = root;
+			}
+
+			if (this._property.get_typeClass() == ModelTypeClass.Entity) {
+				this._options = [];
+
+				this._options[0] = { name: "--select--", value: "" };
+
+				for (var a = 0; a < allowed.length; a++) {
+					var value = allowed[a];
+
+					Array.add(this._options, {
+						name: value.Name,
+						value: value.Id
+					});
+				}
+			}
+			else if (this._property.get_typeClass() == ModelTypeClass.EntityList) {
+				this._options = [];
+
+				// TODO: handle possible side-effects of get_value logic?
+				var value = this.get_value();
+
+				for (var a = 0; a < allowed.length; a++) {
+					var selected = false;
+					for (var s = 0; s < value.length; s++) {
+						if (value[s] == allowed[a]) {
+							selected = true;
+						}
+					}
+
+					var opt = { value: allowed[a], selected: selected };
+
+					this._options[a] = opt;
+				}
+			}
 		}
 
-		if (this._property.get_typeClass() == ModelTypeClass.Entity) {
-
-		}
-		else if (this._property.get_typeClass() == ModelTypeClass.EntityList) {
-
-		}
+		return this._options;
 	},
 	get_badValue: function() {
 		return this._badValue;

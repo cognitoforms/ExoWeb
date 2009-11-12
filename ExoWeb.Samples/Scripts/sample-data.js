@@ -1,41 +1,62 @@
 ﻿window.data = {
 	drivers: {
 		__metadata: {
-			Driver: { 
+			Driver: {
 				attributes: {
 					Id: { name: "Id", type: "String" },
 					Name: { name: "Name", type: "String" },
-					Cars: { name: "Cars", type: "Many|Car" },
-					BirthDate: { name: "BirthDate", type: "Date" }
+					Cars: { name: "Cars", type: "Many|Car", allowed: "Dealer.AvailableCars" },
+					BirthDate: { name: "BirthDate", type: "Date" },
+					Dealer: { name: "Dealer", type: "One|Dealer", allowed: "Dealer.All" }
 				}
 			},
-			Car: { 
+			Car: {
 				attributes: {
 					Id: { name: "Id", type: "String" },
 					Name: { name: "Name", type: "String" },
 					Driver: { name: "Driver", type: "One|Driver" }
+				}
+			},
+			Dealer: {
+				attributes: {
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" },
+					AvailableCars: { name: "AvailableCars", type: "Many|Car" }
 				}
 			}
 		 },
 		__data: {
 			Driver: {
 				1: {
-					Id: 1,
+					Id: "1",
 					Name: "Bryan Matthews",
 					Cars: [ "1", "2" ],
-					BirthDate: new Date("2/7/1985")
+					BirthDate: "02/07/1985",
+					Dealer: "1"
 				}
 			},
 			Car: {
 				1: {
-					Id: 1,
+					Id: "1",
 					Name: "Sentra",
 					Driver: "1"
 				},
 				2: {
-					Id: 2,
+					Id: "2",
 					Name: "Bike",
 					Driver: "1"
+				}
+			},
+			Dealer: {
+				1: {
+					Id: "1",
+					Name: "Dick Smith Nissan",
+					AvailableCars: [ "1", "2" ]
+				},
+				2: {
+					Id: "2",
+					Name: "Johnny's Suzuki",
+					AvailableCars: []
 				}
 			}
 		}
