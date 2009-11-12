@@ -302,9 +302,19 @@ ModelProperty.prototype.get_containingType = function()
 	return this._containingType;
 }
 
-ModelProperty.prototype.get_dataType = function()
-{
+ModelProperty.prototype.get_dataTypeName = function() {
 	return this._dataType;
+}
+
+ModelProperty.prototype.get_dataType = function() {
+	var dt = this._dataType.indexOf("|") > 0 ? this._dataType.split("|")[1] : this._dataType;
+
+	if (window[dt])
+		return window[dt];
+	else if (dt == "Integer" || dt == "Float")
+		return Number;
+	else
+		throw ($format("Unknown data type \"{dt}\".", { dt: dt }));
 }
 
 ModelProperty.prototype.get_allowedValues = function() {
@@ -990,7 +1000,7 @@ function $load(metadata, data) {
 
 	if (metadata) {
 		model = new Model();
-		
+
 		for (var type in metadata) {
 			model.addType(type, null, metadata[type].attributes);
 		}
@@ -1006,43 +1016,64 @@ function $load(metadata, data) {
 			if (depth > loadObject.MAX_DEPTH)
 				throw ($format("Maximum recursion depth of {depth} was exceeded.", { depth: loadObject.MAX_DEPTH }));
 
-			var d = data[type][id];
+			var objectData = data[type][id];
 
-			for (var prop in d) {
-				var propType = obj.type.property(prop).get_dataType();
-				if ((typeof (d[prop]) === "object" || typeof (d[prop]) === "string") &&
-					propType != String && propType != Date && propType != Number) {
+			for (var prop in objectData) {
+				
+				var propType = obj.type.property(prop).get_dataTypeName();
 
-					if (propType.indexOf("|") >= 0) {
-						var typeDef = propType.split("|");
-						var mult = typeDef[0];
-						var relType = typeDef[1];
+				if (typeof (objectData[prop]) == "undefined" || objectData[prop] == null) {
+					obj[prop] = null;
+				}
+				else {
+					if (propType == "String")
+						obj[prop] = objectData[prop].toString();
+					else if (propType == "Date") {
+						if (objectData[prop].constructor == Date)
+							obj[prop] = objectData[prop];
+						else
+							obj[prop] = Date.formats.$default.convertBack(objectData[prop].toString());
+					}
+					else if (propType == "Boolean") {
+						if (objectData[prop].constructor == Boolean)
+							obj[prop] = objectData[prop];
+						else
+							obj[prop] = Boolean.formats.$default.convertBack(objectData[prop].toString());
+					}
+					else if (propType == "Integer")
+						obj[prop] = Number.formats.Integer.convertBack(objectData[prop].toString());
+					else if (propType == "Float")
+						obj[prop] = Number.formats.Float.convertBack(objectData[prop].toString());
+					else {
+						if (propType.indexOf("|") >= 0) {
+							var typeDef = propType.split("|");
+							var multiplicity = typeDef[0];
+							var relatedType = typeDef[1];
 
-						if (mult == "One") {
-							var ctor = window[relType];
-							var related = obj[prop] = new ctor(d[prop]);
-							if (!related._loaded) {
-								loadObject(related, relType, d[prop], depth + 1);
+							if (multiplicity == "One") {
+								var ctor = window[relatedType];
+								var related = obj[prop] = new ctor(objectData[prop]);
+								if (!related._loaded)
+									loadObject(related, relatedType, objectData[prop], depth + 1);
 							}
-						}
-						else if (mult == "Many") {
-							var src = d[prop];
-							var dst = obj[prop] = [];
-							for (var i = 0; i < src.length; i++) {
-								var ctor = window[relType];
-								var child = dst[dst.length] = new ctor(src[i]);
-								if (!child._loaded) {
-									loadObject(child, relType, src[i], depth + 1);
+							else if (multiplicity == "Many") {
+								var src = objectData[prop];
+								var dst = obj[prop] = [];
+								for (var i = 0; i < src.length; i++) {
+									var ctor = window[relatedType];
+									var child = dst[dst.length] = new ctor(src[i]);
+									if (!child._loaded)
+										loadObject(child, relatedType, src[i], depth + 1);
 								}
+							}
+							else {
+								throw ($format("Unknown multiplicity \"{m}\".", { m: multiplicity }));
 							}
 						}
 						else {
-							throw ($format("Unknown multiplicity \"{mult}\".", { mult: mult }));
+							throw ($format("Unknown property type \"{t}\".", { t: propType }));
 						}
 					}
-				}
-				else {
-					obj[prop] = d[prop];
 				}
 			}
 
@@ -1155,10 +1186,14 @@ Boolean.formats = {
 	YesNo: new Format({
 		convert: function(val) { return val ? "yes" : "no"; },
 		convertBack: function(str) { return str == "yes"; }
+	}),
+	TrueFalse: new Format({
+		convert: function(val) { return val ? "true" : "false"; },
+		convertBack: function(str) { return (str.toLowerCase() == "true"); }
 	})
 };
 
-Boolean.formats.$default = Boolean.formats.YesNo;
+Boolean.formats.$default = Boolean.formats.TrueFalse;
 
 Date.formats = {
 	ShortDate: new Format({

@@ -1,26 +1,50 @@
 ﻿window.data = {
-
 	drivers: {
 		__metadata: {
-			Driver: { attributes: { Id: { name: "Id", type: String }, Name: { name: "Name", type: String }, Cars: { name: "Cars", type: "Many|Car" }, BirthDate: { name: "BirthDate", type: Date } } },
-			Car: { attributes: { Id: { name: "Id", type: String }, Name: { name: "Name", type: String }, Driver: { name: "Driver", type: "One|Driver"} } }
+			Driver: { 
+				attributes: {
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" },
+					Cars: { name: "Cars", type: "Many|Car" },
+					BirthDate: { name: "BirthDate", type: "Date" }
+				}
+			},
+			Car: { 
+				attributes: {
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" },
+					Driver: { name: "Driver", type: "One|Driver" }
+				}
+			}
 		 },
 		__data: {
 			Driver: {
-				1: { Id: 1, "Name": "Bryan Matthews", Cars: [ "1", "2" ], BirthDate: new Date("2/7/1985") }
+				1: {
+					Id: 1,
+					Name: "Bryan Matthews",
+					Cars: [ "1", "2" ],
+					BirthDate: new Date("2/7/1985")
+				}
 			},
 			Car: {
-				1: { Id: 1, Name: "Sentra", Driver: "1" },
-				2: { Id: 2, Name: "Bike", Driver: "1" }
+				1: {
+					Id: 1,
+					Name: "Sentra",
+					Driver: "1"
+				},
+				2: {
+					Id: 2,
+					Name: "Bike",
+					Driver: "1"
+				}
 			}
 		}
 	},
-
 	programs: { 
 		__metadata: {
 			PrgIntervention: {
 				attributes: {
-					Id: { name: "Id", type: String },
+					Id: { name: "Id", type: "String" },
 					StartStatus: { name: "StartStatus", type: "One|PrgStatus" },
 					Involvement: { name: "Involvement", type: "One|PrgInvolvement" },
 					SubVariants: { name: "SubVariants", type: "Many|PrgSubVariant", allowed: "Involvement.Variant.SubVariants" },
@@ -32,41 +56,41 @@
 			},
 			PrgStatus: {
 				attributes: {
-					Id: { name: "Id", type: String },
-					Name: { name: "Name", type: String }
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" }
 				}
 			},
 			PrgInvolvement: {
 				attributes: {
-					Id: { name: "Id", type: String },
+					Id: { name: "Id", type: "String" },
 					Variant: { name: "Variant", type: "One|PrgVariant" }
 				}
 			},
 			PrgVariant: {
 				attributes: {
-					Id: { name: "Id", type: String },
-					Name: { name: "Name", type: String },
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" },
 					SubVariants: { name: "SubVariants", type: "Many|PrgSubVariant" }
 				}
 			},
 			PrgSubVariant: {
 				attributes: {
-					Id: { name: "Id", type: String },
-					Name: { name: "Name", type: String },
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" },
 				}
 			},
 			IntvTool: {
 				attributes: {
-					Id: { name: "Id", type: String },
-					Name: { name: "Name", type: String },
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" },
 					ToolDef: { name: "ToolDef", type: "One|IntvToolDef", allowed: "Intervention.ToolDefs" },
 					Intervention: { name: "Intervention", type: "One|PrgIntervention" }
 				}
 			},
 			IntvToolDef: {
 				attributes: {
-					Id: { name: "Id", type: String },
-					Name: { name: "Name", type: String }
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" }
 				}
 			}
 		},
@@ -103,7 +127,6 @@
 				}
 			},
 			PrgSubVariant: {
-				
 				"e2003c24-0be1-9d48-9991-714877ae55f8": {
 					Id: "e2003c24-0be1-9d48-9991-714877ae55f8",
 					Name: "Oral Reading Fluency"
@@ -130,7 +153,6 @@
 				}
 			},
 			IntvTool: {
-				
 				"128814d0-acbf-4ea8-8a65-9d1c0f073705": {
 					Id: "128814d0-acbf-4ea8-8a65-9d1c0f073705",
 					Name: "Repeated Reading of Passages",
@@ -139,7 +161,6 @@
 				}
 			},
 			IntvToolDef: {
-				
 				"61f08a7b-e855-4425-b4f9-81666f49754f": {
 					Id: "61f08a7b-e855-4425-b4f9-81666f49754f",
 					Name: "Question-Generation"

@@ -3,9 +3,10 @@ Type.registerNamespace("VC3.UI");
 
 ///////////////////////////////////////////////////////////////////////////////
 /// <summary>
-/// The purpose of the template control is to define a UI "template" that can
-/// determine whether or not it should be selected as a template for a given
-/// DOM element.
+/// In addition to defining template markup, also defines rules that are used
+/// to determine if it should be chosen as the template for a given element
+/// based on a CSS selector as well as a javascript filter that is evaluated 
+/// against the element in question.
 /// </summary>
 ///
 /// <example>
@@ -40,10 +41,11 @@ VC3.UI.Template.prototype = {
 	}
 }
 
-/// Finds the first field template with a selector that 
-/// matches the given element and returns the template.
+/// <summary>
+/// Finds the first field template with a selector and filter that
+/// match the given element and returns the template.
+/// </summary>
 VC3.UI.Template.find = function(element) {
-	// get the template by css selectors
 	var templates = $(".vc3-template");
 	for (var t = 0; t < templates.length; t++) {
 		var tmpl = templates[t];
@@ -59,12 +61,12 @@ VC3.UI.Template.registerClass("VC3.UI.Template", Sys.UI.Control);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// <summary>
-/// The purpose of the content control is to find its matching template
-/// and render using the provided data as the binding context.  It can be
-/// used as a "field control", using part of the context data to select the
-/// appropriate control template.  Another common usage would be to select
-/// the appropriate template for a portion of the UI, as in the example where 
-/// an objects meta type determines how it is displayed in the UI.
+/// Finds its matching template and renders using the provided data as the 
+/// binding context.  It can be used as a "field control", using part of the 
+/// context data to select the appropriate control template.  Another common 
+/// usage would be to select the appropriate template for a portion of the UI,
+/// as in the example where an objects meta type determines how it is 
+/// displayed in the UI.
 /// </summary>
 ///
 /// <example>
@@ -120,6 +122,9 @@ VC3.UI.Content.registerClass("VC3.UI.Content", Sys.UI.Control);
 
 
 ///////////////////////////////////////////////////////////////////////////////
+/// <summary>
+/// 
+/// </summary>
 VC3.UI.Field = function(element) {
 	VC3.UI.Field.initializeBase(this, [element]);
 }
@@ -133,17 +138,14 @@ VC3.UI.Field.prototype = {
 			this._data = null;
 			// TODO: can't tell whether label was inferred
 			this._source = value;
-			// TODO: do other stuff?
 		}
 	},
 	get_label: function() {
 		if (!this._label) {
-			var label = this.get_source();
+			this._label = this.get_source();
 
-			// TODO: convert to a human-friendly format
-			//		or retrieve from metadata
-
-			this._label = label;
+			// TODO: more robust solution to human-friendly format
+			this._label = this._label.replace(/([^^])([A-Z])/g, "$1 $2");
 		}
 
 		return this._label;
@@ -152,16 +154,19 @@ VC3.UI.Field.prototype = {
 		this._label = value;
 	},
 	get_isReadOnly: function() {
-		// TODO: verify that this actually returns a bool in all cases
 		return this._isReadOnly || false;
 	},
 	set_isReadOnly: function(value) {
-		if (this._isReadOnly !== value) {
-			this._isReadOnly = value;
+		if (!value) throw ("Value is not defined.");
 
+		if (this._isReadOnly != value) {
 			// TODO: better bool conversion
-			if (typeof (this._isReadOnly) == "string")
-				this._isReadOnly = (this._isReadOnly.toLowerCase() == "true");
+			if (typeof (value) == "boolean")
+				this._isReadOnly = value;
+			else if (typeof (value) == "string")
+				this._isReadOnly = (value.toLowerCase() == "true");
+			else
+				throw ($format("The value \"{val}\" could not be converted to a boolean.", { val: value }));
 		}
 	},
 	get_data: function() {
@@ -188,11 +193,12 @@ VC3.UI.Field.prototype = {
 
 		// containing template was not found
 		if (!element.parentNode || !element.parentNode._msajaxtemplate)
-			throw Error.invalidOperation("Not within a container template.");
+			throw Error.invalidOperation("The field's parent template could not be found.");
 
 		container = element.parentNode;
 		subcontainer = element;
 
+		// find the correct context (in the case of repeated content)
 		var contexts = container.control.get_contexts();
 		if (contexts) {
 			for (var i = 0, l = contexts.length; i < l; i++) {
@@ -211,34 +217,31 @@ VC3.UI.Field.registerClass("VC3.UI.Field", VC3.UI.Content);
 
 
 ///////////////////////////////////////////////////////////////////////////////
-Type.registerNamespace("VC3.Data");
+//Type.registerNamespace("VC3.Data");
 
-VC3.Data.DataContext = function VC3$Data$DataContext(rawData) {
-	VC3.Data.DataContext.initializeBase(this);
-	this._rawData = rawData;
-	this.initialize();
-}
+//VC3.Data.DataContext = function VC3$Data$DataContext(rawData) {
+//	VC3.Data.DataContext.initializeBase(this);
+//	this._rawData = rawData;
+//	this.initialize();
+//}
 
-VC3.Data.DataContext.prototype = {
-	// TODO: temporary hack to allow using data context without service
-	fetchData: function(operation, parameters, mergeOption, httpVerb, succeededCallback, failedCallback, timeout, userContext) {
-		succeededCallback(this.get_graph());
-	},
-	get_root: function() {
-		return this._root;
-	},
-	set_root: function(value) {
-		this._root = value;
-	},
-	initialize: function() {
-		$load(this._rawData.__metadata, this._rawData.__data);
-	}
-}
+//VC3.Data.DataContext.prototype = {
+//	// TODO: temporary hack to allow using data context without service
+//	fetchData: function(operation, parameters, mergeOption, httpVerb, succeededCallback, failedCallback, timeout, userContext) {
+//		succeededCallback(this.get_graph());
+//	},
+//	get_root: function() {
+//		return this._root;
+//	},
+//	set_root: function(value) {
+//		this._root = value;
+//	},
+//	initialize: function() {
+//		$load(this._rawData.__metadata, this._rawData.__data);
+//	}
+//}
 
-VC3.Data.DataContext.registerClass("VC3.Data.DataContext", Sys.Data.DataContext);
-
-
-
+//VC3.Data.DataContext.registerClass("VC3.Data.DataContext", Sys.Data.DataContext);
 
 
 // Since this script is not loaded by System.Web.Handlers.ScriptResourceHandler
