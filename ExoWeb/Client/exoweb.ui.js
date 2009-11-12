@@ -1,4 +1,4 @@
-Type.registerNamespace("VC3.UI");
+Type.registerNamespace("ExoWeb.UI");
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -12,11 +12,11 @@ Type.registerNamespace("VC3.UI");
 /// <example>
 ///		<div sys:attach="template" template:for="table.inputform tr" template:if="<some condition>"></div>
 /// </example>
-VC3.UI.Template = function(element) {
-	VC3.UI.Template.initializeBase(this, [element]);
+ExoWeb.UI.Template = function(element) {
+	ExoWeb.UI.Template.initializeBase(this, [element]);
 }
 
-VC3.UI.Template.prototype = {
+ExoWeb.UI.Template.prototype = {
 	get_for: function() {
 		return this._for;
 	},
@@ -33,7 +33,7 @@ VC3.UI.Template.prototype = {
 		return $(e).is(this.get_for());
 	},
 	initialize: function() {
-		VC3.UI.Template.callBaseMethod(this, "initialize");
+		ExoWeb.UI.Template.callBaseMethod(this, "initialize");
 
 		// add a class that can be used to search for templates 
 		// and make sure that the template element is hidden
@@ -45,18 +45,18 @@ VC3.UI.Template.prototype = {
 /// Finds the first field template with a selector and filter that
 /// match the given element and returns the template.
 /// </summary>
-VC3.UI.Template.find = function(element) {
+ExoWeb.UI.Template.find = function(element) {
 	var templates = $(".vc3-template");
 	for (var t = 0; t < templates.length; t++) {
 		var tmpl = templates[t];
-		if (VC3.UI.Template.isInstanceOfType(tmpl.control) && tmpl.control.matches(element))
+		if (ExoWeb.UI.Template.isInstanceOfType(tmpl.control) && tmpl.control.matches(element))
 			return tmpl;
 	}
 
 	return null;
 }
 
-VC3.UI.Template.registerClass("VC3.UI.Template", Sys.UI.Control);
+ExoWeb.UI.Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -72,15 +72,15 @@ VC3.UI.Template.registerClass("VC3.UI.Template", Sys.UI.Control);
 /// <example>
 ///		<div sys:attach="content" content:data="{{ somedata }}"></div>
 /// </example>
-VC3.UI.Content = function(element) {
-	VC3.UI.Content.initializeBase(this, [element]);
+ExoWeb.UI.Content = function(element) {
+	ExoWeb.UI.Content.initializeBase(this, [element]);
 }
 
-VC3.UI.Content.prototype = {
+ExoWeb.UI.Content.prototype = {
 	get_template: function() {
 		if (!this._template) {
 			var element = this.get_element();
-			this._template = VC3.UI.Template.find(element);
+			this._template = ExoWeb.UI.Template.find(element);
 
 			if (!this._template) {
 				throw ("This content region does not match any available templates.");
@@ -110,7 +110,7 @@ VC3.UI.Content.prototype = {
 		}
 	},
 	initialize: function() {
-		VC3.UI.Content.callBaseMethod(this, "initialize");
+		ExoWeb.UI.Content.callBaseMethod(this, "initialize");
 
 		// TODO: include meta info about field?
 		
@@ -118,18 +118,18 @@ VC3.UI.Content.prototype = {
 	}
 }
 
-VC3.UI.Content.registerClass("VC3.UI.Content", Sys.UI.Control);
+ExoWeb.UI.Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
 
 
 ///////////////////////////////////////////////////////////////////////////////
 /// <summary>
 /// 
 /// </summary>
-VC3.UI.Field = function(element) {
-	VC3.UI.Field.initializeBase(this, [element]);
+ExoWeb.UI.Field = function(element) {
+	ExoWeb.UI.Field.initializeBase(this, [element]);
 }
 
-VC3.UI.Field.prototype = {
+ExoWeb.UI.Field.prototype = {
 	get_source: function() {
 		return this._source;
 	},
@@ -213,19 +213,19 @@ VC3.UI.Field.prototype = {
 	}
 }
 
-VC3.UI.Field.registerClass("VC3.UI.Field", VC3.UI.Content);
+ExoWeb.UI.Field.registerClass("ExoWeb.UI.Field", ExoWeb.UI.Content);
 
 
 ///////////////////////////////////////////////////////////////////////////////
-//Type.registerNamespace("VC3.Data");
+//Type.registerNamespace("ExoWeb.Data");
 
-//VC3.Data.DataContext = function VC3$Data$DataContext(rawData) {
-//	VC3.Data.DataContext.initializeBase(this);
+//ExoWeb.Data.DataContext = function ExoWeb$Data$DataContext(rawData) {
+//	ExoWeb.Data.DataContext.initializeBase(this);
 //	this._rawData = rawData;
 //	this.initialize();
 //}
 
-//VC3.Data.DataContext.prototype = {
+//ExoWeb.Data.DataContext.prototype = {
 //	// TODO: temporary hack to allow using data context without service
 //	fetchData: function(operation, parameters, mergeOption, httpVerb, succeededCallback, failedCallback, timeout, userContext) {
 //		succeededCallback(this.get_graph());
@@ -241,7 +241,7 @@ VC3.UI.Field.registerClass("VC3.UI.Field", VC3.UI.Content);
 //	}
 //}
 
-//VC3.Data.DataContext.registerClass("VC3.Data.DataContext", Sys.Data.DataContext);
+//ExoWeb.Data.DataContext.registerClass("ExoWeb.Data.DataContext", Sys.Data.DataContext);
 
 
 // Since this script is not loaded by System.Web.Handlers.ScriptResourceHandler

@@ -885,10 +885,10 @@ Format.prototype = {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
-function VC3Binding()
+function ExoWebBinding()
 { }
 
-VC3Binding.getElementBindings = function(el)
+ExoWebBinding.getElementBindings = function(el)
 {
 	var bindings = el.__msajaxbindings;
 
@@ -896,13 +896,13 @@ VC3Binding.getElementBindings = function(el)
 		return [];
 
 	for (var i = 0; i < bindings.length; ++i)
-		$.extend(bindings[i], VC3Binding.prototype);
+		$.extend(bindings[i], ExoWebBinding.prototype);
 
 	return bindings;
 }
 
 // Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
-VC3Binding.prototype.get_finalSourceObject = function()
+ExoWebBinding.prototype.get_finalSourceObject = function()
 {
 	var src = this.get_source();
 
@@ -912,7 +912,7 @@ VC3Binding.prototype.get_finalSourceObject = function()
 	return src;
 };
 
-VC3Binding.prototype.get_finalPath = function()
+ExoWebBinding.prototype.get_finalPath = function()
 {
 	return this._pathArray[this._pathArray.length - 1];
 };

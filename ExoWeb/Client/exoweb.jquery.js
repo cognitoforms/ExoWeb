@@ -48,7 +48,7 @@
 	}
 
 	jQuery.fn.liveBindings = function() {
-		return VC3Binding.getElementBindings(this.get(0));
+		return ExoWebBinding.getElementBindings(this.get(0));
 	}
 
 })();
