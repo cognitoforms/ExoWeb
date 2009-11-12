@@ -111,7 +111,7 @@ ModelType.prototype.define = function(properties)
 }
 
 ModelType.prototype.addProperty = function(propName, def) {
-	var prop = new ModelProperty(propName, def.type, def.label, def.format ? def.type.formats[def.format] : null, def.allowed);
+	var prop = new ModelProperty(propName, def.type, def.label, def.format ? window[def.type].formats[def.format] : null, def.allowed);
 	prop.set_containingType(this);
 
 	this._properties[propName] = prop;
@@ -1195,8 +1195,9 @@ function $load(metadata, data) {
 		return new ExoWeb.Model.Adapter(templateContext.dataItem, props, format, properties);
 	}
 
-	// Markup Extension
+	// Markup Extensions
 	//////////////////////////////////////////////////////////////////////////////////////
+	Sys.Application.registerMarkupExtension("@", getAdapter, true);
 	Sys.Application.registerMarkupExtension("@=",
 		function(component, targetProperty, templateContext, properties) {
 			var adapter = getAdapter(component, targetProperty, templateContext, properties);
@@ -1214,8 +1215,6 @@ function $load(metadata, data) {
 		},
 		false
 	);
-
-	Sys.Application.registerMarkupExtension("@", getAdapter, true);
 	
 })();
 
@@ -1310,11 +1309,8 @@ ExoWeb.Model.PropertyChain.prototype = {
 	},
 	value: function(obj, val) {
 		if (arguments.length == 2) {
-			for (var p = 0; p < this._path.length - 1; p++) {
-				var prop = this._path[p];
-				obj = prop.value(obj);
-			}
-
+			obj = this.parent(obj);
+			
 			Sys.Observer.setValue(obj, this.last().get_name(), val);
 		}
 		else {
@@ -1324,6 +1320,13 @@ ExoWeb.Model.PropertyChain.prototype = {
 			}
 			return obj;
 		}
+	},
+	parent: function(obj) {
+		for (var p = 0; p < this._path.length - 1; p++) {
+			var prop = this._path[p];
+			obj = prop.value(obj);
+		}
+		return obj;
 	}
 }
 
@@ -1498,10 +1501,10 @@ ExoWeb.Model.Adapter.prototype = {
 	// Pass validation events through to the target
 	///////////////////////////////////////////////////////////////////////////
 	addPropertyValidating: function(propName, handler) {
-		this._target.meta.addPropertyValidating(this._property.last().get_name(), handler);
+		this._property.parent(this._target).meta.addPropertyValidating(this._property.last().get_name(), handler);
 	},
 	addPropertyValidated: function(propName, handler) {
-		this._target.meta.addPropertyValidated(this._property.last().get_name(), handler);
+		this._property.parent(this._target).meta.addPropertyValidated(this._property.last().get_name(), handler);
 	},
 
 	// Override toString so that UI can bind to the adapter directly
