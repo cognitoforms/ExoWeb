@@ -53,7 +53,7 @@
 			<tr>
 				<td colspan="2">-------------------------------------------------</td>
 			</tr>
-			<tr sys:attach="content" content:data="{@ Name, label=Driver }" />
+			<tr sys:attach="content" content:data="{@ Name, prefix=Driver }" />
 			<tr sys:attach="content" content:data="{@ BirthDate, label=Birthday }" />
 			<tr sys:attach="field" field:source="Name" field:label="Driver" field:isreadonly="true" />
 			<tr>
@@ -75,6 +75,7 @@
 	<table>
 		<tr sys:attach="template" template:for="tr">
 			<td>
+				<span>{ binding prefix }</span>
 				<span>{ binding label }</span>:
 			</td>
 			<td>

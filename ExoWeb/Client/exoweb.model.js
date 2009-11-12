@@ -1252,38 +1252,76 @@ ExoWeb.Model.Adapter = function(target, property, format, options) {
 	this._property = property;
 	this._format = format;
 
+	// Add arbitrary options so that they are made available in templates
+	var allowedOverrides = ["label", "helptext"];
 	if (options) {
 		for (var opt in options) {
-			if (!this[opt])
-				this[opt] = options[opt];
-			else
+
+			// Check if the option is already defined and is not available to
+			// override, as in the case of critical properties (e.g.: value)
+			if (this["get_" + opt] && !Array.contains(allowedOverrides, opt))
 				throw ($format("{opt} is already defined.", { opt: opt }));
+
+			var _opt = "_" + opt;
+			this[_opt] = options[opt];
+
+			// create a getter if one doesn't exist
+			if (!this["get_" + opt]) {
+				var type = this._property.get_containingType();
+				this["get_" + opt] = type._makeGetter(this, function() { return this[_opt]; });
+			}
 		}
 	}
 
-	Sys.Observer.makeObservable(this);
-
 	var _this = this;
-	Sys.Observer.addPropertyChanged(this._target, function(sender, args) { _this._onTargetChanged(sender, args); });
+	Sys.Observer.makeObservable(this);
+	Sys.Observer.addPropertyChanged(this._target, function(sender, args) {
+		_this._onTargetChanged(sender, args);
+	});
 }
 
 ExoWeb.Model.Adapter.prototype = {
+	// Pass property change events to the target object
+	///////////////////////////////////////////////////////////////////////////
 	_onTargetChanged: function(sender, args) {
 		if (args.get_propertyName() == this._property.get_name()) {
 			Sys.Observer.raisePropertyChanged(this, "value");
 		}
 	},
-	get_target: function() {
-		return this._target;
-	},
-	get_property: function() {
-		return this._property;
-	},
+
+	// Properties that are intended to be used by templates
+	///////////////////////////////////////////////////////////////////////////
 	get_label: function() {
-		return this.label || this._property.get_label();
+		return this._label || this._property.get_label();
 	},
 	get_helptext: function() {
-		return this.helptext || "";
+		return this._helptext || "";
+	},
+	get_options: function() {
+		if (this._property.get_typeClass() == ModelTypeClass.Intrinsic)
+			return null;
+
+		var value = this.get_value();
+
+		// TODO: handle allowed values in multiple forms (function, websvc call, string path)
+		var allowed = this._property.get_allowedValues();
+
+		if (allowed && allowed.length > 0) {
+			var root = allowed.split(".")[0];
+			var allowedValuesSource = this._sourceObject;
+			for (var p = 0; p < path.length; p++)
+				allowedValuesSource = allowedValuesSource[path[p]];
+		}
+
+		if (this._property.get_typeClass() == ModelTypeClass.Entity) {
+
+		}
+		else if (this._property.get_typeClass() == ModelTypeClass.EntityList) {
+
+		}
+	},
+	get_badValue: function() {
+		return this._badValue;
 	},
 	get_value: function() {
 		if (this._badValue)
@@ -1323,12 +1361,18 @@ ExoWeb.Model.Adapter.prototype = {
 			delete this._badValue;
 		}
 	},
+
+	// Pass validation events through to the target
+	///////////////////////////////////////////////////////////////////////////
 	addPropertyValidating: function(propName, handler) {
 		this._target.meta.addPropertyValidating(this._property.get_name(), handler);
 	},
 	addPropertyValidated: function(propName, handler) {
 		this._target.meta.addPropertyValidated(this._property.get_name(), handler);
 	},
+
+	// Override toString so that UI can bind to the adapter directly
+	///////////////////////////////////////////////////////////////////////////
 	toString: function() {
 		return this.get_value();
 	}
