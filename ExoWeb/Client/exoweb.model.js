@@ -165,26 +165,27 @@ ModelType.prototype.property = function(name) {
 	var p = (name.indexOf(".") >= 0) ? name.substring(0, name.indexOf(".")) : name;
 
 	var prop = this._properties[p];
+	
+	if (prop){
+		var prop = new ExoWeb.Model.PropertyChain(prop);
+		
+		// evaluate the remainder of the property path
+		if (name.indexOf(".") >= 0) {
+			var remainder = name.substring(name.indexOf(".") + 1);
+			var propType = prop.last().get_typeName();
+			var type = this._model.get_type(propType);
 
-	// evaluate the remainder of the property path
-	if (prop && name.indexOf(".") >= 0) {
-		var remainder = name.substring(name.indexOf(".") + 1);
-		var propType = prop.get_typeName();
-		var type = this._model.get_type(propType);
-
-		var children = type.property(remainder);
-		if (children) {
-			prop = [prop];
-			children = children.length ? children : [children];
-			Array.addRange(prop, children);
-		}
-		else {
-			// if finding a child property failed then return null
-			// TODO: should this be more lax and burden consuming 
-			// code with checking the property chain for nulls?
-			prop = null;
-		}
+			var children = type.property(remainder);
+			if (children)
+				prop.append(children);
+			else {
+				// if finding a child property failed then return null
+				// TODO: should this be more lax and burden consuming 
+				// code with checking the property chain for nulls?
+				prop = null;
+			}
 	}
+}
 
 	return prop;
 }
@@ -221,13 +222,13 @@ ModelType.prototype.constraint = function(condition, issueDesc)
 	issueDesc = issueDesc.replace(/\$([a-z0-9_]+)/ig,
 					function(s, propName)
 					{
-						// TODO: handle multi hops
 						var prop = type.property(propName);
 
-						if ($.inArray(prop, issueProps) < 0)
-							issueProps.push(prop);
+						// TODO: is using last appropriate for multi-hop?
+						if ($.inArray(prop.last(), issueProps) < 0)
+							issueProps.push(prop.last());
 
-						return prop.get_label();
+						return prop.last().get_label();
 					}
 				);
 
@@ -320,6 +321,7 @@ ModelProperty.prototype.toString = function()
 	return this.get_label();
 }
 
+// TODO: is this used?
 function Property(name, dataType)
 {
 	return new ModelProperty(name, dataType);
@@ -650,8 +652,8 @@ ModelRule.inferInputs = function(rootType, func)
 
 	while (match = /this\.([a-zA-Z0-9_]+)/g.exec(func.toString()))
 	{
-		// TODO: handle multi hops
-		inputs.push(rootType.property(match[1]));
+		// TODO: is using last appropriate for multi-hops?
+		inputs.push(rootType.property(match[1]).last());
 	}
 
 	return inputs;
@@ -1092,7 +1094,7 @@ function $load(metadata, data) {
 
 			for (var prop in objectData) {
 				
-				var propType = obj.type.property(prop).get_fullTypeName();
+				var propType = obj.type.property(prop).last().get_fullTypeName();
 
 				if (typeof (objectData[prop]) == "undefined" || objectData[prop] == null) {
 					obj[prop] = null;
@@ -1173,19 +1175,24 @@ function $load(metadata, data) {
 
 	function getAdapter(component, targetProperty, templateContext, properties) {
 
-		var prop = templateContext.dataItem.meta.property(properties.path || properties.$default);
-		var dt = prop.get_dataType();
+		var path = properties.path || properties.$default;
+		
+		var props = templateContext.dataItem.meta.property(path);
+		if (!props)
+			throw ($format("Property \"{p}\" could not be found.", { p: path }));
+			
+		var dt = props.last().get_dataType();
 
 		var format;
 
 		if (properties.format)
 			format = dt.formats[properties.format];
-		else if (!(format = prop.get_format()) && dt.formats)
+		else if (!(format = props.last().get_format()) && dt.formats)
 			format = dt.formats.$default;
 
 		delete properties.$default;
 
-		return new ExoWeb.Model.Adapter(templateContext.dataItem, prop, format, properties);
+		return new ExoWeb.Model.Adapter(templateContext.dataItem, props, format, properties);
 	}
 
 	// Markup Extension
@@ -1287,6 +1294,38 @@ Date.formats = {
 
 Date.formats.$default = Date.formats.ShortDate;
 
+ExoWeb.Model.PropertyChain = function(path) {
+	this._path = path.length ? path : [path];
+}
+
+ExoWeb.Model.PropertyChain.prototype = {
+	last: function() {
+		return this._path[this._path.length - 1];
+	},
+	all: function() {
+		return this._path;
+	},
+	append: function(prop) {
+		Array.addRange(this._path, prop.all());
+	},
+	value: function(obj, val) {
+		if (arguments.length == 2) {
+			for (var p = 0; p < this._path.length - 1; p++) {
+				var prop = this._path[p];
+				obj = prop.value(obj);
+			}
+
+			Sys.Observer.setValue(obj, this.last().get_name(), val);
+		}
+		else {
+			for (var p = 0; p < this._path.length; p++) {
+				var prop = this._path[p];
+				obj = prop.value(obj);
+			}
+			return obj;
+		}
+	}
+}
 
 ExoWeb.Model.Adapter = function(target, property, format, options) {
 	this._target = target;
@@ -1308,9 +1347,11 @@ ExoWeb.Model.Adapter = function(target, property, format, options) {
 
 			// create a getter if one doesn't exist
 			if (!this["get_" + opt]) {
-				var type = this._property.get_containingType();
+				var type = this._property.last().get_containingType();
 				this["get_" + opt] = type._makeGetter(this, function() { return this[_opt]; });
 			}
+
+
 		}
 	}
 
@@ -1321,11 +1362,13 @@ ExoWeb.Model.Adapter = function(target, property, format, options) {
 	});
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
 ExoWeb.Model.Adapter.prototype = {
 	// Pass property change events to the target object
 	///////////////////////////////////////////////////////////////////////////
 	_onTargetChanged: function(sender, args) {
-		if (args.get_propertyName() == this._property.get_name()) {
+		if (args.get_propertyName() == this._property.last().get_name()) {
 			Sys.Observer.raisePropertyChanged(this, "value");
 		}
 	},
@@ -1333,30 +1376,26 @@ ExoWeb.Model.Adapter.prototype = {
 	// Properties that are intended to be used by templates
 	///////////////////////////////////////////////////////////////////////////
 	get_label: function() {
-		return this._label || this._property.get_label();
+		return this._label || this._property.last().get_label();
 	},
 	get_helptext: function() {
 		return this._helptext || "";
 	},
 	get_options: function() {
 		if (!this._options) {
-			if (this._property.get_typeClass() == ModelTypeClass.Intrinsic)
+			if (this._property.last().get_typeClass() == ModelTypeClass.Intrinsic)
 				return null;
 
 			// TODO: handle allowed values in multiple forms (function, websvc call, string path)
 			var allowed = null;
-			var path = this._property.get_allowedValues();
+			var path = this._property.last().get_allowedValues();
 			if (path && path.length > 0) {
 				var root = this._target;
-				var prop = root.type.property(path);
+				var props = root.type.property(path);
 
-				if (prop) {
+				if (props) {
 					// get the allowed values from the property chain
-					var props = prop.length ? prop : [prop];
-					for (var p = 0; p < props.length; p++) {
-						var prop = props[p];
-						root = prop.value(root);
-					}
+					root = props.value(root);
 				}
 				else {
 					// if the property is not defined look for a global object by that name
@@ -1375,21 +1414,21 @@ ExoWeb.Model.Adapter.prototype = {
 				allowed = root;
 			}
 
-			if (this._property.get_typeClass() == ModelTypeClass.Entity) {
+			if (this._property.last().get_typeClass() == ModelTypeClass.Entity) {
 				this._options = [];
 
 				this._options[0] = { name: "--select--", value: "" };
 
 				for (var a = 0; a < allowed.length; a++) {
-					var value = allowed[a];
-
-					Array.add(this._options, {
-						name: value.Name,
-						value: value.Id
-					});
+					var opt = {
+						name: allowed[a].Name,
+						value: allowed[a].Id
+					}
+					
+					Array.add(this._options, opt);
 				}
 			}
-			else if (this._property.get_typeClass() == ModelTypeClass.EntityList) {
+			else if (this._property.last().get_typeClass() == ModelTypeClass.EntityList) {
 				this._options = [];
 
 				// TODO: handle possible side-effects of get_value logic?
@@ -1403,7 +1442,11 @@ ExoWeb.Model.Adapter.prototype = {
 						}
 					}
 
-					var opt = { value: allowed[a], selected: selected };
+					var opt = { 
+						name: allowed[a].Name,
+						value: allowed[a].Id,
+						selected: selected
+					};
 
 					this._options[a] = opt;
 				}
@@ -1432,12 +1475,12 @@ ExoWeb.Model.Adapter.prototype = {
 			this._badValue = value;
 
 			issue = new ModelIssue(
-							$format(converted.get_message(), { value: this._property.get_label() }),
-							[this._property],
+							$format(converted.get_message(), { value: this._property.last().get_label() }),
+							[this._property.last()],
 							this);
 
 			var meta = this._target.meta;
-			var propName = this._property.get_name();
+			var propName = this._property.last().get_name();
 
 			// TODO:	 refactor this?
 			meta.issueIf(issue, true);
@@ -1457,10 +1500,10 @@ ExoWeb.Model.Adapter.prototype = {
 	// Pass validation events through to the target
 	///////////////////////////////////////////////////////////////////////////
 	addPropertyValidating: function(propName, handler) {
-		this._target.meta.addPropertyValidating(this._property.get_name(), handler);
+		this._target.meta.addPropertyValidating(this._property.last().get_name(), handler);
 	},
 	addPropertyValidated: function(propName, handler) {
-		this._target.meta.addPropertyValidated(this._property.get_name(), handler);
+		this._target.meta.addPropertyValidated(this._property.last().get_name(), handler);
 	},
 
 	// Override toString so that UI can bind to the adapter directly
