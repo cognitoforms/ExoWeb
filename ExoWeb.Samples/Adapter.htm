@@ -31,13 +31,44 @@
 	<table>
 		<tbody class="sys-template" sys:attach="dataview" dataview:data="{{ driver }}">
 			<tr>
+				<td>@=</td>
 				<td>{@= Name }</td>
+			</tr>
+			<tr>
+				<td>@=</td>
 				<td>{@= BirthDate }</td>
+			</tr>
+			<tr>
+				<td>@</td>
+				<td>{@ BirthDate }</td>
+			</tr>
+			<tr>
+				<td>Simple Property Access</td>
 				<td>{{ BirthDate }}</td>
+			</tr>
+			<tr>
+				<td>@=</td>
+				<td>{@= Cars }</td>
+			</tr>
+			<tr>
+				<td colspan="2">-------------------------------------------------</td>
 			</tr>
 			<tr sys:attach="content" content:data="{@ Name, label=Driver }" />
 			<tr sys:attach="content" content:data="{@ BirthDate, label=Birthday }" />
 			<tr sys:attach="field" field:source="Name" field:label="Driver" field:isreadonly="true" />
+			<tr>
+				<td colspan="2" style="padding:20px;">
+					<table>
+						<tbody class="sys-template" sys:attach="dataview" dataview:data="{{ Cars }}">
+							<tr>
+								<td>
+									{{ Name }}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</td>
+			</tr>
 		</tbody>
 	</table>
 	

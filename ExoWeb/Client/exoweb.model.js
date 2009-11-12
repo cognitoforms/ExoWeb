@@ -267,11 +267,15 @@ ModelType.prototype.executeRules = function(obj, prop, start)
 		this._model.get_validatedQueue().raise();
 }
 
+///////////////////////////////////////////////////////////////////////////////
+ModelTypeClass = { Intrinsic: "intrinsic", Entity: "entity", EntityList: "entitylist" }
+
+
 //////////////////////////////////////////////////////////////////////////////////////
 function ModelProperty(name, dataType, label, format, allowedValues)
 {
 	this._name = name;
-	this._dataType = dataType;
+	this._dataTypeName = dataType;
 	this._label = label;
 	this._format = format;
 	this._allowedValues = allowedValues;
@@ -302,19 +306,47 @@ ModelProperty.prototype.get_containingType = function()
 	return this._containingType;
 }
 
-ModelProperty.prototype.get_dataTypeName = function() {
-	return this._dataType;
+ModelProperty.prototype.get_typeName = function() {
+	return this._dataTypeName;
+}
+
+ModelProperty.prototype.get_typeClass = function() {
+	if (!this._typeClass) {
+		if (this._dataTypeName.indexOf("|") > 0) {
+			var multiplicity = this._dataTypeName.split("|")[0];
+
+			if (multiplicity == "One")
+				this._typeClass = ModelTypeClass.Entity;
+			else if (multiplicity == "Many")
+				this._typeClass = ModelTypeClass.EntityList;
+			else {
+				this._typeClass = $format("Unknown multiplicity \"{m}\".", { m: multiplicity });
+				throw (this._typeClass);
+			}
+		}
+		else {
+			this._typeClass = ModelTypeClass.Intrinsic;
+		}
+	}
+
+	return this._typeClass;
 }
 
 ModelProperty.prototype.get_dataType = function() {
-	var dt = this._dataType.indexOf("|") > 0 ? this._dataType.split("|")[1] : this._dataType;
+	if (!this._dataType) {
+		var dt = this._dataTypeName.indexOf("|") > 0 ? this._dataTypeName.split("|")[1] : this._dataTypeName;
 
-	if (window[dt])
-		return window[dt];
-	else if (dt == "Integer" || dt == "Float")
-		return Number;
-	else
-		throw ($format("Unknown data type \"{dt}\".", { dt: dt }));
+		if (window[dt])
+			this._dataType = window[dt];
+		else if (dt == "Integer" || dt == "Float")
+			this._dataType = Number;
+		else {
+			this._dataType = $format("Unknown data type \"{dt}\".", { dt: dt });
+			throw (this._dataType);
+		}
+	}
+
+	return this._dataType;
 }
 
 ModelProperty.prototype.get_allowedValues = function() {
@@ -1020,7 +1052,7 @@ function $load(metadata, data) {
 
 			for (var prop in objectData) {
 				
-				var propType = obj.type.property(prop).get_dataTypeName();
+				var propType = obj.type.property(prop).get_typeName();
 
 				if (typeof (objectData[prop]) == "undefined" || objectData[prop] == null) {
 					obj[prop] = null;
@@ -1107,7 +1139,7 @@ function $load(metadata, data) {
 
 		if (properties.format)
 			format = dt.formats[properties.format];
-		else if (!(format = prop.get_format()))
+		else if (!(format = prop.get_format()) && dt.formats)
 			format = dt.formats.$default;
 
 		delete properties.$default;
