@@ -1096,7 +1096,6 @@ function $load(metadata, data) {
 	}
 
 	if (data) {
-		
 		// Note: load object depends on local "data" variable to access data for related objects
 		var loadObject = function(obj, type, id, depth) {
 			obj._loaded = true;
@@ -1108,7 +1107,6 @@ function $load(metadata, data) {
 			var objectData = data[type][id];
 
 			for (var prop in objectData) {
-				
 				var propType = obj.type.property(prop).last().get_fullTypeName();
 
 				if (typeof (objectData[prop]) == "undefined" || objectData[prop] == null) {
@@ -1308,46 +1306,150 @@ Date.formats = {
 
 Date.formats.$default = Date.formats.ShortDate;
 
-ExoWeb.Model.PropertyChain = function(path) {
-	this._path = path.length ? path : [path];
+
+///////////////////////////////////////////////////////////////////////////////
+/// <summary>
+/// Encapsulates the logic required to work with a chain of properties and
+/// a root object, allowing interaction with the chain as if it were a 
+/// single property of the root object.
+/// </summary>
+///
+/// <example>
+///
+/// var driver = new Driver("1");
+/// var chain = driver.type.property("Owner.Location.Address");
+///
+/// // the "Address" portion of the property
+/// var addressProp = chain.last();
+/// // the Address object
+/// var address = chain.value(driver);
+/// // the owner's locations for the given driver
+/// var loc = chain.parent(driver);
+///
+/// var stateAbbrevProp = address.type.property("State.Abbreviation");
+/// // returns a state abbreviation, like "NY"
+/// var abbrev1 = stateAbbrevProp.value(address);
+/// // extend the original property
+/// chain.append(stateAbbrevProp);
+/// // returns the same state abbreviation as above
+/// var abbrev2 = chain.value(driver);
+///
+/// </example>
+///////////////////////////////////////////////////////////////////////////////
+ExoWeb.Model.PropertyChain = function(properties) {
+	this._properties = properties.length ? properties : [properties];
+
+	if (this._properties.length == 0)
+		throw ("PropertyChain cannot be zero-length.");
 }
 
 ExoWeb.Model.PropertyChain.prototype = {
+	parent: function(obj) {
+		for (var p = 0; p < this._properties.length - 1; p++) {
+			var prop = this._properties[p];
+			obj = prop.value(obj);
+		}
+		return obj;
+	},
+	first: function() {
+		return this._properties[0];
+	},
 	last: function() {
-		return this._path[this._path.length - 1];
+		return this._properties[this._properties.length - 1];
 	},
 	all: function() {
-		return this._path;
+		return this._properties;
+	},
+	each: function(obj, callback) {
+		if (!callback || typeof (callback) != "function")
+			throw ("Invalid Parameter: callback function");
+
+		if (!obj)
+			throw ("Invalid Parameter: source object");
+
+		for (var p = 0; p < this._properties.length; p++) {
+			var prop = this._properties[p];
+			callback(obj, prop);
+			obj = prop.value(obj);
+		}
 	},
 	append: function(prop) {
-		Array.addRange(this._path, prop.all());
+		Array.addRange(this._properties, prop.all());
 	},
 	value: function(obj, val) {
 		if (arguments.length == 2) {
 			obj = this.parent(obj);
-			
+
 			Sys.Observer.setValue(obj, this.last().get_name(), val);
 		}
 		else {
-			for (var p = 0; p < this._path.length; p++) {
-				var prop = this._path[p];
+			for (var p = 0; p < this._properties.length; p++) {
+				var prop = this._properties[p];
 				obj = prop.value(obj);
 			}
 			return obj;
 		}
-	},
-	parent: function(obj) {
-		for (var p = 0; p < this._path.length - 1; p++) {
-			var prop = this._path[p];
-			obj = prop.value(obj);
-		}
-		return obj;
 	}
 }
 
-ExoWeb.Model.Adapter = function(target, property, format, options) {
+
+///////////////////////////////////////////////////////////////////////////////
+ExoWeb.Model.PropertyAdapter = function(target, propertyChain) {
 	this._target = target;
-	this._property = property;
+	this._properties = propertyChain;
+}
+
+ExoWeb.Model.PropertyAdapter.prototype = {
+	addPropertyChanged: function(handler) {
+		this.each(function(obj, prop) {
+			Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), handler);
+		});
+	},
+	all: function() {
+		return this._properties.all();
+	},
+	each: function(callback) {
+		this._properties.each(this._target, callback);
+	},
+	target: function() {
+		return this._target;
+	},
+	parent: function() {
+		return this._properties.parent(this._target);
+	},
+	last: function() {
+		return this._properties.last();
+	},
+	value: function(val) {
+		if (arguments.length == 0) {
+			return this._properties.value(this._target);
+		}
+		else {
+			this._properties.value(this._target, val);
+		}
+	},
+
+	// TODO:  How to handle pass-through?  Set up in constructor?
+	get_containingType: function() {
+		return this.last().get_containingType();
+	},
+	get_name: function() {
+		return this.last().get_name();
+	},
+	get_label: function() {
+		return this.last().get_label();
+	},
+	get_typeClass: function() {
+		return this.last().get_typeClass();
+	},
+	get_allowedValues: function() {
+		return this.last().get_allowedValues();
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+ExoWeb.Model.Adapter = function(target, propertyChain, format, options) {
+	this._property = new ExoWeb.Model.PropertyAdapter(target, propertyChain);
 	this._format = format;
 	this._ignoreTargetEvents = false;
 
@@ -1366,7 +1468,7 @@ ExoWeb.Model.Adapter = function(target, property, format, options) {
 
 			// create a getter if one doesn't exist
 			if (!this["get_" + opt]) {
-				var type = this._property.last().get_containingType();
+				var type = this._property.get_containingType();
 				this["get_" + opt] = type._makeGetter(this, function() { return this[_opt]; });
 			}
 		}
@@ -1374,14 +1476,12 @@ ExoWeb.Model.Adapter = function(target, property, format, options) {
 
 	var _this = this;
 	Sys.Observer.makeObservable(this);
-
-	Sys.Observer.addSpecificPropertyChanged(this._target, this._property.last().get_name(), function(sender, args) {
+	// subscribe to property changes at any point in the path
+	this._property.addPropertyChanged(function(sender, args) {
 		_this._onTargetChanged(sender, args);
-	});	
+	});
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
 ExoWeb.Model.Adapter.prototype = {
 	// Pass property change events to the target object
 	///////////////////////////////////////////////////////////////////////////
@@ -1395,21 +1495,22 @@ ExoWeb.Model.Adapter.prototype = {
 	// Properties that are intended to be used by templates
 	///////////////////////////////////////////////////////////////////////////
 	get_label: function() {
-		return this._label || this._property.last().get_label();
+		return this._label || this._property.get_label();
 	},
 	get_helptext: function() {
 		return this._helptext || "";
 	},
 	get_options: function() {
 		if (!this._options) {
-			if (this._property.last().get_typeClass() == ModelTypeClass.Intrinsic)
+			if (this._property.get_typeClass() == ModelTypeClass.Intrinsic)
 				return null;
 
+			// TODO: allowed values path should technically start at the last target in the path?
 			// TODO: handle allowed values in multiple forms (function, websvc call, string path)
 			var allowed = null;
-			var path = this._property.last().get_allowedValues();
+			var path = this._property.get_allowedValues();
 			if (path && path.length > 0) {
-				var root = this._target;
+				var root = this._property.target();
 				var props = root.type.property(path);
 
 				if (props) {
@@ -1433,7 +1534,7 @@ ExoWeb.Model.Adapter.prototype = {
 				allowed = root;
 			}
 
-			if (this._property.last().get_typeClass() == ModelTypeClass.Entity) {
+			if (this._property.get_typeClass() == ModelTypeClass.Entity) {
 				this._options = [];
 
 				this._options[0] = { name: "--select--", value: "" };
@@ -1447,7 +1548,7 @@ ExoWeb.Model.Adapter.prototype = {
 					Array.add(this._options, opt);
 				}
 			}
-			else if (this._property.last().get_typeClass() == ModelTypeClass.EntityList) {
+			else if (this._property.get_typeClass() == ModelTypeClass.EntityList) {
 				this._options = [];
 
 				// TODO: handle possible side-effects of get_value logic?
@@ -1481,45 +1582,45 @@ ExoWeb.Model.Adapter.prototype = {
 		if (typeof (this._badValue) !== "undefined")
 			return this._badValue;
 
-		var value = this._property.value(this._target);
+		var value = this._property.value();
 
 		return (this._format) ? this._format.convert(value) : value;
 	},
 	set_value: function(value) {
 		var converted = (this._format) ? this._format.convertBack(value) : value;
 
-		this._target.meta.clearIssues(this);
+		this._property.parent().meta.clearIssues(this);
 
 		if (converted instanceof FormatIssue) {
 			this._badValue = value;
 
 			issue = new ModelIssue(
-							$format(converted.get_message(), { value: this._property.last().get_label() }),
+							$format(converted.get_message(), { value: this._property.get_label() }),
 							[this._property.last()],
 							this);
 
-			this._target.meta.issueIf(issue, true);
+			this._property.parent().meta.issueIf(issue, true);
 
 			// run the rules to preserve the order of issues
-			this._target.meta.executeRules(this._property.last().get_name());
+			this._property.parent().meta.executeRules(this._property.get_name());
 		}
 		else {
 
-			var changed = this._property.value(this._target) !== converted;
+			var changed = this._property.value() !== converted;
 
 			if (typeof (this._badValue) !== "undefined") {
 				delete this._badValue;
 
 				// force rules to run again in order to trigger validation events
 				if (!changed)
-					this._target.meta.executeRules(this._property.last().get_name());
+					this._property.parent().meta.executeRules(this._property.get_name());
 			}
-			
+
 			if (changed) {
 				this._ignoreTargetEvents = true;
-			
+
 				try {
-					this._property.value(this._target, converted);
+					this._property.value(converted);
 				}
 				finally {
 					this._ignoreTargetEvents = false;
@@ -1531,10 +1632,10 @@ ExoWeb.Model.Adapter.prototype = {
 	// Pass validation events through to the target
 	///////////////////////////////////////////////////////////////////////////
 	addPropertyValidating: function(propName, handler) {
-		this._property.parent(this._target).meta.addPropertyValidating(this._property.last().get_name(), handler);
+		this._property.parent().meta.addPropertyValidating(this._property.get_name(), handler);
 	},
 	addPropertyValidated: function(propName, handler) {
-		this._property.parent(this._target).meta.addPropertyValidated(this._property.last().get_name(), handler);
+		this._property.parent().meta.addPropertyValidated(this._property.get_name(), handler);
 	},
 
 	// Override toString so that UI can bind to the adapter directly

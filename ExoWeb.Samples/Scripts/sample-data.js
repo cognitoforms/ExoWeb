@@ -6,6 +6,7 @@
 					Id: { name: "Id", type: "String" },
 					Name: { name: "Name", type: "String" },
 					PhoneNumber: { name: "PhoneNumber", type: "String", format: "Phone" },
+					Owner: { name: "Owner", type: "One|CarOwner" },
 					Cars: { name: "Cars", type: "Many|Car", allowed: "Dealer.AvailableCars" },
 					BirthDate: { name: "BirthDate", type: "Date" },
 					Dealer: { name: "Dealer", type: "One|Dealer", allowed: "Dealer.All" }
@@ -25,6 +26,34 @@
 					PhoneNumber: { name: "PhoneNumber", type: "String", format: "Phone" },
 					AvailableCars: { name: "AvailableCars", type: "Many|Car" }
 				}
+			},
+			CarOwner: {
+				attributes: {
+					Id: { name: "Id", type: "String" },
+					Name: { name: "Name", type: "String" },
+					Location: { name: "Location", type: "One|OwnerLocation", allowed: "AvailableLocations" },
+					AvailableLocations: { name: "AvailableLocations", type: "Many|OwnerLocation" }
+				}
+			},
+			OwnerLocation: {
+				attributes: {
+					Id: { name: "Id", type: "String" },
+					Description: { name: "Description", type: "String" },
+					Address: { name: "Address", type: "One|LocationAddress" }
+				}
+			},
+			LocationAddress: {
+				attributes: {
+					Id: { name: "Id", type: "String" },
+					State: { name: "State", type: "One|AddressState" }
+				}
+			},
+			AddressState: {
+				attributes: {
+					Id: { name: "Id", type: "String" },
+					Abbreviation: { name: "Abbreviation", type: "String" },
+					Name: { name: "Name", type: "String" }
+				}
 			}
 		 },
 		__data: {
@@ -33,7 +62,9 @@
 					Id: "1",
 					Name: "Bryan Matthews",
 					Cars: [ "1", "2" ],
+					Owner: "1",
 					BirthDate: "02/07/1985",
+					PhoneNumber: "803-608-7508",
 					Dealer: "1"
 				}
 			},
@@ -59,6 +90,34 @@
 					Id: "2",
 					Name: "Johnny's Suzuki",
 					AvailableCars: []
+				}
+			},
+			CarOwner: {
+				1: {
+					Id: "1",
+					Name: "Bob",
+					Location: "1",
+					AvailableLocations: [ "1" ]
+				}
+			},
+			OwnerLocation: {
+				1: {
+					Id: "1",
+					Description: "Home",
+					Address: "1"
+				}
+			},
+			LocationAddress: {
+				1: {
+					Id: "1",
+					State: "1"
+				}
+			},
+			AddressState: {
+				1: {
+					Id: "1",
+					Abbreviation: "NY",
+					Name: "New York"
 				}
 			}
 		}
