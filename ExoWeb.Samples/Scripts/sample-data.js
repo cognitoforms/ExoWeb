@@ -38,7 +38,7 @@
 			OwnerLocation: {
 				attributes: {
 					Id: { name: "Id", type: "String" },
-					Description: { name: "Description", type: "String" },
+					Name: { name: "Name", type: "String" },
 					Address: { name: "Address", type: "One|LocationAddress" }
 				}
 			},
@@ -97,19 +97,28 @@
 					Id: "1",
 					Name: "Bob",
 					Location: "1",
-					AvailableLocations: [ "1" ]
+					AvailableLocations: [ "1", "2" ]
 				}
 			},
 			OwnerLocation: {
 				1: {
 					Id: "1",
-					Description: "Home",
+					Name: "Home",
 					Address: "1"
+				},
+				2: {
+					Id: "2",
+					Name: "Work",
+					Address: "2"
 				}
 			},
 			LocationAddress: {
 				1: {
 					Id: "1",
+					State: "1"
+				},
+				2: {
+					Id: "2",
 					State: "1"
 				}
 			},

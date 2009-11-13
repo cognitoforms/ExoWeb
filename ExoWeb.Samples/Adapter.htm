@@ -80,6 +80,11 @@
 				<td>(( BirthDate )) - simple property access</td>
 				<td>{{ BirthDate }}</td>
 			</tr>
+			<tr>
+				<td>(@= Owner.Location.Name )</td>
+				<td>{@= Owner.Location.Name }</td>
+			</tr>
+			<tr sys:attach="content" content:data="{@ Owner.Location, prefix=Owner }" class="dropdown" />
 			<tr sys:attach="content" content:data="{@ Cars }" class="checkboxlist" />
 			<tr>
 				<td>(@= Cars )</td>
@@ -94,6 +99,9 @@
 		</tbody>
 	</table>
 	
+	<!-------------------------------------------------------------------------
+	--	TEMPLATES
+	-------------------------------------------------------------------------->
 	<table>
 		<tr sys:attach="template" template:for="tr.dropdown">
 			<td>

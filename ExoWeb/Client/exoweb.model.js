@@ -1505,12 +1505,11 @@ ExoWeb.Model.Adapter.prototype = {
 			if (this._property.get_typeClass() == ModelTypeClass.Intrinsic)
 				return null;
 
-			// TODO: allowed values path should technically start at the last target in the path?
 			// TODO: handle allowed values in multiple forms (function, websvc call, string path)
 			var allowed = null;
 			var path = this._property.get_allowedValues();
 			if (path && path.length > 0) {
-				var root = this._property.target();
+				var root = this._property.parent();
 				var props = root.type.property(path);
 
 				if (props) {
