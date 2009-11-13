@@ -100,8 +100,16 @@ ExoWeb.UI.Content.prototype = {
 	},
 	render: function() {
 		try {
-			var ctx = this.get_template().instantiateIn(this.get_element(), null, this.get_data());
-			
+			var tmpl = this.get_template();
+
+			// get custom classes from template
+			var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").trim();
+
+			var ctx = tmpl.instantiateIn(this.get_element(), null, this.get_data());
+
+			// copy custom classes from template to content control
+			$(this.get_element()).addClass(classes);
+
 			// necessary in order to render components found within the template (like a nested dataview)
 			ctx.initializeComponents();
 		}
