@@ -14,6 +14,9 @@
 
 				var meta = (srcObj instanceof ExoWeb.Model.Adapter) ? srcObj : srcObj.meta;
 
+				if (!meta)
+					continue;
+
 				// wire up validating/validated events
 				meta.addPropertyValidating(propName, function(sender, issues) {
 					$el.trigger('validating');
@@ -61,7 +64,7 @@
 		// rebind validation events
 		for (var e = 0; e < ret.nodes.length; ++e) {
 			var newElement = ret.nodes[e];
-			
+
 			for (var i = 0; i < renderedRegs.length; ++i) {
 				var reg = renderedRegs[i];
 
