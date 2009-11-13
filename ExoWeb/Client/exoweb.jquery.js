@@ -28,7 +28,7 @@
 			$el.attr("__validating", true);
 		}
 	}
-	
+
 	jQuery.fn.validated = function(f) {
 		this.each(function() {
 			$(this).bind('validated', f);
@@ -48,7 +48,40 @@
 	}
 
 	jQuery.fn.liveBindings = function() {
-		return ExoWebBinding.getElementBindings(this.get(0));
+		return Sys.Binding.getElementBindings(this.get(0));
 	}
 
+
+	var renderedRegs = [];
+
+	var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
+	Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
+		var ret = instantiateInBase.apply(this, arguments);
+
+		// rebind validation events
+		for (var e = 0; e < ret.nodes.length; ++e) {
+			var newElement = ret.nodes[e];
+			
+			for (var i = 0; i < renderedRegs.length; ++i) {
+				var reg = renderedRegs[i];
+
+				if ($(newElement).is(reg.selector)) {
+					reg.handler.apply(newElement, [containerElement]);
+				}
+			}
+		}
+
+		return ret;
+	}
+
+
+	jQuery.fn.rendered = function(f) {
+		renderedRegs.push({
+			selector: this.selector,
+			context: this.context,
+			handler: f
+		});
+
+		return this;
+	}
 })();

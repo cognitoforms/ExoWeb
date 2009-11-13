@@ -18,8 +18,28 @@
 
     	$load(window.data.drivers.__metadata, window.data.drivers.__data);
 
-    	var driver = new Driver("1");
+		//prepare(Driver, ["Addr", "Dealer", ["Name"]]);
     	
+    	var driver = new Driver("1");
+
+    	function JsStyleSheet(el) {
+
+    		$("input", el).validated(function(e, issues) {
+    			if (issues.length == 0) {
+    				$(this).removeClass("error");
+    				$(this).attr("title", null);
+    			} else {
+    				$(this).addClass("error");
+    				$(this).attr("title", issues[0].get_message());
+    			}
+    		});
+    	}
+
+    	JsStyleSheet();
+
+    	$("*").rendered(function() {
+    		JsStyleSheet(this);
+    	});
     </script>
 </head>
 <body xmlns:sys="javascript:Sys" 
@@ -53,6 +73,10 @@
 			</tr>
 			<tr>
 				<td colspan="2">-------------------------------------------------</td>
+			</tr>
+			<tr>
+				<td>{{ $BirthDate }}</td>
+				<td><input type='text' sys:value="{@= BirthDate }" /></td>
 			</tr>
 			<tr sys:attach="content" content:data="{@ Name, prefix=Driver }" />
 			<tr sys:attach="content" content:data="{@ BirthDate, label=Birthday }" />

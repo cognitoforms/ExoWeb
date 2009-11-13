@@ -5,6 +5,7 @@
 				attributes: {
 					Id: { name: "Id", type: "String" },
 					Name: { name: "Name", type: "String" },
+					PhoneNumber: { name: "PhoneNumber", type: "String", format: "Phone" },
 					Cars: { name: "Cars", type: "Many|Car", allowed: "Dealer.AvailableCars" },
 					BirthDate: { name: "BirthDate", type: "Date" },
 					Dealer: { name: "Dealer", type: "One|Dealer", allowed: "Dealer.All" }
@@ -21,6 +22,7 @@
 				attributes: {
 					Id: { name: "Id", type: "String" },
 					Name: { name: "Name", type: "String" },
+					PhoneNumber: { name: "PhoneNumber", type: "String", format: "Phone" },
 					AvailableCars: { name: "AvailableCars", type: "Many|Car" }
 				}
 			}

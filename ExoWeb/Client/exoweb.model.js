@@ -484,13 +484,14 @@ function ModelObject(type, obj)
 ModelObject.prototype._propertyChanged = function(sender, e)
 {
 	var propName = e.get_propertyName();
-	var meta = sender.meta;
-
-	meta._type.get_model().get_validatedQueue().push({ sender: meta, property: propName });
-	meta._raisePropertyValidating(propName);
-	meta._type.executeRules(sender, propName);
+	sender.meta.executeRules(propName);
 }
 
+ModelObject.prototype.executeRules = function(propName) {
+	this._type.get_model().get_validatedQueue().push({ sender: this, property: propName });
+	this._raisePropertyValidating(propName);
+	this._type.executeRules(this, propName);
+}
 
 ModelObject.prototype.property = function(propName)
 {
@@ -959,25 +960,15 @@ Format.prototype = {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
-function ExoWebBinding()
-{ }
+// MS Ajax extensions
 
-ExoWebBinding.getElementBindings = function(el)
-{
-	var bindings = el.__msajaxbindings;
-
-	if (typeof (bindings) == "undefined")
-		return [];
-
-	for (var i = 0; i < bindings.length; ++i)
-		$.extend(bindings[i], ExoWebBinding.prototype);
-
-	return bindings;
-}
+// Get's an DOM element's bindings
+Sys.Binding.getElementBindings = function(el) {
+	return el.__msajaxbindings || [];
+};
 
 // Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
-ExoWebBinding.prototype.get_finalSourceObject = function()
-{
+Sys.Binding.prototype.get_finalSourceObject = function() {
 	var src = this.get_source();
 
 	for (var i = 0; i < this._pathArray.length - 1; ++i)
@@ -986,10 +977,34 @@ ExoWebBinding.prototype.get_finalSourceObject = function()
 	return src;
 };
 
-ExoWebBinding.prototype.get_finalPath = function()
-{
+Sys.Binding.prototype.get_finalPath = function() {
 	return this._pathArray[this._pathArray.length - 1];
 };
+
+;(function() {
+	function _raiseSpecificPropertyChanged(target, args) {
+		var func = target.__propertyChangeHandlers[args.get_propertyName()];
+		func(target);
+	}
+
+	// Converts observer events from being for ALL properties to a specific one.
+	// This is an optimization that prevents handlers interested only in a single
+	// property from being run with other, unrelated properties change.
+	Sys.Observer.addSpecificPropertyChanged = function(target, property, handler) {
+		if (!target.__propertyChangeHandlers) {
+			target.__propertyChangeHandlers = {};
+
+			Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
+		}
+
+		var func = target.__propertyChangeHandlers[property];
+
+		if (!func)
+			target.__propertyChangeHandlers[property] = func = Functor();
+
+		func.add(handler);
+	};
+})();
 
 //////////////////////////////////////////////////////////////////////////////////////
 function Functor()
@@ -1334,6 +1349,7 @@ ExoWeb.Model.Adapter = function(target, property, format, options) {
 	this._target = target;
 	this._property = property;
 	this._format = format;
+	this._ignoreTargetEvents = false;
 
 	// Add arbitrary options so that they are made available in templates
 	var allowedOverrides = ["label", "helptext"];
@@ -1358,9 +1374,10 @@ ExoWeb.Model.Adapter = function(target, property, format, options) {
 
 	var _this = this;
 	Sys.Observer.makeObservable(this);
-	Sys.Observer.addPropertyChanged(this._target, function(sender, args) {
+
+	Sys.Observer.addSpecificPropertyChanged(this._target, this._property.last().get_name(), function(sender, args) {
 		_this._onTargetChanged(sender, args);
-	});
+	});	
 }
 
 
@@ -1369,9 +1386,10 @@ ExoWeb.Model.Adapter.prototype = {
 	// Pass property change events to the target object
 	///////////////////////////////////////////////////////////////////////////
 	_onTargetChanged: function(sender, args) {
-		if (args.get_propertyName() == this._property.last().get_name()) {
-			Sys.Observer.raisePropertyChanged(this, "value");
-		}
+		if (this._ignoreTargetEvents)
+			return;
+
+		Sys.Observer.raisePropertyChanged(this, "value");
 	},
 
 	// Properties that are intended to be used by templates
@@ -1425,7 +1443,7 @@ ExoWeb.Model.Adapter.prototype = {
 						name: allowed[a].Name,
 						value: allowed[a].Id
 					}
-					
+
 					Array.add(this._options, opt);
 				}
 			}
@@ -1443,7 +1461,7 @@ ExoWeb.Model.Adapter.prototype = {
 						}
 					}
 
-					var opt = { 
+					var opt = {
 						name: allowed[a].Name,
 						value: allowed[a].Id,
 						selected: selected
@@ -1460,7 +1478,7 @@ ExoWeb.Model.Adapter.prototype = {
 		return this._badValue;
 	},
 	get_value: function() {
-		if (this._badValue)
+		if (typeof (this._badValue) !== "undefined")
 			return this._badValue;
 
 		var value = this._property.value(this._target);
@@ -1480,21 +1498,33 @@ ExoWeb.Model.Adapter.prototype = {
 							[this._property.last()],
 							this);
 
-			var meta = this._target.meta;
-			var propName = this._property.last().get_name();
-
-			// TODO:	 refactor this?
-			meta.issueIf(issue, true);
-			meta._type.get_model().get_validatedQueue().push({ sender: meta, property: propName });
-			meta._raisePropertyValidating(propName);
+			this._target.meta.issueIf(issue, true);
 
 			// run the rules to preserve the order of issues
-			meta._type.executeRules(this._target, propName);
+			this._target.meta.executeRules(this._property.last().get_name());
 		}
 		else {
-			this._property.value(this._target, converted);
 
-			delete this._badValue;
+			var changed = this._property.value(this._target) !== converted;
+
+			if (typeof (this._badValue) !== "undefined") {
+				delete this._badValue;
+
+				// force rules to run again in order to trigger validation events
+				if (!changed)
+					this._target.meta.executeRules(this._property.last().get_name());
+			}
+			
+			if (changed) {
+				this._ignoreTargetEvents = true;
+			
+				try {
+					this._property.value(this._target, converted);
+				}
+				finally {
+					this._ignoreTargetEvents = false;
+				}
+			}
 		}
 	},
 
