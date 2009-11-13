@@ -29,8 +29,38 @@ ExoWeb.UI.Template.prototype = {
 	set_if: function(value) {
 		this._if = value;
 	},
+	satisfies: function(e) {
+		// return true by default if no filter
+		var result = true;
+
+		if (this._if) {
+			var func = null;
+
+			try {
+				// turn arbitrary javascript code into function
+				func = new Function("return " + this._if + ";");
+			}
+			catch (e) {
+				throw ("Statement \"" + this._if + "\" causes the following error: " + e);
+			}
+
+			if (func) {
+				try {
+					result = func.call(e);
+				}
+				catch (e) {
+					throw ("Calling \"" + this._if + "\" causes the following error: " + e);
+				}
+			}
+		}
+
+		return result;
+	},
 	matches: function(e) {
-		return $(e).is(this.get_for());
+		return $(e).is(this._for);
+	},
+	test: function(e) {
+		return this.matches(e) && this.satisfies(e);
 	},
 	initialize: function() {
 		ExoWeb.UI.Template.callBaseMethod(this, "initialize");
@@ -49,7 +79,7 @@ ExoWeb.UI.Template.find = function(element) {
 	var templates = $(".vc3-template");
 	for (var t = 0; t < templates.length; t++) {
 		var tmpl = templates[t];
-		if (ExoWeb.UI.Template.isInstanceOfType(tmpl.control) && tmpl.control.matches(element))
+		if (ExoWeb.UI.Template.isInstanceOfType(tmpl.control) && tmpl.control.test(element))
 			return tmpl;
 	}
 

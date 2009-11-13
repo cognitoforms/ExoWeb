@@ -47,8 +47,11 @@
 				});
 
 				test("Css Class Copy", function() {
-					ok($("#name-inputform-tr-small0").is(".smallrow.green"), "Template class should be copied to content.");
 					ok($("#id-inputform-tr-small0").is(".smallrow.green"), "Template class should be copied to content.");
+				});
+
+				test("Template Filter", function() {
+					ok(!$("#name-inputform-tr-small0").is(".smallrow.green"), "Template with class should <strong><u>not</u></strong> be selected because of filter.");
 				});
 			}
 		</script>
@@ -88,7 +91,7 @@
 				</table>
 				<table cellpadding="4" width="100%" cellspacing="0" class="inputform">
 					<tr id="id-inputform-tr-small" class="small" sys:attach="field" field:source="Id" field:label="Identifier" field:isreadonly="true" />
-					<tr id="name-inputform-tr-small" class="small" sys:attach="field" field:source="Name" field:label="Driver Name" field:isreadonly="true" />
+					<tr id="name-inputform-tr-small" class="small" sys:attach="field" field:source="Name" field:label="Driver Name" />
 				</table>
 			</div>
 		</div>
@@ -105,9 +108,16 @@
 		</span>
 		
 		<table>
-			<tr sys:attach="template" template:for="table.inputform tr.small" class="smallrow green">
+			<tr sys:attach="template" template:for="table.inputform tr.small" template:if="this.control.get_isReadOnly() == true" class="smallrow green">
 				<td>{ binding label }</td>
 				<td>{ binding value }</td>
+				<td>table.inputform tr.small</td>
+			</tr>
+			<tr sys:attach="template" template:for="table.inputform tr.small">
+				<td>{ binding label }</td>
+				<td>
+					<input type="text" sys:value="{ binding value }" />
+				</td>
 				<td>table.inputform tr.small</td>
 			</tr>
 			<tr sys:attach="template" template:for="table.inputform tr">
