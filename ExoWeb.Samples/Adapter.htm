@@ -12,12 +12,14 @@
     <script src="Scripts/MsAjax/MicrosoftAjax.debug.js" type="text/javascript"></script>
     <script src="Scripts/MsAjax/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
     <script src="Scripts/ExoWeb/exoweb.model.js" type="text/javascript"></script>
+    <script src="Scripts/ExoWeb/exoweb.mapper.js" type="text/javascript"></script>
     <script src="Scripts/ExoWeb/exoweb.jquery.js" type="text/javascript"></script>
     <script src="Scripts/ExoWeb/exoweb.ui.js" type="text/javascript"></script>
     <script src="Scripts/sample-data.js" type="text/javascript"></script>
     <script type="text/javascript">
 
-    	$load(window.data.drivers.__metadata, window.data.drivers.__data);
+    	var model = $load(window.data.drivers.__metadata, window.data.drivers.__data);
+    	var sync = new ExoWeb.Mapper.ServerSync(model, 5000);
 
 		//prepare(Driver, ["Addr", "Dealer", ["Name"]]);
     	
@@ -25,7 +27,7 @@
 
     	function JsStyleSheet(el) {
 
-    		$("input", el).validated(function(e, issues) {
+    		$("input", el).validated(function(sender, issues) {
     			if (issues.length == 0) {
     				$(this).removeClass("error");
     				$(this).attr("title", null);
@@ -40,7 +42,7 @@
 
     	$("*").rendered(function() {
     		JsStyleSheet(this);
-    	});
+    	});    	
     </script>
 </head>
 <body xmlns:sys="javascript:Sys" 
