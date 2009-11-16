@@ -21,8 +21,12 @@
     	var model = $load(window.data.drivers.__metadata, window.data.drivers.__data);
     	var sync = new ExoWeb.Mapper.ServerSync(model, 5000);
 
-		//prepare(Driver, ["Addr", "Dealer", ["Name"]]);
-    	
+    	Dealer.formats.$label = new ExoWeb.Model.Format({
+    		convert: function(value) {
+    			return value.Name;
+    		}
+    	});
+		
     	var driver = new Driver("1");
 
     	function JsStyleSheet(el) {
@@ -88,10 +92,15 @@
 			</tr>
 			<tr sys:attach="content" content:data="{@ Owner.Location, prefix=Owner }" class="dropdown" />
 			<tr sys:attach="content" content:data="{@ Cars }" class="checkboxlist" />
+			<tr sys:attach="content" content:data="{@ Cars }" class="readonlylist" />
 			<tr>
+				<td>( binding Cars )</td>
+				<td>{ binding Cars }</td>
+			</tr>
+			<!--<tr>
 				<td>(@= Cars )</td>
 				<td>{@= Cars }</td>
-			</tr>
+			</tr>-->
 			<tr sys:attach="content" content:data="{@ Dealer.Name, prefix=Dealer }" />
 			<tr>
 				<td>(@= Dealer.Name )</td>
@@ -105,20 +114,32 @@
 	--	TEMPLATES
 	-------------------------------------------------------------------------->
 	<table>
-		<tr sys:attach="template" template:for="tr.dropdown">
+		<tr class="sys-template" sys:attach="template" template:for="tr.readonlylist">
 			<td>
 				<span>{ binding prefix }</span>
 				<span>{ binding label }</span>:
 			</td>
 			<td>
-				<span>{ binding value.Id }</span>
-				<select sys:value="{ binding value.Id }" class="sys-template" 
+				<!--<span>{@= value }</span>-->
+				<div class="sys-template" sys:attach="dataview" dataview:data="{ binding rawValue }">
+					<span>{{ Id }}</span>
+				</div>
+			</td>
+		</tr>
+		<tr class="sys-template" sys:attach="template" template:for="tr.dropdown">
+			<td>
+				<span>{ binding prefix }</span>
+				<span>{ binding label }</span>:
+			</td>
+			<td>
+				<!--<span>{@= value }</span>-->
+				<select class="sys-template" sys:value="{ binding value }"
 					sys:attach="dataview" dataview:data="{ binding options }">
-					<option sys:value="{ binding value }">{ binding name }</option>
+					<option sys:value="{ binding value }">{ binding label }</option>
 				</select>
 			</td>
 		</tr>
-		<tr sys:attach="template" template:for="tr.checkboxlist">
+		<tr class="sys-template" sys:attach="template" template:for="tr.checkboxlist">
 			<td colspan="2">
 				<table>
 					<tbody class="sys-template" sys:attach="dataview" 
@@ -127,14 +148,14 @@
 							<td>
 								<input type="checkbox" id="option" sys:checked="{ binding selected }" />
 								<label for="option">{ binding name }</label>
-								(<span>{ binding value }</span>)
+								<span>{ binding value }</span>
 							</td>
 						</tr>
 					</tbody>
 				</table>
 			</td>
 		</tr>
-		<tr sys:attach="template" template:for="tr.readonly">
+		<tr class="sys-template" sys:attach="template" template:for="tr.readonly">
 			<td>
 				<span>{ binding prefix }</span>
 				<span>{ binding label }</span>:
@@ -144,7 +165,7 @@
 				<span>{ binding helptext }</span>
 			</td>
 		</tr>
-		<tr sys:attach="template" template:for="tr">
+		<tr class="sys-template" sys:attach="template" template:for="tr">
 			<td>
 				<span>{ binding prefix }</span>
 				<span>{ binding label }</span>:

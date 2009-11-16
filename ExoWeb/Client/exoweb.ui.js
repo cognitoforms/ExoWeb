@@ -133,9 +133,11 @@ ExoWeb.UI.Content.prototype = {
 			var tmpl = this.get_template();
 
 			// get custom classes from template
-			var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").trim();
+			var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", "").trim();
 
 			var ctx = tmpl.instantiateIn(this.get_element(), null, this.get_data());
+
+			//ctx.dataItem = this.get_data();
 
 			// copy custom classes from template to content control
 			$(this.get_element()).addClass(classes);
@@ -151,7 +153,7 @@ ExoWeb.UI.Content.prototype = {
 		ExoWeb.UI.Content.callBaseMethod(this, "initialize");
 
 		// TODO: include meta info about field?
-		
+
 		this.render();
 	}
 }
