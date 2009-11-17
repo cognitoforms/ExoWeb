@@ -237,7 +237,7 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 
 		addProperty: function(propName, def) {
-			var prop = new Property(propName, def.type, def.label, def.format ? window[def.type].formats[def.format] : null, def.allowed);
+			var prop = new Property(propName, def.type, def.label, def.format ? window[def.type].formats[def.format] : null, def.allowed, def.isList);
 			prop.set_containingType(this);
 
 			this._properties[propName] = prop;
@@ -404,15 +404,13 @@ Type.registerNamespace("ExoWeb.Model");
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Property(name, dataType, label, format, allowedValues) {
+	function Property(name, dataType, label, format, allowedValues, isList) {
 		this._name = name;
 		this._fullTypeName = dataType;
 		this._label = label;
 		this._format = format;
 		this._allowedValues = allowedValues;
-
-		// ???
-		//var prop = this;
+		this._isList = (isList ? true : false);
 	}
 
 	Property.prototype = {
@@ -446,17 +444,11 @@ Type.registerNamespace("ExoWeb.Model");
 
 		get_typeClass: function() {
 			if (!this._typeClass) {
-				if (this._fullTypeName.indexOf("|") > 0) {
-					var multiplicity = this._fullTypeName.split("|")[0];
-
-					if (multiplicity == "One")
-						this._typeClass = TypeClass.Entity;
-					else if (multiplicity == "Many")
+				if (this.get_dataType().meta) {
+					if (this.get_isList())
 						this._typeClass = TypeClass.EntityList;
-					else {
-						this._typeClass = $format("Unknown multiplicity \"{m}\".", { m: multiplicity });
-						throw (this._typeClass);
-					}
+					else
+						this._typeClass = TypeClass.Entity;
 				}
 				else {
 					this._typeClass = TypeClass.Intrinsic;
@@ -503,6 +495,10 @@ Type.registerNamespace("ExoWeb.Model");
 				obj[this._name] = val;
 				this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
 			}
+		},
+
+		get_isList: function() {
+			return this._isList;
 		},
 
 		get_label: function() {

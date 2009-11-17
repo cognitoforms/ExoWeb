@@ -6,17 +6,17 @@
 					Id: { type: "String" },
 					Name: { type: "String" },
 					PhoneNumber: { type: "String", format: "Phone" },
-					Owner: { type: "One|CarOwner" },
-					Cars: { type: "Many|Car", allowed: "Dealer.AvailableCars" },
-					BirthDate: { type: "Date" },
-					Dealer: { type: "One|Dealer", allowed: "Dealer.All" }
+					Owner: { type: "CarOwner" },
+					Cars: { type: "Car", isList: true, allowed: "Dealer.AvailableCars" },
+					BirthDate: { type: "Date", format: "ShortDate" },
+					Dealer: { type: "Dealer", allowed: "Dealer.All" }
 				}
 			},
 			Car: {
 				attributes: {
 					Id: { type: "String" },
 					Name: { type: "String" },
-					Driver: { type: "One|Driver" }
+					Driver: { type: "Driver" }
 				}
 			},
 			Dealer: {
@@ -24,28 +24,28 @@
 					Id: { type: "String" },
 					Name: { type: "String" },
 					PhoneNumber: { type: "String", format: "Phone" },
-					AvailableCars: { type: "Many|Car" }
+					AvailableCars: { type: "Car", isList: true }
 				}
 			},
 			CarOwner: {
 				attributes: {
 					Id: { type: "String" },
 					Name: { type: "String" },
-					Location: { type: "One|OwnerLocation", allowed: "AvailableLocations" },
-					AvailableLocations: { type: "Many|OwnerLocation" }
+					Location: { type: "OwnerLocation", allowed: "AvailableLocations" },
+					AvailableLocations: { type: "OwnerLocation", isList: true }
 				}
 			},
 			OwnerLocation: {
 				attributes: {
 					Id: { type: "String" },
 					Name: { type: "String" },
-					Address: { type: "One|LocationAddress" }
+					Address: { type: "LocationAddress" }
 				}
 			},
 			LocationAddress: {
 				attributes: {
 					Id: { type: "String" },
-					State: { type: "One|AddressState" }
+					State: { type: "AddressState" }
 				}
 			},
 			AddressState: {
@@ -136,13 +136,13 @@
 			PrgIntervention: {
 				attributes: {
 					Id: { type: "String" },
-					StartStatus: { type: "One|PrgStatus" },
-					Involvement: { type: "One|PrgInvolvement" },
-					SubVariants: { type: "Many|PrgSubVariant", allowed: "Involvement.Variant.SubVariants" },
+					StartStatus: { type: "PrgStatus" },
+					Involvement: { type: "PrgInvolvement" },
+					SubVariants: { type: "PrgSubVariant", isList: true, allowed: "Involvement.Variant.SubVariants" },
 					StartDate: { type: "Date" },
 					PlannedEndDate: { type: "Date" },
-					Tools: { type: "Many|IntvTool" },
-					ToolDefs: { type: "Many|IntvToolDef" }
+					Tools: { type: "IntvTool", isList: true },
+					ToolDefs: { type: "IntvToolDef", isList: true }
 				}
 			},
 			PrgStatus: {
@@ -154,14 +154,14 @@
 			PrgInvolvement: {
 				attributes: {
 					Id: { type: "String" },
-					Variant: { type: "One|PrgVariant" }
+					Variant: { type: "PrgVariant" }
 				}
 			},
 			PrgVariant: {
 				attributes: {
 					Id: { type: "String" },
 					Name: { type: "String" },
-					SubVariants: { type: "Many|PrgSubVariant" }
+					SubVariants: { type: "PrgSubVariant", isList: true }
 				}
 			},
 			PrgSubVariant: {
@@ -174,8 +174,8 @@
 				attributes: {
 					Id: { type: "String" },
 					Name: { type: "String" },
-					ToolDef: { type: "One|IntvToolDef", allowed: "Intervention.ToolDefs" },
-					Intervention: { type: "One|PrgIntervention" }
+					ToolDef: { type: "IntvToolDef", allowed: "Intervention.ToolDefs" },
+					Intervention: { type: "PrgIntervention" }
 				}
 			},
 			IntvToolDef: {

@@ -88,54 +88,29 @@
 						obj[prop] = null;
 					}
 					else {
-						if (propType == "String")
-							obj[prop] = objectData[prop].toString();
-						else if (propType == "Date") {
-							if (objectData[prop].constructor == Date)
-								obj[prop] = objectData[prop];
-							else
-								obj[prop] = Date.formats.$value.convertBack(objectData[prop].toString());
-						}
-						else if (propType == "Boolean") {
-							if (objectData[prop].constructor == Boolean)
-								obj[prop] = objectData[prop];
-							else
-								obj[prop] = Boolean.formats.$value.convertBack(objectData[prop].toString());
-						}
-						else if (propType == "Integer")
-							obj[prop] = Number.formats.Integer.convertBack(objectData[prop].toString());
-						else if (propType == "Float")
-							obj[prop] = Number.formats.Float.convertBack(objectData[prop].toString());
-						else {
-							if (propType.indexOf("|") >= 0) {
-								var typeDef = propType.split("|");
-								var multiplicity = typeDef[0];
-								var relatedType = typeDef[1];
-
-								if (multiplicity == "One") {
-									var ctor = window[relatedType];
-									var related = obj[prop] = new ctor(objectData[prop]);
-									if (!related._loaded)
-										loadObject(related, relatedType, objectData[prop], depth + 1);
-								}
-								else if (multiplicity == "Many") {
-									var src = objectData[prop];
-									var dst = obj[prop] = [];
-									Sys.Observer.makeObservable(dst);
-									for (var i = 0; i < src.length; i++) {
-										var ctor = window[relatedType];
-										var child = dst[dst.length] = new ctor(src[i]);
-										if (!child._loaded)
-											loadObject(child, relatedType, src[i], depth + 1);
-									}
-								}
-								else {
-									throw ($format("Unknown multiplicity \"{m}\".", { m: multiplicity }));
+						var prop = obj.meta.property(prop).last();
+						var ctor = prop.get_dataType();
+						
+						if (ctor.meta) {
+							if (prop.get_isList()) {
+								var src = objectData[prop];
+								var dst = obj[prop] = [];
+								Sys.Observer.makeObservable(dst);
+								for (var i = 0; i < src.length; i++) {
+									var child = dst[dst.length] = new ctor(src[i]);
+									if (!child._loaded)
+										loadObject(child, prop.get_typeName(), src[i], depth + 1);
 								}
 							}
 							else {
-								throw ($format("Unknown property type \"{t}\".", { t: propType }));
+								var related = obj[prop] = new ctor(objectData[prop]);
+								if (!related._loaded)
+									loadObject(related, prop.get_typeName(), objectData[prop], depth + 1);
 							}
+						}
+						else {
+							var format = prop.get_format();
+							obj[prop] = format ? format.convertBack(objectData[prop]) : objectData[prop];
 						}
 					}
 				}
