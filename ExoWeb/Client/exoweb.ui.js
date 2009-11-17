@@ -218,10 +218,10 @@ ExoWeb.UI.Field.prototype = {
 			if (!props)
 				throw ($format("Property \"{p}\" could not be found.", { p: this.get_source() }));
 
-			var dt = props.last().get_dataType();
+			var dt = props.lastProperty().get_dataType();
 
 			var format;
-			if (!(format = props.last().get_format()) && dt.formats)
+			if (!(format = props.lastProperty().get_format()) && dt.formats)
 				format = dt.formats.$default;
 
 			this._data = new ExoWeb.Model.Adapter(target, props, format, { label: this.get_label(), readonly: this.get_isReadOnly() });

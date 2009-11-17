@@ -82,13 +82,13 @@
 				var objectData = data[type][id];
 
 				for (var prop in objectData) {
-					var propType = obj.meta.property(prop).last().get_fullTypeName();
+					var propType = obj.meta.property(prop).lastProperty().get_fullTypeName();
 
 					if (typeof (objectData[prop]) == "undefined" || objectData[prop] == null) {
 						obj[prop] = null;
 					}
 					else {
-						var prop = obj.meta.property(prop).last();
+						var prop = obj.meta.property(prop).lastProperty();
 						var ctor = prop.get_dataType();
 						
 						if (ctor.meta) {

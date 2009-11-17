@@ -237,8 +237,7 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 
 		addProperty: function(propName, def) {
-			var prop = new Property(propName, def.type, def.label, def.format ? window[def.type].formats[def.format] : null, def.allowed, def.isList);
-			prop.set_containingType(this);
+			var prop = new Property(this, propName, def.type, def.label, def.format ? window[def.type].formats[def.format] : null, def.allowed, def.isList);
 
 			this._properties[propName] = prop;
 
@@ -286,7 +285,7 @@ Type.registerNamespace("ExoWeb.Model");
 				// evaluate the remainder of the property path
 				if (name.indexOf(".") >= 0) {
 					var remainder = name.substring(name.indexOf(".") + 1);
-					var propType = prop.last().get_typeName();
+					var propType = prop.get_typeName();
 					var type = this._model.get_type(propType);
 
 					var children = type.property(remainder);
@@ -333,11 +332,10 @@ Type.registerNamespace("ExoWeb.Model");
 						function(s, propName) {
 							var prop = type.property(propName);
 
-							// TODO: is using last appropriate for multi-hop?
-							if ($.inArray(prop.last(), issueProps) < 0)
-								issueProps.push(prop.last());
+							if ($.inArray(prop.lastProperty(), issueProps) < 0)
+								issueProps.push(prop.lastProperty());
 
-							return prop.last().get_label();
+							return prop.get_label();
 						}
 					);
 
@@ -404,7 +402,14 @@ Type.registerNamespace("ExoWeb.Model");
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Property(name, dataType, label, format, allowedValues, isList) {
+	/// <remarks>
+	/// If the interface for this class is changed it should also be changed in
+	/// PropertyChain, since PropertyChain acts as an aggregation of properties 
+	/// that can be treated as a single property.
+	/// </remarks>
+	///////////////////////////////////////////////////////////////////////////////
+	function Property(containingType, name, dataType, label, format, allowedValues, isList) {
+		this._containingType = containingType;
 		this._name = name;
 		this._fullTypeName = dataType;
 		this._label = label;
@@ -417,10 +422,6 @@ Type.registerNamespace("ExoWeb.Model");
 
 		toString: function() {
 			return this.get_label();
-		},
-
-		set_containingType: function(type) {
-			this._containingType = type;
 		},
 
 		get_containingType: function() {
@@ -516,11 +517,6 @@ Type.registerNamespace("ExoWeb.Model");
 			return this._containingType.get_fullName() + "$" + this._name;
 		},
 
-		label: function(val) {
-			this._label = val;
-			return this;
-		},
-
 		value: function(obj, val) {
 			if (arguments.length == 2) {
 				Sys.Observer.setValue(obj, this._name, val);
@@ -533,7 +529,134 @@ Type.registerNamespace("ExoWeb.Model");
 	ExoWeb.Model.Property = Property;
 	Property.registerClass("ExoWeb.Model.Property");
 
-	//////////////////////////////////////////////////////////////////////////////////////
+
+	///////////////////////////////////////////////////////////////////////////////
+	/// <summary>
+	/// Encapsulates the logic required to work with a chain of properties and
+	/// a root object, allowing interaction with the chain as if it were a 
+	/// single property of the root object.
+	/// </summary>
+	///
+	/// <example>
+	///
+	/// var driver = new Driver("1");
+	/// var chain = driver.meta.type.property("Owner.Location.Address");
+	///
+	/// // the "Address" portion of the property
+	/// var addressProp = chain.lastProperty();
+	/// // the Address object
+	/// var address = chain.value(driver);
+	/// // the owner's locations for the given driver
+	/// var loc = chain.lastTarget(driver);
+	///
+	/// var stateAbbrevProp = address.meta.type.property("State.Abbreviation");
+	/// // returns a state abbreviation, like "NY"
+	/// var abbrev1 = stateAbbrevProp.value(address);
+	/// // extend the original property
+	/// chain.append(stateAbbrevProp);
+	/// // returns the same state abbreviation as above
+	/// var abbrev2 = chain.value(driver);
+	///
+	/// </example>
+	///////////////////////////////////////////////////////////////////////////
+	function PropertyChain(properties) {
+		this._properties = properties.length ? properties : [properties];
+
+		if (this._properties.length == 0)
+			throw ("PropertyChain cannot be zero-length.");
+	}
+
+	PropertyChain.prototype = {
+		all: function() {
+			return this._properties;
+		},
+		append: function(prop) {
+			Array.addRange(this._properties, prop.all());
+		},
+		each: function(obj, callback) {
+			if (!callback || typeof (callback) != "function")
+				throw ("Invalid Parameter: callback function");
+
+			if (!obj)
+				throw ("Invalid Parameter: source object");
+
+			for (var p = 0; p < this._properties.length; p++) {
+				var prop = this._properties[p];
+				callback(obj, prop);
+				obj = prop.value(obj);
+			}
+		},
+		lastProperty: function() {
+			return this._properties[this._properties.length - 1];
+		},
+		lastTarget: function(obj) {
+			for (var p = 0; p < this._properties.length - 1; p++) {
+				var prop = this._properties[p];
+				obj = prop.value(obj);
+			}
+			return obj;
+		},
+		prepend: function(prop) {
+			var newProps = prop.all();
+			for (var p = newProps.length - 1; p >= 0; p--) {
+				Array.insert(this._properties, 0, newProps[p]);
+			}
+		},
+
+		// Property pass-through methods
+		///////////////////////////////////////////////////////////////////////
+		get_allowedValues: function PropertyChain$get_allowedValues() {
+			return this.lastProperty().get_allowedValues();
+		},
+		get_containingType: function PropertyChain$get_containingType() {
+			return this.lastProperty().get_containingType();
+		},
+		get_dataType: function PropertyChain$get_dataType() {
+			return this.lastProperty().get_dataType();
+		},
+		get_format: function PropertyChain$get_format() {
+			return this.lastProperty().get_format();
+		},
+		get_fullTypeName: function PropertyChain$get_fullTypeName() {
+			return this.lastProperty().get_fullTypeName();
+		},
+		get_isList: function PropertyChain$get_isList() {
+			return this.lastProperty().get_isList();
+		},
+		get_label: function PropertyChain$get_label() {
+			return this.lastProperty().get_label();
+		},
+		get_name: function PropertyChain$get_name() {
+			return this.lastProperty().get_name();
+		},
+		get_typeClass: function PropertyChain$get_typeClass() {
+			return this.lastProperty().get_typeClass();
+		},
+		get_typeName: function PropertyChain$get_typeName() {
+			return this.lastProperty().get_typeName();
+		},
+		get_uniqueName: function PropertyChain$get_uniqueName() {
+			return this.lastProperty().get_uniqueName();
+		},
+		value: function PropertyChain$value(obj, val) {
+			if (arguments.length == 2) {
+				obj = this.lastTarget(obj);
+				Sys.Observer.setValue(obj, this.get_name(), val);
+			}
+			else {
+				for (var p = 0; p < this._properties.length; p++) {
+					var prop = this._properties[p];
+					obj = prop.value(obj);
+				}
+				return obj;
+			}
+		}
+	}
+	ExoWeb.Model.PropertyChain = PropertyChain;
+	PropertyChain.registerClass("ExoWeb.Model.PropertyChain");
+
+
+	///////////////////////////////////////////////////////////////////////////
 	function ObjectMeta(type, obj) {
 		this._obj = obj;
 		this.type = type;
@@ -676,8 +799,7 @@ Type.registerNamespace("ExoWeb.Model");
 		var match;
 
 		while (match = /this\.([a-zA-Z0-9_]+)/g.exec(func.toString())) {
-			// TODO: is using last appropriate for multi-hops?
-			inputs.push(rootType.property(match[1]).last());
+			inputs.push(rootType.property(match[1]).lastProperty());
 		}
 
 		return inputs;
@@ -1037,18 +1159,18 @@ Type.registerNamespace("ExoWeb.Model");
 			props.prepend(templateContext.dataItem.property());
 		}
 
-		var dt = props.last().get_dataType();
+		var dt = props.get_dataType();
 
 		var valueFormat;
 		if (properties.valueFormat)
 			valueFormat = dt.formats[properties.valueFormat];
-		else if (!(valueFormat = props.last().get_format()))
+		else if (!(valueFormat = props.get_format()))
 			valueFormat = dt.formats.$value || dt.formats.$label;
 
 		var labelFormat;
 		if (properties.labelFormat)
 			labelFormat = dt.formats[properties.labelFormat];
-		else if (!(labelFormat = props.last().get_format()))
+		else if (!(labelFormat = props.get_format()))
 			labelFormat = dt.formats.$label || dt.formats.$value;
 
 		delete properties.$default;
@@ -1154,172 +1276,9 @@ Type.registerNamespace("ExoWeb.Model");
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	/// <summary>
-	/// Encapsulates the logic required to work with a chain of properties and
-	/// a root object, allowing interaction with the chain as if it were a 
-	/// single property of the root object.
-	/// </summary>
-	///
-	/// <example>
-	///
-	/// var driver = new Driver("1");
-	/// var chain = driver.meta.type.property("Owner.Location.Address");
-	///
-	/// // the "Address" portion of the property
-	/// var addressProp = chain.last();
-	/// // the Address object
-	/// var address = chain.value(driver);
-	/// // the owner's locations for the given driver
-	/// var loc = chain.parent(driver);
-	///
-	/// var stateAbbrevProp = address.meta.type.property("State.Abbreviation");
-	/// // returns a state abbreviation, like "NY"
-	/// var abbrev1 = stateAbbrevProp.value(address);
-	/// // extend the original property
-	/// chain.append(stateAbbrevProp);
-	/// // returns the same state abbreviation as above
-	/// var abbrev2 = chain.value(driver);
-	///
-	/// </example>
-	///////////////////////////////////////////////////////////////////////////////
-	function PropertyChain(properties) {
-		this._properties = properties.length ? properties : [properties];
-
-		if (this._properties.length == 0)
-			throw ("PropertyChain cannot be zero-length.");
-	}
-
-	PropertyChain.prototype = {
-		parent: function(obj) {
-			for (var p = 0; p < this._properties.length - 1; p++) {
-				var prop = this._properties[p];
-				obj = prop.value(obj);
-			}
-			return obj;
-		},
-		first: function() {
-			return this._properties[0];
-		},
-		last: function() {
-			return this._properties[this._properties.length - 1];
-		},
-		all: function() {
-			return this._properties;
-		},
-		fullName: function() {
-			var fullName = "";
-			for (var p = 0; p < this._properties.length; p++) {
-				var prop = this._properties[p];
-				fullName += (fullName.length > 0 ? "." : "") + prop.get_name();
-			}
-			return fullName;
-		},
-		each: function(obj, callback) {
-			if (!callback || typeof (callback) != "function")
-				throw ("Invalid Parameter: callback function");
-
-			if (!obj)
-				throw ("Invalid Parameter: source object");
-
-			for (var p = 0; p < this._properties.length; p++) {
-				var prop = this._properties[p];
-				callback(obj, prop);
-				obj = prop.value(obj);
-			}
-		},
-		append: function(prop) {
-			Array.addRange(this._properties, prop.all());
-		},
-		prepend: function(prop) {
-			var newProps = prop.all();
-			for (var p = newProps.length - 1; p >= 0; p--) {
-				Array.insert(this._properties, 0, newProps[p]);
-			}
-		},
-		value: function(obj, val) {
-			if (arguments.length == 2) {
-				obj = this.parent(obj);
-
-				Sys.Observer.setValue(obj, this.last().get_name(), val);
-			}
-			else {
-				for (var p = 0; p < this._properties.length; p++) {
-					var prop = this._properties[p];
-					obj = prop.value(obj);
-				}
-				return obj;
-			}
-		}
-	}
-	ExoWeb.Model.PropertyChain = PropertyChain;
-	PropertyChain.registerClass("ExoWeb.Model.PropertyChain");
-
-
-	///////////////////////////////////////////////////////////////////////////////
-	function PropertyAdapter(target, propertyChain) {
-		this._target = target;
-		this._properties = propertyChain;
-	}
-
-	PropertyAdapter.prototype = {
-		addChanged: function(handler) {
-			this.each(function(obj, prop) {
-				if (prop.get_typeClass() == "entitylist")
-					Sys.Observer.addCollectionChanged(prop.value(obj), handler);
-				else
-					Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), handler);
-			});
-		},
-		all: function() {
-			return this._properties.all();
-		},
-		each: function(callback) {
-			this._properties.each(this._target, callback);
-		},
-		target: function() {
-			return this._target;
-		},
-		parent: function() {
-			return this._properties.parent(this._target);
-		},
-		properties: function() {
-			return this._properties;
-		},
-		last: function() {
-			return this._properties.last();
-		},
-		value: function(val) {
-			if (arguments.length == 0) {
-				return this._properties.value(this._target);
-			}
-			else {
-				this._properties.value(this._target, val);
-			}
-		},
-
-		// TODO:  How to handle pass-through?  Set up in constructor?
-		get_containingType: function() {
-			return this.last().get_containingType();
-		},
-		get_name: function() {
-			return this.last().get_name();
-		},
-		get_label: function() {
-			return this.last().get_label();
-		},
-		get_typeClass: function() {
-			return this.last().get_typeClass();
-		},
-		get_allowedValues: function() {
-			return this.last().get_allowedValues();
-		}
-	}
-	ExoWeb.Model.PropertyAdapter = PropertyAdapter;
-	PropertyAdapter.registerClass("ExoWeb.Model.PropertyAdapter");
-
-	///////////////////////////////////////////////////////////////////////////////
 	function Adapter(target, propertyChain, valueFormat, labelFormat, options) {
-		this._property = new PropertyAdapter(target, propertyChain);
+		this._target = target;
+		this._propertyChain = propertyChain;
 		this._valueFormat = valueFormat;
 		this._labelFormat = labelFormat;
 		this._ignoreTargetEvents = false;
@@ -1340,7 +1299,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 				// create a getter if one doesn't exist
 				if (!this["get_" + opt]) {
-					var type = this._property.get_containingType();
+					var type = this._propertyChain.get_containingType();
 					this["get_" + opt] = type._makeGetter(this, function() { return this[_opt]; });
 				}
 			}
@@ -1349,28 +1308,19 @@ Type.registerNamespace("ExoWeb.Model");
 		var _this = this;
 		Sys.Observer.makeObservable(this);
 		// subscribe to property changes at any point in the path
-		this._property.addChanged(function(sender, args) {
-			_this._onTargetChanged(sender, args);
-		});
-
-		var allowed = this._property.get_allowedValues();
-		if (allowed && allowed.length > 0) {
-			var root = this._property.parent();
-			var props = root.meta.property(allowed);
-			if (props) {
-				props = new PropertyAdapter(root, props);
-				props.addChanged(function(sender, args) {
+		this._propertyChain.each(this._target, function(obj, prop) {
+			if (prop.get_typeClass() == "entitylist")
+				Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
 					_this._onTargetChanged(sender, args);
 				});
-			}
-		}
+			else
+				Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
+					_this._onTargetChanged(sender, args);
+				});
+		});
 	}
 
 	Adapter.prototype = {
-		property: function() {
-			return this._property;
-		},
-
 		// Pass property change events to the target object
 		///////////////////////////////////////////////////////////////////////////
 		_onTargetChanged: function(sender, args) {
@@ -1383,7 +1333,7 @@ Type.registerNamespace("ExoWeb.Model");
 		// Properties that are intended to be used by templates
 		///////////////////////////////////////////////////////////////////////////
 		get_label: function() {
-			return this._label || this._property.get_label();
+			return this._label || this._propertyChain.get_label();
 		},
 		get_helptext: function() {
 			return this._helptext || "";
@@ -1396,14 +1346,14 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 		get_options: function() {
 			if (!this._options) {
-				if (this._property.get_typeClass() == TypeClass.Intrinsic)
+				if (this._propertyChain.get_typeClass() == TypeClass.Intrinsic)
 					return null;
 
 				// TODO: handle allowed values in multiple forms (function, websvc call, string path)
 				var allowed = null;
-				var path = this._property.get_allowedValues();
+				var path = this._propertyChain.get_allowedValues();
 				if (path && path.length > 0) {
-					var root = this._property.parent();
+					var root = this._propertyChain.lastTarget(this._target);
 					var props = root.meta.property(path);
 
 					if (props) {
@@ -1427,7 +1377,7 @@ Type.registerNamespace("ExoWeb.Model");
 					allowed = root;
 				}
 
-				if (this._property.get_typeClass() == TypeClass.Entity) {
+				if (this._propertyChain.get_typeClass() == TypeClass.Entity) {
 					this._options = [];
 
 					this._options[0] = new OptionAdapter(this, null);
@@ -1435,7 +1385,7 @@ Type.registerNamespace("ExoWeb.Model");
 					for (var a = 0; a < allowed.length; a++)
 						Array.add(this._options, new OptionAdapter(this, allowed[a]));
 				}
-				else if (this._property.get_typeClass() == TypeClass.EntityList) {
+				else if (this._propertyChain.get_typeClass() == TypeClass.EntityList) {
 					this._options = [];
 
 					for (var a = 0; a < allowed.length; a++)
@@ -1455,7 +1405,7 @@ Type.registerNamespace("ExoWeb.Model");
 			return this._labelFormat;
 		},
 		get_rawValue: function() {
-			return this._property.value();
+			return this._propertyChain.value(this._target);
 		},
 		get_value: function() {
 			if (typeof (this._badValue) !== "undefined")
@@ -1468,38 +1418,38 @@ Type.registerNamespace("ExoWeb.Model");
 		set_value: function(value) {
 			var converted = (this._valueFormat) ? this._valueFormat.convertBack(value) : value;
 
-			this._property.parent().meta.clearIssues(this);
+			this._propertyChain.lastTarget(this._target).meta.clearIssues(this);
 
 			if (converted instanceof FormatIssue) {
 				this._badValue = value;
 
 				issue = new RuleIssue(
-							$format(converted.get_message(), { value: this._property.get_label() }),
-							[this._property.last()],
+							$format(converted.get_message(), { value: this._propertyChain.get_label() }),
+							[this._propertyChain.lastProperty()],
 							this);
 
-				this._property.parent().meta.issueIf(issue, true);
+				this._propertyChain.lastTarget(this._target).meta.issueIf(issue, true);
 
 				// run the rules to preserve the order of issues
-				this._property.parent().meta.executeRules(this._property.get_name());
+				this._propertyChain.lastTarget(this._target).meta.executeRules(this._propertyChain.get_name());
 			}
 			else {
 
-				var changed = this._property.value() !== converted;
+				var changed = this._propertyChain.value(this._target) !== converted;
 
 				if (typeof (this._badValue) !== "undefined") {
 					delete this._badValue;
 
 					// force rules to run again in order to trigger validation events
 					if (!changed)
-						this._property.parent().meta.executeRules(this._property.get_name());
+						this._propertyChain.lastTarget(this._target).meta.executeRules(this._propertyChain.get_name());
 				}
 
 				if (changed) {
 					this._ignoreTargetEvents = true;
 
 					try {
-						this._property.value(converted);
+						this._propertyChain.value(this._target, converted);
 					}
 					finally {
 						this._ignoreTargetEvents = false;
@@ -1511,10 +1461,10 @@ Type.registerNamespace("ExoWeb.Model");
 		// Pass validation events through to the target
 		///////////////////////////////////////////////////////////////////////////
 		addPropertyValidating: function(propName, handler) {
-			this._property.parent().meta.addPropertyValidating(this._property.get_name(), handler);
+			this._propertyChain.lastTarget(this._target).meta.addPropertyValidating(this._propertyChain.get_name(), handler);
 		},
 		addPropertyValidated: function(propName, handler) {
-			this._property.parent().meta.addPropertyValidated(this._property.get_name(), handler);
+			this._propertyChain.lastTarget(this._target).meta.addPropertyValidated(this._propertyChain.get_name(), handler);
 		},
 
 		// Override toString so that UI can bind to the adapter directly
