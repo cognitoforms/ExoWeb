@@ -3,56 +3,56 @@
 		__metadata: {
 			Driver: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" },
-					PhoneNumber: { name: "PhoneNumber", type: "String", format: "Phone" },
-					Owner: { name: "Owner", type: "One|CarOwner" },
-					Cars: { name: "Cars", type: "Many|Car", allowed: "Dealer.AvailableCars" },
-					BirthDate: { name: "BirthDate", type: "Date" },
-					Dealer: { name: "Dealer", type: "One|Dealer", allowed: "Dealer.All" }
+					Id: { type: "String" },
+					Name: { type: "String" },
+					PhoneNumber: { type: "String", format: "Phone" },
+					Owner: { type: "One|CarOwner" },
+					Cars: { type: "Many|Car", allowed: "Dealer.AvailableCars" },
+					BirthDate: { type: "Date" },
+					Dealer: { type: "One|Dealer", allowed: "Dealer.All" }
 				}
 			},
 			Car: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" },
-					Driver: { name: "Driver", type: "One|Driver" }
+					Id: { type: "String" },
+					Name: { type: "String" },
+					Driver: { type: "One|Driver" }
 				}
 			},
 			Dealer: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" },
-					PhoneNumber: { name: "PhoneNumber", type: "String", format: "Phone" },
-					AvailableCars: { name: "AvailableCars", type: "Many|Car" }
+					Id: { type: "String" },
+					Name: { type: "String" },
+					PhoneNumber: { type: "String", format: "Phone" },
+					AvailableCars: { type: "Many|Car" }
 				}
 			},
 			CarOwner: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" },
-					Location: { name: "Location", type: "One|OwnerLocation", allowed: "AvailableLocations" },
-					AvailableLocations: { name: "AvailableLocations", type: "Many|OwnerLocation" }
+					Id: { type: "String" },
+					Name: { type: "String" },
+					Location: { type: "One|OwnerLocation", allowed: "AvailableLocations" },
+					AvailableLocations: { type: "Many|OwnerLocation" }
 				}
 			},
 			OwnerLocation: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" },
-					Address: { name: "Address", type: "One|LocationAddress" }
+					Id: { type: "String" },
+					Name: { type: "String" },
+					Address: { type: "One|LocationAddress" }
 				}
 			},
 			LocationAddress: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					State: { name: "State", type: "One|AddressState" }
+					Id: { type: "String" },
+					State: { type: "One|AddressState" }
 				}
 			},
 			AddressState: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Abbreviation: { name: "Abbreviation", type: "String" },
-					Name: { name: "Name", type: "String" }
+					Id: { type: "String" },
+					Abbreviation: { type: "String" },
+					Name: { type: "String" }
 				}
 			}
 		 },
@@ -135,53 +135,53 @@
 		__metadata: {
 			PrgIntervention: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					StartStatus: { name: "StartStatus", type: "One|PrgStatus" },
-					Involvement: { name: "Involvement", type: "One|PrgInvolvement" },
-					SubVariants: { name: "SubVariants", type: "Many|PrgSubVariant", allowed: "Involvement.Variant.SubVariants" },
-					StartDate: { name: "StartDate", type: "Date" },
-					PlannedEndDate: { name: "PlannedEndDate", type: "Date" },
-					Tools: { name: "Tools", type: "Many|IntvTool" },
-					ToolDefs: { name: "ToolDefs", type: "Many|IntvToolDef" }
+					Id: { type: "String" },
+					StartStatus: { type: "One|PrgStatus" },
+					Involvement: { type: "One|PrgInvolvement" },
+					SubVariants: { type: "Many|PrgSubVariant", allowed: "Involvement.Variant.SubVariants" },
+					StartDate: { type: "Date" },
+					PlannedEndDate: { type: "Date" },
+					Tools: { type: "Many|IntvTool" },
+					ToolDefs: { type: "Many|IntvToolDef" }
 				}
 			},
 			PrgStatus: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" }
+					Id: { type: "String" },
+					Name: { type: "String" }
 				}
 			},
 			PrgInvolvement: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Variant: { name: "Variant", type: "One|PrgVariant" }
+					Id: { type: "String" },
+					Variant: { type: "One|PrgVariant" }
 				}
 			},
 			PrgVariant: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" },
-					SubVariants: { name: "SubVariants", type: "Many|PrgSubVariant" }
+					Id: { type: "String" },
+					Name: { type: "String" },
+					SubVariants: { type: "Many|PrgSubVariant" }
 				}
 			},
 			PrgSubVariant: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" },
+					Id: { type: "String" },
+					Name: { type: "String" }
 				}
 			},
 			IntvTool: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" },
-					ToolDef: { name: "ToolDef", type: "One|IntvToolDef", allowed: "Intervention.ToolDefs" },
-					Intervention: { name: "Intervention", type: "One|PrgIntervention" }
+					Id: { type: "String" },
+					Name: { type: "String" },
+					ToolDef: { type: "One|IntvToolDef", allowed: "Intervention.ToolDefs" },
+					Intervention: { type: "One|PrgIntervention" }
 				}
 			},
 			IntvToolDef: {
 				attributes: {
-					Id: { name: "Id", type: "String" },
-					Name: { name: "Name", type: "String" }
+					Id: { type: "String" },
+					Name: { type: "String" }
 				}
 			}
 		},
