@@ -1388,6 +1388,12 @@ Type.registerNamespace("ExoWeb.Model");
 		get_helptext: function() {
 			return this._helptext || "";
 		},
+		get_emptyOptionLabel: function() {
+			return this._emptyOptionLabel ? this._emptyOptionLabel : " -- select -- ";
+		},
+		set_emptyOptionLabel: function(value) {
+			this._emptyOptionLabel = value;
+		},
 		get_options: function() {
 			if (!this._options) {
 				if (this._property.get_typeClass() == TypeClass.Intrinsic)
@@ -1424,32 +1430,16 @@ Type.registerNamespace("ExoWeb.Model");
 				if (this._property.get_typeClass() == TypeClass.Entity) {
 					this._options = [];
 
-					this._options[0] = { name: "--select--", value: "" };
+					this._options[0] = new OptionAdapter(this, null);
 
-					for (var a = 0; a < allowed.length; a++) {
-						var opt = {
-							label: (this._labelFormat ? this._labelFormat.convert(allowed[a]) : allowed[a]),
-							value: (this._valueFormat ? this._valueFormat.convert(allowed[a]) : allowed[a])
-						}
-
-						Array.add(this._options, opt);
-					}
+					for (var a = 0; a < allowed.length; a++)
+						Array.add(this._options, new OptionAdapter(this, allowed[a]));
 				}
 				else if (this._property.get_typeClass() == TypeClass.EntityList) {
 					this._options = [];
 
-					var rawValue = this.get_rawValue();
-
-					for (var a = 0; a < allowed.length; a++) {
-						var selected = false;
-						for (var r = 0; r < rawValue.length; r++) {
-							if (rawValue[r] == allowed[a]) {
-								selected = true;
-							}
-						}
-
-						this._options[a] = new OptionAdapter(this, allowed[a], this._valueFormat, this._labelFormat, selected);
-					}
+					for (var a = 0; a < allowed.length; a++)
+						this._options[a] = new OptionAdapter(this, allowed[a]);
 				}
 			}
 
@@ -1538,51 +1528,54 @@ Type.registerNamespace("ExoWeb.Model");
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	OptionAdapter = function(parent, obj, selected) {
+	OptionAdapter = function(parent, obj) {
 		this._parent = parent;
 		this._obj = obj;
-		this._selected = (selected) ? true : false;
-
-		//		var _this = this;
-		//		Sys.Observer.makeObservable(this);
-		//		// subscribe to property changes to the option's name (value shouldn't change)
-		//		Sys.Observer.addSpecificPropertyChanged(parent, "value", function(sender, args) {
-		//			_this._onTargetChanged(sender, args);
-		//		});
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	OptionAdapter.prototype = {
-		// Pass property change events to the target object
-		///////////////////////////////////////////////////////////////////////////
-		_onTargetChanged: function(sender, args) {
-			if (this._ignoreTargetEvents)
-				return;
-
-			// TODO
-			Sys.Observer.raisePropertyChanged(this, "name");
-		},
-
 		// Properties consumed by UI
 		///////////////////////////////////////////////////////////////////////////
 		get_label: function() {
+			if (!this._obj)
+				return this._parent.get_emptyOptionLabel();
+
 			var format = this._parent.get_labelFormat();
 			return format ? format.convert(this._obj) : this._obj;
 		},
 		get_value: function() {
+			if (!this._obj)
+				return "";
+
 			var format = this._parent.get_valueFormat();
 			return format ? format.convert(this._obj) : this._obj;
 		},
 		get_selected: function() {
-			return Array.contains(this._parent.get_rawValue(), this._obj);
+			var source = this._parent.get_rawValue();
+
+			if (source instanceof Array)
+				return Array.contains(source, this._obj);
+			else
+				return source == this._obj;
 		},
 		set_selected: function(value) {
-			var items = this._parent.get_rawValue();
+			var source = this._parent.get_rawValue();
 
-			if (value && !Array.contains(items, this._obj))
-				items.add(this._obj);
-			else if (!value && Array.contains(items, this._obj))
-				items.remove(this._obj);
+			if (source instanceof Array) {
+				if (value && !Array.contains(source, this._obj))
+					source.add(this._obj);
+				else if (!value && Array.contains(source, this._obj))
+					source.remove(this._obj);
+			}
+			else {
+				if (!this._obj)
+					this._parent.set_value(null);
+				else {
+					var value = (this._parent.get_valueFormat()) ? this._parent.get_valueFormat().convert(this._obj) : this._obj;
+					this._parent.set_value(value);
+				}
+			}
 		}
 	}
 

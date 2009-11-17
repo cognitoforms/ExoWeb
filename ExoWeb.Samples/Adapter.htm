@@ -101,12 +101,12 @@
 				<td>(@= Cars )</td>
 				<td>{@= Cars }</td>
 			</tr>-->
+			<tr sys:attach="content" content:data="{@ Dealer }" class="dropdown" />
 			<tr sys:attach="content" content:data="{@ Dealer.Name, prefix=Dealer }" />
 			<tr>
 				<td>(@= Dealer.Name )</td>
 				<td>{@= Dealer.Name }</td>
 			</tr>
-			<tr sys:attach="content" content:data="{@ Dealer }" class="dropdown" />
 		</tbody>
 	</table>
 	
