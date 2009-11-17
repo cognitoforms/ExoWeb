@@ -75,6 +75,8 @@ Type.registerNamespace("ExoWeb.Model");
 						return a.sender == b.sender && a.property == b.property;
 					}
 				);
+
+		var _this = this;
 	}
 
 	Model.prototype = {
@@ -84,8 +86,7 @@ Type.registerNamespace("ExoWeb.Model");
 			var type; // referenced in constructor
 
 			if (!jstype) {
-				window[name] = jstype = function(id) {
-
+				jstype = window[name] = function(id) {
 					if (id) {
 						var obj = type.get(id);
 
@@ -99,6 +100,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 			// TODO: make this a method that uses the pool?
 			jstype.All = [];
+			Sys.Observer.makeObservable(jstype.All);
 
 			if (baseClass) {
 				if (typeof (baseClass) == "string")
@@ -109,6 +111,7 @@ Type.registerNamespace("ExoWeb.Model");
 			}
 
 			jstype.prototype = new baseClass();
+			jstype.prototype.constructor = jstype;
 
 			var formats = function() { }
 			formats.prototype = baseClass.formats;
@@ -151,6 +154,12 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 		notifyObjectUnregistered: function(obj) {
 			this._raiseEvent("objectUnregistered", [obj]);
+		},
+		addListChanged: function(func) {
+			this._addEvent("listChanged", func);
+		},
+		notifyListChanged: function(obj, property, changes) {
+			this._raiseEvent("listChanged", [obj, property, changes]);
 		}
 	}
 	Model.mixin(Functor.eventing);
@@ -164,7 +173,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 	ObjectBase.prototype = {
 		destroy: function() {
-			this.meta.get_type().unregister(this);
+			this.meta.type.unregister(this);
 		}
 	}
 
@@ -212,10 +221,12 @@ Type.registerNamespace("ExoWeb.Model");
 			}
 
 			obj.meta.id = id;
+			this._jstype.All.add(obj);
 
 			Sys.Observer.makeObservable(obj);
 
 			this._pool[id] = obj;
+
 
 			this._model.notifyObjectRegistered(obj);
 		},
@@ -223,6 +234,7 @@ Type.registerNamespace("ExoWeb.Model");
 		unregister: function(obj) {
 			this._model.notifyObjectUnregistered(obj);
 			delete this._pool[obj.meta.id];
+			this._jstype.All.remove(obj);
 			delete obj.meta._obj;
 			delete obj.meta;
 		},
@@ -247,7 +259,9 @@ Type.registerNamespace("ExoWeb.Model");
 			// add members to all instances of this type
 			this._jstype.prototype["$" + propName] = prop;
 			this._jstype.prototype["get_" + propName] = this._makeGetter(prop, prop.getter);
-			this._jstype.prototype["set_" + propName] = this._makeSetter(prop, prop.setter);
+
+			if (!prop.get_isList())
+				this._jstype.prototype["set_" + propName] = this._makeSetter(prop, prop.setter);
 		},
 
 		_makeGetter: function(receiver, fn) {
@@ -524,6 +538,27 @@ Type.registerNamespace("ExoWeb.Model");
 			}
 			else
 				return obj[this._name];
+		},
+
+		init: function(obj, val) {
+			obj[this._name] = val;
+
+			if (val instanceof Array) {
+				if (!this._notifyListChangedFn) {
+					var prop = this;
+					this._notifyListChangedFn = function(sender, args) {
+						prop._containingType.get_model().notifyListChanged(obj, prop, args.get_changes());
+					}
+				}
+
+				Sys.Observer.makeObservable(val);
+				Sys.Observer.addCollectionChanged(val, this._notifyListChangedFn);
+			}
+		},
+
+		get_notifyListChangedFn: function() {
+
+			return this._notifyListChangedFn;
 		}
 	}
 	ExoWeb.Model.Property = Property;

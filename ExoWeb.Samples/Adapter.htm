@@ -20,6 +20,7 @@
 
     	var model = $load(window.data.drivers.__metadata, window.data.drivers.__data);
     	var sync = new ExoWeb.Mapper.ServerSync(model, 5000);
+    	sync.enableConsole = true;
 
     	Dealer.formats.$label = new ExoWeb.Model.Format({
     		convert: function(value) {
@@ -46,7 +47,19 @@
 
     	$("*").rendered(function() {
     		JsStyleSheet(this);
-    	});    	
+    	});
+
+    	function addDriver() {
+    		var d = new Driver();
+
+    		//$get("allDrivers").control.refresh();
+    	}
+
+    	function deleteDriver(id) {
+    		//Driver(id)
+    		if(confirm("Delete " + id + "?"))
+    			(new Driver(id)).destroy();
+    	}
     </script>
 </head>
 <body xmlns:sys="javascript:Sys" 
@@ -107,6 +120,16 @@
 				<td>(@= Dealer.Name )</td>
 				<td>{@= Dealer.Name }</td>
 			</tr>
+
+		</tbody>
+	</table>
+
+	<button onclick='addDriver()'>add driver</button>
+	<table>
+		<tbody id='allDrivers' class="sys-template" sys:attach="dataview" dataview:data="{{ Driver.All }}">
+		<tr>
+			<td>{{meta.id}}</td><td><button onclick="deleteDriver(this)"></button></td>
+		</tr>
 		</tbody>
 	</table>
 	

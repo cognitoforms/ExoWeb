@@ -2,8 +2,22 @@
 
 (function() {
 
-	// change logging
-	// track changes to properties
+	function toWire(obj) {
+		if (obj instanceof Array) {
+			var wire = [];
+			for (var i = 0; i < obj.length; ++i) {
+				wire.push(toWire(obj[i]));
+			}
+
+			return wire;
+		}
+		else if (obj.constructor.formats && obj.constructor.formats.$wire) {
+			return obj.constructor.formats.$wire.convert(obj);
+		}
+		else {
+			return obj;
+		}
+	}
 
 	function ServerSync(model) {
 		this._queue = [];
@@ -11,18 +25,16 @@
 
 		// update object
 		model.addAfterPropertySet(function(obj, property, newVal) {
-			var wireFormat = property.get_dataType().formats.$wire;
-
 			_this.enqueue("update", obj, {
 				property: property.get_name(),
-				value: wireFormat ? wireFormat.convert(newVal) : newVal
+				value: toWire(newVal)
 			});
 		});
 
 		// add object
 		model.addObjectRegistered(function(obj) {
 			if (obj.meta.isNew)
-				_this.enqueue("add", obj);
+				_this.enqueue("new", obj);
 		});
 
 		// delete object
@@ -30,12 +42,34 @@
 			_this.enqueue("delete", obj);
 		});
 
-		// lists???
+		// lists
+		model.addListChanged(function(obj, property, changes) {
+
+			for (var i = 0; i < changes.length; ++i) {
+				var change = changes[i];
+
+				var addl = {
+					property: property.get_name(),
+				};
+					
+				if(change.newStartingIndex >= 0 || addl.newItems) {
+					addl.newStartingIndex = change.newStartingIndex;
+					addl.newItems = toWire(change.newItems);
+				}
+				if(change.oldStartingIndex >= 0 || addl.oldItems) {
+					addl.oldStartingIndex = change.oldStartingIndex;
+					addl.oldItems = toWire(change.oldItems);
+				}
+
+				// add changes, convert objects to values
+				_this.enqueue("list", obj, addl);
+			}
+		});
 	}
 
 	ServerSync.prototype = {
 		enqueue: function(oper, obj, addl) {
-			var entry = { oper: oper, type: obj.meta.type.get_fullName(), id: obj.meta.id };
+			var entry = { oper: oper, type: obj.meta.type.get_fullName(), id: toWire(obj) };
 
 			if (addl) {
 				for (var i in addl) {
@@ -43,6 +77,20 @@
 				}
 			}
 			this._queue.push(entry);
+			
+			if(this.enableConsole && console && console.log) {
+				var s = "";
+				
+				if(addl && addl.property)
+					s += "." + addl.property;
+
+				for(var key in addl){
+					if(key != "property")
+						s += "; " + key + "=" + addl[key];
+				}
+				
+				console.log($format("{oper}: {type}({id}){addl}", {oper: entry.oper, type: entry.type, id: entry.id, addl: s}));
+			}
 		}
 	}
 	ExoWeb.Mapper.ServerSync = ServerSync;
@@ -81,36 +129,37 @@
 
 				var objectData = data[type][id];
 
-				for (var prop in objectData) {
-					var propType = obj.meta.property(prop).lastProperty().get_fullTypeName();
+				for (var propName in objectData) {
+					var prop = obj.meta.property(propName).lastProperty();
+					var propType = prop.get_fullTypeName();
 
-					if (typeof (objectData[prop]) == "undefined" || objectData[prop] == null) {
-						obj[prop] = null;
+					if (typeof (objectData[prop]) == "undefined" || objectData[propName] == null) {
+						prop.init(obj, null);
 					}
 					else {
-						var prop = obj.meta.property(prop).lastProperty();
 						var ctor = prop.get_dataType();
-						
+
 						if (ctor.meta) {
 							if (prop.get_isList()) {
-								var src = objectData[prop];
-								var dst = obj[prop] = [];
-								Sys.Observer.makeObservable(dst);
+								var src = objectData[propName];
+								var dst = [];
 								for (var i = 0; i < src.length; i++) {
 									var child = dst[dst.length] = new ctor(src[i]);
 									if (!child._loaded)
 										loadObject(child, prop.get_typeName(), src[i], depth + 1);
 								}
+								prop.init(obj, dst);
 							}
 							else {
-								var related = obj[prop] = new ctor(objectData[prop]);
+								var related = new ctor(objectData[propName]);
+								prop.init(obj, related);
 								if (!related._loaded)
-									loadObject(related, prop.get_typeName(), objectData[prop], depth + 1);
+									loadObject(related, prop.get_typeName(), objectData[propName], depth + 1);
 							}
 						}
 						else {
 							var format = prop.get_format();
-							obj[prop] = format ? format.convertBack(objectData[prop]) : objectData[prop];
+							prop.init(obj, format ? format.convertBack(objectData[propName]) : objectData[propName]);
 						}
 					}
 				}
@@ -124,8 +173,6 @@
 				var ctor = window[type];
 				for (var id in data[type]) {
 					var obj = new ctor(id);
-					if (!Array.contains(ctor.All, obj))
-						Array.add(ctor.All, obj);
 					if (!obj._loaded)
 						loadObject(obj, type, id, 0);
 				}
