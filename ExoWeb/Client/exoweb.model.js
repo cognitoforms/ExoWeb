@@ -1531,10 +1531,29 @@ Type.registerNamespace("ExoWeb.Model");
 	OptionAdapter = function(parent, obj) {
 		this._parent = parent;
 		this._obj = obj;
+
+		if (this._obj) {
+			var _this = this;
+			Sys.Observer.makeObservable(this);
+			// subscribe to property changes to the option's label (value shouldn't change)
+			// TODO: can we make this more specific?
+			Sys.Observer.addPropertyChanged(this._obj, function(sender, args) {
+				_this._onTargetChanged(sender, args);
+			});
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	OptionAdapter.prototype = {
+		// Pass property change events to the target object
+		///////////////////////////////////////////////////////////////////////////
+		_onTargetChanged: function(sender, args) {
+			if (this._ignoreTargetEvents)
+				return;
+
+			Sys.Observer.raisePropertyChanged(this, "label");
+		},
+
 		// Properties consumed by UI
 		///////////////////////////////////////////////////////////////////////////
 		get_label: function() {
