@@ -113,7 +113,7 @@
 			}
 
 			for (var type in metadata) {
-				var jstype = model.addType(type, null, metadata[type].attributes).get_jstype();
+				var jstype = model.addType(type, null, metadata[type].properties).get_jstype();
 				createWireFormat(jstype, type);
 			}
 		}

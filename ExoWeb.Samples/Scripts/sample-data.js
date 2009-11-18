@@ -2,7 +2,7 @@
 	drivers: {
 		__metadata: {
 			Driver: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" },
 					PhoneNumber: { type: "String", format: "Phone" },
@@ -13,14 +13,14 @@
 				}
 			},
 			Car: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" },
 					Driver: { type: "Driver" }
 				}
 			},
 			Dealer: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" },
 					PhoneNumber: { type: "String", format: "Phone" },
@@ -28,7 +28,7 @@
 				}
 			},
 			CarOwner: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" },
 					Location: { type: "OwnerLocation", allowed: "AvailableLocations" },
@@ -36,20 +36,20 @@
 				}
 			},
 			OwnerLocation: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" },
 					Address: { type: "LocationAddress" }
 				}
 			},
 			LocationAddress: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					State: { type: "AddressState" }
 				}
 			},
 			AddressState: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Abbreviation: { type: "String" },
 					Name: { type: "String" }
@@ -134,7 +134,7 @@
 	programs: { 
 		__metadata: {
 			PrgIntervention: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					StartStatus: { type: "PrgStatus" },
 					Involvement: { type: "PrgInvolvement" },
@@ -146,32 +146,32 @@
 				}
 			},
 			PrgStatus: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" }
 				}
 			},
 			PrgInvolvement: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Variant: { type: "PrgVariant" }
 				}
 			},
 			PrgVariant: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" },
 					SubVariants: { type: "PrgSubVariant", isList: true }
 				}
 			},
 			PrgSubVariant: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" }
 				}
 			},
 			IntvTool: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" },
 					ToolDef: { type: "IntvToolDef", allowed: "Intervention.ToolDefs" },
@@ -179,7 +179,7 @@
 				}
 			},
 			IntvToolDef: {
-				attributes: {
+				properties: {
 					Id: { type: "String" },
 					Name: { type: "String" }
 				}
