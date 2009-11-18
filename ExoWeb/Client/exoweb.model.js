@@ -120,6 +120,7 @@ Type.registerNamespace("ExoWeb.Model");
 			type = new Type(this, jstype, name, properties);
 
 			jstype.meta = type;
+			jstype.get = function(id) { return type.get(id); };
 
 			this._types[name] = type;
 
@@ -1316,10 +1317,11 @@ Type.registerNamespace("ExoWeb.Model");
 		this._propertyChain = propertyChain;
 		this._valueFormat = valueFormat;
 		this._labelFormat = labelFormat;
+		this._emptyOption = true;
 		this._ignoreTargetEvents = false;
 
 		// Add arbitrary options so that they are made available in templates
-		var allowedOverrides = ["label", "helptext"];
+		var allowedOverrides = ["label", "helptext", "emptyOption", "emptyOptionLabel"];
 		if (options) {
 			for (var opt in options) {
 
@@ -1373,6 +1375,12 @@ Type.registerNamespace("ExoWeb.Model");
 		get_helptext: function() {
 			return this._helptext || "";
 		},
+		get_emptyOption: function() {
+			return this._emptyOption ? true : false;
+		},
+		set_emptyOption: function(value) {
+			this._emptyOption = value;
+		},
 		get_emptyOptionLabel: function() {
 			return this._emptyOptionLabel ? this._emptyOptionLabel : " -- select -- ";
 		},
@@ -1415,7 +1423,8 @@ Type.registerNamespace("ExoWeb.Model");
 				if (this._propertyChain.get_typeClass() == TypeClass.Entity) {
 					this._options = [];
 
-					this._options[0] = new OptionAdapter(this, null);
+					if (this._emptyOption)
+						this._options[0] = new OptionAdapter(this, null);
 
 					for (var a = 0; a < allowed.length; a++)
 						Array.add(this._options, new OptionAdapter(this, allowed[a]));
