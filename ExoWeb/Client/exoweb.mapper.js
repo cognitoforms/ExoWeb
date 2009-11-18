@@ -96,9 +96,189 @@
 	ExoWeb.Mapper.ServerSync = ServerSync;
 	ServerSync.registerClass("ExoWeb.Mapper.ServerSync");
 
+	///////////////////////////////////////////////////////////////////////////////
+	function CallbackSet() {
+		this._waitForAll = [];
+		this._pending = 0;
+		var _this = this;
+		this._oneDoneFn = function() { CallbackSet.prototype.oneDone.apply(_this, arguments); };
+	}
+	
+	CallbackSet.mixin({
+		pending: function(callback) {
+			this._pending++;
+			console.log($format("(+) {_pending}", this));
+
+			if(callback) {
+				var _oneDoneFn = this._oneDoneFn;
+				return function() {
+					callback.apply(this, arguments);
+					_oneDoneFn();
+				}
+			}
+			else
+				return this._oneDoneFn;
+		},
+		waitForAll: function(callback) {
+			if(!callback)
+				return;
+			
+			if(this._pending == 0) {
+				callback();
+			} else
+				this._waitForAll.push(callback);
+		},
+		oneDone: function() {
+			console.log($format("(-) {0}", [this._pending - 1]));
+			
+			if(--this._pending == 0) {
+				while(this._waitForAll.length > 0)
+					Array.dequeue(this._waitForAll)();
+			}
+		}
+	});
 
 	///////////////////////////////////////////////////////////////////////////////
+	
+	function fetchType(model, typeName, callback) {
+		// TODO: integrate with web service
+		var requested = fetchType.requested[typeName];
+		
+		if(!requested) {
+			requested = fetchType.requested[typeName] = new CallbackSet();
+			var signalOthers = requested.pending();
+
+			window.setTimeout(function(data) {
+				console.log("fetchType " + typeName + " DONE");
+
+				var def = window.data.drivers.__metadata[typeName];
+				var jstype = model.addType(typeName, null, def.properties).get_jstype();
+				
+				callback(jstype);
+				signalOthers();
+				
+				delete fetchType.requested[typeName];
+			}, 1000);
+		}
+		else {
+			console.log("fetchType " + typeName + " WAIT");
+			requested.waitForAll(function( ) {
+				console.log("fetchType " + typeName + " WAIT CALLBACK");
+				callback(resolveType(typeName))
+			});
+		}
+	}
+	fetchType.requested = {};
+	
+	function resolveType(typeName) {
+		return window[typeName];
+	}
+
+	function resolvePaths(model, jstype, props, callback) {
+		var propName = Array.dequeue(props);
+		var prop = jstype.meta.property( propName );
+		
+		if(!prop)
+			throw $format("{type}.{property} doesn't exist", {type: jstype.meta.get_fullName(), property: propName});
+		
+		if(!resolveType(prop.get_fullTypeName())) {
+			fetchType(model, prop.get_fullTypeName(), function(resolved) {
+				console.log($format("resolvePaths {0}.{1} callback", [jstype.meta.get_fullName(), props]));
+				
+				if(props.length > 0)
+					resolvePaths(model, resolved, props, callback);
+				else if(callback)
+					callback();
+			
+			});
+		}
+		else
+			callback();
+
+		console.log($format("resolvePaths {0}.{1} RETURN", [jstype.meta.get_fullName(), props]));
+	}
+	
+	function fetchObjectJson(query, callback) {
+		// TODO: use web service
+		window.setTimeout(function() {
+			console.log("fetchObjectJson CALLBACK");
+			callback(window.data.drivers.__data[1]);	
+		}, 2000);
+	}
+	
+	function fetchTypes(model, query, callback) {
+		var signal = new CallbackSet();
+		
+		function processPaths(jstype) { 
+			console.log("processPaths " + jstype.meta.get_fullName());
+			if(query.and) {
+				Array.forEach(query.and, function(path) {
+					resolvePaths(model, jstype, path.split("."), signal.pending());
+				});
+			}
+		}
+		
+		var rootType = resolveType(query.from);
+		if(!rootType)
+			fetchType(model, query.from, signal.pending(processPaths));
+		else
+			processPaths(rootType);
+			
+		signal.waitForAll(callback);
+	}
+	
+	///////////////////////////////////////////////////////////////////////////////
 	// Globals
+	function $model(options, callback) {
+		var model = new ExoWeb.Model.Model();
+		var result = {}
+		
+		var allSignals = new CallbackSet();
+		
+		var state = {};
+		
+		// start loading the instances first, then load type data concurrently.
+		// this assumes that instances are slower to load than types due to caching
+		for(varName in options) {
+			state[varName] = {signal: new CallbackSet() };			
+			allSignals.pending();
+			
+			(function(varName) {
+				fetchObjectJson(options[varName], state[varName].signal.pending(function(objectJson) {
+					state[varName].objectJson = objectJson;
+				}));
+			})(varName);
+		}
+		
+		// load types
+		for(varName in options) {
+			fetchTypes(model, options[varName], state[varName].signal.pending());
+		}
+
+		// process instances as the finish loading
+		for(varName in options) {
+			(function(varName) {
+				state[varName].signal.waitForAll(function() {
+					
+					state[varName].objectJson;
+					
+					//TODO: do what $load does but here
+
+					allSignals.oneDone();
+				})
+			})(varName);
+		}
+		
+		allSignals.waitForAll(function() {
+			//finish up
+			
+			if(callback)
+				callback();
+		});
+		
+	}
+	window.$model = $model;
+	
 	function $load(metadata, data) {
 		var model = null;
 
