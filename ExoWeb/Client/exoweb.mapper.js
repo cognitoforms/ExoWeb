@@ -138,6 +138,70 @@
 		}
 	});
 
+
+	///////////////////////////////////////////////////////////////////////////
+	function $loadData(data){
+		// Note: load object depends on local "data" variable to access data for related objects
+		var loadObject = function(obj, type, id, depth) {
+			obj._loaded = true;
+
+			// don't hang the browser
+			if (depth > loadObject.MAX_DEPTH)
+				throw ($format("Maximum recursion depth of {depth} was exceeded.", { depth: loadObject.MAX_DEPTH }));
+
+			var objectData = data[type][id];
+
+			for (var propName in objectData) {
+				var prop = obj.meta.property(propName).lastProperty();
+				var propType = prop.get_fullTypeName();
+
+				if (typeof (objectData[prop]) == "undefined" || objectData[propName] == null) {
+					prop.init(obj, null);
+				}
+				else {
+					var ctor = prop.get_dataType();
+
+					if (ctor.meta) {
+						if (prop.get_isList()) {
+							var src = objectData[propName];
+							var dst = [];
+							for (var i = 0; i < src.length; i++) {
+								var child = dst[dst.length] = new ctor(src[i]);
+								if (!child._loaded)
+									loadObject(child, prop.get_typeName(), src[i], depth + 1);
+							}
+							prop.init(obj, dst);
+						}
+						else {
+							var related = new ctor(objectData[propName]);
+							prop.init(obj, related);
+							if (!related._loaded)
+								loadObject(related, prop.get_typeName(), objectData[propName], depth + 1);
+						}
+					}
+					else {
+						var format = prop.get_format();
+						prop.init(obj, format ? format.convertBack(objectData[propName]) : objectData[propName]);
+					}
+				}
+			}
+
+			return obj;
+		}
+
+		loadObject.MAX_DEPTH = 10;
+
+		for (var type in data) {
+			var ctor = window[type];
+			for (var id in data[type]) {
+				var obj = new ctor(id);
+				if (!obj._loaded)
+					loadObject(obj, type, id, 0);
+			}
+		}
+	}
+
+
 	///////////////////////////////////////////////////////////////////////////////
 	
 	function fetchType(model, typeName, callback) {
@@ -148,21 +212,18 @@
 			requested = fetchType.requested[typeName] = new CallbackSet();
 			var signalOthers = requested.pending();
 
-			window.setTimeout(function(data) {
-				console.log("fetchType " + typeName + " DONE");
+			ExoWeb.GetType(typeName, function(typeJson) {
+				var jstype = model.addType(typeName, null, typeJson.properties).get_jstype();
 
-				var def = window.data.drivers.__metadata[typeName];
-				var jstype = model.addType(typeName, null, def.properties).get_jstype();
-				
 				callback(jstype);
 				signalOthers();
 				
 				delete fetchType.requested[typeName];
-			}, 1000);
+			});
 		}
 		else {
 			console.log("fetchType " + typeName + " WAIT");
-			requested.waitForAll(function( ) {
+			requested.waitForAll(function() {
 				console.log("fetchType " + typeName + " WAIT CALLBACK");
 				callback(resolveType(typeName))
 			});
@@ -176,7 +237,7 @@
 
 	function resolvePaths(model, jstype, props, callback) {
 		var propName = Array.dequeue(props);
-		var prop = jstype.meta.property( propName );
+		var prop = jstype.meta.property(propName);
 		
 		if(!prop)
 			throw $format("{type}.{property} doesn't exist", {type: jstype.meta.get_fullName(), property: propName});
@@ -198,12 +259,26 @@
 		console.log($format("resolvePaths {0}.{1} RETURN", [jstype.meta.get_fullName(), props]));
 	}
 	
-	function fetchObjectJson(query, callback) {
-		// TODO: use web service
-		window.setTimeout(function() {
-			console.log("fetchObjectJson CALLBACK");
-			callback(window.data.drivers.__data[1]);	
-		}, 2000);
+	if (!ExoWeb.GetInstance){
+		ExoWeb.GetInstance = function(type, id, paths, callback){
+			console.log($format("stubbed fetching of data for type {0} with id {1} and paths {2}", [type, id, paths]));
+			
+			window.setTimeout(function() {
+				//console.log("ExoWeb.GetInstance CALLBACK");
+				callback(window.data.drivers.__data);	
+			}, 2000);
+		}
+	}
+	
+	if (!ExoWeb.GetType){
+		ExoWeb.GetType = function(type, callback){
+			console.log($format("stubbed fetching of metadata for type {0}", [type]));
+			
+			window.setTimeout(function() {
+				//console.log("fetchType " + typeName + " DONE");
+				callback(window.data.drivers.__metadata[type]);
+			}, 1000);
+		}
 	}
 	
 	function fetchTypes(model, query, callback) {
@@ -231,7 +306,6 @@
 	// Globals
 	function $model(options, callback) {
 		var model = new ExoWeb.Model.Model();
-		var result = {}
 		
 		var allSignals = new CallbackSet();
 		
@@ -240,11 +314,12 @@
 		// start loading the instances first, then load type data concurrently.
 		// this assumes that instances are slower to load than types due to caching
 		for(varName in options) {
-			state[varName] = {signal: new CallbackSet() };			
+			state[varName] = { signal: new CallbackSet() };
 			allSignals.pending();
 			
 			(function(varName) {
-				fetchObjectJson(options[varName], state[varName].signal.pending(function(objectJson) {
+				var query = options[varName];
+				ExoWeb.GetInstance(query.from, query.id, query.and, state[varName].signal.pending(function(objectJson) {
 					state[varName].objectJson = objectJson;
 				}));
 			})(varName);
@@ -255,15 +330,18 @@
 			fetchTypes(model, options[varName], state[varName].signal.pending());
 		}
 
-		// process instances as the finish loading
+		// process instances as they finish loading
 		for(varName in options) {
 			(function(varName) {
 				state[varName].signal.waitForAll(function() {
 					
-					state[varName].objectJson;
+					$loadData(state[varName].objectJson);
 					
-					//TODO: do what $load does but here
-
+					var query = options[varName];
+					var jstype = model.get_type(query.from).get_jstype();
+					
+					window[varName] = new jstype(query.id);
+					
 					allSignals.oneDone();
 				})
 			})(varName);
@@ -299,64 +377,7 @@
 		}
 
 		if (data) {
-			// Note: load object depends on local "data" variable to access data for related objects
-			var loadObject = function(obj, type, id, depth) {
-				obj._loaded = true;
-
-				// don't hang the browser
-				if (depth > loadObject.MAX_DEPTH)
-					throw ($format("Maximum recursion depth of {depth} was exceeded.", { depth: loadObject.MAX_DEPTH }));
-
-				var objectData = data[type][id];
-
-				for (var propName in objectData) {
-					var prop = obj.meta.property(propName).lastProperty();
-					var propType = prop.get_fullTypeName();
-
-					if (typeof (objectData[prop]) == "undefined" || objectData[propName] == null) {
-						prop.init(obj, null);
-					}
-					else {
-						var ctor = prop.get_dataType();
-
-						if (ctor.meta) {
-							if (prop.get_isList()) {
-								var src = objectData[propName];
-								var dst = [];
-								for (var i = 0; i < src.length; i++) {
-									var child = dst[dst.length] = new ctor(src[i]);
-									if (!child._loaded)
-										loadObject(child, prop.get_typeName(), src[i], depth + 1);
-								}
-								prop.init(obj, dst);
-							}
-							else {
-								var related = new ctor(objectData[propName]);
-								prop.init(obj, related);
-								if (!related._loaded)
-									loadObject(related, prop.get_typeName(), objectData[propName], depth + 1);
-							}
-						}
-						else {
-							var format = prop.get_format();
-							prop.init(obj, format ? format.convertBack(objectData[propName]) : objectData[propName]);
-						}
-					}
-				}
-
-				return obj;
-			}
-
-			loadObject.MAX_DEPTH = 10;
-
-			for (var type in data) {
-				var ctor = window[type];
-				for (var id in data[type]) {
-					var obj = new ctor(id);
-					if (!obj._loaded)
-						loadObject(obj, type, id, 0);
-				}
-			}
+			$loadData(data);
 		}
 
 		return model;
