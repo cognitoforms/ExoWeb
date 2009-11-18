@@ -213,7 +213,7 @@
 			var signalOthers = requested.pending();
 
 			ExoWeb.GetType(typeName, function(typeJson) {
-				var jstype = model.addType(typeName, null, typeJson.properties).get_jstype();
+				var jstype = model.addType(typeName, null, typeJson[typeName].properties).get_jstype();
 
 				callback(jstype);
 				signalOthers();
@@ -276,7 +276,9 @@
 			
 			window.setTimeout(function() {
 				//console.log("fetchType " + typeName + " DONE");
-				callback(window.data.drivers.__metadata[type]);
+				var stub = {};
+				stub[type] = window.data.drivers.__metadata[type];
+				callback(stub);
 			}, 1000);
 		}
 	}
