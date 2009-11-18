@@ -17,12 +17,20 @@ ExoWeb.UI.Template = function(element) {
 }
 
 ExoWeb.UI.Template.prototype = {
+	// CSS Selectors
+	///////////////////////////////////////////////////////////////////////////
 	get_for: function() {
 		return this._for;
 	},
 	set_for: function(value) {
 		this._for = value;
 	},
+	matches: function(e) {
+		return $(e).is(this._for);
+	},
+
+	// Arbitrary JavaScript
+	///////////////////////////////////////////////////////////////////////////
 	get_if: function() {
 		return this._if;
 	},
@@ -56,12 +64,12 @@ ExoWeb.UI.Template.prototype = {
 
 		return result;
 	},
-	matches: function(e) {
-		return $(e).is(this._for);
-	},
+
 	test: function(e) {
+		// determines if the given element matches this template
 		return this.matches(e) && this.satisfies(e);
 	},
+	
 	initialize: function() {
 		ExoWeb.UI.Template.callBaseMethod(this, "initialize");
 
