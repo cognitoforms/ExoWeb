@@ -39,21 +39,21 @@ namespace ExoWeb
 					request = reader.ReadToEnd();
 			}
 
-			// Indicate that the response will be JSON
-			context.Response.ContentType = "application/json"; //"text/plain"; 
-
 			// Determine the method to call
 			switch (context.Request.PathInfo)
 			{
 				case "/GetInstance":
+					context.Response.ContentType = "application/json";
 					GetInstance(context.Response, FromJson<GetInstanceArgs>(request));
 					break;
 
 				case "/GetType":
+					context.Response.ContentType = "application/json";
 					GetType(context.Response, FromJson<GetTypeArgs>(request));
 					break;
 
 				case "/Script":
+					context.Response.ContentType = "application/javascript";
 					Script(context.Response);
 					break;
 			}
