@@ -246,6 +246,8 @@ Type.registerNamespace("ExoWeb.Model");
 
 		define: function(properties) {
 			for (var propName in properties)
+				// TODO: avoid all properties since they are not instance properties?
+				//if (propName != "All")
 				this.addProperty(propName, properties[propName]);
 		},
 
@@ -474,18 +476,14 @@ Type.registerNamespace("ExoWeb.Model");
 			return this._typeClass;
 		},
 
-		get_dataType: function() {
+		get_dataType: function(ignoreMissing) {
 			if (!this._dataType) {
-				var dt = this._fullTypeName.indexOf("|") > 0 ? this._fullTypeName.split("|")[1] : this._fullTypeName;
-
-				if (window[dt])
-					this._dataType = window[dt];
-				else if (dt == "Integer" || dt == "Float")
-					this._dataType = Number;
-				else {
-					this._dataType = $format("Unknown data type \"{dt}\".", { dt: dt });
-					throw (this._dataType);
-				}
+				if (window[this._fullTypeName])
+					this._dataType = window[this._fullTypeName];
+				else if (ignoreMissing)
+						return null;
+				else
+					throw ($format("Unknown data type \"{0}\".", [this._fullTypeName]));
 			}
 
 			return this._dataType;

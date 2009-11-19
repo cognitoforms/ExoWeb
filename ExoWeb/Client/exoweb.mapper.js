@@ -1,5 +1,29 @@
 ﻿Type.registerNamespace("ExoWeb.Mapper");
 
+if (!ExoWeb.GetInstance){
+	ExoWeb.GetInstance = function(type, id, paths, callback){
+		console.log($format("stubbed fetching of data for type {0} with id {1} and paths {2}", [type, id, paths]));
+		
+		window.setTimeout(function() {
+			//console.log("ExoWeb.GetInstance CALLBACK");
+			callback(window.data.drivers.__data);	
+		}, 2000);
+	}
+}
+
+if (!ExoWeb.GetType){
+	ExoWeb.GetType = function(type, callback){
+		console.log($format("stubbed fetching of metadata for type {0}", [type]));
+		
+		window.setTimeout(function() {
+			//console.log("fetchType " + typeName + " DONE");
+			var stub = {};
+			stub[type] = window.data.drivers.__metadata[type];
+			callback(stub);
+		}, 1000);
+	}
+}
+
 (function() {
 
 	function toWire(obj) {
@@ -109,21 +133,21 @@
 			this._pending++;
 			console.log($format("(+) {_pending}", this));
 
-			if(callback) {
+			if (callback) {
 				var _oneDoneFn = this._oneDoneFn;
 				return function() {
 					callback.apply(this, arguments);
-					_oneDoneFn();
+					_oneDoneFn.apply(this, arguments);
 				}
 			}
 			else
 				return this._oneDoneFn;
 		},
 		waitForAll: function(callback) {
-			if(!callback)
+			if (!callback)
 				return;
-			
-			if(this._pending == 0) {
+
+			if (this._pending == 0) {
 				callback();
 			} else
 				this._waitForAll.push(callback);
@@ -131,9 +155,9 @@
 		oneDone: function() {
 			console.log($format("(-) {0}", [this._pending - 1]));
 			
-			if(--this._pending == 0) {
-				while(this._waitForAll.length > 0)
-					Array.dequeue(this._waitForAll)();
+			if (--this._pending == 0) {
+				while (this._waitForAll.length > 0)
+					Array.dequeue(this._waitForAll).apply(this, arguments);
 			}
 		}
 	});
@@ -141,63 +165,107 @@
 
 	///////////////////////////////////////////////////////////////////////////
 	function $loadData(data){
-		// Note: load object depends on local "data" variable to access data for related objects
-		var loadObject = function(obj, type, id, depth) {
-			obj._loaded = true;
+		try {
+			// Note: load object depends on local "data" variable to access data for related objects
+			var loadObject = function(obj, type, id, depth) {
+				obj._loaded = true;
 
-			// don't hang the browser
-			if (depth > loadObject.MAX_DEPTH)
-				throw ($format("Maximum recursion depth of {depth} was exceeded.", { depth: loadObject.MAX_DEPTH }));
+				// don't hang the browser
+				if (depth > loadObject.MAX_DEPTH)
+					throw ($format("Maximum recursion depth of {depth} was exceeded.", { depth: loadObject.MAX_DEPTH }));
 
-			var objectData = data[type][id];
-
-			for (var propName in objectData) {
-				var prop = obj.meta.property(propName).lastProperty();
-				var propType = prop.get_fullTypeName();
-
-				if (typeof (objectData[prop]) == "undefined" || objectData[propName] == null) {
-					prop.init(obj, null);
+				var typeData = data[type];
+				if (!typeData) {
+					// TODO: handle objects with no data present (i.e.: async fetch?)
+					obj._loaded = "no data for type";
+					return obj;
 				}
-				else {
-					var ctor = prop.get_dataType();
 
-					if (ctor.meta) {
-						if (prop.get_isList()) {
-							var src = objectData[propName];
-							var dst = [];
-							for (var i = 0; i < src.length; i++) {
-								var child = dst[dst.length] = new ctor(src[i]);
-								if (!child._loaded)
-									loadObject(child, prop.get_typeName(), src[i], depth + 1);
-							}
-							prop.init(obj, dst);
-						}
-						else {
-							var related = new ctor(objectData[propName]);
-							prop.init(obj, related);
-							if (!related._loaded)
-								loadObject(related, prop.get_typeName(), objectData[propName], depth + 1);
-						}
+				var objectData = typeData[id];
+
+				if (!objectData) {
+					// TODO: handle objects with no data present (i.e.: async fetch?)
+					obj._loaded = "no data for id";
+					return obj;
+				}
+
+				for (var propName in objectData) {
+					var prop = obj.meta.property(propName);
+
+					if (!prop) {
+						console.log("unknown property " + propName);
+						continue;
 					}
 					else {
-						var format = prop.get_format();
-						prop.init(obj, format ? format.convertBack(objectData[propName]) : objectData[propName]);
+						prop = prop.lastProperty();
+					}
+
+					var propType = prop.get_fullTypeName();
+	
+					if (typeof (objectData[prop]) == "undefined" || objectData[propName] == null) {
+						prop.init(obj, null);
+					}
+					else {
+						var ctor = prop.get_dataType(true);
+
+						if (!ctor) {
+							// TODO: handle unknown types
+							obj[prop.get_name()] = { type: "unknown", name: prop.get_fullTypeName(), data: objectData[propName] };
+						}
+						else if (ctor.meta) {
+							if (prop.get_isList()) {
+								var src = objectData[propName];
+								var dst = [];
+
+								if (src.length == 1 && src[0] == "deferred") {
+									// TODO: handle deferred lists appropriately
+									dst.__deferred = true;
+								}
+								else{
+									for (var i = 0; i < src.length; i++) {
+										var child = dst[dst.length] = new ctor(src[i]);
+										if (!child._loaded)
+											loadObject(child, prop.get_typeName(), src[i], depth + 1);
+									}
+								}
+								prop.init(obj, dst);
+							}
+							else {
+								var related = new ctor(objectData[propName]);
+								prop.init(obj, related);
+								if (!related._loaded)
+									loadObject(related, prop.get_typeName(), objectData[propName], depth + 1);
+							}
+						}
+						else {
+							var format = prop.get_format();
+							prop.init(obj, format ? format.convertBack(objectData[propName]) : objectData[propName]);
+						}
 					}
 				}
+
+				return obj;
 			}
 
-			return obj;
+			loadObject.MAX_DEPTH = 10;
+	
+			for (var type in data) {
+				var ctor = window[type];
+				if (!ctor) {
+					// TODO: handle types that are not defined
+					console.log("type " + type + " is not defined");
+					continue;
+				}
+				
+				for (var id in data[type]) {
+					var obj = new ctor(id);
+					if (!obj._loaded)
+						loadObject(obj, type, id, 0);
+				}
+			}
 		}
-
-		loadObject.MAX_DEPTH = 10;
-
-		for (var type in data) {
-			var ctor = window[type];
-			for (var id in data[type]) {
-				var obj = new ctor(id);
-				if (!obj._loaded)
-					loadObject(obj, type, id, 0);
-			}
+		catch (e) {
+			console.log(e);
 		}
 	}
 
@@ -212,6 +280,7 @@
 			requested = fetchType.requested[typeName] = new CallbackSet();
 			var signalOthers = requested.pending();
 
+			console.log($format("Fetching type \"{0}\".", [typeName]));
 			ExoWeb.GetType(typeName, function(typeJson) {
 				var jstype = model.addType(typeName, null, typeJson[typeName].properties).get_jstype();
 
@@ -222,9 +291,9 @@
 			});
 		}
 		else {
-			console.log("fetchType " + typeName + " WAIT");
+			//console.log("fetchType " + typeName + " WAIT");
 			requested.waitForAll(function() {
-				console.log("fetchType " + typeName + " WAIT CALLBACK");
+				//console.log("fetchType " + typeName + " WAIT CALLBACK");
 				callback(resolveType(typeName))
 			});
 		}
@@ -236,53 +305,36 @@
 	}
 
 	function resolvePaths(model, jstype, props, callback) {
-		var propName = Array.dequeue(props);
-		var prop = jstype.meta.property(propName);
-		
-		if(!prop)
-			throw $format("{type}.{property} doesn't exist", {type: jstype.meta.get_fullName(), property: propName});
-		
-		if(!resolveType(prop.get_fullTypeName())) {
-			fetchType(model, prop.get_fullTypeName(), function(resolved) {
-				console.log($format("resolvePaths {0}.{1} callback", [jstype.meta.get_fullName(), props]));
+		try{
+			var propName = Array.dequeue(props);
+			var prop = jstype.meta.property(propName);
+			
+			if(!prop)
+				throw $format("{type}.{property} doesn't exist", {type: jstype.meta.get_fullName(), property: propName});
+			
+			if(!resolveType(prop.get_fullTypeName())) {
+				fetchType(model, prop.get_fullTypeName(), function(resolved) {
+					console.log($format("resolvePaths {0}.{1} callback", [jstype.meta.get_fullName(), props]));
+					
+					if (props.length > 0)
+						resolvePaths(model, resolved, props, callback);
+					else if(callback)
+						callback();
 				
-				if(props.length > 0)
-					resolvePaths(model, resolved, props, callback);
-				else if(callback)
-					callback();
-			
-			});
+				});
+			}
+			else
+				callback();
+	
+			console.log($format("resolvePaths {0}.{1} RETURN", [jstype.meta.get_fullName(), props]));
+	
+		
 		}
-		else
-			callback();
+		catch (e) {
+			console.log(e);
+		}
+	}
 
-		console.log($format("resolvePaths {0}.{1} RETURN", [jstype.meta.get_fullName(), props]));
-	}
-	
-	if (!ExoWeb.GetInstance){
-		ExoWeb.GetInstance = function(type, id, paths, callback){
-			console.log($format("stubbed fetching of data for type {0} with id {1} and paths {2}", [type, id, paths]));
-			
-			window.setTimeout(function() {
-				//console.log("ExoWeb.GetInstance CALLBACK");
-				callback(window.data.drivers.__data);	
-			}, 2000);
-		}
-	}
-	
-	if (!ExoWeb.GetType){
-		ExoWeb.GetType = function(type, callback){
-			console.log($format("stubbed fetching of metadata for type {0}", [type]));
-			
-			window.setTimeout(function() {
-				//console.log("fetchType " + typeName + " DONE");
-				var stub = {};
-				stub[type] = window.data.drivers.__metadata[type];
-				callback(stub);
-			}, 1000);
-		}
-	}
-	
 	function fetchTypes(model, query, callback) {
 		var signal = new CallbackSet();
 		
