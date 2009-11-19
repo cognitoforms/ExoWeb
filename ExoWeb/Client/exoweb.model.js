@@ -76,11 +76,10 @@ Type.registerNamespace("ExoWeb.Model");
 					}
 				);
 
-		var _this = this;
 	}
 
 	Model.prototype = {
-		addType: function(name, baseClass, properties) {
+		addType: function(name, baseType, derivedTypes, properties) {
 			var jstype = window[name];
 
 			var type; // referenced in constructor
@@ -102,22 +101,23 @@ Type.registerNamespace("ExoWeb.Model");
 			jstype.All = [];
 			Sys.Observer.makeObservable(jstype.All);
 
-			if (baseClass) {
-				if (typeof (baseClass) == "string")
-					baseClass = window[baseClass];
+			var baseJsType = baseType;
+			if (baseJsType) {
+				if (typeof (baseJsType) == "string")
+					baseJsType = window[baseJsType];
 			}
 			else {
-				baseClass = ObjectBase;
+				baseJsType = ObjectBase;
 			}
 
-			jstype.prototype = new baseClass();
+			jstype.prototype = new baseJsType();
 			jstype.prototype.constructor = jstype;
 
 			var formats = function() { }
-			formats.prototype = baseClass.formats;
+			formats.prototype = baseJsType.formats;
 			jstype.formats = new formats;
 
-			type = new Type(this, jstype, name, properties);
+			type = new Type(this, jstype, name, properties, baseType, derivedTypes);
 
 			jstype.meta = type;
 			jstype.get = function(id) { return type.get(id); };
@@ -193,7 +193,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Type(model, jstype, fullName, properties) {
+	function Type(model, jstype, fullName, properties, baseType, derivedTypes) {
 		this._rules = [];
 		this._jstype = jstype;
 		this._fullName = fullName;
@@ -201,6 +201,8 @@ Type.registerNamespace("ExoWeb.Model");
 		this._counter = 0;
 		this._properties = {};
 		this._model = model;
+		this._baseType = baseType;
+		this._derivedTypes = derivedTypes;
 
 		this.define(properties);
 	}
@@ -245,9 +247,9 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 
 		define: function(properties) {
+			// TODO: avoid all properties since they are not instance properties?
+			//if (propName != "All")
 			for (var propName in properties)
-				// TODO: avoid all properties since they are not instance properties?
-				//if (propName != "All")
 				this.addProperty(propName, properties[propName]);
 		},
 
@@ -481,7 +483,7 @@ Type.registerNamespace("ExoWeb.Model");
 				if (window[this._fullTypeName])
 					this._dataType = window[this._fullTypeName];
 				else if (ignoreMissing)
-						return null;
+					return null;
 				else
 					throw ($format("Unknown data type \"{0}\".", [this._fullTypeName]));
 			}

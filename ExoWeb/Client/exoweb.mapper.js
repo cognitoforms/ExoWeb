@@ -131,7 +131,7 @@ if (!ExoWeb.GetType){
 	CallbackSet.mixin({
 		pending: function(callback) {
 			this._pending++;
-			console.log($format("(+) {_pending}", this));
+			//console.log($format("(+) {_pending}", this));
 
 			if (callback) {
 				var _oneDoneFn = this._oneDoneFn;
@@ -153,7 +153,7 @@ if (!ExoWeb.GetType){
 				this._waitForAll.push(callback);
 		},
 		oneDone: function() {
-			console.log($format("(-) {0}", [this._pending - 1]));
+			//console.log($format("(-) {0}", [this._pending - 1]));
 			
 			if (--this._pending == 0) {
 				while (this._waitForAll.length > 0)
@@ -271,6 +271,21 @@ if (!ExoWeb.GetType){
 
 
 	///////////////////////////////////////////////////////////////////////////////
+	function _augmentInheritance(name, json){
+		for (baseClass in _augmentInheritance.data){
+			if (name == baseClass)
+				json.derived = _augmentInheritance.data[baseClass];
+			else if (Array.contains(_augmentInheritance.data[baseClass], name))
+				json.base = baseClass;
+		}
+		return json;
+	}
+	_augmentInheritance.data = {
+		PrgSection: ['IepAccomodations', 'IepDemographics', 'IepPostSchoolConsiderations', 'IepPresentLevels', 'IepSpecialFactors']
+	}
+	function augmentTypeJson(name, json){
+		return _augmentInheritance(name, json);		
+	}
 	
 	function fetchType(model, typeName, callback) {
 		// TODO: integrate with web service
@@ -280,13 +295,32 @@ if (!ExoWeb.GetType){
 			requested = fetchType.requested[typeName] = new CallbackSet();
 			var signalOthers = requested.pending();
 
-			console.log($format("Fetching type \"{0}\".", [typeName]));
+			//console.log($format("Fetching type \"{0}\".", [typeName]));
 			ExoWeb.GetType(typeName, function(typeJson) {
-				var jstype = model.addType(typeName, null, typeJson[typeName].properties).get_jstype();
+				typeJson = augmentTypeJson(typeName, typeJson[typeName]);
+			
+				var jstype = model.addType(typeName, typeJson.base, typeJson.derived, typeJson.properties).get_jstype();
 
-				callback(jstype);
-				signalOthers();
+				var inheritanceSignals = new CallbackSet();
 				
+				if (jstype.meta._baseType) {
+					var baseType = resolveType(jstype.meta._baseType);
+					if(!baseType)
+						fetchType(model, jstype.meta._baseType, inheritanceSignals.pending());
+				}
+				if (jstype.meta._derivedTypes){
+					Array.forEach(jstype.meta._derivedTypes, function(derived){
+						var derivedType = resolveType(derived);
+						if(!derivedType)
+							fetchType(model, derived, inheritanceSignals.pending());
+					});
+				}
+				
+				inheritanceSignals.waitForAll(function(){
+					callback(jstype);
+					signalOthers();
+				});
+
 				delete fetchType.requested[typeName];
 			});
 		}
@@ -314,7 +348,7 @@ if (!ExoWeb.GetType){
 			
 			if(!resolveType(prop.get_fullTypeName())) {
 				fetchType(model, prop.get_fullTypeName(), function(resolved) {
-					console.log($format("resolvePaths {0}.{1} callback", [jstype.meta.get_fullName(), props]));
+					//console.log($format("resolvePaths {0}.{1} callback", [jstype.meta.get_fullName(), props]));
 					
 					if (props.length > 0)
 						resolvePaths(model, resolved, props, callback);
@@ -326,9 +360,7 @@ if (!ExoWeb.GetType){
 			else
 				callback();
 	
-			console.log($format("resolvePaths {0}.{1} RETURN", [jstype.meta.get_fullName(), props]));
-	
-		
+			//console.log($format("resolvePaths {0}.{1} RETURN", [jstype.meta.get_fullName(), props]));
 		}
 		catch (e) {
 			console.log(e);
@@ -339,7 +371,7 @@ if (!ExoWeb.GetType){
 		var signal = new CallbackSet();
 		
 		function processPaths(jstype) { 
-			console.log("processPaths " + jstype.meta.get_fullName());
+			//console.log("processPaths " + jstype.meta.get_fullName());
 			if(query.and) {
 				Array.forEach(query.and, function(path) {
 					resolvePaths(model, jstype, path.split("."), signal.pending());
@@ -425,7 +457,7 @@ if (!ExoWeb.GetType){
 			}
 
 			for (var type in metadata) {
-				var jstype = model.addType(type, null, metadata[type].properties).get_jstype();
+				var jstype = model.addType(type, metadata[type].base, metadata[type].derived, metadata[type].properties).get_jstype();
 				createWireFormat(jstype, type);
 			}
 		}
