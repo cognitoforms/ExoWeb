@@ -218,22 +218,8 @@ ExoWeb.UI.Field.prototype = {
 		}
 	},
 	get_data: function() {
-		if (!this._data) {
-			var ctx = this.findContext();
-			var target = ctx.dataItem;
-			var props = target.meta.property(this.get_source());
-
-			if (!props)
-				throw ($format("Property \"{p}\" could not be found.", { p: this.get_source() }));
-
-			var dt = props.lastProperty().get_dataType();
-
-			var format;
-			if (!(format = props.lastProperty().get_format()) && dt.formats)
-				format = dt.formats.$default;
-
-			this._data = new ExoWeb.Model.Adapter(target, props, format, { label: this.get_label(), readonly: this.get_isReadOnly() });
-		}
+		if (!this._data)
+			this._data = new ExoWeb.Model.Adapter(this.findContext(), this.get_source(), null, null, { label: this.get_label(), readonly: this.get_isReadOnly() });
 		return this._data;
 	},
 	findContext: function(element) {

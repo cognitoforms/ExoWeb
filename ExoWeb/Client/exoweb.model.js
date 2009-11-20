@@ -1175,43 +1175,9 @@ Type.registerNamespace("ExoWeb.Model");
 
 		var path = properties.path || properties.$default;
 
-		var source = templateContext.dataItem;
-		var target = templateContext.dataItem;
-
-		if (templateContext.dataItem instanceof Adapter) {
-			target = source.property().target();
-			source = source.get_value();
-
-			// TODO: what if the binding expression is "value"?
-			if (path.indexOf("value.") == 0)
-				path = path.substring(6);
-		}
-
-		var props = source.meta.property(path);
-		if (!props)
-			throw ($format("Property \"{p}\" could not be found.", { p: path }));
-
-		if (templateContext.dataItem instanceof Adapter) {
-			props.prepend(templateContext.dataItem.property());
-		}
-
-		var dt = props.get_dataType();
-
-		var valueFormat;
-		if (properties.valueFormat)
-			valueFormat = dt.formats[properties.valueFormat];
-		else if (!(valueFormat = props.get_format()))
-			valueFormat = dt.formats.$value || dt.formats.$label;
-
-		var labelFormat;
-		if (properties.labelFormat)
-			labelFormat = dt.formats[properties.labelFormat];
-		else if (!(labelFormat = props.get_format()))
-			labelFormat = dt.formats.$label || dt.formats.$value;
-
 		delete properties.$default;
 
-		return new Adapter(target, props, valueFormat, labelFormat, properties);
+		return new Adapter(templateContext, path, properties.valueFormat, properties.labelFormat, properties);
 	}
 
 	// Markup Extensions
@@ -1312,11 +1278,11 @@ Type.registerNamespace("ExoWeb.Model");
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	function Adapter(target, propertyChain, valueFormat, labelFormat, options) {
-		this._target = target;
-		this._propertyChain = propertyChain;
-		this._valueFormat = valueFormat;
-		this._labelFormat = labelFormat;
+	function Adapter(context, propertyPath, valueFormatName, labelFormatName, options) {
+		this._context = context;
+		this._propertyPath = propertyPath;
+		this._valueFormatName = valueFormatName;
+		this._labelFormatName = labelFormatName;
 		this._emptyOption = true;
 		this._ignoreTargetEvents = false;
 
@@ -1336,28 +1302,61 @@ Type.registerNamespace("ExoWeb.Model");
 
 				// create a getter if one doesn't exist
 				if (!this["get_" + opt]) {
-					var type = this._propertyChain.get_containingType();
-					this["get_" + opt] = type._makeGetter(this, function() { return this[_opt]; });
+					this["get_" + opt] = function() { return this[_opt]; };
 				}
 			}
 		}
-
-		var _this = this;
-		Sys.Observer.makeObservable(this);
-		// subscribe to property changes at any point in the path
-		this._propertyChain.each(this._target, function(obj, prop) {
-			if (prop.get_typeClass() == "entitylist")
-				Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
-					_this._onTargetChanged(sender, args);
-				});
-			else
-				Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
-					_this._onTargetChanged(sender, args);
-				});
-		});
 	}
 
 	Adapter.prototype = {
+		get_target: function() {
+			if (!this._target) {
+				if (this._context instanceof ObjectBase)
+					this._target = this._context;
+				else if (this._context.dataItem instanceof Adapter)
+					this._target = this._context.dataItem.property().target();
+				else
+					this._target = this._context.dataItem;					
+			}
+
+			return this._target;
+		},
+		get_propertyChain: function() {
+			if (!this._propertyChain) {
+				var adapterOrObject = this._context instanceof ObjectBase ? this._context : this._context.dataItem;
+				var sourceObject = (adapterOrObject instanceof Adapter) ? adapterOrObject.get_value() : adapterOrObject;
+
+				// get the property chain starting at the source object
+				this._propertyChain = sourceObject.meta.property(this._propertyPath);
+				if (!this._propertyChain)
+					throw ($format("Property \"{p}\" could not be found.", { p: this._propertyPath }));
+
+				// prepend parent adapter's property path
+				if (adapterOrObject instanceof Adapter)
+					this._propertyChain.prepend(adapterOrObject.property());
+			}
+
+			return this._propertyChain;
+		},
+		ensureObservable: function() {
+			// TODO: actually check observability
+			if (!this._observable) {
+				var _this = this;
+				Sys.Observer.makeObservable(this);
+				// subscribe to property changes at any point in the path
+				this.get_propertyChain().each(this.get_target(), function(obj, prop) {
+					if (prop.get_typeClass() == "entitylist")
+						Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
+							_this._onTargetChanged(sender, args);
+						});
+					else
+						Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
+							_this._onTargetChanged(sender, args);
+						});
+				});
+				this._observable = true;
+			}
+		},
 		// Pass property change events to the target object
 		///////////////////////////////////////////////////////////////////////////
 		_onTargetChanged: function(sender, args) {
@@ -1370,7 +1369,7 @@ Type.registerNamespace("ExoWeb.Model");
 		// Properties that are intended to be used by templates
 		///////////////////////////////////////////////////////////////////////////
 		get_label: function() {
-			return this._label || this._propertyChain.get_label();
+			return this._label || this.get_propertyChain().get_label();
 		},
 		get_helptext: function() {
 			return this._helptext || "";
@@ -1389,14 +1388,14 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 		get_options: function() {
 			if (!this._options) {
-				if (this._propertyChain.get_typeClass() == TypeClass.Intrinsic)
+				if (this.get_propertyChain().get_typeClass() == TypeClass.Intrinsic)
 					return null;
 
 				// TODO: handle allowed values in multiple forms (function, websvc call, string path)
 				var allowed = null;
-				var path = this._propertyChain.get_allowedValues();
+				var path = this.get_propertyChain().get_allowedValues();
 				if (path && path.length > 0) {
-					var root = this._propertyChain.lastTarget(this._target);
+					var root = this.get_propertyChain().lastTarget(this.get_target());
 					var props = root.meta.property(path);
 
 					if (props) {
@@ -1420,7 +1419,7 @@ Type.registerNamespace("ExoWeb.Model");
 					allowed = root;
 				}
 
-				if (this._propertyChain.get_typeClass() == TypeClass.Entity) {
+				if (this.get_propertyChain().get_typeClass() == TypeClass.Entity) {
 					this._options = [];
 
 					if (this._emptyOption)
@@ -1429,7 +1428,7 @@ Type.registerNamespace("ExoWeb.Model");
 					for (var a = 0; a < allowed.length; a++)
 						Array.add(this._options, new OptionAdapter(this, allowed[a]));
 				}
-				else if (this._propertyChain.get_typeClass() == TypeClass.EntityList) {
+				else if (this.get_propertyChain().get_typeClass() == TypeClass.EntityList) {
 					this._options = [];
 
 					for (var a = 0; a < allowed.length; a++)
@@ -1443,57 +1442,80 @@ Type.registerNamespace("ExoWeb.Model");
 			return this._badValue;
 		},
 		get_valueFormat: function() {
+			if (!this._valueFormat) {
+				var dt = this.get_propertyChain().get_dataType();
+
+				if (this._valueFormatName)
+					this._valueFormat = dt.formats[this._valueFormatName];
+				else if (!(this._valueFormat = this.get_propertyChain().get_format()))
+					this._valueFormat = dt.formats.$value || dt.formats.$label;
+			}
+
 			return this._valueFormat;
 		},
 		get_labelFormat: function() {
+			if (!this._labelFormat) {
+				var dt = this.get_propertyChain().get_dataType();
+
+				if (this._labelFormatName)
+					this._labelFormat = dt.formats[this._labelFormatName];
+				else if (!(this._labelFormat = this.get_propertyChain().get_format()))
+					this._labelFormat = dt.formats.$label || dt.formats.$value;
+			}
+
 			return this._labelFormat;
 		},
 		get_rawValue: function() {
-			return this._propertyChain.value(this._target);
+			return this.get_propertyChain().value(this.get_target());
 		},
 		get_value: function() {
+			this.ensureObservable();
+
 			if (typeof (this._badValue) !== "undefined")
 				return this._badValue;
 
 			var rawValue = this.get_rawValue();
 
-			return (this._valueFormat) ? this._valueFormat.convert(rawValue) : rawValue;
+			var format = this.get_valueFormat();
+			return format ? format.convert(rawValue) : rawValue;
 		},
 		set_value: function(value) {
+			this.ensureObservable();
+
 			var converted = (this._valueFormat) ? this._valueFormat.convertBack(value) : value;
 
-			this._propertyChain.lastTarget(this._target).meta.clearIssues(this);
+			this.get_propertyChain().lastTarget(this.get_target()).meta.clearIssues(this);
 
 			if (converted instanceof FormatIssue) {
 				this._badValue = value;
 
 				issue = new RuleIssue(
-							$format(converted.get_message(), { value: this._propertyChain.get_label() }),
-							[this._propertyChain.lastProperty()],
+							$format(converted.get_message(), { value: this.get_propertyChain().get_label() }),
+							[this.get_propertyChain().lastProperty()],
 							this);
 
-				this._propertyChain.lastTarget(this._target).meta.issueIf(issue, true);
+				this.get_propertyChain().lastTarget(this.get_target()).meta.issueIf(issue, true);
 
 				// run the rules to preserve the order of issues
-				this._propertyChain.lastTarget(this._target).meta.executeRules(this._propertyChain.get_name());
+				this.get_propertyChain().lastTarget(this.get_target()).meta.executeRules(this.get_propertyChain().get_name());
 			}
 			else {
 
-				var changed = this._propertyChain.value(this._target) !== converted;
+				var changed = this.get_propertyChain().value(this.get_target()) !== converted;
 
 				if (typeof (this._badValue) !== "undefined") {
 					delete this._badValue;
 
 					// force rules to run again in order to trigger validation events
 					if (!changed)
-						this._propertyChain.lastTarget(this._target).meta.executeRules(this._propertyChain.get_name());
+						this.get_propertyChain().lastTarget(this.get_target()).meta.executeRules(this.get_propertyChain().get_name());
 				}
 
 				if (changed) {
 					this._ignoreTargetEvents = true;
 
 					try {
-						this._propertyChain.value(this._target, converted);
+						this.get_propertyChain().value(this.get_target(), converted);
 					}
 					finally {
 						this._ignoreTargetEvents = false;
@@ -1505,10 +1527,10 @@ Type.registerNamespace("ExoWeb.Model");
 		// Pass validation events through to the target
 		///////////////////////////////////////////////////////////////////////////
 		addPropertyValidating: function(propName, handler) {
-			this._propertyChain.lastTarget(this._target).meta.addPropertyValidating(this._propertyChain.get_name(), handler);
+			this.get_propertyChain().lastTarget(this.get_target()).meta.addPropertyValidating(this.get_propertyChain().get_name(), handler);
 		},
 		addPropertyValidated: function(propName, handler) {
-			this._propertyChain.lastTarget(this._target).meta.addPropertyValidated(this._propertyChain.get_name(), handler);
+			this.get_propertyChain().lastTarget(this.get_target()).meta.addPropertyValidated(this.get_propertyChain().get_name(), handler);
 		},
 
 		// Override toString so that UI can bind to the adapter directly
