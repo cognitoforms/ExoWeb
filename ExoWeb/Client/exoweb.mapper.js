@@ -165,7 +165,16 @@ if (!ExoWeb.GetType){
 
 	///////////////////////////////////////////////////////////////////////////
 	function $loadData(data){
+		console.log("loading data");
+		
 		try {
+			var getType = function(type, id){
+				if (id.indexOf("|") > 0)
+					return id.substring(0, id.indexOf("|"));
+				else
+					return type;
+			}
+		
 			// Note: load object depends on local "data" variable to access data for related objects
 			var loadObject = function(obj, type, id, depth) {
 				obj._loaded = true;
@@ -207,6 +216,7 @@ if (!ExoWeb.GetType){
 					}
 					else {
 						var ctor = prop.get_dataType(true);
+						var propType = prop.get_typeName();
 
 						if (!ctor) {
 							// TODO: handle unknown types
@@ -214,27 +224,38 @@ if (!ExoWeb.GetType){
 						}
 						else if (ctor.meta) {
 							if (prop.get_isList()) {
-								var src = objectData[propName];
-								var dst = [];
+								var ids = objectData[propName];
+								var list = [];
 
-								if (src.length == 1 && src[0] == "deferred") {
+								if (ids.length == 1 && ids[0] == "deferred") {
 									// TODO: handle deferred lists appropriately
-									dst.__deferred = true;
+									list.__deferred = true;
 								}
 								else{
-									for (var i = 0; i < src.length; i++) {
-										var child = dst[dst.length] = new ctor(src[i]);
+									for (var i = 0; i < ids.length; i++) {
+										var childId = ids[i];
+										var childType = getType(propType, childId);
+										var childCtor = window[childType];
+										var child = new childCtor(childId);
+										
+										list.push(child);
+										
 										if (!child._loaded)
-											loadObject(child, prop.get_typeName(), src[i], depth + 1);
+											loadObject(child, childType, childId, depth + 1);
 									}
 								}
-								prop.init(obj, dst);
+								// TODO: is it ok that child list is assigned after while child value is assigned before?
+								prop.init(obj, list);
 							}
 							else {
-								var related = new ctor(objectData[propName]);
-								prop.init(obj, related);
-								if (!related._loaded)
-									loadObject(related, prop.get_typeName(), objectData[propName], depth + 1);
+								var childId = objectData[propName];
+								var childType = getType(propType, childId);
+								var childCtor = window[childType];
+								var child = new childCtor(childId);
+
+								prop.init(obj, child);
+								if (!child._loaded)
+									loadObject(child, childType, childId, depth + 1);
 							}
 						}
 						else {
@@ -249,15 +270,17 @@ if (!ExoWeb.GetType){
 
 			loadObject.MAX_DEPTH = 10;
 	
-			for (var type in data) {
-				var ctor = window[type];
-				if (!ctor) {
-					// TODO: handle types that are not defined
-					console.log("type " + type + " is not defined");
-					continue;
-				}
-				
-				for (var id in data[type]) {
+			for (var typeVar in data) {
+				for (var id in data[typeVar]) {
+					// should be one and the same but use id type for consistency
+					var type = getType(typeVar, id);
+					var ctor = window[type];
+					if (!ctor) {
+						// TODO: handle types that are not defined
+						console.log($format("type \"{0}\" is not defined", [type]));
+						continue;
+					}
+
 					var obj = new ctor(id);
 					if (!obj._loaded)
 						loadObject(obj, type, id, 0);
@@ -271,22 +294,41 @@ if (!ExoWeb.GetType){
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	function _augmentInheritance(name, json){
-		for (baseClass in _augmentInheritance.data){
-			if (name == baseClass)
-				json.derived = _augmentInheritance.data[baseClass];
-			else if (Array.contains(_augmentInheritance.data[baseClass], name))
-				json.base = baseClass;
+	function fetchDerivedTypes(model, typeName, derivedTypes, callback){
+		if (derivedTypes && derivedTypes instanceof Array && derivedTypes.length > 0){
+			var derivedSignals = new CallbackSet();
+			Array.forEach(derivedTypes, function(derivedType){
+				console.log($format("{0} requires derived type {1}.", [typeName, derivedType]));
+				if(!resolveType(derivedType))
+					fetchType(model, derivedType, derivedSignals.pending());
+			});
+			derivedSignals.waitForAll(function(){
+				console.log($format("{0} finished loading derived types.", [typeName]));
+				callback();
+			});
 		}
-		return json;
-	}
-	_augmentInheritance.data = {
-		PrgSection: ['IepAccomodations', 'IepDemographics', 'IepPostSchoolConsiderations', 'IepPresentLevels', 'IepSpecialFactors']
-	}
-	function augmentTypeJson(name, json){
-		return _augmentInheritance(name, json);		
+		else {
+			console.log($format("{0} no derived types required.", [typeName]));
+			callback();
+		}
 	}
 	
+	function fetchBaseType(model, typeName, baseTypeName, callback){
+		if (baseTypeName && !resolveType(baseTypeName)) {
+			var baseSignal = new CallbackSet();
+			console.log($format("{0} requires base type {1}.", [typeName, baseTypeName]));
+			fetchType(model, baseTypeName, baseSignal.pending());
+			baseSignal.waitForAll(function(){
+				console.log($format("{0} got response that base type {1} is loaded.", [typeName, baseTypeName]));
+				callback();
+			});
+		}
+		else {
+			console.log($format("{0} does not require a base type.", [typeName]));
+			callback();
+		}
+	}
+
 	function fetchType(model, typeName, callback) {
 		// TODO: integrate with web service
 		var requested = fetchType.requested[typeName];
@@ -295,39 +337,34 @@ if (!ExoWeb.GetType){
 			requested = fetchType.requested[typeName] = new CallbackSet();
 			var signalOthers = requested.pending();
 
-			//console.log($format("Fetching type \"{0}\".", [typeName]));
+			console.log($format("{0} has not been requested before.  fetching now.", [typeName]));
 			ExoWeb.GetType(typeName, function(typeJson) {
-				typeJson = augmentTypeJson(typeName, typeJson[typeName]);
-			
-				var jstype = model.addType(typeName, typeJson.base, typeJson.derived, typeJson.properties).get_jstype();
-
-				var inheritanceSignals = new CallbackSet();
+				typeJson = typeJson[typeName];
+				console.log($format("{0} response recieved from web service", [typeName]));
 				
-				if (jstype.meta._baseType) {
-					var baseType = resolveType(jstype.meta._baseType);
-					if(!baseType)
-						fetchType(model, jstype.meta._baseType, inheritanceSignals.pending());
-				}
-				if (jstype.meta._derivedTypes){
-					Array.forEach(jstype.meta._derivedTypes, function(derived){
-						var derivedType = resolveType(derived);
-						if(!derivedType)
-							fetchType(model, derived, inheritanceSignals.pending());
-					});
+				var _typeName = typeName;
+				var _typeJson = typeJson;
+				var load = function(){
+					return model.addType(_typeName, _typeJson.baseType, _typeJson.derivedTypes, _typeJson.properties).get_jstype();
 				}
 				
-				inheritanceSignals.waitForAll(function(){
-					callback(jstype);
+				fetchBaseType(model, typeName, typeJson.baseType, function(){
+					if (typeJson.baseType)
+						console.log($format("{0} can be loaded now that base type {1} is present", [typeName, typeJson.baseType]));
+					else
+						console.log($format("{0} can be loaded since it doesn't require a base type", [typeName]));
+					
+					var jstype = load();
 					signalOthers();
+					delete fetchType.requested[typeName];
+					callback(jstype);
 				});
-
-				delete fetchType.requested[typeName];
 			});
 		}
 		else {
-			//console.log("fetchType " + typeName + " WAIT");
+			console.log($format("{0} has been requested.  waiting.", [typeName]));
 			requested.waitForAll(function() {
-				//console.log("fetchType " + typeName + " WAIT CALLBACK");
+				console.log($format("{0} has been fetched.  done waiting.", [typeName]));
 				callback(resolveType(typeName))
 			});
 		}
@@ -350,11 +387,15 @@ if (!ExoWeb.GetType){
 				fetchType(model, prop.get_fullTypeName(), function(resolved) {
 					//console.log($format("resolvePaths {0}.{1} callback", [jstype.meta.get_fullName(), props]));
 					
-					if (props.length > 0)
-						resolvePaths(model, resolved, props, callback);
-					else if(callback)
-						callback();
-				
+					// TODO: fetch derived types
+					fetchDerivedTypes(model, resolved.meta.get_fullName(), resolved.meta._derivedTypes, function(){
+						console.log($format("{0} can resolve paths now that derived types are loaded.", [resolved.meta.get_fullName()]));
+					
+						if (props.length > 0)
+							resolvePaths(model, resolved, props, callback);
+						else if(callback)
+							callback();
+					});
 				});
 			}
 			else
@@ -370,13 +411,16 @@ if (!ExoWeb.GetType){
 	function fetchTypes(model, query, callback) {
 		var signal = new CallbackSet();
 		
-		function processPaths(jstype) { 
-			//console.log("processPaths " + jstype.meta.get_fullName());
-			if(query.and) {
-				Array.forEach(query.and, function(path) {
-					resolvePaths(model, jstype, path.split("."), signal.pending());
-				});
-			}
+		function processPaths(jstype) {
+			fetchDerivedTypes(model, query.from, jstype.meta._derivedTypes, function(){
+				//console.log("processPaths " + jstype.meta.get_fullName());
+				console.log($format("{0} can process paths now that derived types are loaded.", [query.from]));
+				if(query.and) {
+					Array.forEach(query.and, function(path) {
+						resolvePaths(model, jstype, path.split("."), signal.pending());
+					});
+				}
+			});
 		}
 		
 		var rootType = resolveType(query.from);
@@ -457,7 +501,7 @@ if (!ExoWeb.GetType){
 			}
 
 			for (var type in metadata) {
-				var jstype = model.addType(type, metadata[type].base, metadata[type].derived, metadata[type].properties).get_jstype();
+				var jstype = model.addType(type, metadata[type].baseType, metadata[type].derivedTypes, metadata[type].properties).get_jstype();
 				createWireFormat(jstype, type);
 			}
 		}
