@@ -140,7 +140,17 @@ namespace ExoWeb
 			GraphType type = GraphContext.Current.GraphTypes[args.Type];
 
 			// Output the type meta data
-			response.Write("{\r\n   \"" + type.Name + "\": {\r\n      \"properties\": {\r\n");
+			response.Write("{\r\n   \"" + type.Name + "\": {");
+			if (type.BaseType != null)
+				response.Write("\r\n      \"baseType\": \"" + type.BaseType.Name + "\",");
+			if (type.SubTypes != null && type.SubTypes.Count > 0)
+			{
+				System.Text.StringBuilder subTypesList = new System.Text.StringBuilder();
+				foreach (GraphType subType in type.SubTypes)
+					subTypesList.Append((subTypesList.Length > 0 ? ", \"" : "\"") + subType.Name + "\"");
+				response.Write("\r\n      \"derivedTypes\": [ " + subTypesList.ToString() + " ],");
+			}
+			response.Write("\r\n      \"properties\": {\r\n");
 			bool isFirstProperty = true;
 			foreach (GraphProperty property in type.Properties)
 			{
