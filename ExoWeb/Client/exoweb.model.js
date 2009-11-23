@@ -1233,7 +1233,7 @@ Type.registerNamespace("ExoWeb.Model");
 				LazyLoader.load(target, prop, function() {
 					LazyLoader.eval(Sys.Observer.getValue(target, prop), path, callback);
 				});
-				
+
 				return;
 			}
 			else {
@@ -1256,7 +1256,7 @@ Type.registerNamespace("ExoWeb.Model");
 	LazyLoader.load = function load(obj, propName, callback) {
 		if (obj._lazyLoader)
 			obj._lazyLoader.load(obj, propName, callback);
-		else if(callback)
+		else if (callback)
 			callback();
 	}
 
@@ -1399,7 +1399,7 @@ Type.registerNamespace("ExoWeb.Model");
 				else if (this._context.dataItem instanceof Adapter)
 					this._target = this._context.dataItem.property().target();
 				else
-					this._target = this._context.dataItem;					
+					this._target = this._context.dataItem;
 			}
 
 			return this._target;
@@ -1422,7 +1422,6 @@ Type.registerNamespace("ExoWeb.Model");
 			return this._propertyChain;
 		},
 		ensureObservable: function() {
-			// TODO: actually check observability
 			if (!this._observable) {
 				var _this = this;
 				Sys.Observer.makeObservable(this);
