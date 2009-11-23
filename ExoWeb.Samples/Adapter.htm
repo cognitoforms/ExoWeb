@@ -113,7 +113,7 @@
 	</div>-->
 	<hr />
 	<table>
-		<tbody class="sys-template" sys:attach="dataview" dataview:data="{~ model.driver }" >
+		<tbody class="sys-template" sys:attach="dataview" dataview:data="{~ model.driver }">
 			<tr sys:attach="content" content:data="{@ Name, prefix=Driver }" />
 			<tr sys:attach="field" field:source="Name" field:label="Driver" field:isreadonly="true" />
 			<tr>
@@ -127,7 +127,7 @@
 			</tr>
 			<tr sys:attach="content" content:data="{@ BirthDate, label=Birthday }" />
 			<tr>
-				<td>{{ $BirthDate }}</td>
+				<td>BirthDate</td>
 				<td><input type='text' sys:value="{@= BirthDate }" /></td>
 			</tr>
 			<tr>
