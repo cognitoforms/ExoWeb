@@ -69,7 +69,7 @@ ExoWeb.Mock.objects({
 			Name: "Bryan Matthews",
 			Cars: ["1", "2"],
 			Owner: "1",
-			BirthDate: "02/07/1985",
+			BirthDate: new Date("02/07/1985"),
 			PhoneNumber: "803-608-7508",
 			Dealer: "1"
 		}
