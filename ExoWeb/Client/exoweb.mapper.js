@@ -1,5 +1,23 @@
 ﻿Type.registerNamespace("ExoWeb.Mapper");
 
+// TODO: logging strategy for other browsers
+if (typeof(console) == "undefined"){
+	console = {
+		log: function(msg) {
+			//alert(msg);
+		},
+		info: function(msg) {
+			//alert("INFORMATION: " + msg);
+		},
+		warn: function(msg) {
+			//alert("WARNING: " + msg);
+		},
+		error: function(msg) {
+			alert("ERROR: " + msg);
+		}
+	}
+}
+
 if (!ExoWeb.GetInstance){
 	ExoWeb.GetInstance = function(type, id, paths, callback){
 		console.log($format("stubbed fetching of data for type {0} with id {1} and paths {2}", [type, id, paths]));
@@ -262,25 +280,35 @@ if (!ExoWeb.GetType){
 					else {
 						var ctor = prop.get_dataType(true);
 						
-						if (!ctor) 
-							throw "Unknown type: " + prop.get_fullTypeName();
-							
-						if(ctor.meta) {
-							var childType = getType(propType, propData);
-							var childCtor = resolveType(childType);
-							var child = childCtor.meta.get(propData);
-							
-							if(!child) {
-								child = new childCtor(propData);
-								ObjectLazyLoader.register(child);
+						var loadChild = function() {
+							var ctor = prop.get_dataType(true);
+
+							if(ctor.meta) {
+								var childType = getType(propType, propData);
+								var childCtor = resolveType(childType);
+								var child = childCtor.meta.get(propData);
+
+								if(!child) {
+									child = new childCtor(propData);
+									ObjectLazyLoader.register(child);
+								}
+
+								prop.init(obj, child, false);
 							}
-							
-							prop.init(obj, child, false);
+							else {
+								var format = ctor.formats.$wire;
+								prop.init(obj, (format ? format.convertBack(propData) : propData), false);
+							}
 						}
+
+						if (ctor)
+							loadChild();
 						else {
-							var format = ctor.formats.$wire;
-							prop.init(obj, (format ? format.convertBack(propData) : propData), false);
+							var childTypeSignal = new CallbackSet($format("Child type signal ({0})", [propType]));
+							fetchType(obj.meta._model, prop.get_fullTypeName(), childTypeSignal.pending());
+							childTypeSignal.waitForAll(loadChild);
 						}
+
 					}
 				}
 				
@@ -307,7 +335,7 @@ if (!ExoWeb.GetType){
 			}
 		}
 		catch (e) {
-			console.log("ERROR: " + e);
+			console.error(e);
 		}
 	}
 
@@ -358,7 +386,9 @@ if (!ExoWeb.GetType){
 
 			console.log($format("{0} has not been requested before.  fetching now.", [typeName]));
 			typeProvider(typeName, function(typeJson) {
-				if(console) console.log($format("{0} response recieved from web service", [typeName]));
+				console.log($format("{0} response recieved from web service", [typeName]));
+
+				typeJson = typeJson[typeName];
 				
 				var _typeName = typeName;
 				var _typeJson = typeJson;
@@ -397,11 +427,27 @@ if (!ExoWeb.GetType){
 		try{
 			var propName = Array.dequeue(props);
 			var prop = jstype.meta.property(propName);
+						
+			if(!prop) {
+				//console.log($format("{0}.{1} doesn't exist", [jstype.meta.get_fullName(), propName]));
+				if (jstype.meta._derivedTypes) {
+					for (var i = 0, len = jstype.meta._derivedTypes.length, derivedType = null; i < len; i++) {
+						//console.log($format("checking derived type {0}", [jstype.meta._derivedTypes[i]]));
+						if (derivedType = resolveType(jstype.meta._derivedTypes[i])) {
+							if (prop = derivedType.meta.property(propName)) {
+								//console.log($format("{0} property found on {1}", [propName, jstype.meta._derivedTypes[i]]));
+								break;
+							}
+						}
+					}
+				}
+			}
 			
-			if(!prop)
-				throw $format("{type}.{property} doesn't exist", {type: jstype.meta.get_fullName(), property: propName});
-			
-			if(!resolveType(prop.get_fullTypeName())) {
+			if (!prop) {
+				console.error($format("property {0} doesn't exist on type {1} or any derived type", [propName, jstype.meta.get_fullName()]));
+				callback();
+			}
+			else if(!resolveType(prop.get_fullTypeName())) {
 				fetchType(model, prop.get_fullTypeName(), function(resolved) {
 					//console.log($format("resolvePaths {0}.{1} callback", [jstype.meta.get_fullName(), props]));
 					
@@ -422,7 +468,7 @@ if (!ExoWeb.GetType){
 			//console.log($format("resolvePaths {0}.{1} RETURN", [jstype.meta.get_fullName(), props]));
 		}
 		catch (e) {
-			if(console) console.log("ERROR: " + e);
+			console.error(e);
 		}
 	}
 
