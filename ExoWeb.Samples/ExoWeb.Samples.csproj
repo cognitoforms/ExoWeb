@@ -61,6 +61,8 @@
     <Content Include="Common\styles.css" />
     <Content Include="Common\styles.js" />
     <Content Include="Edit.htm" />
+    <Content Include="Mocks.htm" />
+    <Content Include="Scripts\mock-driver.js" />
     <Content Include="Scripts\JQuery\jquery-1.3.2.js" />
     <Content Include="Scripts\JQuery\jquery.json-2.2.js" />
     <Content Include="Scripts\MsAjax\Date.HijriCalendar.debug.js" />

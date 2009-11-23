@@ -81,6 +81,7 @@
   <ItemGroup>
     <Content Include="Client\exoweb.jquery.js" />
     <Content Include="Client\exoweb.mapper.js" />
+    <Content Include="Client\exoweb.mock.js" />
     <Content Include="Client\exoweb.model.js" />
     <Content Include="Client\exoweb.ui.js" />
   </ItemGroup>

@@ -15,22 +15,25 @@
     <script src="Scripts/ExoWeb/exoweb.jquery.js" type="text/javascript"></script>
     <script src="Scripts/ExoWeb/exoweb.ui.js" type="text/javascript"></script>
     <script src="Common/styles.js" type="text/javascript"></script>
-    <script src="Scripts/sample-data.js" type="text/javascript"></script>
+
+    <script src="Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
+    <script src="Scripts/mock-driver.js" type="text/javascript"></script>
+
     <script type="text/javascript">
 
-    	var model = $load(window.data.drivers.__metadata, window.data.drivers.__data);
-    	var sync = new ExoWeb.Mapper.ServerSync(model, 5000);
-    	sync.enableConsole = true;
-
-    	Dealer.formats.$label = new ExoWeb.Model.Format({
-    		convert: function(value) {
-    			return value.Name;
-    		}
+//    	var sync = new ExoWeb.Mapper.ServerSync(model, 5000);
+//    	sync.enableConsole = true;
+    	var model = $model({
+    		driver: { id: "1", from: "Driver", and: ["Owner.Location.Address.State", "Cars", "Dealer"] }
+    	},
+    	function() {
+    		Dealer.formats.$label = new ExoWeb.Model.Format({
+    			convert: function(value) {
+    				return value.Name;
+    			}
+    		});
     	});
-		
-    	var driver = new Driver("1");
-
-
+    	
 
     	function add(type) {
     		var d = new type();
@@ -39,14 +42,22 @@
 
     	function deleteDriver(id) {
     		if(confirm("Delete " + id + "?"))
-    			(new Driver(id)).destroy();
+    			(new Driver(id)).meta.destroy();
     	}
 
     	function deleteCommand(sender, args) {
     		var id = args.get_commandArgument();
     		if (confirm("Delete " + id + "?"))
-    			(new Driver(id)).destroy();
+    			(new Driver(id)).meta.destroy();
     	}
+
+//    	$(function() {
+//    		$(".model-driver").each(function() {
+//    			var dv = new Sys.UI.DataView(this);
+//    			dv.set_data(driver);
+//    			dv.refresh();
+//    		});
+//    	});
     </script>
 </head>
 <body xmlns:sys="javascript:Sys" 
@@ -55,9 +66,54 @@
 		xmlns:field="javascript:ExoWeb.UI.Field" 
 		xmlns:content="javascript:ExoWeb.UI.Content" 
 		xmlns:template="javascript:ExoWeb.UI.Template"
-		sys:activate="*">
+		sys:activate="*">		
+	<!--
+	<div class='sys-template model-driver'>
+		<span>{{ Name }}</span>
+	</div>
+	<hr />
+	<hr />	-->
+<h1>Samples:</h1>
+
+<!-- Need to handle object loading? -->
+<!--	<div class="sys-template" sys:attach="dataview" dataview:data="{~ model.driver, and=Cars}">
+		<h2>{binding Name}</h2>
+		
+		Cars ({{ Cars.length }}):
+		<ul class="sys-template" sys:attach="dataview" dataview:data="{~ Cars }">
+			<li>{binding Name}</li>
+		</ul>
+	</div>-->
+
+<!--	<div class="sys-template" sys:attach="dataview" dataview:data="{model driver}" dataview:autofetch="true">
+		<h1>{binding Name}</h1>
+
+		Cars ({{Cars.length}}):
+		<ul class="sys-template" sys:attach="dataview" dataview:data="{{ Cars }}">
+			<li>{{ Name }}</li>
+		</ul>	
+		
+	</div>
+-->
+<!--	<div class="sys-template model-driver">
+		<span>{binding Name}</span>
+	</div>
+-->	
+<!--	<div class="sys-template" sys:attach="dataview" 
+		dataview:data="{{ driver }}">
+		<span>{binding Name}</span>
+	</div>-->
+	
+	<!-- idea: use custom markup extension to set provider? -->
+<!--	<div class="sys-template" sys:attach="dataview"
+		dataview:dataProvider="{{ provider }}"
+		dataview:fetchParameters="{{ driverQuery }}"
+		dataview:autofetch="true">
+		<span>{{ Name }}</span>
+	</div>-->
+	<hr />
 	<table>
-		<tbody class="sys-template" sys:attach="dataview" dataview:data="{{ driver }}">
+		<tbody class="sys-template" sys:attach="dataview" dataview:data="{~ model.driver }" >
 			<tr sys:attach="content" content:data="{@ Name, prefix=Driver }" />
 			<tr sys:attach="field" field:source="Name" field:label="Driver" field:isreadonly="true" />
 			<tr>
@@ -97,10 +153,6 @@
 				<td>( binding Cars )</td>
 				<td>{ binding Cars }</td>
 			</tr>
-			<!--<tr>
-				<td>(@= Cars )</td>
-				<td>{@= Cars }</td>
-			</tr>-->
 			<tr sys:attach="content" content:data="{@ Dealer }" class="dropdown" />
 			<tr sys:attach="content" content:data="{@ Dealer.Name, prefix=Dealer }" />
 			<tr>
@@ -111,7 +163,7 @@
 		</tbody>
 	</table>
 
-	<button onclick='new Driver()'>add driver</button>
+<!--	<button onclick='new Driver()'>add driver</button>
 	<table>
 		<tbody id='allDrivers' class="sys-template" sys:attach="dataview" dataview:data="{{ Driver.All }}" dataview:oncommand='{{ deleteCommand }}'>
 		<tr>
@@ -129,7 +181,7 @@
 			<td>{{meta.id}}</td><td><button onclick="deleteDriver(this)">X</button></td>
 		</tr>
 		</tbody>
-	</table>
+	</table>-->
 	
 	<!-------------------------------------------------------------------------
 	--	TEMPLATES

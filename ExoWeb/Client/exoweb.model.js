@@ -8,6 +8,8 @@ Function.prototype.mixin = function(methods) {
 Type.registerNamespace("ExoWeb.Model");
 
 (function() {
+	var undefined;
+
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Functor() {
 		var funcs = [];
@@ -112,6 +114,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 			jstype.prototype = new baseJsType();
 			jstype.prototype.constructor = jstype;
+			jstype.registerClass(name, baseJsType);
 
 			var formats = function() { }
 			formats.prototype = baseJsType.formats;
@@ -172,11 +175,6 @@ Type.registerNamespace("ExoWeb.Model");
 	function ObjectBase() {
 	}
 
-	ObjectBase.prototype = {
-		destroy: function() {
-			this.meta.type.unregister(this);
-		}
-	}
 
 	ObjectBase.formats = {
 		$value: new Format({
@@ -190,6 +188,9 @@ Type.registerNamespace("ExoWeb.Model");
 			}
 		})
 	}
+
+	ExoWeb.Model.ObjectBase = ObjectBase;
+	ObjectBase.registerClass("ExoWeb.Model.ObjectBase", null, Sys.Data.IDataProvider);
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
@@ -209,14 +210,11 @@ Type.registerNamespace("ExoWeb.Model");
 
 	Type.prototype = {
 		newId: function() {
-			return "?" + this._counter++;
+			return "+c" + this._counter++;
 		},
 
 		register: function(obj, id) {
 			obj.meta = new ObjectMeta(this, obj);
-
-			for (var prop in this._properties)
-				obj[prop] = null;
 
 			if (!id) {
 				id = this.newId();
@@ -259,10 +257,10 @@ Type.registerNamespace("ExoWeb.Model");
 			this._properties[propName] = prop;
 
 			// modify jstype to include functionality based on the type definition
-			this._jstype["$" + propName] = prop;
+			//this._jstype["$" + propName] = prop;  // is this useful?
 
 			// add members to all instances of this type
-			this._jstype.prototype["$" + propName] = prop;
+			//this._jstype.prototype["$" + propName] = prop;  // is this useful?
 			this._jstype.prototype["get_" + propName] = this._makeGetter(prop, prop.getter);
 
 			if (!prop.get_isList())
@@ -500,6 +498,8 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 
 		getter: function(obj) {
+			if (console) console.log("GET " + this._name);
+
 			this._containingType.get_model().notifyBeforePropertyGet(obj, this);
 			return obj[this._name];
 		},
@@ -541,7 +541,12 @@ Type.registerNamespace("ExoWeb.Model");
 				return obj[this._name];
 		},
 
-		init: function(obj, val) {
+		init: function(obj, val, force) {
+			var curVal = obj[this._name];
+
+			if (curVal !== undefined && !(force === undefined || force))
+				return;
+
 			obj[this._name] = val;
 
 			if (val instanceof Array) {
@@ -818,6 +823,10 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 		addPropertyValidating: function(propName, handler) {
 			this._addEvent("propertyValidating:" + propName, handler);
+		},
+
+		destroy: function() {
+			this.type.unregister(this.obj);
 		}
 	}
 	ObjectMeta.mixin(Functor.eventing);
@@ -880,8 +889,8 @@ Type.registerNamespace("ExoWeb.Model");
 			var err = null;
 			var fn = null;
 
-			var hasMin = (typeof (min) != "undefined" && min != null);
-			var hasMax = (typeof (max) != "undefined" && max != null);
+			var hasMin = (min !== undefined && min != null);
+			var hasMax = (max !== undefined && max != null);
 
 			if (hasMin && hasMax) {
 				err = new RuleIssue(prop.get_label() + " must be between " + min + " and " + max, [prop]);
@@ -1069,7 +1078,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 	Format.mixin({
 		convert: function(val) {
-			if (typeof (val) == "undefined" || val == null)
+			if (val === undefined || val == null)
 				return "";
 
 			if (val instanceof FormatIssue)
@@ -1153,6 +1162,12 @@ Type.registerNamespace("ExoWeb.Model");
 		func.add(handler);
 	};
 
+	// Sets a value
+	Sys.Observer.getValue = function(target, property) {
+		var getter = target["get_" + property];
+		return getter ? getter.call(target) : target[property];
+	}
+
 	//////////////////////////////////////////////////////////////////////////////////////
 	// utilities			
 	Date.prototype.subtract = function(d) {
@@ -1197,6 +1212,74 @@ Type.registerNamespace("ExoWeb.Model");
 
 			var binding = Sys.Binding.bind(options);
 			templateContext.components.push(binding);
+		},
+		false
+	);
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+	function LazyLoader() {
+	}
+
+	LazyLoader.eval = function eval(target, path, callback) {
+		if (!(path instanceof Array))
+			path = path.split(".");
+
+		target = target || window;
+
+		while (path.length > 0) {
+			var prop = Array.dequeue(path);
+
+			if (!LazyLoader.isLoaded(target, prop)) {
+				LazyLoader.load(target, prop, function() {
+					LazyLoader.eval(Sys.Observer.getValue(target, prop), path, callback);
+				});
+				
+				return;
+			}
+			else {
+				var propValue = Sys.Observer.getValue(target, prop);
+				target = propValue;
+			}
+		}
+
+		// Load final object
+		if (!LazyLoader.isLoaded(target))
+			LazyLoader.load(target, null, function() { callback(target); });
+		else
+			callback(target);
+	}
+
+	LazyLoader.isLoaded = function isLoaded(obj, propName) {
+		return !obj._lazyLoader || (obj._lazyLoader.isLoaded && obj._lazyLoader.isLoaded(obj, propName));
+	}
+
+	LazyLoader.load = function load(obj, propName, callback) {
+		if (obj._lazyLoader)
+			obj._lazyLoader.load(obj, propName, callback);
+		else if(callback)
+			callback();
+	}
+
+	LazyLoader.register = function register(obj, loader) {
+		obj._lazyLoader = loader;
+	}
+
+	LazyLoader.unregister = function register(obj) {
+		delete obj._lazyLoader;
+	}
+	ExoWeb.Model.LazyLoader = LazyLoader;
+	LazyLoader.registerClass("ExoWeb.Model.LazyLoader");
+
+	// Lazy eval markup extension
+	Sys.Application.registerMarkupExtension("~",
+		function(component, targetProperty, templateContext, properties) {
+			if (console) console.log("~ " + properties.$default);
+
+			LazyLoader.eval(templateContext.dataItem, properties.$default,
+				function(result) {
+					Sys.Observer.setValue(component, targetProperty, result);
+				}
+			);
 		},
 		false
 	);
@@ -1471,7 +1554,7 @@ Type.registerNamespace("ExoWeb.Model");
 		get_value: function() {
 			this.ensureObservable();
 
-			if (typeof (this._badValue) !== "undefined")
+			if (this._badValue !== undefined)
 				return this._badValue;
 
 			var rawValue = this.get_rawValue();
@@ -1503,7 +1586,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 				var changed = this.get_propertyChain().value(this.get_target()) !== converted;
 
-				if (typeof (this._badValue) !== "undefined") {
+				if (this._badValue !== undefined) {
 					delete this._badValue;
 
 					// force rules to run again in order to trigger validation events
@@ -1623,7 +1706,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 			if (val === null)
 				return "";
-			if (typeof (val) == "undefined")
+			if (val === undefined)
 				return match;
 
 			return val.toString();
