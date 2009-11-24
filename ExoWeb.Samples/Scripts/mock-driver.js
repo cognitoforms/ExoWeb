@@ -10,11 +10,12 @@ ExoWeb.Mock.types({
 		properties: {
 			Id: { type: "String" },
 			Name: { type: "String" },
-			PhoneNumber: { type: "String", format: "Phone" },
+			PhoneNumber: { type: "String", format: "Phone", rules: [{ required: null}] },
 			Owner: { type: "CarOwner" },
-			Cars: { type: "Car", isList: true, allowed: "Dealer.AvailableCars" },
+			Cars: { type: "Car", isList: true, rules: [{ allowedValues: "Dealer.AvailableCars" }] },
 			BirthDate: { type: "Date", format: "ShortDate" },
-			Dealer: { type: "Dealer", allowed: "Dealer.All" }
+			Dealer: { type: "Dealer", rules: [{ allowedValues: "Dealer.All"}] },
+			MilesDriven: { type: "Number", rules: [{ range: { minimum: 0}}] }
 		}
 	},
 	Car: {
@@ -36,7 +37,7 @@ ExoWeb.Mock.types({
 		properties: {
 			Id: { type: "String" },
 			Name: { type: "String" },
-			Location: { type: "OwnerLocation", allowed: "AvailableLocations" },
+			Location: { type: "OwnerLocation", rules: [{ allowedValues: "AvailableLocations"}] },
 			AvailableLocations: { type: "OwnerLocation", isList: true }
 		}
 	},
@@ -71,7 +72,8 @@ ExoWeb.Mock.objects({
 			Owner: "1",
 			BirthDate: new Date("02/07/1985"),
 			PhoneNumber: "803-608-7508",
-			Dealer: "1"
+			Dealer: "1",
+			MilesDriven: 100000
 		}
 	},
 	Car: {

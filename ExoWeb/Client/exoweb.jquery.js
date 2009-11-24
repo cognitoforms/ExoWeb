@@ -12,7 +12,7 @@
 				var srcObj = binding.get_finalSourceObject();
 				var propName = binding.get_finalPath();
 
-				var meta = (srcObj instanceof ExoWeb.Model.Adapter) ? srcObj : srcObj.meta;
+				var meta = (srcObj instanceof ExoWeb.View.Adapter) ? srcObj : srcObj.meta;
 
 				if (!meta)
 					continue;

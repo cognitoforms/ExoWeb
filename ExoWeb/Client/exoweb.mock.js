@@ -58,7 +58,8 @@
 				var _this = this;
 
 				ExoWeb.Mapper.setTypeProvider(function(type, callback) {
-					var json = _this._types[type];
+					var json = {}; 
+					json[type] = _this._types[type];
 					return mockCallback(callback, [json], _this._typeProviderMods, $format("fetching {0} type", arguments));
 				});
 			}
@@ -99,14 +100,14 @@
 							_this._appendObject(json, propType, id[0]);
 					}
 
-					return mockCallback(callback, [json], _this._listProviderMods, $format("fetching {0}({1}).{2})", arguments));
+					return mockCallback(callback, [json], _this._listProviderMods, $format("fetching {0}({1}).{2}", arguments));
 				});
 			}
 		},
 		_appendObject: function _appendObject(json, type, id) {
 			if (!json[type])
 				json[type] = {};
-				
+
 			json[type][id] = this._objects[type][id];
 		},
 		_query: function _query(type, id, paths, result, depth) {

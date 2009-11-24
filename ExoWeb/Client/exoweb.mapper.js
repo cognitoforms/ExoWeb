@@ -154,62 +154,20 @@ if (!ExoWeb.GetType){
 	ExoWeb.Mapper.ServerSync = ServerSync;
 	ServerSync.registerClass("ExoWeb.Mapper.ServerSync");
 
-	///////////////////////////////////////////////////////////////////////////////
-	function CallbackSet(debugLabel) {
-		this._waitForAll = [];
-		this._pending = 0;
-		var _this = this;
-		this._oneDoneFn = function() { CallbackSet.prototype.oneDone.apply(_this, arguments); };
-		//this._debugLabel = debugLabel;
-	}
-	
-	CallbackSet.mixin({
-		pending: function(callback) {
-			this._pending++;
-			if(console && this._debugLabel) console.log($format("{_debugLabel} (+) {_pending}", this));
-
-			if (callback) {
-				var _oneDoneFn = this._oneDoneFn;
-				return function() {
-					callback.apply(this, arguments);
-					_oneDoneFn.apply(this, arguments);
-				}
-			}
-			else
-				return this._oneDoneFn;
-		},
-		waitForAll: function(callback) {
-			if (!callback)
-				return;
-
-			if (this._pending == 0) {
-				callback();
-			} else
-				this._waitForAll.push(callback);
-		},
-		oneDone: function() {
-			if(console && this._debugLabel) console.log($format("{1} (-) {0}", [this._pending - 1, this._debugLabel]));
-			
-			if (--this._pending == 0) {
-				while (this._waitForAll.length > 0)
-					Array.dequeue(this._waitForAll).apply(this, arguments);
-			}
-		}
-	});
 
 
 	///////////////////////////////////////////////////////////////////////////
+	function getTypeOrIdType(type, id){
+		if (id.indexOf("|") > 0)
+			return id.substring(0, id.indexOf("|"));
+		else
+			return type;
+	}
+	
 	function loadData(data){
 		console.log("loading data");
 		
-		try {
-			var getType = function(type, id){
-				if (id.indexOf("|") > 0)
-					return id.substring(0, id.indexOf("|"));
-				else
-					return type;
-			}
-		
+		try {		
 			// Note: load object depends on local "data" variable to access data for related objects
 			var loadObject = function(obj, type, id) {
 				console.log("load", [type, id]);
@@ -237,7 +195,7 @@ if (!ExoWeb.GetType){
 					console.log("    ." + propName, [propData]);
 
 					if (!prop) {
-						console.log($format("ERROR: unknown property {0}.{1}", [type, propName]));
+						console.error($format("unknown property {0}.{1}", [type, propName]));
 						continue;
 					}
 					else {
@@ -261,7 +219,7 @@ if (!ExoWeb.GetType){
 							
 							for (var i = 0; i < propData.length; i++) {
 								var childId = propData[i];
-								var childType = getType(propType, childId);
+								var childType = getTypeOrIdType(propType, childId);
 								var childCtor = resolveType(childType);
 								var child = childCtor.meta.get(childId);
 								
@@ -275,40 +233,30 @@ if (!ExoWeb.GetType){
 						}
 						
 						// TODO: is it ok that child list is assigned after while child value is assigned before?
-						prop.init(obj, list, false);
+						prop.init(obj, list, propData.force);
 					}
 					else {
 						var ctor = prop.get_dataType(true);
 						
-						var loadChild = function() {
-							var ctor = prop.get_dataType(true);
-
-							if(ctor.meta) {
-								var childType = getType(propType, propData);
-								var childCtor = resolveType(childType);
-								var child = childCtor.meta.get(propData);
-
-								if(!child) {
-									child = new childCtor(propData);
-									ObjectLazyLoader.register(child);
-								}
-
-								prop.init(obj, child, false);
+						if (!ctor) 
+							throw "Unknown type: " + prop.get_fullTypeName();
+							
+						if(ctor.meta) {
+							var childType = getTypeOrIdType(propType, propData);
+							var childCtor = resolveType(childType);
+							var child = childCtor.meta.get(propData);
+							
+							if(!child) {
+								child = new childCtor(propData);
+								ObjectLazyLoader.register(child);
 							}
-							else {
-								var format = ctor.formats.$wire;
-								prop.init(obj, (format ? format.convertBack(propData) : propData), false);
-							}
+
+							prop.init(obj, child, false);
 						}
-
-						if (ctor)
-							loadChild();
 						else {
-							var childTypeSignal = new CallbackSet($format("Child type signal ({0})", [propType]));
-							fetchType(obj.meta._model, prop.get_fullTypeName(), childTypeSignal.pending());
-							childTypeSignal.waitForAll(loadChild);
+							var format = ctor.formats.$wire;
+							prop.init(obj, (format ? format.convertBack(propData) : propData), false);
 						}
-
 					}
 				}
 				
@@ -321,7 +269,7 @@ if (!ExoWeb.GetType){
 			for (var typeVar in data) {
 				for (var id in data[typeVar]) {
 					// should be one and the same but use id type for consistency
-					var type = getType(typeVar, id);
+					var type = getTypeOrIdType(typeVar, id);
 					var ctor = resolveType(type);
 					if (!ctor) {
 						// TODO: handle types that are not defined
@@ -343,7 +291,7 @@ if (!ExoWeb.GetType){
 	///////////////////////////////////////////////////////////////////////////////
 	function fetchDerivedTypes(model, typeName, derivedTypes, callback){
 		if (derivedTypes && derivedTypes instanceof Array && derivedTypes.length > 0){
-			var derivedSignals = new CallbackSet("fetchDerivedTypes");
+			var derivedSignals = new ExoWeb.Signal("fetchDerivedTypes");
 			Array.forEach(derivedTypes, function(derivedType){
 				console.log($format("{0} requires derived type {1}.", [typeName, derivedType]));
 				if(!resolveType(derivedType))
@@ -362,7 +310,7 @@ if (!ExoWeb.GetType){
 	
 	function fetchBaseType(model, typeName, baseTypeName, callback){
 		if (baseTypeName && !resolveType(baseTypeName)) {
-			var baseSignal = new CallbackSet("fetchBaseType");
+			var baseSignal = new ExoWeb.Signal("fetchBaseType");
 			console.log($format("{0} requires base type {1}.", [typeName, baseTypeName]));
 			fetchType(model, baseTypeName, baseSignal.pending());
 			baseSignal.waitForAll(function(){
@@ -381,19 +329,30 @@ if (!ExoWeb.GetType){
 		var requested = fetchType.requested[typeName];
 		
 		if(!requested) {
-			requested = fetchType.requested[typeName] = new CallbackSet("fetchType(" + typeName + ")");
+			requested = fetchType.requested[typeName] = new ExoWeb.Signal("fetchType(" + typeName + ")");
 			var signalOthers = requested.pending();
 
 			console.log($format("{0} has not been requested before.  fetching now.", [typeName]));
-			typeProvider(typeName, function(typeJson) {
-				console.log($format("{0} response recieved from web service", [typeName]));
-
-				typeJson = typeJson[typeName];
+			typeProvider(typeName, function(json) {
+				if(console) console.log($format("{0} response recieved from web service", [typeName]));
 				
-				var _typeName = typeName;
-				var _typeJson = typeJson;
+				var typeJson = json[typeName];
+				
 				var load = function(){
-					return model.addType(_typeName, _typeJson.baseType, _typeJson.derivedTypes, _typeJson.properties).get_jstype();
+					var mtype = model.addType(typeName, typeJson.baseType, typeJson.derivedTypes);
+					
+					for(var propName in typeJson.properties){
+						var propJson = typeJson.properties[propName];
+						var format = window[propJson.format] ? window[dataType].formats[def.format] : null;
+						var prop = mtype.addProperty(propName, propJson.type, propJson.label, format, propJson.isList);
+						
+						if(propJson.rules) {
+							for(var i=0; i<propJson.rules.length; ++i) {
+								ruleFromJson(propJson.rules[i], prop);
+							}
+						}
+					}					
+					return mtype.get_jstype();
 				}
 				
 				fetchBaseType(model, typeName, typeJson.baseType, function(){
@@ -468,12 +427,12 @@ if (!ExoWeb.GetType){
 			//console.log($format("resolvePaths {0}.{1} RETURN", [jstype.meta.get_fullName(), props]));
 		}
 		catch (e) {
-			console.error(e);
+			if(console) console.error(e);
 		}
 	}
 
 	function fetchTypes(model, query, callback) {
-		var signal = new CallbackSet("fetchTypes");
+		var signal = new ExoWeb.Signal("fetchTypes");
 		
 		function processPaths(jstype) {
 			fetchDerivedTypes(model, query.from, jstype.meta._derivedTypes, function(){
@@ -495,7 +454,15 @@ if (!ExoWeb.GetType){
 			
 		signal.waitForAll(callback);
 	}
-
+	
+	// {ruleName: ruleConfig}
+	function ruleFromJson(json, prop) {
+		for(var name in json) {
+			var ruleType = ExoWeb.Model.Rule[name];
+			var rule = new ruleType(json[name], [prop]);
+		}
+	}
+	
 	///////////////////////////////////////////////////////////////////////////////
 	// Object Loader
 	function ObjectLazyLoader() {
@@ -508,7 +475,7 @@ if (!ExoWeb.GetType){
 			objectProvider(obj.meta.type.get_fullName(), obj.meta.id, [], function(objectJson) {
 				// TODO: queue up multiple callers
 				
-				LazyLoader.unregister(obj);
+				ExoWeb.Model.LazyLoader.unregister(obj);
 				loadData(objectJson);
 				callback();
 			});				
@@ -533,7 +500,7 @@ if (!ExoWeb.GetType){
 		load: function(list, propName, callback) {	
 			if(console) console.log("LOADING: list");
 			
-			var signal = new CallbackSet();
+			var signal = new ExoWeb.Signal();
 			
 			var objectJson;
 			
@@ -548,13 +515,32 @@ if (!ExoWeb.GetType){
 			}
 			
 			signal.waitForAll(function() {
-				ExoWeb.Model.LazyLoader.unregister(list);				
+				ExoWeb.Model.LazyLoader.unregister(list);
+				console.info("list lazy loaded.");
+
+				var listData = objectJson[list._ownerType][list._ownerId][list._ownerProperty.get_name()];
+				for (var i = 0; i < listData.length; i++) {
+					var childId = listData[i];
+					var childType = getTypeOrIdType(list._ownerProperty.get_fullTypeName(), childId);
+					var childCtor = resolveType(childType);
+					var child = childCtor.meta.get(childId);
+					
+					if(!child) {
+						child = new childCtor(childId);
+						ObjectLazyLoader.register(child);
+					}
+
+					list.push(child);
+				}
+				
+				delete objectJson[list._ownerType][list._ownerId][list._ownerProperty.get_name()];
+				
 				delete list._ownerId;
 				delete list._ownerType;
 				delete list._ownerProperty;
 
 				loadData(objectJson);
-								
+				
 				if(callback)
 					callback();
 			});
@@ -582,7 +568,7 @@ if (!ExoWeb.GetType){
 	function $model(options, callback) {
 		var model = new ExoWeb.Model.Model();
 		
-		var allSignals = new CallbackSet("$model allSignals");
+		var allSignals = new ExoWeb.Signal("$model allSignals");
 		
 		var state = {};
 		
@@ -591,7 +577,7 @@ if (!ExoWeb.GetType){
 		// start loading the instances first, then load type data concurrently.
 		// this assumes that instances are slower to load than types due to caching
 		for(varName in options) {
-			state[varName] = { signal: new CallbackSet("$model." + varName) };
+			state[varName] = { signal: new ExoWeb.Signal("$model." + varName) };
 			allSignals.pending();
 			
 			(function(varName) {
@@ -646,5 +632,7 @@ if (!ExoWeb.GetType){
 		
 		return ret;
 	}
+	
 	window.$model = $model;
+	
 })();

@@ -97,6 +97,9 @@ ExoWeb.UI.Template.find = function(element) {
 ExoWeb.UI.Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
 
 
+// TODO: rename content
+
+
 ///////////////////////////////////////////////////////////////////////////////
 /// <summary>
 /// Finds its matching template and renders using the provided data as the 
@@ -135,26 +138,29 @@ ExoWeb.UI.Content.prototype = {
 	},
 	set_data: function(value) {
 		this._data = value;
+		this.render();
 	},
 	render: function() {
-		try {
-			var tmpl = this.get_template();
+		if (this._data && this._initialized) {
+			try {
+				var tmpl = this.get_template();
 
-			// get custom classes from template
-			var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", "").trim();
+				// get custom classes from template
+				var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", "").trim();
 
-			var ctx = tmpl.instantiateIn(this.get_element(), null, this.get_data());
+				var ctx = tmpl.instantiateIn(this.get_element(), null, this.get_data());
 
-			//ctx.dataItem = this.get_data();
+				//ctx.dataItem = this.get_data();
 
-			// copy custom classes from template to content control
-			$(this.get_element()).addClass(classes);
+				// copy custom classes from template to content control
+				$(this.get_element()).addClass(classes);
 
-			// necessary in order to render components found within the template (like a nested dataview)
-			ctx.initializeComponents();
-		}
-		catch (e) {
-			(console && console.log ? console.log : alert)(e);
+				// necessary in order to render components found within the template (like a nested dataview)
+				ctx.initializeComponents();
+			}
+			catch (e) {
+				console.error(e);
+			}
 		}
 	},
 	initialize: function() {
@@ -162,129 +168,13 @@ ExoWeb.UI.Content.prototype = {
 
 		// TODO: include meta info about field?
 
+		this._initialized = true;
+
 		this.render();
 	}
 }
 
 ExoWeb.UI.Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
-
-
-///////////////////////////////////////////////////////////////////////////////
-/// <summary>
-/// 
-/// </summary>
-ExoWeb.UI.Field = function(element) {
-	ExoWeb.UI.Field.initializeBase(this, [element]);
-}
-
-ExoWeb.UI.Field.prototype = {
-	get_source: function() {
-		return this._source;
-	},
-	set_source: function(value) {
-		if (this._source !== value) {
-			this._data = null;
-			// TODO: can't tell whether label was inferred
-			this._source = value;
-		}
-	},
-	get_label: function() {
-		if (!this._label) {
-			this._label = this.get_source();
-
-			// TODO: more robust solution to human-friendly format
-			this._label = this._label.replace(/([^^])([A-Z])/g, "$1 $2");
-		}
-
-		return this._label;
-	},
-	set_label: function(value) {
-		this._label = value;
-	},
-	get_isReadOnly: function() {
-		return this._isReadOnly || false;
-	},
-	set_isReadOnly: function(value) {
-		if (!value) throw ("Value is not defined.");
-
-		if (this._isReadOnly != value) {
-			// TODO: better bool conversion
-			if (typeof (value) == "boolean")
-				this._isReadOnly = value;
-			else if (typeof (value) == "string")
-				this._isReadOnly = (value.toLowerCase() == "true");
-			else
-				throw ($format("The value \"{val}\" could not be converted to a boolean.", { val: value }));
-		}
-	},
-	get_data: function() {
-		if (!this._data)
-			this._data = new ExoWeb.Model.Adapter(this.findContext(), this.get_source(), null, null, { label: this.get_label(), readonly: this.get_isReadOnly() });
-		return this._data;
-	},
-	findContext: function(element) {
-		/// Finds the containing template control for the given element and 
-		/// then finds the element's corresponding context (for repeated content).
-
-		var element = this.get_element();
-		var container = null;
-		var subcontainer = null;
-
-		// find the first parent that is an ASP.NET Ajax template
-		while (element.parentNode && !element.parentNode._msajaxtemplate)
-			element = element.parentNode;
-
-		// containing template was not found
-		if (!element.parentNode || !element.parentNode._msajaxtemplate)
-			throw Error.invalidOperation("The field's parent template could not be found.");
-
-		container = element.parentNode;
-		subcontainer = element;
-
-		// find the correct context (in the case of repeated content)
-		var contexts = container.control.get_contexts();
-		if (contexts) {
-			for (var i = 0, l = contexts.length; i < l; i++) {
-				var ctx = contexts[i];
-				if ((ctx.containerElement === container) && (Sys._indexOf(ctx.nodes, subcontainer) > -1)) {
-					return ctx;
-				}
-			}
-		}
-
-		return null;
-	}
-}
-
-ExoWeb.UI.Field.registerClass("ExoWeb.UI.Field", ExoWeb.UI.Content);
-
-
-///////////////////////////////////////////////////////////////////////////////
-//Type.registerNamespace("ExoWeb.Data");
-
-//ExoWeb.Data.DataContext = function ExoWeb$Data$DataContext(rawData) {
-//	ExoWeb.Data.DataContext.initializeBase(this);
-//	this._rawData = rawData;
-//	this.initialize();
-//}
-
-//ExoWeb.Data.DataContext.prototype = {
-//	// TODO: temporary hack to allow using data context without service
-//	fetchData: function(operation, parameters, mergeOption, httpVerb, succeededCallback, failedCallback, timeout, userContext) {
-//		succeededCallback(this.get_graph());
-//	},
-//	get_root: function() {
-//		return this._root;
-//	},
-//	set_root: function(value) {
-//		this._root = value;
-//	},
-//	initialize: function() {
-//		$load(this._rawData.__metadata, this._rawData.__data);
-//	}
-//}
-
-//ExoWeb.Data.DataContext.registerClass("ExoWeb.Data.DataContext", Sys.Data.DataContext);
 
 
 // Since this script is not loaded by System.Web.Handlers.ScriptResourceHandler

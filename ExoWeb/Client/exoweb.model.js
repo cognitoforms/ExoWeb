@@ -1,69 +1,7 @@
-﻿
-Function.prototype.mixin = function(methods) {
-	for (var m in methods)
-		this.prototype[m] = methods[m];
-}
-
-
-Type.registerNamespace("ExoWeb.Model");
+﻿Type.registerNamespace("ExoWeb.Model");
 
 (function() {
 	var undefined;
-
-	//////////////////////////////////////////////////////////////////////////////////////
-	function Functor() {
-		var funcs = [];
-
-		var f = function() {
-			for (var i = 0; i < funcs.length; ++i)
-				funcs[i].apply(this, arguments);
-		};
-
-		f._funcs = funcs;
-		f.add = Functor.add;
-		f.remove = Functor.remove;
-
-		return f;
-	}
-
-	Functor.add = function() {
-		for (var i = 0; i < arguments.length; ++i) {
-			var f = arguments[i];
-
-			if (f == null)
-				continue;
-
-			this._funcs.push(f);
-		}
-	}
-
-	Functor.remove = function(old) {
-		for (var i = this._funcs.length - 1; i >= 0; --i) {
-			if (this._funcs[i] === old) {
-				this._funcs.splice(i, 1);
-				break;
-			}
-		}
-	}
-
-	Functor.eventing = {
-		_addEvent: function(name, func) {
-			if (!this["_" + name])
-				this["_" + name] = new Functor();
-
-			this["_" + name].add(func);
-		},
-		_removeEvent: function(name, func) {
-			var handler = this["_" + name];
-			if (handler)
-				handler.remove(func);
-		},
-		_raiseEvent: function(name, argsArray) {
-			var handler = this["_" + name];
-			if (handler)
-				handler.apply(this, argsArray);
-		}
-	};
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Model() {
@@ -166,7 +104,7 @@ Type.registerNamespace("ExoWeb.Model");
 			this._raiseEvent("listChanged", [obj, property, changes]);
 		}
 	}
-	Model.mixin(Functor.eventing);
+	Model.mixin(ExoWeb.Functor.eventing);
 
 	ExoWeb.Model.Model = Model;
 	Model.registerClass("ExoWeb.Model.Model");
@@ -195,7 +133,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Type(model, jstype, fullName, properties, baseType, derivedTypes) {
-		this._rules = [];
+		this._rules = {};
 		this._jstype = jstype;
 		this._fullName = fullName;
 		this._pool = {};
@@ -251,8 +189,8 @@ Type.registerNamespace("ExoWeb.Model");
 				this.addProperty(propName, properties[propName]);
 		},
 
-		addProperty: function(propName, def) {
-			var prop = new Property(this, propName, def.type, def.label, def.format ? window[def.type].formats[def.format] : null, def.allowed, def.isList);
+		addProperty: function(propName, dataType, label, format, isList) {
+			var prop = new Property(this, propName, dataType, label, format, isList);
 
 			this._properties[propName] = prop;
 
@@ -265,6 +203,8 @@ Type.registerNamespace("ExoWeb.Model");
 
 			if (!prop.get_isList())
 				this._jstype.prototype["set_" + propName] = this._makeSetter(prop, prop.setter);
+
+			return prop;
 		},
 
 		_makeGetter: function(receiver, fn) {
@@ -320,24 +260,28 @@ Type.registerNamespace("ExoWeb.Model");
 			return prop;
 		},
 
-		rule: function(inputs, func, async, issues) {
-			var rule = new Rule(async, func);
+		addRule: function Type$addRule(rule, prop) {
+			var propName = prop.get_name();
+			var rules = this._rules[propName];
 
-			for (var i = 0; i < inputs.length; ++i) {
-				var propName = inputs[i].get_name();
-				var rules = this._rules[propName];
-
-				if (!rules) {
-					rules = [rule];
-					this._rules[propName] = rules;
-				}
-				else
-					rules.push(rule);
+			if (!rules) {
+				this._rules[propName] = [rule];
 			}
+			else
+				rules.push(rule);
+		},
 
-			if (issues)
-				for (var i = 0; i < issues.length; ++i)
-				issues[i].set_origin(rule);
+		getRule: function(propName, type) {
+			var rules = this._rules[propName];
+
+			if (rules) {
+				for (var i = 0; i < rules.length; i++) {
+					var rule = rules[i];
+					if (rule instanceof type)
+						return rule;
+				}
+			}
+			return null;
 		},
 
 		constraint: function(condition, issueDesc) {
@@ -372,7 +316,7 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 
 		// Executes all rules that have a particular property as input
-		executeRules: function(obj, prop, start) {
+		executeRules: function Type$executeRules(obj, prop, start) {
 			var i = (start ? start : 0);
 			var processing;
 
@@ -425,17 +369,19 @@ Type.registerNamespace("ExoWeb.Model");
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, dataType, label, format, allowedValues, isList) {
+	function Property(containingType, name, dataType, label, format, isList) {
 		this._containingType = containingType;
 		this._name = name;
 		this._fullTypeName = dataType;
-		this._label = label;
+		this._label = label || name.replace(/([^A-Z]+)([A-Z])/g, "$1 $2");
 		this._format = format;
-		this._allowedValues = allowedValues;
 		this._isList = (isList ? true : false);
 	}
 
 	Property.prototype = {
+		rule: function(type) {
+			return this._containingType.getRule(this._name, type);
+		},
 
 		toString: function() {
 			return this.get_label();
@@ -509,6 +455,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 			if (old !== val) {
 				obj[this._name] = val;
+				obj.meta.executeRules(this._name);
 				this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
 			}
 		},
@@ -518,10 +465,7 @@ Type.registerNamespace("ExoWeb.Model");
 		},
 
 		get_label: function() {
-			if (this._label)
-				return this._label;
-
-			return this._name;
+			return this._label;
 		},
 
 		get_name: function() {
@@ -621,11 +565,19 @@ Type.registerNamespace("ExoWeb.Model");
 			if (!obj)
 				throw ("Invalid Parameter: source object");
 
+			var target = obj;
 			for (var p = 0; p < this._properties.length; p++) {
 				var prop = this._properties[p];
-				callback(obj, prop);
-				obj = prop.value(obj);
+				callback(target, prop);
+				target = prop.value(target);
 			}
+		},
+		fullName: function() {
+			var name = "";
+			Array.forEach(this._properties, function(prop) {
+				name += (name.length > 0 ? "." : "") + prop.get_name();
+			});
+			return name;
 		},
 		lastProperty: function() {
 			return this._properties[this._properties.length - 1];
@@ -703,24 +655,14 @@ Type.registerNamespace("ExoWeb.Model");
 		this.type = type;
 		this._issues = [];
 		this._propertyIssues = {};
-
-		// watch for changes to object's state
-		Sys.Observer.makeObservable(obj);
-		Sys.Observer.addPropertyChanged(obj, this._propertyChanged);
 	}
 
 	ObjectMeta.prototype = {
-		_propertyChanged: function(sender, e) {
-			var propName = e.get_propertyName();
-			sender.meta.executeRules(propName);
-		},
-
 		executeRules: function(propName) {
 			this.type.get_model().get_validatedQueue().push({ sender: this, property: propName });
 			this._raisePropertyValidating(propName);
-			this.type.executeRules(this, propName);
+			this.type.executeRules(this._obj, propName);
 		},
-
 		property: function(propName) {
 			return this.type.property(propName);
 		},
@@ -829,17 +771,23 @@ Type.registerNamespace("ExoWeb.Model");
 			this.type.unregister(this.obj);
 		}
 	}
-	ObjectMeta.mixin(Functor.eventing);
+	ObjectMeta.mixin(ExoWeb.Functor.eventing);
 	ExoWeb.Model.ObjectMeta = ObjectMeta;
 	ObjectMeta.registerClass("ExoWeb.Model.ObjectMeta");
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Rule(isAsync, code) {
-		this.isAsync = isAsync;
-		this._code = code;
+	function Rule() { }
+
+	Rule.register = function register(rule, properties, isAsync) {
+		rule.isAsync = isAsync;
+
+		for (var i = 0; i < properties.length; ++i) {
+			var prop = properties[i];
+			prop.get_containingType().addRule(rule, prop);
+		}
 	}
 
-	Rule.inferInputs = function(rootType, func) {
+	Rule.inferInputs = function inferInputs(rootType, func) {
 		var inputs = [];
 		var match;
 
@@ -849,146 +797,142 @@ Type.registerNamespace("ExoWeb.Model");
 
 		return inputs;
 	}
-
-	Rule.prototype = {
-		execute: function(obj, callback) {
-			if (!this.isAsync)
-				this._code(obj);
-			else
-				this._code(obj, callback);
-		},
-
-		asyncRule: function(func, issues) {
-			this._containingType.rule([this], func, true, issues);
-			return this;
-		},
-
-		rule: function(func, issues) {
-			this._containingType.rule([this], func, false, issues);
-			return this;
-		},
-
-		calculated: function(func) {
-			var prop = this;
-
-			var inputs = Rule.inferInputs(this._containingType, func);
-
-			this._containingType.rule(
-						inputs,
-						function(obj) {
-							Sys.Observer.setValue(obj, prop._name, func.apply(obj));
-						},
-						false
-					);
-
-			return this;
-		},
-
-		range: function(min, max) {
-			var prop = this;
-			var err = null;
-			var fn = null;
-
-			var hasMin = (min !== undefined && min != null);
-			var hasMax = (max !== undefined && max != null);
-
-			if (hasMin && hasMax) {
-				err = new RuleIssue(prop.get_label() + " must be between " + min + " and " + max, [prop]);
-				fn = function(obj) {
-					var val = prop.value(obj);
-					obj.meta.issueIf(err, val < min || val > max);
-				}
-			}
-			else if (hasMin) {
-				err = new RuleIssue(prop.get_label() + " must be at least " + min, [prop]);
-				fn = function(obj) {
-					var val = prop.value(obj);
-					obj.meta.issueIf(err, val < min);
-				}
-			}
-			else if (hasMax) {
-				err = new RuleIssue(prop.get_label() + " must no more than " + max, [prop]);
-				fn = function(obj) {
-					var val = prop.value(obj);
-					obj.meta.issueIf(err, val > max);
-				}
-			}
-
-			return fn ? prop.rule(fn, [err]) : this;
-		},
-
-		required: function() {
-			var prop = this;
-			var err = new RuleIssue(prop.get_label() + " is required", [prop]);
-
-			return prop.rule(function(obj) {
-				var val = prop.value(obj);
-				obj.meta.issueIf(err, val == null || (String.trim(val.toString()) == ""));
-			},
-		[err]);
-		},
-
-		length: function(maxChars) {
-			var prop = this;
-			var err = new RuleIssue(prop.get_label() + " must be " + maxChars + " characters or less", [prop]);
-
-			return prop.rule(function(obj) {
-				var val = prop.value(obj);
-				obj.meta.issueIf(err, String.trim(val.toString()).length > maxChars);
-			},
-		[err]);
-		},
-
-		format: function(pattern, description) {
-			var prop = this;
-			var err = new RuleIssue(prop.get_label() + " must be formatted as " + description, [prop]);
-
-			return prop.rule(function(obj) {
-				var val = prop.value(obj);
-				obj.meta.issueIf(err, !pattern.test(val));
-			},
-				[err]);
-		},
-
-		phone: function(description) {
-			return this.format(/^[0-9]{3}-[0-9]{3}-[0-9]{4}$/, description ? description : "###-###-####");
-		},
-
-		get_fromString: function() {
-			var _this = this;
-			return function(str) {
-				if (_this._converter && _this._converter.fromString)
-					return _this._converter.fromString(str);
-
-				return null;
-			}
-		},
-
-		serverRules: function(errorProbability) {
-			var prop = this;
-			var randomErr = new RuleIssue("p=" + errorProbability, [prop]);
-
-			return this.asyncRule(function(obj, callback) {
-				// remove all current server issues
-				obj.meta.clearIssues(this);
-
-				if (obj.meta.issues(prop).length > 0) {
-					// if there are already issues with this property then do nothing
-					callback();
-				}
-				else {
-					// callback when complete
-					window.setTimeout(function() {
-						obj.meta.issueIf(randomErr, Math.random() < errorProbability);
-						callback();
-					}, 1000);  // simulate server call
-				}
-			},
-					[randomErr]);
-		}
-	}
 	ExoWeb.Model.Rule = Rule;
 	Rule.registerClass("ExoWeb.Model.Rule");
+
+	//////////////////////////////////////////////////////////////////////////////////////
+	function RequiredRule(options, properties) {
+		this.prop = properties[0];
+		this.err = new RuleIssue(this.prop.get_label() + " is required", properties, this);
+
+		Rule.register(this, properties, false);
+	}
+	RequiredRule.prototype = {
+		execute: function(obj) {
+			var val = this.prop.value(obj);
+			obj.meta.issueIf(this.err, val == null || (String.trim(val.toString()) == ""));
+		}
+	}
+	ExoWeb.Model.Rule.required = RequiredRule;
+
+	//////////////////////////////////////////////////////////////////////////////////////
+	function RangeRule(options, properties) {
+		this.prop = properties[0];
+
+		this.minimum = options.minimum;
+		this.maximum = options.maximum;
+
+		var hasMin = (this.minimum !== undefined && this.minimum != null);
+		var hasMax = (this.maximum !== undefined && this.maximum != null);
+
+		if (hasMin && hasMax) {
+			this.err = new RuleIssue($format("{prop} must be between {minimum} and {maximum}", this), properties, this);
+			this._test = this._testMinMax;
+		}
+		else if (hasMin) {
+			this.err = new RuleIssue($format("{prop} must be at least {minimum}", this), properties, this);
+			this._test = this._testMin;
+		}
+		else if (hasMax) {
+			this.err = new RuleIssue($format("{prop} must no more than {maximum}", this), properties, this);
+			this._test = this._testMax;
+		}
+
+		Rule.register(this, properties, false);
+	}
+	RangeRule.prototype = {
+		execute: function(obj) {
+			var val = this.prop.value(obj);
+			obj.meta.issueIf(this.err, this._test(val));
+		},
+		_testMinMax: function(val) {
+			return val < this.minimum || val > this.maximum;
+		},
+		_testMin: function(val) {
+			return val < this.minimum;
+		},
+		_testMax: function(val) {
+			return val > this.maximum;
+		}
+	}
+	ExoWeb.Model.Rule.range = RangeRule;
+
+	//////////////////////////////////////////////////////////////////////////////////////
+	function AllowedValuesRule(path, properties) {
+		this.prop = properties[0];
+		this.path = path;
+		this.err = new RuleIssue($format("{prop} has an invalid value", this), properties, this);
+
+		Rule.register(this, properties, false);
+	}
+	AllowedValuesRule.prototype = {
+		execute: function(obj) {
+			var val = this.prop.value(obj);
+			obj.meta.issueIf(this.err, val && !Array.contains(this.values(obj), val));
+		},
+		values: function(obj) {
+			if (this.path && this.path.length > 0) {
+				var props = obj.meta.property(this.path);
+
+				if (props) {
+					// get the allowed values from the property chain
+					return props.value(obj);
+				}
+				else {
+					// if the property is not defined look for a global object by that name
+					var root = window;
+					var names = this.path.split(".");
+					for (var n = 0; root && n < names.length; n++)
+						root = root[names[n]];
+					return root;
+				}
+			}
+		}
+	}
+	ExoWeb.Model.Rule.allowedValues = AllowedValuesRule;
+
+	//	//////////////////////////////////////////////////////////////////////////////////////
+	//	function StringLengthRule(options, properties) {
+	//		this.prop = properties[0];
+
+	//		this.minimumLength = options.minimumLength;
+	//		this.maximumLength = options.maximumLength;
+
+	//		var hasMin = (this.minimumLength !== undefined && this.minimumLength != null);
+	//		var hasMax = (this.maximumLength !== undefined && this.maximumLength != null);
+
+	//		if (hasMin && hasMax) {
+	//			this.err = new RuleIssue($format("{prop} must be between {minimumLength} and {maximumLength} characters", this), properties, this);
+	//			this._test = this._testMinMax;
+	//		}
+	//		else if (hasMin) {
+	//			this.err = new RuleIssue($format("{prop} must be at least {minimumLength} characters", this), properties, this);
+	//			this._test = this._testMin;
+	//		}
+	//		else if (hasMax) {
+	//			this.err = new RuleIssue($format("{prop} must no more than {maximumLength} characters", this), properties, this);
+	//			this._test = this._testMax;
+	//		}
+	//
+	//		Rule.register(this, properties, false);
+	//	}
+	//	StringLengthRule.prototype = {
+	//		execute: function(obj) {
+	//			var val = this.prop.value(obj);
+	//			obj.meta.issueIf(this.err, this._test(val));
+	//		},
+	//		_testMinMax: function(val) {
+	//			return val.length < this.minimumLength || val.length > this.maximumLength;
+	//		},
+	//		_testMin: function(val) {
+	//			return val.length < this.minimumLength;
+	//		},
+	//		_testMax: function(val) {
+	//			return val.length > this.maximumLength;
+	//		}
+	//	}
+	//	ExoWeb.Model.Rule.stringLength = StringLengthRule;
+
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function EventQueue(raise, areEqual) {
@@ -1115,59 +1059,7 @@ Type.registerNamespace("ExoWeb.Model");
 
 	ExoWeb.Model.Format = Format;
 	Format.registerClass("ExoWeb.Model.Format");
-
-	//////////////////////////////////////////////////////////////////////////////////////
-	// MS Ajax extensions
-
-	// Get's an DOM element's bindings
-	Sys.Binding.getElementBindings = function(el) {
-		return el.__msajaxbindings || [];
-	};
-
-	// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
-	Sys.Binding.mixin({
-		get_finalSourceObject: function() {
-			var src = this.get_source();
-
-			for (var i = 0; i < this._pathArray.length - 1; ++i)
-				src = src[this._pathArray[i]];
-
-			return src;
-		},
-		get_finalPath: function() {
-			return this._pathArray[this._pathArray.length - 1];
-		}
-	});
-
-	function _raiseSpecificPropertyChanged(target, args) {
-		var func = target.__propertyChangeHandlers[args.get_propertyName()];
-		func(target);
-	}
-
-	// Converts observer events from being for ALL properties to a specific one.
-	// This is an optimization that prevents handlers interested only in a single
-	// property from being run when other, unrelated properties change.
-	Sys.Observer.addSpecificPropertyChanged = function(target, property, handler) {
-		if (!target.__propertyChangeHandlers) {
-			target.__propertyChangeHandlers = {};
-
-			Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
-		}
-
-		var func = target.__propertyChangeHandlers[property];
-
-		if (!func)
-			target.__propertyChangeHandlers[property] = func = Functor();
-
-		func.add(handler);
-	};
-
-	// Sets a value
-	Sys.Observer.getValue = function(target, property) {
-		var getter = target["get_" + property];
-		return getter ? getter.call(target) : target[property];
-	}
-
+	
 	//////////////////////////////////////////////////////////////////////////////////////
 	// utilities			
 	Date.prototype.subtract = function(d) {
@@ -1186,35 +1078,85 @@ Type.registerNamespace("ExoWeb.Model");
 		return { days: days, hours: hours, minutes: minutes, seconds: seconds, milliseconds: milliseconds };
 	}
 
-	function getAdapter(component, targetProperty, templateContext, properties) {
+	// Type Format Strings
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		var path = properties.path || properties.$default;
+	Number.formats = {};
+	String.formats = {};
+	Date.formats = {};
+	Boolean.formats = {};
 
-		delete properties.$default;
-
-		return new Adapter(templateContext, path, properties.valueFormat, properties.labelFormat, properties);
-	}
-
-	// Markup Extensions
-	//////////////////////////////////////////////////////////////////////////////////////
-	Sys.Application.registerMarkupExtension("@", getAdapter, true);
-	Sys.Application.registerMarkupExtension("@=",
-		function(component, targetProperty, templateContext, properties) {
-			var adapter = getAdapter(component, targetProperty, templateContext, properties);
-
-			var options = {
-				source: adapter,
-				path: "value",
-				templateContext: templateContext,
-				target: component,
-				targetProperty: targetProperty
-			};
-
-			var binding = Sys.Binding.bind(options);
-			templateContext.components.push(binding);
+	//TODO: number formatting include commas
+	Number.formats.Integer = new Format({
+		description: "#,###",
+		convert: function(val) {
+			return Math.round(val).toString();
 		},
-		false
-	);
+		convertBack: function(str) {
+			if (!/^([-\+])?(\d+)?\,?(\d+)?\,?(\d+)?\,?(\d+)$/.test(str))
+				throw "invalid format";
+
+			return parseInt(str, 10);
+		}
+	});
+
+	Number.formats.Float = new Format({
+		description: "#,###.#",
+		convert: function(val) {
+			return val.toString();
+		},
+		convertBack: function(str) {
+			return parseFloat(str);
+		}
+	});
+
+	Number.formats.$value = Number.formats.Float;
+
+	String.formats.Phone = new Format({
+		description: "###-###-####",
+		convertBack: function(str) {
+			if (!/^[0-9]{3}-[0-9]{3}-[0-9]{4}$/.test(str))
+				throw "invalid format";
+
+			return str;
+		}
+	});
+
+	String.formats.$value = new Format({
+		convertBack: function(val) {
+			return val ? String.trim(val) : val;
+		}
+	});
+
+	Boolean.formats.YesNo = new Format({
+		convert: function(val) { return val ? "yes" : "no"; },
+		convertBack: function(str) { return str == "yes"; }
+	});
+
+	Boolean.formats.TrueFalse = new Format({
+		convert: function(val) { return val ? "true" : "false"; },
+		convertBack: function(str) { return (str.toLowerCase() == "true"); }
+	});
+
+	Boolean.formats.$value = Boolean.formats.TrueFalse;
+
+	Date.formats.ShortDate = new Format({
+		description: "mm/dd/yyyy",
+		convert: function(val) {
+			return val.format("MM/dd/yyyy");
+		},
+		convertBack: function(str) {
+			var val = Date.parseInvariant(str);
+
+			if (val != null)
+				return val;
+
+			throw "invalid date";
+		}
+	});
+
+	Date.formats.$value = Date.formats.ShortDate;
+
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 	function LazyLoader() {
@@ -1267,449 +1209,8 @@ Type.registerNamespace("ExoWeb.Model");
 	LazyLoader.unregister = function register(obj) {
 		delete obj._lazyLoader;
 	}
+	
 	ExoWeb.Model.LazyLoader = LazyLoader;
 	LazyLoader.registerClass("ExoWeb.Model.LazyLoader");
 
-	// Lazy eval markup extension
-	Sys.Application.registerMarkupExtension("~",
-		function(component, targetProperty, templateContext, properties) {
-			if (console) console.log("~ " + properties.$default);
-
-			LazyLoader.eval(templateContext.dataItem, properties.$default,
-				function(result) {
-					Sys.Observer.setValue(component, targetProperty, result);
-				}
-			);
-		},
-		false
-	);
-
-	// Type Format Strings
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	Number.formats = {};
-	String.formats = {};
-	Date.formats = {};
-	Boolean.formats = {};
-
-	//TODO: number formatting include commas
-	Number.formats.Integer = new Format({
-		description: "#,###",
-		convert: function(val) {
-			return Math.round(val).toString();
-		},
-		convertBack: function(str) {
-			if (!/^([-\+])?(\d+)?\,?(\d+)?\,?(\d+)?\,?(\d+)$/.test(str))
-				throw "invalid format";
-
-			return parseInt(str, 10);
-		}
-	});
-
-	Number.formats.Float = new Format({
-		description: "#,###.#",
-		convert: function(val) {
-			return val.toString();
-		},
-		convertBack: function(str) {
-			return parseFloat(str);
-		}
-	});
-
-	Number.formats.$value = Number.formats.Float;
-
-	String.formats.Phone = new Format({
-		description: "###-###-####",
-		convertBack: function(str) {
-			if (!/^[0-9]{3}-[0-9]{3}-[0-9]{4}$/.test(str))
-				throw "invalid format";
-
-			return str;
-		}
-	});
-
-	String.formats.$value = new Format({});
-
-	Boolean.formats.YesNo = new Format({
-		convert: function(val) { return val ? "yes" : "no"; },
-		convertBack: function(str) { return str == "yes"; }
-	});
-
-	Boolean.formats.TrueFalse = new Format({
-		convert: function(val) { return val ? "true" : "false"; },
-		convertBack: function(str) { return (str.toLowerCase() == "true"); }
-	});
-
-	Boolean.formats.$value = Boolean.formats.TrueFalse;
-
-	Date.formats.ShortDate = new Format({
-		description: "mm/dd/yyyy",
-		convert: function(val) {
-			return val.format("MM/dd/yyyy");
-		},
-		convertBack: function(str) {
-			var val = Date.parseInvariant(str);
-
-			if (val != null)
-				return val;
-
-			throw "invalid date";
-		}
-	});
-
-	Date.formats.$value = Date.formats.ShortDate;
-
-
-	///////////////////////////////////////////////////////////////////////////////
-	function Adapter(context, propertyPath, valueFormatName, labelFormatName, options) {
-		this._context = context;
-		this._propertyPath = propertyPath;
-		this._valueFormatName = valueFormatName;
-		this._labelFormatName = labelFormatName;
-		this._emptyOption = true;
-		this._ignoreTargetEvents = false;
-
-		// Add arbitrary options so that they are made available in templates
-		var allowedOverrides = ["label", "helptext", "emptyOption", "emptyOptionLabel"];
-		if (options) {
-			for (var opt in options) {
-
-				// Check if the option is already defined and is not available to
-				// override, as in the case of critical properties (e.g.: value)
-				if (this["get_" + opt] && !Array.contains(allowedOverrides, opt))
-				//throw ($format("{opt} is already defined.", { opt: opt }));
-					continue;
-
-				var _opt = "_" + opt;
-				this[_opt] = options[opt];
-
-				// create a getter if one doesn't exist
-				if (!this["get_" + opt]) {
-					this["get_" + opt] = function() { return this[_opt]; };
-				}
-			}
-		}
-	}
-
-	Adapter.prototype = {
-		get_target: function() {
-			if (!this._target) {
-				if (this._context instanceof ObjectBase)
-					this._target = this._context;
-				else if (this._context.dataItem instanceof Adapter)
-					this._target = this._context.dataItem.property().target();
-				else
-					this._target = this._context.dataItem;
-			}
-
-			return this._target;
-		},
-		get_propertyChain: function() {
-			if (!this._propertyChain) {
-				var adapterOrObject = this._context instanceof ObjectBase ? this._context : this._context.dataItem;
-				var sourceObject = (adapterOrObject instanceof Adapter) ? adapterOrObject.get_value() : adapterOrObject;
-
-				// get the property chain starting at the source object
-				this._propertyChain = sourceObject.meta.property(this._propertyPath);
-				if (!this._propertyChain)
-					throw ($format("Property \"{p}\" could not be found.", { p: this._propertyPath }));
-
-				// prepend parent adapter's property path
-				if (adapterOrObject instanceof Adapter)
-					this._propertyChain.prepend(adapterOrObject.property());
-			}
-
-			return this._propertyChain;
-		},
-		ensureObservable: function() {
-			if (!this._observable) {
-				var _this = this;
-				Sys.Observer.makeObservable(this);
-				// subscribe to property changes at any point in the path
-				this.get_propertyChain().each(this.get_target(), function(obj, prop) {
-					if (prop.get_typeClass() == "entitylist")
-						Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
-							_this._onTargetChanged(sender, args);
-						});
-					else
-						Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
-							_this._onTargetChanged(sender, args);
-						});
-				});
-				this._observable = true;
-			}
-		},
-		// Pass property change events to the target object
-		///////////////////////////////////////////////////////////////////////////
-		_onTargetChanged: function(sender, args) {
-			if (this._ignoreTargetEvents)
-				return;
-
-			Sys.Observer.raisePropertyChanged(this, "value");
-		},
-
-		// Properties that are intended to be used by templates
-		///////////////////////////////////////////////////////////////////////////
-		get_label: function() {
-			return this._label || this.get_propertyChain().get_label();
-		},
-		get_helptext: function() {
-			return this._helptext || "";
-		},
-		get_emptyOption: function() {
-			return this._emptyOption ? true : false;
-		},
-		set_emptyOption: function(value) {
-			this._emptyOption = value;
-		},
-		get_emptyOptionLabel: function() {
-			return this._emptyOptionLabel ? this._emptyOptionLabel : " -- select -- ";
-		},
-		set_emptyOptionLabel: function(value) {
-			this._emptyOptionLabel = value;
-		},
-		get_options: function() {
-			if (!this._options) {
-				if (this.get_propertyChain().get_typeClass() == TypeClass.Intrinsic)
-					return null;
-
-				// TODO: handle allowed values in multiple forms (function, websvc call, string path)
-				var allowed = null;
-				var path = this.get_propertyChain().get_allowedValues();
-				if (path && path.length > 0) {
-					var root = this.get_propertyChain().lastTarget(this.get_target());
-					var props = root.meta.property(path);
-
-					if (props) {
-						// get the allowed values from the property chain
-						root = props.value(root);
-					}
-					else {
-						// if the property is not defined look for a global object by that name
-						var root = window;
-						var names = path.split(".");
-						for (var n = 0; root && n < names.length; n++)
-							root = root[names[n]];
-					}
-
-					// TODO: verify list?
-					if (!root) {
-						this._options = $format("Allowed values property \"{p}\" could not be found.", { p: path });
-						throw (this._options);
-					}
-
-					allowed = root;
-				}
-
-				if (this.get_propertyChain().get_typeClass() == TypeClass.Entity) {
-					this._options = [];
-
-					if (this._emptyOption)
-						this._options[0] = new OptionAdapter(this, null);
-
-					for (var a = 0; a < allowed.length; a++)
-						Array.add(this._options, new OptionAdapter(this, allowed[a]));
-				}
-				else if (this.get_propertyChain().get_typeClass() == TypeClass.EntityList) {
-					this._options = [];
-
-					for (var a = 0; a < allowed.length; a++)
-						this._options[a] = new OptionAdapter(this, allowed[a]);
-				}
-			}
-
-			return this._options;
-		},
-		get_badValue: function() {
-			return this._badValue;
-		},
-		get_valueFormat: function() {
-			if (!this._valueFormat) {
-				var dt = this.get_propertyChain().get_dataType();
-
-				if (this._valueFormatName)
-					this._valueFormat = dt.formats[this._valueFormatName];
-				else if (!(this._valueFormat = this.get_propertyChain().get_format()))
-					this._valueFormat = dt.formats.$value || dt.formats.$label;
-			}
-
-			return this._valueFormat;
-		},
-		get_labelFormat: function() {
-			if (!this._labelFormat) {
-				var dt = this.get_propertyChain().get_dataType();
-
-				if (this._labelFormatName)
-					this._labelFormat = dt.formats[this._labelFormatName];
-				else if (!(this._labelFormat = this.get_propertyChain().get_format()))
-					this._labelFormat = dt.formats.$label || dt.formats.$value;
-			}
-
-			return this._labelFormat;
-		},
-		get_rawValue: function() {
-			return this.get_propertyChain().value(this.get_target());
-		},
-		get_value: function() {
-			this.ensureObservable();
-
-			if (this._badValue !== undefined)
-				return this._badValue;
-
-			var rawValue = this.get_rawValue();
-
-			var format = this.get_valueFormat();
-			return format ? format.convert(rawValue) : rawValue;
-		},
-		set_value: function(value) {
-			this.ensureObservable();
-
-			var converted = (this._valueFormat) ? this._valueFormat.convertBack(value) : value;
-
-			this.get_propertyChain().lastTarget(this.get_target()).meta.clearIssues(this);
-
-			if (converted instanceof FormatIssue) {
-				this._badValue = value;
-
-				issue = new RuleIssue(
-							$format(converted.get_message(), { value: this.get_propertyChain().get_label() }),
-							[this.get_propertyChain().lastProperty()],
-							this);
-
-				this.get_propertyChain().lastTarget(this.get_target()).meta.issueIf(issue, true);
-
-				// run the rules to preserve the order of issues
-				this.get_propertyChain().lastTarget(this.get_target()).meta.executeRules(this.get_propertyChain().get_name());
-			}
-			else {
-
-				var changed = this.get_propertyChain().value(this.get_target()) !== converted;
-
-				if (this._badValue !== undefined) {
-					delete this._badValue;
-
-					// force rules to run again in order to trigger validation events
-					if (!changed)
-						this.get_propertyChain().lastTarget(this.get_target()).meta.executeRules(this.get_propertyChain().get_name());
-				}
-
-				if (changed) {
-					this._ignoreTargetEvents = true;
-
-					try {
-						this.get_propertyChain().value(this.get_target(), converted);
-					}
-					finally {
-						this._ignoreTargetEvents = false;
-					}
-				}
-			}
-		},
-
-		// Pass validation events through to the target
-		///////////////////////////////////////////////////////////////////////////
-		addPropertyValidating: function(propName, handler) {
-			this.get_propertyChain().lastTarget(this.get_target()).meta.addPropertyValidating(this.get_propertyChain().get_name(), handler);
-		},
-		addPropertyValidated: function(propName, handler) {
-			this.get_propertyChain().lastTarget(this.get_target()).meta.addPropertyValidated(this.get_propertyChain().get_name(), handler);
-		},
-
-		// Override toString so that UI can bind to the adapter directly
-		///////////////////////////////////////////////////////////////////////////
-		toString: function() {
-			return this.get_value();
-		}
-	}
-	ExoWeb.Model.Adapter = Adapter;
-	Adapter.registerClass("ExoWeb.Model.Adapter");
-
-
-	///////////////////////////////////////////////////////////////////////////////
-	OptionAdapter = function(parent, obj) {
-		this._parent = parent;
-		this._obj = obj;
-
-		if (this._obj) {
-			var _this = this;
-			Sys.Observer.makeObservable(this);
-			// subscribe to property changes to the option's label (value shouldn't change)
-			// TODO: can we make this more specific?
-			Sys.Observer.addPropertyChanged(this._obj, function(sender, args) {
-				_this._onTargetChanged(sender, args);
-			});
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////
-	OptionAdapter.prototype = {
-		// Pass property change events to the target object
-		///////////////////////////////////////////////////////////////////////////
-		_onTargetChanged: function(sender, args) {
-			if (this._ignoreTargetEvents)
-				return;
-
-			Sys.Observer.raisePropertyChanged(this, "label");
-		},
-
-		// Properties consumed by UI
-		///////////////////////////////////////////////////////////////////////////
-		get_label: function() {
-			if (!this._obj)
-				return this._parent.get_emptyOptionLabel();
-
-			var format = this._parent.get_labelFormat();
-			return format ? format.convert(this._obj) : this._obj;
-		},
-		get_value: function() {
-			if (!this._obj)
-				return "";
-
-			var format = this._parent.get_valueFormat();
-			return format ? format.convert(this._obj) : this._obj;
-		},
-		get_selected: function() {
-			var source = this._parent.get_rawValue();
-
-			if (source instanceof Array)
-				return Array.contains(source, this._obj);
-			else
-				return source == this._obj;
-		},
-		set_selected: function(value) {
-			var source = this._parent.get_rawValue();
-
-			if (source instanceof Array) {
-				if (value && !Array.contains(source, this._obj))
-					source.add(this._obj);
-				else if (!value && Array.contains(source, this._obj))
-					source.remove(this._obj);
-			}
-			else {
-				if (!this._obj)
-					this._parent.set_value(null);
-				else {
-					var value = (this._parent.get_valueFormat()) ? this._parent.get_valueFormat().convert(this._obj) : this._obj;
-					this._parent.set_value(value);
-				}
-			}
-		}
-	}
-
-
-	///////////////////////////////////////////////////////////////////////////////
-	// Globals
-	function $format(str, values) {
-		return str.replace(/{([a-z0-9_]+)}/ig, function(match, name) {
-			var val = values[name];
-
-			if (val === null)
-				return "";
-			if (val === undefined)
-				return match;
-
-			return val.toString();
-		});
-	}
-	window.$format = $format;
 })();
