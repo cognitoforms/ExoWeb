@@ -60,7 +60,7 @@
 				ExoWeb.Mapper.setTypeProvider(function(type, callback) {
 					var json = {}; 
 					json[type] = _this._types[type];
-					return mockCallback(callback, [json], _this._typeProviderMods, $format("fetching {0} type", arguments));
+					return mockCallback(callback, [json], _this._typeProviderMods, $format(">> fetch: {0}", arguments));
 				});
 			}
 		},
@@ -76,7 +76,7 @@
 					var json = {};
 					_this._query(type, id, pathStrsToArrays(paths), json);
 
-					return mockCallback(callback, [json], _this._objectProviderMods, $format("fetching {0}({1})", arguments));
+					return mockCallback(callback, [json], _this._objectProviderMods, $format(">> fetch: {0}({1})", arguments));
 				});
 
 				ExoWeb.Mapper.setListProvider(function(ownerType, ownerId, ownerProperty, callback) {
@@ -89,7 +89,7 @@
 					json[ownerType][ownerId][ownerProperty] = ids;
 
 					// include object data also
-					var propType = window[ownerType].meta.property(ownerProperty).get_fullTypeName();
+					var propType = window[ownerType].meta.property(ownerProperty).get_jstype().meta.get_fullName();
 
 					for (var i = 0; i < ids.length; ++i) {
 						var id = ids[i].split("|");
@@ -100,7 +100,7 @@
 							_this._appendObject(json, propType, id[0]);
 					}
 
-					return mockCallback(callback, [json], _this._listProviderMods, $format("fetching {0}({1}).{2}", arguments));
+					return mockCallback(callback, [json], _this._listProviderMods, $format(">> fetch: {0}({1}).{2}", arguments));
 				});
 			}
 		},
@@ -166,8 +166,8 @@
 
 
 	function mockCallback(callback, args, mods, log) {
-		if (log && console)
-			console.log(log + " (START MOCK)");
+		if (log)
+			console.log(log);
 
 		var mod;
 
@@ -176,8 +176,8 @@
 			if (!mod.when || mod.when.apply(this, arguments)) {
 				if (mod.delay) {
 					window.setTimeout(function() {
-						if (log && console)
-							console.log(log + " (END MOCK)");
+						if (log)
+							console.log($format("   [done +{1}ms] {0}", [log, mod.delay]));
 
 						callback.apply(this, mod.args ? mod.args(args) : args);
 					}, mod.delay);

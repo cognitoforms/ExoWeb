@@ -2,8 +2,9 @@
 // Sys.require(ExoWeb.Mock)???
 //with (ExoWeb.Mock) {
 
-ExoWeb.Mock.typeProvider({ delay: 100 });
-ExoWeb.Mock.objectProvider({ delay: 500 });
+ExoWeb.Mock.typeProvider({ delay: 10 });
+ExoWeb.Mock.objectProvider({ delay: 200 });
+ExoWeb.Mock.listProvider({ delay: 500 });
 
 ExoWeb.Mock.types({
 	Driver: {

@@ -19,46 +19,39 @@
 	}
 
 	Model.prototype = {
-		addType: function(name, baseType, derivedTypes, properties) {
+		addType: function Model$addType(name) {
 			var jstype = window[name];
 
-			var type; // referenced in constructor
+			var type;
 
 			if (!jstype) {
-				jstype = window[name] = function(id) {
-					if (id) {
-						var obj = type.get(id);
+				// use eval to generate the type so the function name appears in the debugger
+				var ctorScript = $format("function {type}(id) {" +
+					"if (id) {" +
+						"var obj = type.get(id); " +
+						"if (obj)" +
+							"return obj;" +
+					"};" +
+					"type.register(this, id);" +
+				"}" +
+				"jstype = {type}",
+				{ type: name });
 
-						if (obj)
-							return obj;
-					}
-
-					type.register(this, id);
-				};
+				eval(ctorScript);
+				window[name] = jstype;
+			}
+			else if (jstype.meta) {
+				throw $format("Type already has been added to the model: {0}", arguments)
 			}
 
 			// TODO: make this a method that uses the pool?
 			jstype.All = [];
 			Sys.Observer.makeObservable(jstype.All);
 
-			var baseJsType = baseType;
-			if (baseJsType) {
-				if (typeof (baseJsType) == "string")
-					baseJsType = window[baseJsType];
-			}
-			else {
-				baseJsType = ObjectBase;
-			}
-
-			jstype.prototype = new baseJsType();
-			jstype.prototype.constructor = jstype;
-			jstype.registerClass(name, baseJsType);
-
 			var formats = function() { }
-			formats.prototype = baseJsType.formats;
 			jstype.formats = new formats;
 
-			type = new Type(this, jstype, name, properties, baseType, derivedTypes);
+			type = new Type(this, jstype, name);
 
 			jstype.meta = type;
 			jstype.get = function(id) { return type.get(id); };
@@ -70,7 +63,7 @@
 		get_validatedQueue: function() {
 			return this._validatedQueue;
 		},
-		get_type: function(name) {
+		type: function(name) {
 			return this._types[name];
 		},
 		addAfterPropertySet: function(handler) {
@@ -132,7 +125,7 @@
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Type(model, jstype, fullName, properties, baseType, derivedTypes) {
+	function Type(model, jstype, fullName) {
 		this._rules = {};
 		this._jstype = jstype;
 		this._fullName = fullName;
@@ -140,10 +133,8 @@
 		this._counter = 0;
 		this._properties = {};
 		this._model = model;
-		this._baseType = baseType;
-		this._derivedTypes = derivedTypes;
 
-		this.define(properties);
+		this.derivedTypes = [];
 	}
 
 	Type.prototype = {
@@ -182,15 +173,8 @@
 			return this._pool[id];
 		},
 
-		define: function(properties) {
-			// TODO: avoid all properties since they are not instance properties?
-			//if (propName != "All")
-			for (var propName in properties)
-				this.addProperty(propName, properties[propName]);
-		},
-
-		addProperty: function(propName, dataType, label, format, isList) {
-			var prop = new Property(this, propName, dataType, label, format, isList);
+		addProperty: function(propName, jstype, label, format, isList) {
+			var prop = new Property(this, propName, jstype, label, format, isList);
 
 			this._properties[propName] = prop;
 
@@ -206,35 +190,51 @@
 
 			return prop;
 		},
-
 		_makeGetter: function(receiver, fn) {
 			return function() {
 				return fn.call(receiver, this);
 			}
 		},
-
 		_makeSetter: function(receiver, fn) {
 			return function(val) {
 				fn.call(receiver, this, val);
 			}
 		},
-
 		get_model: function() {
 			return this._model;
 		},
-
 		get_fullName: function() {
 			return this._fullName;
 		},
-
 		get_jstype: function() {
 			return this._jstype;
 		},
+		set_baseType: function(baseType) {
+			var baseJsType;
 
+			if (baseType) {
+				baseType.derivedTypes.push(this);
+				baseJsType = baseType._jstype;
+			} else
+				baseJsType = ObjectBase;
+
+			this.baseType = baseType;
+
+			this._jstype.prototype = new baseJsType();
+			this._jstype.prototype.constructor = this._jstype;
+
+			this._jstype.formats.prototype = baseJsType.formats;
+
+			// TODO: can this be done earlier w/o the base type being known?
+			this._jstype.registerClass(name, baseJsType);
+
+		},
 		property: function(name) {
 			var p = (name.indexOf(".") >= 0) ? name.substring(0, name.indexOf(".")) : name;
 
-			var prop = this._properties[p];
+			var prop;
+			for (var t = this; t && !prop; t = t.baseType)
+				prop = t._properties[p];
 
 			if (prop) {
 				var prop = new PropertyChain(prop);
@@ -242,8 +242,8 @@
 				// evaluate the remainder of the property path
 				if (name.indexOf(".") >= 0) {
 					var remainder = name.substring(name.indexOf(".") + 1);
-					var propType = prop.get_typeName();
-					var type = this._model.get_type(propType);
+
+					var type = prop.get_jstype().meta;
 
 					var children = type.property(remainder);
 					if (children)
@@ -369,13 +369,13 @@
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, dataType, label, format, isList) {
+	function Property(containingType, name, jstype, label, format, isList) {
 		this._containingType = containingType;
 		this._name = name;
-		this._fullTypeName = dataType;
+		this._jstype = jstype;
 		this._label = label || name.replace(/([^A-Z]+)([A-Z])/g, "$1 $2");
 		this._format = format;
-		this._isList = (isList ? true : false);
+		this._isList = !!isList;
 	}
 
 	Property.prototype = {
@@ -391,24 +391,9 @@
 			return this._containingType;
 		},
 
-		get_fullTypeName: function() {
-			return this._fullTypeName;
-		},
-
-		get_typeName: function() {
-			if (!this._typeName) {
-				this._typeName = this._fullTypeName;
-
-				if (this._typeName.indexOf("|") >= 0)
-					this._typeName = this._typeName.split("|")[1];
-			}
-
-			return this._typeName;
-		},
-
 		get_typeClass: function() {
 			if (!this._typeClass) {
-				if (this.get_dataType().meta) {
+				if (this.get_jstype().meta) {
 					if (this.get_isList())
 						this._typeClass = TypeClass.EntityList;
 					else
@@ -422,21 +407,8 @@
 			return this._typeClass;
 		},
 
-		get_dataType: function(ignoreMissing) {
-			if (!this._dataType) {
-				if (window[this._fullTypeName])
-					this._dataType = window[this._fullTypeName];
-				else if (ignoreMissing)
-					return null;
-				else
-					throw ($format("Unknown data type \"{0}\".", [this._fullTypeName]));
-			}
-
-			return this._dataType;
-		},
-
-		get_allowedValues: function() {
-			return this._allowedValues;
+		get_jstype: function() {
+			return this._jstype;
 		},
 
 		get_format: function() {
@@ -444,8 +416,6 @@
 		},
 
 		getter: function(obj) {
-			if (console) console.log("GET " + this._name);
-
 			this._containingType.get_model().notifyBeforePropertyGet(obj, this);
 			return obj[this._name];
 		},
@@ -598,20 +568,14 @@
 
 		// Property pass-through methods
 		///////////////////////////////////////////////////////////////////////
-		get_allowedValues: function PropertyChain$get_allowedValues() {
-			return this.lastProperty().get_allowedValues();
-		},
 		get_containingType: function PropertyChain$get_containingType() {
 			return this.lastProperty().get_containingType();
 		},
-		get_dataType: function PropertyChain$get_dataType() {
-			return this.lastProperty().get_dataType();
+		get_jstype: function PropertyChain$get_jstype() {
+			return this.lastProperty().get_jstype();
 		},
 		get_format: function PropertyChain$get_format() {
 			return this.lastProperty().get_format();
-		},
-		get_fullTypeName: function PropertyChain$get_fullTypeName() {
-			return this.lastProperty().get_fullTypeName();
 		},
 		get_isList: function PropertyChain$get_isList() {
 			return this.lastProperty().get_isList();
@@ -624,9 +588,6 @@
 		},
 		get_typeClass: function PropertyChain$get_typeClass() {
 			return this.lastProperty().get_typeClass();
-		},
-		get_typeName: function PropertyChain$get_typeName() {
-			return this.lastProperty().get_typeName();
 		},
 		get_uniqueName: function PropertyChain$get_uniqueName() {
 			return this.lastProperty().get_uniqueName();
@@ -1059,7 +1020,7 @@
 
 	ExoWeb.Model.Format = Format;
 	Format.registerClass("ExoWeb.Model.Format");
-	
+
 	//////////////////////////////////////////////////////////////////////////////////////
 	// utilities			
 	Date.prototype.subtract = function(d) {
@@ -1124,7 +1085,7 @@
 
 	String.formats.$value = new Format({
 		convertBack: function(val) {
-			return val ? String.trim(val) : val;
+			return val ? val.trim() : val;
 		}
 	});
 
@@ -1162,7 +1123,7 @@
 	function LazyLoader() {
 	}
 
-	LazyLoader.eval = function eval(target, path, callback) {
+	LazyLoader.eval = function eval(target, path, successCallback, errorCallback) {
 		if (!(path instanceof Array))
 			path = path.split(".");
 
@@ -1173,7 +1134,14 @@
 
 			if (!LazyLoader.isLoaded(target, prop)) {
 				LazyLoader.load(target, prop, function() {
-					LazyLoader.eval(Sys.Observer.getValue(target, prop), path, callback);
+					var nextTarget = Sys.Observer.getValue(target, prop);
+
+					if (nextTarget === undefined) {
+						if(errorCallback)
+							errorCallback("Property is undefined: " + prop)
+					}
+					else
+						LazyLoader.eval(nextTarget, path, successCallback, errorCallback);
 				});
 
 				return;
@@ -1186,9 +1154,9 @@
 
 		// Load final object
 		if (!LazyLoader.isLoaded(target))
-			LazyLoader.load(target, null, function() { callback(target); });
+			LazyLoader.load(target, null, function() { successCallback(target); });
 		else
-			callback(target);
+			successCallback(target);
 	}
 
 	LazyLoader.isLoaded = function isLoaded(obj, propName) {
@@ -1209,7 +1177,7 @@
 	LazyLoader.unregister = function register(obj) {
 		delete obj._lazyLoader;
 	}
-	
+
 	ExoWeb.Model.LazyLoader = LazyLoader;
 	LazyLoader.registerClass("ExoWeb.Model.LazyLoader");
 

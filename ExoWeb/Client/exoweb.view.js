@@ -65,12 +65,10 @@
 	//////////////////////////////////////////////////////////////////////////////////////
 	Sys.Application.registerMarkupExtension("@",
 		function(component, targetProperty, templateContext, properties) {
-			//if (console) console.log("~ " + properties.$default);
-
 			var adapter = getAdapter(component, targetProperty, templateContext, properties);
 
 			adapter.ready(function() {
-				console.info("@" + properties.$default);
+				console.log("@" + properties.$default);
 				Sys.Observer.setValue(component, targetProperty, adapter);
 			});
 		}, false);
@@ -98,7 +96,7 @@
 	// Lazy eval markup extension
 	Sys.Application.registerMarkupExtension("~",
 		function(component, targetProperty, templateContext, properties) {
-			if (console) console.log("~ " + properties.$default);
+			console.log("~ " + properties.$default);
 
 			ExoWeb.Model.LazyLoader.eval(templateContext.dataItem, properties.$default,
 				function(result) {
@@ -121,7 +119,9 @@
 
 		this._readySignal = new ExoWeb.Signal();
 		var _this = this;
-		ExoWeb.Model.LazyLoader.eval(this.get_target(), this.get_propertyChain().fullName(), this._readySignal.pending(
+		
+		// load the object this adapter is bound to
+		ExoWeb.Model.LazyLoader.eval(this.get_target(), propertyPath, this._readySignal.pending(
 			function() {
 				if (_this.get_propertyChain().get_typeClass() != TypeClass.Intrinsic) {
 					var prop = _this.get_propertyChain().lastProperty();
@@ -304,24 +304,24 @@
 		},
 		get_valueFormat: function() {
 			if (!this._valueFormat) {
-				var dt = this.get_propertyChain().get_dataType();
+				var t = this.get_propertyChain().get_jstype();
 
 				if (this._valueFormatName)
-					this._valueFormat = dt.formats[this._valueFormatName];
+					this._valueFormat = type.formats[this._valueFormatName];
 				else if (!(this._valueFormat = this.get_propertyChain().get_format()))
-					this._valueFormat = dt.formats.$value || dt.formats.$label;
+					this._valueFormat = t.formats.$value || t.formats.$label;
 			}
 
 			return this._valueFormat;
 		},
 		get_labelFormat: function() {
 			if (!this._labelFormat) {
-				var dt = this.get_propertyChain().get_dataType();
+				var t = this.get_propertyChain().get_jstype();
 
 				if (this._labelFormatName)
-					this._labelFormat = dt.formats[this._labelFormatName];
+					this._labelFormat = t.formats[this._labelFormatName];
 				else if (!(this._labelFormat = this.get_propertyChain().get_format()))
-					this._labelFormat = dt.formats.$label || dt.formats.$value;
+					this._labelFormat = t.formats.$label || t.formats.$value;
 			}
 
 			return this._labelFormat;
@@ -349,7 +349,7 @@
 
 			meta.clearIssues(this);
 
-			if (converted instanceof FormatIssue) {
+			if (converted instanceof ExoWeb.Model.FormatIssue) {
 				this._badValue = value;
 
 				issue = new RuleIssue(
