@@ -229,6 +229,7 @@
 
 			// TODO: can this be done earlier w/o the base type being known?
 			this._jstype.registerClass(this._fullName, baseJsType);
+
 		},
 		property: function(name) {
 			var p = (name.indexOf(".") >= 0) ? name.substring(0, name.indexOf(".")) : name;
@@ -1154,6 +1155,9 @@
 	}
 
 	LazyLoader.eval = function eval(target, path, successCallback, errorCallback) {
+		if (!path)
+			path = [];
+
 		if (!(path instanceof Array))
 			path = path.split(".");
 

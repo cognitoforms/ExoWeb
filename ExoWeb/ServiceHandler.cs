@@ -269,7 +269,7 @@ namespace ExoWeb
 									response.Write(" ]");
 								}
 								else
-									response.Write("[ \"deferred\" ]");
+									response.Write("\"deferred\"");
 							}
 
 							// Serialize references

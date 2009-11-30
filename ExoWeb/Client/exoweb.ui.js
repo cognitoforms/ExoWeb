@@ -46,7 +46,7 @@ ExoWeb.UI.Template.prototype = {
 
 			try {
 				// turn arbitrary javascript code into function
-				func = new Function("return " + this._if + ";");
+				func = new Function("$data", "$container", "return " + this._if + ";");
 			}
 			catch (e) {
 				throw ("Statement \"" + this._if + "\" causes the following error: " + e);
@@ -54,10 +54,10 @@ ExoWeb.UI.Template.prototype = {
 
 			if (func) {
 				try {
-					result = func.call(e);
+					result = func.apply(this, [e.control.get_data(), e]);
 				}
 				catch (e) {
-					throw ("Calling \"" + this._if + "\" causes the following error: " + e);
+					result = false;
 				}
 			}
 		}
@@ -69,7 +69,7 @@ ExoWeb.UI.Template.prototype = {
 		// determines if the given element matches this template
 		return this.matches(e) && this.satisfies(e);
 	},
-	
+
 	initialize: function() {
 		ExoWeb.UI.Template.callBaseMethod(this, "initialize");
 

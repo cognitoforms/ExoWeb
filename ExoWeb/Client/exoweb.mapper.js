@@ -295,9 +295,9 @@ if (typeof(console) == "undefined"){
 		var obj = getObject(model, typeName, id, true);
 		
 		// Load object's type if needed
-		if (!ExoWeb.Model.LazyLoader.isLoaded(obj.meta)) {
-			ExoWeb.Model.LazyLoader.load(obj.meta, null, function() {
-				objectFromJson(model, typeName, id, objectJson, callback);
+		if (!ExoWeb.Model.LazyLoader.isLoaded(obj.meta.type)) {
+			ExoWeb.Model.LazyLoader.load(obj.meta.type, null, function() {
+				objectFromJson(model, typeName, id, json, callback);
 			});
 		}
 		else {
@@ -435,12 +435,19 @@ if (typeof(console) == "undefined"){
 	}
 	
 	function getObject(model, type, id, forLoading) {
-		// check the id to see if it has more specific type info in it
-		if (id.indexOf("|") > 0)
-			type = id.substring(0, id.indexOf("|"));
+
 
 		// get model type
-		var mtype = type instanceof ExoWeb.Model.Type ? type : type.meta || getType(model, type);
+		var mtype;
+		
+		if (id.indexOf("|") > 0)
+		    mtype = getType(model, id.substring(0, id.indexOf("|")));
+		else if (type instanceof ExoWeb.Model.Type)
+		    mtype = type;
+		else if (type.meta)
+		    mtype = type.meta;
+		else
+			mtype = getType(model, type);
 		
 		// Try to locate object in pool
 		var obj = mtype.get(id);
@@ -525,6 +532,8 @@ if (typeof(console) == "undefined"){
 							callback();
 					});
 				}
+				else if (callback)
+					callback();
 			}
 			else if(callback)
 				callback();	
