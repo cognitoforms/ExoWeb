@@ -193,16 +193,17 @@ namespace ExoWeb
 		{
 			// Build a set of unique property paths to match during recursion
 			StringDictionary paths = new StringDictionary();
-			foreach (string path in args.Paths)
-			{
-				string p = "";
-				foreach (string step in path.Split('.'))
+			if (args.Paths != null)
+				foreach (string path in args.Paths)
 				{
-					p += "." + step;
-					if (!paths.ContainsKey(p))
-						paths.Add(p, p);
+					string p = "";
+					foreach (string step in path.Split('.'))
+					{
+						p += "." + step;
+						if (!paths.ContainsKey(p))
+							paths.Add(p, p);
+					}
 				}
-			}
 
 			// Get the root instance
 			Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> instances = new Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>>();
