@@ -67,7 +67,9 @@ if (typeof(console) == "undefined"){
 
 		// add object
 		model.addObjectRegistered(function(obj) {
-			if (obj.meta.isNew)
+			// TODO: New objects created from server response will not have
+			// isNew attribute at this point.  Can we rely on id format?
+			if (obj.meta.isNew || _this._isNew(obj.meta.id))
 				_this.enqueue("new", obj);
 		});
 
@@ -103,28 +105,85 @@ if (typeof(console) == "undefined"){
 
 	ServerSync.prototype = {
 		enqueue: function(oper, obj, addl) {
-			var entry = { oper: oper, type: obj.meta.type.get_fullName(), id: toWire(obj) };
-
-			if (addl) {
-				for (var i in addl) {
-					entry[i] = addl[i];
-				}
-			}
-			this._queue.push(entry);
-			
-			if(this.enableConsole) {
-				var s = "";
+			if (oper == "update") {
+				var prop = obj.meta.property(addl.property).lastProperty();
+				var entry = {
+					__type: null,
+					Instance: this._instanceJson(obj),
+					Property: prop.get_name(),
+					// TODO: original value?
+					OriginalValue: null,
+					CurrentValue: null
+				};
 				
-				if(addl && addl.property)
-					s += "." + addl.property;
-
-				for(var key in addl){
-					if(key != "property")
-						s += "; " + key + "=" + addl[key];
+				if (prop.get_typeClass() == "intrinsic") {
+					entry.__type = "ValueChange:#ExoGraph";
+					entry.CurrentValue = addl.value;
+				}
+				else {
+					entry.__type = "ReferenceChange:#ExoGraph";
+					entry.CurrentValue = addl.value ? 
+						this._instanceJson(addl.value) :
+						null;
 				}
 				
-				console.log($format("{oper}: {type}({id}){addl}", {oper: entry.oper, type: entry.type, id: entry.id, addl: s}));
+				this._queue.push(entry);
 			}
+			else if (oper == "new") {
+				var entry = {
+					__type: "Init:#ExoGraph",
+					Instance: this._instanceJson(obj)
+				};
+				this._queue.push(entry);
+			}
+			else if (oper == "delete") {
+				// TODO: delete JSON format?
+				var entry = {
+					__type: "Delete:#ExoGraph",
+					Instance: this._instanceJson(obj)
+				};
+				this._queue.push(entry);
+			}
+			else if (oper == "list") {
+				var prop = obj.meta.property(addl.property).lastProperty();
+				var entry = {
+					__type: "ListChange:#ExoGraph",
+					Instance: this._instanceJson(obj),
+					Property: prop.get_name(),
+					Added: [],
+					Removed: []
+				}
+				
+				// TODO: are list indices a factor?
+				
+				// include added items
+				if (addl.newItems) {
+					var _this = this;
+					Array.forEach(addl.newItems, function(obj) {
+						entry.Added.push(_this._instanceJson(obj));
+					});
+				}
+				
+				// include removed items
+				if (addl.oldItems) {
+					var _this = this;
+					Array.forEach(addl.oldItems, function(obj) {
+						entry.Removed.push(_this._instanceJson(obj));
+					});
+				}
+				
+				this._queue.push(entry);
+			}
+		},
+		_isNew: function(id) {
+			return /\+c[0-9]+/.test(id);
+		},
+		_instanceJson: function(obj) {
+			return {
+				Id: obj.meta.id,
+				IsNew: this._isNew(obj.meta.id),
+				Type: obj.meta.type.get_fullName()
+			};
 		}
 	}
 	ExoWeb.Mapper.ServerSync = ServerSync;
