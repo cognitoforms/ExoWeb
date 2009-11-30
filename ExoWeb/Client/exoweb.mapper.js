@@ -300,7 +300,7 @@ if (typeof(console) == "undefined"){
 	function getObject(model, type, id, forLoading) {
 		// check the id to see if it has more specific type info in it
 		if (id.indexOf("|") > 0)
-			typeName = id.substring(0, id.indexOf("|"));
+			type = id.substring(0, id.indexOf("|"));
 
 		// get model type
 		var mtype = type instanceof ExoWeb.Model.Type ? type : type.meta || getType(model, type);
