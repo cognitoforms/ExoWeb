@@ -9,7 +9,6 @@ ExoWeb.Mock.listProvider({ delay: 500 });
 ExoWeb.Mock.types({
 	Driver: {
 		properties: {
-			Id: { type: "String" },
 			Name: { type: "String" },
 			PhoneNumber: { type: "String", format: "Phone", rules: [{ required: null}] },
 			Owner: { type: "CarOwner" },
@@ -21,14 +20,13 @@ ExoWeb.Mock.types({
 	},
 	Car: {
 		properties: {
-			Id: { type: "String" },
 			Name: { type: "String" },
 			Driver: { type: "Driver" }
 		}
 	},
 	Dealer: {
 		properties: {
-			Id: { type: "String" },
+			All: { type: "Driver", isList: true, isShared: true },
 			Name: { type: "String" },
 			PhoneNumber: { type: "String", format: "Phone" },
 			AvailableCars: { type: "Car", isList: true }
@@ -36,7 +34,6 @@ ExoWeb.Mock.types({
 	},
 	CarOwner: {
 		properties: {
-			Id: { type: "String" },
 			Name: { type: "String" },
 			Location: { type: "OwnerLocation", rules: [{ allowedValues: "AvailableLocations"}] },
 			AvailableLocations: { type: "OwnerLocation", isList: true }
@@ -44,20 +41,17 @@ ExoWeb.Mock.types({
 	},
 	OwnerLocation: {
 		properties: {
-			Id: { type: "String" },
 			Name: { type: "String" },
 			Address: { type: "LocationAddress" }
 		}
 	},
 	LocationAddress: {
 		properties: {
-			Id: { type: "String" },
 			State: { type: "AddressState" }
 		}
 	},
 	AddressState: {
 		properties: {
-			Id: { type: "String" },
 			Abbreviation: { type: "String" },
 			Name: { type: "String" }
 		}
@@ -67,7 +61,6 @@ ExoWeb.Mock.types({
 ExoWeb.Mock.objects({
 	Driver: {
 		1: {
-			Id: "1",
 			Name: "Bryan Matthews",
 			Cars: ["1", "2"],
 			Owner: "1",
@@ -79,31 +72,29 @@ ExoWeb.Mock.objects({
 	},
 	Car: {
 		1: {
-			Id: "1",
 			Name: "Sentra",
 			Driver: "1"
 		},
 		2: {
-			Id: "2",
 			Name: "Bike",
 			Driver: "1"
 		}
 	},
 	Dealer: {
+		shared: {
+			All: ["1", "2"]
+		},
 		1: {
-			Id: "1",
 			Name: "Dick Smith Nissan",
 			AvailableCars: ["1", "2"]
 		},
 		2: {
-			Id: "2",
 			Name: "Johnny's Suzuki",
 			AvailableCars: []
 		}
 	},
 	CarOwner: {
 		1: {
-			Id: "1",
 			Name: "Bob",
 			Location: "1",
 			AvailableLocations: ["1", "2"]
@@ -111,29 +102,24 @@ ExoWeb.Mock.objects({
 	},
 	OwnerLocation: {
 		1: {
-			Id: "1",
 			Name: "Home",
 			Address: "1"
 		},
 		2: {
-			Id: "2",
 			Name: "Work",
 			Address: "2"
 		}
 	},
 	LocationAddress: {
 		1: {
-			Id: "1",
 			State: "1"
 		},
 		2: {
-			Id: "2",
 			State: "1"
 		}
 	},
 	AddressState: {
 		1: {
-			Id: "1",
 			Abbreviation: "NY",
 			Name: "New York"
 		}

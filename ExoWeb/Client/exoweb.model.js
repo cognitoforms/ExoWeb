@@ -44,10 +44,6 @@
 				throw $format("Type already has been added to the model: {0}", arguments)
 			}
 
-			// TODO: make this a method that uses the pool?
-			jstype.All = [];
-			Sys.Observer.makeObservable(jstype.All);
-
 			var formats = function() { }
 			jstype.formats = new formats;
 
@@ -151,8 +147,6 @@
 			}
 
 			obj.meta.id = id;
-			this._jstype.All.add(obj);
-
 			Sys.Observer.makeObservable(obj);
 
 			this._pool[id] = obj;
@@ -164,7 +158,6 @@
 		unregister: function(obj) {
 			this._model.notifyObjectUnregistered(obj);
 			delete this._pool[obj.meta.id];
-			this._jstype.All.remove(obj);
 			delete obj.meta._obj;
 			delete obj.meta;
 		},
@@ -173,8 +166,8 @@
 			return this._pool[id];
 		},
 
-		addProperty: function(propName, jstype, label, format, isList) {
-			var prop = new Property(this, propName, jstype, label, format, isList);
+		addProperty: function(propName, jstype, label, format, isList, isShared) {
+			var prop = new Property(this, propName, jstype, label, format, isList, isShared);
 
 			this._properties[propName] = prop;
 
@@ -371,13 +364,14 @@
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, jstype, label, format, isList) {
+	function Property(containingType, name, jstype, label, format, isList, isShared) {
 		this._containingType = containingType;
 		this._name = name;
 		this._jstype = jstype;
 		this._label = label || name.replace(/([^A-Z]+)([A-Z])/g, "$1 $2");
 		this._format = format;
 		this._isList = !!isList;
+		this._isShared = !!isShared;
 	}
 
 	Property.prototype = {
@@ -436,6 +430,10 @@
 			return this._isList;
 		},
 
+		get_isShared: function() {
+			return this._isShared;
+		},
+
 		get_label: function() {
 			return this._label;
 		},
@@ -458,18 +456,19 @@
 		},
 
 		init: function(obj, val, force) {
-			var curVal = obj[this._name];
+			var target = (this._isShared ? this._containingType.get_jstype() : obj);
+			var curVal = target[this._name];
 
 			if (curVal !== undefined && !(force === undefined || force))
 				return;
 
-			obj[this._name] = val;
+			target[this._name] = val;
 
 			if (val instanceof Array) {
 				if (!this._notifyListChangedFn) {
 					var prop = this;
 					this._notifyListChangedFn = function(sender, args) {
-						prop._containingType.get_model().notifyListChanged(obj, prop, args.get_changes());
+						prop._containingType.get_model().notifyListChanged(target, prop, args.get_changes());
 					}
 				}
 

@@ -20,7 +20,8 @@ if (typeof(console) == "undefined"){
 
 (function() {
 	var undefined;
-
+	const SHARED_ID = "shared";
+	
 	var objectProvider = ExoWeb.GetInstance;
 	ExoWeb.Mapper.setObjectProvider = function(fn) {
 		objectProvider = fn;
@@ -292,20 +293,30 @@ if (typeof(console) == "undefined"){
 	function objectFromJson(model, typeName, id, json, callback) {
 
 		// get the object to load
-		var obj = getObject(model, typeName, id, true);
+		var obj;
+		var mtype;
+		
+		if(id == SHARED_ID) {
+			obj = null;
+			mtype = getType(model, typeName);
+		}
+		else {
+			obj = getObject(model, typeName, id, true);
+			mtype = obj.meta.type;
+		}
 		
 		// Load object's type if needed
-		if (!ExoWeb.Model.LazyLoader.isLoaded(obj.meta.type)) {
-			ExoWeb.Model.LazyLoader.load(obj.meta.type, null, function() {
+		if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+			ExoWeb.Model.LazyLoader.load(mtype, null, function() {
 				objectFromJson(model, typeName, id, json, callback);
 			});
 		}
 		else {
 			console.groupCollapsed($format("Object: {0}({1})", [typeName, id]));
-			
+						
 			// Load object's properties
-			for (var propName in json) {
-				var prop = obj.meta.property(propName);
+			for (var propName in json) {			
+				var prop = mtype.property(propName);
 				var propData = json[propName];
 				
 				console.log(propName + ": ", propData);
@@ -389,7 +400,7 @@ if (typeof(console) == "undefined"){
 		// handle base class
 		if(json.baseType)
 			mtype.set_baseType(getType(model, json.baseType));
-		else
+		else 
 			mtype.set_baseType(null);
 				
 		// define properties
@@ -399,7 +410,17 @@ if (typeof(console) == "undefined"){
 			var propType = getJsType(model, propJson.type);
 			var format = propJson.format ? propType.formats[propJson.format] : null;
 			
-			var prop = mtype.addProperty(propName, propType, propJson.label, format, propJson.isList);
+			var prop = mtype.addProperty(propName, propType, propJson.label, format, propJson.isList, propJson.isShared);
+			
+			// setup static properties for lazy loading
+			if(propJson.isShared) {
+				if(propJson.isList) {
+					prop.init(null, ListLazyLoader.register(null, prop));
+				}
+				else if(!ExoWeb.Model.LazyLoader.isRegistered(mtype.get_jstype())){
+					ObjectLazyLoader.register(mtype.get_jstype());
+				}
+			}
 			
 			if(propJson.rules) {
 				for(var i=0; i<propJson.rules.length; ++i) {
@@ -435,8 +456,9 @@ if (typeof(console) == "undefined"){
 	}
 	
 	function getObject(model, type, id, forLoading) {
-
-
+		if(id === SHARED_ID)
+			throw $format("getObject() can only be called for instances (id='{0}')", [id]);
+			
 		// get model type
 		var mtype;
 		
@@ -462,7 +484,7 @@ if (typeof(console) == "undefined"){
 			}
 		}
 		
-		return obj;		
+		return obj;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
@@ -601,23 +623,27 @@ if (typeof(console) == "undefined"){
 	ObjectLazyLoader.mixin({
 		load: (function load(obj, propName, callback) {			
 			var signal = new ExoWeb.Signal();
+			
+			var id = obj.meta.id || SHARED_ID;
+			var mtype = obj.meta.type || obj.meta;
+
 			var objectJson;
 			
 			// fetch object json
-			console.log($format("Lazy load: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]));
-			objectProvider(obj.meta.type.get_fullName(), obj.meta.id, [], signal.pending(function(result) {
+			console.log($format("Lazy load: {0}({1})", [mtype.get_fullName(), id]));
+			objectProvider(mtype.get_fullName(), id, [], signal.pending(function(result) {
 				objectJson = result;
 			}));
 			
 			// does the object's type need to be loaded too?
-			if(!ExoWeb.Model.LazyLoader.isLoaded(obj.meta.type)) {
-				ExoWeb.Model.LazyLoader.load(obj.meta.type, null, signal.pending());
+			if(!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+				ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
 			}
 			
 			// wait for type and instance json to load
-			signal.waitForAll(function() {				
+			signal.waitForAll(function() {			
 				ExoWeb.Model.LazyLoader.unregister(obj);
-				objectsFromJson(obj.meta.type.get_model(), objectJson);
+				objectsFromJson(mtype.get_model(), objectJson);
 				callback();
 			});
 		}).dontDoubleUp({callbackArg: 2, groupBy: function(obj) { return [obj]; } })
@@ -648,13 +674,14 @@ if (typeof(console) == "undefined"){
 			var model = list._ownerProperty.get_containingType().get_model();
 			var propType = list._ownerProperty.get_jstype().meta;
 			var propName = list._ownerProperty.get_name();
+			var ownerType = list._ownerProperty.get_containingType().get_fullName();			
 			
 			// load the objects in the list
-			console.log($format("Lazy load: {0}({1}).{2}", [list._ownerType, list._ownerId, propName]));
+			console.log($format("Lazy load: {0}({1}).{2}", [ownerType, list._ownerId, propName]));
 
 			var objectJson;
 			
-			listProvider(list._ownerType, list._ownerId, propName, signal.pending(function(result) {
+			listProvider(ownerType, list._ownerId, propName, signal.pending(function(result) {
 				objectJson = result;
 			}));
 			
@@ -666,9 +693,9 @@ if (typeof(console) == "undefined"){
 			}
 			
 			signal.waitForAll(function() {
-				console.log($format("List: {0}({1}).{2}", [list._ownerType, list._ownerId, propName]));
+				console.log($format("List: {0}({1}).{2}", [ownerType, list._ownerId, propName]));
 				
-				var listJson = objectJson[list._ownerType][list._ownerId][propName];
+				var listJson = objectJson[ownerType][list._ownerId][propName];
 				
 				// populate the list with objects
 				for (var i = 0; i < listJson.length; i++) {
@@ -685,10 +712,13 @@ if (typeof(console) == "undefined"){
 				
 				// remove list from json and process the json.  there may be
 				// instance data returned for the objects in the list
-				if(ExoWeb.Model.LazyLoader.isLoaded(getObject(model, list._ownerType, list._ownerId))) {
-					delete objectJson[list._ownerType][list._ownerId];
+				if(ExoWeb.Model.LazyLoader.isLoaded(list._ownerId === SHARED_ID ? 
+					propType.get_jstype() : 
+					getObject(model, ownerType, list._ownerId))) {
+					
+					delete objectJson[ownerType][list._ownerId];
 				}
-							
+				
 				ListLazyLoader.unregister(list);
 				objectsFromJson(model, objectJson, callback);
 			});
@@ -702,10 +732,8 @@ if (typeof(console) == "undefined"){
 		ListLazyLoader.register = function(obj, prop) {
 			var list = [];
 			
-			list._ownerId = obj.meta.id;
-			list._ownerType = obj.meta.type.get_fullName();
+			list._ownerId = prop.get_isShared() ? SHARED_ID : obj.meta.id;
 			list._ownerProperty = prop;
-
 			
 			ExoWeb.Model.LazyLoader.register(list, instance);
 			
