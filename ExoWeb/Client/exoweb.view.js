@@ -283,7 +283,7 @@
 				var t = this.get_propertyChain().get_jstype();
 
 				if (this._valueFormatName)
-					this._valueFormat = type.formats[this._valueFormatName];
+					this._valueFormat = t.formats[this._valueFormatName];
 				else if (!(this._valueFormat = this.get_propertyChain().get_format()))
 					this._valueFormat = t.formats.$value || t.formats.$label;
 			}
