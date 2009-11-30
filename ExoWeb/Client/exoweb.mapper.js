@@ -334,7 +334,7 @@ if (typeof(console) == "undefined"){
 						}
 					}
 					else {
-						if(!list || !ExoWeb.LazyLoader.isLoaded(list)) {
+						if(!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
 							
 							// json has list members
 							if(list)
