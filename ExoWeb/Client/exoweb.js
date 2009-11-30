@@ -1,6 +1,11 @@
-﻿Function.prototype.mixin = function(methods) {
-	for (var m in methods)
-		this.prototype[m] = methods[m];
+﻿Function.prototype.mixin = function(methods, object) {
+	if(!object)
+		object = this.prototype;
+
+	for (var m in methods) {
+		if(!object[m])
+			object[m] = methods[m];
+	}
 }
 
 Type.registerNamespace("ExoWeb");
@@ -13,13 +18,13 @@ Type.registerNamespace("ExoWeb");
 		this._pending = 0;
 		var _this = this;
 		this._oneDoneFn = function() { ExoWeb.Signal.prototype.oneDone.apply(_this, arguments); };
-		//this._debugLabel = debugLabel;
+		this._debugLabel = debugLabel;
 	}
 
 	Signal.mixin({
 		pending: function(callback) {
 			this._pending++;
-			if (console && this._debugLabel) console.log($format("{_debugLabel} (+) {_pending}", this));
+			if (console && this._debugLabel) console.log($format("[signal++ {_pending}] {_debugLabel}", this));
 
 			if (callback) {
 				var _oneDoneFn = this._oneDoneFn;
@@ -41,7 +46,7 @@ Type.registerNamespace("ExoWeb");
 				this._waitForAll.push(callback);
 		},
 		oneDone: function() {
-			if (console && this._debugLabel) console.log($format("{1} (-) {0}", [this._pending - 1, this._debugLabel]));
+			if (console && this._debugLabel) console.log($format("[signal-- {0}] {1}", [this._pending - 1, this._debugLabel]));
 
 			if (--this._pending == 0) {
 				while (this._waitForAll.length > 0)
@@ -75,7 +80,7 @@ Type.registerNamespace("ExoWeb");
 			else {
 				groupBy = [this];
 				for (var i = 0; i < arguments.length; ++i) {
-					if(i != options.callbackArg)
+					if (i != options.callbackArg)
 						groupBy.push(arguments[i]);
 				}
 			}
@@ -96,7 +101,7 @@ Type.registerNamespace("ExoWeb");
 
 				if (options.debug)
 					console.dir(call.groupBy);
-					
+
 				// TODO: handle optional params better
 				if (groupBy.length != call.groupBy.length)
 					continue;
@@ -209,6 +214,71 @@ Type.registerNamespace("ExoWeb");
 	};
 
 	ExoWeb.Functor = Functor;
+	///////////////////////////////////////////////////////////////////////////////
+
+	function Transform(array, root) {
+		if (!root) {
+			Function.mixin(array, Transform.prototype);
+			return array;
+		}
+		else {
+			this.array = array;
+		}
+	}
+
+	Transform.mixin({
+		input: function() {
+			return this.array || this;
+		},
+		where: function where(filter) {
+			if (!(filter instanceof Function))
+				filter = new Function("$item", "$index", "with($item){ return (" + filter + ");}");
+
+			var output = [];
+
+			var input = this.input();
+			var len = input.length;
+			for (var i = 0; i < len; ++i) {
+				var item = input[i];
+
+				if (filter(item, i))
+					output.push(item);
+			}
+
+			return new Transform(output);
+		},
+		groupBy: function groupBy(groups) {
+			if (!(groups instanceof Function)) {
+				groups = new Function("$item", "$index", "return $item['" + groups.split(",").join("']['") + "'];");
+			}
+
+			var output = [];
+
+			var input = this.input();
+			var len = input.length;
+			for (var i = 0; i < len; i++) {
+				var item = input[i];
+				var groupKey = groups(item, i);
+
+				var group = null;
+				for (var g = 0; g < output.length; ++g) {
+					if (output[g].group == groupKey) {
+						group = output[g];
+						group.items.push(item);
+						break;
+					}
+				}
+
+				if (!group)
+					output.push({ group: groupKey, items: [item] });
+			}
+			return new Transform(output);
+		}
+	});
+
+	ExoWeb.Transform = Transform;
+	window.$transform = function $transform(array) { return new Transform(array, true); };
+
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Globals
