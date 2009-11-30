@@ -104,6 +104,84 @@ if (typeof(console) == "undefined"){
 	}
 
 	ServerSync.prototype = {
+		apply: function(changes) {
+			if (!changes)
+				changes = [];
+			else if (!(changes instanceof Array))
+				changes = [changes];
+		
+			var _this = this;
+			Array.forEach(changes, function(change) {
+				if (change.__type == "Init:#ExoGraph")
+					_this.applyInit(change);
+				else if (change.__type == "Delete:#ExoGraph")
+					_this.applyDelete(change);
+				else if (change.__type == "ReferenceChange:#ExoGraph")
+					_this.applyRefChange(change);
+				else if (change.__type == "ValueChange:#ExoGraph")
+					_this.applyValChange(change);
+				else if (change.__type == "ListChange:#ExoGraph")
+					_this.applyListChange(change);
+			});
+		},
+		applyInit: function ApplyCreateInstance(change) {
+			var type = window[change.Instance.Type];
+			var obj = new type(change.Instance.Id);
+
+			// TODO: probably not needed, can tell from id?
+			obj.meta.isNew = true;
+		},
+		applyInit: function ApplyCreateInstance(change) {
+			var type = window[change.Instance.Type];
+			var obj = new type(change.Instance.Id);
+
+			// TODO: probably not needed, can tell from id?
+			obj.meta.isNew = true;
+		},
+		applyRefChange: function ApplyReferenceChange(change) {
+			var type = window[change.Instance.Type];
+			var obj = type.meta.get(change.Instance.Id);
+
+			// TODO: validate original value?
+
+			if (change.CurrentValue) {
+				var refType = window[change.CurrentValue.Type];
+				var ref = refType.meta.get(change.CurrentValue.Id);
+				// TODO: check for no ref
+				Sys.Observer.setValue(obj, change.Property, ref);
+			}
+			else {
+				Sys.Observer.setValue(obj, change.Property, null);
+			}
+		},
+		applyValChange: function ApplyValueChange(change) {
+			var type = window[change.Instance.Type];
+			var obj = type.meta.get(change.Instance.Id);
+
+			// TODO: validate original value?
+
+			Sys.Observer.setValue(obj, change.Property, change.CurrentValue);
+		},
+		applyListChange: function ApplyListChange(change) {
+			var type = window[change.Instance.Type];
+			var obj = type.meta.get(change.Instance.Id);
+			var prop = obj.meta.property(change.Property);
+			var list = prop.value(obj);
+
+			// apply added items
+			Array.forEach(change.Added, function(item) {
+				var type = window[item.Type];
+				var obj = type.meta.get(item.Id);
+				Sys.Observer.add(list, obj);
+			});
+
+			// apply removed items
+			Array.forEach(change.Removed, function(item) {
+				var type = window[item.Type];
+				var obj = type.meta.get(item.Id);
+				Sys.Observer.remove(list, obj);
+			});
+		},
 		enqueue: function(oper, obj, addl) {
 			if (oper == "update") {
 				var prop = obj.meta.property(addl.property).lastProperty();
