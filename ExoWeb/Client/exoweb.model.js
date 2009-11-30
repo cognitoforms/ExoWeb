@@ -223,11 +223,12 @@
 			this._jstype.prototype = new baseJsType();
 			this._jstype.prototype.constructor = this._jstype;
 
-			this._jstype.formats.prototype = baseJsType.formats;
+			var formats = function() { };
+			formats.prototype = baseJsType.formats;
+			this._jstype.formats = new formats();
 
 			// TODO: can this be done earlier w/o the base type being known?
-			this._jstype.registerClass(name, baseJsType);
-
+			this._jstype.registerClass(this._fullName, baseJsType);
 		},
 		property: function(name) {
 			var p = (name.indexOf(".") >= 0) ? name.substring(0, name.indexOf(".")) : name;
@@ -827,6 +828,35 @@
 		Rule.register(this, properties, false);
 	}
 	AllowedValuesRule.prototype = {
+		addChanged: function(obj, handler) {
+			if (this.path && this.path.length > 0) {
+				var props = obj.meta.property(this.path);
+
+				if (props) {
+					props.each(obj, function(obj, prop) {
+						if (prop.get_typeClass() == "entitylist")
+							Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
+								handler(sender, args);
+							});
+						else
+							Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
+								handler(sender, args);
+							});
+					});
+				}
+				else {
+					// if the property is not defined look for a global object by that name
+					var obj = window;
+					var names = this.path.split(".");
+					for (var n = 0; obj && n < names.length; n++)
+						obj = obj[names[n]];
+
+					Sys.Observer.addCollectionChanged(obj, function(sender, args) {
+						handler(sender, args);
+					});
+				}
+			}
+		},
 		execute: function(obj) {
 			var val = this.prop.value(obj);
 			obj.meta.issueIf(this.err, val && !Array.contains(this.values(obj), val));
@@ -841,11 +871,11 @@
 				}
 				else {
 					// if the property is not defined look for a global object by that name
-					var root = window;
+					var obj = window;
 					var names = this.path.split(".");
-					for (var n = 0; root && n < names.length; n++)
-						root = root[names[n]];
-					return root;
+					for (var n = 0; obj && n < names.length; n++)
+						obj = obj[names[n]];
+					return obj;
 				}
 			}
 		}
@@ -1137,7 +1167,7 @@
 					var nextTarget = Sys.Observer.getValue(target, prop);
 
 					if (nextTarget === undefined) {
-						if(errorCallback)
+						if (errorCallback)
 							errorCallback("Property is undefined: " + prop)
 					}
 					else

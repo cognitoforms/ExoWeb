@@ -119,7 +119,7 @@
 
 		this._readySignal = new ExoWeb.Signal();
 		var _this = this;
-		
+
 		// load the object this adapter is bound to
 		ExoWeb.Model.LazyLoader.eval(this.get_target(), propertyPath, this._readySignal.pending(
 			function() {
@@ -248,37 +248,13 @@
 				var targetObj = this.get_propertyChain().lastTarget(this.get_target());
 				if (rule) {
 					allowed = rule.values(targetObj);
+
+					var _this = this;
+					rule.addChanged(this.get_propertyChain().lastTarget(this.get_target()), function() {
+						_this._options = null;
+						Sys.Observer.raisePropertyChanged(_this, "options");
+					});
 				}
-
-				//////
-
-				// TODO: handle allowed values in multiple forms (function, websvc call, string path)
-				//				var allowed = null;
-				//				var path = this.get_propertyChain().get_allowedValues();
-				//				if (path && path.length > 0) {
-				//					var root = this.get_propertyChain().lastTarget(this.get_target());
-				//					var props = root.meta.property(path);
-
-				//					if (props) {
-				//						// get the allowed values from the property chain
-				//						root = props.value(root);
-				//					}
-				//					else {
-				//						// if the property is not defined look for a global object by that name
-				//						var root = window;
-				//						var names = path.split(".");
-				//						for (var n = 0; root && n < names.length; n++)
-				//							root = root[names[n]];
-				//					}
-
-				//					// TODO: verify list?
-				//					if (!root) {
-				//						this._options = $format("Allowed values property \"{p}\" could not be found.", { p: path });
-				//						throw (this._options);
-				//					}
-
-				//					allowed = root;
-				//				}
 
 				if (this.get_propertyChain().get_typeClass() == TypeClass.Entity) {
 					this._options = [];

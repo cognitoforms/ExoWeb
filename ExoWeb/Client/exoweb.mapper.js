@@ -252,6 +252,8 @@ if (typeof(console) == "undefined"){
 		// handle base class
 		if(json.baseType)
 			mtype.set_baseType(getType(model, json.baseType));
+		else
+			mtype.set_baseType(null);
 				
 		// define properties
 		for(var propName in json.properties){
@@ -267,7 +269,7 @@ if (typeof(console) == "undefined"){
 					ruleFromJson(propJson.rules[i], prop);
 				}
 			}
-		}		
+		}
 	}
 
 	function getJsType(model, typeName, forLoading) {
