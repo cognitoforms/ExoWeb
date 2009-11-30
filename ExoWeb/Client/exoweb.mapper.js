@@ -758,7 +758,10 @@ if (typeof(console) == "undefined"){
 		
 		var state = {};
 		
-		var ret = {meta: model};
+		var ret = {
+			meta: model,
+			ready: function(callback) { allSignals.waitForAll(callback); }
+		};
 		
 		// start loading the instances first, then load type data concurrently.
 		// this assumes that instances are slower to load than types due to caching
@@ -795,14 +798,6 @@ if (typeof(console) == "undefined"){
 				})
 			})(varName);
 		}
-		
-		allSignals.waitForAll(function() {			
-			//finish up			
-			if(callback)
-				callback();
-				
-			console.log("$model completed");
-		});
 		
 		// setup lazy loading on the container object.
 		ExoWeb.Model.LazyLoader.register(ret, {

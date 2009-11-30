@@ -26,10 +26,11 @@
 //    	var sync = new ExoWeb.Mapper.ServerSync(model, 5000);
 //    	sync.enableConsole = true;
     	var model = $model({
-    	driver: { id: "1", from: "Driver", and: ["Owner.Location.Address.State", "Cars", "Dealer"] 
+    	driver: { id: "1", from: "Driver", and: ["Owner.Location.Address.State", "Cars", "Dealer", "Dealer.AvailableCars"] 
     		}
-    	},
-    	function() {
+    	});
+    	
+    	model.ready(function() {
     		Dealer.formats.$label = new ExoWeb.Model.Format({
     			convert: function(value) {
     				return value.Name;
@@ -43,7 +44,6 @@
     		});
     	});
     	
-
     	function add(type) {
     		var d = new type();
     		//$get("allDrivers").control.refresh();
