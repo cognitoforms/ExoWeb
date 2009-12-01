@@ -18,7 +18,7 @@ Type.registerNamespace("ExoWeb");
 		this._pending = 0;
 		var _this = this;
 		this._oneDoneFn = function() { ExoWeb.Signal.prototype.oneDone.apply(_this, arguments); };
-		this._debugLabel = debugLabel;
+		//this._debugLabel = debugLabel;
 	}
 
 	Signal.mixin({

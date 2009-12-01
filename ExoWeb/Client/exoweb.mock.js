@@ -58,7 +58,7 @@
 				var _this = this;
 
 				ExoWeb.Mapper.setTypeProvider(function(type, callback) {
-					var json = {}; 
+					var json = {};
 					json[type] = _this._types[type];
 					return mockCallback(callback, [json], _this._typeProviderMods, $format(">> fetch: {0}", arguments));
 				});
@@ -125,9 +125,10 @@
 			for (var propName in source) {
 				var val = source[propName];
 
-				var prop = this._types[type].properties[propName];
+				var prop = this._getProperty(type, propName);
+				var propType = prop.type.split(">")[0];
 
-				if (!Array.contains(intrinsics, prop.type)) {
+				if (!Array.contains(intrinsics, propType)) {
 					var inPath = false;
 
 					for (var i = 0; i < paths.length; ++i) {
@@ -139,7 +140,7 @@
 
 					if (inPath && !prop.isList) {
 						// include object referenced by id
-						this._query(prop.type, id, paths, result, depth + 1);
+						this._query(propType, id, paths, result, depth + 1);
 					}
 					else if (!inPath && prop.isList) {
 						val = "deferred";
@@ -148,6 +149,13 @@
 
 				result[type][id][propName] = val;
 			}
+		},
+		_getProperty: function _getProperty(containingType, name) {
+			for (var type = this._types[containingType]; type != null; type.baseType ? type = this._types[type.baseType] : null) {
+				if (type.properties[name])
+					return type.properties[name];
+			}
+			return null;
 		}
 	});
 
@@ -162,7 +170,6 @@
 
 		return ret;
 	}
-
 
 
 	function mockCallback(callback, args, mods, log) {

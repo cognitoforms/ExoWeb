@@ -3,6 +3,9 @@
 (function() {
 	var undefined;
 
+	// Used to prevent the prototype setup from adding objects to the pool
+	var disableRegistration = false;
+
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Model() {
 		this._types = {};
@@ -19,7 +22,7 @@
 	}
 
 	Model.prototype = {
-		addType: function Model$addType(name) {
+		addType: function Model$addType(name, base) {
 			var jstype = window[name];
 
 			var type;
@@ -27,12 +30,16 @@
 			if (!jstype) {
 				// use eval to generate the type so the function name appears in the debugger
 				var ctorScript = $format("function {type}(id) {" +
-					"if (id) {" +
-						"var obj = type.get(id); " +
-						"if (obj)" +
-							"return obj;" +
-					"};" +
-					"type.register(this, id);" +
+					"if (!disableRegistration) {" +
+				//						"if(type.baseType === undefined)" +
+				//							"throw $format('Cannot call new {0}({1}) b/c its base type has not be defined yet', [type.get_fullName(), id]);" +
+						"if (id) {" +
+							"var obj = type.get(id); " +
+							"if (obj)" +
+								"return obj;" +
+						"};" +
+						"type.register(this, id);" +
+					"}" +
 				"}" +
 				"jstype = {type}",
 				{ type: name });
@@ -44,13 +51,7 @@
 				throw $format("Type already has been added to the model: {0}", arguments)
 			}
 
-			var formats = function() { }
-			jstype.formats = new formats;
-
-			type = new Type(this, jstype, name);
-
-			jstype.meta = type;
-			jstype.get = function(id) { return type.get(id); };
+			type = new Type(this, jstype, name, base);
 
 			this._types[name] = type;
 
@@ -121,7 +122,7 @@
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Type(model, jstype, fullName) {
+	function Type(model, jstype, fullName, baseType) {
 		this._rules = {};
 		this._jstype = jstype;
 		this._fullName = fullName;
@@ -130,7 +131,42 @@
 		this._properties = {};
 		this._model = model;
 
+		// setup inheritance
 		this.derivedTypes = [];
+		var baseJsType;
+
+		if (baseType) {
+			baseJsType = baseType._jstype;
+
+			this.baseType = baseType;
+			baseType.derivedTypes.push(this);
+		} else {
+			baseJsType = ObjectBase;
+			this.baseType = null;
+		}
+
+		disableRegistration = true;
+		try {
+			this._jstype.prototype = new baseJsType();
+		}
+		finally {
+			disableRegistration = false;
+		}
+		this._jstype.prototype.constructor = this._jstype;
+
+		// formats
+		var formats = function() { };
+		formats.prototype = baseJsType.formats;
+		this._jstype.formats = new formats();
+
+		// helpers
+		jstype.meta = this;
+		with ({ type: this }) {
+			jstype.get = function(id) { return type.get(id); };
+		}
+
+		// done...
+		this._jstype.registerClass(this._fullName, baseJsType);
 	}
 
 	Type.prototype = {
@@ -202,28 +238,6 @@
 		get_jstype: function() {
 			return this._jstype;
 		},
-		set_baseType: function(baseType) {
-			var baseJsType;
-
-			if (baseType) {
-				baseType.derivedTypes.push(this);
-				baseJsType = baseType._jstype;
-			} else
-				baseJsType = ObjectBase;
-
-			this.baseType = baseType;
-
-			this._jstype.prototype = new baseJsType();
-			this._jstype.prototype.constructor = this._jstype;
-
-			var formats = function() { };
-			formats.prototype = baseJsType.formats;
-			this._jstype.formats = new formats();
-
-			// TODO: can this be done earlier w/o the base type being known?
-			this._jstype.registerClass(this._fullName, baseJsType);
-
-		},
 		property: function(name) {
 			var p = (name.indexOf(".") >= 0) ? name.substring(0, name.indexOf(".")) : name;
 
@@ -275,7 +289,7 @@
 						return rule;
 				}
 			}
-			return this._baseType ? this._baseType.getRule(propName, type) : null;
+			return this.baseType ? this.baseType.getRule(propName, type) : null;
 		},
 		getPropertyRules: function Type$getPropertyRules(propName /*, result */) {
 			var result = arguments[1] || [];
@@ -286,42 +300,42 @@
 				for (var i = 0; i < rules.length; i++)
 					result.push(rules[i]);
 			}
-			
-			if(this._baseType)
-				this._baseType.getPropertyRules(propName, result);
-			
+
+			if (this.baseType)
+				this.baseType.getPropertyRules(propName, result);
+
 			return result;
 		},
-//		constraint: function(condition, issueDesc) {
-//			var type = this;
-//			var issueProps = [];
+		//		constraint: function(condition, issueDesc) {
+		//			var type = this;
+		//			var issueProps = [];
 
-//			// update description and discover the properties the issue should be bound to
-//			issueDesc = issueDesc.replace(/\$([a-z0-9_]+)/ig,
-//						function(s, propName) {
-//							var prop = type.property(propName);
+		//			// update description and discover the properties the issue should be bound to
+		//			issueDesc = issueDesc.replace(/\$([a-z0-9_]+)/ig,
+		//						function(s, propName) {
+		//							var prop = type.property(propName);
 
-//							if ($.inArray(prop.lastProperty(), issueProps) < 0)
-//								issueProps.push(prop.lastProperty());
+		//							if ($.inArray(prop.lastProperty(), issueProps) < 0)
+		//								issueProps.push(prop.lastProperty());
 
-//							return prop.get_label();
-//						}
-//					);
+		//							return prop.get_label();
+		//						}
+		//					);
 
-//			var inputProps = Rule.inferInputs(this, condition);
+		//			var inputProps = Rule.inferInputs(this, condition);
 
-//			var err = new RuleIssue(issueDesc, issueProps);
+		//			var err = new RuleIssue(issueDesc, issueProps);
 
-//			type.rule(
-//						inputProps,
-//						function(obj) {
-//							obj.meta.issueIf(err, !condition.apply(obj));
-//						},
-//						false,
-//						[err]);
+		//			type.rule(
+		//						inputProps,
+		//						function(obj) {
+		//							obj.meta.issueIf(err, !condition.apply(obj));
+		//						},
+		//						false,
+		//						[err]);
 
-//			return this;
-//		},
+		//			return this;
+		//		},
 
 		// Executes all rules that have a particular property as input
 		executeRules: function Type$executeRules(obj, prop, start) {
@@ -819,22 +833,22 @@
 	function RangeRule(options, properties) {
 		this.prop = properties[0];
 
-		this.minimum = options.minimum;
-		this.maximum = options.maximum;
+		this.min = options.min;
+		this.max = options.max;
 
-		var hasMin = (this.minimum !== undefined && this.minimum != null);
-		var hasMax = (this.maximum !== undefined && this.maximum != null);
+		var hasMin = (this.min !== undefined && this.min != null);
+		var hasMax = (this.max !== undefined && this.max != null);
 
 		if (hasMin && hasMax) {
-			this.err = new RuleIssue($format("{prop} must be between {minimum} and {maximum}", this), properties, this);
+			this.err = new RuleIssue($format("{prop} must be between {min} and {max}", this), properties, this);
 			this._test = this._testMinMax;
 		}
 		else if (hasMin) {
-			this.err = new RuleIssue($format("{prop} must be at least {minimum}", this), properties, this);
+			this.err = new RuleIssue($format("{prop} must be at least {min}", this), properties, this);
 			this._test = this._testMin;
 		}
 		else if (hasMax) {
-			this.err = new RuleIssue($format("{prop} must no more than {maximum}", this), properties, this);
+			this.err = new RuleIssue($format("{prop} must no more than {max}", this), properties, this);
 			this._test = this._testMax;
 		}
 
@@ -846,13 +860,13 @@
 			obj.meta.issueIf(this.err, this._test(val));
 		},
 		_testMinMax: function(val) {
-			return val < this.minimum || val > this.maximum;
+			return val < this.min || val > this.max;
 		},
 		_testMin: function(val) {
-			return val < this.minimum;
+			return val < this.min;
 		},
 		_testMax: function(val) {
-			return val > this.maximum;
+			return val > this.max;
 		}
 	}
 	ExoWeb.Model.Rule.range = RangeRule;

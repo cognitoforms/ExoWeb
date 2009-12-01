@@ -20,7 +20,7 @@ if (typeof(console) == "undefined"){
 
 (function() {
 	var undefined;
-	const SHARED_ID = "shared";
+	var SHARED_ID = "shared";
 	
 	var objectProvider = ExoWeb.GetInstance;
 	ExoWeb.Mapper.setObjectProvider = function(fn) {
@@ -312,14 +312,14 @@ if (typeof(console) == "undefined"){
 			});
 		}
 		else {
-			console.groupCollapsed($format("Object: {0}({1})", [typeName, id]));
+			console.log($format("Object: {0}({1})", [typeName, id]));
 						
 			// Load object's properties
 			for (var propName in json) {			
 				var prop = mtype.property(propName);
 				var propData = json[propName];
 				
-				console.log(propName + ": ", propData);
+				//console.log(propName + ": ", propData);
 
 				if (!prop) {
 					console.error($format("unknown property {0}.{1}", [typeName, propName]));
@@ -376,8 +376,6 @@ if (typeof(console) == "undefined"){
 					}
 				}
 			}
-
-			console.groupEnd();
 			
 			ObjectLazyLoader.unregister(obj);
 			
@@ -395,14 +393,8 @@ if (typeof(console) == "undefined"){
 		console.log("Type: " + typeName);
 
 		// get model type. it may have already been created for lazy loading	
-		var mtype = getType(model, typeName, true);
-		
-		// handle base class
-		if(json.baseType)
-			mtype.set_baseType(getType(model, json.baseType));
-		else 
-			mtype.set_baseType(null);
-				
+		var mtype = getType(model, (json.baseType ? typeName + ">" + json.baseType: typeName), true);
+						
 		// define properties
 		for(var propName in json.properties){
 			var propJson = json.properties[propName];
@@ -434,24 +426,44 @@ if (typeof(console) == "undefined"){
 		// try to get the js type from the window object.
 		// if its not defined, assume the type is a model type
 		// that may eventually be fetched
+		var family = typeName.split(">");
 		
-		var jstype = window[typeName];
-		return jstype ? jstype : getType(model, typeName, forLoading).get_jstype();
+		var jstype = window[family[0]];
+		return jstype ? jstype : getType(model, family, forLoading).get_jstype();
 	}
 
 	
-	function getType(model, typeName, forLoading) {		
-		// if type doesn't exist, setup a ghost type
-		mtype = model.type(typeName);
-		if(!mtype) {
-			mtype = model.addType(typeName);
+	function getType(model, typeName, forLoading) {
+		// ensure the entire type family is at least ghosted
+		// so that javascript OO mechanisms work properly
+		var family;
+		
+		if(typeName instanceof Array)
+			family = typeName;
+		else 
+			family = typeName.split(">");
+		
+		
+		var mtype;
+		var baseType;
+		
+		for(var i=family.length-1; i>=0; --i) {
+			var typeName = family[i];
 			
-			if(!forLoading) {
-				console.log("Type: " + typeName + " (ghost)");
-				TypeLazyLoader.register(mtype);
+			baseType = mtype;
+			mtype = model.type(typeName);
+
+			// if type doesn't exist, setup a ghost type
+			if(!mtype) {
+				mtype = model.addType(typeName, baseType);
+								
+				if(!forLoading || i > 0) {
+					console.log("Type: " + typeName + " (ghost)");
+					TypeLazyLoader.register(mtype);
+				}				
 			}
 		}
-		
+
 		return mtype;
 	}
 	
@@ -498,14 +510,11 @@ if (typeof(console) == "undefined"){
 			typesFromJson(model, json);
 			
 			// ensure base classes are loaded too
-			for(var t in json) {
-				if(json[t].baseType) {
-					var baseType = getType(model, json[t].baseType)
-					
-					if(!ExoWeb.Model.LazyLoader.isLoaded(baseType))
-						ExoWeb.Model.LazyLoader.load(baseType, null, signal.pending());
-				}
-			}
+			for(var b = model.type(typeName).baseType; b; b = b.baseType) {
+				console.log(b.get_fullName() + " loaded = " + ExoWeb.Model.LazyLoader.isLoaded(b));
+				if(!ExoWeb.Model.LazyLoader.isLoaded(b))
+					ExoWeb.Model.LazyLoader.load(b, null, signal.pending());			
+			}			
 		}));
 		
 		// after properties and base class are loaded, then return results
@@ -518,10 +527,6 @@ if (typeof(console) == "undefined"){
 		});
 	}).dontDoubleUp({callbackArg: 2});
 	
-	function resolveType(typeName) {
-		return window[typeName];
-	}
-	
 	function fetchPathTypes(model, jstype, props, callback) {
 		try{
 			var propName = Array.dequeue(props);
@@ -533,7 +538,7 @@ if (typeof(console) == "undefined"){
 				if (jstype.meta.derivedTypes) {
 					// TODO: handle multiple levels of derived types
 					for (var i = 0, len = jstype.meta.derivedTypes.length, derivedType = null; i < len; i++) {
-						if (derivedType = resolveType(jstype.meta.derivedTypes[i])) {
+						if (derivedType = jstype.meta.derivedTypes[i].get_jstype()) {
 							if (prop = derivedType.meta.property(propName)) {
 								break;
 							}
@@ -769,22 +774,22 @@ if (typeof(console) == "undefined"){
 			state[varName] = { signal: new ExoWeb.Signal("$model." + varName) };
 			allSignals.pending();
 			
-			(function(varName) {
+			with({varName: varName}) {
 				var query = options[varName];
 				objectProvider(query.from, query.id, query.and, state[varName].signal.pending(function(objectJson) {
 					state[varName].objectJson = objectJson;
 				}));
-			})(varName);
+			}
 		}
 		
 		// load types
 		for(varName in options) {
 			fetchTypes(model, options[varName], state[varName].signal.pending());
 		}
-
+		
 		// process instances as they finish loading
 		for(varName in options) {
-			(function(varName) {
+			with({varName: varName}) {
 				state[varName].signal.waitForAll(function() {
 					
 					objectsFromJson(model, state[varName].objectJson, allSignals.pending());
@@ -796,7 +801,7 @@ if (typeof(console) == "undefined"){
 					
 					allSignals.oneDone();
 				})
-			})(varName);
+			}
 		}
 		
 		// setup lazy loading on the container object.

@@ -7,28 +7,32 @@ ExoWeb.Mock.objectProvider({ delay: 200 });
 ExoWeb.Mock.listProvider({ delay: 500 });
 
 ExoWeb.Mock.types({
-	Driver: {
+	Person: {
 		properties: {
-			Name: { type: "String", rules: [{ required: null}] },
-			PhoneNumber: { type: "String", format: "Phone", rules: [{ required: null}] },
+			Name: { type: "String", rules: [{ required: {}}] },
+			PhoneNumber: { type: "String", format: "Phone", rules: [{ required: {}}] }
+		}
+	},
+	Driver: {
+		baseType: "Person",
+		properties: {
 			Owner: { type: "CarOwner" },
 			Cars: { type: "Car", isList: true, rules: [{ allowedValues: { source: "Dealer.AvailableCars"}}] },
 			BirthDate: { type: "Date", format: "ShortDate" },
-			Dealer: { type: "Dealer", rules: [{ allowedValues: { source: "Dealer.All"}}] },
-			MilesDriven: { type: "Number", rules: [{ range: { minimum: 0}}] }
+			Dealer: { type: "Dealer>Person", rules: [{ allowedValues: { source: "Dealer.All"}}] },
+			MilesDriven: { type: "Number", rules: [{ range: { min: 0}}] }
 		}
 	},
 	Car: {
 		properties: {
 			Name: { type: "String" },
-			Driver: { type: "Driver" }
+			Driver: { type: "Driver>Person" }
 		}
 	},
 	Dealer: {
+		baseType: "Person",
 		properties: {
-			All: { type: "Driver", isList: true, isShared: true },
-			Name: { type: "String" },
-			PhoneNumber: { type: "String", format: "Phone" },
+			All: { type: "Driver>Person", isList: true, isShared: true },
 			AvailableCars: { type: "Car", isList: true }
 		}
 	},
