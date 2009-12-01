@@ -142,6 +142,18 @@ Type.registerNamespace("ExoWeb.UI");
 			this._data = value;
 			this.render();
 		},
+		get_context: function() {
+			if (!this._context) {
+				var tmpl = this.get_template();
+
+				this._context = tmpl.instantiateIn(this.get_element(), null, this.get_data());
+
+				// necessary in order to render components found within the template (like a nested dataview)
+				this._context.initializeComponents();
+			}
+
+			return this._context;
+		},
 		render: function() {
 			if (this._data && this._initialized) {
 				try {
@@ -150,15 +162,10 @@ Type.registerNamespace("ExoWeb.UI");
 					// get custom classes from template
 					var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", "").trim();
 
-					var ctx = tmpl.instantiateIn(this.get_element(), null, this.get_data());
-
-					//ctx.dataItem = this.get_data();
+					var ctx = this.get_context();
 
 					// copy custom classes from template to content control
 					$(this.get_element()).addClass(classes);
-
-					// necessary in order to render components found within the template (like a nested dataview)
-					ctx.initializeComponents();
 				}
 				catch (e) {
 					console.error(e);
@@ -169,6 +176,7 @@ Type.registerNamespace("ExoWeb.UI");
 			Content.callBaseMethod(this, "initialize");
 
 			// TODO: include meta info about field?
+			this._element._exowebcontent = {};
 
 			this._initialized = true;
 
@@ -179,36 +187,68 @@ Type.registerNamespace("ExoWeb.UI");
 	ExoWeb.UI.Content = Content;
 	Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
 
-	function $context(element) {
-		/// Finds the containing template control for the given element and 
-		/// then finds the element's corresponding context (for repeated content).
-		var container = null;
-		var subcontainer = null;
+	function getTemplateSubContainer(childElement) {
+		var element = childElement;
 
-		// find the first parent that is an ASP.NET Ajax template
-		while (element.parentNode && !element.parentNode._msajaxtemplate)
+		// find the first parent that has an attached ASP.NET Ajax dataview or ExoWeb content control
+		while (element.parentNode && !element.parentNode._msajaxtemplate && !element.parentNode._exowebcontent)
 			element = element.parentNode;
 
 		// containing template was not found
-		if (!element.parentNode || !element.parentNode._msajaxtemplate)
-			throw Error.invalidOperation("Not within a container template.");
+		if (element.parentNode && (element.parentNode._msajaxtemplate || element.parentNode._exowebcontent))
+			return element;
 
-		container = element.parentNode;
-		subcontainer = element;
+		return null;
+	}
 
-		var contexts = container.control.get_contexts();
-		if (contexts) {
-			for (var i = 0, l = contexts.length; i < l; i++) {
-				var ctx = contexts[i];
-				if ((ctx.containerElement === container) && (Sys._indexOf(ctx.nodes, subcontainer) > -1)) {
-					return ctx;
+	function getParentContext(elementOrControl, level) {
+		/// Finds the containing template control for the given element and
+		/// then finds the element's corresponding context (for repeated content).
+
+		if (elementOrControl.control instanceof Sys.UI.DataView)
+			elementOrControl = elementOrControl.control;
+		else if (elementOrControl instanceof Sys.UI.Template)
+			elementOrControl = elementOrControl.get_element();
+		
+		if (!level)
+			level = 1;
+
+		var container;
+		var subcontainer;
+		for (var i = 0; i < level; i++) {
+			if (!container && elementOrControl instanceof Sys.UI.DataView && elementOrControl._parentContext) {
+				context = elementOrControl._parentContext;
+				container = context.containerElement;
+			}
+			else {
+				subcontainer = getTemplateSubContainer(container || elementOrControl);
+
+				if (!subcontainer)
+					throw Error.invalidOperation("Not within a container template.");
+
+				container = subcontainer.parentNode;
+			}
+		}
+
+		if (context) {
+			return container.control.get_context();
+		}
+		else if (container.control instanceof Sys.UI.DataView) {
+			var contexts = container.control.get_contexts();
+			if (contexts) {
+				for (var i = 0, l = contexts.length; i < l; i++) {
+					var ctx = contexts[i];
+					if ((ctx.containerElement === container) && (Sys._indexOf(ctx.nodes, subcontainer) > -1)) {
+						return ctx;
+					}
 				}
 			}
 		}
 
 		return null;
 	}
-	window.$context = $context;
+
+	window.$parentContext = getParentContext;
 
 	// Since this script is not loaded by System.Web.Handlers.ScriptResourceHandler
 	// invoke Sys.Application.notifyScriptLoaded to notify ScriptManager 
