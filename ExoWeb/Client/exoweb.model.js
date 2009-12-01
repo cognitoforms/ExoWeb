@@ -417,6 +417,9 @@
 		},
 
 		setter: function(obj, val) {
+			if (!this.canSetValue(obj, val))
+				throw $format("Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
+
 			var old = obj[this._name];
 
 			if (old !== val) {
@@ -445,8 +448,28 @@
 		get_uniqueName: function() {
 			return this._containingType.get_fullName() + "$" + this._name;
 		},
+		canSetValue: function Property$canSetValue(obj, val) {
+			// only allow values of the correct data type to be set in the model
+			if (val === null)
+				return true;
+			else if (val === undefined)
+				return false;
 
-		value: function(obj, val) {
+			var valType;
+
+			if (val.constructor)
+				valType = val.constructor;
+			else {
+				switch (typeof (val)) {
+					case "string": valType = String; break;
+					case "number": valType = Number; break;
+					case "boolean": valType = Boolean; break;
+				}
+			};
+
+			return valType === this._jstype;
+		},
+		value: function Property$value(obj, val) {
 			if (arguments.length == 2) {
 				Sys.Observer.setValue(obj, this._name, val);
 				return val;
@@ -454,8 +477,7 @@
 			else
 				return obj[this._name];
 		},
-
-		init: function(obj, val, force) {
+		init: function Property$init(obj, val, force) {
 			var target = (this._isShared ? this._containingType.get_jstype() : obj);
 			var curVal = target[this._name];
 
@@ -565,6 +587,9 @@
 			for (var p = newProps.length - 1; p >= 0; p--) {
 				Array.insert(this._properties, 0, newProps[p]);
 			}
+		},
+		canSetValue: function canSetValue(obj, value) {
+			return this.lastProperty().canSetValue(this.lastTarget(obj), value);
 		},
 
 		// Property pass-through methods

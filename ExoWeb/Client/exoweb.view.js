@@ -321,7 +321,8 @@
 
 			var converted = (this._valueFormat) ? this._valueFormat.convertBack(value) : value;
 
-			var meta = this.get_propertyChain().lastTarget(this.get_target()).meta;
+			var prop = this.get_propertyChain();
+			var meta = prop.lastTarget(this.get_target()).meta;
 
 			meta.clearIssues(this);
 
@@ -329,31 +330,35 @@
 				this._badValue = value;
 
 				issue = new RuleIssue(
-							$format(converted.get_message(), { value: this.get_propertyChain().get_label() }),
-							[this.get_propertyChain().lastProperty()],
+							$format(converted.get_message(), { value: prop.get_label() }),
+							[prop.lastProperty()],
 							this);
 
 				meta.issueIf(issue, true);
 
+				// Update the model with the bad value if possible
+				if (prop.canSetValue(this.get_target(), value))
+					prop.value(this.get_target(), value);
+
 				// run the rules to preserve the order of issues
-				meta.executeRules(this.get_propertyChain().get_name());
+				meta.executeRules(prop.get_name());
 			}
 			else {
-				var changed = this.get_propertyChain().value(this.get_target()) !== converted;
+				var changed = prop.value(this.get_target()) !== converted;
 
 				if (this._badValue !== undefined) {
 					delete this._badValue;
 
 					// force rules to run again in order to trigger validation events
 					if (!changed)
-						meta.executeRules(this.get_propertyChain().get_name());
+						meta.executeRules(prop.get_name());
 				}
 
 				if (changed) {
 					this._ignoreTargetEvents = true;
 
 					try {
-						this.get_propertyChain().value(this.get_target(), converted);
+						prop.value(this.get_target(), converted);
 					}
 					finally {
 						this._ignoreTargetEvents = false;
