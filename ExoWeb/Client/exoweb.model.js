@@ -820,9 +820,9 @@
 	ExoWeb.Model.Rule.range = RangeRule;
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function AllowedValuesRule(path, properties) {
+	function AllowedValuesRule(options, properties) {
 		this.prop = properties[0];
-		this.path = path;
+		this.path = options.source;
 		this.err = new RuleIssue($format("{prop} has an invalid value", this), properties, this);
 
 		Rule.register(this, properties, false);
