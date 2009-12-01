@@ -179,6 +179,36 @@ Type.registerNamespace("ExoWeb.UI");
 	ExoWeb.UI.Content = Content;
 	Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
 
+	function $context(element) {
+		/// Finds the containing template control for the given element and 
+		/// then finds the element's corresponding context (for repeated content).
+		var container = null;
+		var subcontainer = null;
+
+		// find the first parent that is an ASP.NET Ajax template
+		while (element.parentNode && !element.parentNode._msajaxtemplate)
+			element = element.parentNode;
+
+		// containing template was not found
+		if (!element.parentNode || !element.parentNode._msajaxtemplate)
+			throw Error.invalidOperation("Not within a container template.");
+
+		container = element.parentNode;
+		subcontainer = element;
+
+		var contexts = container.control.get_contexts();
+		if (contexts) {
+			for (var i = 0, l = contexts.length; i < l; i++) {
+				var ctx = contexts[i];
+				if ((ctx.containerElement === container) && (Sys._indexOf(ctx.nodes, subcontainer) > -1)) {
+					return ctx;
+				}
+			}
+		}
+
+		return null;
+	}
+	window.$context = $context;
 
 	// Since this script is not loaded by System.Web.Handlers.ScriptResourceHandler
 	// invoke Sys.Application.notifyScriptLoaded to notify ScriptManager 
