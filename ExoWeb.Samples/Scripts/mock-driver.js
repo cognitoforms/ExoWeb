@@ -9,7 +9,7 @@ ExoWeb.Mock.listProvider({ delay: 500 });
 ExoWeb.Mock.types({
 	Driver: {
 		properties: {
-			Name: { type: "String" },
+			Name: { type: "String", rules: [{ required: null}] },
 			PhoneNumber: { type: "String", format: "Phone", rules: [{ required: null}] },
 			Owner: { type: "CarOwner" },
 			Cars: { type: "Car", isList: true, rules: [{ allowedValues: { source: "Dealer.AvailableCars"}}] },

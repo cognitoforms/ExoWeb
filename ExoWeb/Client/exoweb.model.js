@@ -265,8 +265,7 @@
 			else
 				rules.push(rule);
 		},
-
-		getRule: function(propName, type) {
+		getRule: function Type$getRule(propName, type) {
 			var rules = this._rules[propName];
 
 			if (rules) {
@@ -276,46 +275,60 @@
 						return rule;
 				}
 			}
-			return null;
+			return this._baseType ? this._baseType.getRule(propName, type) : null;
 		},
+		getPropertyRules: function Type$getPropertyRules(propName /*, result */) {
+			var result = arguments[1] || [];
 
-		constraint: function(condition, issueDesc) {
-			var type = this;
-			var issueProps = [];
+			var rules = this._rules[propName];
 
-			// update description and discover the properties the issue should be bound to
-			issueDesc = issueDesc.replace(/\$([a-z0-9_]+)/ig,
-						function(s, propName) {
-							var prop = type.property(propName);
-
-							if ($.inArray(prop.lastProperty(), issueProps) < 0)
-								issueProps.push(prop.lastProperty());
-
-							return prop.get_label();
-						}
-					);
-
-			var inputProps = Rule.inferInputs(this, condition);
-
-			var err = new RuleIssue(issueDesc, issueProps);
-
-			type.rule(
-						inputProps,
-						function(obj) {
-							obj.meta.issueIf(err, !condition.apply(obj));
-						},
-						false,
-						[err]);
-
-			return this;
+			if (rules) {
+				for (var i = 0; i < rules.length; i++)
+					result.push(rules[i]);
+			}
+			
+			if(this._baseType)
+				this._baseType.getPropertyRules(propName, result);
+			
+			return result;
 		},
+//		constraint: function(condition, issueDesc) {
+//			var type = this;
+//			var issueProps = [];
+
+//			// update description and discover the properties the issue should be bound to
+//			issueDesc = issueDesc.replace(/\$([a-z0-9_]+)/ig,
+//						function(s, propName) {
+//							var prop = type.property(propName);
+
+//							if ($.inArray(prop.lastProperty(), issueProps) < 0)
+//								issueProps.push(prop.lastProperty());
+
+//							return prop.get_label();
+//						}
+//					);
+
+//			var inputProps = Rule.inferInputs(this, condition);
+
+//			var err = new RuleIssue(issueDesc, issueProps);
+
+//			type.rule(
+//						inputProps,
+//						function(obj) {
+//							obj.meta.issueIf(err, !condition.apply(obj));
+//						},
+//						false,
+//						[err]);
+
+//			return this;
+//		},
 
 		// Executes all rules that have a particular property as input
 		executeRules: function Type$executeRules(obj, prop, start) {
 			var i = (start ? start : 0);
 			var processing;
 
-			var rules = this._rules[prop];
+			var rules = this.getPropertyRules(prop);
 
 			if (rules) {
 				while (processing = (i < rules.length)) {
