@@ -532,7 +532,7 @@ if (typeof(console) == "undefined"){
 	function fetchPathTypes(model, jstype, props, callback) {
 		try{
 			var propName = Array.dequeue(props);
-			
+			console.info("preload: " + propName);
 			// locate property definition in model
 			// If property is not yet in model skip it. It might be in a derived type and it will be lazy loaded.
 			var prop = jstype.meta.property(propName);
@@ -578,7 +578,34 @@ if (typeof(console) == "undefined"){
 		function rootTypeLoaded(jstype) {
 			if(query.and) {
 				Array.forEach(query.and, function(path) {
-					fetchPathTypes(model, jstype, path.split("."), signal.pending());
+					var steps = path.split(".");
+					
+					if(steps[0] === "this") {
+						Array.dequeue(steps);
+						fetchPathTypes(model, jstype, steps, signal.pending());
+					}
+					else {
+						// this is a static property
+						
+						var typeName = Array.dequeue(steps);
+						var mtype = model.type(typeName);
+						
+						function fetchStaticPathTypes() {
+							fetchPathTypes(model, mtype.get_jstype(), steps, signal.pending(fetchStaticPathTypes));
+						}
+						
+						if(!mtype) {
+							// first time type has been seen, fetch it it
+							fetchType(model, typeName, signal.pending(fetchStaticPathTypes));
+						}
+						else if(!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+							// lazy load type and continue walking the path
+							ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending(fetchStaticPathTypes));
+						}
+						else {
+							fetchStaticPathTypes();
+						}
+					}
 				});
 			};
 		}

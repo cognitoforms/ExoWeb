@@ -17,7 +17,7 @@ ExoWeb.Mock.types({
 		baseType: "Person",
 		properties: {
 			Owner: { type: "CarOwner" },
-			Cars: { type: "Car", isList: true, rules: [{ allowedValues: { source: "Dealer.AvailableCars"}}] },
+			Cars: { type: "Car", isList: true, rules: [{ allowedValues: { source: "this.Dealer.AvailableCars"}}] },
 			BirthDate: { type: "Date", format: "ShortDate" },
 			Dealer: { type: "Dealer>Person", rules: [{ allowedValues: { source: "Dealer.All"}}] },
 			MilesDriven: { type: "Number", rules: [{ range: { min: 0}}] }
@@ -39,7 +39,7 @@ ExoWeb.Mock.types({
 	CarOwner: {
 		properties: {
 			Name: { type: "String" },
-			Location: { type: "OwnerLocation", rules: [{ allowedValues: { source: "AvailableLocations"}}] },
+			Location: { type: "OwnerLocation", rules: [{ allowedValues: { source: "this.AvailableLocations"}}] },
 			AvailableLocations: { type: "OwnerLocation", isList: true }
 		}
 	},
@@ -82,6 +82,10 @@ ExoWeb.Mock.objects({
 		2: {
 			Name: "Bike",
 			Driver: "1"
+		},
+		3: {
+			Name: "Tank",
+			Driver: null
 		}
 	},
 	Dealer: {
@@ -90,7 +94,7 @@ ExoWeb.Mock.objects({
 		},
 		1: {
 			Name: "Dick Smith Nissan",
-			AvailableCars: ["1", "2"]
+			AvailableCars: ["1", "2", "3"]
 		},
 		2: {
 			Name: "Johnny's Suzuki",

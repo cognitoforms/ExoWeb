@@ -21,6 +21,32 @@
 
 	}
 
+	Model.property = function(path, thisType) {
+		var part = path.split(".");
+		var isGlobal = part[0] !== "this";
+
+		var type;
+
+		if (isGlobal) {
+			// locate first model type
+			for (var t = window[Array.dequeue(part)]; t && part.length > 0; t = t[Array.dequeue(part)]) {
+				if (t.meta) {
+					type = t.meta;
+					break;
+				}
+			}
+
+			if (!type)
+				throw $format("Invalid property path: {0}", [path]);
+		}
+		else {
+			type = thisType;
+			Array.dequeue(part);  // remove this reference			
+		}
+
+		return type.property(part.join("."));
+	}
+
 	Model.prototype = {
 		addType: function Model$addType(name, base) {
 			var jstype = window[name];
@@ -856,57 +882,43 @@
 		this.err = new RuleIssue($format("{prop} has an invalid value", this), properties, this);
 
 		Rule.register(this, properties, false);
+
+		this._needsInit = true;
 	}
 	AllowedValuesRule.prototype = {
+		_init: function() {
+			if (this._needsInit) {
+				this._allowedValuesProps = ExoWeb.Model.Model.property(this.path, this.prop.get_containingType());
+
+				delete this._needsInit;
+			}
+		},
 		addChanged: function(obj, handler) {
-			if (this.path && this.path.length > 0) {
-				var props = obj.meta.property(this.path);
-
-				if (props) {
-					props.each(obj, function(obj, prop) {
-						if (prop.get_typeClass() == "entitylist")
-							Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
-								handler(sender, args);
-							});
-						else
-							Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
-								handler(sender, args);
-							});
-					});
-				}
-				else {
-					// if the property is not defined look for a global object by that name
-					var obj = window;
-					var names = this.path.split(".");
-					for (var n = 0; obj && n < names.length; n++)
-						obj = obj[names[n]];
-
-					Sys.Observer.addCollectionChanged(obj, function(sender, args) {
-						handler(sender, args);
-					});
-				}
+			this._init();
+			
+			if (this._allowedValuesProps) {
+				this._allowedValuesProps.each(obj, function(obj, prop) {
+					if (prop.get_typeClass() == "entitylist")
+						Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
+							handler(sender, args);
+						});
+					else
+						Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
+							handler(sender, args);
+						});
+				});
 			}
 		},
 		execute: function(obj) {
+			this._init();
 			var val = this.prop.value(obj);
 			obj.meta.issueIf(this.err, val && !Array.contains(this.values(obj), val));
 		},
 		values: function(obj) {
-			if (this.path && this.path.length > 0) {
-				var props = obj.meta.property(this.path);
-
-				if (props) {
-					// get the allowed values from the property chain
-					return props.value(obj);
-				}
-				else {
-					// if the property is not defined look for a global object by that name
-					var obj = window;
-					var names = this.path.split(".");
-					for (var n = 0; obj && n < names.length; n++)
-						obj = obj[names[n]];
-					return obj;
-				}
+			this._init();
+			if (this._allowedValuesProps) {
+				// get the allowed values from the property chain
+				return this._allowedValuesProps.value(obj);
 			}
 		}
 	}
@@ -1202,7 +1214,7 @@
 					if (nextTarget === undefined) {
 						if (scopeChain.length > 0) {
 							Array.insert(path, 0, prop);
-							
+
 							LazyLoader.eval(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain);
 						}
 						else if (errorCallback)
@@ -1238,7 +1250,7 @@
 				else {
 					if (scopeChain.length > 0)
 						scopeChain = [];
-						
+
 					target = propValue;
 				}
 			}

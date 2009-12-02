@@ -164,7 +164,12 @@
 
 		if (path) {
 			Array.forEach(path, function(p) {
-				ret.push(p.split("."));
+				var parts = p.split(".");
+
+				if (parts[0] === "this") {
+					Array.dequeue(parts);
+					ret.push(parts);
+				}
 			});
 		}
 

@@ -26,7 +26,7 @@
 //    	var sync = new ExoWeb.Mapper.ServerSync(model, 5000);
 //    	sync.enableConsole = true;
     	var model = $model({
-    	driver: { id: "1", from: "Driver", and: ["Owner.Location.Address.State", "Cars", "Dealer", "Dealer.AvailableCars"] 
+    	driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"] 
     		}
     	});
     	
@@ -137,6 +137,14 @@
 			<tr>
 				<td>( binding Cars )</td>
 				<td>{ binding Cars }</td>
+			</tr>
+			<tr>
+				<td>(~ Name ) - lazy eval on context</td>
+				<td>{~ Name }</td>
+			</tr>
+			<tr>
+				<td>(~ model.driver.Name ) - lazy eval scope chain</td>
+				<td>{~ model.driver.Name }</td>
 			</tr>
 			<tr sys:attach="content" content:data="{@ Dealer }" class="dropdown" />
 			<tr sys:attach="content" content:data="{@ Dealer.Name, prefix=Dealer }" />

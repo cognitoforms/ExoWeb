@@ -332,7 +332,7 @@
 			if (converted instanceof ExoWeb.Model.FormatIssue) {
 				this._badValue = value;
 
-				issue = new RuleIssue(
+				issue = new ExoWeb.Model.RuleIssue(
 							$format(converted.get_message(), { value: prop.get_label() }),
 							[prop.lastProperty()],
 							this);
