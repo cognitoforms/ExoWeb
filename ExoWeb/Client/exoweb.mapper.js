@@ -474,8 +474,10 @@ if (typeof(console) == "undefined"){
 		// get model type
 		var mtype;
 		
-		if (id.indexOf("|") > 0)
+		if (id.indexOf("|") > 0){
 		    mtype = getType(model, id.substring(0, id.indexOf("|")));
+		    id = id.substring(id.indexOf("|") + 1);
+		}
 		else if (type instanceof ExoWeb.Model.Type)
 		    mtype = type;
 		else if (type.meta)
