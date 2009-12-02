@@ -221,15 +221,18 @@
 			obj.meta.id = id;
 			Sys.Observer.makeObservable(obj);
 
-			this._pool[id] = obj;
-
+			for (var t = this; t; t = t.baseType)
+				t._pool[id] = obj;
 
 			this._model.notifyObjectRegistered(obj);
 		},
 
 		unregister: function(obj) {
 			this._model.notifyObjectUnregistered(obj);
-			delete this._pool[obj.meta.id];
+
+			for (var t = this; t; t = t.baseType)
+				delete t._pool[obj.meta.id];			
+			
 			delete obj.meta._obj;
 			delete obj.meta;
 		},

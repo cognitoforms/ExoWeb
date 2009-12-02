@@ -532,7 +532,7 @@ if (typeof(console) == "undefined"){
 	function fetchPathTypes(model, jstype, props, callback) {
 		try{
 			var propName = Array.dequeue(props);
-			console.info("preload: " + propName);
+
 			// locate property definition in model
 			// If property is not yet in model skip it. It might be in a derived type and it will be lazy loaded.
 			var prop = jstype.meta.property(propName);
