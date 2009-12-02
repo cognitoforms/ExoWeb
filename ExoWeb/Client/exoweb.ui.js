@@ -2,6 +2,8 @@ Type.registerNamespace("ExoWeb.UI");
 
 (function() {
 
+	var undefined;
+
 	///////////////////////////////////////////////////////////////////////////////
 	/// <summary>
 	/// In addition to defining template markup, also defines rules that are used
@@ -143,16 +145,10 @@ Type.registerNamespace("ExoWeb.UI");
 			this.render();
 		},
 		get_context: function() {
-			if (!this._context) {
-				var tmpl = this.get_template();
-
-				this._context = tmpl.instantiateIn(this.get_element(), null, this.get_data());
-
-				// necessary in order to render components found within the template (like a nested dataview)
-				this._context.initializeComponents();
-			}
-
 			return this._context;
+		},
+		set_context: function(value) {
+			this._context = value;
 		},
 		render: function() {
 			if (this._data && this._initialized) {
@@ -162,10 +158,13 @@ Type.registerNamespace("ExoWeb.UI");
 					// get custom classes from template
 					var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", "").trim();
 
-					var ctx = this.get_context();
+					this._context = tmpl.instantiateIn(this.get_element(), null, this.get_data());
 
 					// copy custom classes from template to content control
 					$(this.get_element()).addClass(classes);
+
+					// necessary in order to render components found within the template (like a nested dataview)
+					this._context.initializeComponents();
 				}
 				catch (e) {
 					console.error(e);
@@ -201,21 +200,21 @@ Type.registerNamespace("ExoWeb.UI");
 		return null;
 	}
 
-	function getParentContext(elementOrControl, level) {
-		/// Finds the containing template control for the given element and
-		/// then finds the element's corresponding context (for repeated content).
+	function getParentContextData(elementOrControl, index, level) {
 
 		if (elementOrControl.control instanceof Sys.UI.DataView)
 			elementOrControl = elementOrControl.control;
 		else if (elementOrControl instanceof Sys.UI.Template)
 			elementOrControl = elementOrControl.get_element();
-		
+
 		if (!level)
 			level = 1;
 
 		var container;
 		var subcontainer;
 		for (var i = 0; i < level; i++) {
+			// if we are starting out with a dataview then look at the parent context rather than walking 
+			// up the dom (since the element will probably not be present in the dom)
 			if (!container && elementOrControl instanceof Sys.UI.DataView && elementOrControl._parentContext) {
 				context = elementOrControl._parentContext;
 				container = context.containerElement;
@@ -230,25 +229,49 @@ Type.registerNamespace("ExoWeb.UI");
 			}
 		}
 
-		if (context) {
-			return container.control.get_context();
+		var data = null;
+
+		if (container.control instanceof ExoWeb.UI.Content) {
+			// content control doesn't currenlty support lists, so return the data object
+			return container.control.get_data();
 		}
 		else if (container.control instanceof Sys.UI.DataView) {
-			var contexts = container.control.get_contexts();
-			if (contexts) {
-				for (var i = 0, l = contexts.length; i < l; i++) {
-					var ctx = contexts[i];
-					if ((ctx.containerElement === container) && (Sys._indexOf(ctx.nodes, subcontainer) > -1)) {
-						return ctx;
+			var containerContexts = container.control.get_contexts();
+			var containerData = container.control.get_data();
+			
+			// ensure an array for conformity
+			if (!(containerData instanceof Array))
+				containerData = [containerData];
+			
+			if (containerContexts) {
+				// if there is only one context in the array then the index must be zero
+				if (containerContexts.length == 1)
+					index = 0;
+					
+				if (index != undefined && index.constructor == Number) {
+					if (index >= containerContexts.length)
+						console.log("invalid index");
+					else {
+						var indexedContext = containerContexts[index];
+						var indexedData = containerData[index];
+						data = (indexedContext) ? indexedContext.dataItem : indexedData;
+					}
+				}
+				else {
+					// try to find the right context based on the element's position in the dom
+					for (var i = 0, l = containerContexts.length; i < l; i++) {
+						var childContext = containerContexts[i];
+						if (childContext && childContext.containerElement === container && Sys._indexOf(childContext.nodes, subcontainer) > -1)
+							data = childContext.dataItem;
 					}
 				}
 			}
 		}
 
-		return null;
+		return data;
 	}
 
-	window.$parentContext = getParentContext;
+	window.$parentContextData = getParentContextData;
 
 	// Since this script is not loaded by System.Web.Handlers.ScriptResourceHandler
 	// invoke Sys.Application.notifyScriptLoaded to notify ScriptManager 
