@@ -49,39 +49,7 @@
 
 	Model.prototype = {
 		addType: function Model$addType(name, base) {
-			var jstype = window[name];
-
-			var type;
-
-			if (!jstype) {
-				// use eval to generate the type so the function name appears in the debugger
-				var ctorScript = $format("function {type}(id) {" +
-					"if (!disableRegistration) {" +
-				//						"if(type.baseType === undefined)" +
-				//							"throw $format('Cannot call new {0}({1}) b/c its base type has not be defined yet', [type.get_fullName(), id]);" +
-						"if (id) {" +
-							"var obj = type.get(id); " +
-							"if (obj)" +
-								"return obj;" +
-						"};" +
-						"type.register(this, id);" +
-					"}" +
-				"}" +
-				"jstype = {type}",
-				{ type: name });
-
-				eval(ctorScript);
-				window[name] = jstype;
-			}
-			else if (jstype.meta) {
-				throw $format("Type already has been added to the model: {0}", arguments)
-			}
-
-			type = new Type(this, jstype, name, base);
-
-			this._types[name] = type;
-
-			return type;
+			return this._types[name] = new Type(this, name, base);
 		},
 		get_validatedQueue: function() {
 			return this._validatedQueue;
@@ -148,14 +116,56 @@
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Type(model, jstype, fullName, baseType) {
+	function Type(model, name, baseType) {
 		this._rules = {};
-		this._jstype = jstype;
-		this._fullName = fullName;
+		this._fullName = name;
 		this._pool = {};
 		this._counter = 0;
 		this._properties = {};
 		this._model = model;
+
+		// generate class and constructor
+		var type = this;
+
+		var jstype = window[name];
+
+		if (!jstype) {
+			function construct(id) {
+				if (!disableRegistration) {
+					if (id) {
+						var obj = type.get(id);
+						if (obj)
+							return obj;
+
+						type.register(this, id);
+					}
+					else {
+						type.register(this);
+
+						for (var propName in type._properties) {
+							var prop = type._properties[propName];
+							if (!prop.get_isStatic()) {
+								prop.init(this, prop.get_isList() ? [] : null);
+							}
+						}
+					}
+				}
+			}
+
+			// use eval to generate the type so the function name appears in the debugger
+			var ctorScript = $format("function {type}(id) { construct.apply(this, arguments); };" +
+				"jstype = {type};",
+				{ type: name });
+
+			eval(ctorScript);
+			window[name] = jstype;
+		}
+		else if (jstype.meta) {
+			throw $format("Type already has been added to the model: {0}", arguments)
+		}
+
+		this._jstype = jstype;
+
 
 		// setup inheritance
 		this.derivedTypes = [];
@@ -192,7 +202,7 @@
 		}
 
 		// done...
-		this._jstype.registerClass(this._fullName, baseJsType);
+		this._jstype.registerClass(name, baseJsType);
 	}
 
 	Type.prototype = {
@@ -895,7 +905,7 @@
 		},
 		addChanged: function(obj, handler) {
 			this._init();
-			
+
 			if (this._allowedValuesProps) {
 				this._allowedValuesProps.each(obj, function(obj, prop) {
 					if (prop.get_typeClass() == "entitylist")
