@@ -32,7 +32,7 @@ ExoWeb.Mock.types({
 	Dealer: {
 		baseType: "Person",
 		properties: {
-			All: { type: "Driver>Person", isList: true, isShared: true },
+			All: { type: "Driver>Person", isList: true, isStatic: true },
 			AvailableCars: { type: "Car", isList: true }
 		}
 	},

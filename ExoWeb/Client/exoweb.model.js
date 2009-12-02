@@ -202,8 +202,8 @@
 			return this._pool[id];
 		},
 
-		addProperty: function(propName, jstype, label, format, isList, isShared) {
-			var prop = new Property(this, propName, jstype, label, format, isList, isShared);
+		addProperty: function(propName, jstype, label, format, isList, isStatic) {
+			var prop = new Property(this, propName, jstype, label, format, isList, isStatic);
 
 			this._properties[propName] = prop;
 
@@ -391,14 +391,14 @@
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, jstype, label, format, isList, isShared) {
+	function Property(containingType, name, jstype, label, format, isList, isStatic) {
 		this._containingType = containingType;
 		this._name = name;
 		this._jstype = jstype;
 		this._label = label || name.replace(/([^A-Z]+)([A-Z])/g, "$1 $2");
 		this._format = format;
 		this._isList = !!isList;
-		this._isShared = !!isShared;
+		this._isStatic = !!isStatic;
 	}
 
 	Property.prototype = {
@@ -460,8 +460,8 @@
 			return this._isList;
 		},
 
-		get_isShared: function() {
-			return this._isShared;
+		get_isStatic: function() {
+			return this._isStatic;
 		},
 
 		get_label: function() {
@@ -505,7 +505,7 @@
 				return obj[this._name];
 		},
 		init: function Property$init(obj, val, force) {
-			var target = (this._isShared ? this._containingType.get_jstype() : obj);
+			var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 			var curVal = target[this._name];
 
 			if (curVal !== undefined && !(force === undefined || force))

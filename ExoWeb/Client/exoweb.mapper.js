@@ -20,7 +20,7 @@ if (typeof(console) == "undefined"){
 
 (function() {
 	var undefined;
-	var SHARED_ID = "shared";
+	var STATIC_ID = "static";
 	
 	var objectProvider = ExoWeb.GetInstance;
 	ExoWeb.Mapper.setObjectProvider = function(fn) {
@@ -296,7 +296,7 @@ if (typeof(console) == "undefined"){
 		var obj;
 		var mtype;
 		
-		if(id == SHARED_ID) {
+		if(id == STATIC_ID) {
 			obj = null;
 			mtype = getType(model, typeName);
 		}
@@ -402,10 +402,10 @@ if (typeof(console) == "undefined"){
 			var propType = getJsType(model, propJson.type);
 			var format = propJson.format ? propType.formats[propJson.format] : null;
 			
-			var prop = mtype.addProperty(propName, propType, propJson.label, format, propJson.isList, propJson.isShared);
+			var prop = mtype.addProperty(propName, propType, propJson.label, format, propJson.isList, propJson.isStatic);
 			
 			// setup static properties for lazy loading
-			if(propJson.isShared) {
+			if(propJson.isStatic) {
 				if(propJson.isList) {
 					prop.init(null, ListLazyLoader.register(null, prop));
 				}
@@ -468,7 +468,7 @@ if (typeof(console) == "undefined"){
 	}
 	
 	function getObject(model, type, id, forLoading) {
-		if(id === SHARED_ID)
+		if(id === STATIC_ID)
 			throw $format("getObject() can only be called for instances (id='{0}')", [id]);
 			
 		// get model type
@@ -631,7 +631,7 @@ if (typeof(console) == "undefined"){
 		load: (function load(obj, propName, callback) {			
 			var signal = new ExoWeb.Signal();
 			
-			var id = obj.meta.id || SHARED_ID;
+			var id = obj.meta.id || STATIC_ID;
 			var mtype = obj.meta.type || obj.meta;
 
 			var objectJson;
@@ -719,7 +719,7 @@ if (typeof(console) == "undefined"){
 				
 				// remove list from json and process the json.  there may be
 				// instance data returned for the objects in the list
-				if(ExoWeb.Model.LazyLoader.isLoaded(list._ownerId === SHARED_ID ? 
+				if(ExoWeb.Model.LazyLoader.isLoaded(list._ownerId === STATIC_ID ? 
 					propType.get_jstype() : 
 					getObject(model, ownerType, list._ownerId))) {
 					
@@ -739,7 +739,7 @@ if (typeof(console) == "undefined"){
 		ListLazyLoader.register = function(obj, prop) {
 			var list = [];
 			
-			list._ownerId = prop.get_isShared() ? SHARED_ID : obj.meta.id;
+			list._ownerId = prop.get_isStatic() ? STATIC_ID : obj.meta.id;
 			list._ownerProperty = prop;
 			
 			ExoWeb.Model.LazyLoader.register(list, instance);
