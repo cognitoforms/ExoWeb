@@ -101,6 +101,9 @@
 			ExoWeb.Model.LazyLoader.eval(templateContext.dataItem, properties.$default,
 				function(result) {
 					Sys.Observer.setValue(component, targetProperty, result);
+				},
+				function(err) {
+					console.error(err);
 				}
 			);
 		},

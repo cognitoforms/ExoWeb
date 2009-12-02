@@ -1205,14 +1205,14 @@
 	function LazyLoader() {
 	}
 
-	LazyLoader.eval = function eval(target, path, successCallback, errorCallback) {
+	LazyLoader.eval = function eval(target, path, successCallback, errorCallback, scopeChain) {
 		if (!path)
 			path = [];
-
-		if (!(path instanceof Array))
+		else if (!(path instanceof Array))
 			path = path.split(".");
 
-		target = target || window;
+		scopeChain = scopeChain || [window];
+		target = target || Array.dequeue(scopeChain);
 
 		while (path.length > 0) {
 			var prop = Array.dequeue(path);
@@ -1222,23 +1222,52 @@
 					var nextTarget = Sys.Observer.getValue(target, prop);
 
 					if (nextTarget === undefined) {
-						if (errorCallback)
+						if (scopeChain.length > 0) {
+							Array.insert(path, 0, prop);
+							
+							LazyLoader.eval(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain);
+						}
+						else if (errorCallback)
 							errorCallback("Property is undefined: " + prop)
 					}
-					else
-						LazyLoader.eval(nextTarget, path, successCallback, errorCallback);
+					else if (nextTarget != null)
+						LazyLoader.eval(nextTarget, path, successCallback, errorCallback, []);
+					else if (successCallback)
+						successCallback(null);
 				});
 
 				return;
 			}
 			else {
 				var propValue = Sys.Observer.getValue(target, prop);
-				target = propValue;
+
+				if (propValue === undefined) {
+					if (scopeChain.length > 0) {
+						Array.insert(path, 0, prop);
+						target = Array.dequeue(scopeChain);
+					}
+					else {
+						if (errorCallback)
+							errorCallback("Property is undefined: " + prop)
+						return;
+					}
+				}
+				else if (propValue == null) {
+					if (successCallback)
+						successCallback(null);
+					return;
+				}
+				else {
+					if (scopeChain.length > 0)
+						scopeChain = [];
+						
+					target = propValue;
+				}
 			}
 		}
 
 		// Load final object
-		if (!LazyLoader.isLoaded(target))
+		if (target != null && !LazyLoader.isLoaded(target))
 			LazyLoader.load(target, null, function() { successCallback(target); });
 		else
 			successCallback(target);
