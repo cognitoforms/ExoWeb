@@ -541,28 +541,6 @@
 	/// a root object, allowing interaction with the chain as if it were a 
 	/// single property of the root object.
 	/// </summary>
-	///
-	/// <example>
-	///
-	/// var driver = new Driver("1");
-	/// var chain = driver.meta.type.property("Owner.Location.Address");
-	///
-	/// // the "Address" portion of the property
-	/// var addressProp = chain.lastProperty();
-	/// // the Address object
-	/// var address = chain.value(driver);
-	/// // the owner's locations for the given driver
-	/// var loc = chain.lastTarget(driver);
-	///
-	/// var stateAbbrevProp = address.meta.type.property("State.Abbreviation");
-	/// // returns a state abbreviation, like "NY"
-	/// var abbrev1 = stateAbbrevProp.value(address);
-	/// // extend the original property
-	/// chain.append(stateAbbrevProp);
-	/// // returns the same state abbreviation as above
-	/// var abbrev2 = chain.value(driver);
-	///
-	/// </example>
 	///////////////////////////////////////////////////////////////////////////
 	function PropertyChain(properties) {
 		this._properties = properties.length ? properties : [properties];
