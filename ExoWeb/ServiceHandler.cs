@@ -142,7 +142,7 @@ namespace ExoWeb
 			// Output the type meta data
 			response.Write("{\r\n   \"" + type.Name + "\": {");
 			if (type.BaseType != null)
-				response.Write("\r\n      \"baseType\": \"" + type.BaseType.Name + "\",");
+				response.Write("\r\n      \"baseType\": \"" + GetFullTypeName(type.BaseType) + "\",");
 			if (type.SubTypes != null && type.SubTypes.Count > 0)
 			{
 				System.Text.StringBuilder subTypesList = new System.Text.StringBuilder();
@@ -168,7 +168,7 @@ namespace ExoWeb
 				if (property is GraphValueProperty)
 					response.Write("         \"" + property.Name + "\": { \"type\": \"" + GetJsonValueType(((GraphValueProperty)property).PropertyType) + "\" }");
 				else
-					response.Write("         \"" + property.Name + "\": { \"type\": \"" + ((GraphReferenceProperty)property).PropertyType.Name + "\"" + (((GraphReferenceProperty)property).IsList ? ", \"isList\": true" : "") + " }");
+					response.Write("         \"" + property.Name + "\": { \"type\": \"" + GetFullTypeName(((GraphReferenceProperty)property).PropertyType) + "\"" + (((GraphReferenceProperty)property).IsList ? ", \"isList\": true" : "") + " }");
 			}
 			response.Write("\r\n      }\r\n   }\r\n}");
 		}
@@ -265,7 +265,9 @@ namespace ExoWeb
 											isFirstItem = false;
 										else
 											response.Write(", ");
-										response.Write("\"" + child.Id + "\"");
+
+										var typePrefix = (child.Type != reference.PropertyType) ? GetFullTypeName(child.Type, reference.PropertyType) + "|" : "";
+										response.Write("\"" + typePrefix + child.Id + "\"");
 									}
 									response.Write(" ]");
 								}
@@ -278,7 +280,10 @@ namespace ExoWeb
 							{
 								GraphInstance child = instance.Instance.GetReference(reference);
 								if (child != null)
-									response.Write("\"" + child.Id + "\"");
+								{
+									var typePrefix = (child.Type != reference.PropertyType) ? GetFullTypeName(child.Type, reference.PropertyType) + "|" : "";
+									response.Write("\"" + typePrefix + child.Id + "\"");
+								}
 								else
 									response.Write("null");
 							}
@@ -293,6 +298,26 @@ namespace ExoWeb
 				response.Write("\r\n   }");
 			}
 			response.Write("\r\n}");
+		}
+
+		/// <summary>
+		/// Gets a string representation of the type, including base types.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <returns></returns>
+		string GetFullTypeName(GraphType type)
+		{
+			return GetFullTypeName(type, null);
+		}
+
+		/// <summary>
+		/// Gets a string representation of the type, including base types.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <returns></returns>
+		string GetFullTypeName(GraphType type, GraphType stopAt)
+		{
+			return type.Name + (type.BaseType != null && type.BaseType != stopAt ? ">" + GetFullTypeName(type.BaseType, stopAt) : "");
 		}
 
 		/// <summary>
