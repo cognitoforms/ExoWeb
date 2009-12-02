@@ -218,7 +218,7 @@ Type.registerNamespace("ExoWeb");
 
 	function Transform(array, root) {
 		if (!root) {
-			Function.mixin(array, Transform.prototype);
+			Function.mixin(Transform.prototype, array);
 			return array;
 		}
 		else {
