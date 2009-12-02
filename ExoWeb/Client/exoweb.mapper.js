@@ -524,6 +524,15 @@ if (typeof(console) == "undefined"){
 			var mtype = model.type(typeName);
 			ExoWeb.Model.LazyLoader.unregister( mtype );
 			
+			// apply app-specific configuration
+			var exts = pendingExtensions[typeName];
+
+			if (exts) {
+				delete pendingExtensions[typeName];
+				exts(mtype);
+			}
+
+			// done
 			if(callback)
 				callback(mtype.get_jstype());
 		});
@@ -785,7 +794,7 @@ if (typeof(console) == "undefined"){
 	
 	///////////////////////////////////////////////////////////////////////////////
 	// Globals
-	function $model(options, callback) {
+	window.$model = function $model(options, callback) {
 		var model = new ExoWeb.Model.Model();
 		
 		var allSignals = new ExoWeb.Signal("$model allSignals");
@@ -848,6 +857,21 @@ if (typeof(console) == "undefined"){
 		return ret;
 	}
 	
-	window.$model = $model;
-	
+	var pendingExtensions = {};
+
+	window.$extend = function $extend(typeName, callback) {
+		var jstype = window[typeName];
+		
+		if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+			callback(jstype.meta);
+		}
+		else {
+			var pending = pendingExtensions[typeName];
+
+			if (!pending)
+				pending = pendingExtensions[typeName] = ExoWeb.Functor();
+
+			pending.add(callback);
+		}
+	}
 })();

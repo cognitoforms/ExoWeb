@@ -3,8 +3,7 @@
 		object = this.prototype;
 
 	for (var m in methods) {
-		if(!object[m])
-			object[m] = methods[m];
+		object[m] = methods[m];
 	}
 }
 
@@ -283,13 +282,19 @@ Type.registerNamespace("ExoWeb");
 	///////////////////////////////////////////////////////////////////////////////
 	// Globals
 	function $format(str, values) {
-		return str.replace(/{([a-z0-9_]+)}/ig, function(match, name) {
-			var val = values[name];
+		return str.replace(/{([a-z0-9_]+)}/ig, function(match, expr) {
+			var val = values;
+			var steps = expr.split(".");
 
-			if (val === null)
-				return "";
-			if (val === undefined)
-				return match;
+			for (var i = 0; i < steps.length; ++i) {
+				var name = steps[i];
+				var val = val[name];
+
+				if (val === null)
+					return "";
+				if (val === undefined)
+					return match;
+			}
 
 			return val.toString();
 		});

@@ -3,8 +3,7 @@
 (function() {
 	var undefined;
 
-	// Used to prevent the prototype setup from adding objects to the pool
-	var disableRegistration = false;
+	var disableConstruction = false;
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Model() {
@@ -97,6 +96,12 @@
 	function ObjectBase() {
 	}
 
+	ObjectBase.mixin({
+		toString: function ObjectBase$toString() {
+			var format = this.constructor.formats.$label || this.constructor.formats.$value;
+			return format.convert(this);
+		}
+	});
 
 	ObjectBase.formats = {
 		$value: new Format({
@@ -112,7 +117,7 @@
 	}
 
 	ExoWeb.Model.ObjectBase = ObjectBase;
-	ObjectBase.registerClass("ExoWeb.Model.ObjectBase", null, Sys.Data.IDataProvider);
+	ObjectBase.registerClass("ExoWeb.Model.ObjectBase");
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
@@ -129,41 +134,38 @@
 
 		var jstype = window[name];
 
-		if (!jstype) {
-			function construct(id) {
-				if (!disableRegistration) {
-					if (id) {
-						var obj = type.get(id);
-						if (obj)
-							return obj;
+		if (jstype)
+			throw $format("Type already has been declared as a javascript function: {0}", arguments)
 
-						type.register(this, id);
-					}
-					else {
-						type.register(this);
+		function construct(id) {
+			if (!disableConstruction) {
+				if (id) {
+					var obj = type.get(id);
+					if (obj)
+						return obj;
 
-						for (var propName in type._properties) {
-							var prop = type._properties[propName];
-							if (!prop.get_isStatic()) {
-								prop.init(this, prop.get_isList() ? [] : null);
-							}
+					type.register(this, id);
+				}
+				else {
+					type.register(this);
+
+					for (var propName in type._properties) {
+						var prop = type._properties[propName];
+						if (!prop.get_isStatic()) {
+							prop.init(this, prop.get_isList() ? [] : null);
 						}
 					}
 				}
 			}
-
-			// use eval to generate the type so the function name appears in the debugger
-			var ctorScript = $format("function {type}(id) { construct.apply(this, arguments); };" +
-				"jstype = {type};",
-				{ type: name });
-
-			eval(ctorScript);
-			window[name] = jstype;
-		}
-		else if (jstype.meta) {
-			throw $format("Type already has been added to the model: {0}", arguments)
 		}
 
+		// use eval to generate the type so the function name appears in the debugger
+		var ctorScript = $format("function {type}(id) { if(construct) construct.apply(this, arguments); };" +
+			"jstype = {type};",
+			{ type: name });
+
+		eval(ctorScript);
+		window[name] = jstype;
 		this._jstype = jstype;
 
 
@@ -181,13 +183,10 @@
 			this.baseType = null;
 		}
 
-		disableRegistration = true;
-		try {
-			this._jstype.prototype = new baseJsType();
-		}
-		finally {
-			disableRegistration = false;
-		}
+		disableConstruction = true;
+		this._jstype.prototype = new baseJsType();
+		disableConstruction = false;
+
 		this._jstype.prototype.constructor = this._jstype;
 
 		// formats
@@ -231,8 +230,8 @@
 			this._model.notifyObjectUnregistered(obj);
 
 			for (var t = this; t; t = t.baseType)
-				delete t._pool[obj.meta.id];			
-			
+				delete t._pool[obj.meta.id];
+
 			delete obj.meta._obj;
 			delete obj.meta;
 		},
@@ -1064,6 +1063,17 @@
 		this._convert = options.convert;
 		this._convertBack = options.convertBack;
 		this._description = options.description;
+	}
+
+	Format.fromTemplate = function Format$fromTemplate(convertTemplate) {
+		return new Format({
+			convert: function convert(obj) {
+				if (obj === null || obj === undefined)
+					return "";
+				
+				return $format(convertTemplate, obj);
+			}
+		});
 	}
 
 	Format.mixin({

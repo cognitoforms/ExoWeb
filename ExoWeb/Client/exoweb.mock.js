@@ -138,9 +138,15 @@
 						}
 					}
 
-					if (inPath && !prop.isList) {
-						// include object referenced by id
-						this._query(propType, id, paths, result, depth + 1);
+					if (inPath) {
+						// include object(s) referenced by id
+						if (!prop.isList)
+							this._query(propType, id, paths, result, depth + 1);
+						else {
+							Array.forEach(val, function(id) {
+								this._query(propType, id, paths, result, depth + 1);
+							}, this);
+						}
 					}
 					else if (!inPath && prop.isList) {
 						val = "deferred";
