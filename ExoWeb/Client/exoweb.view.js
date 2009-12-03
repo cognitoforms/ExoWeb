@@ -100,6 +100,9 @@
 
 			ExoWeb.Model.LazyLoader.eval(templateContext.dataItem, properties.$default,
 				function(result) {
+					if (properties.format && result.constructor.formats && result.constructor.formats[properties.format])
+						result = result.constructor.formats[properties.format].convert(result);
+
 					Sys.Observer.setValue(component, targetProperty, result);
 				},
 				function(err) {
