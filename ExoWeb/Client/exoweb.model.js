@@ -1065,16 +1065,16 @@
 		this._description = options.description;
 	}
 
-	Format.fromTemplate = function Format$fromTemplate(convertTemplate) {
+	Format.fromTemplate = (function Format$fromTemplate(convertTemplate) {
 		return new Format({
 			convert: function convert(obj) {
 				if (obj === null || obj === undefined)
 					return "";
-				
+
 				return $format(convertTemplate, obj);
 			}
 		});
-	}
+	}).cached({ key: function(convertTemplate) { return convertTemplate; } });
 
 	Format.mixin({
 		convert: function(val) {

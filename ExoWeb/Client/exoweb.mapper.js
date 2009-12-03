@@ -529,7 +529,7 @@ if (typeof(console) == "undefined"){
 
 			if (exts) {
 				delete pendingExtensions[typeName];
-				exts(mtype);
+				exts(mtype.get_jstype());
 			}
 
 			// done
@@ -863,7 +863,7 @@ if (typeof(console) == "undefined"){
 		var jstype = window[typeName];
 		
 		if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
-			callback(jstype.meta);
+			callback(jstype);
 		}
 		else {
 			var pending = pendingExtensions[typeName];

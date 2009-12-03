@@ -84,22 +84,11 @@ Type.registerNamespace("ExoWeb");
 				}
 			}
 
-			if (options.debug) {
-				console.groupCollapsed("dontDoubleUp: " + (options.debugLabel || ""));
-				console.log("groupBy:");
-				console.dir(groupBy);
-
-				console.log("calls:" + calls.length);
-			}
-
 			// is this call already in progress?
 			var callInProgress;
 
 			for (var c = 0; !callInProgress && c < calls.length; ++c) {
 				var call = calls[c];
-
-				if (options.debug)
-					console.dir(call.groupBy);
 
 				// TODO: handle optional params better
 				if (groupBy.length != call.groupBy.length)
@@ -112,12 +101,6 @@ Type.registerNamespace("ExoWeb");
 						break;
 					}
 				}
-			}
-
-			if (options.debug) {
-				console.log("call in progress:");
-				console.dir(callInProgress);
-				console.groupEnd();
 			}
 
 			if (!callInProgress) {
@@ -143,17 +126,21 @@ Type.registerNamespace("ExoWeb");
 		}
 	}
 
-	Function.prototype.logged = function(messageFormat) {
+	Function.prototype.cached = function(options) {
 		var proceed = this;
+		var cache = {};
 
-		return function logged() {
-			console.log("ENTER:" + $format(messageFormat, arguments));
-			try {
-				proceed.apply(this, arguments);
+		return function cached() {
+			var key = options.key.apply(this, arguments);
+
+			var result = cache[key];
+
+			if (result === undefined) {
+				result = proceed.apply(this, arguments);
+				cache[key] = result;
 			}
-			finally {
-				console.log("EXIT:" + $format(messageFormat, arguments));
-			}
+
+			return result;
 		}
 	}
 
