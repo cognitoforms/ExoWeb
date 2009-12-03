@@ -128,18 +128,20 @@
 
 		// load the object this adapter is bound to
 		ExoWeb.Model.LazyLoader.eval(this.get_target(), propertyPath, this._readySignal.pending(
-			function() {
+			function Adapter$targetLoadedCallback() {
 				if (_this.get_propertyChain().get_typeClass() != TypeClass.Intrinsic) {
 					var prop = _this.get_propertyChain().lastProperty();
 					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
 					var targetObj = _this.get_propertyChain().lastTarget(_this.get_target());
-					if (rule && targetObj.meta.property(rule.path)) {
-						ExoWeb.Model.LazyLoader.eval(targetObj, rule.path, _this._readySignal.pending());
+					if (rule && rule.propertyChain()) {
+						var target = rule.propertyChain().get_isStatic() ? window : targetObj;
+						ExoWeb.Model.LazyLoader.eval(target, rule.propertyChain().fullName(), _this._readySignal.pending());
 					}
 				}
 			}
 		));
 
+		// TODO: avoid $default (probably have it deleted beforehand)
 		// Add arbitrary options so that they are made available in templates
 		var allowedOverrides = ["label", "helptext", "emptyOption", "emptyOptionLabel"];
 		if (options) {
@@ -156,17 +158,17 @@
 
 				// create a getter if one doesn't exist
 				if (!this["get_" + opt]) {
-					this["get_" + opt] = function() { return this[_opt]; };
+					this["get_" + opt] = function Adapter$customGetter() { return this[_opt]; };
 				}
 			}
 		}
 	}
 
 	Adapter.prototype = {
-		ready: function(callback) {
+		ready: function Adapter$ready(callback) {
 			this._readySignal.waitForAll(callback);
 		},
-		get_target: function() {
+		get_target: function Adapter$get_target() {
 			if (!this._target) {
 				if (this._context instanceof ExoWeb.Model.ObjectBase)
 					this._target = this._context;
@@ -178,7 +180,7 @@
 
 			return this._target;
 		},
-		get_propertyChain: function() {
+		get_propertyChain: function Adapter$get_propertyChain() {
 			if (!this._propertyChain) {
 				var adapterOrObject = this._context instanceof ExoWeb.Model.ObjectBase ? this._context : this._context.dataItem;
 				var sourceObject = (adapterOrObject instanceof Adapter) ? adapterOrObject.get_value() : adapterOrObject;
@@ -195,18 +197,18 @@
 
 			return this._propertyChain;
 		},
-		initialize: function() {
+		initialize: function Adapter$initialize() {
 			if (!this._observable) {
 				var _this = this;
 				Sys.Observer.makeObservable(this);
 				// subscribe to property changes at any point in the path
-				this.get_propertyChain().each(this.get_target(), function(obj, prop) {
+				this.get_propertyChain().each(this.get_target(), function Adapter$RegisterPropertyChangeCallback(obj, prop) {
 					if (prop.get_typeClass() == "entitylist")
-						Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
+						Sys.Observer.addCollectionChanged(prop.value(obj), function Adapter$ListPropertyChangedCallback(sender, args) {
 							_this._onTargetChanged(sender, args);
 						});
 					else
-						Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
+						Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function Adapter$PropertyChangedCallback(sender, args) {
 							_this._onTargetChanged(sender, args);
 						});
 				});
@@ -215,7 +217,7 @@
 		},
 		// Pass property change events to the target object
 		///////////////////////////////////////////////////////////////////////////
-		_onTargetChanged: function(sender, args) {
+		_onTargetChanged: function Adapter$_onTargetChanged(sender, args) {
 			if (this._ignoreTargetEvents)
 				return;
 
@@ -224,25 +226,25 @@
 
 		// Properties that are intended to be used by templates
 		///////////////////////////////////////////////////////////////////////////
-		get_label: function() {
+		get_label: function Adapter$get_label() {
 			return this._label || this.get_propertyChain().get_label();
 		},
-		get_helptext: function() {
+		get_helptext: function Adapter$get_helptext() {
 			return this._helptext || "";
 		},
-		get_emptyOption: function() {
+		get_emptyOption: function Adapter$get_emptyOption() {
 			return this._emptyOption ? true : false;
 		},
-		set_emptyOption: function(value) {
+		set_emptyOption: function Adapter$set_emptyOption(value) {
 			this._emptyOption = value;
 		},
-		get_emptyOptionLabel: function() {
+		get_emptyOptionLabel: function Adapter$get_emptyOptionLabel() {
 			return this._emptyOptionLabel ? this._emptyOptionLabel : " -- select -- ";
 		},
-		set_emptyOptionLabel: function(value) {
+		set_emptyOptionLabel: function Adapter$set_emptyOptionLabel(value) {
 			this._emptyOptionLabel = value;
 		},
-		get_options: function() {
+		get_options: function Adapter$get_options() {
 			if (!this._options) {
 
 				if (this.get_propertyChain().get_typeClass() == TypeClass.Intrinsic)
@@ -281,10 +283,10 @@
 
 			return this._options;
 		},
-		get_badValue: function() {
+		get_badValue: function Adapter$get_badValue() {
 			return this._badValue;
 		},
-		get_valueFormat: function() {
+		get_valueFormat: function Adapter$get_valueFormat() {
 			if (!this._valueFormat) {
 				var t = this.get_propertyChain().get_jstype();
 
@@ -296,7 +298,7 @@
 
 			return this._valueFormat;
 		},
-		get_labelFormat: function() {
+		get_labelFormat: function Adapter$get_labelFormat() {
 			if (!this._labelFormat) {
 				var t = this.get_propertyChain().get_jstype();
 
@@ -308,10 +310,10 @@
 
 			return this._labelFormat;
 		},
-		get_rawValue: function() {
+		get_rawValue: function Adapter$get_rawValue() {
 			return this.get_propertyChain().value(this.get_target());
 		},
-		get_value: function() {
+		get_value: function Adapter$get_value() {
 			this.initialize();
 
 			if (this._badValue !== undefined)
@@ -322,10 +324,10 @@
 			var format = this.get_valueFormat();
 			return format ? format.convert(rawValue) : rawValue;
 		},
-		set_value: function(value) {
+		set_value: function Adapter$set_value(value) {
 			this.initialize();
 
-			var converted = (this._valueFormat) ? this._valueFormat.convertBack(value) : value;
+			var converted = (this.get_valueFormat()) ? this.get_valueFormat().convertBack(value) : value;
 
 			var prop = this.get_propertyChain();
 			var meta = prop.lastTarget(this.get_target()).meta;
@@ -375,16 +377,16 @@
 
 		// Pass validation events through to the target
 		///////////////////////////////////////////////////////////////////////////
-		addPropertyValidating: function(propName, handler) {
+		addPropertyValidating: function Adapter$addPropertyValidating(propName, handler) {
 			this.get_propertyChain().lastTarget(this.get_target()).meta.addPropertyValidating(this.get_propertyChain().get_name(), handler);
 		},
-		addPropertyValidated: function(propName, handler) {
+		addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
 			this.get_propertyChain().lastTarget(this.get_target()).meta.addPropertyValidated(this.get_propertyChain().get_name(), handler);
 		},
 
 		// Override toString so that UI can bind to the adapter directly
 		///////////////////////////////////////////////////////////////////////////
-		toString: function() {
+		toString: function Adapter$toString() {
 			return this.get_value();
 		}
 	}

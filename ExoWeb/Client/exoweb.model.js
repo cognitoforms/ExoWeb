@@ -111,7 +111,7 @@
 			convertBack: function(str) {
 				var ids = str.split("|");
 				var ctor = window[ids[0]];
-				return new ctor(ids[1]);
+				return ctor.get(ids[1]);
 			}
 		})
 	}
@@ -541,7 +541,7 @@
 			}
 			else {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-				return target[this._name];
+				return target ? target[this._name] : null;
 			}
 		},
 		init: function Property$init(obj, val, force) {
@@ -613,7 +613,7 @@
 		fullName: function() {
 			var name = "";
 			Array.forEach(this._properties, function(prop) {
-				name += (name.length > 0 ? "." : "") + prop.get_name();
+				name += (name.length > 0 ? "." : (prop.get_isStatic() ? prop.get_containingType().get_fullName() + "." : "")) + prop.get_name();
 			});
 			return name;
 		},
@@ -651,6 +651,10 @@
 		get_isList: function PropertyChain$get_isList() {
 			return this.lastProperty().get_isList();
 		},
+		get_isStatic: function PropertyChain$get_isStatic() {
+			// TODO
+			return this.lastProperty().get_isStatic();
+		},
 		get_label: function PropertyChain$get_label() {
 			return this.lastProperty().get_label();
 		},
@@ -669,11 +673,12 @@
 				Sys.Observer.setValue(obj, this.get_name(), val);
 			}
 			else {
+				var target = obj;
 				for (var p = 0; p < this._properties.length; p++) {
 					var prop = this._properties[p];
-					obj = prop.value(obj);
+					target = prop.value(target);
 				}
-				return obj;
+				return target;
 			}
 		}
 	}
@@ -902,7 +907,7 @@
 	AllowedValuesRule.prototype = {
 		_init: function() {
 			if (this._needsInit) {
-				this._allowedValuesProps = ExoWeb.Model.Model.property(this.path, this.prop.get_containingType());
+				this._propertyChain = ExoWeb.Model.Model.property(this.path, this.prop.get_containingType());
 
 				delete this._needsInit;
 			}
@@ -910,8 +915,8 @@
 		addChanged: function(obj, handler) {
 			this._init();
 
-			if (this._allowedValuesProps) {
-				this._allowedValuesProps.each(obj, function(obj, prop) {
+			if (this._propertyChain) {
+				this._propertyChain.each(obj, function(obj, prop) {
 					if (prop.get_typeClass() == "entitylist")
 						Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
 							handler(sender, args);
@@ -928,11 +933,15 @@
 			var val = this.prop.value(obj);
 			obj.meta.issueIf(this.err, val && !Array.contains(this.values(obj), val));
 		},
+		propertyChain: function(obj) {
+			this._init();
+			return this._propertyChain;
+		},
 		values: function(obj) {
 			this._init();
-			if (this._allowedValuesProps) {
+			if (this._propertyChain) {
 				// get the allowed values from the property chain
-				return this._allowedValuesProps.value(obj);
+				return this._propertyChain.value(obj);
 			}
 		}
 	}
