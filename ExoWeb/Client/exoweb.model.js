@@ -418,9 +418,6 @@
 	ExoWeb.Model.Type = Type;
 	Type.registerClass("ExoWeb.Model.Type");
 
-	///////////////////////////////////////////////////////////////////////////////
-	ExoWeb.Model.TypeClass = TypeClass = { Intrinsic: "intrinsic", Entity: "entity", EntityList: "entitylist" }
-
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	/// <remarks>
@@ -452,22 +449,6 @@
 			return this._containingType;
 		},
 
-		get_typeClass: function() {
-			if (!this._typeClass) {
-				if (this.get_jstype().meta) {
-					if (this.get_isList())
-						this._typeClass = TypeClass.EntityList;
-					else
-						this._typeClass = TypeClass.Entity;
-				}
-				else {
-					this._typeClass = TypeClass.Intrinsic;
-				}
-			}
-
-			return this._typeClass;
-		},
-
 		get_jstype: function() {
 			return this._jstype;
 		},
@@ -492,6 +473,18 @@
 				obj.meta.executeRules(this._name);
 				this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
 			}
+		},
+
+		get_isEntityType: function() {
+			return this.get_jstype().meta && !this._isList;
+		},
+
+		get_isEntityListType: function() {
+			return this.get_jstype().meta && this._isList;
+		},
+
+		get_isValueType: function() {
+			return !this.get_jstype().meta;
 		},
 
 		get_isList: function() {
@@ -661,8 +654,14 @@
 		get_name: function PropertyChain$get_name() {
 			return this.lastProperty().get_name();
 		},
-		get_typeClass: function PropertyChain$get_typeClass() {
-			return this.lastProperty().get_typeClass();
+		get_isValueType: function PropertyChain$get_isValueType() {
+			return this.lastProperty().get_isValueType();
+		},
+		get_isEntityType: function PropertyChain$get_isEntityType() {
+			return this.lastProperty().get_isEntityType();
+		},
+		get_isEntityListType: function PropertyChain$get_isEntityListType() {
+			return this.lastProperty().get_isEntityListType();
 		},
 		get_uniqueName: function PropertyChain$get_uniqueName() {
 			return this.lastProperty().get_uniqueName();
@@ -917,7 +916,7 @@
 
 			if (this._propertyChain) {
 				this._propertyChain.each(obj, function(obj, prop) {
-					if (prop.get_typeClass() == "entitylist")
+					if (prop.get_isEntityListType())
 						Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
 							handler(sender, args);
 						});

@@ -195,7 +195,7 @@ if (typeof(console) == "undefined"){
 					CurrentValue: null
 				};
 				
-				if (prop.get_typeClass() == "intrinsic") {
+				if (prop.get_isValueType()) {
 					entry.__type = "ValueChange:#ExoGraph";
 					entry.CurrentValue = addl.value;
 				}

@@ -53,50 +53,28 @@
 		return getter ? getter.call(target) : target[property];
 	}
 
-
-	function getAdapter(component, targetProperty, templateContext, properties) {
-
-		var path = properties.path || properties.$default;
-
-		return new Adapter(templateContext, path, properties.valueFormat, properties.labelFormat, properties);
-	}
-
 	// Markup Extensions
 	//////////////////////////////////////////////////////////////////////////////////////
-	Sys.Application.registerMarkupExtension("@",
-		function(component, targetProperty, templateContext, properties) {
-			var adapter = getAdapter(component, targetProperty, templateContext, properties);
 
-			adapter.ready(function() {
-				console.log("@" + properties.$default);
+	// Metadata adapter markup extension
+	Sys.Application.registerMarkupExtension("@",
+		function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
+			console.log("@ " + (properties.$default || "(no path)"));
+
+			var path = properties.path || properties.$default;
+			delete properties.$default;
+
+			var adapter = new Adapter(templateContext, path, properties.valueFormat, properties.labelFormat, properties);
+
+			adapter.ready(function AdapterReady() {
 				Sys.Observer.setValue(component, targetProperty, adapter);
 			});
 		}, false);
 
-	Sys.Application.registerMarkupExtension("@=",
-		function(component, targetProperty, templateContext, properties) {
-			var adapter = getAdapter(component, targetProperty, templateContext, properties);
-
-			var options = {
-				source: adapter,
-				path: "value",
-				templateContext: templateContext,
-				target: component,
-				targetProperty: targetProperty
-			};
-
-			delete properties.$default;
-
-			var binding = Sys.Binding.bind(options);
-			templateContext.components.push(binding);
-		},
-		false
-	);
-
 	// Lazy eval markup extension
 	Sys.Application.registerMarkupExtension("~",
-		function(component, targetProperty, templateContext, properties) {
-			console.log("~ " + properties.$default);
+		function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
+			console.log("~ " + (properties.$default || "(no path)"));
 
 			ExoWeb.Model.LazyLoader.eval(templateContext.dataItem, properties.$default,
 				function(result) {
@@ -129,7 +107,7 @@
 		// load the object this adapter is bound to
 		ExoWeb.Model.LazyLoader.eval(this.get_target(), propertyPath, this._readySignal.pending(
 			function Adapter$targetLoadedCallback() {
-				if (_this.get_propertyChain().get_typeClass() != TypeClass.Intrinsic) {
+				if (!_this.get_propertyChain().get_isValueType()) {
 					var prop = _this.get_propertyChain().lastProperty();
 					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
 					var targetObj = _this.get_propertyChain().lastTarget(_this.get_target());
@@ -141,25 +119,32 @@
 			}
 		));
 
-		// TODO: avoid $default (probably have it deleted beforehand)
 		// Add arbitrary options so that they are made available in templates
 		var allowedOverrides = ["label", "helptext", "emptyOption", "emptyOptionLabel"];
 		if (options) {
-			for (var opt in options) {
+			for (var optionName in options) {
+				// check for existing getter and setter methods
+				var getter = this["get_" + optionName];
+				var setter = this["set_" + optionName];
 
-				// Check if the option is already defined and is not available to
-				// override, as in the case of critical properties (e.g.: value)
-				if (this["get_" + opt] && !Array.contains(allowedOverrides, opt))
-				//throw ($format("{opt} is already defined.", { opt: opt }));
+				// if the option is already defined don't overwrite critical properties (e.g.: value)
+				if (getter && !Array.contains(allowedOverrides, optionName))
 					continue;
 
-				var _opt = "_" + opt;
-				this[_opt] = options[opt];
+				// create a getter and setter if they don't exist
+				if (!getter || !(getter instanceof Function))
+					getter = this["get_" + optionName] =
+						(function makeGetter(adapter, optionName) {
+							return function Adapter$customGetter() { return adapter["_" + optionName]; };
+						})(this, optionName);
+				if (!setter || !(setter instanceof Function))
+					setter = this["set_" + optionName] =
+						(function makeSetter(adapter, optionName) {
+							return function Adapter$customSetter(value) { adapter["_" + optionName] = value; };
+						})(this, optionName);
 
-				// create a getter if one doesn't exist
-				if (!this["get_" + opt]) {
-					this["get_" + opt] = function Adapter$customGetter() { return this[_opt]; };
-				}
+				// set the option value
+				setter.call(this, options[optionName]);
 			}
 		}
 	}
@@ -180,15 +165,18 @@
 
 			return this._target;
 		},
+		get_propertyPath: function Adapter$get_propertyPath() {
+			return this._propertyPath;
+		},
 		get_propertyChain: function Adapter$get_propertyChain() {
 			if (!this._propertyChain) {
 				var adapterOrObject = this._context instanceof ExoWeb.Model.ObjectBase ? this._context : this._context.dataItem;
 				var sourceObject = (adapterOrObject instanceof Adapter) ? adapterOrObject.get_value() : adapterOrObject;
 
 				// get the property chain starting at the source object
-				this._propertyChain = sourceObject.meta.property(this._propertyPath);
+				this._propertyChain = sourceObject.meta.property(this.get_propertyPath());
 				if (!this._propertyChain)
-					throw ($format("Property \"{p}\" could not be found.", { p: this._propertyPath }));
+					throw ($format("Property \"{p}\" could not be found.", { p: this.get_propertyPath() }));
 
 				// prepend parent adapter's property path
 				if (adapterOrObject instanceof Adapter)
@@ -203,7 +191,7 @@
 				Sys.Observer.makeObservable(this);
 				// subscribe to property changes at any point in the path
 				this.get_propertyChain().each(this.get_target(), function Adapter$RegisterPropertyChangeCallback(obj, prop) {
-					if (prop.get_typeClass() == "entitylist")
+					if (prop.get_isEntityListType())
 						Sys.Observer.addCollectionChanged(prop.value(obj), function Adapter$ListPropertyChangedCallback(sender, args) {
 							_this._onTargetChanged(sender, args);
 						});
@@ -233,9 +221,12 @@
 			return this._helptext || "";
 		},
 		get_emptyOption: function Adapter$get_emptyOption() {
-			return this._emptyOption ? true : false;
+			return !!this._emptyOption;
 		},
 		set_emptyOption: function Adapter$set_emptyOption(value) {
+			if (value.constructor != Boolean)
+				value = Boolean.formats.TrueFalse.convertBack(value);
+
 			this._emptyOption = value;
 		},
 		get_emptyOptionLabel: function Adapter$get_emptyOptionLabel() {
@@ -247,37 +238,22 @@
 		get_options: function Adapter$get_options() {
 			if (!this._options) {
 
-				if (this.get_propertyChain().get_typeClass() == TypeClass.Intrinsic)
-					return null;
+				if (!this.get_propertyChain().get_isValueType()) {
+					var prop = this.get_propertyChain().lastProperty();
+					var allowed = null;
+					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
+					var targetObj = this.get_propertyChain().lastTarget(this.get_target());
+					if (rule) {
+						allowed = rule.values(targetObj);
 
-				var prop = this.get_propertyChain().lastProperty();
-				var allowed = null;
-				var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-				var targetObj = this.get_propertyChain().lastTarget(this.get_target());
-				if (rule) {
-					allowed = rule.values(targetObj);
+						this._options = [];
 
-//					var _this = this;
-//					rule.addChanged(this.get_propertyChain().lastTarget(this.get_target()), function() {
-//						_this._options = null;
-//						Sys.Observer.raisePropertyChanged(_this, "options");
-//					});
-				}
+						if (this.get_propertyChain().get_isEntityType() && this.get_emptyOption())
+							Array.add(this._options, new OptionAdapter(this, null));
 
-				if (this.get_propertyChain().get_typeClass() == TypeClass.Entity) {
-					this._options = [];
-
-					if (this._emptyOption)
-						this._options[0] = new OptionAdapter(this, null);
-
-					for (var a = 0; a < allowed.length; a++)
-						Array.add(this._options, new OptionAdapter(this, allowed[a]));
-				}
-				else if (this.get_propertyChain().get_typeClass() == TypeClass.EntityList) {
-					this._options = [];
-
-					for (var a = 0; a < allowed.length; a++)
-						this._options[a] = new OptionAdapter(this, allowed[a]);
+						for (var a = 0; a < allowed.length; a++)
+							Array.add(this._options, new OptionAdapter(this, allowed[a]));
+					}
 				}
 			}
 
