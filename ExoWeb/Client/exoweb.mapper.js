@@ -291,18 +291,18 @@ if (typeof(console) == "undefined"){
 	}
 	
 	function objectFromJson(model, typeName, id, json, callback) {
-
 		// get the object to load
 		var obj;
-		var mtype;
 		
-		if(id == STATIC_ID) {
-			obj = null;
-			mtype = getType(model, typeName);
-		}
-		else {
-			obj = getObject(model, typeName, id, true);
-			mtype = obj.meta.type;
+		// family-qualified type name is not available so cann't use getType()
+		var mtype = model.type(typeName);
+		
+		// if this type has never been seen, go and fetch it and resume later
+		if(!mtype) {
+			fetchType(model, typeName, function() {
+				objectFromJson(model, typeName, id, json, callback);
+			});
+			return;
 		}
 		
 		// Load object's type if needed
@@ -310,78 +310,84 @@ if (typeof(console) == "undefined"){
 			ExoWeb.Model.LazyLoader.load(mtype, null, function() {
 				objectFromJson(model, typeName, id, json, callback);
 			});
+			return;
 		}
-		else {
-			console.log($format("Object: {0}({1})", [typeName, id]));
+		
+		// get target object to load
+		if(id == STATIC_ID)
+			obj = null;
+		else
+			obj = getObject(model, typeName, id, true);
+		
+		console.log($format("Object: {0}({1})", [typeName, id]));
+					
+		// Load object's properties
+		for (var propName in json) {			
+			var prop = mtype.property(propName);
+			var propData = json[propName];
+			
+			//console.log(propName + ": ", propData);
+
+			if (!prop) {
+				console.error($format("unknown property {0}.{1}", [typeName, propName]));
+				continue;
+			}
+			else {
+				prop = prop.lastProperty();
+			}
+
+			var propType = prop.get_jstype();
+			
+			if(propData === null) {
+				prop.init(obj, null);
+			}
+			else if (prop.get_isList()) {
+				var list = prop.value(obj);
+				
+				if (propData == "deferred") {
+					// don't overwrite list if its already a ghost
+					if(!list) {
+						list = ListLazyLoader.register(obj, prop);
+						prop.init(obj, list, false);
+					}
+				}
+				else {
+					if(!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
 						
-			// Load object's properties
-			for (var propName in json) {			
-				var prop = mtype.property(propName);
-				var propData = json[propName];
-				
-				//console.log(propName + ": ", propData);
-
-				if (!prop) {
-					console.error($format("unknown property {0}.{1}", [typeName, propName]));
-					continue;
-				}
-				else {
-					prop = prop.lastProperty();
-				}
-
-				var propType = prop.get_jstype();
-				
-				if(propData === null) {
-					prop.init(obj, null);
-				}
-				else if (prop.get_isList()) {
-					var list = prop.value(obj);
-					
-					if (propData == "deferred") {
-						// don't overwrite list if its already a ghost
-						if(!list) {
-							list = ListLazyLoader.register(obj, prop);
-							prop.init(obj, list, false);
+						// json has list members
+						if(list)
+							ListLazyLoader.unregister(list);							
+						else {
+							list = [];
+							prop.init(obj, list);
 						}
-					}
-					else {
-						if(!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
-							
-							// json has list members
-							if(list)
-								ListLazyLoader.unregister(list);							
-							else {
-								list = [];
-								prop.init(obj, list);
-							}
-							
-							for (var i = 0; i < propData.length; i++) {
-								var childId = propData[i];
-								list.push(getObject(model, propType, childId));
-							}									
+						
+						for (var i = 0; i < propData.length; i++) {
+							var childId = propData[i];
+							list.push(getObject(model, propType, childId));
+						}									
 
-						}
-					}
-				}
-				else {
-					var ctor = prop.get_jstype(true);
-					
-					// assume if ctor is not found its a model type not an intrinsic
-					if(!ctor || ctor.meta) {
-						prop.init(obj, getObject(model, propType, propData));
-					}
-					else {
-						var format = ctor.formats.$wire;
-						prop.init(obj, (format ? format.convertBack(propData) : propData));
 					}
 				}
 			}
-			
-			ObjectLazyLoader.unregister(obj);
-			
-			if(callback)
-				callback();
+			else {
+				var ctor = prop.get_jstype(true);
+				
+				// assume if ctor is not found its a model type not an intrinsic
+				if(!ctor || ctor.meta) {
+					prop.init(obj, getObject(model, propType, propData));
+				}
+				else {
+					var format = ctor.formats.$wire;
+					prop.init(obj, (format ? format.convertBack(propData) : propData));
+				}
+			}
 		}
+		
+		ObjectLazyLoader.unregister(obj);
+		
+		if(callback)
+			callback();
 	}
 	
 	function typesFromJson(model, json) {		
@@ -432,7 +438,8 @@ if (typeof(console) == "undefined"){
 		return jstype ? jstype : getType(model, family, forLoading).get_jstype();
 	}
 
-	
+	// Gets a reference to a type.  IMPORTANT: typeName must be the
+	// family-qualified type name (ex: Employee>Person).
 	function getType(model, typeName, forLoading) {
 		// ensure the entire type family is at least ghosted
 		// so that javascript OO mechanisms work properly
@@ -455,6 +462,7 @@ if (typeof(console) == "undefined"){
 
 			// if type doesn't exist, setup a ghost type
 			if(!mtype) {
+					
 				mtype = model.addType(typeName, baseType);
 								
 				if(!forLoading || i > 0) {
@@ -513,7 +521,6 @@ if (typeof(console) == "undefined"){
 			
 			// ensure base classes are loaded too
 			for(var b = model.type(typeName).baseType; b; b = b.baseType) {
-				console.log(b.get_fullName() + " loaded = " + ExoWeb.Model.LazyLoader.isLoaded(b));
 				if(!ExoWeb.Model.LazyLoader.isLoaded(b))
 					ExoWeb.Model.LazyLoader.load(b, null, signal.pending());			
 			}			
@@ -604,7 +611,7 @@ if (typeof(console) == "undefined"){
 						}
 						
 						if(!mtype) {
-							// first time type has been seen, fetch it it
+							// first time type has been seen, fetch it
 							fetchType(model, typeName, signal.pending(fetchStaticPathTypes));
 						}
 						else if(!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
@@ -830,13 +837,12 @@ if (typeof(console) == "undefined"){
 			with({varName: varName}) {
 				state[varName].signal.waitForAll(function() {
 					
-					objectsFromJson(model, state[varName].objectJson, allSignals.pending());
-					
-					var query = options[varName];
-					var mtype = model.type(query.from);
-					
-					ret[varName] = mtype.get(query.id);
-					
+					objectsFromJson(model, state[varName].objectJson, allSignals.pending(function() {
+						var query = options[varName];
+						var mtype = model.type(query.from);					
+						ret[varName] = mtype.get(query.id);
+					}));
+										
 					allSignals.oneDone();
 				})
 			}

@@ -135,7 +135,7 @@
 		var jstype = window[name];
 
 		if (jstype)
-			throw $format("Type already has been declared as a javascript function: {0}", arguments)
+			throw $format("'{1}' has already been declared", arguments)
 
 		function construct(id) {
 			if (!disableConstruction) {
@@ -160,7 +160,7 @@
 		}
 
 		// use eval to generate the type so the function name appears in the debugger
-		var ctorScript = $format("function {type}(id) { if(construct) construct.apply(this, arguments); };" +
+		var ctorScript = $format("function {type}(id) { if(construct) { var obj=construct.apply(this, arguments); if(obj) return obj; } };" +
 			"jstype = {type};",
 			{ type: name });
 

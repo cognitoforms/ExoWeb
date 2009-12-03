@@ -8,15 +8,51 @@
 		<script src="../Scripts/MsAjax/MicrosoftAjax.debug.js" type="text/javascript"></script>
 		<script src="../Scripts/ExoWeb/exoweb.js" type="text/javascript"></script>
 		<script type="text/javascript">
-		
-			// TODO: Matt fill in transform tests
+
+			var mh = { FirstName: "Matt", LastName: "Hooper", Grade: "01" };
+			var bm = { FirstName: "Bryan", LastName: "Matthews", Grade: "01" };
+			var pg = { FirstName: "Pete", LastName: "Gindhart", Grade: "02" };
+			var sg = { FirstName: "Sam", LastName: "Gindhart", Grade: "02" };
+			var ag = { FirstName: "Albert", LastName: "Gindhart", Grade: "02" };
+			var jd = { FirstName: "John", LastName: "Doe", Grade: null };	
 		
 			test("Simple Grouping", function() {
 				var list = ["Apple", "Orange", "Banana", "Artichoke"];
 				var grouped = $transform(list).groupBy(function(item) { return item[0]; });
 				equals(3, grouped.length, "should result in three groups.");
 			});
-			
+
+			test("order by 'LastName'", function() {
+				same($transform([mh, bm, pg, jd]).orderBy("LastName"), [jd, pg, mh, bm]);
+			});
+
+			test("order by 'LastName asc'", function() {
+				same($transform([mh, bm, pg, jd]).orderBy("LastName asc"), [jd, pg, mh, bm]);
+			});
+
+			test("order by 'LastName desc'", function() {
+				same($transform([mh, bm, pg, jd]).orderBy("LastName desc"), [bm, mh, pg, jd]);
+			});
+
+			test("order by 'LastName desc' w/ nulls", function() {
+				same($transform([mh, bm, null, pg, jd]).orderBy("LastName desc"), [null, bm, mh, pg, jd]);
+			});
+
+			test("order by 'null LastName desc'", function() {
+				same($transform([mh, bm, null, pg, jd]).orderBy("null LastName desc"), [null, bm, mh, pg, jd]);
+			});
+
+			test("order by 'LastName desc null'", function() {
+				same($transform([mh, bm, null, pg, jd]).orderBy("LastName desc null"), [bm, mh, pg, jd, null]);
+			});
+
+			test("order by 'LastName, FirstName'", function() {
+				same($transform([mh, bm, pg, jd, sg, ag]).orderBy("LastName, FirstName"), [jd, ag, pg, sg, mh, bm]);
+			});
+
+			test("order by 'LastName, FirstName desc'", function() {
+				same($transform([mh, bm, pg, jd, sg, ag]).orderBy("LastName, FirstName desc"), [jd, sg, pg, ag, mh, bm]);
+			});
 		</script>
 	</head>
 	<body>

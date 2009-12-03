@@ -114,14 +114,32 @@
 			if (depth == undefined)
 				depth = 0;
 
+			var source = this._objects[type][id];
+
+			if (!source) {
+				// object might be instance of a sub type
+				var subTypes = this._subTypes(type);
+
+				for (var i = 0; i < subTypes.length; ++i) {
+					subType = subTypes[i];
+					source = this._objects[subType][id];
+
+					if (source) {
+						type = subType;
+						break;
+					}
+				}
+			}
+
+			if (!source)
+				throw $format("Object not found: {0}({1})", [type, id]);
+
 			if (!result[type])
 				result[type] = {};
 
 			if (!result[type][id])
 				result[type][id] = {};
-
-			var source = this._objects[type][id];
-
+				
 			for (var propName in source) {
 				var val = source[propName];
 
@@ -156,14 +174,38 @@
 				result[type][id][propName] = val;
 			}
 		},
+		_subTypes: function _subTypes(type, result) {
+			result = result || [];
+
+
+			// locate all types that derive from this one
+			for (var subName in this._types) {
+				var sub = this._types[subName];
+
+				if (finalType(sub.baseType) === type) {
+					result.push(subName);
+					this._subTypes(subName);
+				}
+			}
+
+			return result;
+		},
 		_getProperty: function _getProperty(containingType, name) {
-			for (var type = this._types[containingType]; type != null; type.baseType ? type = this._types[type.baseType] : null) {
+			for (var type = this._types[containingType]; type != null; type = (type.baseType ? this._types[finalType(type.baseType)] : null)) {
 				if (type.properties[name])
 					return type.properties[name];
 			}
 			return null;
 		}
 	});
+
+	function finalType(typeString) {
+		if (!typeString)
+			return typeString;
+		
+		var delim = typeString.indexOf(">");
+		return delim < 0 ? typeString : typeString.substr(0, delim);
+	}
 
 	function pathStrsToArrays(path) {
 		var ret = [];
@@ -181,7 +223,6 @@
 
 		return ret;
 	}
-
 
 	function mockCallback(callback, args, mods, log) {
 		if (log)

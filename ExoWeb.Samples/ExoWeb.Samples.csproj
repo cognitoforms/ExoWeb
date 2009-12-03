@@ -102,6 +102,7 @@
     <Content Include="Scripts\QUnit\qunit.js" />
     <Content Include="Scripts\sample-data.js" />
     <Content Include="Styles\QUnit\qunit.css" />
+    <Content Include="UnitTests\Inheritance.htm" />
     <Content Include="UnitTests\PropertyChain.htm" />
     <Content Include="UnitTests\Transform.htm" />
     <Content Include="UnitTests\UIHelperMethods.htm" />
