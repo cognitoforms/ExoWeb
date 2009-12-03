@@ -97,8 +97,17 @@
 	}
 
 	ObjectBase.mixin({
-		toString: function ObjectBase$toString() {
-			var format = this.constructor.formats.$label || this.constructor.formats.$value;
+		toString: function ObjectBase$toString(formatName) {
+			var format;
+
+			if (formatName) {
+				format = this.constructor.formats[formatName];
+
+				if (!format)
+					throw $format("Invalid format: {0}", arguments);
+			} else
+				format = this.constructor.formats.$label || this.constructor.formats.$value;
+
 			return format.convert(this);
 		}
 	});

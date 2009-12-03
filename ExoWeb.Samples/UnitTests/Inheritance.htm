@@ -15,6 +15,16 @@
 		<script src="../Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
 		<script src="../Scripts/mock-driver.js" type="text/javascript"></script>
 		<script type="text/javascript">
+			$extend("Product", function(type) {
+				type.formats.shortDesc = ExoWeb.Model.Format.fromTemplate("<Product> {Name}");
+				type.formats.longDesc = type.formats.shortDesc;
+			});
+
+			$extend("UsedCar", function(type) {
+				type.formats.longDesc = ExoWeb.Model.Format.fromTemplate("<UsedCar> {Name} with {MilesDriven} miles");
+			});
+
+		
 			var model = $model({
 				driver: { id: "1", from: "Driver" },
 				dealer: { id: "1", from: "Dealer" },
@@ -49,14 +59,23 @@
 					ok(!(model.driver instanceof Dealer), "not instance of unrelated type");
 				});
 
-				test("type members", function() {
-					ok(model.driver.get_Cars, "property on final type (exists)");
+				test("type members", function() {					
 					ok(model.driver.get_Cars(), "property on final type (execute)");
 					ok(model.driver.get_Name, "property on base type (exists)");
 					ok(model.driver.get_Name(), "property on base type (execute)");
 
 					ok(model.usedCar.get_Name, "property on base type (double hop, exists)");
 					ok(model.usedCar.get_Name(), "property on base type (double hop, execute)");
+				});
+
+				test("formats", function() {
+					ok(UsedCar.formats.shortDesc === Product.formats.shortDesc, "UsedCar inherits shortDesc from base class");
+					ok(Car.formats.shortDesc === Product.formats.shortDesc, "Car inherits shortDesc from base class");
+
+					ok(UsedCar.formats.longDesc !== Product.formats.Car, "UsedCar overrides longDesc");
+					ok(Car.formats.longDesc === Product.formats.longDesc, "Car inherits longDesc from base class");
+
+					ok(model.usedCar.toString("longDesc").startsWith("<UsedCar>"), "toString() should use inherited formats");
 				});
 			});
 		</script>
