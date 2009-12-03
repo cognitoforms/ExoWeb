@@ -257,11 +257,11 @@
 				if (rule) {
 					allowed = rule.values(targetObj);
 
-					var _this = this;
-					rule.addChanged(this.get_propertyChain().lastTarget(this.get_target()), function() {
-						_this._options = null;
-						Sys.Observer.raisePropertyChanged(_this, "options");
-					});
+//					var _this = this;
+//					rule.addChanged(this.get_propertyChain().lastTarget(this.get_target()), function() {
+//						_this._options = null;
+//						Sys.Observer.raisePropertyChanged(_this, "options");
+//					});
 				}
 
 				if (this.get_propertyChain().get_typeClass() == TypeClass.Entity) {

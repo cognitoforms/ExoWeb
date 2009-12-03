@@ -30,6 +30,14 @@
     		type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}");
     	});
 
+    	$extend("Dealer", function(type) {
+    		type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}");
+    	});
+
+    	$extend("OwnerLocation", function(type) {
+    		type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}");
+    	});
+
     	var model = $model({
 	    	driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"] }
     	});
@@ -162,7 +170,6 @@
 							<td>
 								<input type="checkbox" id="option" sys:checked="{ binding selected }" />
 								<label for="option">{ binding label }</label>
-								<span>{ binding value }</span>
 							</td>
 						</tr>
 					</tbody>
