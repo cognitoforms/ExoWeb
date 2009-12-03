@@ -539,8 +539,10 @@
 				Sys.Observer.setValue(obj, this._name, val);
 				return val;
 			}
-			else
-				return obj[this._name];
+			else {
+				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
+				return target[this._name];
+			}
 		},
 		init: function Property$init(obj, val, force) {
 			var target = (this._isStatic ? this._containingType.get_jstype() : obj);
