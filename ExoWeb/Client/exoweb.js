@@ -201,7 +201,6 @@ Type.registerNamespace("ExoWeb");
 
 	ExoWeb.Functor = Functor;
 	///////////////////////////////////////////////////////////////////////////////
-
 	function Transform(array, root) {
 		if (!root) {
 			Function.mixin(Transform.prototype, array);
@@ -212,13 +211,55 @@ Type.registerNamespace("ExoWeb");
 		}
 	}
 
+	var compileFilterFunction = (function compileFilterFunction(filter) {
+		return new Function("$item", "$index", "with($item){ return (" + filter + ");}");
+	}).cached({ key: function(filter) { return filter; } });
+
+	var compileGroupsFunction = (function compileGroupsFunction(groups) {
+		return new Function("$item", "$index", "return $item['" + groups.split(",").join("']['") + "'];");
+	}).cached({ key: function(groups) { return groups; } });
+
+	var compileOrderingFunction = (function compileOrderingFunction(ordering) {
+		var orderings = [];
+		var parser = / *([a-z0-9_.]+)( +null)?( +(asc|desc))?( +null)? *(,|$)/gi;
+
+		ordering.replace(parser, function(match, path, nullsFirst, ws, dir, nullsLast) {
+			orderings.push({
+				path: path,
+				ab: dir === "desc" ? 1 : -1,
+				nulls: nullsLast.length > 0 ? 1 : -1
+			});
+		});
+
+		return function compare(aObj, bObj) {
+			for (var i = 0; i < orderings.length; ++i) {
+				var order = orderings[i];
+
+				var a = evalPath(aObj, order.path, null, null);
+				var b = evalPath(bObj, order.path, null, null);
+
+				if (a === null && b !== null)
+					return order.nulls;
+				if (a !== null && b === null)
+					return -order.nulls;
+				if (a < b)
+					return order.ab;
+				if (a > b)
+					return -order.ab;
+			}
+
+			return 0;
+		}
+	}).cached({ key: function(ordering) { return ordering; } });
+
+
 	Transform.mixin({
 		input: function() {
 			return this.array || this;
 		},
 		where: function where(filter) {
 			if (!(filter instanceof Function))
-				filter = new Function("$item", "$index", "with($item){ return (" + filter + ");}");
+				filter = compileFilterFunction(filter);
 
 			var output = [];
 
@@ -234,9 +275,8 @@ Type.registerNamespace("ExoWeb");
 			return new Transform(output);
 		},
 		groupBy: function groupBy(groups) {
-			if (!(groups instanceof Function)) {
-				groups = new Function("$item", "$index", "return $item['" + groups.split(",").join("']['") + "'];");
-			}
+			if (!(groups instanceof Function))
+				groups = compileGroupsFunction(groups);
 
 			var output = [];
 
@@ -259,33 +299,98 @@ Type.registerNamespace("ExoWeb");
 					output.push({ group: groupKey, items: [item] });
 			}
 			return new Transform(output);
+		},
+		orderBy: function orderBy(ordering) {
+			if (!(ordering instanceof Function))
+				ordering = compileOrderingFunction(ordering);
+
+			var input = this.input();
+			var output = new Array(input.length);
+
+			// make new array
+			var len = input.length;
+			for (var i = 0; i < len; i++)
+				output[i] = input[i];
+
+			// sort array in place
+			output.sort(ordering);
+
+			return new Transform(output);
 		}
 	});
 
 	ExoWeb.Transform = Transform;
 	window.$transform = function $transform(array) { return new Transform(array, true); };
 
+	function evalPath(obj, path, nullValue, undefinedValue) {
+		var steps = path.split(".");
+
+		if (obj === null)
+			return arguments.length >= 3 ? nullValue : null;
+		if (obj === undefined)
+			return arguments.length >= 4 ? undefinedValue : undefined;
+
+		for (var i = 0; i < steps.length; ++i) {
+			var name = steps[i];
+			var obj = obj[name];
+
+			if (obj === null)
+				return arguments.length >= 3 ? nullValue : null;
+			if (obj === undefined)
+				return arguments.length >= 4 ? undefinedValue : undefined;
+		}
+
+		if (obj === null)
+			return arguments.length >= 3 ? nullValue : null;
+		if (obj === undefined)
+			return arguments.length >= 4 ? undefinedValue : undefined;
+
+		return obj;
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Globals
 	function $format(str, values) {
 		return str.replace(/{([a-z0-9_]+)}/ig, function(match, expr) {
-			var val = values;
-			var steps = expr.split(".");
-
-			for (var i = 0; i < steps.length; ++i) {
-				var name = steps[i];
-				var val = val[name];
-
-				if (val === null)
-					return "";
-				if (val === undefined)
-					return match;
-			}
-
-			return val.toString();
+			return evalPath(values, expr, "", match).toString();
 		});
 	}
 	window.$format = $format;
 })();
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Simulate homogenous browsers
+if (!Array.prototype.map) {
+	Array.prototype.map = function(fun /*, thisp*/) {
+		var len = this.length >>> 0;
+		if (typeof fun != "function")
+			throw new TypeError();
+
+		var res = new Array(len);
+		var thisp = arguments[1];
+		for (var i = 0; i < len; i++) {
+			if (i in this)
+				res[i] = fun.call(thisp, this[i], i, this);
+		}
+
+		return res;
+	};
+}
+
+if (!Array.prototype.forEach)
+{
+  Array.prototype.forEach = function(fun /*, thisp*/)
+  {
+    var len = this.length >>> 0;
+    if (typeof fun != "function")
+      throw new TypeError();
+
+    var thisp = arguments[1];
+    for (var i = 0; i < len; i++)
+    {
+      if (i in this)
+        fun.call(thisp, this[i], i, this);
+    }
+  };
+}
