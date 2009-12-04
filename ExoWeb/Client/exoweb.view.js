@@ -1,4 +1,6 @@
 ﻿; (function() {
+	var log = ExoWeb.trace.log;
+
 	Type.registerNamespace("ExoWeb.View");
 
 	//////////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +61,7 @@
 	// Metadata adapter markup extension
 	Sys.Application.registerMarkupExtension("@",
 		function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
-			console.log("@ " + (properties.$default || "(no path)"));
+			log(["@", "markupExt"], "@ " + (properties.$default || "(no path)"));
 
 			var path = properties.path || properties.$default;
 			delete properties.$default;
@@ -74,7 +76,7 @@
 	// Lazy eval markup extension
 	Sys.Application.registerMarkupExtension("~",
 		function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
-			console.log("~ " + (properties.$default || "(no path)"));
+			log(["~", "markupExt"], "~ " + (properties.$default || "(no path)"));
 
 			ExoWeb.Model.LazyLoader.eval(templateContext.dataItem, properties.$default,
 				function(result) {

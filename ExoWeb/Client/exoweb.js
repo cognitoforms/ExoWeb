@@ -9,21 +9,64 @@
 
 Type.registerNamespace("ExoWeb");
 
+ExoWeb.trace = {
+	// The following flags can be turned on to see debugging info.
+	// Rather than editing the code below, set them in your application's page
+	flags: {
+	//		signal: true,
+	//		typeInit: true,
+	//		objectInit: true,
+	//		propInit: true
+	//		list: true,
+	//		lazyLoad: true,
+	//		markupExt: true,
+	//		"~": true,
+	//		"@": true,
+	//		"$model": true,	},
+	log: function log(category, message, args) {
+		if (!console)
+			return;
+
+		var catStr;
+
+		if (!(category instanceof Array))
+			category = [category];
+
+		var enable = false;
+		for (var i = 0; i < category.length; ++i) {
+			if (ExoWeb.trace.flags[category[i]]) {
+				enable = true;
+				break;
+			}
+		}
+
+		if (!enable)
+			return;
+
+		catStr = category.join(", ");
+		
+		console.log("[" + category + "]: " + $format(message, args));
+	}
+};
+
 (function() {
 	var undefined;
+
+	var log = ExoWeb.trace.log;
 
 	function Signal(debugLabel) {
 		this._waitForAll = [];
 		this._pending = 0;
 		var _this = this;
 		this._oneDoneFn = function() { ExoWeb.Signal.prototype.oneDone.apply(_this, arguments); };
-		//this._debugLabel = debugLabel;
+
+		this._debugLabel = debugLabel;
 	}
 
 	Signal.mixin({
 		pending: function(callback) {
 			this._pending++;
-			if (console && this._debugLabel) console.log($format("[signal++ {_pending}] {_debugLabel}", this));
+			log("signal", "(++{_pending}) {_debugLabel}", this);
 
 			if (callback) {
 				var _oneDoneFn = this._oneDoneFn;
@@ -45,12 +88,12 @@ Type.registerNamespace("ExoWeb");
 				this._waitForAll.push(callback);
 		},
 		oneDone: function() {
-			if (console && this._debugLabel) console.log($format("[signal-- {0}] {1}", [this._pending - 1, this._debugLabel]));
+			log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
 
-			if (--this._pending == 0) {
-				while (this._waitForAll.length > 0)
-					Array.dequeue(this._waitForAll).apply(this, arguments);
-			}
+			--this._pending;
+			
+			while (this._pending == 0 && this._waitForAll.length > 0)
+				Array.dequeue(this._waitForAll).apply(this, arguments);
 		}
 	});
 
@@ -351,6 +394,9 @@ Type.registerNamespace("ExoWeb");
 	///////////////////////////////////////////////////////////////////////////////
 	// Globals
 	function $format(str, values) {
+		if (!values)
+			return str;
+
 		return str.replace(/{([a-z0-9_]+)}/ig, function(match, expr) {
 			return evalPath(values, expr, "", match).toString();
 		});

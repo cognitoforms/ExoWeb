@@ -22,6 +22,8 @@ if (typeof(console) == "undefined"){
 	var undefined;
 	var STATIC_ID = "static";
 	
+	var log = ExoWeb.trace.log;
+
 	var objectProvider = ExoWeb.GetInstance;
 	ExoWeb.Mapper.setObjectProvider = function(fn) {
 		objectProvider = fn;
@@ -319,14 +321,14 @@ if (typeof(console) == "undefined"){
 		else
 			obj = getObject(model, typeName, id, true);
 		
-		console.log($format("Object: {0}({1})", [typeName, id]));
+		log("objectInit", "{0}({1})   <.>", [typeName, id]);
 					
 		// Load object's properties
 		for (var propName in json) {			
 			var prop = mtype.property(propName);
 			var propData = json[propName];
 			
-			//console.log(propName + ": ", propData);
+			log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
 
 			if (!prop) {
 				console.error($format("unknown property {0}.{1}", [typeName, propName]));
@@ -396,7 +398,7 @@ if (typeof(console) == "undefined"){
 	}
 	
 	function typeFromJson(model, typeName, json) {
-		console.log("Type: " + typeName);
+		log("typeInit", "{1}   <.>", arguments);
 
 		// get model type. it may have already been created for lazy loading	
 		var mtype = getType(model, (json.baseType ? typeName + ">" + json.baseType: typeName), true);
@@ -466,7 +468,7 @@ if (typeof(console) == "undefined"){
 				mtype = model.addType(typeName, baseType);
 								
 				if(!forLoading || i > 0) {
-					console.log("Type: " + typeName + " (ghost)");
+					log("typeInit", "{0} (ghost)", [typeName]);
 					TypeLazyLoader.register(mtype);
 				}				
 			}
@@ -502,7 +504,7 @@ if (typeof(console) == "undefined"){
 			
 			if(!forLoading) {
 				ObjectLazyLoader.register(obj);
-				console.log($format("Object: {0}({1})  (ghost)", [mtype.get_fullName(), id]));
+				log("entity", "{0}({1})  (ghost)", [mtype.get_fullName(), id]);
 			}
 		}
 		
@@ -651,7 +653,7 @@ if (typeof(console) == "undefined"){
 	
 	TypeLazyLoader.mixin({
 		load: function(mtype, propName, callback) {
-			console.log("Lazy load: " + mtype.get_fullName());
+			log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
 			fetchType(mtype.get_model(), mtype.get_fullName(), callback);
 		}
 	});
@@ -680,7 +682,7 @@ if (typeof(console) == "undefined"){
 			var objectJson;
 			
 			// fetch object json
-			console.log($format("Lazy load: {0}({1})", [mtype.get_fullName(), id]));
+			log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 			objectProvider(mtype.get_fullName(), id, [], signal.pending(function(result) {
 				objectJson = result;
 			}));
@@ -727,7 +729,7 @@ if (typeof(console) == "undefined"){
 			var ownerType = list._ownerProperty.get_containingType().get_fullName();			
 			
 			// load the objects in the list
-			console.log($format("Lazy load: {0}({1}).{2}", [ownerType, list._ownerId, propName]));
+			log(["list", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, list._ownerId, propName]);
 
 			var objectJson;
 			
@@ -743,7 +745,7 @@ if (typeof(console) == "undefined"){
 			}
 			
 			signal.waitForAll(function() {
-				console.log($format("List: {0}({1}).{2}", [ownerType, list._ownerId, propName]));
+				log("list", "{0}({1}).{2}", [ownerType, list._ownerId, propName]);
 				
 				var listJson = objectJson[ownerType][list._ownerId][propName];
 				
@@ -837,23 +839,30 @@ if (typeof(console) == "undefined"){
 			with({varName: varName}) {
 				state[varName].signal.waitForAll(function() {
 					
-					objectsFromJson(model, state[varName].objectJson, allSignals.pending(function() {
+					// load the json. this may happen asynchronously to increment the signal just in case
+					objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function() {
 						var query = options[varName];
 						var mtype = model.type(query.from);					
 						ret[varName] = mtype.get(query.id);
+						
+						// model object has been successfully loaded!
+						allSignals.oneDone();
 					}));
-										
-					allSignals.oneDone();
 				})
 			}
 		}
-		
-		// setup lazy loading on the container object.
+
+		// setup lazy loading on the container object to control
+		// lazy evaluation.  loading is considered complete at the same point
+		// model.ready() fires
 		ExoWeb.Model.LazyLoader.register(ret, {
 			load: function(obj, propName, callback) {
-
+				log(["$model", "lazyLoading"], "caller is waiting for $model.ready(), propName={1}", arguments);
+				
 				// objects are already loading so just queue up the calls
-				(propName ? state[propName].signal : allSignals).waitForAll(function() {
+				allSignals.waitForAll(function() {
+					log(["$model", "lazyLoading"], "loaded");
+
 					ExoWeb.Model.LazyLoader.unregister(obj);
 					callback();
 				});
