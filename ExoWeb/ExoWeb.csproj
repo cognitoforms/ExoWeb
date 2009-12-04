@@ -36,6 +36,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -67,10 +70,17 @@
     <Reference Include="System.Web.Mobile" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ContractSurrogate.cs" />
+    <Compile Include="GetInstanceMethod.cs" />
+    <Compile Include="GetTypeMethod.cs" />
+    <Compile Include="LoadPropertyMethod.cs" />
+    <Compile Include="Rule.cs">
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServiceHandler.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ServiceMethod.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ExoGraph\ExoGraph\ExoGraph.csproj">
