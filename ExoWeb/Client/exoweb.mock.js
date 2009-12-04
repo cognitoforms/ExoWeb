@@ -72,7 +72,7 @@
 
 				var _this = this;
 
-				ExoWeb.Mapper.setObjectProvider(function(type, id, paths, callback) {
+				ExoWeb.Mapper.setObjectProvider(function(type, id, includeAllowedValuesInPaths, paths, callback) {
 					var json = {};
 					_this._query(type, id, pathStrsToArrays(paths), json);
 
@@ -85,30 +85,26 @@
 					json[ownerType][ownerId] = {};
 
 					// pass ids
-					var ids = _this._objects[ownerType][ownerId][ownerProperty];
-					json[ownerType][ownerId][ownerProperty] = ids;
+					var refs = _this._objects[ownerType][ownerId][ownerProperty];
+					json[ownerType][ownerId][ownerProperty] = refs;
 
 					// include object data also
 					var propType = window[ownerType].meta.property(ownerProperty).get_jstype().meta.get_fullName();
 
-					for (var i = 0; i < ids.length; ++i) {
-						var id = ids[i].split("|");
-
-						if (id.length > 1)
-							_this._appendObject(json, id[0], id[1]);
-						else
-							_this._appendObject(json, propType, id[0]);
-					}
+					for (var i = 0; i < refs.length; ++i)
+						_this._appendObject(json, propType, refs[i]);
 
 					return mockCallback(callback, [json], _this._listProviderMods, $format(">> fetch: {0}({1}).{2}", arguments));
 				});
 			}
 		},
-		_appendObject: function _appendObject(json, type, id) {
-			if (!json[type])
-				json[type] = {};
+		_appendObject: function _appendObject(json, type, ref) {
+			var t = ref.type ? finalType(ref.type) : type;
+						
+			if (!json[t])
+				json[t] = {};
 
-			json[type][id] = this._objects[type][id];
+			json[t][ref.id] = this._objects[t][ref.id];
 		},
 		_query: function _query(type, id, paths, result, depth) {
 			if (depth == undefined)
@@ -139,7 +135,7 @@
 
 			if (!result[type][id])
 				result[type][id] = {};
-				
+
 			for (var propName in source) {
 				var val = source[propName];
 
@@ -159,10 +155,10 @@
 					if (inPath) {
 						// include object(s) referenced by id
 						if (!prop.isList)
-							this._query(propType, id, paths, result, depth + 1);
+							this._query(propType, val.id, paths, result, depth + 1);
 						else {
-							Array.forEach(val, function(id) {
-								this._query(propType, id, paths, result, depth + 1);
+							Array.forEach(val, function(ref) {
+								this._query(propType, ref.id, paths, result, depth + 1);
 							}, this);
 						}
 					}
@@ -202,7 +198,7 @@
 	function finalType(typeString) {
 		if (!typeString)
 			return typeString;
-		
+
 		var delim = typeString.indexOf(">");
 		return delim < 0 ? typeString : typeString.substr(0, delim);
 	}

@@ -955,47 +955,48 @@
 	}
 	ExoWeb.Model.Rule.allowedValues = AllowedValuesRule;
 
-	//	//////////////////////////////////////////////////////////////////////////////////////
-	//	function StringLengthRule(options, properties) {
-	//		this.prop = properties[0];
+	///////////////////////////////////////////////////////////////////////////////////////
+	function StringLengthRule(options, properties) {
+		this.prop = properties[0];
 
-	//		this.minimumLength = options.minimumLength;
-	//		this.maximumLength = options.maximumLength;
+		this.min = options.min;
+		this.max = options.max;
 
-	//		var hasMin = (this.minimumLength !== undefined && this.minimumLength != null);
-	//		var hasMax = (this.maximumLength !== undefined && this.maximumLength != null);
+		var hasMin = (this.min !== undefined && this.min != null);
+		var hasMax = (this.max !== undefined && this.max != null);
 
-	//		if (hasMin && hasMax) {
-	//			this.err = new RuleIssue($format("{prop} must be between {minimumLength} and {maximumLength} characters", this), properties, this);
-	//			this._test = this._testMinMax;
-	//		}
-	//		else if (hasMin) {
-	//			this.err = new RuleIssue($format("{prop} must be at least {minimumLength} characters", this), properties, this);
-	//			this._test = this._testMin;
-	//		}
-	//		else if (hasMax) {
-	//			this.err = new RuleIssue($format("{prop} must no more than {maximumLength} characters", this), properties, this);
-	//			this._test = this._testMax;
-	//		}
-	//
-	//		Rule.register(this, properties, false);
-	//	}
-	//	StringLengthRule.prototype = {
-	//		execute: function(obj) {
-	//			var val = this.prop.value(obj);
-	//			obj.meta.issueIf(this.err, this._test(val));
-	//		},
-	//		_testMinMax: function(val) {
-	//			return val.length < this.minimumLength || val.length > this.maximumLength;
-	//		},
-	//		_testMin: function(val) {
-	//			return val.length < this.minimumLength;
-	//		},
-	//		_testMax: function(val) {
-	//			return val.length > this.maximumLength;
-	//		}
-	//	}
-	//	ExoWeb.Model.Rule.stringLength = StringLengthRule;
+		if (hasMin && hasMax) {
+			this.err = new RuleIssue($format("{prop} must be between {min} and {max} characters", this), properties, this);
+			this._test = this._testMinMax;
+		}
+		else if (hasMin) {
+			this.err = new RuleIssue($format("{prop} must be at least {min} characters", this), properties, this);
+			this._test = this._testMin;
+		}
+		else if (hasMax) {
+			this.err = new RuleIssue($format("{prop} must no more than {max} characters", this), properties, this);
+			this._test = this._testMax;
+		}
+
+		Rule.register(this, properties, false);
+	}
+	StringLengthRule.prototype = {
+		execute: function(obj) {
+			var val = this.prop.value(obj);
+			obj.meta.issueIf(this.err, this._test(val));
+		},
+		_testMinMax: function(val) {
+			return val.length < this.min || val.length > this.max;
+		},
+		_testMin: function(val) {
+			return val.length < this.min;
+		},
+		_testMax: function(val) {
+			return val.length > this.max;
+		}
+	}
+	
+	ExoWeb.Model.Rule.stringLength = StringLengthRule;
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
@@ -1316,11 +1317,15 @@
 			callback();
 	}
 
+	LazyLoader.isRegistered = function isRegistered(obj, loader) {
+		return obj._lazyLoader === loader;
+	}
+
 	LazyLoader.register = function register(obj, loader) {
 		obj._lazyLoader = loader;
 	}
 
-	LazyLoader.unregister = function register(obj) {
+	LazyLoader.unregister = function unregister(obj) {
 		delete obj._lazyLoader;
 	}
 

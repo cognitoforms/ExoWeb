@@ -70,7 +70,7 @@ namespace ExoWeb
 
 	#region AllowedValuesRule
 
-	[DataContract(Name = "allowed")]
+	[DataContract(Name = "allowedValues")]
 	public class AllowedValuesRule : PropertyRule
 	{
 		public AllowedValuesRule(GraphProperty property, string source, bool autoInclude)

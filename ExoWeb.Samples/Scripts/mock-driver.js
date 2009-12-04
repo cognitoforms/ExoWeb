@@ -84,22 +84,22 @@ ExoWeb.Mock.objects({
 	Driver: {
 		1: {
 			Name: "Bryan Matthews",
-			Cars: ["1", "2"],
-			Owner: "1",
+			Cars: [{ id: "1" }, { id: "2"}],
+			Owner: { id: "1" },
 			BirthDate: new Date("02/07/1985"),
 			PhoneNumber: "803-608-7508",
-			Dealer: "1",
+			Dealer: { id: "1" },
 			MilesDriven: 100000
 		}
 	},
 	Car: {
 		1: {
 			Name: "Sentra",
-			Driver: "1"
+			Driver: { id: "1" }
 		},
 		2: {
 			Name: "Bike",
-			Driver: "1"
+			Driver: { id: "1" }
 		},
 		3: {
 			Name: "Tank",
@@ -117,17 +117,17 @@ ExoWeb.Mock.objects({
 		200: {
 			Name: "Taurus",
 			Driver: null,
-			BoughtFrom: "1",
+			BoughtFrom: { id: "1" },
 			Mileage: 68100
 		}
 	},
 	Dealer: {
 		static: {
-			All: ["1", "2"]
+			All: [{ id: "1" }, { id: "2"}]
 		},
 		1: {
 			Name: "Dick Smith Nissan",
-			AvailableCars: ["1", "2", "3"]
+			AvailableCars: [{ id: "1" }, { id: "2" }, { id: "3"}]
 		},
 		2: {
 			Name: "Johnny's Suzuki",
@@ -137,26 +137,26 @@ ExoWeb.Mock.objects({
 	CarOwner: {
 		1: {
 			Name: "Bob",
-			Location: "1",
-			AvailableLocations: ["1", "2"]
+			Location: { id: "1" },
+			AvailableLocations: [{ id: "1" }, { id: "2"}]
 		}
 	},
 	OwnerLocation: {
 		1: {
 			Name: "Home",
-			Address: "1"
+			Address: { id: "1" }
 		},
 		2: {
 			Name: "Work",
-			Address: "2"
+			Address: { id: "2" }
 		}
 	},
 	LocationAddress: {
 		1: {
-			State: "1"
+		State: { id: "1" }
 		},
 		2: {
-			State: "1"
+		State: { id: "1" }
 		}
 	},
 	AddressState: {

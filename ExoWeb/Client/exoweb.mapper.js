@@ -34,7 +34,11 @@ if (typeof(console) == "undefined"){
 		typeProvider = fn;
 	}
 	
-	var listProvider = function() { throw "Not implemented" };
+	var listProvider = function(ownerType, ownerId, propName) {
+		log("error", "NOT IMPLEMENTED: listProvider({0}, {1}, {2})", arguments);
+		throw "Not implemented"; 
+	};
+	
 	ExoWeb.Mapper.setListProvider = function(fn) {
 		listProvider = fn;
 	}
@@ -130,15 +134,7 @@ if (typeof(console) == "undefined"){
 		applyInit: function ApplyCreateInstance(change) {
 			var type = window[change.Instance.Type];
 			var obj = new type(change.Instance.Id);
-
-			// TODO: probably not needed, can tell from id?
-			obj.meta.isNew = true;
-		},
-		applyInit: function ApplyCreateInstance(change) {
-			var type = window[change.Instance.Type];
-			var obj = new type(change.Instance.Id);
-
-			// TODO: probably not needed, can tell from id?
+		
 			obj.meta.isNew = true;
 		},
 		applyRefChange: function ApplyReferenceChange(change) {
@@ -257,14 +253,19 @@ if (typeof(console) == "undefined"){
 			}
 		},
 		_isNew: function(id) {
+			// TODO: handle new objects created at server
 			return /\+c[0-9]+/.test(id);
 		},
 		_instanceJson: function(obj) {
-			return {
-				Id: obj.meta.id,
-				IsNew: this._isNew(obj.meta.id),
-				Type: obj.meta.type.get_fullName()
+			var ref = {
+				id: obj.meta.id,
+				type: obj.meta.type.get_fullName()
 			};
+			
+			if(this._isNew(obj.meta.id))
+				ref.isNew = true;
+			
+			return ref;
 		}
 	}
 	ExoWeb.Mapper.ServerSync = ServerSync;
@@ -279,9 +280,10 @@ if (typeof(console) == "undefined"){
 		try {
 			
 			for (var typeName in json) {
-				for (var id in json[typeName]) {
+				var poolJson = json[typeName];
+				for (var id in poolJson) {
 					// locate the object's state in the json				
-					objectFromJson(model, typeName, id, json[typeName][id], signal.pending());
+					objectFromJson(model, typeName, id, poolJson[id], signal.pending());
 				}
 			}
 		}
@@ -316,10 +318,10 @@ if (typeof(console) == "undefined"){
 		}
 		
 		// get target object to load
-		if(id == STATIC_ID)
+		if(id === STATIC_ID)
 			obj = null;
 		else
-			obj = getObject(model, typeName, id, true);
+			obj = getObject(model, typeName, id, null, true);
 		
 		log("objectInit", "{0}({1})   <.>", [typeName, id]);
 					
@@ -365,8 +367,8 @@ if (typeof(console) == "undefined"){
 						}
 						
 						for (var i = 0; i < propData.length; i++) {
-							var childId = propData[i];
-							list.push(getObject(model, propType, childId));
+							var ref = propData[i];
+							list.push(getObject(model, propType, ref.id, ref.type));
 						}									
 
 					}
@@ -377,7 +379,7 @@ if (typeof(console) == "undefined"){
 				
 				// assume if ctor is not found its a model type not an intrinsic
 				if(!ctor || ctor.meta) {
-					prop.init(obj, getObject(model, propType, propData));
+					prop.init(obj, getObject(model, propType, propData.id, propData.type));
 				}
 				else {
 					var format = ctor.formats.$wire;
@@ -386,7 +388,8 @@ if (typeof(console) == "undefined"){
 			}
 		}
 		
-		ObjectLazyLoader.unregister(obj);
+		if(obj)
+			ObjectLazyLoader.unregister(obj);
 		
 		if(callback)
 			callback();
@@ -401,7 +404,7 @@ if (typeof(console) == "undefined"){
 		log("typeInit", "{1}   <.>", arguments);
 
 		// get model type. it may have already been created for lazy loading	
-		var mtype = getType(model, (json.baseType ? typeName + ">" + json.baseType: typeName), true);
+		var mtype = getType(model, typeName, json.baseType, true);
 						
 		// define properties
 		for(var propName in json.properties){
@@ -417,7 +420,7 @@ if (typeof(console) == "undefined"){
 				if(propJson.isList) {
 					prop.init(null, ListLazyLoader.register(null, prop));
 				}
-				else if(!ExoWeb.Model.LazyLoader.isRegistered(mtype.get_jstype())){
+				else {
 					ObjectLazyLoader.register(mtype.get_jstype());
 				}
 			}
@@ -436,64 +439,70 @@ if (typeof(console) == "undefined"){
 		// that may eventually be fetched
 		var family = typeName.split(">");
 		
-		var jstype = window[family[0]];
-		return jstype ? jstype : getType(model, family, forLoading).get_jstype();
+		return window[family[0]] || getType(model, null, family, forLoading).get_jstype();
 	}
 
+	function flattenTypes(types, flattened) {
+		function add(item) {
+			if(flattened.indexOf(item) < 0)
+				flattened.push(item);
+		}
+	
+		if(types instanceof Array)
+			Array.forEach(types, add);
+		else if(typeof(types) === "string")
+			Array.forEach(types.split(">"), add);
+		else if(types)
+			 add(types);
+	}
+	
 	// Gets a reference to a type.  IMPORTANT: typeName must be the
 	// family-qualified type name (ex: Employee>Person).
-	function getType(model, typeName, forLoading) {
+	function getType(model, finalType, propType, forLoading) {
 		// ensure the entire type family is at least ghosted
-		// so that javascript OO mechanisms work properly
-		var family;
+		// so that javascript OO mechanisms work properly		
+		var family = [];
 		
-		if(typeName instanceof Array)
-			family = typeName;
-		else 
-			family = typeName.split(">");
-		
-		
+		flattenTypes(finalType, family);
+		flattenTypes(propType, family);
+				
 		var mtype;
 		var baseType;
 		
-		for(var i=family.length-1; i>=0; --i) {
-			var typeName = family[i];
-			
+		while(family.length > 0) {
 			baseType = mtype;
-			mtype = model.type(typeName);
 
-			// if type doesn't exist, setup a ghost type
-			if(!mtype) {
+			var type = family.pop();
+	
+			if (type instanceof ExoWeb.Model.Type)
+				mtype = type;
+			else if (type.meta)
+				mtype = type.meta;
+			else {
+				// type is a string
+				mtype = model.type(type);
+				
+				// if type doesn't exist, setup a ghost type
+				if(!mtype) {		
+					mtype = model.addType(type, baseType);
 					
-				mtype = model.addType(typeName, baseType);
-								
-				if(!forLoading || i > 0) {
-					log("typeInit", "{0} (ghost)", [typeName]);
-					TypeLazyLoader.register(mtype);
-				}				
+					if(!forLoading || family.length > 0) {
+						log("typeInit", "{0} (ghost)", [type]);
+						TypeLazyLoader.register(mtype);
+					}				
+				}
 			}
 		}
 
 		return mtype;
 	}
 	
-	function getObject(model, type, id, forLoading) {
+	function getObject(model, propType, id, finalType, forLoading) {
 		if(id === STATIC_ID)
 			throw $format("getObject() can only be called for instances (id='{0}')", [id]);
 			
 		// get model type
-		var mtype;
-		
-		if (id.indexOf("|") > 0){
-		    mtype = getType(model, id.substring(0, id.indexOf("|")));
-		    id = id.substring(id.indexOf("|") + 1);
-		}
-		else if (type instanceof ExoWeb.Model.Type)
-		    mtype = type;
-		else if (type.meta)
-		    mtype = type.meta;
-		else
-			mtype = getType(model, type);
+		var mtype = getType(model, finalType, propType);
 		
 		// Try to locate object in pool
 		var obj = mtype.get(id);
@@ -609,7 +618,7 @@ if (typeof(console) == "undefined"){
 						var mtype = model.type(typeName);
 						
 						function fetchStaticPathTypes() {
-							fetchPathTypes(model, mtype.get_jstype(), steps, signal.pending(fetchStaticPathTypes));
+							fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), steps, signal.pending());
 						}
 						
 						if(!mtype) {
@@ -683,7 +692,7 @@ if (typeof(console) == "undefined"){
 			
 			// fetch object json
 			log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
-			objectProvider(mtype.get_fullName(), id, [], signal.pending(function(result) {
+			objectProvider(mtype.get_fullName(), id, true, [], signal.pending(function(result) {
 				objectJson = result;
 			}));
 			
@@ -705,7 +714,8 @@ if (typeof(console) == "undefined"){
 		var instance = new ObjectLazyLoader();
 		
 		ObjectLazyLoader.register = function(obj) {
-			ExoWeb.Model.LazyLoader.register(obj, instance);		
+			if(!ExoWeb.Model.LazyLoader.isRegistered(obj, instance))
+				ExoWeb.Model.LazyLoader.register(obj, instance);		
 		}
 		
 		ObjectLazyLoader.unregister = function(obj) {
@@ -729,7 +739,7 @@ if (typeof(console) == "undefined"){
 			var ownerType = list._ownerProperty.get_containingType().get_fullName();			
 			
 			// load the objects in the list
-			log(["list", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, list._ownerId, propName]);
+			log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, list._ownerId, propName]);
 
 			var objectJson;
 			
@@ -751,8 +761,8 @@ if (typeof(console) == "undefined"){
 				
 				// populate the list with objects
 				for (var i = 0; i < listJson.length; i++) {
-					var itemId = listJson[i];
-					var item = getObject(model, propType, itemId);
+					var ref = listJson[i];
+					var item = getObject(model, propType, ref.id, ref.type);
 					list.push(item);
 					
 					// if the list item is already loaded ensure its data is not in the response
@@ -766,7 +776,7 @@ if (typeof(console) == "undefined"){
 				// instance data returned for the objects in the list
 				if(ExoWeb.Model.LazyLoader.isLoaded(list._ownerId === STATIC_ID ? 
 					propType.get_jstype() : 
-					getObject(model, ownerType, list._ownerId))) {
+					getObject(model, ownerType, list._ownerId, null))) {
 					
 					delete objectJson[ownerType][list._ownerId];
 				}
@@ -779,7 +789,6 @@ if (typeof(console) == "undefined"){
 	
 	(function() {
 		var instance = new ListLazyLoader();
-		var debugCounter =0;
 		
 		ListLazyLoader.register = function(obj, prop) {
 			var list = [];
@@ -823,7 +832,7 @@ if (typeof(console) == "undefined"){
 			
 			with({varName: varName}) {
 				var query = options[varName];
-				objectProvider(query.from, query.id, query.and, state[varName].signal.pending(function(objectJson) {
+				objectProvider(query.from, query.id, true, query.and, state[varName].signal.pending(function(objectJson) {
 					state[varName].objectJson = objectJson;
 				}));
 			}

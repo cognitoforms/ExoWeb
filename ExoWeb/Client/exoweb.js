@@ -17,12 +17,13 @@ ExoWeb.trace = {
 	//		typeInit: true,
 	//		objectInit: true,
 	//		propInit: true
-	//		list: true,
+	//		listInit: true,
 	//		lazyLoad: true,
 	//		markupExt: true,
 	//		"~": true,
 	//		"@": true,
-	//		"$model": true,	},
+	//		"$model": true,
+	},
 	log: function log(category, message, args) {
 		if (!console)
 			return;
