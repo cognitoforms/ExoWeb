@@ -79,9 +79,9 @@ namespace ExoWeb
 				}
 
 				// Define the ExoWeb.GetInstance method
-				ExoWeb.GetInstance = function(type, id, paths, onSuccess, onFailure)
+				ExoWeb.GetInstance = function(type, id, includeAllowedValues, paths, onSuccess, onFailure)
 				{
-					Sys.Net.WebServiceProxy.invoke('ExoWeb.axd', 'GetInstance', false, { Type: type, Id: id, Paths: paths }, onSuccess, onFailure, null, 1000000, false, null);
+					Sys.Net.WebServiceProxy.invoke('ExoWeb.axd', 'GetInstance', false, { Type: type, Id: id, IncludeAllowedValues: includeAllowedValues, Paths: paths }, onSuccess, onFailure, null, 1000000, false, null);
 				}
 			");
 
