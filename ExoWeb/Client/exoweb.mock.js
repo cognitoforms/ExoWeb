@@ -221,8 +221,7 @@
 	}
 
 	function mockCallback(callback, args, mods, log) {
-		if (log)
-			console.log(log);
+		ExoWeb.trace.log("mocks", log);
 
 		var mod;
 
@@ -231,8 +230,7 @@
 			if (!mod.when || mod.when.apply(this, arguments)) {
 				if (mod.delay) {
 					window.setTimeout(function() {
-						if (log)
-							console.log($format("   [done +{1}ms] {0}", [log, mod.delay]));
+						ExoWeb.trace.log("mocks", "   [done +{1}ms] {0}", [log, mod.delay]);
 
 						callback.apply(this, mod.args ? mod.args(args) : args);
 					}, mod.delay);
@@ -243,8 +241,7 @@
 			}
 		}
 
-		if (log && console)
-			console.log(log + " (END MOCK)");
+		ExoWeb.trace.log("mocks", log + " (END MOCK)");
 
 		callback.apply(this, (mod && mod.args) ? mod.args(args) : args);
 	}

@@ -23,6 +23,8 @@ ExoWeb.trace = {
 	//		"~": true,
 	//		"@": true,
 	//		"$model": true,
+	//		tests: true,
+	//		mocks: true,
 	},
 	log: function log(category, message, args) {
 		if (!console)

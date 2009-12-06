@@ -1,0 +1,89 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+	<head>
+		<title>UI Helper Method Tests</title>
+		<link href="../Common/styles.css" type="text/css" rel="stylesheet" />
+		<script src="../Scripts/JQuery/jquery-1.3.2.js" type="text/javascript"></script>
+		<link href="../Styles/QUnit/qunit.css" type="text/css" rel="stylesheet" />
+		<script src="../Scripts/QUnit/qunit.js" type="text/javascript"></script>
+		<script src="../Scripts/MsAjax/MicrosoftAjax.debug.js" type="text/javascript"></script>
+		<script src="../Scripts/MsAjax/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
+		<script src="../Scripts/ExoWeb/exoweb.js" type="text/javascript"></script>
+		<script src="Common/exoweb.qunit.js" type="text/javascript"></script>
+		<script src="../Scripts/ExoWeb/exoweb.model.js" type="text/javascript"></script>
+		<script src="../Scripts/ExoWeb/exoweb.mapper.js" type="text/javascript"></script>
+		<script src="../Scripts/ExoWeb/exoweb.view.js" type="text/javascript"></script>
+		<script src="../Scripts/ExoWeb/exoweb.ui.js" type="text/javascript"></script>
+		<script src="../Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
+		<script src="../Scripts/mock-driver.js" type="text/javascript"></script>
+		<script type="text/javascript">
+			var model = $model({ driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} });
+
+			// reference the immediate parent dataview's data when that dataview is bound to a single object
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			setupTest("test1", { description: "Single hop with lone objects bound to parent dataview", expect: 2 }, function(result) {
+				ok(result, "Result should be defined.");
+				ok(result instanceof Dealer, "Result should be a Dealer");
+			});
+			
+			// reference an ancestor dataview's data when that dataview is bound to a single object
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			setupTest("test2", { description: "Double hop with lone objects bound to parent dataview", expect: 2 }, function(result) {
+				ok(result, "Result should be defined");
+				ok(result instanceof Driver, "Result should be a Driver");
+			});
+
+			// reference the immediate parent dataview's data when the parent dataview is bound to a list (i.e.: list index)
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			setupTest("test3-0", { description: "Single hop with list of objects bound to parent dataview - 1", expect: 3 }, function(result) {
+				ok(result, "Result should be defined");
+				ok(result.meta.type == OwnerLocation.meta, "Result should be an OwnerLocation");
+				equals(result.meta.id, 1, "Result's id should be 1");
+			});
+			setupTest("test3-1", { description: "Single hop with list of objects bound to parent dataview - 2", expect: 3 }, function(result) {
+				ok(result, "Result2 should be defined");
+				ok(result.meta.type == OwnerLocation.meta, "Result should be an OwnerLocation");
+				equals(result.meta.id, 2, "Result's id should be 2");
+			});
+
+			timeoutTests(3);
+		</script>
+	</head>
+	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" sys:activate="*">
+		
+		<!-- QUnit Display -->
+		<h1 id="qunit-header">Test Results:</h1>
+		<h2 id="qunit-banner"></h2>
+		<h2 id="qunit-userAgent"></h2>
+		<ol id="qunit-tests"></ol>
+		
+		<div class="sys-template" sys:attach="dataview" dataview:data="{~ model.driver }">
+			<h3>{ binding Name }</h3>
+			<div class="sys-template" sys:attach="dataview" dataview:data="{~ Dealer }">
+				<div>Dealer: <span>{{ Name }}</span></div>
+				<br />
+				
+				Available Cars:
+				<ul class="sys-template" sys:attach="dataview" dataview:data="{{ executeTest('test1', $parentContextData($element)).AvailableCars }}">
+					<li>Car <span>{{ $dataItem.meta.id }}</span></li>
+				</ul>
+				
+				Driver's Cars:
+				<ul class="sys-template" sys:attach="dataview" dataview:data="{{ executeTest('test2', $parentContextData($element, $index, 2)).Cars }}">
+					<li>Car <span>{{ $dataItem.meta.id }}</span></li>
+				</ul>
+				
+			</div>
+			
+			Owner's Locations:
+			<ul class="sys-template" sys:attach="dataview" dataview:data="{~ Owner.AvailableLocations }">
+				<li>
+					Available Location - 
+					<span class="sys-template" sys:attach="dataview" dataview:data="{{ executeTest('test3-' + $index, $parentContextData($element, $index)).Address }}">
+						{{ State.Name }}
+					</span>
+				</li>
+			</ul>
+		</div>
+	</body>
+</html>
