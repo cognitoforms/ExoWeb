@@ -15,6 +15,21 @@
 		<script src="../Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
 		<script src="../Scripts/mock-driver.js" type="text/javascript"></script>
 		<script type="text/javascript">
+			ExoWeb.trace.flags = {
+				//		signal: true,
+						typeInit: true,
+						objectInit: true,
+						propInit: true,
+				//		listInit: true,
+						lazyLoad: true,
+				//		markupExt: true,
+				//		"~": true,
+				//		"@": true,
+				//		"$model": true,
+				//		tests: true,
+				//		mocks: true,
+				}
+		
 			$extend("Product", function(type) {
 				type.formats.shortDesc = ExoWeb.Model.Format.fromTemplate("<Product> {Name}");
 				type.formats.longDesc = type.formats.shortDesc;

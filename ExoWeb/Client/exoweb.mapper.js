@@ -411,6 +411,8 @@ if (typeof(console) == "undefined"){
 					prop.init(obj, (format ? format.convertBack(propData) : propData));
 				}
 			}
+			
+			// static fields are potentially loaded one at a time
 		}
 		
 		if(obj)
@@ -442,12 +444,10 @@ if (typeof(console) == "undefined"){
 			
 			// setup static properties for lazy loading
 			if(propJson.isStatic) {
-				if(propJson.isList) {
+				if(propJson.isList)
 					prop.init(null, ListLazyLoader.register(null, prop));
-				}
-				else {
-					ObjectLazyLoader.register(mtype.get_jstype());
-				}
+				//else
+				//	PropertyLazyLoader.register(mtype.get_jstype(), prop);
 			}
 			
 			if(propJson.rules) {
@@ -565,7 +565,7 @@ if (typeof(console) == "undefined"){
 		// after properties and base class are loaded, then return results
 		signal.waitForAll(function() {			
 			var mtype = model.type(typeName);
-			ExoWeb.Model.LazyLoader.unregister( mtype );
+			TypeLazyLoader.unregister(mtype);
 			
 			// apply app-specific configuration
 			var exts = pendingExtensions[typeName];
@@ -698,6 +698,10 @@ if (typeof(console) == "undefined"){
 		TypeLazyLoader.register = function(obj) {
 			ExoWeb.Model.LazyLoader.register(obj, instance);		
 		}
+		
+		TypeLazyLoader.unregister = function(obj) {
+			ExoWeb.Model.LazyLoader.unregister(obj, instance);		
+		}
 	})();
 	
 	///////////////////////////////////////////////////////////////////////////////
@@ -727,8 +731,8 @@ if (typeof(console) == "undefined"){
 			}
 			
 			// wait for type and instance json to load
-			signal.waitForAll(function() {			
-				ExoWeb.Model.LazyLoader.unregister(obj);
+			signal.waitForAll(function() {
+				ExoWeb.Model.LazyLoader.unregister(obj, this);
 				objectsFromJson(mtype.get_model(), objectJson);
 				callback();
 			});
@@ -744,10 +748,58 @@ if (typeof(console) == "undefined"){
 		}
 		
 		ObjectLazyLoader.unregister = function(obj) {
-			ExoWeb.Model.LazyLoader.unregister(obj)
+			ExoWeb.Model.LazyLoader.unregister(obj, instance)
 		}
 	})();
 	
+	
+	///////////////////////////////////////////////////////////////////////////////
+	// Single Property Loader
+	function PropertyLazyLoader() {
+		this._requests = {};
+	}
+	
+	PropertyLazyLoader.mixin({
+		load: (function load(obj, propName, callback) {			
+			var signal = new ExoWeb.Signal();
+			
+			var id = obj.meta.id || STATIC_ID;
+			var mtype = obj.meta.type || obj.meta;
+
+			var objectJson;
+			
+			// fetch object json
+			log(["propInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [mtype.get_fullName(), id, propName]);
+			propertyProvider(mtype.get_fullName(), id, true, [], signal.pending(function(result) {
+				objectJson = result;
+			}));
+			
+			// does the object's type need to be loaded too?
+			if(!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+				ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
+			}
+			
+			// wait for type and instance json to load
+			signal.waitForAll(function() {
+				ExoWeb.Model.LazyLoader.unregister(obj, this);
+				objectsFromJson(mtype.get_model(), objectJson);
+				callback();
+			});
+		}).dontDoubleUp({callbackArg: 2, groupBy: function(obj) { return [obj]; } })
+	});
+	
+	(function() {
+		var instance = new ObjectLazyLoader();
+		
+		PropertyLazyLoader.register = function(obj, prop) {
+			if(!ExoWeb.Model.LazyLoader.isRegistered(obj, instance, prop.get_name()))
+				ExoWeb.Model.LazyLoader.register(obj, instance, prop.get_name());
+		}
+		
+		PropertyLazyLoader.unregister = function(obj, prop) {
+			ExoWeb.Model.LazyLoader.unregister(obj, instance, prop.get_name())
+		}
+	})();
 	
 	///////////////////////////////////////////////////////////////////////////////
 	// List Loader
@@ -793,7 +845,7 @@ if (typeof(console) == "undefined"){
 					// if the list item is already loaded ensure its data is not in the response
 					// so that it won't be reloaded
 					if(ExoWeb.Model.LazyLoader.isLoaded(item)) {
-						delete objectJson[item.meta.type.get_fullName()][item.meta.id];
+						delete objectJson[item.meta.type.get_fullName()][ref.id];
 					}
 				}
 				
@@ -806,7 +858,7 @@ if (typeof(console) == "undefined"){
 					delete objectJson[ownerType][list._ownerId];
 				}
 				
-				ListLazyLoader.unregister(list);
+				ListLazyLoader.unregister(list, this);
 				objectsFromJson(model, objectJson, callback);
 			});
 		}).dontDoubleUp({callbackArg: 2 /*, debug: true, debugLabel: "ListLazyLoader"*/})
@@ -827,7 +879,7 @@ if (typeof(console) == "undefined"){
 		}
 		
 		ListLazyLoader.unregister = function(list) {
-			ExoWeb.Model.LazyLoader.unregister(list);
+			ExoWeb.Model.LazyLoader.unregister(list, instance);
 
 			delete list._ownerId;
 			delete list._ownerType;
@@ -911,7 +963,7 @@ if (typeof(console) == "undefined"){
 				allSignals.waitForAll(function() {
 					log(["$model", "lazyLoading"], "loaded");
 
-					ExoWeb.Model.LazyLoader.unregister(obj);
+					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					callback();
 				});
 			}

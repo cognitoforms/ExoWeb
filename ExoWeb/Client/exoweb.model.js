@@ -995,7 +995,7 @@
 			return val.length > this.max;
 		}
 	}
-	
+
 	ExoWeb.Model.Rule.stringLength = StringLengthRule;
 
 
@@ -1307,26 +1307,96 @@
 	}
 
 	LazyLoader.isLoaded = function isLoaded(obj, propName) {
-		return !obj._lazyLoader || (obj._lazyLoader.isLoaded && obj._lazyLoader.isLoaded(obj, propName));
+		var reg = obj._lazyLoader;
+
+		if (!reg)
+			return true;
+
+		var loader;
+		if (propName && reg.byProp)
+			loader = reg.byProp[propName];
+
+		if (!loader)
+			loader = reg.allProps;
+
+		return !loader || (loader.isLoaded && obj._lazyLoader.isLoaded(obj, propName));
 	}
 
 	LazyLoader.load = function load(obj, propName, callback) {
-		if (obj._lazyLoader)
-			obj._lazyLoader.load(obj, propName, callback);
-		else if (callback)
-			callback();
+		var reg = obj._lazyLoader;
+		if (!reg) {
+			if (callback)
+				callback();
+		}
+		else {
+			var loader;
+			if (propName && reg.byProp)
+				loader = reg.byProp[propName];
+
+			var loader;
+			if (!loader)
+				loader = reg.allProps;
+
+			if (!loader)
+				throw $format("Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", [obj, propName]);
+
+			loader.load(obj, propName, callback);
+		}
 	}
 
-	LazyLoader.isRegistered = function isRegistered(obj, loader) {
-		return obj._lazyLoader === loader;
+	LazyLoader.isRegistered = function isRegistered(obj, loader, propName) {
+		var reg = obj._lazyLoader;
+
+		if (!reg)
+			return false;
+		if (propName)
+			return reg.byProp && reg.byProp[propName] === loader;
+
+		return reg.allProps === loader;
 	}
 
-	LazyLoader.register = function register(obj, loader) {
-		obj._lazyLoader = loader;
+	LazyLoader.register = function register(obj, loader, propName) {
+		var reg = obj._lazyLoader;
+
+		if (!reg)
+			reg = obj._lazyLoader = {};
+
+		if (propName) {
+			if (!reg.byProp)
+				reg.byProp = {};
+
+			reg.byProp[propName] = loader;
+		}
+		else
+			obj._lazyLoader.allProps = loader;
 	}
 
-	LazyLoader.unregister = function unregister(obj) {
-		delete obj._lazyLoader;
+	LazyLoader.unregister = function unregister(obj, loader, propName) {
+		var reg = obj._lazyLoader;
+
+		if (!reg)
+			return;
+
+		if (propName) {
+			delete reg.byProp[propName];
+		} else if (reg.byProp) {
+			var allDeleted = true;
+			for (var p in reg.byProp) {
+				if (reg.byProp[p] === loader)
+					delete reg.byProp[p];
+				else
+					allDeleted = false;
+			}
+
+			if (allDeleted)
+				delete reg.byProp;
+		}
+
+		if (reg.allProps === loader)
+			delete reg.allProps;
+
+		if (!reg.byProp && reg.allProps)
+			delete obj._lazyLoader;
 	}
 
 	ExoWeb.Model.LazyLoader = LazyLoader;
