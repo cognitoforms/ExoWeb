@@ -43,6 +43,11 @@ if (typeof(console) == "undefined"){
 		listProvider = fn;
 	}
 	
+	var syncProvider = function() { throw "Not implemented" };
+	ExoWeb.Mapper.setSyncProvider = function(fn) {
+		syncProvider = fn;
+	}
+	
 	function toWire(obj) {
 		if (obj instanceof Array) {
 			var wire = [];
@@ -112,6 +117,8 @@ if (typeof(console) == "undefined"){
 
 	ServerSync.prototype = {
 		apply: function(changes) {
+			ExoWeb.trace.log("sync", "applying changes");
+		
 			if (!changes)
 				changes = [];
 			else if (!(changes instanceof Array))
@@ -132,12 +139,16 @@ if (typeof(console) == "undefined"){
 			});
 		},
 		applyInit: function ApplyCreateInstance(change) {
+			ExoWeb.trace.log("sync", "applyInit: Type = {Type}, Id = {Id}", change.Instance);
+			
 			var type = window[change.Instance.Type];
 			var obj = new type(change.Instance.Id);
 		
 			obj.meta.isNew = true;
 		},
 		applyRefChange: function ApplyReferenceChange(change) {
+			ExoWeb.trace.log("sync", "applyRefChange", change.Instance);
+			
 			var type = window[change.Instance.Type];
 			var obj = type.meta.get(change.Instance.Id);
 
@@ -154,6 +165,8 @@ if (typeof(console) == "undefined"){
 			}
 		},
 		applyValChange: function ApplyValueChange(change) {
+			ExoWeb.trace.log("sync", "applyValChange", change.Instance);
+			
 			var type = window[change.Instance.Type];
 			var obj = type.meta.get(change.Instance.Id);
 
@@ -162,6 +175,8 @@ if (typeof(console) == "undefined"){
 			Sys.Observer.setValue(obj, change.Property, change.CurrentValue);
 		},
 		applyListChange: function ApplyListChange(change) {
+			ExoWeb.trace.log("sync", "applyListChange", change.Instance);
+			
 			var type = window[change.Instance.Type];
 			var obj = type.meta.get(change.Instance.Id);
 			var prop = obj.meta.property(change.Property);
@@ -183,6 +198,8 @@ if (typeof(console) == "undefined"){
 		},
 		enqueue: function(oper, obj, addl) {
 			if (oper == "update") {
+				ExoWeb.trace.log("sync", "queuing update");
+				
 				var prop = obj.meta.property(addl.property).lastProperty();
 				var entry = {
 					__type: null,
@@ -194,11 +211,13 @@ if (typeof(console) == "undefined"){
 				};
 				
 				if (prop.get_isValueType()) {
+					ExoWeb.trace.log("sync", "update is value type");
 					entry.__type = "ValueChange:#ExoGraph";
 					entry.CurrentValue = addl.value;
 				}
 				else {
 					entry.__type = "ReferenceChange:#ExoGraph";
+					ExoWeb.trace.log("sync", "update is reference type");
 					entry.CurrentValue = addl.value ? 
 						this._instanceJson(addl.value) :
 						null;
@@ -207,6 +226,8 @@ if (typeof(console) == "undefined"){
 				this._queue.push(entry);
 			}
 			else if (oper == "new") {
+				ExoWeb.trace.log("sync", "queuing new object");
+				
 				var entry = {
 					__type: "Init:#ExoGraph",
 					Instance: this._instanceJson(obj)
@@ -214,6 +235,8 @@ if (typeof(console) == "undefined"){
 				this._queue.push(entry);
 			}
 			else if (oper == "delete") {
+				ExoWeb.trace.log("sync", "queuing delete object");
+				
 				// TODO: delete JSON format?
 				var entry = {
 					__type: "Delete:#ExoGraph",
@@ -222,6 +245,8 @@ if (typeof(console) == "undefined"){
 				this._queue.push(entry);
 			}
 			else if (oper == "list") {
+				ExoWeb.trace.log("sync", "queuing list change");
+				
 				var prop = obj.meta.property(addl.property).lastProperty();
 				var entry = {
 					__type: "ListChange:#ExoGraph",
@@ -812,16 +837,30 @@ if (typeof(console) == "undefined"){
 	
 	///////////////////////////////////////////////////////////////////////////////
 	// Globals
-	window.$model = function $model(options, callback) {
+	window.$model = function $model(options) {
 		var model = new ExoWeb.Model.Model();
-		
+		var sync = new ServerSync(model);
+
 		var allSignals = new ExoWeb.Signal("$model allSignals");
 		
 		var state = {};
 		
 		var ret = {
 			meta: model,
-			ready: function(callback) { allSignals.waitForAll(callback); }
+			ready: function(callback) { allSignals.waitForAll(callback); },
+			sync: sync,
+			commit: function(varName, callback) {
+				ExoWeb.trace.log("sync", "Commit");
+			
+				var _this = this;
+				syncProvider(options[varName].from, options[varName].id, options[varName].and, this.sync._queue, function(response) {
+					if (response.length) {
+						ExoWeb.trace.log("sync", "applying changes from server");
+						_this.sync.apply(response);
+					}
+					callback(response);
+				});
+			}
 		};
 		
 		// start loading the instances first, then load type data concurrently.

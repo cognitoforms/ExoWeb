@@ -19,6 +19,7 @@
 
     <script src="Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
     <script src="Scripts/mock-driver.js" type="text/javascript"></script>
+    <script src="Scripts/changeset.js" type="text/javascript"></script>
     <script src="Scripts/ExoWeb/exoweb.jquery.js" type="text/javascript"></script>
     <script src="Common/styles.js" type="text/javascript"></script>
 
@@ -44,7 +45,27 @@
     	});
 
     	model.ready(function() {
+    		// BEGIN: simulate user changes
+    		window.setTimeout(function() {
+    			// change owner location from home to work
+    			ExoWeb.trace.log("sync", "changing owner location from home to work");
+    			model.sync.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
+    		}, 1000);
 
+    		window.setTimeout(function() {
+    			// add new location option
+    			ExoWeb.trace.log("sync", "adding new location option");
+    			model.sync.apply(new ChangeSet()
+    				.init("OwnerLocation", "+c0")
+    				.val("OwnerLocation", "+c0", "Name", "", "New Location")
+					.addRef("CarOwner", "1", "AvailableLocations", "OwnerLocation", "+c0")
+					.build());
+    		}, 5000);
+    		
+//    		.ref("CarOwner", "1", "Location", "OwnerLocation", "1", "+c0")
+//			.delRef("CarOwner", "1", "AvailableLocations", "OwnerLocation", "1")
+			
+			// END: simulate user changes
     	});
     	
     	function add(type) {

@@ -5,6 +5,7 @@
 ExoWeb.Mock.typeProvider({ delay: 10 });
 ExoWeb.Mock.objectProvider({ delay: 200 });
 ExoWeb.Mock.listProvider({ delay: 500 });
+ExoWeb.Mock.syncProvider({ delay: 1000 });
 
 ExoWeb.Mock.types({
 	Person: {
@@ -166,3 +167,17 @@ ExoWeb.Mock.objects({
 		}
 	}
 });
+
+ExoWeb.Mock.sync([
+	{
+		Criteria: {
+			"__type": "Init:#ExoGraph",
+			"Instance.Type": "OwnerLocation"
+		},
+		Result: {
+			"__type": "ValueChange:#ExoGraph",
+			"Property": "Name",
+			"CurrentValue": "-- Brand New Location --"
+		}
+	}
+]);
