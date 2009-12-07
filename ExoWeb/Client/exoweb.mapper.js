@@ -117,7 +117,7 @@ if (typeof(console) == "undefined"){
 
 	ServerSync.prototype = {
 		apply: function(changes) {
-			ExoWeb.trace.log("sync", "applying changes");
+			log("sync", "applying changes");
 		
 			if (!changes)
 				changes = [];
@@ -139,7 +139,7 @@ if (typeof(console) == "undefined"){
 			});
 		},
 		applyInit: function ApplyCreateInstance(change) {
-			ExoWeb.trace.log("sync", "applyInit: Type = {Type}, Id = {Id}", change.Instance);
+			log("sync", "applyInit: Type = {Type}, Id = {Id}", change.Instance);
 			
 			var type = window[change.Instance.Type];
 			var obj = new type(change.Instance.Id);
@@ -147,7 +147,7 @@ if (typeof(console) == "undefined"){
 			obj.meta.isNew = true;
 		},
 		applyRefChange: function ApplyReferenceChange(change) {
-			ExoWeb.trace.log("sync", "applyRefChange", change.Instance);
+			log("sync", "applyRefChange", change.Instance);
 			
 			var type = window[change.Instance.Type];
 			var obj = type.meta.get(change.Instance.Id);
@@ -165,7 +165,7 @@ if (typeof(console) == "undefined"){
 			}
 		},
 		applyValChange: function ApplyValueChange(change) {
-			ExoWeb.trace.log("sync", "applyValChange", change.Instance);
+			log("sync", "applyValChange", change.Instance);
 			
 			var type = window[change.Instance.Type];
 			var obj = type.meta.get(change.Instance.Id);
@@ -175,7 +175,7 @@ if (typeof(console) == "undefined"){
 			Sys.Observer.setValue(obj, change.Property, change.CurrentValue);
 		},
 		applyListChange: function ApplyListChange(change) {
-			ExoWeb.trace.log("sync", "applyListChange", change.Instance);
+			log("sync", "applyListChange", change.Instance);
 			
 			var type = window[change.Instance.Type];
 			var obj = type.meta.get(change.Instance.Id);
@@ -198,7 +198,7 @@ if (typeof(console) == "undefined"){
 		},
 		enqueue: function(oper, obj, addl) {
 			if (oper == "update") {
-				ExoWeb.trace.log("sync", "queuing update");
+				log("sync", "queuing update");
 				
 				var prop = obj.meta.property(addl.property).lastProperty();
 				var entry = {
@@ -211,13 +211,13 @@ if (typeof(console) == "undefined"){
 				};
 				
 				if (prop.get_isValueType()) {
-					ExoWeb.trace.log("sync", "update is value type");
+					log("sync", "update is value type");
 					entry.__type = "ValueChange:#ExoGraph";
 					entry.CurrentValue = addl.value;
 				}
 				else {
 					entry.__type = "ReferenceChange:#ExoGraph";
-					ExoWeb.trace.log("sync", "update is reference type");
+					log("sync", "update is reference type");
 					entry.CurrentValue = addl.value ? 
 						this._instanceJson(addl.value) :
 						null;
@@ -226,7 +226,7 @@ if (typeof(console) == "undefined"){
 				this._queue.push(entry);
 			}
 			else if (oper == "new") {
-				ExoWeb.trace.log("sync", "queuing new object");
+				log("sync", "queuing new object");
 				
 				var entry = {
 					__type: "Init:#ExoGraph",
@@ -235,7 +235,7 @@ if (typeof(console) == "undefined"){
 				this._queue.push(entry);
 			}
 			else if (oper == "delete") {
-				ExoWeb.trace.log("sync", "queuing delete object");
+				log("sync", "queuing delete object");
 				
 				// TODO: delete JSON format?
 				var entry = {
@@ -245,7 +245,7 @@ if (typeof(console) == "undefined"){
 				this._queue.push(entry);
 			}
 			else if (oper == "list") {
-				ExoWeb.trace.log("sync", "queuing list change");
+				log("sync", "queuing list change");
 				
 				var prop = obj.meta.property(addl.property).lastProperty();
 				var entry = {
@@ -850,12 +850,12 @@ if (typeof(console) == "undefined"){
 			ready: function(callback) { allSignals.waitForAll(callback); },
 			sync: sync,
 			commit: function(varName, callback) {
-				ExoWeb.trace.log("sync", "Commit");
+				log("sync", "Commit");
 			
 				var _this = this;
 				syncProvider(options[varName].from, options[varName].id, options[varName].and, this.sync._queue, function(response) {
 					if (response.length) {
-						ExoWeb.trace.log("sync", "applying changes from server");
+						log("sync", "applying changes from server");
 						_this.sync.apply(response);
 					}
 					callback(response);

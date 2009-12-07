@@ -48,13 +48,13 @@
     		// BEGIN: simulate user changes
     		window.setTimeout(function() {
     			// change owner location from home to work
-    			ExoWeb.trace.log("sync", "changing owner location from home to work");
+    			console.log("changing owner location from home to work");
     			model.sync.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
     		}, 1000);
 
     		window.setTimeout(function() {
     			// add new location option
-    			ExoWeb.trace.log("sync", "adding new location option");
+    			console.log("adding new location option");
     			model.sync.apply(new ChangeSet()
     				.init("OwnerLocation", "+c0")
     				.val("OwnerLocation", "+c0", "Name", "", "New Location")

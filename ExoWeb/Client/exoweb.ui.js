@@ -4,6 +4,8 @@ Type.registerNamespace("ExoWeb.UI");
 
 	var undefined;
 
+	var log = ExoWeb.trace.log;
+
 	///////////////////////////////////////////////////////////////////////////////
 	/// <summary>
 	/// In addition to defining template markup, also defines rules that are used
@@ -238,19 +240,19 @@ Type.registerNamespace("ExoWeb.UI");
 		else if (container.control instanceof Sys.UI.DataView) {
 			var containerContexts = container.control.get_contexts();
 			var containerData = container.control.get_data();
-			
+
 			// ensure an array for conformity
 			if (!(containerData instanceof Array))
 				containerData = [containerData];
-			
+
 			if (containerContexts) {
 				// if there is only one context in the array then the index must be zero
 				if (containerContexts.length == 1)
 					index = 0;
-					
+
 				if (index != undefined && index.constructor == Number) {
 					if (index >= containerContexts.length)
-						ExoWeb.trace.log("ui", "invalid index");
+						log("ui", "invalid index");
 					else {
 						var indexedContext = containerContexts[index];
 						var indexedData = containerData[index];

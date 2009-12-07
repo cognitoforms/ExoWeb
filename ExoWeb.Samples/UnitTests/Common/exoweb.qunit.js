@@ -2,64 +2,66 @@
 	var pendingTests = {};
 	var executingTestsSignal = new ExoWeb.Signal("all pending tests signal");
 
+	var log = ExoWeb.trace.log;
+
 	function setupTest(name, optionsOrCallback, callbackOrNone) {
 		// usage is test setup
-		ExoWeb.trace.log("tests", "{0}: setup", [name]);
+		log("tests", "{0}: setup", [name]);
 
 		var options = optionsOrCallback;
 		var callback = callbackOrNone;
-		
+
 		if (arguments.length == 2) {
-			ExoWeb.trace.log("tests", "{0}: only two args provided, no options", [name]);
+			log("tests", "{0}: only two args provided, no options", [name]);
 			callback = optionsOrCallback;
 			options = {};
 		}
-		
+
 		// watch for when the test is registered
 		var scopeSignal = new ExoWeb.Signal("registered signal: " + name);
 		var scopeCallback = scopeSignal.pending();
 
 		// create a function to be invoked when the test is ready to be executed
 		var pending = pendingTests[name] = function() {
-			ExoWeb.trace.log("tests", "{0}: invoked, waiting for scope", [name]);
+			log("tests", "{0}: invoked, waiting for scope", [name]);
 
 			// store the arguments of the execution callback so that they can be applied later
 			var invocationArguments = arguments;
 
 			// wait until the test is in scope if it isn't already
 			scopeSignal.waitForAll(function() {
-				ExoWeb.trace.log("tests", "{0}: registered", [name]);
+				log("tests", "{0}: registered", [name]);
 
 				// notify qunit that the test is starting back up
 				start();
 
 				try {
-					ExoWeb.trace.log("tests", "{0}: applying callback", [name]);
-					
+					log("tests", "{0}: applying callback", [name]);
+
 					// invoke the test callback
 					callback.apply(this, invocationArguments);
 				}
 				catch (e) {
 					// log the error and provide a meaningful failure for qunit
-					ExoWeb.trace.log("tests", "ERROR: {0}", [e]);
+					log("tests", "ERROR: {0}", [e]);
 					ok(false, e);
 				}
 			});
 		};
 
-		ExoWeb.trace.log("tests", "{0}: queuing test", [name]);
+		log("tests", "{0}: queuing test", [name]);
 
 		// queue up the test
 		test(options.description || name, function() {
 			if (options.expect) {
-				ExoWeb.trace.log("tests", "{0}: expect {1} assertions", [name, options.expect]);
+				log("tests", "{0}: expect {1} assertions", [name, options.expect]);
 				expect(options.expect);
 			}
 
 			stop(options.timeout);
-			
+
 			// notify that the test is in scope
-			ExoWeb.trace.log("tests", "{0}: test in scope", [name]);
+			log("tests", "{0}: test in scope", [name]);
 			scopeCallback();
 		});
 	}
@@ -71,13 +73,13 @@
 		var onComplete = executingTestsSignal.pending();
 
 		// usage is test execution
-		ExoWeb.trace.log("tests", "{0}: execute", [name]);
+		log("tests", "{0}: execute", [name]);
 
 		// look for the test in the cache
 		var pending = pendingTests[name];
 
 		if (pending) {
-			ExoWeb.trace.log("tests", "{0}: calling test", [name]);
+			log("tests", "{0}: calling test", [name]);
 
 			// invoke the test callback
 			pending.call(this, arg);
@@ -107,7 +109,7 @@
 					// look for the test in the cache
 					var pending = pendingTests[name];
 
-					ExoWeb.trace.log("tests", "{0}: force test", [name]);
+					log("tests", "{0}: force test", [name]);
 
 					start();
 
