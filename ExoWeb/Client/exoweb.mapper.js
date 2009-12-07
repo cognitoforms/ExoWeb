@@ -283,12 +283,12 @@ if (typeof(console) == "undefined"){
 		},
 		_instanceJson: function(obj) {
 			var ref = {
-				id: obj.meta.id,
-				type: obj.meta.type.get_fullName()
+				Id: obj.meta.id,
+				Type: obj.meta.type.get_fullName()
 			};
 			
 			if(this._isNew(obj.meta.id))
-				ref.isNew = true;
+				ref.IsNew = true;
 			
 			return ref;
 		}
@@ -905,13 +905,30 @@ if (typeof(console) == "undefined"){
 				log("sync", "Commit");
 			
 				var _this = this;
-				syncProvider(options[varName].from, options[varName].id, options[varName].and, this.sync._queue, function(response) {
+				syncProvider(this.sync._queue, function(response) {
 					if (response.length) {
-						log("sync", "applying changes from server");
+						log("sync", "applying {length} changes from server", response);
 						_this.sync.apply(response);
 					}
+					else {
+						log("sync", "no changes from server", response);
+					}
+					
 					callback(response);
 				});
+			},
+			startAutoSync: function(varName, interval) {
+				log("sync", "auto-sync enabled - interval of {0} milliseconds", [interval]);
+				
+				function doSync() {
+					log("sync", "auto-sync starting ({0})", [new Date()]);
+					ret.commit(varName, function() {
+						log("sync", "auto-sync complete ({0})", [new Date()]);
+						window.setTimeout(doSync, interval);
+					});
+				}
+				
+				window.setTimeout(doSync, interval);
 			}
 		};
 		

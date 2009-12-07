@@ -46,21 +46,23 @@
 
     	model.ready(function() {
     		// BEGIN: simulate user changes
-    		window.setTimeout(function() {
-    			// change owner location from home to work
-    			console.log("changing owner location from home to work");
-    			model.sync.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
-    		}, 1000);
+//    		model.startAutoSync("driver", 10000);
 
-    		window.setTimeout(function() {
-    			// add new location option
-    			console.log("adding new location option");
-    			model.sync.apply(new ChangeSet()
-    				.init("OwnerLocation", "+c0")
-    				.val("OwnerLocation", "+c0", "Name", "", "New Location")
-					.addRef("CarOwner", "1", "AvailableLocations", "OwnerLocation", "+c0")
-					.build());
-    		}, 5000);
+//    		window.setTimeout(function() {
+//    			// change owner location from home to work
+//    			console.log("changing owner location from home to work");
+//    			model.sync.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
+//    		}, 1000);
+
+//    		window.setTimeout(function() {
+//    			// add new location option
+//    			console.log("adding new location option");
+//    			model.sync.apply(new ChangeSet()
+//    				.init("OwnerLocation", "+c0")
+//    				.val("OwnerLocation", "+c0", "Name", "", "New Location")
+//					.addRef("CarOwner", "1", "AvailableLocations", "OwnerLocation", "+c0")
+//					.build());
+//    		}, 5000);
     		
 //    		.ref("CarOwner", "1", "Location", "OwnerLocation", "1", "+c0")
 //			.delRef("CarOwner", "1", "AvailableLocations", "OwnerLocation", "1")

@@ -110,12 +110,12 @@
 					return mockCallback(callback, [json], _this._listProviderMods, $format(">> fetch: {0}({1}).{2}", arguments));
 				});
 
-				ExoWeb.Mapper.setSyncProvider(function(type, id, paths, changes, callback) {
+				ExoWeb.Mapper.setSyncProvider(function(changes, callback) {
 					var result = [];
 
 					ExoWeb.trace.log("sync", "begin: mock sending changes to server");
 
-					// grabbed from http://oranlooney.com/functional-javascript/
+					// original function grabbed from http://oranlooney.com/functional-javascript/
 					function copy(obj) {
 						if (typeof obj !== 'object') {
 							return obj;  // non-object have value sematics, so obj is already a copy.
