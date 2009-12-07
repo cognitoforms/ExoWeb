@@ -793,7 +793,7 @@ if (typeof(console) == "undefined"){
 					// if the list item is already loaded ensure its data is not in the response
 					// so that it won't be reloaded
 					if(ExoWeb.Model.LazyLoader.isLoaded(item)) {
-						delete objectJson[item.meta.type.get_fullName()][itemId];
+						delete objectJson[item.meta.type.get_fullName()][item.meta.id];
 					}
 				}
 				
