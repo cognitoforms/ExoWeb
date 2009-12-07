@@ -25,6 +25,8 @@ ExoWeb.trace = {
 	//		"$model": true,
 	//		tests: true,
 	//		mocks: true,
+			sync: true,
+			ui: true,
 	},
 	log: function log(category, message, args) {
 		if (!console)

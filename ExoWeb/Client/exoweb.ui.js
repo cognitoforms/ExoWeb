@@ -250,7 +250,7 @@ Type.registerNamespace("ExoWeb.UI");
 					
 				if (index != undefined && index.constructor == Number) {
 					if (index >= containerContexts.length)
-						console.log("invalid index");
+						ExoWeb.trace.log("ui", "invalid index");
 					else {
 						var indexedContext = containerContexts[index];
 						var indexedData = containerData[index];
