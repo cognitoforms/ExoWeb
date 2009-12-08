@@ -115,58 +115,20 @@
 
 					ExoWeb.trace.log("sync", "begin: mock sending changes to server");
 
-					// original function grabbed from http://oranlooney.com/functional-javascript/
-					function copy(obj) {
-						if (typeof obj !== 'object') {
-							return obj;  // non-object have value sematics, so obj is already a copy.
-						} else {
-							var value = obj.valueOf();
-							if (obj != value) {
-								// the object is a standard object wrapper for a native type, say String.
-								// we can make a copy by instantiating a new object around the value.
-								return new obj.constructor(value);
-							} else {
-								// ok, we have a normal object. copy the whole thing, property-by-property.
-								var c = {};
-								for (var property in obj) c[property] = obj[property];
-								return c;
-							}
-						}
-					}
-
 					for (var i = 0, len = changes.length; i < len; i++) {
 						var change = changes[i];
 						for (var j = 0; j < _this._syncRules.length; j++) {
 							var rule = _this._syncRules[j];
-
-							var match = true;
-							// make sure each criteria matches
-							for (var varName in rule.Criteria) {
-								// get the corresponding value of the change
-								var changeValue = copy(change);
-								var path = varName.split(".").reverse();
-								while (path.length)
-									changeValue = changeValue[path.pop()];
-
-								// check to see if the criteria value matches the change value
-								if (changeValue != rule.Criteria[varName]) {
-									match = false;
-									break;
+							if (rule.test(change)) {
+								var changeResult = rule.exec(change);
+								if (changeResult instanceof Array) {
+									for (var k = 0; k < changeResult.length; k++) {
+										result.push(changeResult[k]);
+									}
 								}
-							}
-
-							if (match) {
-								var newChange = copy(change);
-
-								for (var varName in rule.Result) {
-									var val = newChange;
-									var path = varName.split(".").reverse();
-									while (path.length > 1)
-										val = val[path.pop()];
-									val[path.pop()] = rule.Result[varName];
+								else {
+									result.push(changeResult);
 								}
-
-								result.push(newChange);
 							}
 						}
 					}

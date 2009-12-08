@@ -169,15 +169,58 @@ ExoWeb.Mock.objects({
 });
 
 ExoWeb.Mock.sync([
+	// when a new location is created set the Name property to "-- Brand New Location --"
 	{
-		Criteria: {
-			"__type": "Init:#ExoGraph",
-			"Instance.Type": "OwnerLocation"
+		test: function(change) {
+			return change.__type == "Init:#ExoGraph" && change.Instance.Type == "OwnerLocation";
 		},
-		Result: {
-			"__type": "ValueChange:#ExoGraph",
-			"Property": "Name",
-			"CurrentValue": "-- Brand New Location --"
+		exec: function(change) {
+			return {
+				__type: "ValueChange:#ExoGraph",
+				Instance: {
+					Id: change.Instance.Id,
+					IsNew: change.Instance.IsNew,
+					Type: change.Instance.Type
+				},
+				Property: "Name",
+				CurrentValue: "-- Brand New Location --",
+				OriginalValue: null
+			};
+		}
+	},
+	// when a new driver is created create a new owner and assign its "Owner" property
+	{
+		test: function(change) {
+			return change.__type == "Init:#ExoGraph" && change.Instance.Type == "Driver";
+		},
+		exec: function(change) {
+			var newOwnerId = "?" + change.Instance.Id;
+
+			return [
+				{
+					__type: "Init:#ExoGraph",
+					Instance: {
+						Id: newOwnerId,
+						IsNew: true,
+						Type: "CarOwner"
+					}
+				},
+				{
+					__type: "ReferenceChange:#ExoGraph",
+					Instance: {
+						Id: change.Instance.Id,
+						IsNew: change.Instance.IsNew,
+						Type: change.Instance.Type
+					},
+					Property: "Owner",
+					OriginalValue: null,
+					CurrentValue: {
+						Id: newOwnerId,
+						IsNew: true,
+						Type: "CarOwner"
+					}
+				}
+			];
 		}
 	}
 ]);
