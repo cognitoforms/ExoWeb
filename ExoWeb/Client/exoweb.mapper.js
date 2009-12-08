@@ -31,7 +31,10 @@
 	}
 
 	function toWire(obj) {
-		if (obj instanceof Array) {
+		if (obj === null) {
+			return null;
+		}
+		else if (obj instanceof Array) {
 			var wire = [];
 			for (var i = 0; i < obj.length; ++i) {
 				wire.push(toWire(obj[i]));
