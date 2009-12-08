@@ -1,23 +1,5 @@
 ﻿Type.registerNamespace("ExoWeb.Mapper");
 
-// TODO: logging strategy for other browsers
-if (typeof(console) == "undefined"){
-	console = {
-		log: function(msg) {
-			//alert(msg);
-		},
-		info: function(msg) {
-			//alert("INFORMATION: " + msg);
-		},
-		warn: function(msg) {
-			//alert("WARNING: " + msg);
-		},
-		error: function(msg) {
-			alert("ERROR: " + msg);
-		}
-	}
-}
-
 (function() {
 	var undefined;
 	var STATIC_ID = "static";
