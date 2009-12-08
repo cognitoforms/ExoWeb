@@ -408,9 +408,6 @@
 			return format ? format.convert(this._obj) : this._obj;
 		},
 		get_value: function() {
-			if (!this._obj)
-				return "";
-
 			var format = this._parent.get_valueFormat();
 			return format ? format.convert(this._obj) : this._obj;
 		},

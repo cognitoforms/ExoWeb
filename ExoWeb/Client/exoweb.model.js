@@ -115,12 +115,23 @@
 	ObjectBase.formats = {
 		$value: new Format({
 			convert: function(obj) {
-				return $format("{type}|{id}", { type: obj.meta.type.get_fullName(), id: obj.meta.id });
+				if (obj)
+					return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
+				else if (obj === null)
+					return "null";
 			},
 			convertBack: function(str) {
-				var ids = str.split("|");
-				var ctor = window[ids[0]];
-				return ctor.get(ids[1]);
+				if (str && str.constructor == String) {
+					// indicates "no value", which is distinct from "no selection"
+					if (str == "null") {
+						return null;
+					}
+					else {
+						var ids = str.split("|");
+						var ctor = window[ids[0]];
+						return ctor.get(ids[1]);
+					}
+				}
 			}
 		})
 	}
