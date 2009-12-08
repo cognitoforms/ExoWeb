@@ -2,10 +2,9 @@
 // Sys.require(ExoWeb.Mock)???
 //with (ExoWeb.Mock) {
 
-ExoWeb.Mock.typeProvider({ delay: 10 });
-ExoWeb.Mock.objectProvider({ delay: 200 });
-ExoWeb.Mock.listProvider({ delay: 500 });
-ExoWeb.Mock.syncProvider({ delay: 1000 });
+//ExoWeb.Mock.typeProviderDelay = 10;
+//ExoWeb.Mock.objectProviderDelay = 200;
+//ExoWeb.Mock.listProviderDelay = 500;
 
 ExoWeb.Mock.types({
 	Person: {
@@ -21,7 +20,18 @@ ExoWeb.Mock.types({
 			Cars: { type: "Car>Product", isList: true, rules: [{ allowedValues: { source: "this.Dealer.AvailableCars"}}] },
 			BirthDate: { type: "Date", format: "ShortDate" },
 			Dealer: { type: "Dealer>Person", rules: [{ allowedValues: { source: "Dealer.All"}}] },
-			MilesDriven: { type: "Number", rules: [{ range: { min: 0}}] }
+			MilesDriven: { type: "Number", rules: [{ range: { min: 0}}] },
+			DateCreated: { type: "Date" },
+			SalesPerson: { type: "Employee>Person", rules: [{ allowedValues: { source: "this.AllowedSalesPersons"}}] },
+			AllowedSalesPersons: { type: "Employee>Person", isList: "true" }
+		}
+	},
+	Employee: {
+		baseType: "Person",
+		properties: {
+			All: { type: "Employee>Person", isList: true, isStatic: true },		
+			Title: { type: "String" },
+			HireDate: {type: "Date"}
 		}
 	},
 	Product: {
@@ -83,6 +93,28 @@ ExoWeb.Mock.types({
 });
 
 ExoWeb.Mock.objects({
+	Employee: {
+		static: {
+			All: [{ id: "100" }, { id: "101" }, { id: "102"}]
+		},
+		100: {
+			Name: "Joe Salesperson",
+			PhoneNumber: "123-123-1234",
+			Title: "Salesperson",
+			HireDate: new Date("1/1/2005")
+		},
+		101: {
+			Name: "New Salesperson",
+			PhoneNumber: "123-123-1234",
+			Title: "Salesperson",
+			HireDate: new Date("1/1/2009")
+		},
+		102: {
+			Name: "Jane Manager",
+			PhoneNumber: "123-123-1234",
+			Title: "Manager"
+		}
+	},
 	Driver: {
 		1: {
 			Name: "Bryan Matthews",
@@ -91,7 +123,9 @@ ExoWeb.Mock.objects({
 			BirthDate: new Date("02/07/1985"),
 			PhoneNumber: "803-608-7508",
 			Dealer: { id: "1" },
-			MilesDriven: 100000
+			MilesDriven: 100000,
+			DateCreated: new Date("1/1/2007"),
+			SalesPerson: {id: 100}
 		}
 	},
 	Car: {

@@ -7,10 +7,13 @@
 	function Mock() {
 		this._types = null;
 		this._objects = null;
-		this._objectProviderMods = null;
-		this._syncProviderMods = null;
-		this._typeProviderMods = null;
-		this._listProviderMods = null;
+		
+		this.objectProviderDelay = 0;
+		this.typeProviderDelay = 0;
+		this.listProviderDelay = 0;
+		this.syncProviderDelay = 0;	
+
+		this.simulateLazyLoading = false;
 	}
 
 	Mock.mixin({
@@ -45,33 +48,16 @@
 			this._syncRules = options.rules;
 			this._syncHandler = options.handler;
 		},
-		typeProvider: function typeProvider(mod) {
-			this._initTypes();
-			Array.enqueue(this._typeProviderMods, mod);
-		},
-		objectProvider: function objectProvider(mod) {
-			this._initObjects();
-			Array.enqueue(this._objectProviderMods, mod);
-		},
-		listProvider: function listProvider(mod) {
-			this._initObjects();
-			Array.enqueue(this._listProviderMods, mod);
-		},
-		syncProvider: function syncProvider(mod) {
-			this._initObjects();
-			Array.enqueue(this._syncProviderMods, mod);
-		},
 		_initTypes: function() {
 			if (!this._types) {
 				this._types = {};
-				this._typeProviderMods = [];
 
 				var _this = this;
 
 				ExoWeb.Mapper.setTypeProvider(function(type, callback) {
 					var json = {};
 					json[type] = _this._types[type];
-					return mockCallback(callback, [json], _this._typeProviderMods, $format(">> fetch: {0}", arguments));
+					return mockCallback(callback, [json], _this.typeProviderDelay, $format(">> fetch: {0}", arguments));
 				});
 			}
 		},
@@ -80,17 +66,23 @@
 				this._objects = {};
 				this._syncRules = [];
 				this._syncHandler = null;
-				this._objectProviderMods = [];
-				this._listProviderMods = [];
-				this._syncProviderMods = [];
-
+				
 				var _this = this;
 
 				ExoWeb.Mapper.setObjectProvider(function(type, id, includeAllowedValuesInPaths, paths, callback) {
-					var json = {};
-					_this._query(type, id, pathStrsToArrays(paths), json);
+					var json;
 
-					return mockCallback(callback, [json], _this._objectProviderMods, $format(">> fetch: {0}({1})", arguments));
+					if (!_this.simulateLazyLoading) {
+						json = _this._objects;
+					}
+					else {
+						json = {};
+						paths = prepPaths(paths);
+						_this._query(type, id, paths.instance, json);
+						_this._queryStatic(paths.static, json);
+					}
+
+					return mockCallback(callback, [json], _this.objectProviderDelay, $format(">> fetch: {0}({1})", arguments));
 				});
 
 				ExoWeb.Mapper.setListProvider(function(ownerType, ownerId, ownerProperty, callback) {
@@ -108,7 +100,7 @@
 					for (var i = 0; i < refs.length; ++i)
 						_this._appendObject(json, propType, refs[i]);
 
-					return mockCallback(callback, [json], _this._listProviderMods, $format(">> fetch: {0}({1}).{2}", arguments));
+					return mockCallback(callback, [json], _this.listProviderDelay, $format(">> fetch: {0}({1}).{2}", arguments));
 				});
 
 				ExoWeb.Mapper.setSyncProvider(function(changes, callback) {
@@ -142,7 +134,7 @@
 
 					ExoWeb.trace.log("sync", "end: mock sending changes to server");
 
-					return mockCallback(callback, [result], _this._syncProviderMods, $format(">> sync: {0}({1})", arguments));
+					return mockCallback(callback, [result], _this.syncProviderDelay, $format(">> sync: {0}({1})", arguments));
 				});
 			}
 		},
@@ -153,6 +145,13 @@
 				json[t] = {};
 
 			json[t][ref.id] = this._objects[t][ref.id];
+		},
+		_queryStatic: function _queryStatic(paths, result) {
+			for (var i = 0; i < paths.length; ++i) {
+				var type = Array.dequeue(paths[i]);
+
+				this._query(type, "static", paths[i], result);
+			}
 		},
 		_query: function _query(type, id, paths, result, depth) {
 			if (depth == undefined)
@@ -251,8 +250,8 @@
 		return delim < 0 ? typeString : typeString.substr(0, delim);
 	}
 
-	function pathStrsToArrays(path) {
-		var ret = [];
+	function prepPaths(path) {
+		var ret = { instance: [], static: [] };
 
 		if (path) {
 			Array.forEach(path, function(p) {
@@ -260,38 +259,32 @@
 
 				if (parts[0] === "this") {
 					Array.dequeue(parts);
-					ret.push(parts);
+					ret.instance.push(parts);
 				}
+				else
+					ret.static.push(parts);
 			});
 		}
 
 		return ret;
 	}
 
-	function mockCallback(callback, args, mods, log) {
+	function mockCallback(callback, args, delay, log) {
 		ExoWeb.trace.log("mocks", log);
 
-		var mod;
+		if (delay) {
+			window.setTimeout(function() {
+				ExoWeb.trace.log("mocks", "   [done +{1}ms] {0}", [log, delay]);
 
-		for (var i = 0; i < mods.length; ++i) {
-			mod = mods[i];
-			if (!mod.when || mod.when.apply(this, arguments)) {
-				if (mod.delay) {
-					window.setTimeout(function() {
-						ExoWeb.trace.log("mocks", "   [done +{1}ms] {0}", [log, mod.delay]);
-
-						callback.apply(this, mod.args ? mod.args(args) : args);
-					}, mod.delay);
-
-					return;
-				}
-				break;
-			}
+				callback.apply(this, args);
+			}, delay);
+			
+			return;
 		}
 
 		ExoWeb.trace.log("mocks", log + " (END MOCK)");
 
-		callback.apply(this, (mod && mod.args) ? mod.args(args) : args);
+		callback.apply(this, args);
 	}
 
 	// Singleton
