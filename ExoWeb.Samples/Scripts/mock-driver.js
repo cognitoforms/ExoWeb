@@ -176,59 +176,29 @@ ExoWeb.Mock.objects({
 	}
 });
 
-ExoWeb.Mock.sync([
-	// when a new location is created set the Name property to "-- Brand New Location --"
-	{
-		test: function(change) {
-			return change.__type == "Init:#ExoGraph" && change.Instance.Type == "OwnerLocation";
+ExoWeb.Mock.sync({
+	rules: [
+		// when a new location is created set the Name property to "-- Brand New Location --"
+		{
+			test: function(change) {
+				return change.__type == "Init:#ExoGraph" && change.Instance.Type == "OwnerLocation";
+			},
+			exec: function(change) {
+				return new ChangeSet().val(change.Instance.Type, change.Instance.Id, "Name", null, "-- Brand New Location --").build();
+			}
 		},
-		exec: function(change) {
-			return {
-				__type: "ValueChange:#ExoGraph",
-				Instance: {
-					Id: change.Instance.Id,
-					IsNew: change.Instance.IsNew,
-					Type: change.Instance.Type
-				},
-				Property: "Name",
-				CurrentValue: "-- Brand New Location --",
-				OriginalValue: null
-			};
+		// when a new driver is created create a new owner and assign its "Owner" property
+			{
+			test: function(change) {
+				return change.__type == "Init:#ExoGraph" && change.Instance.Type == "Driver";
+			},
+			exec: function(change) {
+				var newOwnerId = "?" + change.Instance.Id;
+				return new ChangeSet()
+					.init("CarOwner", newOwnerId)
+					.ref(change.Instance.Type, change.Instance.Id, "Owner", "CarOwner", null, newOwnerId)
+					.build();
+			}
 		}
-	},
-	// when a new driver is created create a new owner and assign its "Owner" property
-	{
-		test: function(change) {
-			return change.__type == "Init:#ExoGraph" && change.Instance.Type == "Driver";
-		},
-		exec: function(change) {
-			var newOwnerId = "?" + change.Instance.Id;
-
-			return [
-				{
-					__type: "Init:#ExoGraph",
-					Instance: {
-						Id: newOwnerId,
-						IsNew: true,
-						Type: "CarOwner"
-					}
-				},
-				{
-					__type: "ReferenceChange:#ExoGraph",
-					Instance: {
-						Id: change.Instance.Id,
-						IsNew: change.Instance.IsNew,
-						Type: change.Instance.Type
-					},
-					Property: "Owner",
-					OriginalValue: null,
-					CurrentValue: {
-						Id: newOwnerId,
-						IsNew: true,
-						Type: "CarOwner"
-					}
-				}
-			];
-		}
-	}
-]);
+	]
+});

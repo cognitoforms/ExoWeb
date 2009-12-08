@@ -39,11 +39,11 @@
 				}
 			}
 		},
-		sync: function rules(def) {
+		sync: function rules(options) {
 			this._initObjects();
 
-			for (var i = 0; i < def.length; i++)
-				this._syncRules.push(def[i]);
+			this._syncRules = options.rules;
+			this._syncHandler = options.handler;
 		},
 		typeProvider: function typeProvider(mod) {
 			this._initTypes();
@@ -79,6 +79,7 @@
 			if (!this._objects) {
 				this._objects = {};
 				this._syncRules = [];
+				this._syncHandler = null;
 				this._objectProviderMods = [];
 				this._listProviderMods = [];
 				this._syncProviderMods = [];
@@ -111,23 +112,29 @@
 				});
 
 				ExoWeb.Mapper.setSyncProvider(function(changes, callback) {
-					var result = [];
+					var result;
 
 					ExoWeb.trace.log("sync", "begin: mock sending changes to server");
 
-					for (var i = 0, len = changes.length; i < len; i++) {
-						var change = changes[i];
-						for (var j = 0; j < _this._syncRules.length; j++) {
-							var rule = _this._syncRules[j];
-							if (rule.test(change)) {
-								var changeResult = rule.exec(change);
-								if (changeResult instanceof Array) {
-									for (var k = 0; k < changeResult.length; k++) {
-										result.push(changeResult[k]);
+					if (_this._syncHandler && _this._syncHandler instanceof Function) {
+						result = _this._syncHandler(changes);
+					}
+					else if (_this._syncRules && _this._syncRules instanceof Array) {
+						result = [];
+						for (var i = 0, len = changes.length; i < len; i++) {
+							var change = changes[i];
+							for (var j = 0; j < _this._syncRules.length; j++) {
+								var rule = _this._syncRules[j];
+								if (rule.test(change)) {
+									var changeResult = rule.exec(change);
+									if (changeResult instanceof Array) {
+										for (var k = 0; k < changeResult.length; k++) {
+											result.push(changeResult[k]);
+										}
 									}
-								}
-								else {
-									result.push(changeResult);
+									else {
+										result.push(changeResult);
+									}
 								}
 							}
 						}
