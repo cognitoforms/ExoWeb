@@ -4,6 +4,17 @@
 
 	var log = ExoWeb.trace.log;
 
+	// override parse to avoid nasty recursion bug
+	var oldObjectParser = QUnit.jsDump.parsers.object;
+	QUnit.jsDump.parsers.object = function(obj) {
+		if (obj.meta) {
+			return obj.meta.type.get_jstype().formats.$value.convert(obj);
+		}
+		else {
+			return oldObjectParser.call(this, obj);
+		}
+	}
+
 	function setupTest(name, optionsOrCallback, callbackOrNone) {
 		// usage is test setup
 		log("tests", "{0}: setup", [name]);
