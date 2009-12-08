@@ -5,6 +5,12 @@
 
 	var disableConstruction = false;
 
+	// Gets a value
+	Sys.Observer.getValue = function(target, property) {
+		var getter = target["get_" + property];
+		return getter ? getter.call(target) : target[property];
+	}
+
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Model() {
 		this._types = {};
