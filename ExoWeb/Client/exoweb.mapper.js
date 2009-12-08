@@ -147,9 +147,20 @@
 					_this.applyValChange(change);
 				else if (change.__type == "ListChange:#ExoGraph")
 					_this.applyListChange(change);
+				else if (change.__type == "Commit:#ExoGraph")
+					_this.applyCommitChange(change);
 			});
 		},
-		applyInit: function ApplyCreateInstance(change) {
+		applyCommitChange: function ServerSync$applyCommitChange(change) {
+			// update each object with its new id
+			for (var i = 0; i < change.IdMap.length; i++) {
+				var idMap = change.IdMap[i];
+				
+				var type = this._model.type(idMap.Type);
+				type.changeObjectId(idMap.From, idMap.To);
+			}
+		},
+		applyInit: function ServerSync$applyInit(change) {
 			log("sync", "applyInit: Type = {Type}, Id = {Id}", change.Instance);
 
 			var type = this._model.type(change.Instance.Type);
@@ -163,7 +174,7 @@
 			// remember new object's generated id
 			this.setIdTranslation(change.Instance.Type, change.Instance.Id, newObj.meta.id);
 		},
-		applyRefChange: function ApplyReferenceChange(change) {
+		applyRefChange: function ServerSync$applyRefChange(change) {
 			log("sync", "applyRefChange", change.Instance);
 
 			var obj = this.getObjectFromInstanceJson(change.Instance);
@@ -180,7 +191,7 @@
 				Sys.Observer.setValue(obj, change.Property, null);
 			}
 		},
-		applyValChange: function ApplyValueChange(change) {
+		applyValChange: function ServerSync$applyValChange(change) {
 			log("sync", "applyValChange", change.Instance);
 
 			var obj = this.getObjectFromInstanceJson(change.Instance)
@@ -189,7 +200,7 @@
 
 			Sys.Observer.setValue(obj, change.Property, change.CurrentValue);
 		},
-		applyListChange: function ApplyListChange(change) {
+		applyListChange: function ServerSync$applyListChange(change) {
 			log("sync", "applyListChange", change.Instance);
 
 			var obj = this.getObjectFromInstanceJson(change.Instance);
@@ -210,7 +221,7 @@
 				Sys.Observer.remove(list, obj);
 			});
 		},
-		enqueue: function(oper, obj, addl) {
+		enqueue: function ServerSync$enqueue(oper, obj, addl) {
 			if (oper == "update") {
 				log("sync", "queuing update");
 
@@ -903,10 +914,10 @@
 				// TODO
 			},
 			sync: function $model$sync(callback) {
-				log("sync", "Commit");
+				log("sync", "Sync");
 
 				var _this = this;
-				syncProvider(this.syncObject._queue, function $model$sync$apply(response) {
+				syncProvider(this.syncObject._queue, function $model$sync$callback(response) {
 					if (response.length) {
 						log("sync", "applying {length} changes from server", response);
 						_this.syncObject.apply(response);

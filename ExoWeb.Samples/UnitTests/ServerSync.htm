@@ -16,12 +16,14 @@
 		<script type="text/javascript">
 			ExoWeb.trace.flags.sync = true;
 			ExoWeb.trace.flags.mocks = true;
+			ExoWeb.Mock.objectProviderDelay = 0;
+			ExoWeb.Mock.typeProviderDelay = 0;
 			ExoWeb.Mock.syncProviderDelay = 0;
 			ExoWeb.Mock.simulateLazyLoading = false;
 
 			var model = $model({ driver: { id: "1", from: "Driver" } });
 
-			setupTest("test1", { description: "Init with ID Translation", expect: 3 }, function() {
+			setupTest("test1", { description: "Apply Init with ID Translation", expect: 3 }, function() {
 				var undefined;
 
 				equals(Dealer.meta.get("+c0"), undefined, "Dealer should not exist before init");
@@ -33,7 +35,7 @@
 				ok(Dealer.meta.get("+c0"), "Dealer should exist after init");
 			});
 
-			setupTest("test2", { description: "Reference Property Changes", expect: 2 }, function() {
+			setupTest("test2", { description: "Apply Reference Property Change", expect: 2 }, function() {
 				equals(model.driver.Owner.Location.meta.id, "1", "Driver's owner's location should be 1");
 
 				model.syncObject.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
@@ -41,7 +43,7 @@
 				equals(model.driver.Owner.Location.meta.id, "2", "Driver's owner's location should be 2");
 			});
 
-			setupTest("test3", { description: "Value Property Changes", expect: 2 }, function() {
+			setupTest("test3", { description: "Apply Value Property Change", expect: 2 }, function() {
 				equals(model.driver.Owner.Location.Name, "Work", "Driver's owner's location name should be Work");
 
 				model.syncObject.apply(new ChangeSet().val("OwnerLocation", "2", "Name", "Work", "Play").build());
@@ -49,7 +51,7 @@
 				equals(model.driver.Owner.Location.Name, "Play", "Driver's owner's location name should be Play");
 			});
 
-			setupTest("test4", { description: "List Property Changes", expect: 7 }, function() {
+			setupTest("test4", { description: "Apply List Property Changes", expect: 7 }, function() {
 				equals(model.driver.Cars.length, 2, "Driver should have 2 cars");
 				equals(model.driver.Cars[0].Name, "Sentra", "First car is Sentra");
 				equals(model.driver.Cars[1].Name, "Bike", "Second car is Bike");
@@ -65,15 +67,15 @@
 				equals(model.driver.Cars[1].Name, "Tank", "Second car is Tank");
 			});
 
-			setupTest("test5", { description: "Client-Server Script", expect: 4 }, function() {
+			setupTest("test5", { description: "Client-Server Changes from Server", expect: 4 }, function() {
 				var bryan = Driver.meta.get("1");
 				var bob = CarOwner.meta.get("1");
 				var joe = CarOwner.meta.get("2");
 
-				bryan.set_Owner(joe);
-
 				equals(bob.Drivers.length, 1, "Bob should have one driver");
 				equals(joe.Drivers.length, 0, "Joe should have no drivers");
+
+				bryan.set_Owner(joe);
 
 				ExoWeb.Mock.sync(function(changes) {
 					// mock server behavior of updating Location.Owners list
@@ -89,6 +91,44 @@
 				equals(joe.Drivers.length, 1, "Joe should now have one driver");
 			});
 
+			setupTest("test6", { description: "Client-Server Commit (Changing Ids)", expect: 12 }, function() {
+				var matt = new Driver();
+				var mattLegacyId = matt.meta.id;
+
+				// no changes on server
+				ExoWeb.Mock.sync(null);
+				model.sync();
+
+				equals(matt.meta.id, mattLegacyId, "Matt's id should still be the temporary id");
+
+				var mattNewId = "1000";
+
+				// simulate commit behavior
+				ExoWeb.Mock.sync(function(changes) {
+					return [
+						{
+							__type: "Commit:#ExoGraph",
+							IdMap: [{ Type: "Driver", From: mattLegacyId, To: mattNewId}]
+						}
+					];
+				});
+				model.sync();
+
+				equals(matt.meta.id, mattNewId, "Matt's id should be a new permanent id");
+				equals(Driver.meta.get(mattLegacyId), matt, "Matt can still be retieved by the old id");
+				equals(Driver.meta.get(mattNewId), matt, "Matt can also be retieved by the new id");
+
+				ok(Driver.meta._pool[mattNewId], "Matt's new id is a key in the Driver pool");
+				ok(!Driver.meta._legacyPool[mattNewId], "Matt's new id is not a key in the Driver legacy pool");
+				ok(Driver.meta._legacyPool[mattLegacyId], "Matt's legacy id is a key in the Driver legacy pool");
+				ok(!Driver.meta._pool[mattLegacyId], "Matt's legacy id is not a key in the Driver pool");
+				
+				ok(Person.meta._pool[mattNewId], "Matt's new id is a key in the Person pool");
+				ok(!Person.meta._legacyPool[mattNewId], "Matt's new id is not a key in the Person legacy pool");
+				ok(Person.meta._legacyPool[mattLegacyId], "Matt's legacy id is a key in the Person legacy pool");
+				ok(!Person.meta._pool[mattLegacyId], "Matt's legacy id is not a key in the Person pool");
+			});
+
 			timeoutTests(5);
 
 			model.ready(function() {
@@ -97,6 +137,7 @@
 				executeTest("test3");
 				executeTest("test4");
 				executeTest("test5");
+				executeTest("test6");
 			});
 		</script>
 	</head>

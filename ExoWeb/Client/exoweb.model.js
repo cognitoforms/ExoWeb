@@ -153,6 +153,7 @@
 		this._rules = {};
 		this._fullName = name;
 		this._pool = {};
+		this._legacyPool = {};
 		this._counter = 0;
 		this._properties = {};
 		this._model = model;
@@ -233,11 +234,10 @@
 	}
 
 	Type.prototype = {
-		newId: function() {
+		newId: function Type$newId() {
 			return "+c" + this._counter++;
 		},
-
-		register: function(obj, id) {
+		register: function Type$register(obj, id) {
 			obj.meta = new ObjectMeta(this, obj);
 
 			if (!id) {
@@ -256,8 +256,23 @@
 
 			this._model.notifyObjectRegistered(obj);
 		},
+		changeObjectId: function Type$changeObjectId(oldId, newId) {
+			var obj = this._pool[oldId];
 
-		unregister: function(obj) {
+			// TODO: throw exceptions?
+			if (obj) {
+				for (var t = this; t; t = t.baseType) {
+					t._pool[newId] = obj;
+
+					delete t._pool[oldId];
+
+					t._legacyPool[oldId] = obj;
+				}
+			}
+
+			obj.meta.id = newId;
+		},
+		unregister: function Type$unregister(obj) {
 			this._model.notifyObjectUnregistered(obj);
 
 			for (var t = this; t; t = t.baseType) {
@@ -270,9 +285,8 @@
 			delete obj.meta._obj;
 			delete obj.meta;
 		},
-
 		get: function Type$get(id) {
-			return this._pool[id];
+			return this._pool[id] || this._legacyPool[id];
 		},
 		// Gets an array of all objects of this type that have been registered.
 		// The returned array is observable and collection changed events will be raised
@@ -674,7 +688,7 @@
 					Sys.Observer.setValue(obj, prop._name, options.fn.apply(obj));
 				}
 
-				Rule.register({ execute: execute, toString: function() { return "calculation of " + prop._name; } }, inputs);
+			Rule.register({ execute: execute, toString: function() { return "calculation of " + prop._name; } }, inputs);
 
 			// go ahead and calculate this property for all objects
 			Array.forEach(this._containingType.known(), execute);

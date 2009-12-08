@@ -22,6 +22,18 @@ ChangeSet.prototype = {
 			this._changes = [];
 		return this._changes;
 	},
+	commit: function commit(idMap) {
+		var item = {
+			__type: "Commit:#ExoGraph",
+			IdMap: null
+		};
+
+		item.IdMap = Array.clone(idMap);
+		
+		this._add(item);
+
+		return this;
+	},
 	init: function CreateInstance(type, id) {
 		this._add({
 			__type: "Init:#ExoGraph",
