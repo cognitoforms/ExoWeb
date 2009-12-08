@@ -129,7 +129,7 @@
 				ok(!Person.meta._pool[mattLegacyId], "Matt's legacy id is not a key in the Person pool");
 			});
 
-			timeoutTests(5);
+			timeoutTests(5000);
 
 			model.ready(function() {
 				executeTest("test1");

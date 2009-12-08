@@ -111,7 +111,7 @@
 
 	window.executeTest = executeTest;
 
-	function timeoutTests(timeoutInSeconds) {
+	function timeoutTests(timeout) {
 		window.setTimeout(function() {
 			// allow tests to complete if they are mid-execution
 			executingTestsSignal.waitForAll(function() {
@@ -128,7 +128,7 @@
 					delete pendingTests[name];
 				}
 			});
-		}, timeoutInSeconds * 1000);
+		}, timeout * 1000);
 	}
 
 	window.timeoutTests = timeoutTests;
