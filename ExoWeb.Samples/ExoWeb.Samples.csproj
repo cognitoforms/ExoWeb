@@ -104,6 +104,7 @@
     <Content Include="Scripts\sample-data.js" />
     <Content Include="Styles\QUnit\qunit.css" />
     <Content Include="UnitTests\Common\exoweb.qunit.js" />
+    <Content Include="UnitTests\ServerSync.htm" />
     <Content Include="UnitTests\Inheritance.htm" />
     <Content Include="UnitTests\PropertyChain.htm" />
     <Content Include="UnitTests\Transform.htm" />

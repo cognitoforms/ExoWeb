@@ -38,7 +38,7 @@ ExoWeb.Mock.types({
 	NewCar: {
 		baseType: "Car>Product",
 		properties: {
-			PlantNumber: {type: "String"}
+			PlantNumber: { type: "String" }
 		}
 	},
 	UsedCar: {
@@ -59,7 +59,8 @@ ExoWeb.Mock.types({
 		properties: {
 			Name: { type: "String" },
 			Location: { type: "OwnerLocation", rules: [{ allowedValues: { source: "this.AvailableLocations"}}] },
-			AvailableLocations: { type: "OwnerLocation", isList: true }
+			AvailableLocations: { type: "OwnerLocation", isList: true },
+			Partner: { type: "CarOwner" }
 		}
 	},
 	OwnerLocation: {
@@ -139,7 +140,14 @@ ExoWeb.Mock.objects({
 		1: {
 			Name: "Bob",
 			Location: { id: "1" },
-			AvailableLocations: [{ id: "1" }, { id: "2"}]
+			AvailableLocations: [{ id: "1" }, { id: "2"}],
+			Partner: { id: "2" }
+		},
+		2: {
+			Name: "Joe",
+			Location: { id: "2" },
+			AvailableLocations: [{ id: "1" }, { id: "2"}],
+			Partner: { id: "1" }
 		}
 	},
 	OwnerLocation: {
@@ -154,10 +162,10 @@ ExoWeb.Mock.objects({
 	},
 	LocationAddress: {
 		1: {
-		State: { id: "1" }
+			State: { id: "1" }
 		},
 		2: {
-		State: { id: "1" }
+			State: { id: "1" }
 		}
 	},
 	AddressState: {
