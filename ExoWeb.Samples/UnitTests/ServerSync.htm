@@ -15,18 +15,20 @@
 		<script src="../Scripts/changeset.js" type="text/javascript"></script>
 		<script type="text/javascript">
 			ExoWeb.trace.flags.sync = true;
+			ExoWeb.trace.flags.mocks = true;
+			ExoWeb.Mock.syncProviderDelay = 0;
+			ExoWeb.Mock.simulateLazyLoading = false;
 
-			var model = $model({ driver: { id: "1", from: "Driver", 
-				and: ["this.Owner.Partner.Location", "this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} });
-			
-			var undefined;
+			var model = $model({ driver: { id: "1", from: "Driver" } });
 
 			setupTest("test1", { description: "Init with ID Translation", expect: 3 }, function() {
+				var undefined;
+
 				equals(Dealer.meta.get("+c0"), undefined, "Dealer should not exist before init");
-				
-				model.sync.apply(new ChangeSet().init("Dealer", "?1").build());
-				
-				equals(model.sync._idMap["Dealer"]["?1"], "+c0", "Previously created object's id should be mapped from ?1 to +c0");
+
+				model.syncObject.apply(new ChangeSet().init("Dealer", "?1").build());
+
+				equals(model.syncObject._idMap["Dealer"]["?1"], "+c0", "Previously created object's id should be mapped from ?1 to +c0");
 
 				ok(Dealer.meta.get("+c0"), "Dealer should exist after init");
 			});
@@ -34,7 +36,7 @@
 			setupTest("test2", { description: "Reference Property Changes", expect: 2 }, function() {
 				equals(model.driver.Owner.Location.meta.id, "1", "Driver's owner's location should be 1");
 
-				model.sync.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
+				model.syncObject.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
 
 				equals(model.driver.Owner.Location.meta.id, "2", "Driver's owner's location should be 2");
 			});
@@ -42,7 +44,7 @@
 			setupTest("test3", { description: "Value Property Changes", expect: 2 }, function() {
 				equals(model.driver.Owner.Location.Name, "Work", "Driver's owner's location name should be Work");
 
-				model.sync.apply(new ChangeSet().val("OwnerLocation", "2", "Name", "Work", "Play").build());
+				model.syncObject.apply(new ChangeSet().val("OwnerLocation", "2", "Name", "Work", "Play").build());
 
 				equals(model.driver.Owner.Location.Name, "Play", "Driver's owner's location name should be Play");
 			});
@@ -52,17 +54,41 @@
 				equals(model.driver.Cars[0].Name, "Sentra", "First car is Sentra");
 				equals(model.driver.Cars[1].Name, "Bike", "Second car is Bike");
 
-				model.sync.apply(new ChangeSet().delRef("Driver", "1", "Cars", "Car", "2").build());
+				model.syncObject.apply(new ChangeSet().delRef("Driver", "1", "Cars", "Car", "2").build());
 
 				equals(model.driver.Cars.length, 1, "Driver should now have 1 car");
 				equals(model.driver.Cars[0].Name, "Sentra", "First car is Sentra");
 
-				model.sync.apply(new ChangeSet().addRef("Driver", "1", "Cars", "Car", "3").build());
+				model.syncObject.apply(new ChangeSet().addRef("Driver", "1", "Cars", "Car", "3").build());
 
 				equals(model.driver.Cars.length, 2, "Driver should now have 2 cars");
 				equals(model.driver.Cars[1].Name, "Tank", "Second car is Tank");
 			});
-			
+
+			setupTest("test5", { description: "Client-Server Script", expect: 4 }, function() {
+				var bryan = Driver.meta.get("1");
+				var bob = CarOwner.meta.get("1");
+				var joe = CarOwner.meta.get("2");
+
+				bryan.set_Owner(joe);
+
+				equals(bob.Drivers.length, 1, "Bob should have one driver");
+				equals(joe.Drivers.length, 0, "Joe should have no drivers");
+
+				ExoWeb.Mock.sync(function(changes) {
+					// mock server behavior of updating Location.Owners list
+					return new ChangeSet()
+						.delRef("CarOwner", bob.meta.id, "Drivers", "Driver", bryan.meta.id)
+						.addRef("CarOwner", joe.meta.id, "Drivers", "Driver", bryan.meta.id)
+						.build();
+				});
+
+				model.sync();
+
+				equals(bob.Drivers.length, 0, "Bob should now have zero drivers");
+				equals(joe.Drivers.length, 1, "Joe should now have one driver");
+			});
+
 			timeoutTests(5);
 
 			model.ready(function() {
@@ -70,6 +96,7 @@
 				executeTest("test2");
 				executeTest("test3");
 				executeTest("test4");
+				executeTest("test5");
 			});
 		</script>
 	</head>

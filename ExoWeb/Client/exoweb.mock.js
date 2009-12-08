@@ -42,11 +42,10 @@
 				}
 			}
 		},
-		sync: function rules(options) {
+		sync: function sync(handler) {
 			this._initObjects();
 
-			this._syncRules = options.rules;
-			this._syncHandler = options.handler;
+			this._syncHandler = handler;
 		},
 		_initTypes: function() {
 			if (!this._types) {
@@ -64,7 +63,6 @@
 		_initObjects: function() {
 			if (!this._objects) {
 				this._objects = {};
-				this._syncRules = [];
 				this._syncHandler = null;
 				
 				var _this = this;
@@ -104,37 +102,20 @@
 				});
 
 				ExoWeb.Mapper.setSyncProvider(function(changes, callback) {
-					var result;
-
-					ExoWeb.trace.log("sync", "begin: mock sending changes to server");
+					var result = [];
 
 					if (_this._syncHandler && _this._syncHandler instanceof Function) {
+						ExoWeb.trace.log("sync", "begin: mock sending changes to server");
+
 						result = _this._syncHandler(changes);
+
+						ExoWeb.trace.log("sync", "end: mock sending changes to server");
 					}
-					else if (_this._syncRules && _this._syncRules instanceof Array) {
-						result = [];
-						for (var i = 0, len = changes.length; i < len; i++) {
-							var change = changes[i];
-							for (var j = 0; j < _this._syncRules.length; j++) {
-								var rule = _this._syncRules[j];
-								if (rule.test(change)) {
-									var changeResult = rule.exec(change);
-									if (changeResult instanceof Array) {
-										for (var k = 0; k < changeResult.length; k++) {
-											result.push(changeResult[k]);
-										}
-									}
-									else {
-										result.push(changeResult);
-									}
-								}
-							}
-						}
+					else {
+						ExoWeb.trace.log("sync", "no sync mocking");
 					}
 
-					ExoWeb.trace.log("sync", "end: mock sending changes to server");
-
-					return mockCallback(callback, [result], _this.syncProviderDelay, $format(">> sync: {0}({1})", arguments));
+					return mockCallback(callback, [result], _this.syncProviderDelay, $format(">> sync", arguments));
 				});
 			}
 		},

@@ -438,9 +438,9 @@
 
 			var propType = getJsType(model, propJson.type);
 			var format = propJson.format ? propType.formats[propJson.format] : null;
-			
+
 			var prop = mtype.addProperty(propName, propType, propJson.isList, propJson.label, format, propJson.isStatic);
-			
+
 			// setup static properties for lazy loading
 			if (propJson.isStatic) {
 				if (propJson.isList)
@@ -890,7 +890,6 @@
 	// Globals
 	window.$model = function $model(options) {
 		var model = new ExoWeb.Model.Model();
-		var sync = new ServerSync(model);
 
 		var allSignals = new ExoWeb.Signal("$model allSignals");
 
@@ -898,16 +897,19 @@
 
 		var ret = {
 			meta: model,
-			ready: function(callback) { allSignals.waitForAll(callback); },
-			sync: sync,
-			commit: function(callback) {
+			syncObject: new ServerSync(model),
+			ready: function $model$ready(callback) { allSignals.waitForAll(callback); },
+			commit: function $model$commit(callback) {
+				// TODO
+			},
+			sync: function $model$sync(callback) {
 				log("sync", "Commit");
 
 				var _this = this;
-				syncProvider(this.sync._queue, function(response) {
+				syncProvider(this.syncObject._queue, function $model$sync$apply(response) {
 					if (response.length) {
 						log("sync", "applying {length} changes from server", response);
-						_this.sync.apply(response);
+						_this.syncObject.apply(response);
 					}
 					else {
 						log("sync", "no changes from server", response);
@@ -917,18 +919,22 @@
 						callback.call(this, response);
 				});
 			},
-			startAutoSync: function(varName, interval) {
+			startAutoSync: function $model$startAutoSync(interval) {
 				log("sync", "auto-sync enabled - interval of {0} milliseconds", [interval]);
 
+				var _this = this;
 				function doSync() {
 					log("sync", "auto-sync starting ({0})", [new Date()]);
-					ret.commit(varName, function() {
+					_this.sync(function $model$autoSyncCallback() {
 						log("sync", "auto-sync complete ({0})", [new Date()]);
 						window.setTimeout(doSync, interval);
 					});
 				}
 
 				window.setTimeout(doSync, interval);
+			},
+			stopAutoSync: function $model$stopAutoSync() {
+				// TODO
 			}
 		};
 

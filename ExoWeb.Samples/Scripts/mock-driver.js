@@ -70,7 +70,8 @@ ExoWeb.Mock.types({
 			Name: { type: "String" },
 			Location: { type: "OwnerLocation", rules: [{ allowedValues: { source: "this.AvailableLocations"}}] },
 			AvailableLocations: { type: "OwnerLocation", isList: true },
-			Partner: { type: "CarOwner" }
+			Partner: { type: "CarOwner" },
+			Drivers: { type: "Driver>Person", isList: true }
 		}
 	},
 	OwnerLocation: {
@@ -175,13 +176,15 @@ ExoWeb.Mock.objects({
 			Name: "Bob",
 			Location: { id: "1" },
 			AvailableLocations: [{ id: "1" }, { id: "2"}],
-			Partner: { id: "2" }
+			Partner: { id: "2" },
+			Drivers: [ { id: "1" } ]
 		},
 		2: {
 			Name: "Joe",
 			Location: { id: "2" },
 			AvailableLocations: [{ id: "1" }, { id: "2"}],
-			Partner: { id: "1" }
+			Partner: { id: "1" },
+			Drivers: []
 		}
 	},
 	OwnerLocation: {
@@ -211,28 +214,5 @@ ExoWeb.Mock.objects({
 });
 
 ExoWeb.Mock.sync({
-	rules: [
-		// when a new location is created set the Name property to "-- Brand New Location --"
-		{
-			test: function(change) {
-				return change.__type == "Init:#ExoGraph" && change.Instance.Type == "OwnerLocation";
-			},
-			exec: function(change) {
-				return new ChangeSet().val(change.Instance.Type, change.Instance.Id, "Name", null, "-- Brand New Location --").build();
-			}
-		},
-		// when a new driver is created create a new owner and assign its "Owner" property
-			{
-			test: function(change) {
-				return change.__type == "Init:#ExoGraph" && change.Instance.Type == "Driver";
-			},
-			exec: function(change) {
-				var newOwnerId = "?" + change.Instance.Id;
-				return new ChangeSet()
-					.init("CarOwner", newOwnerId)
-					.ref(change.Instance.Type, change.Instance.Id, "Owner", "CarOwner", null, newOwnerId)
-					.build();
-			}
-		}
-	]
+	// no behavior by default
 });
