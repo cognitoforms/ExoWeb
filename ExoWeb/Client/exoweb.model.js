@@ -3,6 +3,8 @@
 (function() {
 	var undefined;
 
+	var log = ExoWeb.trace.log;
+
 	var disableConstruction = false;
 
 	// Gets a value
@@ -436,7 +438,6 @@
 
 			if (rules) {
 				while (processing = (i < rules.length)) {
-					log("rule", "here...");
 					var rule = rules[i];
 					if (!rule._isExecuting) {
 						rule._isExecuting = true;
@@ -444,6 +445,7 @@
 						if (rule.isAsync) {
 							// run rule asynchronously, and then pickup running next rules afterwards
 							var _this = this;
+							log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
 							rule.execute(obj, function(obj) {
 								rule._isExecuting = false;
 								_this.executeRules(obj, prop, i + 1);
@@ -452,6 +454,7 @@
 						}
 						else {
 							try {
+								log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
 								rule.execute(obj);
 							}
 							finally {
@@ -671,7 +674,7 @@
 					Sys.Observer.setValue(obj, prop._name, options.fn.apply(obj));
 				}
 
-			Rule.register({ execute: execute }, inputs);
+				Rule.register({ execute: execute, toString: function() { return "calculation of " + prop._name; } }, inputs);
 
 			// go ahead and calculate this property for all objects
 			Array.forEach(this._containingType.known(), execute);
@@ -960,6 +963,9 @@
 		execute: function(obj) {
 			var val = this.prop.value(obj);
 			obj.meta.issueIf(this.err, val == null || (String.trim(val.toString()) == ""));
+		},
+		toString: function() {
+			return $format("{0}.{1} is required", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
 		}
 	}
 	Rule.required = RequiredRule;
@@ -1002,6 +1008,9 @@
 		},
 		_testMax: function(val) {
 			return val > this.max;
+		},
+		toString: function() {
+			return $format("{0}.{1} in range, min: {2}, max: {3}", [this.prop.get_containingType().get_fullName(), this.prop.get_name(), this.min, this.max]);
 		}
 	}
 	Rule.range = RangeRule;
@@ -1057,6 +1066,9 @@
 				// get the allowed values from the property chain
 				return this._propertyChain.value(obj);
 			}
+		},
+		toString: function() {
+			return $format("{0}.{1} allowed values", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
 		}
 	}
 	Rule.allowedValues = AllowedValuesRule;
