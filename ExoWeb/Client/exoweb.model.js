@@ -177,8 +177,8 @@
 
 					for (var propName in type._properties) {
 						var prop = type._properties[propName];
-						if (!prop.get_isStatic()) {
-							prop.init(this, prop.get_isList() ? [] : null);
+						if (!prop.get_isStatic() && prop.get_isList()) {
+							prop.init(this, []);
 						}
 					}
 				}
@@ -246,8 +246,11 @@
 			obj.meta.id = id;
 			Sys.Observer.makeObservable(obj);
 
-			for (var t = this; t; t = t.baseType)
+			for (var t = this; t; t = t.baseType) {
 				t._pool[id] = obj;
+				if (t._known)
+					t._known.add(obj);
+			}
 
 			this._model.notifyObjectRegistered(obj);
 		},
@@ -255,24 +258,44 @@
 		unregister: function(obj) {
 			this._model.notifyObjectUnregistered(obj);
 
-			for (var t = this; t; t = t.baseType)
+			for (var t = this; t; t = t.baseType) {
 				delete t._pool[obj.meta.id];
+
+				if (t._known)
+					t._known.remove(obj);
+			}
 
 			delete obj.meta._obj;
 			delete obj.meta;
 		},
 
-		get: function(id) {
+		get: function Type$get(id) {
 			return this._pool[id];
 		},
+		// Gets an array of all objects of this type that have been registered.
+		// The returned array is observable and collection changed events will be raised
+		// when new objects are registered or unregistered.
+		// The array is in no particular order so if you need to sort it, make a copy or use $transform.
+		known: function Type$known() {
+			var list = this._known;
+			if (!list) {
+				list = this._known = [];
 
-		addProperty: function(propName, jstype, label, format, isList, isStatic) {
-			var prop = new Property(this, propName, jstype, label, format, isList, isStatic);
+				for (id in this._pool)
+					list.push(this._pool[id]);
+
+				Sys.Observer.makeObservable(list);
+			}
+
+			return list;
+		},
+		addProperty: function(propName, jstype, isList, label, format, isStatic) {
+			var prop = new Property(this, propName, jstype, isList, label, format, isStatic);
 
 			this._properties[propName] = prop;
 
 			// modify jstype to include functionality based on the type definition
-			//this._jstype["$" + propName] = prop;  // is this useful?
+			this._jstype["$" + propName] = prop;
 
 			// add members to all instances of this type
 			//this._jstype.prototype["$" + propName] = prop;  // is this useful?
@@ -334,6 +357,9 @@
 		},
 
 		addRule: function Type$addRule(rule, prop) {
+			if (prop.get_containingType() !== this)
+				throw "TODO: implement cross type rules";
+
 			var propName = prop.get_name();
 			var rules = this._rules[propName];
 
@@ -410,6 +436,7 @@
 
 			if (rules) {
 				while (processing = (i < rules.length)) {
+					log("rule", "here...");
 					var rule = rules[i];
 					if (!rule._isExecuting) {
 						rule._isExecuting = true;
@@ -452,7 +479,7 @@
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, jstype, label, format, isList, isStatic) {
+	function Property(containingType, name, jstype, isList, label, format, isStatic) {
 		this._containingType = containingType;
 		this._name = name;
 		this._jstype = jstype;
@@ -462,7 +489,7 @@
 		this._isStatic = !!isStatic;
 	}
 
-	Property.prototype = {
+	Property.mixin({
 		rule: function(type) {
 			return this._containingType.getRule(this._name, type);
 		},
@@ -588,11 +615,72 @@
 		get_notifyListChangedFn: function() {
 
 			return this._notifyListChangedFn;
+		},
+
+		calculated: function(options) {
+			var prop = this;
+
+			var inputs;
+
+			if (options.basedOn) {
+				var type = prop._containingType;
+				inputs = options.basedOn.map(function(propName) {
+					return Model.property(propName, type);
+				});
+			}
+			else
+				inputs = ModelRule.inferInputs(this._containingType, options.fn);
+
+			var execute;
+
+			if (this._isList)
+				execute = function(obj) {
+					// re-calculate the list values
+					var newList = options.fn.apply(obj);
+
+					// compare the new list to the old one to see if changes were made
+					var curList = prop.value(obj);
+
+					if (!curList) {
+						curList = [];
+						prop.init(obj, curList);
+					}
+
+					if (newList.length === curList.length) {
+						var noChanges = true;
+
+						for (var i = 0; i < newList.length; ++i) {
+							if (newList[i] !== curList[i]) {
+								noChanges = false;
+								break;
+							}
+						}
+
+						if (noChanges)
+							return;
+					}
+
+					// update the current list so observers will receive the change events
+					curList.beginUpdate();
+					curList.clear();
+					curList.addRange(newList);
+					curList.endUpdate();
+				}
+			else
+				execute = function(obj) {
+					Sys.Observer.setValue(obj, prop._name, options.fn.apply(obj));
+				}
+
+			Rule.register({ execute: execute }, inputs);
+
+			// go ahead and calculate this property for all objects
+			Array.forEach(this._containingType.known(), execute);
+
+			return this;
 		}
-	}
+	});
 	ExoWeb.Model.Property = Property;
 	Property.registerClass("ExoWeb.Model.Property");
-
 
 	///////////////////////////////////////////////////////////////////////////////
 	/// <summary>
@@ -828,7 +916,6 @@
 		addPropertyValidating: function(propName, handler) {
 			this._addEvent("propertyValidating:" + propName, handler);
 		},
-
 		destroy: function() {
 			this.type.unregister(this.obj);
 		}
@@ -841,7 +928,7 @@
 	function Rule() { }
 
 	Rule.register = function register(rule, properties, isAsync) {
-		rule.isAsync = isAsync;
+		rule.isAsync = !!isAsync;
 
 		for (var i = 0; i < properties.length; ++i) {
 			var prop = properties[i];
@@ -853,7 +940,7 @@
 		var inputs = [];
 		var match;
 
-		while (match = /this\.([a-zA-Z0-9_]+)/g.exec(func.toString())) {
+		while (match = /this\.([a-zA-Z0-9_.]+)/g.exec(func.toString())) {
 			inputs.push(rootType.property(match[1]).lastProperty());
 		}
 
@@ -867,7 +954,7 @@
 		this.prop = properties[0];
 		this.err = new RuleIssue(this.prop.get_label() + " is required", properties, this);
 
-		Rule.register(this, properties, false);
+		Rule.register(this, properties);
 	}
 	RequiredRule.prototype = {
 		execute: function(obj) {
@@ -875,7 +962,7 @@
 			obj.meta.issueIf(this.err, val == null || (String.trim(val.toString()) == ""));
 		}
 	}
-	ExoWeb.Model.Rule.required = RequiredRule;
+	Rule.required = RequiredRule;
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function RangeRule(options, properties) {
@@ -900,7 +987,7 @@
 			this._test = this._testMax;
 		}
 
-		Rule.register(this, properties, false);
+		Rule.register(this, properties);
 	}
 	RangeRule.prototype = {
 		execute: function(obj) {
@@ -917,15 +1004,17 @@
 			return val > this.max;
 		}
 	}
-	ExoWeb.Model.Rule.range = RangeRule;
+	Rule.range = RangeRule;
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function AllowedValuesRule(options, properties) {
-		this.prop = properties[0];
+		var prop = this.prop = properties[0];
+
 		this.path = options.source;
+
 		this.err = new RuleIssue($format("{prop} has an invalid value", this), properties, this);
 
-		Rule.register(this, properties, false);
+		Rule.register(this, properties);
 
 		this._needsInit = true;
 	}
@@ -970,7 +1059,19 @@
 			}
 		}
 	}
-	ExoWeb.Model.Rule.allowedValues = AllowedValuesRule;
+	Rule.allowedValues = AllowedValuesRule;
+
+	Property.mixin({
+		allowedValues: function(options) {
+
+			// create a rule that will recalculate allowed values when dependencies change
+			var source = this.get_name() + "AllowedValues";
+			var valuesProp = this.get_containingType().addProperty(source, this.get_jstype(), true);
+			valuesProp.calculated(options);
+
+			new AllowedValuesRule({ source: source }, [this]);
+		}
+	});
 
 	///////////////////////////////////////////////////////////////////////////////////////
 	function StringLengthRule(options, properties) {
@@ -995,7 +1096,7 @@
 			this._test = this._testMax;
 		}
 
-		Rule.register(this, properties, false);
+		Rule.register(this, properties);
 	}
 	StringLengthRule.prototype = {
 		execute: function(obj) {
@@ -1012,8 +1113,7 @@
 			return val.length > this.max;
 		}
 	}
-
-	ExoWeb.Model.Rule.stringLength = StringLengthRule;
+	Rule.stringLength = StringLengthRule;
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
@@ -1412,7 +1512,7 @@
 		if (reg.allProps === loader)
 			delete reg.allProps;
 
-		if (!reg.byProp && reg.allProps)
+		if (!reg.byProp && !reg.allProps)
 			delete obj._lazyLoader;
 	}
 

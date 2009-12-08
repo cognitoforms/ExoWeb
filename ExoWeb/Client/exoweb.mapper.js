@@ -322,7 +322,7 @@
 		// get the object to load
 		var obj;
 
-		// family-qualified type name is not available so cann't use getType()
+		// family-qualified type name is not available so can't use getType()
 		var mtype = model.type(typeName);
 
 		// if this type has never been seen, go and fetch it and resume later
@@ -438,9 +438,9 @@
 
 			var propType = getJsType(model, propJson.type);
 			var format = propJson.format ? propType.formats[propJson.format] : null;
-
-			var prop = mtype.addProperty(propName, propType, propJson.label, format, propJson.isList, propJson.isStatic);
-
+			
+			var prop = mtype.addProperty(propName, propType, propJson.isList, propJson.label, format, propJson.isStatic);
+			
 			// setup static properties for lazy loading
 			if (propJson.isStatic) {
 				if (propJson.isList)

@@ -27,6 +27,7 @@ ExoWeb.trace = {
 	//		mocks: true,
 	//		sync: true,
 	//		ui: true,
+	//		rule: true
 	},
 	log: function log(category, message, args) {
 		if (!console)
@@ -96,7 +97,7 @@ ExoWeb.trace = {
 			log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
 
 			--this._pending;
-			
+
 			while (this._pending == 0 && this._waitForAll.length > 0)
 				Array.dequeue(this._waitForAll).apply(this, arguments);
 		}
@@ -305,24 +306,25 @@ ExoWeb.trace = {
 		input: function() {
 			return this.array || this;
 		},
-		where: function where(filter) {
+		where: function where(filter, thisPtr) {
 			if (!(filter instanceof Function))
 				filter = compileFilterFunction(filter);
 
 			var output = [];
 
 			var input = this.input();
+
 			var len = input.length;
 			for (var i = 0; i < len; ++i) {
 				var item = input[i];
 
-				if (filter(item, i))
+				if (filter.apply(thisPtr || item, [item, i]))
 					output.push(item);
 			}
 
 			return new Transform(output);
 		},
-		groupBy: function groupBy(groups) {
+		groupBy: function groupBy(groups, thisPtr) {
 			if (!(groups instanceof Function))
 				groups = compileGroupsFunction(groups);
 
@@ -332,7 +334,7 @@ ExoWeb.trace = {
 			var len = input.length;
 			for (var i = 0; i < len; i++) {
 				var item = input[i];
-				var groupKey = groups(item, i);
+				var groupKey = groups.apply(thisPtr || item, [item, i]);
 
 				var group = null;
 				for (var g = 0; g < output.length; ++g) {
@@ -348,7 +350,7 @@ ExoWeb.trace = {
 			}
 			return new Transform(output);
 		},
-		orderBy: function orderBy(ordering) {
+		orderBy: function orderBy(ordering, thisPtr) {
 			if (!(ordering instanceof Function))
 				ordering = compileOrderingFunction(ordering);
 
@@ -361,7 +363,10 @@ ExoWeb.trace = {
 				output[i] = input[i];
 
 			// sort array in place
-			output.sort(ordering);
+			if (!thisPtr)
+				output.sort(ordering);
+			else
+				output.sort(function() { return ordering.apply(this, arguments); });
 
 			return new Transform(output);
 		}
