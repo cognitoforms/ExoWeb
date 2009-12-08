@@ -155,10 +155,13 @@
 			});
 		},
 		applyCommitChange: function ServerSync$applyCommitChange(change) {
+			// previous changes should be discarded on commit
+			Array.clear(this._queue);
+			
 			// update each object with its new id
 			for (var i = 0; i < change.IdMap.length; i++) {
 				var idMap = change.IdMap[i];
-				
+
 				var type = this._model.type(idMap.Type);
 				type.changeObjectId(idMap.From, idMap.To);
 			}
@@ -920,6 +923,7 @@
 				log("sync", "Sync");
 
 				var _this = this;
+				log("sync", "sending {length} changes to server", this.syncObject._queue);
 				syncProvider(this.syncObject._queue, function $model$sync$callback(response) {
 					if (response.length) {
 						log("sync", "applying {length} changes from server", response);

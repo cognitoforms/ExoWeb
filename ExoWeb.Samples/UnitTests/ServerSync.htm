@@ -91,7 +91,7 @@
 				equals(joe.Drivers.length, 1, "Joe should now have one driver");
 			});
 
-			setupTest("test6", { description: "Client-Server Commit (Changing Ids)", expect: 12 }, function() {
+			setupTest("test6", { description: "Client-Server Commit (Changing Ids)", expect: 13 }, function() {
 				var matt = new Driver();
 				var mattLegacyId = matt.meta.id;
 
@@ -114,6 +114,8 @@
 				});
 				model.sync();
 
+				equals(model.syncObject._queue.length, 0, "Queue should be empty after commit");
+
 				equals(matt.meta.id, mattNewId, "Matt's id should be a new permanent id");
 				equals(Driver.meta.get(mattLegacyId), matt, "Matt can still be retieved by the old id");
 				equals(Driver.meta.get(mattNewId), matt, "Matt can also be retieved by the new id");
@@ -122,7 +124,7 @@
 				ok(!Driver.meta._legacyPool[mattNewId], "Matt's new id is not a key in the Driver legacy pool");
 				ok(Driver.meta._legacyPool[mattLegacyId], "Matt's legacy id is a key in the Driver legacy pool");
 				ok(!Driver.meta._pool[mattLegacyId], "Matt's legacy id is not a key in the Driver pool");
-				
+
 				ok(Person.meta._pool[mattNewId], "Matt's new id is a key in the Person pool");
 				ok(!Person.meta._legacyPool[mattNewId], "Matt's new id is not a key in the Person legacy pool");
 				ok(Person.meta._legacyPool[mattLegacyId], "Matt's legacy id is a key in the Person legacy pool");
