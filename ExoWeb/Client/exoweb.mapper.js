@@ -66,7 +66,9 @@ if (typeof(console) == "undefined"){
 	}
 
 	function ServerSync(model) {
+		this._model = model;
 		this._queue = [];
+		this._idMap = {};
 		var _this = this;
 
 		// update object
@@ -79,9 +81,7 @@ if (typeof(console) == "undefined"){
 
 		// add object
 		model.addObjectRegistered(function(obj) {
-			// TODO: New objects created from server response will not have
-			// isNew attribute at this point.  Can we rely on id format?
-			if (obj.meta.isNew || _this._isNew(obj.meta.id))
+			if (obj.meta.isNew)
 				_this.enqueue("new", obj);
 		});
 
@@ -97,7 +97,7 @@ if (typeof(console) == "undefined"){
 				var change = changes[i];
 
 				var addl = {
-					property: property.get_name(),
+					property: property.get_name()
 				};
 					
 				if(change.newStartingIndex >= 0 || addl.newItems) {
@@ -116,6 +116,33 @@ if (typeof(console) == "undefined"){
 	}
 
 	ServerSync.prototype = {
+		getIdTranslation: function(type, id) {
+			var typedIdMap = this._idMap[type];
+			if (!typedIdMap)
+				typedIdMap = this._idMap[type] = {};
+			return typedIdMap[id];
+		},
+		setIdTranslation: function(type, id, realId) {
+			var typedIdMap = this._idMap[type];
+			if (!typedIdMap)
+				typedIdMap = this._idMap[type] = {};
+			typedIdMap[id] = realId;
+		},
+		getObjectFromInstanceJson: function ServerSync$getObjectFromInstanceJson(json) {
+			var type = this._model.type(json.Type);
+			return type.get(this.getIdTranslation(json.Type, json.Id) || json.Id);
+		},
+		getInstanceJsonFromObject: function(obj) {
+			var ref = {
+				Id: obj.meta.id,
+				Type: obj.meta.type.get_fullName()
+			};
+			
+			if(obj.meta.isNew)
+				ref.IsNew = true;
+			
+			return ref;
+		},
 		apply: function(changes) {
 			log("sync", "applying changes");
 		
@@ -123,7 +150,7 @@ if (typeof(console) == "undefined"){
 				changes = [];
 			else if (!(changes instanceof Array))
 				changes = [changes];
-		
+
 			var _this = this;
 			Array.forEach(changes, function(change) {
 				if (change.__type == "Init:#ExoGraph")
@@ -141,22 +168,27 @@ if (typeof(console) == "undefined"){
 		applyInit: function ApplyCreateInstance(change) {
 			log("sync", "applyInit: Type = {Type}, Id = {Id}", change.Instance);
 			
-			var type = window[change.Instance.Type];
-			var obj = new type(change.Instance.Id);
-		
-			obj.meta.isNew = true;
+			var type = this._model.type(change.Instance.Type);
+			
+			if (!type)
+				log("sync", "ERROR - type {Type} was not found in model", change.Instance);
+			
+			var jstype = type.get_jstype();
+			var newObj = new jstype();
+			
+			// remember new object's generated id
+			this.setIdTranslation(change.Instance.Type, change.Instance.Id, newObj.meta.id);
 		},
 		applyRefChange: function ApplyReferenceChange(change) {
 			log("sync", "applyRefChange", change.Instance);
 			
-			var type = window[change.Instance.Type];
-			var obj = type.meta.get(change.Instance.Id);
-
+			var obj = this.getObjectFromInstanceJson(change.Instance);
+			
 			// TODO: validate original value?
 
 			if (change.CurrentValue) {
-				var refType = window[change.CurrentValue.Type];
-				var ref = refType.meta.get(change.CurrentValue.Id);
+				var ref = this.getObjectFromInstanceJson(change.CurrentValue);
+				
 				// TODO: check for no ref
 				Sys.Observer.setValue(obj, change.Property, ref);
 			}
@@ -167,8 +199,7 @@ if (typeof(console) == "undefined"){
 		applyValChange: function ApplyValueChange(change) {
 			log("sync", "applyValChange", change.Instance);
 			
-			var type = window[change.Instance.Type];
-			var obj = type.meta.get(change.Instance.Id);
+			var obj = this.getObjectFromInstanceJson(change.Instance)
 
 			// TODO: validate original value?
 
@@ -177,22 +208,21 @@ if (typeof(console) == "undefined"){
 		applyListChange: function ApplyListChange(change) {
 			log("sync", "applyListChange", change.Instance);
 			
-			var type = window[change.Instance.Type];
-			var obj = type.meta.get(change.Instance.Id);
+			var obj = this.getObjectFromInstanceJson(change.Instance);
 			var prop = obj.meta.property(change.Property);
 			var list = prop.value(obj);
 
+			var _this = this;
+
 			// apply added items
 			Array.forEach(change.Added, function(item) {
-				var type = window[item.Type];
-				var obj = type.meta.get(item.Id);
+				var obj = _this.getObjectFromInstanceJson(item);
 				Sys.Observer.add(list, obj);
 			});
 
 			// apply removed items
 			Array.forEach(change.Removed, function(item) {
-				var type = window[item.Type];
-				var obj = type.meta.get(item.Id);
+				var obj = _this.getObjectFromInstanceJson(item);
 				Sys.Observer.remove(list, obj);
 			});
 		},
@@ -203,7 +233,7 @@ if (typeof(console) == "undefined"){
 				var prop = obj.meta.property(addl.property).lastProperty();
 				var entry = {
 					__type: null,
-					Instance: this._instanceJson(obj),
+					Instance: this.getInstanceJsonFromObject(obj),
 					Property: prop.get_name(),
 					// TODO: original value?
 					OriginalValue: null,
@@ -219,7 +249,7 @@ if (typeof(console) == "undefined"){
 					entry.__type = "ReferenceChange:#ExoGraph";
 					log("sync", "update is reference type");
 					entry.CurrentValue = addl.value ? 
-						this._instanceJson(addl.value) :
+						this.getInstanceJsonFromObject(addl.value) :
 						null;
 				}
 				
@@ -230,7 +260,7 @@ if (typeof(console) == "undefined"){
 				
 				var entry = {
 					__type: "Init:#ExoGraph",
-					Instance: this._instanceJson(obj)
+					Instance: this.getInstanceJsonFromObject(obj)
 				};
 				this._queue.push(entry);
 			}
@@ -240,7 +270,7 @@ if (typeof(console) == "undefined"){
 				// TODO: delete JSON format?
 				var entry = {
 					__type: "Delete:#ExoGraph",
-					Instance: this._instanceJson(obj)
+					Instance: this.getInstanceJsonFromObject(obj)
 				};
 				this._queue.push(entry);
 			}
@@ -250,7 +280,7 @@ if (typeof(console) == "undefined"){
 				var prop = obj.meta.property(addl.property).lastProperty();
 				var entry = {
 					__type: "ListChange:#ExoGraph",
-					Instance: this._instanceJson(obj),
+					Instance: this.getInstanceJsonFromObject(obj),
 					Property: prop.get_name(),
 					Added: [],
 					Removed: []
@@ -262,7 +292,7 @@ if (typeof(console) == "undefined"){
 				if (addl.newItems) {
 					var _this = this;
 					Array.forEach(addl.newItems, function(obj) {
-						entry.Added.push(_this._instanceJson(obj));
+						entry.Added.push(_this.getInstanceJsonFromObject(obj));
 					});
 				}
 				
@@ -270,27 +300,12 @@ if (typeof(console) == "undefined"){
 				if (addl.oldItems) {
 					var _this = this;
 					Array.forEach(addl.oldItems, function(obj) {
-						entry.Removed.push(_this._instanceJson(obj));
+						entry.Removed.push(_this.getInstanceJsonFromObject(obj));
 					});
 				}
 				
 				this._queue.push(entry);
 			}
-		},
-		_isNew: function(id) {
-			// TODO: handle new objects created at server
-			return /\+c[0-9]+/.test(id);
-		},
-		_instanceJson: function(obj) {
-			var ref = {
-				Id: obj.meta.id,
-				Type: obj.meta.type.get_fullName()
-			};
-			
-			if(this._isNew(obj.meta.id))
-				ref.IsNew = true;
-			
-			return ref;
 		}
 	}
 	ExoWeb.Mapper.ServerSync = ServerSync;
@@ -901,7 +916,7 @@ if (typeof(console) == "undefined"){
 			meta: model,
 			ready: function(callback) { allSignals.waitForAll(callback); },
 			sync: sync,
-			commit: function(varName, callback) {
+			commit: function(callback) {
 				log("sync", "Commit");
 			
 				var _this = this;
@@ -914,7 +929,8 @@ if (typeof(console) == "undefined"){
 						log("sync", "no changes from server", response);
 					}
 					
-					callback(response);
+					if (callback && callback instanceof Function)
+						callback.call(this, response);
 				});
 			},
 			startAutoSync: function(varName, interval) {
