@@ -30,9 +30,8 @@
 
 				model.syncObject.apply(new ChangeSet().init("Dealer", "?1").build());
 
-				equals(model.syncObject._idMap["Dealer"]["?1"], "+c0", "Previously created object's id should be mapped from ?1 to +c0");
-
-				ok(Dealer.meta.get("+c0"), "Dealer should exist after init");
+				ok(Dealer.meta.get("?1"), "Dealer should exist after init by server generated id");
+				ok(Dealer.meta.get("+c0"), "Dealer should exist after init by client generated id");
 			});
 
 			setupTest("test2", { description: "Apply Reference Property Change", expect: 2 }, function() {
@@ -77,7 +76,7 @@
 
 				bryan.set_Owner(joe);
 
-				ExoWeb.Mock.sync(function(changes) {
+				ExoWeb.Mock.sync(function(type, id, changes) {
 					// mock server behavior of updating Location.Owners list
 					return new ChangeSet()
 						.delRef("CarOwner", bob.meta.id, "Drivers", "Driver", bryan.meta.id)
@@ -85,7 +84,7 @@
 						.build();
 				});
 
-				model.sync();
+				model.sync("driver");
 
 				equals(bob.Drivers.length, 0, "Bob should now have zero drivers");
 				equals(joe.Drivers.length, 1, "Joe should now have one driver");
@@ -97,14 +96,14 @@
 
 				// no changes on server
 				ExoWeb.Mock.sync(null);
-				model.sync();
+				model.sync("driver");
 
 				equals(matt.meta.id, mattLegacyId, "Matt's id should still be the temporary id");
 
 				var mattNewId = "1000";
 
 				// simulate commit behavior
-				ExoWeb.Mock.sync(function(changes) {
+				ExoWeb.Mock.sync(function(type, id, changes) {
 					return [
 						{
 							__type: "Commit:#ExoGraph",
@@ -112,7 +111,7 @@
 						}
 					];
 				});
-				model.sync();
+				model.sync("driver");
 
 				equals(model.syncObject._queue.length, 0, "Queue should be empty after commit");
 

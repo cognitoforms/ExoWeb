@@ -50,54 +50,125 @@
 		}
 	}
 
+	function exographObjectToJson(obj) {
+		var json = {
+			Id: obj.meta.id,
+			Type: obj.meta.type.get_fullName()
+		};
+
+		if (obj.meta.isNew)
+			json.IsNew = true;
+
+		return json;
+	}
+	
+	function exographJsonToObject(json) {
+		if (json) {
+			var jstype = window[json.Type];
+			return jstype.meta.get(json.Id);
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	function ExoGraphEventListener(model, events) {
+		this._model = model;
+		this._events = events;
+
+		// listen for events
+		model.addListChanged(ExoWeb.Functor.apply(this, this.onListChanged));
+		model.addAfterPropertySet(ExoWeb.Functor.apply(this, this.onPropertyChanged));
+		model.addObjectRegistered(ExoWeb.Functor.apply(this, this.onObjectRegistered));
+		model.addObjectUnregistered(ExoWeb.Functor.apply(this, this.onObjectUnregistered));
+	}
+
+	ExoGraphEventListener.prototype = {
+		// Model event handlers
+		onListChanged: function ExoGraphEventListener$onListChanged(obj, property, changes) {
+			log("sync", "queuing list changes");
+
+			for (var i = 0; i < changes.length; ++i) {
+				var change = changes[i];
+
+				var entry = {
+					__type: "ListChange:#ExoGraph",
+					Instance: exographObjectToJson(obj),
+					Property: property.get_name()
+				}
+
+				if (change.newStartingIndex >= 0 || change.newItems) {
+					entry.Added = [];
+
+					var _this = this;
+					Array.forEach(change.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
+						entry.Added.push(exographObjectToJson(obj));
+					});
+				}
+				if (change.oldStartingIndex >= 0 || change.oldItems) {
+					entry.Removed = [];
+
+					var _this = this;
+					Array.forEach(change.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
+						entry.Removed.push(exographObjectToJson(obj));
+					});
+				}
+
+				this._events.push(entry);
+			}
+		},
+		onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
+			if (obj.meta.isNew) {
+				log("sync", "queuing new object change");
+
+				this._events.push({
+					__type: "Init:#ExoGraph",
+					Instance: exographObjectToJson(obj)
+				});
+			}
+		},
+		onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
+			log("sync", "queuing delete object change");
+
+			// TODO: delete JSON format?
+			this._events.push({
+				__type: "Delete:#ExoGraph",
+				Instance: exographObjectToJson(obj)
+			});
+		},
+		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue) {
+			log("sync", "queuing update");
+
+			if (property.get_isValueType()) {
+				log("sync", "queuing value change");
+				this._events.push({
+					__type: "ValueChange:#ExoGraph",
+					Instance: exographObjectToJson(obj),
+					Property: property.get_name(),
+					OriginalValue: null,
+					CurrentValue: newValue
+				});
+			}
+			else {
+				log("sync", "queuing reference change");
+				this._events.push({
+					__type: "ReferenceChange:#ExoGraph",
+					Instance: exographObjectToJson(obj),
+					Property: property.get_name(),
+					OriginalValue: null,
+					CurrentValue: newValue ? exographObjectToJson(newValue) : null
+				});
+			}
+		}
+	}
+
+
+	///////////////////////////////////////////////////////////////////////////
 	function ServerSync(model) {
 		this._model = model;
 		this._queue = [];
 		this._idMap = {};
 		var _this = this;
 
-		// update object
-		model.addAfterPropertySet(function(obj, property, newVal) {
-			_this.enqueue("update", obj, {
-				property: property.get_name(),
-				value: toWire(newVal)
-			});
-		});
-
-		// add object
-		model.addObjectRegistered(function(obj) {
-			if (obj.meta.isNew)
-				_this.enqueue("new", obj);
-		});
-
-		// delete object
-		model.addObjectUnregistered(function(obj) {
-			_this.enqueue("delete", obj);
-		});
-
-		// lists
-		model.addListChanged(function(obj, property, changes) {
-
-			for (var i = 0; i < changes.length; ++i) {
-				var change = changes[i];
-
-				var addl = {
-					property: property.get_name()
-				};
-
-				if (change.newStartingIndex >= 0 || addl.newItems) {
-					addl.newStartingIndex = change.newStartingIndex;
-					addl.newItems = toWire(change.newItems);
-				}
-				if (change.oldStartingIndex >= 0 || addl.oldItems) {
-					addl.oldStartingIndex = change.oldStartingIndex;
-					addl.oldItems = toWire(change.oldItems);
-				}
-
-				// add changes, convert objects to values
-				_this.enqueue("list", obj, addl);
-			}
-		});
+		var eventListener = new ExoGraphEventListener(this._model, this._queue);
 	}
 
 	ServerSync.prototype = {
@@ -112,23 +183,6 @@
 			if (!typedIdMap)
 				typedIdMap = this._idMap[type] = {};
 			typedIdMap[id] = realId;
-		},
-		getObjectFromInstanceJson: function ServerSync$getObjectFromInstanceJson(json) {
-			if (json) {
-				var type = this._model.type(json.Type);
-				return type.get(this.getIdTranslation(json.Type, json.Id) || json.Id);
-			}
-		},
-		getInstanceJsonFromObject: function(obj) {
-			var ref = {
-				Id: obj.meta.id,
-				Type: obj.meta.type.get_fullName()
-			};
-
-			if (obj.meta.isNew)
-				ref.IsNew = true;
-
-			return ref;
 		},
 		apply: function(changes) {
 			log("sync", "applying changes");
@@ -157,7 +211,7 @@
 		applyCommitChange: function ServerSync$applyCommitChange(change) {
 			// previous changes should be discarded on commit
 			Array.clear(this._queue);
-			
+
 			// update each object with its new id
 			for (var i = 0; i < change.IdMap.length; i++) {
 				var idMap = change.IdMap[i];
@@ -183,12 +237,12 @@
 		applyRefChange: function ServerSync$applyRefChange(change) {
 			log("sync", "applyRefChange", change.Instance);
 
-			var obj = this.getObjectFromInstanceJson(change.Instance);
+			var obj = exographJsonToObject(change.Instance);
 
 			// TODO: validate original value?
 
 			if (change.CurrentValue) {
-				var ref = this.getObjectFromInstanceJson(change.CurrentValue);
+				var ref = exographJsonToObject(change.CurrentValue);
 
 				// TODO: check for no ref
 				Sys.Observer.setValue(obj, change.Property, ref);
@@ -200,7 +254,7 @@
 		applyValChange: function ServerSync$applyValChange(change) {
 			log("sync", "applyValChange", change.Instance);
 
-			var obj = this.getObjectFromInstanceJson(change.Instance)
+			var obj = exographJsonToObject(change.Instance);
 
 			// TODO: validate original value?
 
@@ -209,104 +263,21 @@
 		applyListChange: function ServerSync$applyListChange(change) {
 			log("sync", "applyListChange", change.Instance);
 
-			var obj = this.getObjectFromInstanceJson(change.Instance);
+			var obj = exographJsonToObject(change.Instance);
 			var prop = obj.meta.property(change.Property);
 			var list = prop.value(obj);
 
-			var _this = this;
-
 			// apply added items
 			Array.forEach(change.Added, function(item) {
-				var obj = _this.getObjectFromInstanceJson(item);
+				var obj = exographJsonToObject(item);
 				Sys.Observer.add(list, obj);
 			});
 
 			// apply removed items
 			Array.forEach(change.Removed, function(item) {
-				var obj = _this.getObjectFromInstanceJson(item);
+				var obj = exographJsonToObject(item);
 				Sys.Observer.remove(list, obj);
 			});
-		},
-		enqueue: function ServerSync$enqueue(oper, obj, addl) {
-			if (oper == "update") {
-				log("sync", "queuing update");
-
-				var prop = obj.meta.property(addl.property).lastProperty();
-				var entry = {
-					__type: null,
-					Instance: this.getInstanceJsonFromObject(obj),
-					Property: prop.get_name(),
-					// TODO: original value?
-					OriginalValue: null,
-					CurrentValue: null
-				};
-
-				if (prop.get_isValueType()) {
-					log("sync", "update is value type");
-					entry.__type = "ValueChange:#ExoGraph";
-					entry.CurrentValue = addl.value;
-				}
-				else {
-					entry.__type = "ReferenceChange:#ExoGraph";
-					log("sync", "update is reference type");
-					entry.CurrentValue = addl.value ?
-						this.getInstanceJsonFromObject(addl.value) :
-						null;
-				}
-
-				this._queue.push(entry);
-			}
-			else if (oper == "new") {
-				log("sync", "queuing new object");
-
-				var entry = {
-					__type: "Init:#ExoGraph",
-					Instance: this.getInstanceJsonFromObject(obj)
-				};
-				this._queue.push(entry);
-			}
-			else if (oper == "delete") {
-				log("sync", "queuing delete object");
-
-				// TODO: delete JSON format?
-				var entry = {
-					__type: "Delete:#ExoGraph",
-					Instance: this.getInstanceJsonFromObject(obj)
-				};
-				this._queue.push(entry);
-			}
-			else if (oper == "list") {
-				log("sync", "queuing list change");
-
-				var prop = obj.meta.property(addl.property).lastProperty();
-				var entry = {
-					__type: "ListChange:#ExoGraph",
-					Instance: this.getInstanceJsonFromObject(obj),
-					Property: prop.get_name(),
-					Added: [],
-					Removed: []
-				}
-
-				// TODO: are list indices a factor?
-
-				// include added items
-				if (addl.newItems) {
-					var _this = this;
-					Array.forEach(addl.newItems, function(obj) {
-						entry.Added.push(_this.getInstanceJsonFromObject(obj));
-					});
-				}
-
-				// include removed items
-				if (addl.oldItems) {
-					var _this = this;
-					Array.forEach(addl.oldItems, function(obj) {
-						entry.Removed.push(_this.getInstanceJsonFromObject(obj));
-					});
-				}
-
-				this._queue.push(entry);
-			}
 		}
 	}
 	ExoWeb.Mapper.ServerSync = ServerSync;
@@ -910,12 +881,14 @@
 			commit: function $model$commit(callback) {
 				// TODO
 			},
-			sync: function $model$sync(callback) {
+			sync: function $model$sync(varName, callback) {
 				log("sync", "Sync");
-
+				
+				var opt = options[varName];
+				
 				var _this = this;
 				log("sync", "sending {length} changes to server", this.syncObject._queue);
-				syncProvider(this.syncObject._queue, function $model$sync$callback(response) {
+				syncProvider(opt.from, opt.id, this.syncObject._queue, function $model$sync$callback(response) {
 					if (response.length) {
 						log("sync", "applying {length} changes from server", response);
 						_this.syncObject.apply(response);
@@ -928,13 +901,13 @@
 						callback.call(this, response);
 				});
 			},
-			startAutoSync: function $model$startAutoSync(interval) {
+			startAutoSync: function $model$startAutoSync(varName, interval) {
 				log("sync", "auto-sync enabled - interval of {0} milliseconds", [interval]);
 
 				var _this = this;
 				function doSync() {
 					log("sync", "auto-sync starting ({0})", [new Date()]);
-					_this.sync(function $model$autoSyncCallback() {
+					_this.sync(varName, function $model$autoSyncCallback() {
 						log("sync", "auto-sync complete ({0})", [new Date()]);
 						window.setTimeout(doSync, interval);
 					});

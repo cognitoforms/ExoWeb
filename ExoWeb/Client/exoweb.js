@@ -248,6 +248,12 @@ ExoWeb.trace = {
 		}
 	};
 
+	Functor.apply = function(target, callback) {
+		return function() {
+			return callback.apply(target, arguments);
+		}
+	}
+
 	ExoWeb.Functor = Functor;
 	///////////////////////////////////////////////////////////////////////////////
 	function Transform(array, root) {
