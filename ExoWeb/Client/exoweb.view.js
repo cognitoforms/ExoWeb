@@ -231,26 +231,42 @@
 		set_emptyOptionLabel: function Adapter$set_emptyOptionLabel(value) {
 			this._emptyOptionLabel = value;
 		},
-		get_options: function Adapter$get_options() {
-			if (!this._options) {
-
+		get_allowedValues: function Adapter$get_allowedValues() {
+			if (!this._allowedValues) {
 				if (!this.get_propertyChain().get_isValueType()) {
 					var prop = this.get_propertyChain().lastProperty();
 					var allowed = null;
 					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
 					var targetObj = this.get_propertyChain().lastTarget(this.get_target());
 					if (rule) {
-						allowed = rule.values(targetObj);
+						this._allowedValues = rule.values(targetObj);
 
-						this._options = [];
-
-						if (this.get_propertyChain().get_isEntityType() && this.get_emptyOption())
-							Array.add(this._options, new OptionAdapter(this, null));
-
-						for (var a = 0; a < allowed.length; a++)
-							Array.add(this._options, new OptionAdapter(this, allowed[a]));
+						var _this = this;
+						// watch for changes to the allowed values list and update options
+						Sys.Observer.addCollectionChanged(this._allowedValues, function() {
+							//if (_this._options) {
+								_this._options = null;
+								Sys.Observer.raisePropertyChanged(_this, "options");
+							//}
+						});
 					}
 				}
+			}
+
+			return this._allowedValues;
+		},
+		get_options: function Adapter$get_options() {
+			if (!this._options) {
+
+				var allowed = this.get_allowedValues();
+				
+				this._options = [];
+
+				if (this.get_propertyChain().get_isEntityType() && this.get_emptyOption())
+					Array.add(this._options, new OptionAdapter(this, null));
+
+				for (var a = 0; a < allowed.length; a++)
+					Array.add(this._options, new OptionAdapter(this, allowed[a]));
 			}
 
 			return this._options;
