@@ -8,7 +8,7 @@
 	var disableConstruction = false;
 
 	// Gets a value
-	Sys.Observer.getValue = function(target, property) {
+	Sys.Observer.getValue = function Sys$Observer$getValue(target, property) {
 		var getter = target["get_" + property];
 		return getter ? (getter.call(target) || null) : target[property];
 	}
@@ -604,7 +604,7 @@
 			}
 			else {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-				return target ? target[this._name] : null;
+				return Sys.Observer.getValue(target, this._name);
 			}
 		},
 		init: function Property$init(obj, val, force) {
@@ -1255,6 +1255,9 @@
 		convertBack: function(str) {
 			if (!str)
 				return null;
+
+			if (!(str.constructor == String))
+				str = str.toString();
 
 			str = $.trim(str);
 
