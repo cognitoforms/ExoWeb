@@ -319,7 +319,6 @@
 		var signal = new ExoWeb.Signal("objectsFromJson");
 
 		try {
-
 			for (var typeName in json) {
 				var poolJson = json[typeName];
 				for (var id in poolJson) {
@@ -328,11 +327,9 @@
 				}
 			}
 		}
-		catch (e) {
-			console.error(e);
+		finally {
+			signal.waitForAll(callback);
 		}
-
-		signal.waitForAll(callback);
 	}
 
 	function objectFromJson(model, typeName, id, json, callback) {
@@ -374,8 +371,7 @@
 			log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
 
 			if (!prop) {
-				console.error($format("unknown property {0}.{1}", [typeName, propName]));
-				continue;
+				throw $format("Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
 			}
 			else {
 				prop = prop.lastProperty();
@@ -598,46 +594,41 @@
 	}).dontDoubleUp({ callbackArg: 2 });
 
 	function fetchPathTypes(model, jstype, props, callback) {
-		try {
-			var propName = Array.dequeue(props);
+		var propName = Array.dequeue(props);
 
-			// locate property definition in model
-			// If property is not yet in model skip it. It might be in a derived type and it will be lazy loaded.
-			var prop = jstype.meta.property(propName);
-			if (!prop) {
-				if (jstype.meta.derivedTypes) {
-					// TODO: handle multiple levels of derived types
-					for (var i = 0, len = jstype.meta.derivedTypes.length, derivedType = null; i < len; i++) {
-						if (derivedType = jstype.meta.derivedTypes[i].get_jstype()) {
-							if (prop = derivedType.meta.property(propName)) {
-								break;
-							}
+		// locate property definition in model
+		// If property is not yet in model skip it. It might be in a derived type and it will be lazy loaded.
+		var prop = jstype.meta.property(propName);
+		if (!prop) {
+			if (jstype.meta.derivedTypes) {
+				// TODO: handle multiple levels of derived types
+				for (var i = 0, len = jstype.meta.derivedTypes.length, derivedType = null; i < len; i++) {
+					if (derivedType = jstype.meta.derivedTypes[i].get_jstype()) {
+						if (prop = derivedType.meta.property(propName)) {
+							break;
 						}
 					}
 				}
 			}
+		}
 
-			// Load the type of the property if its not yet loaded
-			if (prop) {
-				var mtype = prop.get_jstype().meta;
+		// Load the type of the property if its not yet loaded
+		if (prop) {
+			var mtype = prop.get_jstype().meta;
 
-				if (mtype && !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-					fetchType(model, mtype.get_fullName(), function(jstype) {
-						if (props.length > 0)
-							fetchPathTypes(model, jstype, props, callback);
-						else if (callback)
-							callback();
-					});
-				}
-				else if (callback)
-					callback();
+			if (mtype && !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+				fetchType(model, mtype.get_fullName(), function(jstype) {
+					if (props.length > 0)
+						fetchPathTypes(model, jstype, props, callback);
+					else if (callback)
+						callback();
+				});
 			}
 			else if (callback)
 				callback();
 		}
-		catch (e) {
-			console.error(e);
-		}
+		else if (callback)
+			callback();
 	}
 
 	function fetchTypes(model, query, callback) {

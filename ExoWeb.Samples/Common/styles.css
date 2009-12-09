@@ -3,3 +3,4 @@
 .sys-template { visibility:hidden; display:none; }
 input.error { border: 2px solid Red; }
 .checkboxlist { border: 1px solid Black; }
+.required { border: 1px solid #999999; border-right: solid 4px #3333ff; }

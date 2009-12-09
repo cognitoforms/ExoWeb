@@ -9,7 +9,7 @@
 ExoWeb.Mock.types({
 	Person: {
 		properties: {
-			Name: { type: "String", rules: [{ required: {}}] },
+			Name: { type: "String", rules: [{ required: {} }, { stringLength: { max: 40}}] },
 			PhoneNumber: { type: "String", format: "Phone", rules: [{ required: {}}] }
 		}
 	},
@@ -17,21 +17,22 @@ ExoWeb.Mock.types({
 		baseType: "Person",
 		properties: {
 			Owner: { type: "CarOwner" },
-			Cars: { type: "Car>Product", isList: true, rules: [{ allowedValues: { source: "this.Dealer.AvailableCars"}}] },
+			Cars: { type: "Car>Product", isList: true, rules: [{ required: {} }, { allowedValues: { source: "this.Dealer.AvailableCars"}}] },
 			BirthDate: { type: "Date", format: "ShortDate" },
 			Dealer: { type: "Dealer>Person", rules: [{ allowedValues: { source: "Dealer.All"}}] },
 			MilesDriven: { type: "Number", rules: [{ range: { min: 0}}] },
 			DateCreated: { type: "Date" },
 			SalesPerson: { type: "Employee>Person", rules: [{ allowedValues: { source: "this.AllowedSalesPersons"}}] },
-			AllowedSalesPersons: { type: "Employee>Person", isList: "true" }
+			AllowedSalesPersons: { type: "Employee>Person", isList: "true" },
+			Notes: { type: "String", rules: [{ stringLength: { max: 100}}] }
 		}
 	},
 	Employee: {
 		baseType: "Person",
 		properties: {
-			All: { type: "Employee>Person", isList: true, isStatic: true },		
+			All: { type: "Employee>Person", isList: true, isStatic: true },
 			Title: { type: "String" },
-			HireDate: {type: "Date"}
+			HireDate: { type: "Date" }
 		}
 	},
 	Product: {
@@ -126,7 +127,8 @@ ExoWeb.Mock.objects({
 			Dealer: { id: "1" },
 			MilesDriven: 100000,
 			DateCreated: new Date("1/1/2007"),
-			SalesPerson: {id: 100}
+			SalesPerson: {id: 100},
+			Notes: null
 		}
 	},
 	Car: {

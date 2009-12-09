@@ -154,23 +154,18 @@ Type.registerNamespace("ExoWeb.UI");
 		},
 		render: function() {
 			if (this._data && this._initialized) {
-				try {
-					var tmpl = this.get_template();
+				var tmpl = this.get_template();
 
-					// get custom classes from template
-					var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", "").trim();
+				// get custom classes from template
+				var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", "").trim();
 
-					this._context = tmpl.instantiateIn(this.get_element(), null, this.get_data());
+				this._context = tmpl.instantiateIn(this.get_element(), null, this.get_data());
 
-					// copy custom classes from template to content control
-					$(this.get_element()).addClass(classes);
+				// copy custom classes from template to content control
+				$(this.get_element()).addClass(classes);
 
-					// necessary in order to render components found within the template (like a nested dataview)
-					this._context.initializeComponents();
-				}
-				catch (e) {
-					console.error(e);
-				}
+				// necessary in order to render components found within the template (like a nested dataview)
+				this._context.initializeComponents();
 			}
 		},
 		initialize: function() {

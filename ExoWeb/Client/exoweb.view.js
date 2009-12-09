@@ -78,9 +78,6 @@
 						result = result.constructor.formats[properties.format].convert(result);
 
 					Sys.Observer.setValue(component, targetProperty, result);
-				},
-				function(err) {
-					console.error(err);
 				}
 			);
 		},
@@ -366,10 +363,12 @@
 		// Pass validation events through to the target
 		///////////////////////////////////////////////////////////////////////////
 		addPropertyValidating: function Adapter$addPropertyValidating(propName, handler) {
-			this.get_propertyChain().lastTarget(this.get_target()).meta.addPropertyValidating(this.get_propertyChain().get_name(), handler);
+			var prop = this.get_propertyChain();
+			prop.lastTarget(this.get_target()).meta.addPropertyValidating(prop.get_name(), handler);
 		},
 		addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
-			this.get_propertyChain().lastTarget(this.get_target()).meta.addPropertyValidated(this.get_propertyChain().get_name(), handler);
+			var prop = this.get_propertyChain();
+			prop.lastTarget(this.get_target()).meta.addPropertyValidated(prop.get_name(), handler);
 		},
 
 		// Override toString so that UI can bind to the adapter directly
@@ -410,6 +409,9 @@
 
 		// Properties consumed by UI
 		///////////////////////////////////////////////////////////////////////////
+		get_parent: function() {
+			return this._parent;
+		},
 		get_label: function() {
 			if (!this._obj)
 				return this._parent.get_emptyOptionLabel();
@@ -446,7 +448,19 @@
 					this._parent.set_value(value);
 				}
 			}
+		},
+
+		// Pass validation events through to the target
+		///////////////////////////////////////////////////////////////////////////
+		addPropertyValidating: function OptionAdapter$addPropertyValidating(propName, handler) {
+			var prop = this._parent.get_propertyChain();
+			prop.lastTarget(this._parent.get_target()).meta.addPropertyValidating(prop.get_name(), handler);
+		},
+		addPropertyValidated: function OptionAdapter$addPropertyValidated(propName, handler) {
+			var prop = this._parent.get_propertyChain();
+			prop.lastTarget(this._parent.get_target()).meta.addPropertyValidated(prop.get_name(), handler);
 		}
 	}
-
+	ExoWeb.View.OptionAdapter = OptionAdapter;
+	OptionAdapter.registerClass("ExoWeb.View.OptionAdapter");
 })();

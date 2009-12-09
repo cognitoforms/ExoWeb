@@ -578,10 +578,8 @@
 		},
 		canSetValue: function Property$canSetValue(obj, val) {
 			// only allow values of the correct data type to be set in the model
-			if (val === null)
+			if (val === null || val === undefined)
 				return true;
-			else if (val === undefined)
-				return false;
 
 			var valType;
 
@@ -617,21 +615,14 @@
 			target[this._name] = val;
 
 			if (val instanceof Array) {
-				if (!this._notifyListChangedFn) {
-					var prop = this;
-					this._notifyListChangedFn = function(sender, args) {
-						prop._containingType.get_model().notifyListChanged(target, prop, args.get_changes());
-					}
-				}
+				var prop = this;
 
 				Sys.Observer.makeObservable(val);
-				Sys.Observer.addCollectionChanged(val, this._notifyListChangedFn);
+				Sys.Observer.addCollectionChanged(val, function(sender, args) {
+					obj.meta.executeRules(prop._name);
+					prop._containingType.get_model().notifyListChanged(target, prop, args.get_changes());
+				});
 			}
-		},
-
-		get_notifyListChangedFn: function() {
-
-			return this._notifyListChangedFn;
 		},
 
 		calculated: function(options) {
@@ -976,7 +967,13 @@
 	RequiredRule.prototype = {
 		execute: function(obj) {
 			var val = this.prop.value(obj);
-			obj.meta.issueIf(this.err, val == null || (String.trim(val.toString()) == ""));
+
+			if (val instanceof Array) {
+				obj.meta.issueIf(this.err, val.length == 0);
+			}
+			else {
+				obj.meta.issueIf(this.err, val == null || (String.trim(val.toString()) == ""));
+			}
 		},
 		toString: function() {
 			return $format("{0}.{1} is required", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
@@ -1068,7 +1065,14 @@
 		execute: function(obj) {
 			this._init();
 			var val = this.prop.value(obj);
-			obj.meta.issueIf(this.err, val && !Array.contains(this.values(obj), val));
+
+			if (val instanceof Array) {
+				var allowed = this.values(obj);
+				obj.meta.issueIf(this.err, !val.every(function(item) { return allowed.indexOf(item) >= 0; }));
+			}
+			else {
+				obj.meta.issueIf(this.err, val && !Array.contains(this.values(obj), val));
+			}
 		},
 		propertyChain: function(obj) {
 			this._init();
@@ -1118,7 +1122,7 @@
 			this._test = this._testMin;
 		}
 		else if (hasMax) {
-			this.err = new RuleIssue($format("{prop} must no more than {max} characters", this), properties, this);
+			this.err = new RuleIssue($format("{prop} must be no more than {max} characters", this), properties, this);
 			this._test = this._testMax;
 		}
 
@@ -1137,6 +1141,9 @@
 		},
 		_testMax: function(val) {
 			return val.length > this.max;
+		},
+		toString: function() {
+			return $format("{0}.{1} in range, min: {2}, max: {3}", [this.prop.get_containingType().get_fullName(), this.prop.get_name(), this.min, this.max]);
 		}
 	}
 	Rule.stringLength = StringLengthRule;
@@ -1407,7 +1414,9 @@
 							LazyLoader.eval(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain);
 						}
 						else if (errorCallback)
-							errorCallback("Property is undefined: " + prop)
+							errorCallback("Property is undefined: " + prop);
+						else
+							throw $format("Cannot complete propery evaluation because a property is undefined: {0}", [prop]);
 					}
 					else if (nextTarget != null)
 						LazyLoader.eval(nextTarget, path, successCallback, errorCallback, []);
@@ -1428,6 +1437,9 @@
 					else {
 						if (errorCallback)
 							errorCallback("Property is undefined: " + prop)
+						else
+							throw $format("Cannot complete propery evaluation because a property is undefined: {0}", [prop]);
+
 						return;
 					}
 				}
