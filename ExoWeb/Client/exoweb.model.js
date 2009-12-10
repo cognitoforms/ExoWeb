@@ -182,12 +182,19 @@
 			}
 		}
 
+		var jstype;
+
 		// use eval to generate the type so the function name appears in the debugger
 		var ctorScript = $format("function {type}(id) { if(construct) { var obj=construct.apply(this, arguments); if(obj) return obj; } };" +
 			"jstype = {type};",
 			{ type: name });
 
 		eval(ctorScript);
+
+		// TODO: check browser?
+		if (jstype === undefined)
+			jstype = function Entity(id) { if (construct) { var obj = construct.apply(this, arguments); if (obj) return obj; } };
+
 		window[name] = jstype;
 		this._jstype = jstype;
 
@@ -980,7 +987,7 @@
 				obj.meta.issueIf(this.err, val.length == 0);
 			}
 			else {
-				obj.meta.issueIf(this.err, val == null || (String.trim(val.toString()) == ""));
+				obj.meta.issueIf(this.err, val == null || ($.trim(val.toString()) == ""));
 			}
 		},
 		toString: function() {
@@ -1360,7 +1367,7 @@
 
 	String.formats.$system = new Format({
 		convertBack: function(val) {
-			return val ? val.trim() : val;
+			return val ? $.trim(val) : val;
 		}
 	});
 
@@ -1468,7 +1475,7 @@
 		// Load final object
 		if (target != null && !LazyLoader.isLoaded(target))
 			LazyLoader.load(target, null, function() { successCallback(target); });
-		else
+		else if (successCallback)
 			successCallback(target);
 	}
 

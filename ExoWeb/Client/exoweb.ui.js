@@ -157,7 +157,7 @@ Type.registerNamespace("ExoWeb.UI");
 				var tmpl = this.get_template();
 
 				// get custom classes from template
-				var classes = $(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", "").trim();
+				var classes = $.trim($(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", ""));
 
 				this._context = tmpl.instantiateIn(this.get_element(), null, this.get_data());
 
