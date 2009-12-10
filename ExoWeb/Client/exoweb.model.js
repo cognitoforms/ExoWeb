@@ -7,18 +7,6 @@
 
 	var disableConstruction = false;
 
-	// Gets a value
-	Sys.Observer.getValue = function Sys$Observer$getValue(target, property) {
-		var getter = target["get_" + property];
-		if (getter) {
-			var value = getter.call(target);
-			return value === undefined ? null : value;
-		}
-		else {
-			return target[property];
-		}
-	}
-
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Model() {
 		this._types = {};
@@ -324,7 +312,7 @@
 			this._jstype.prototype["get_" + propName] = this._makeGetter(prop, prop.getter);
 
 			if (!prop.get_isList())
-				this._jstype.prototype["set_" + propName] = this._makeSetter(prop, prop.setter);
+				this._jstype.prototype["set_" + propName] = this._makeSetter(prop, prop.setter, true);
 
 			return prop;
 		},
@@ -333,10 +321,14 @@
 				return fn.call(receiver, this);
 			}
 		},
-		_makeSetter: function(receiver, fn) {
-			return function(val) {
+		_makeSetter: function(receiver, fn, notifiesChanges) {
+			var setter = function(val) {
 				fn.call(receiver, this, val);
-			}
+			};
+			
+			setter.__notifies = !!notifiesChanges;
+			
+			return setter;
 		},
 		get_model: function() {
 			return this._model;
@@ -546,6 +538,7 @@
 
 			if (old !== val) {
 				obj[this._name] = val;
+				Sys.Observer.raisePropertyChanged(obj, this._name);
 				obj.meta.executeRules(this._name);
 				this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
 			}
@@ -603,12 +596,21 @@
 		},
 		value: function Property$value(obj, val) {
 			if (arguments.length == 2) {
-				Sys.Observer.setValue(obj, this._name, val);
-				return val;
+				var setter = obj["set_" + this._name];
+				
+				// If a generated setter is found then use it instead of observer, since it will emulate observer 
+				// behavior in order to allow application code to call it directly rather than going through the 
+				// observer.  Calling the setter in place of observer eliminates unwanted duplicate events.
+				if (setter && setter.__notifies)
+					setter.call(obj, val);
+				else
+					Sys.Observer.setValue(obj, this._name, val);
 			}
 			else {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-				return Sys.Observer.getValue(target, this._name);
+
+				// access directly since the caller might make a distinction between null and undefined
+				return target[this._name];
 			}
 		},
 		init: function Property$init(obj, val, force) {
@@ -1411,7 +1413,7 @@
 
 			if (!LazyLoader.isLoaded(target, prop)) {
 				LazyLoader.load(target, prop, function() {
-					var nextTarget = Sys.Observer.getValue(target, prop);
+					var nextTarget = ExoWeb.getValue(target, prop);
 
 					if (nextTarget === undefined) {
 						if (scopeChain.length > 0) {
@@ -1433,7 +1435,7 @@
 				return;
 			}
 			else {
-				var propValue = Sys.Observer.getValue(target, prop);
+				var propValue = ExoWeb.getValue(target, prop);
 
 				if (propValue === undefined) {
 					if (scopeChain.length > 0) {
