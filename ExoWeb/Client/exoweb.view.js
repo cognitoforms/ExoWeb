@@ -340,11 +340,11 @@
 		// Raw Value
 		////////////////////////////////////////////////////////////////////////
 		get_rawValue: function Adapter$get_rawValue() {
+			this.initialize();
+			
 			return this.get_propertyChain().value(this.get_target());
 		},
 		set_rawValue: function Adapter$set_rawValue(value, changed) {
-			this.initialize();
-
 			var prop = this.get_propertyChain();
 
 			if (changed === undefined)
