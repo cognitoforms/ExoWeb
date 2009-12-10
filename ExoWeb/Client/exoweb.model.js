@@ -1259,29 +1259,28 @@
 
 			return this._convert(val);
 		},
-		convertBack: function(str) {
-			if (!str)
+		convertBack: function(val) {
+			if (!val)
 				return null;
 
-			if (!(str.constructor == String))
-				str = str.toString();
+			if (val.constructor == String) {
+				val = $.trim(val);
 
-			str = $.trim(str);
-
-			if (str.length == 0)
-				return null;
+				if (val.length == 0)
+					return null;
+			}
 
 			if (!this._convertBack)
-				return str;
+				return val;
 
 			try {
-				return this._convertBack(str);
+				return this._convertBack(val);
 			}
 			catch (err) {
 				return new FormatIssue(this._description ?
 							"{value} must be formatted as " + this._description :
 							"{value} is not properly formatted",
-							str);
+							val);
 			}
 		}
 	});
