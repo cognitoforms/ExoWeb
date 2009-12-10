@@ -410,6 +410,7 @@ ExoWeb.trace = {
 	// If a getter method matching the given property name is found on the target it is invoked and returns the 
 	// value, unless the the value is undefined, in which case null is returned instead.  This is done so that 
 	// calling code can interpret a return value of undefined to mean that the property it requested does not exist.
+	// TODO: better name
 	function getValue(target, property) {
 		var getter = target["get_" + property];
 		if (getter) {

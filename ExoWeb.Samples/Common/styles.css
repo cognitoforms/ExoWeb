@@ -1,6 +1,6 @@
-﻿
-
-.sys-template { visibility:hidden; display:none; }
+﻿.sys-template { visibility:hidden; display:none; }
 input.error { border: 2px solid Red; }
 .checkboxlist { border: 1px solid Black; }
 .required { border: 1px solid #999999; border-right: solid 4px #3333ff; }
+.validation { color: #D00; padding: 5px 0px 3px; }
+.validation.validation-none { padding: 0px; }

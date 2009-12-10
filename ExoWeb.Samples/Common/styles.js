@@ -52,6 +52,8 @@
 				setState($(this), "validated", "none", states);
 				setState($validation, "validation", "none", states);
 				setState($area, "validated", "none", states);
+
+				$validation.text("");
 			} else {
 				setState($(this), "validated", "some", states);
 				setState($validation, "validation", "some", states);
