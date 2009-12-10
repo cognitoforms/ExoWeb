@@ -25,19 +25,19 @@
 
     <script type="text/javascript">
     	$extend("Car", function(type) {
-    		type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}");
+    		type.formats.$display = ExoWeb.Model.Format.fromTemplate("{Name}");
     	});
 
     	$extend("Driver", function(type) {
-    		type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}");
+    		type.formats.$display = ExoWeb.Model.Format.fromTemplate("{Name}");
     	});
 
     	$extend("Dealer", function(type) {
-    		type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}");
+    		type.formats.$display = ExoWeb.Model.Format.fromTemplate("{Name}");
     	});
 
     	$extend("OwnerLocation", function(type) {
-    		type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}");
+    		type.formats.$display = ExoWeb.Model.Format.fromTemplate("{Name}");
     	});
 
     	var model = $model({
@@ -174,7 +174,7 @@
 			</td>
 			<td>
 				<div class="sys-template" sys:attach="dataview" dataview:data="{ binding rawValue }">
-					<span>{~ format=$label }</span>
+					<span>{~ format=$display }</span>
 				</div>
 			</td>
 		</tr>
@@ -210,7 +210,7 @@
 			<td colspan="2">
 				<div class="sys-template" sys:attach="template" template:for="div.readonlylist">
 					<span class="sys-template" sys:attach="dataview" dataview:data="{ binding rawValue }">
-						<span sys:if="{{ $index > 0 }}">, </span><span>{~ format=$label}</span>
+						<span sys:if="{{ $index > 0 }}">, </span><span>{~ format=$display}</span>
 					</span>
 				</div>
 			</td>

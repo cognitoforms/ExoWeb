@@ -120,14 +120,14 @@
 				if (!format)
 					throw $format("Invalid format: {0}", arguments);
 			} else
-				format = this.constructor.formats.$label || this.constructor.formats.$value;
+				format = this.constructor.formats.$display || this.constructor.formats.$system;
 
 			return format.convert(this);
 		}
 	});
 
 	ObjectBase.formats = {
-		$value: new Format({
+		$system: new Format({
 			convert: function(obj) {
 				if (obj)
 					return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
@@ -1344,7 +1344,7 @@
 		}
 	});
 
-	Number.formats.$value = Number.formats.Float;
+	Number.formats.$system = Number.formats.Float;
 
 	String.formats.Phone = new Format({
 		description: "###-###-####",
@@ -1356,7 +1356,7 @@
 		}
 	});
 
-	String.formats.$value = new Format({
+	String.formats.$system = new Format({
 		convertBack: function(val) {
 			return val ? val.trim() : val;
 		}
@@ -1372,7 +1372,8 @@
 		convertBack: function(str) { return (str.toLowerCase() == "true"); }
 	});
 
-	Boolean.formats.$value = Boolean.formats.TrueFalse;
+	Boolean.formats.$system = Boolean.formats.TrueFalse;
+	Boolean.formats.$display = Boolean.formats.YesNo;
 
 	Date.formats.ShortDate = new Format({
 		description: "mm/dd/yyyy",
@@ -1389,7 +1390,7 @@
 		}
 	});
 
-	Date.formats.$value = Date.formats.ShortDate;
+	Date.formats.$system = Date.formats.ShortDate;
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -8,7 +8,7 @@
 	var oldObjectParser = QUnit.jsDump.parsers.object;
 	QUnit.jsDump.parsers.object = function(obj) {
 		if (obj.meta) {
-			return obj.meta.type.get_jstype().formats.$value.convert(obj);
+			return obj.meta.type.get_jstype().formats.$system.convert(obj);
 		}
 		else {
 			return oldObjectParser.call(this, obj);

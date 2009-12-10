@@ -60,7 +60,7 @@
 			var path = properties.path || properties.$default;
 			delete properties.$default;
 
-			var adapter = new Adapter(templateContext, path, properties.valueFormat, properties.labelFormat, properties);
+			var adapter = new Adapter(templateContext, path, properties.systemFormat, properties.displayFormat, properties);
 
 			adapter.ready(function AdapterReady() {
 				log(["@", "markupExt"], "@ " + (adapter._propertyPath || "(no path)") + "  <.>");
@@ -88,11 +88,13 @@
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	function Adapter(context, propertyPath, valueFormatName, labelFormatName, options) {
+	function Adapter(context, propertyPath, systemFormat, displayFormat, options) {
 		this._context = context;
 		this._propertyPath = propertyPath;
-		this._valueFormatName = valueFormatName;
-		this._labelFormatName = labelFormatName;
+		
+		this._systemState = { FormatName: systemFormat };
+		this._displayState = { FormatName: displayFormat };
+		
 		this._emptyOption = true;
 		this._ignoreTargetEvents = false;
 
@@ -204,7 +206,9 @@
 			if (this._ignoreTargetEvents)
 				return;
 
-			Sys.Observer.raisePropertyChanged(this, "value");
+			Sys.Observer.raisePropertyChanged(this, "rawValue");
+			Sys.Observer.raisePropertyChanged(this, "systemValue");
+			Sys.Observer.raisePropertyChanged(this, "displayValue");
 		},
 
 		// Properties that are intended to be used by templates
@@ -268,33 +272,73 @@
 
 			return this._options;
 		},
-		get_badValue: function Adapter$get_badValue() {
-			return this._badValue;
-		},
-		get_valueFormat: function Adapter$get_valueFormat() {
-			if (!this._valueFormat) {
-				var t = this.get_propertyChain().get_jstype();
+		
+		getFormattedValue: function Adapter$getFormattedValue(formatName) {
+			this.initialize();
 
-				if (this._valueFormatName)
-					this._valueFormat = t.formats[this._valueFormatName];
-				else if (!(this._valueFormat = this.get_propertyChain().get_format()))
-					this._valueFormat = t.formats.$value || t.formats.$label;
+			var state = this["_" + formatName + "State"];
+
+			if (state) {
+				if (state.BadValue !== undefined)
+					return state.BadValue;
+
+				var rawValue = this.get_rawValue();
+
+				var formatMethod = this["get_" + formatName + "Format"];
+				if (formatMethod) {
+					var format = formatMethod.call(this);
+					return format ? format.convert(rawValue) : rawValue;
+				}
 			}
-
-			return this._valueFormat;
 		},
-		get_labelFormat: function Adapter$get_labelFormat() {
-			if (!this._labelFormat) {
-				var t = this.get_propertyChain().get_jstype();
+		setFormattedValue: function Adapter$setFormattedValue(formatName, value) {
+			var state = this["_" + formatName + "State"];
+			
+			var formatMethod = this["get_" + formatName + "Format"];
+			if (formatMethod)
+				var format = formatMethod.call(this);
+			
+			var converted = format ? format.convertBack(value) : value;
 
-				if (this._labelFormatName)
-					this._labelFormat = t.formats[this._labelFormatName];
-				else if (!(this._labelFormat = this.get_propertyChain().get_format()))
-					this._labelFormat = t.formats.$label || t.formats.$value;
+			var prop = this.get_propertyChain();
+			var meta = prop.lastTarget(this.get_target()).meta;
+
+			meta.clearIssues(this);
+
+			if (converted instanceof ExoWeb.Model.FormatIssue) {
+				state.BadValue = value;
+
+				issue = new ExoWeb.Model.RuleIssue(
+							$format(converted.get_message(), { value: prop.get_label() }),
+							[prop.lastProperty()],
+							this);
+
+				meta.issueIf(issue, true);
+
+				// Update the model with the bad value if possible
+				if (prop.canSetValue(this.get_target(), value))
+					prop.value(this.get_target(), value);
+				else
+				// run the rules to preserve the order of issues
+					meta.executeRules(prop.get_name());
 			}
+			else {
+				var changed = prop.value(this.get_target()) !== converted;
 
-			return this._labelFormat;
+				if (state.BadValue !== undefined) {
+					delete state.BadValue;
+
+					// force rules to run again in order to trigger validation events
+					if (!changed)
+						meta.executeRules(prop.get_name());
+				}
+
+				this.set_rawValue(converted, changed);
+			}
 		},
+
+		// Raw Value
+		////////////////////////////////////////////////////////////////////////
 		get_rawValue: function Adapter$get_rawValue() {
 			return this.get_propertyChain().value(this.get_target());
 		},
@@ -317,55 +361,47 @@
 				}
 			}
 		},
-		get_value: function Adapter$get_value() {
-			this.initialize();
 
-			if (this._badValue !== undefined)
-				return this._badValue;
+		// System Value
+		//////////////////////////////////////////////////////////////////////////////////////////
+		get_systemFormat: function Adapter$get_systemFormat() {
+			if (!this._systemState.Format) {
+				var jstype = this.get_propertyChain().get_jstype();
 
-			var rawValue = this.get_rawValue();
+				if (this._systemState.FormatName)
+					this._systemState.Format = jstype.formats[this._systemState.FormatName];
+				else if (!(this._systemState.Format = this.get_propertyChain().get_format()))
+					this._systemState.Format = jstype.formats.$system || jstype.formats.$display;
+			}
 
-			var format = this.get_valueFormat();
-			return format ? format.convert(rawValue) : rawValue;
+			return this._systemState.Format;
 		},
-		set_value: function Adapter$set_value(value) {
-			var converted = (this.get_valueFormat()) ? this.get_valueFormat().convertBack(value) : value;
+		get_systemValue: function Adapter$get_systemValue() {
+			return this.getFormattedValue("system");
+		},
+		set_systemValue: function Adapter$set_systemValue(value) {
+			this.setFormattedValue("system", value);
+		},
 
-			var prop = this.get_propertyChain();
-			var meta = prop.lastTarget(this.get_target()).meta;
+		// Display Value
+		//////////////////////////////////////////////////////////////////////////////////////////
+		get_displayFormat: function Adapter$get_displayFormat() {
+			if (!this._displayState.Format) {
+				var jstype = this.get_propertyChain().get_jstype();
 
-			meta.clearIssues(this);
-
-			if (converted instanceof ExoWeb.Model.FormatIssue) {
-				this._badValue = value;
-
-				issue = new ExoWeb.Model.RuleIssue(
-							$format(converted.get_message(), { value: prop.get_label() }),
-							[prop.lastProperty()],
-							this);
-
-				meta.issueIf(issue, true);
-
-				// Update the model with the bad value if possible
-				if (prop.canSetValue(this.get_target(), value))
-					prop.value(this.get_target(), value);
-				else
-				// run the rules to preserve the order of issues
-					meta.executeRules(prop.get_name());
+				if (this._displayState.FormatName)
+					this._displayState.Format = jstype.formats[this._displayState.FormatName];
+				else if (!(this._displayState.Format = this.get_propertyChain().get_format()))
+					this._displayState.Format = jstype.formats.$display || jstype.formats.$system;
 			}
-			else {
-				var changed = prop.value(this.get_target()) !== converted;
 
-				if (this._badValue !== undefined) {
-					delete this._badValue;
-
-					// force rules to run again in order to trigger validation events
-					if (!changed)
-						meta.executeRules(prop.get_name());
-				}
-
-				this.set_rawValue(converted, changed);
-			}
+			return this._displayState.Format;
+		},
+		get_displayValue: function Adapter$get_displayValue() {
+			return this.getFormattedValue("display");
+		},
+		set_displayValue: function Adapter$set_displayValue(value) {
+			this.setFormattedValue("display", value);
 		},
 
 		// Pass validation events through to the target
@@ -382,7 +418,7 @@
 		// Override toString so that UI can bind to the adapter directly
 		///////////////////////////////////////////////////////////////////////////
 		toString: function Adapter$toString() {
-			return this.get_value();
+			return this.get_systemValue();
 		}
 	}
 	ExoWeb.View.Adapter = Adapter;
@@ -417,21 +453,24 @@
 
 		// Properties consumed by UI
 		///////////////////////////////////////////////////////////////////////////
-		get_parent: function() {
+		get_parent: function OptionAdapter$get_parent() {
 			return this._parent;
 		},
-		get_label: function() {
+		get_rawValue: function OptionAdapter$get_rawValue() {
+			return this._obj;
+		},
+		get_displayValue: function OptionAdapter$get_displayValue() {
 			if (!this._obj)
 				return this._parent.get_emptyOptionLabel();
 
-			var format = this._parent.get_labelFormat();
+			var format = this._parent.get_displayFormat();
 			return format ? format.convert(this._obj) : this._obj;
 		},
-		get_value: function() {
-			var format = this._parent.get_valueFormat();
+		get_systemValue: function OptionAdapter$get_systemValue() {
+			var format = this._parent.get_systemFormat();
 			return format ? format.convert(this._obj) : this._obj;
 		},
-		get_selected: function() {
+		get_selected: function OptionAdapter$get_selected() {
 			var source = this._parent.get_rawValue();
 
 			if (source instanceof Array)
@@ -439,7 +478,7 @@
 			else
 				return source == this._obj;
 		},
-		set_selected: function(value) {
+		set_selected: function OptionAdapter$set_selected(value) {
 			var source = this._parent.get_rawValue();
 
 			if (source instanceof Array) {
@@ -450,10 +489,10 @@
 			}
 			else {
 				if (!this._obj)
-					this._parent.set_value(null);
+					this._parent.set_systemValue(null);
 				else {
-					var value = (this._parent.get_valueFormat()) ? this._parent.get_valueFormat().convert(this._obj) : this._obj;
-					this._parent.set_value(value);
+					var value = (this._parent.get_systemFormat()) ? this._parent.get_systemFormat().convert(this._obj) : this._obj;
+					this._parent.set_systemValue(value);
 				}
 			}
 		},
