@@ -10,7 +10,13 @@
 	// Gets a value
 	Sys.Observer.getValue = function Sys$Observer$getValue(target, property) {
 		var getter = target["get_" + property];
-		return getter ? (getter.call(target) || null) : target[property];
+		if (getter) {
+			var value = getter.call(target);
+			return value === undefined ? null : value;
+		}
+		else {
+			return target[property];
+		}
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////

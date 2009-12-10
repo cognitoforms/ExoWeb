@@ -63,7 +63,7 @@
 			var adapter = new Adapter(templateContext, path, properties.valueFormat, properties.labelFormat, properties);
 
 			adapter.ready(function AdapterReady() {
-				log(["@", "markupExt"], "@ " + (adapter._propertyPath|| "(no path)") + "  <.>");
+				log(["@", "markupExt"], "@ " + (adapter._propertyPath || "(no path)") + "  <.>");
 				Sys.Observer.setValue(component, targetProperty, adapter);
 			});
 		}, false);
@@ -243,10 +243,8 @@
 						var _this = this;
 						// watch for changes to the allowed values list and update options
 						Sys.Observer.addCollectionChanged(this._allowedValues, function() {
-							//if (_this._options) {
-								_this._options = null;
-								Sys.Observer.raisePropertyChanged(_this, "options");
-							//}
+							_this._options = null;
+							Sys.Observer.raisePropertyChanged(_this, "options");
 						});
 					}
 				}
@@ -258,7 +256,7 @@
 			if (!this._options) {
 
 				var allowed = this.get_allowedValues();
-				
+
 				this._options = [];
 
 				if (this.get_propertyChain().get_isEntityType() && this.get_emptyOption())
@@ -300,6 +298,25 @@
 		get_rawValue: function Adapter$get_rawValue() {
 			return this.get_propertyChain().value(this.get_target());
 		},
+		set_rawValue: function Adapter$set_rawValue(value, changed) {
+			this.initialize();
+
+			var prop = this.get_propertyChain();
+
+			if (changed === undefined)
+				changed = prop.value(this.get_target()) !== value;
+
+			if (changed) {
+				this._ignoreTargetEvents = true;
+
+				try {
+					prop.value(this.get_target(), value);
+				}
+				finally {
+					this._ignoreTargetEvents = false;
+				}
+			}
+		},
 		get_value: function Adapter$get_value() {
 			this.initialize();
 
@@ -312,8 +329,6 @@
 			return format ? format.convert(rawValue) : rawValue;
 		},
 		set_value: function Adapter$set_value(value) {
-			this.initialize();
-
 			var converted = (this.get_valueFormat()) ? this.get_valueFormat().convertBack(value) : value;
 
 			var prop = this.get_propertyChain();
@@ -334,9 +349,9 @@
 				// Update the model with the bad value if possible
 				if (prop.canSetValue(this.get_target(), value))
 					prop.value(this.get_target(), value);
-
+				else
 				// run the rules to preserve the order of issues
-				meta.executeRules(prop.get_name());
+					meta.executeRules(prop.get_name());
 			}
 			else {
 				var changed = prop.value(this.get_target()) !== converted;
@@ -349,16 +364,7 @@
 						meta.executeRules(prop.get_name());
 				}
 
-				if (changed) {
-					this._ignoreTargetEvents = true;
-
-					try {
-						prop.value(this.get_target(), converted);
-					}
-					finally {
-						this._ignoreTargetEvents = false;
-					}
-				}
+				this.set_rawValue(converted, changed);
 			}
 		},
 
