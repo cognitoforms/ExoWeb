@@ -30,38 +30,29 @@
 		syncProvider = fn;
 	}
 
-	function toWire(obj) {
-		if (obj === null) {
-			return null;
-		}
-		else if (obj instanceof Array) {
-			var wire = [];
-			for (var i = 0; i < obj.length; ++i) {
-				wire.push(toWire(obj[i]));
-			}
-
-			return wire;
-		}
-		else if (obj.constructor.formats && obj.constructor.formats.$wire) {
-			return obj.constructor.formats.$wire.convert(obj);
-		}
-		else {
-			return obj;
-		}
-	}
-
-	function exographObjectToJson(obj) {
-		var json = {
-			Id: obj.meta.id,
-			Type: obj.meta.type.get_fullName()
-		};
-
-		if (obj.meta.isNew)
-			json.IsNew = true;
-
-		return json;
-	}
+	Date.formats.$exograph = Date.formats.ShortDate;
 	
+	function exographValueToJson(val) {
+		if (val) {
+			var fmt = val.constructor.formats && val.constructor.formats.$exograph;
+			return fmt ? fmt.convert(val) : val.toString();
+		}
+	}
+
+	function exographReferenceToJson(obj) {
+		if (obj) {
+			var json = {
+				Id: obj.meta.id,
+				Type: obj.meta.type.get_fullName()
+			};
+
+			if (obj.meta.isNew)
+				json.IsNew = true;
+
+			return json;
+		}
+	}
+
 	function exographJsonToObject(json) {
 		if (json) {
 			var jstype = window[json.Type];
@@ -91,7 +82,7 @@
 
 				var entry = {
 					__type: "ListChange:#ExoGraph",
-					Instance: exographObjectToJson(obj),
+					Instance: exographReferenceToJson(obj),
 					Property: property.get_name()
 				}
 
@@ -100,7 +91,7 @@
 
 					var _this = this;
 					Array.forEach(change.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
-						entry.Added.push(exographObjectToJson(obj));
+						entry.Added.push(exographReferenceToJson(obj));
 					});
 				}
 				if (change.oldStartingIndex >= 0 || change.oldItems) {
@@ -108,7 +99,7 @@
 
 					var _this = this;
 					Array.forEach(change.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
-						entry.Removed.push(exographObjectToJson(obj));
+						entry.Removed.push(exographReferenceToJson(obj));
 					});
 				}
 
@@ -121,7 +112,7 @@
 
 				this._events.push({
 					__type: "Init:#ExoGraph",
-					Instance: exographObjectToJson(obj)
+					Instance: exographReferenceToJson(obj)
 				});
 			}
 		},
@@ -131,30 +122,30 @@
 			// TODO: delete JSON format?
 			this._events.push({
 				__type: "Delete:#ExoGraph",
-				Instance: exographObjectToJson(obj)
+				Instance: exographReferenceToJson(obj)
 			});
 		},
-		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue) {
+		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 			log("sync", "queuing update");
 
 			if (property.get_isValueType()) {
 				log("sync", "queuing value change");
 				this._events.push({
 					__type: "ValueChange:#ExoGraph",
-					Instance: exographObjectToJson(obj),
+					Instance: exographReferenceToJson(obj),
 					Property: property.get_name(),
-					OriginalValue: null,
-					CurrentValue: newValue
+					OriginalValue: exographValueToJson(oldValue),
+					CurrentValue: exographValueToJson(newValue)
 				});
 			}
 			else {
 				log("sync", "queuing reference change");
 				this._events.push({
 					__type: "ReferenceChange:#ExoGraph",
-					Instance: exographObjectToJson(obj),
+					Instance: exographReferenceToJson(obj),
 					Property: property.get_name(),
-					OriginalValue: null,
-					CurrentValue: newValue ? exographObjectToJson(newValue) : null
+					OriginalValue: exographReferenceToJson(oldValue),
+					CurrentValue: exographReferenceToJson(newValue)
 				});
 			}
 		}
@@ -883,9 +874,9 @@
 			},
 			sync: function $model$sync(varName, callback) {
 				log("sync", "Sync");
-				
+
 				var opt = options[varName];
-				
+
 				var _this = this;
 				log("sync", "sending {length} changes to server", this.syncObject._queue);
 				syncProvider(opt.from, opt.id, this.syncObject._queue, function $model$sync$callback(response) {
