@@ -184,9 +184,9 @@
 				<span>{ binding label }</span>:
 			</td>
 			<td>
-				<select class="sys-template" sys:value="{ binding value }"
+				<select class="sys-template" sys:value="{ binding systemValue }"
 					sys:attach="dataview" dataview:data="{ binding options }">
-					<option sys:value="{ binding value }">{ binding label }</option>
+					<option sys:value="{ binding systemValue }">{ binding displayValue }</option>
 				</select>
 			</td>
 		</tr>
@@ -199,7 +199,7 @@
 						<tr>
 							<td>
 								<input type="checkbox" id="option" sys:checked="{ binding selected }" />
-								<label for="option">{ binding label }</label>
+								<label for="option">{ binding displayValue }</label>
 							</td>
 						</tr>
 					</tbody>
@@ -221,7 +221,7 @@
 				<span>{ binding label }</span>:
 			</td>
 			<td>
-				<span>{ binding value }</span>
+				<span>{ binding displayValue }</span>
 				<span>{ binding helptext }</span>
 			</td>
 		</tr>
@@ -231,7 +231,7 @@
 				<span>{ binding label }</span>:
 			</td>
 			<td>
-				<input type="text" sys:value="{ binding value }" />
+				<input type="text" sys:value="{ binding systemValue }" />
 				<span>{ binding helptext }</span>
 			</td>
 		</tr>
