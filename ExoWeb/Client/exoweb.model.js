@@ -1139,7 +1139,7 @@
 	StringLengthRule.prototype = {
 		execute: function(obj) {
 			var val = this.prop.value(obj);
-			obj.meta.issueIf(this.err, this._test(val));
+			obj.meta.issueIf(this.err, this._test(val || ""));
 		},
 		_testMinMax: function(val) {
 			return val.length < this.min || val.length > this.max;
