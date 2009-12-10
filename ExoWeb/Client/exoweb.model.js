@@ -1415,7 +1415,7 @@
 						else if (errorCallback)
 							errorCallback("Property is undefined: " + prop);
 						else
-							throw $format("Cannot complete propery evaluation because a property is undefined: {0}", [prop]);
+							throw $format("Cannot complete property evaluation because a property is undefined: {0}", [prop]);
 					}
 					else if (nextTarget != null)
 						LazyLoader.eval(nextTarget, path, successCallback, errorCallback, []);
@@ -1437,7 +1437,7 @@
 						if (errorCallback)
 							errorCallback("Property is undefined: " + prop)
 						else
-							throw $format("Cannot complete propery evaluation because a property is undefined: {0}", [prop]);
+							throw $format("Cannot complete property evaluation because a property is undefined: {0}", [prop]);
 
 						return;
 					}

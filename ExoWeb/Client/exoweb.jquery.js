@@ -61,7 +61,7 @@
 	};
 
 	jQuery.expr[":"].bound = function(obj, index, meta, stack) {
-		return $(obj).liveBindings.length > 0;
+		return $(obj).liveBindings().length > 0;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////

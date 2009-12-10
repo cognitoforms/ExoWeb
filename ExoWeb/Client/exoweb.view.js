@@ -55,7 +55,7 @@
 	// Metadata adapter markup extension
 	Sys.Application.registerMarkupExtension("@",
 		function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
-			log(["@", "markupExt"], "@ " + (properties.$default || "(no path)"));
+			log(["@", "markupExt"], "@ " + (properties.$default || "(no path)") + " (evaluating)");
 
 			var path = properties.path || properties.$default;
 			delete properties.$default;
@@ -63,6 +63,7 @@
 			var adapter = new Adapter(templateContext, path, properties.valueFormat, properties.labelFormat, properties);
 
 			adapter.ready(function AdapterReady() {
+				log(["@", "markupExt"], "@ " + (adapter._propertyPath|| "(no path)") + "  <.>");
 				Sys.Observer.setValue(component, targetProperty, adapter);
 			});
 		}, false);
@@ -70,10 +71,11 @@
 	// Lazy eval markup extension
 	Sys.Application.registerMarkupExtension("~",
 		function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
-			log(["~", "markupExt"], "~ " + (properties.$default || "(no path)"));
+			log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + " (evaluating)");
 
 			ExoWeb.Model.LazyLoader.eval(templateContext.dataItem, properties.$default,
 				function(result) {
+					log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
 					if (properties.format && result.constructor.formats && result.constructor.formats[properties.format])
 						result = result.constructor.formats[properties.format].convert(result);
 

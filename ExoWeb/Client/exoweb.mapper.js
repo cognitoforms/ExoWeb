@@ -963,7 +963,7 @@
 
 				// objects are already loading so just queue up the calls
 				allSignals.waitForAll(function() {
-					log(["$model", "lazyLoading"], "loaded");
+					log(["$model", "lazyLoading"], "raising $model.ready()");
 
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					callback();
