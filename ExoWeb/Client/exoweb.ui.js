@@ -7,6 +7,78 @@ Type.registerNamespace("ExoWeb.UI");
 	var log = ExoWeb.trace.log;
 
 	///////////////////////////////////////////////////////////////////////////////
+	Toggle = function(element) {
+		Toggle.initializeBase(this, [element]);
+	}
+
+	Toggle.prototype = {
+		set_action: function Toggle$set_action(value) {
+			this._action = value;
+		},
+		get_action: function Toggle$get_action() {
+			return this._action;
+		},
+		set_on: function Toggle$set_on(value) {
+			this._on = value;
+		},
+		get_on: function Toggle$get_on() {
+			return this._on;
+		},
+		set_when: function Toggle$set_when(value) {
+			this._when = value;
+		},
+		get_when: function Toggle$get_when() {
+			return this._when;
+		},
+		set_source: function Toggle$set_source(value) {
+			this._source = value;
+		},
+		get_source: function Toggle$get_source() {
+			return this._source;
+		},
+		get_value: function Toggle$get_value() {
+			var getter = this._source["get_" + this._on];
+			if (getter)
+				return getter.call(this._source);
+			else
+				return this._source[this._on];
+		},
+		execute: function Toggle$execute() {
+			var val = this.get_value();
+			if (val == this._when) {
+				if (this._action == "hide")
+					$(this.get_element()).hide();
+				else
+					$(this.get_element()).show();
+			}
+			else {
+				if (this._action == "hide")
+					$(this.get_element()).show();
+				else
+					$(this.get_element()).hide();
+			}
+		},
+		initialize: function Toggle$initialize() {
+			Toggle.callBaseMethod(this, "initialize");
+
+			if (!this._source)
+				this._source = getParentContextData(this._element);
+
+			this.execute();
+
+			var _this = this;
+			Sys.Observer.addSpecificPropertyChanged(this._source, this._on, function() {
+				_this.execute();
+			});
+		}
+	}
+
+	ExoWeb.UI.Toggle = Toggle;
+	Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control);
+
+	
+
+	///////////////////////////////////////////////////////////////////////////////
 	/// <summary>
 	/// In addition to defining template markup, also defines rules that are used
 	/// to determine if it should be chosen as the template for a given element
@@ -270,6 +342,13 @@ Type.registerNamespace("ExoWeb.UI");
 
 	window.$parentContextData = getParentContextData;
 
+	function getIsLast(control, index) {
+		var len = control.get_element().control.get_contexts().length;
+		return index == len - 1;
+	}
+
+	window.$isLast = getIsLast;
+	
 	// Since this script is not loaded by System.Web.Handlers.ScriptResourceHandler
 	// invoke Sys.Application.notifyScriptLoaded to notify ScriptManager 
 	// that this is the end of the script.
