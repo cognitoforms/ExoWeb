@@ -116,24 +116,16 @@
 
 	ObjectBase.formats = {
 		$system: new Format({
+			undefinedString: "",
+			nullString: "null",
 			convert: function(obj) {
-				if (obj)
-					return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
-				else if (obj === null)
-					return "null";
+				return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
 			},
 			convertBack: function(str) {
-				if (str && str.constructor == String) {
-					// indicates "no value", which is distinct from "no selection"
-					if (str == "null") {
-						return null;
-					}
-					else {
-						var ids = str.split("|");
-						var ctor = window[ids[0]];
-						return ctor.get(ids[1]);
-					}
-				}
+				// indicates "no value", which is distinct from "no selection"
+				var ids = str.split("|");
+				var ctor = window[ids[0]];
+				return ctor.get(ids[1]);
 			}
 		})
 	}
@@ -1248,6 +1240,8 @@
 		this._convert = options.convert;
 		this._convertBack = options.convertBack;
 		this._description = options.description;
+		this._nullString = options.nullString || "";
+		this._undefinedString = options.undefinedString || "";
 	}
 
 	Format.fromTemplate = (function Format$fromTemplate(convertTemplate) {
@@ -1263,8 +1257,11 @@
 
 	Format.mixin({
 		convert: function(val) {
-			if (val === undefined || val == null)
-				return "";
+			if (val === undefined)
+				return this._undefinedString;
+			
+			if (val == null)
+				return this._nullString;
 
 			if (val instanceof FormatIssue)
 				return val.get_invalidValue();
@@ -1275,11 +1272,14 @@
 			return this._convert(val);
 		},
 		convertBack: function(val) {
-			if (!val)
+			if (val == this._nullString)
 				return null;
+		
+			if (val == this._undefinedString)
+				return;
 
 			if (val.constructor == String) {
-				val = $.trim(val);
+				val = val.trim();
 
 				if (val.length == 0)
 					return null;
