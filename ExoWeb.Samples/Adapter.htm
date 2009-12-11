@@ -124,6 +124,14 @@
 				</td>
 			</tr>
 			<tr>
+				<td>(~ Cars, transform=orderBy('Name'))</td>
+				<td>
+					<ol class="sys-template" sys:attach="dataview" dataview:data="{~ Cars, transform=orderBy('Name')}">
+						<li>{{ Name }}</li>
+					</ol>
+				</td>
+			</tr>
+			<tr>
 				<td>( binding Cars )</td>
 				<td>{ binding Cars }</td>
 			</tr>

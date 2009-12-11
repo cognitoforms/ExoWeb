@@ -473,6 +473,25 @@ ExoWeb.trace = {
 	}
 	ExoWeb.Translator = Translator;
 
+	function getLastTarget(target, propertyPath) {
+		var path = propertyPath;
+		var finalTarget = target;
+
+		if (path.constructor == String)
+			path = path.split(".");
+		else if (!(path instanceof Array))
+			throw ("invalid parameter propertyPath");
+
+		for (var i = 0; i < path.length - 1; i++) {
+			if (finalTarget)
+				finalTarget = getValue(finalTarget, path[i]);
+		}
+		
+		return finalTarget;
+	}
+	
+	ExoWeb.getLastTarget = getLastTarget;
+	window.$lastTarget = getLastTarget;
 
 	// If a getter method matching the given property name is found on the target it is invoked and returns the 
 	// value, unless the the value is undefined, in which case null is returned instead.  This is done so that 
@@ -565,3 +584,98 @@ if (!Array.prototype.indexOf) {
 		return -1;
 	};
 }
+
+(function() {
+	//////////////////////////////////////////////////////////////////////////////////////
+	// MS Ajax extensions
+
+	// Get's a DOM element's bindings
+	Sys.Binding.getElementBindings = function(el) {
+		return el.__msajaxbindings || [];
+	};
+
+	// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
+	Sys.Binding.mixin({
+		get_finalSourceObject: function() {
+			var src = this.get_source();
+
+			for (var i = 0; i < this._pathArray.length - 1; ++i)
+				src = src[this._pathArray[i]];
+
+			return src;
+		},
+		get_finalPath: function() {
+			return this._pathArray[this._pathArray.length - 1];
+		}
+	});
+
+	function _raiseSpecificPropertyChanged(target, args) {
+		var func = target.__propertyChangeHandlers[args.get_propertyName()];
+		func(target);
+	}
+
+	// Converts observer events from being for ALL properties to a specific one.
+	// This is an optimization that prevents handlers interested only in a single
+	// property from being run when other, unrelated properties change.
+	Sys.Observer.addSpecificPropertyChanged = function(target, property, handler) {
+		if (!target.__propertyChangeHandlers) {
+			target.__propertyChangeHandlers = {};
+
+			Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
+		}
+
+		var func = target.__propertyChangeHandlers[property];
+
+		if (!func)
+			target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
+
+		func.add(handler);
+	};
+
+
+	Sys.Observer._setValue = function Sys$Observer$_setValue(target, propertyName, value) {
+		var getter, setter, mainTarget = target, path = propertyName.split('.');
+		for (var i = 0, l = (path.length - 1); i < l ; i++) {
+			var name = path[i];
+			getter = target["get_" + name]; 
+			if (typeof (getter) === "function") {
+				target = getter.call(target);
+			}
+			else {
+				target = target[name];
+			}
+			var type = typeof (target);
+			if ((target === null) || (type === "undefined")) {
+				throw Error.invalidOperation(String.format(Sys.Res.nullReferenceInPath, propertyName));
+			}
+		}   
+		
+		var notify = true; 
+		var currentValue, lastPath = path[l];
+		getter = target["get_" + lastPath];
+		setter = target["set_" + lastPath];
+		if (typeof(getter) === 'function') {
+			currentValue = getter.call(target);
+		}
+		else {
+			currentValue = target[lastPath];
+		}
+		if (typeof(setter) === 'function') {
+			notify = !setter.__notifies;
+			setter.call(target, value);
+		}
+		else {
+			target[lastPath] = value;
+		}
+		if (currentValue !== value) {
+			var ctx = Sys.Observer._getContext(mainTarget);
+			if (ctx && ctx.updating) {
+				ctx.dirty = true;
+				return;
+			};
+			if (notify)
+				Sys.Observer.raisePropertyChanged(mainTarget, path[0]);
+		}
+	}
+
+})();

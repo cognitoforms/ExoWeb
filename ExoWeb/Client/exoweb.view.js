@@ -3,52 +3,6 @@
 
 	Type.registerNamespace("ExoWeb.View");
 
-	//////////////////////////////////////////////////////////////////////////////////////
-	// MS Ajax extensions
-
-	// Get's a DOM element's bindings
-	Sys.Binding.getElementBindings = function(el) {
-		return el.__msajaxbindings || [];
-	};
-
-	// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
-	Sys.Binding.mixin({
-		get_finalSourceObject: function() {
-			var src = this.get_source();
-
-			for (var i = 0; i < this._pathArray.length - 1; ++i)
-				src = src[this._pathArray[i]];
-
-			return src;
-		},
-		get_finalPath: function() {
-			return this._pathArray[this._pathArray.length - 1];
-		}
-	});
-
-	function _raiseSpecificPropertyChanged(target, args) {
-		var func = target.__propertyChangeHandlers[args.get_propertyName()];
-		func(target);
-	}
-
-	// Converts observer events from being for ALL properties to a specific one.
-	// This is an optimization that prevents handlers interested only in a single
-	// property from being run when other, unrelated properties change.
-	Sys.Observer.addSpecificPropertyChanged = function(target, property, handler) {
-		if (!target.__propertyChangeHandlers) {
-			target.__propertyChangeHandlers = {};
-
-			Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
-		}
-
-		var func = target.__propertyChangeHandlers[property];
-
-		if (!func)
-			target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
-
-		func.add(handler);
-	};
-
 	// Markup Extensions
 	//////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,14 +27,70 @@
 		function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
 			log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + " (evaluating)");
 
-			ExoWeb.Model.LazyLoader.eval(templateContext.dataItem, properties.$default,
+			var source;
+			var scopeChain;
+
+			if (properties.source) {
+				var evalSource = new Function("$element", "$index", "$dataItem", "return " + properties.source + ";");
+				source = evalSource(component.get_element(), templateContext.index, templateContext.dataItem);
+				
+				// don't try to eval the path against window
+				scopeChain = [];
+			}
+			else {
+				source = templateContext.dataItem;
+			}
+
+			ExoWeb.Model.LazyLoader.eval(source, properties.$default,
 				function(result) {
 					log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
-					if (properties.format && result.constructor.formats && result.constructor.formats[properties.format])
-						result = result.constructor.formats[properties.format].convert(result);
+					
+					if (properties.transform && result instanceof Array) {
+						// generate transform function
+						var doTrans = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + properties.transform + ";");
+
+						// transform the result to use now
+						var list = result;
+						result = doTrans(list, component.get_element(), templateContext.index, templateContext.dataItem);
+
+						// watch for changes to the list and refresh
+						Sys.Observer.makeObservable(list);
+						Sys.Observer.addCollectionChanged(list, function() {
+							Sys.Observer.setValue(component, targetProperty, doTrans(list, component.get_element(), templateContext.index, templateContext.dataItem));
+						});
+					}
+					else {
+						try {
+							var doFormat = function(obj) {
+								if (properties.format && result.constructor.formats && result.constructor.formats[properties.format])
+									return obj.constructor.formats[properties.format].convert(obj);
+
+								return obj;
+							}
+
+							if (properties.$default) {
+								var props = properties.$default.split(".");
+								var last = props.splice(-1);
+								ExoWeb.Model.LazyLoader.eval(source, props.join("."), function(target) {
+									Sys.Observer.addSpecificPropertyChanged(target, last, function(obj) {
+										Sys.Observer.setValue(component, targetProperty, doFormat(ExoWeb.getValue(target, last)));
+									});
+								});
+							}
+
+							result = doFormat(result);
+						}
+						catch (e) {
+							console.log(e);
+						}
+					}
 
 					Sys.Observer.setValue(component, targetProperty, result);
-				}
+				},
+				function(err) {
+					throw err;
+				},
+				scopeChain
 			);
 		},
 		false
@@ -91,10 +101,10 @@
 	function Adapter(context, propertyPath, systemFormat, displayFormat, options) {
 		this._context = context;
 		this._propertyPath = propertyPath;
-		
+
 		this._systemState = { FormatName: systemFormat };
 		this._displayState = { FormatName: displayFormat };
-		
+
 		this._emptyOption = true;
 		this._ignoreTargetEvents = false;
 
@@ -272,7 +282,7 @@
 
 			return this._options;
 		},
-		
+
 		getFormattedValue: function Adapter$getFormattedValue(formatName) {
 			this.initialize();
 
@@ -293,11 +303,11 @@
 		},
 		setFormattedValue: function Adapter$setFormattedValue(formatName, value) {
 			var state = this["_" + formatName + "State"];
-			
+
 			var formatMethod = this["get_" + formatName + "Format"];
 			if (formatMethod)
 				var format = formatMethod.call(this);
-			
+
 			var converted = format ? format.convertBack(value) : value;
 
 			var prop = this.get_propertyChain();
@@ -341,7 +351,7 @@
 		////////////////////////////////////////////////////////////////////////
 		get_rawValue: function Adapter$get_rawValue() {
 			this.initialize();
-			
+
 			return this.get_propertyChain().value(this.get_target());
 		},
 		set_rawValue: function Adapter$set_rawValue(value, changed) {
