@@ -14,7 +14,7 @@
 			var path = properties.path || properties.$default;
 			delete properties.$default;
 
-			var adapter = new Adapter(templateContext, path, properties.systemFormat, properties.displayFormat, properties);
+			var adapter = new Adapter(properties.source || templateContext.dataItem, path, properties.systemFormat, properties.displayFormat, properties);
 
 			adapter.ready(function AdapterReady() {
 				log(["@", "markupExt"], "@ " + (adapter._propertyPath || "(no path)") + "  <.>");
@@ -98,8 +98,8 @@
 
 
 	///////////////////////////////////////////////////////////////////////////////
-	function Adapter(context, propertyPath, systemFormat, displayFormat, options) {
-		this._context = context;
+	function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
+		this._target = target;
 		this._propertyPath = propertyPath;
 
 		this._systemState = { FormatName: systemFormat };
@@ -161,15 +161,6 @@
 			this._readySignal.waitForAll(callback);
 		},
 		get_target: function Adapter$get_target() {
-			if (!this._target) {
-				if (this._context instanceof ExoWeb.Model.ObjectBase)
-					this._target = this._context;
-				else if (this._context.dataItem instanceof Adapter)
-					this._target = this._context.dataItem.property().target();
-				else
-					this._target = this._context.dataItem;
-			}
-
 			return this._target;
 		},
 		get_propertyPath: function Adapter$get_propertyPath() {
@@ -177,8 +168,7 @@
 		},
 		get_propertyChain: function Adapter$get_propertyChain() {
 			if (!this._propertyChain) {
-				var adapterOrObject = this._context instanceof ExoWeb.Model.ObjectBase ? this._context : this._context.dataItem;
-				var sourceObject = (adapterOrObject instanceof Adapter) ? adapterOrObject.get_value() : adapterOrObject;
+				var sourceObject = (this._target instanceof Adapter) ? this._target.get_rawValue() : this._target;
 
 				// get the property chain starting at the source object
 				this._propertyChain = sourceObject.meta.property(this.get_propertyPath());
@@ -186,8 +176,8 @@
 					throw ($format("Property \"{p}\" could not be found.", { p: this.get_propertyPath() }));
 
 				// prepend parent adapter's property path
-				if (adapterOrObject instanceof Adapter)
-					this._propertyChain.prepend(adapterOrObject.property());
+				if (this._target instanceof Adapter)
+					this._propertyChain.prepend(this._target.get_propertyChain());
 			}
 
 			return this._propertyChain;
