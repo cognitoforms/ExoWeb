@@ -7,15 +7,26 @@
 	}
 }
 
-if (!Array.prototype.indexOf) {
-	Array.prototype.indexOf = function(obj) {
-		for (var i = 0; i < this.length; i++) {
-			if (this[i] === obj) return i;
+
+// original function grabbed from http://oranlooney.com/functional-javascript/
+Object.copy = function Object$Copy(obj) {
+	if (typeof obj !== 'object') {
+		return obj;  // non-object have value sematics, so obj is already a copy.
+	} else {
+		var value = obj.valueOf();
+		if (obj != value) {
+			// the object is a standard object wrapper for a native type, say String.
+			// we can make a copy by instantiating a new object around the value.
+			return new obj.constructor(value);
+		} else {
+			// ok, we have a normal object. copy the whole thing, property-by-property.
+			var c = {};
+			for (var property in obj) c[property] = obj[property];
+			return c;
 		}
-		
-		return -1;
 	}
 }
+
 
 Type.registerNamespace("ExoWeb");
 
@@ -417,6 +428,52 @@ ExoWeb.trace = {
 		return obj;
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	function Translator() {
+		this._forwardDictionary = {};
+		this._reverseDictionary = {};
+	}
+	Translator.prototype = {
+		lookup: function Translator$lookup(source, category, key) {
+			if (!key) {
+				key = category;
+				category = null;
+			}
+			
+			if (category)
+				source = source[category] = (source[category] || {});
+			
+			return source[key] || null;
+		},
+		forward: function Translator$forward(category, key) {
+			return this.lookup(this._forwardDictionary, category, key);
+		},
+		reverse: function Translator$reverse(category, key) {
+			return this.lookup(this._reverseDictionary, category, key);
+		},
+		add: function Translator$addMapping(category, key, value) {
+			if (!value) {
+				value = key;
+				key = category;
+				category = null;
+			}
+			
+			var forward = this._forwardDictionary;
+			if (category)
+				forward = forward[category] = (forward[category] || {});
+				
+			forward[key] = value;
+			
+			var reverse = this._reverseDictionary;
+			if (category)
+				reverse = reverse[category] = (reverse[category] || {});
+				
+			reverse[value] = key;
+		}
+	}
+	ExoWeb.Translator = Translator;
+
+
 	// If a getter method matching the given property name is found on the target it is invoked and returns the 
 	// value, unless the the value is undefined, in which case null is returned instead.  This is done so that 
 	// calling code can interpret a return value of undefined to mean that the property it requested does not exist.
@@ -469,34 +526,42 @@ if (!Array.prototype.map) {
 
 if (!Array.prototype.forEach)
 {
-  Array.prototype.forEach = function(fun /*, thisp*/)
-  {
-    var len = this.length >>> 0;
-    if (typeof fun != "function")
-      throw new TypeError();
+	Array.prototype.forEach = function Array$forEach(fun /*, thisp*/)
+	{
+		var len = this.length >>> 0;
+		if (typeof fun != "function")
+			throw new TypeError();
 
-    var thisp = arguments[1];
-    for (var i = 0; i < len; i++)
-    {
-      if (i in this)
-        fun.call(thisp, this[i], i, this);
-    }
-  };
- }
+		var thisp = arguments[1];
+		for (var i = 0; i < len; i++) {
+			if (i in this)
+				fun.call(thisp, this[i], i, this);
+		}
+	};
+}
 
- if (!Array.prototype.every) {
- 	Array.prototype.every = function(fun /*, thisp*/) {
- 		var len = this.length >>> 0;
- 		if (typeof fun != "function")
- 			throw new TypeError();
+if (!Array.prototype.every) {
+	Array.prototype.every = function Array$every(fun /*, thisp*/) {
+		var len = this.length >>> 0;
+		if (typeof fun != "function")
+			throw new TypeError();
 
- 		var thisp = arguments[1];
- 		for (var i = 0; i < len; i++) {
- 			if (i in this &&
-          !fun.call(thisp, this[i], i, this))
- 				return false;
- 		}
+		var thisp = arguments[1];
+		for (var i = 0; i < len; i++) {
+			if (i in this &&
+		  !fun.call(thisp, this[i], i, this))
+				return false;
+		}
 
- 		return true;
- 	};
- }
+		return true;
+	};
+}
+ 
+if (!Array.prototype.indexOf) {
+	Array.prototype.indexOf = function Array$indexOf(obj) {
+		for (var i = 0; i < this.length; i++)
+			if (this[i] === obj) return i;
+		
+		return -1;
+	};
+}

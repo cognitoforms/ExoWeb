@@ -50,26 +50,42 @@
 		}
 	});
 
-	function toExoGraph(val) {
+	function toExoGraph(translator, val) {
 		if (val) {
 			var type = val.constructor;
 			var fmt = type.formats && type.formats.$exograph;
-			return fmt ? fmt.convert(val) : val.toString();
+			var result = fmt ? fmt.convert(val) : val.toString();
+
+			// entities only: translate forward to the server's id
+			if (val instanceof ExoWeb.Model.ObjectBase)
+				result.Id = translator.forward(result.Type, result.Id) || result.Id;
+
+			return result;
 		}
 	}
 
-	function fromExoGraph(val) {
+	function fromExoGraph(translator, val) {
 		if (val) {
 			var type = window[val.Type];
+			
+			// entities only: translate back to the client's id
+			if (type.meta && type.meta instanceof ExoWeb.Model.Type) {
+				// don't alter the original object
+				val = Object.copy(val);
+				val.Id = translator.reverse(val.Type, val.Id) || val.Id;
+			}
+			
 			var fmt = type.formats && type.formats.$exograph;
 			return fmt ? fmt.convertBack(val) : val;
 		}
 	}
 
+
 	///////////////////////////////////////////////////////////////////////////
-	function ExoGraphEventListener(model, events) {
+	function ExoGraphEventListener(model, events, translator) {
 		this._model = model;
 		this._events = events;
+		this._translator = translator;
 
 		// listen for events
 		model.addListChanged(ExoWeb.Functor.apply(this, this.onListChanged));
@@ -88,7 +104,7 @@
 
 				var entry = {
 					__type: "ListChange:#ExoGraph",
-					Instance: toExoGraph(obj),
+					Instance: toExoGraph(this._translator, obj),
 					Property: property.get_name()
 				}
 
@@ -97,7 +113,7 @@
 
 					var _this = this;
 					Array.forEach(change.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
-						entry.Added.push(toExoGraph(obj));
+						entry.Added.push(toExoGraph(_this._translator, obj));
 					});
 				}
 				if (change.oldStartingIndex >= 0 || change.oldItems) {
@@ -105,7 +121,7 @@
 
 					var _this = this;
 					Array.forEach(change.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
-						entry.Removed.push(toExoGraph(obj));
+						entry.Removed.push(toExoGraph(_this._translator, obj));
 					});
 				}
 
@@ -118,7 +134,7 @@
 
 				this._events.push({
 					__type: "Init:#ExoGraph",
-					Instance: toExoGraph(obj)
+					Instance: toExoGraph(this._translator, obj)
 				});
 			}
 		},
@@ -128,7 +144,7 @@
 			// TODO: delete JSON format?
 			this._events.push({
 				__type: "Delete:#ExoGraph",
-				Instance: toExoGraph(obj)
+				Instance: toExoGraph(this._translator, obj)
 			});
 		},
 		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
@@ -138,20 +154,20 @@
 				log("sync", "queuing value change");
 				this._events.push({
 					__type: "ValueChange:#ExoGraph",
-					Instance: toExoGraph(obj),
+					Instance: toExoGraph(this._translator, obj),
 					Property: property.get_name(),
-					OriginalValue: toExoGraph(oldValue),
-					CurrentValue: toExoGraph(newValue)
+					OriginalValue: toExoGraph(this._translator, oldValue),
+					CurrentValue: toExoGraph(this._translator, newValue)
 				});
 			}
 			else {
 				log("sync", "queuing reference change");
 				this._events.push({
 					__type: "ReferenceChange:#ExoGraph",
-					Instance: toExoGraph(obj),
+					Instance: toExoGraph(this._translator, obj),
 					Property: property.get_name(),
-					OriginalValue: toExoGraph(oldValue),
-					CurrentValue: toExoGraph(newValue)
+					OriginalValue: toExoGraph(this._translator, oldValue),
+					CurrentValue: toExoGraph(this._translator, newValue)
 				});
 			}
 		}
@@ -162,25 +178,13 @@
 	function ServerSync(model) {
 		this._model = model;
 		this._queue = [];
-		this._idMap = {};
+		this._translator = new ExoWeb.Translator();
 		var _this = this;
 
-		var eventListener = new ExoGraphEventListener(this._model, this._queue);
+		var eventListener = new ExoGraphEventListener(this._model, this._queue, this._translator);
 	}
 
 	ServerSync.prototype = {
-		getIdTranslation: function(type, id) {
-			var typedIdMap = this._idMap[type];
-			if (!typedIdMap)
-				typedIdMap = this._idMap[type] = {};
-			return typedIdMap[id];
-		},
-		setIdTranslation: function(type, id, realId) {
-			var typedIdMap = this._idMap[type];
-			if (!typedIdMap)
-				typedIdMap = this._idMap[type] = {};
-			typedIdMap[id] = realId;
-		},
 		apply: function(changes) {
 			log("sync", "applying changes");
 
@@ -229,17 +233,17 @@
 			var newObj = new jstype();
 
 			// remember new object's generated id
-			this.setIdTranslation(change.Instance.Type, change.Instance.Id, newObj.meta.id);
+			this._translator.add(change.Instance.Type, newObj.meta.id, change.Instance.Id);
 		},
 		applyRefChange: function ServerSync$applyRefChange(change) {
 			log("sync", "applyRefChange", change.Instance);
 
-			var obj = fromExoGraph(change.Instance);
+			var obj = fromExoGraph(this._translator, change.Instance);
 
 			// TODO: validate original value?
 
 			if (change.CurrentValue) {
-				var ref = fromExoGraph(change.CurrentValue);
+				var ref = fromExoGraph(this._translator, change.CurrentValue);
 
 				// TODO: check for no ref
 				Sys.Observer.setValue(obj, change.Property, ref);
@@ -251,7 +255,7 @@
 		applyValChange: function ServerSync$applyValChange(change) {
 			log("sync", "applyValChange", change.Instance);
 
-			var obj = fromExoGraph(change.Instance);
+			var obj = fromExoGraph(this._translator, change.Instance);
 
 			// TODO: validate original value?
 
@@ -260,19 +264,20 @@
 		applyListChange: function ServerSync$applyListChange(change) {
 			log("sync", "applyListChange", change.Instance);
 
-			var obj = fromExoGraph(change.Instance);
+			var obj = fromExoGraph(this._translator, change.Instance);
 			var prop = obj.meta.property(change.Property);
 			var list = prop.value(obj);
 
+			var _this = this;
 			// apply added items
 			Array.forEach(change.Added, function(item) {
-				var obj = fromExoGraph(item);
+				var obj = fromExoGraph(_this._translator, item);
 				Sys.Observer.add(list, obj);
 			});
 
 			// apply removed items
 			Array.forEach(change.Removed, function(item) {
-				var obj = fromExoGraph(item);
+				var obj = fromExoGraph(_this._translator, item);
 				Sys.Observer.remove(list, obj);
 			});
 		}
