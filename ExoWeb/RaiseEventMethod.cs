@@ -14,19 +14,16 @@ namespace ExoWeb
 	[DataContract]
 	internal class RaiseEventMethod : ServiceMethod
 	{
-		[DataMember]
-		string Type { get; set; }
+		[DataMember(Name = "instance")]
+		GraphInstance Instance { get; set; }
 
-		[DataMember]
-		string Id { get; set; }
-
-		[DataMember]
+		[DataMember(Name = "event")]
 		string Event { get; set; }
 
-		[DataMember]
+		[DataMember(Name = "argument")]
 		string Argument { get; set; }
 
-		[DataMember]
+		[DataMember(Name = "changes")]
 		GraphTransaction Changes { get; set; }
 
 		/// <summary>

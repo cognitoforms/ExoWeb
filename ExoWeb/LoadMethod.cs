@@ -55,7 +55,7 @@ namespace ExoWeb
 
 			// Apply changes before getting the root instances
 			if (Changes != null)
-				Changes.Perform(() =>
+				newChanges = Changes.Perform(() =>
 				{
 					for (int i = 0; i < roots.Length; i++)
 						roots[i] = Changes.GetInstance(rootType, Ids[i]);
