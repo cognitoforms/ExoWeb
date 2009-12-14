@@ -54,8 +54,8 @@
 				var _this = this;
 
 				ExoWeb.Mapper.setTypeProvider(function(type, callback) {
-					var json = {};
-					json[type] = _this._types[type];
+					var json = { types: {} };
+					json.types[type] = _this._types[type];
 					return mockCallback(callback, [json], _this.typeProviderDelay, $format(">> fetch: {0}", arguments));
 				});
 			}
@@ -67,17 +67,17 @@
 				
 				var _this = this;
 
-				ExoWeb.Mapper.setObjectProvider(function(type, id, includeAllowedValuesInPaths, paths, callback) {
+				ExoWeb.Mapper.setObjectProvider(function(type, id, includeAllowedValuesInPaths, includeTypes, paths, changes, callback) {
 					var json;
 
 					if (!_this.simulateLazyLoading) {
-						json = _this._objects;
+						json = { types: {}, instances: _this._objects, changes: {} };
 					}
 					else {
-						json = {};
+						json = { types: {}, instances: {}, changes: {} };
 						paths = prepPaths(paths);
-						_this._query(type, id, paths.instance, json);
-						_this._queryStatic(paths.static, json);
+						_this._query(type, id, paths.instance, json.instances);
+						_this._queryStatic(paths.static, json.instances);
 					}
 
 					return mockCallback(callback, [json], _this.objectProviderDelay, $format(">> fetch: {0}({1})", arguments));

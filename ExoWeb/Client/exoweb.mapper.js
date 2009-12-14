@@ -6,7 +6,7 @@
 
 	var log = ExoWeb.trace.log;
 
-	var objectProvider = ExoWeb.GetInstance;
+	var objectProvider = ExoWeb.Load;
 	ExoWeb.Mapper.setObjectProvider = function(fn) {
 		objectProvider = fn;
 	}
@@ -535,10 +535,10 @@
 		var signal = new ExoWeb.Signal("fetchType(" + typeName + ")");
 
 		// request the type
-		typeProvider(typeName, signal.pending(function(json) {
+		typeProvider(typeName, signal.pending(function(result) {
 
 			// load type
-			typesFromJson(model, json);
+			typesFromJson(model, result.types);
 
 			// ensure base classes are loaded too
 			for (var b = model.type(typeName).baseType; b; b = b.baseType) {
@@ -701,8 +701,8 @@
 
 			// fetch object json
 			log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
-			objectProvider(mtype.get_fullName(), id, true, [], signal.pending(function(result) {
-				objectJson = result;
+			objectProvider(mtype.get_fullName(), id, true, false, [], {}, signal.pending(function(result) {
+				objectJson = result.instances;
 			}));
 
 			// does the object's type need to be loaded too?
@@ -930,8 +930,8 @@
 
 			with ({ varName: varName }) {
 				var query = options[varName];
-				objectProvider(query.from, query.id, true, query.and, state[varName].signal.pending(function(objectJson) {
-					state[varName].objectJson = objectJson;
+				objectProvider(query.from, query.id, true, false, query.and, {}, state[varName].signal.pending(function(result) {
+					state[varName].objectJson = result.instances;
 				}));
 			}
 		}
