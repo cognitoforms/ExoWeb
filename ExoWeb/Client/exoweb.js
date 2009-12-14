@@ -633,6 +633,7 @@ if (!Array.prototype.indexOf) {
 	};
 
 
+	// Supress raising of property changed when a generated setter is already raising the event
 	Sys.Observer._setValue = function Sys$Observer$_setValue(target, propertyName, value) {
 		var getter, setter, mainTarget = target, path = propertyName.split('.');
 		for (var i = 0, l = (path.length - 1); i < l ; i++) {
@@ -650,7 +651,7 @@ if (!Array.prototype.indexOf) {
 			}
 		}   
 		
-		var notify = true; 
+		var notify = true; // added
 		var currentValue, lastPath = path[l];
 		getter = target["get_" + lastPath];
 		setter = target["set_" + lastPath];
@@ -661,7 +662,7 @@ if (!Array.prototype.indexOf) {
 			currentValue = target[lastPath];
 		}
 		if (typeof(setter) === 'function') {
-			notify = !setter.__notifies;
+			notify = !setter.__notifies; // added
 			setter.call(target, value);
 		}
 		else {
@@ -673,7 +674,7 @@ if (!Array.prototype.indexOf) {
 				ctx.dirty = true;
 				return;
 			};
-			if (notify)
+			if (notify) // added
 				Sys.Observer.raisePropertyChanged(mainTarget, path[0]);
 		}
 	}
