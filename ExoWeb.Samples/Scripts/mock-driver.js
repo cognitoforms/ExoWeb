@@ -218,3 +218,7 @@ ExoWeb.Mock.objects({
 ExoWeb.Mock.sync({
 	// no behavior by default
 });
+
+ExoWeb.Mock.save({
+	// no behavior by default
+});

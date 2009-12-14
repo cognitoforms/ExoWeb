@@ -14,8 +14,8 @@
 		<script src="../Scripts/mock-driver.js" type="text/javascript"></script>
 		<script src="../Scripts/changeset.js" type="text/javascript"></script>
 		<script type="text/javascript">
-			ExoWeb.trace.flags.sync = true;
-			ExoWeb.trace.flags.mocks = true;
+			//ExoWeb.trace.flags.sync = true;
+			//ExoWeb.trace.flags.mocks = true;
 			ExoWeb.Mock.objectProviderDelay = 0;
 			ExoWeb.Mock.typeProviderDelay = 0;
 			ExoWeb.Mock.syncProviderDelay = 0;
@@ -23,23 +23,31 @@
 
 			var model = $model({ driver: { id: "1", from: "Driver" } });
 
-			setupTest("test1", { description: "Apply Init with ID Translation", expect: 7 }, function() {
+			setupTest("test1", { description: "Apply Init with ID Translation", expect: 10 }, function() {
 				var undefined;
 
 				equals(Dealer.meta.get("+c0"), undefined, "Dealer should not exist before init");
 
 				model.syncObject.apply(new ChangeSet().init("Dealer", "?1").build());
 
-				ok(Dealer.meta.get("+c0"), "Dealer should exist after init by client generated id");
+				var newDealer = Dealer.meta.get("+c0");
+				ok(newDealer, "Dealer should exist after init by client generated id");
 				
 				// check that id translation is setup
 				equals(model.syncObject._translator.forward("Dealer", "+c0"), "?1", "Should be able to translate from client id to server id");
 				equals(model.syncObject._translator.reverse("Dealer", "?1"), "+c0", "Should be able to translate from server id to client id");
 				
 				// inpect the change log
-				equals(model.syncObject._queue.length, 1, "We should have 1 change in the log");
-				equals(model.syncObject._queue[0].__type, "InitNew:#ExoGraph", "It should be an init change");
-				equals(model.syncObject._queue[0].instance.id, "?1", "The id should be the server id, NOT the client id");
+				var changes = model.syncObject.get_Changes();
+				equals(changes.length, 1, "We should have 1 change in the log");
+				equals(changes[0].__type, "InitNew:#ExoGraph", "It should be an init change");
+				equals(changes[0].instance.id, "?1", "The id should be the server id, NOT the client id");
+				
+				newDealer.set_Name("Bill");
+				changes = model.syncObject.get_Changes();
+				equals(changes.length, 2, "We should now have 2 change in the log");
+				equals(changes[1].__type, "ValueChange:#ExoGraph", "The most recent should be a value change");
+				equals(changes[1].instance.id, "?1", "The id should be the server id, NOT the client id");
 			});
 
 			setupTest("test2", { description: "Apply Reference Property Change", expect: 2 }, function() {
@@ -111,7 +119,7 @@
 				var mattNewId = "1000";
 
 				// simulate commit behavior
-				ExoWeb.Mock.sync(function(type, id, changes) {
+				ExoWeb.Mock.save(function(root, changes) {
 					return [
 						{
 							__type: "Commit:#ExoGraph",
@@ -119,9 +127,10 @@
 						}
 					];
 				});
-				model.sync("driver");
+				model.save("driver");
 
-				equals(model.syncObject._queue.length, 0, "Queue should be empty after commit");
+				var changes = model.syncObject.get_Changes();
+				equals(changes.length, 0, "Queue should be empty after commit");
 
 				equals(matt.meta.id, mattNewId, "Matt's id should be a new permanent id");
 				equals(Driver.meta.get(mattLegacyId), matt, "Matt can still be retieved by the old id");

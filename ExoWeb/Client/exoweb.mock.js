@@ -11,7 +11,10 @@
 		this.objectProviderDelay = 0;
 		this.typeProviderDelay = 0;
 		this.listProviderDelay = 0;
-		this.syncProviderDelay = 0;	
+		this.syncProviderDelay = 0;
+		this.saveProviderDelay = 0;
+		this.syncHandler = null;
+		this.saveHandler = null;
 
 		this.simulateLazyLoading = false;
 	}
@@ -45,7 +48,12 @@
 		sync: function sync(handler) {
 			this._initObjects();
 
-			this._syncHandler = handler;
+			this.syncHandler = handler;
+		},
+		save: function save(handler) {
+			this._initObjects();
+
+			this.saveHandler = handler;
 		},
 		_initTypes: function() {
 			if (!this._types) {
@@ -63,7 +71,6 @@
 		_initObjects: function() {
 			if (!this._objects) {
 				this._objects = {};
-				this._syncHandler = null;
 				
 				var _this = this;
 
@@ -106,10 +113,10 @@
 				ExoWeb.Mapper.setSyncProvider(function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback) {
 					var result = { changes: [] };
 
-					if (_this._syncHandler && _this._syncHandler instanceof Function) {
+					if (_this.syncHandler && _this.syncHandler instanceof Function) {
 						ExoWeb.trace.log("sync", "begin: mock sending changes to server");
 
-						result.changes = _this._syncHandler(changes);
+						result.changes = _this.syncHandler(changes);
 
 						ExoWeb.trace.log("sync", "end: mock sending changes to server");
 					}
@@ -118,6 +125,23 @@
 					}
 
 					return mockCallback(callback, [result], _this.syncProviderDelay, $format(">> sync", arguments));
+				});
+				
+				ExoWeb.Mapper.setSaveProvider(function(root, changes, callback) {
+					var result = { changes: [] };
+
+					if (_this.saveHandler && _this.saveHandler instanceof Function) {
+						ExoWeb.trace.log("sync", "begin: mock commiting changes to server");
+
+						result.changes = _this.saveHandler(changes);
+
+						ExoWeb.trace.log("sync", "end: mock commiting changes to server");
+					}
+					else {
+						ExoWeb.trace.log("sync", "no save mocking");
+					}
+
+					return mockCallback(callback, [result], _this.saveProviderDelay, $format(">> save", arguments));
 				});
 			}
 		},

@@ -30,6 +30,11 @@
 		syncProvider = fn;
 	}
 
+	var saveProvider = ExoWeb.Save;
+	ExoWeb.Mapper.setSaveProvider = function(fn) {
+		saveProvider = fn;
+	}
+
 	Date.formats.$exograph = Date.formats.ShortDate;
 
 	ExoWeb.Model.ObjectBase.formats.$exograph = new ExoWeb.Model.Format({
@@ -82,9 +87,8 @@
 
 
 	///////////////////////////////////////////////////////////////////////////
-	function ExoGraphEventListener(model, events, translator) {
+	function ExoGraphEventListener(model, translator) {
 		this._model = model;
-		this._events = events;
 		this._translator = translator;
 
 		// listen for events
@@ -94,124 +98,161 @@
 		model.addObjectUnregistered(ExoWeb.Functor.apply(this, this.onObjectUnregistered));
 	}
 
-	ExoGraphEventListener.prototype = {
+	ExoGraphEventListener.mixin(ExoWeb.Functor.eventing);
+
+	ExoGraphEventListener.mixin({
+		addChangeCaptured: function ExoGraphEventListener$onEvent(handler) {
+			this._addEvent("changeCaptured", handler);
+		},
+
 		// Model event handlers
-		onListChanged: function ExoGraphEventListener$onListChanged(obj, property, changes) {
+		onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
 			log("sync", "queuing list changes");
 
-			for (var i = 0; i < changes.length; ++i) {
-				var change = changes[i];
+			for (var i = 0; i < listChanges.length; ++i) {
+				var listChange = listChanges[i];
 
-				var entry = {
+				var change = {
 					__type: "ListChange:#ExoGraph",
 					instance: toExoGraph(this._translator, obj),
 					property: property.get_name()
 				}
 
-				if (change.newStartingIndex >= 0 || change.newItems) {
-					entry.added = [];
+				if (listChange.newStartingIndex >= 0 || listChange.newItems) {
+					change.added = [];
 
 					var _this = this;
-					Array.forEach(change.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
-						entry.added.push(toExoGraph(_this._translator, obj));
+					Array.forEach(listChange.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
+						change.added.push(toExoGraph(_this._translator, obj));
 					});
 				}
-				if (change.oldStartingIndex >= 0 || change.oldItems) {
-					entry.removed = [];
+				if (listChange.oldStartingIndex >= 0 || listChange.oldItems) {
+					change.removed = [];
 
 					var _this = this;
-					Array.forEach(change.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
-						entry.removed.push(toExoGraph(_this._translator, obj));
+					Array.forEach(listChange.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
+						change.removed.push(toExoGraph(_this._translator, obj));
 					});
 				}
 
-				this._events.push(entry);
+				this._raiseEvent("changeCaptured", [change]);
 			}
 		},
 		onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
 			if (obj.meta.isNew) {
 				log("sync", "queuing new object change");
 
-				this._events.push({
+				var change = {
 					__type: "InitNew:#ExoGraph",
 					instance: toExoGraph(this._translator, obj)
-				});
+				};
+				
+				this._raiseEvent("changeCaptured", [change]);
 			}
 		},
 		onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
 			log("sync", "queuing delete object change");
 
 			// TODO: delete JSON format?
-			this._events.push({
+			var change = {
 				__type: "Delete:#ExoGraph",
 				instance: toExoGraph(this._translator, obj)
-			});
+			};
+			
+			this._raiseEvent("changeCaptured", [change]);
 		},
 		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 			log("sync", "queuing update");
 
 			if (property.get_isValueType()) {
 				log("sync", "queuing value change");
-				this._events.push({
+				var change = {
 					__type: "ValueChange:#ExoGraph",
 					instance: toExoGraph(this._translator, obj),
 					property: property.get_name(),
 					oldValue: toExoGraph(this._translator, oldValue),
 					newValue: toExoGraph(this._translator, newValue)
-				});
+				};
+
+				this._raiseEvent("changeCaptured", [change]);
 			}
 			else {
 				log("sync", "queuing reference change");
-				this._events.push({
+				var change = {
 					__type: "ReferenceChange:#ExoGraph",
 					instance: toExoGraph(this._translator, obj),
 					property: property.get_name(),
 					oldValue: toExoGraph(this._translator, oldValue),
 					newValue: toExoGraph(this._translator, newValue)
-				});
+				};
+
+				this._raiseEvent("changeCaptured", [change]);
 			}
 		}
-	}
+	});
 
 
 	///////////////////////////////////////////////////////////////////////////
 	function ServerSync(model) {
-		this._model = model;
-		this._queue = [];
 		this._translator = new ExoWeb.Translator();
-		var _this = this;
+		this._model = model;
+		
+		var applyingChanges = false;
+		var queue = [];
+		
+		var eventListener = new ExoGraphEventListener(this._model, this._translator);
+		eventListener.addChangeCaptured(function ServerSync$changeCaptured(e) {
+			if (!applyingChanges) queue.push(e);
+		});
+		
+		this.apply = function ServerSync$apply(changes) {
+			if (!changes || !(changes instanceof Array)) return;
 
-		var eventListener = new ExoGraphEventListener(this._model, this._queue, this._translator);
+			try {
+				applyingChanges = true;
+				var _this = this;
+				var newChanges = [];
+				Array.forEach(changes, function(change) {
+					_this.applyChange(change);
+					if (change.__type != "Commit:#ExoGraph")
+						newChanges.push(change);
+				});
+				Array.addRange(queue, newChanges);
+			}
+			finally {
+				applyingChanges = false;
+			}
+		}
+		
+		this.get_Changes = function ServerSync$get_Changes() {
+			return Object.copy(queue);
+		}
+		
+		this._addEvent("afterCommit", function() {
+			Array.clear(queue);
+		});
 	}
 
-	ServerSync.prototype = {
-		apply: function(changes) {
-			log("sync", "applying changes");
-
-			if (!changes)
-				changes = [];
-			else if (!(changes instanceof Array))
-				changes = [changes];
-
-			var _this = this;
-			Array.forEach(changes, function(change) {
-				if (change.__type == "InitNew:#ExoGraph")
-					_this.applyInit(change);
-				else if (change.__type == "Delete:#ExoGraph")
-					_this.applyDelete(change);
-				else if (change.__type == "ReferenceChange:#ExoGraph")
-					_this.applyRefChange(change);
-				else if (change.__type == "ValueChange:#ExoGraph")
-					_this.applyValChange(change);
-				else if (change.__type == "ListChange:#ExoGraph")
-					_this.applyListChange(change);
-				else if (change.__type == "Commit:#ExoGraph")
-					_this.applyCommitChange(change);
-			});
+	ServerSync.mixin(ExoWeb.Functor.eventing);
+	
+	ServerSync.mixin({	
+		applyChange: function ServerSync$applyChange(change) {
+			if (change.__type == "InitNew:#ExoGraph")
+				this.applyInit(change);
+			else if (change.__type == "Delete:#ExoGraph")
+				this.applyDelete(change);
+			else if (change.__type == "ReferenceChange:#ExoGraph")
+				this.applyRefChange(change);
+			else if (change.__type == "ValueChange:#ExoGraph")
+				this.applyValChange(change);
+			else if (change.__type == "ListChange:#ExoGraph")
+				this.applyListChange(change);
+			else if (change.__type == "Commit:#ExoGraph")
+				this.applyCommitChange(change);
 		},
 		applyCommitChange: function ServerSync$applyCommitChange(change) {
 			// previous changes should be discarded on commit
-			Array.clear(this._queue);
+			this._raiseEvent("afterCommit");
 
 			// update each object with its new id
 			for (var i = 0; i < change.idChanges.length; i++) {
@@ -281,7 +322,7 @@
 				Sys.Observer.remove(list, obj);
 			});
 		}
-	}
+	});
 	ExoWeb.Mapper.ServerSync = ServerSync;
 	ServerSync.registerClass("ExoWeb.Mapper.ServerSync");
 
@@ -880,8 +921,26 @@
 			meta: model,
 			syncObject: new ServerSync(model),
 			ready: function $model$ready(callback) { allSignals.waitForAll(callback); },
-			commit: function $model$commit(callback) {
-				// TODO
+			save: function $model$save(varName, callback) {
+				log("sync", "Save");
+
+				var opt = options[varName];
+
+				var _this = this;
+				var changes = this.syncObject.get_Changes();
+				log("sync", "commiting {length} changes to server", changes);
+				saveProvider({ type: opt.from, id: opt.id }, { changes: changes }, function $model$save$callback(response) {
+					if (response.changes.length) {
+						log("sync", "applying {length} changes from server", response.changes);
+						_this.syncObject.apply(response.changes);
+					}
+					else {
+						log("sync", "no changes from server", response);
+					}
+
+					if (callback && callback instanceof Function)
+						callback.call(this, response.changes);
+				});
 			},
 			sync: function $model$sync(varName, callback) {
 				log("sync", "Sync");
@@ -889,8 +948,9 @@
 				var opt = options[varName];
 
 				var _this = this;
-				log("sync", "sending {length} changes to server", this.syncObject._queue);
-				syncProvider(opt.from, [], true, false, null, { changes: this.syncObject._queue }, function $model$sync$callback(response) {
+				var changes = this.syncObject.get_Changes();
+				log("sync", "sending {length} changes to server", changes);
+				syncProvider(opt.from, [], true, false, null, { changes: changes }, function $model$sync$callback(response) {
 					if (response.changes.length) {
 						log("sync", "applying {length} changes from server", response.changes);
 						_this.syncObject.apply(response.changes);
