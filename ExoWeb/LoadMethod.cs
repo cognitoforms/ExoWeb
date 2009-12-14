@@ -216,7 +216,7 @@ namespace ExoWeb
 			if (newChanges != null && newChanges.FirstOrDefault() != null)
 			{
 				string changesJson = ToJson(typeof(GraphTransaction), newChanges);
-				response.Write(",\r\n   " + changesJson.Substring(1, changesJson.Length - 1));
+				response.Write(",\r\n   " + changesJson.Substring(1, changesJson.Length - 2));
 			}
 
 			response.Write("\r\n}");
