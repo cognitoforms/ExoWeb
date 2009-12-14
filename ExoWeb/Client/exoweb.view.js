@@ -101,106 +101,96 @@
 	function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
 		this._target = target;
 		this._propertyPath = propertyPath;
-
-		this._systemState = { FormatName: systemFormat };
-		this._displayState = { FormatName: displayFormat };
-
 		this._ignoreTargetEvents = false;
-
 		this._readySignal = new ExoWeb.Signal();
+
+		// Track state for system and display formats, including the format and bad value.
+		this._systemState = { FormatName: systemFormat, Format: undefined, BadValue: undefined };
+		this._displayState = { FormatName: displayFormat, Format: undefined, BadValue: undefined };
 		
-		// load the object this adapter is bound to
-		var _this = this;
-		ExoWeb.Model.LazyLoader.eval(this._target, propertyPath, this._readySignal.pending(
-			function Adapter$targetLoadedCallback() {
-				if (!_this.get_propertyChain().get_isValueType()) {
-					var prop = _this.get_propertyChain().lastProperty();
-					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-					var targetObj = _this.get_propertyChain().lastTarget(_this._target);
-					if (rule && rule.propertyChain()) {
-						var target = rule.propertyChain().get_isStatic() ? window : targetObj;
-						ExoWeb.Model.LazyLoader.eval(target, rule.propertyChain().fullName(), _this._readySignal.pending());
-					}
-				}
-			}
-		));
+		// Initialize the property chain.
+		this._initPropertyChain();
+		
+		// Load the object this adapter is bound to and then load allowed values.
+		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath, 
+			this._readySignal.pending(ExoWeb.Functor.apply(this, this._loadAllowedValues)));
 
-		// Add arbitrary options so that they are made available in templates
-		var allowedOverrides = ["label", "helptext"];
-		if (options) {
-			for (var optionName in options) {
-				// check for existing getter and setter methods
-				var getter = this["get_" + optionName];
-				var setter = this["set_" + optionName];
-
-				// if the option is already defined don't overwrite critical properties (e.g.: value)
-				if (getter && !Array.contains(allowedOverrides, optionName))
-					continue;
-
-				// create a getter and setter if they don't exist
-				if (!getter || !(getter instanceof Function))
-					getter = this["get_" + optionName] =
-						(function makeGetter(adapter, optionName) {
-							return function Adapter$customGetter() { return adapter["_" + optionName]; };
-						})(this, optionName);
-				if (!setter || !(setter instanceof Function))
-					setter = this["set_" + optionName] =
-						(function makeSetter(adapter, optionName) {
-							return function Adapter$customSetter(value) { adapter["_" + optionName] = value; };
-						})(this, optionName);
-
-				// set the option value
-				setter.call(this, options[optionName]);
-			}
-		}
+		// Add arbitrary options so that they are made available in templates.
+		this._extendProperties(options);
 	}
 
 	Adapter.prototype = {
-		ready: function Adapter$ready(callback) {
-			this._readySignal.waitForAll(callback);
-		},
-		get_target: function Adapter$get_target() {
-			return this._target;
-		},
-		get_propertyPath: function Adapter$get_propertyPath() {
-			return this._propertyPath;
-		},
-		get_propertyChain: function Adapter$get_propertyChain() {
-			if (!this._propertyChain) {
-				var sourceObject = (this._target instanceof Adapter) ? this._target.get_rawValue() : this._target;
+		// Internal book-keeping and setup methods
+		///////////////////////////////////////////////////////////////////////
+		_extendProperties: function Adapter$_extendProperties(options) {
+			if (options) {
+				var allowedOverrides = ["label", "helptext"];
+				for (var optionName in options) {
+					// check for existing getter and setter methods
+					var getter = this["get_" + optionName];
+					var setter = this["set_" + optionName];
 
-				// get the property chain starting at the source object
-				this._propertyChain = sourceObject.meta.property(this.get_propertyPath());
-				if (!this._propertyChain)
-					throw ($format("Property \"{p}\" could not be found.", { p: this.get_propertyPath() }));
+					// if the option is already defined don't overwrite critical properties (e.g.: value)
+					if (getter && !Array.contains(allowedOverrides, optionName))
+						continue;
 
-				// prepend parent adapter's property path
-				if (this._target instanceof Adapter)
-					this._propertyChain.prepend(this._target.get_propertyChain());
+					// create a getter and setter if they don't exist
+					if (!getter || !(getter instanceof Function))
+						getter = this["get_" + optionName] =
+							(function makeGetter(adapter, optionName) {
+								return function Adapter$customGetter() { return adapter["_" + optionName]; };
+							})(this, optionName);
+					if (!setter || !(setter instanceof Function))
+						setter = this["set_" + optionName] =
+							(function makeSetter(adapter, optionName) {
+								return function Adapter$customSetter(value) { adapter["_" + optionName] = value; };
+							})(this, optionName);
+
+					// set the option value
+					setter.call(this, options[optionName]);
+				}
 			}
-
-			return this._propertyChain;
 		},
-		initialize: function Adapter$initialize() {
+		_initPropertyChain: function Adapter$_initPropertyChain() {
+			// start with the target or its raw value in the case of an adapter
+			var sourceObject = (this._target instanceof Adapter) ? this._target.get_rawValue() : this._target;
+
+			// get the property chain for this adapter starting at the source object
+			this._propertyChain = sourceObject.meta.property(this._propertyPath);
+			if (!this._propertyChain)
+				throw ($format("Property \"{p}\" could not be found.", { p: this._propertyPath }));
+
+			// if the target is an adapter, prepend it's property chain
+			if (this._target instanceof Adapter)
+				this._propertyChain.prepend(this._target.get_propertyChain());
+		},
+		_loadAllowedValues: function Adapter$_loadAllowedValues() {
+			if (!this._propertyChain.get_isValueType()) {
+				var prop = this._propertyChain.lastProperty();
+				var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
+				var targetObj = this._propertyChain.lastTarget(this._target);
+				if (rule && rule.propertyChain()) {
+					var target = rule.propertyChain().get_isStatic() ? window : targetObj;
+					ExoWeb.Model.LazyLoader.eval(target, rule.propertyChain().fullName(), this._readySignal.pending());
+				}
+			}
+		},
+		_ensureObservable: function Adapter$_ensureObservable() {
 			if (!this._observable) {
-				var _this = this;
 				Sys.Observer.makeObservable(this);
-				// subscribe to property changes at any point in the path
-				this.get_propertyChain().each(this._target, function Adapter$RegisterPropertyChangeCallback(obj, prop) {
-					if (prop.get_isEntityListType())
-						Sys.Observer.addCollectionChanged(prop.value(obj), function Adapter$ListPropertyChangedCallback(sender, args) {
-							_this._onTargetChanged(sender, args);
-						});
-					else
-						Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function Adapter$PropertyChangedCallback(sender, args) {
-							_this._onTargetChanged(sender, args);
-						});
-				});
+				
+				// subscribe to property changes at all points in the path
+				this._propertyChain.each(this._target, ExoWeb.Functor.apply(this, this._observeChanges));
+				
 				this._observable = true;
 			}
 		},
-		// Pass property change events to the target object
-		///////////////////////////////////////////////////////////////////////////
+		_observeChanges: function Adapter$_observePropertyChange(obj, prop) {
+			if (prop.get_isEntityListType())
+				Sys.Observer.addCollectionChanged(prop.value(obj), ExoWeb.Functor.apply(this, this._onTargetChanged));
+			else
+				Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), ExoWeb.Functor.apply(this, this._onTargetChanged));
+		},
 		_onTargetChanged: function Adapter$_onTargetChanged(sender, args) {
 			if (this._ignoreTargetEvents)
 				return;
@@ -209,53 +199,13 @@
 			Sys.Observer.raisePropertyChanged(this, "systemValue");
 			Sys.Observer.raisePropertyChanged(this, "displayValue");
 		},
-
-		// Properties that are intended to be used by templates
-		///////////////////////////////////////////////////////////////////////////
-		get_label: function Adapter$get_label() {
-			return this._label || this.get_propertyChain().get_label();
+		_reloadOptions: function Adapter$_reloadOptions() {
+			this._options = null;
+			
+			Sys.Observer.raisePropertyChanged(this, "options");
 		},
-		get_helptext: function Adapter$get_helptext() {
-			return this._helptext || "";
-		},
-		get_allowedValues: function Adapter$get_allowedValues() {
-			if (!this._allowedValues) {
-				if (!this.get_propertyChain().get_isValueType()) {
-					var prop = this.get_propertyChain().lastProperty();
-					var allowed = null;
-					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-					var targetObj = this.get_propertyChain().lastTarget(this._target);
-					if (rule) {
-						this._allowedValues = rule.values(targetObj);
-
-						var _this = this;
-						// watch for changes to the allowed values list and update options
-						Sys.Observer.addCollectionChanged(this._allowedValues, function() {
-							_this._options = null;
-							Sys.Observer.raisePropertyChanged(_this, "options");
-						});
-					}
-				}
-			}
-
-			return this._allowedValues;
-		},
-		get_options: function Adapter$get_options() {
-			if (!this._options) {
-
-				var allowed = this.get_allowedValues();
-
-				this._options = [];
-
-				for (var a = 0; a < allowed.length; a++)
-					Array.add(this._options, new OptionAdapter(this, allowed[a]));
-			}
-
-			return this._options;
-		},
-
-		getFormattedValue: function Adapter$getFormattedValue(formatName) {
-			this.initialize();
+		_getFormattedValue: function Adapter$_getFormattedValue(formatName) {
+			this._ensureObservable();
 
 			var state = this["_" + formatName + "State"];
 
@@ -272,7 +222,7 @@
 				}
 			}
 		},
-		setFormattedValue: function Adapter$setFormattedValue(formatName, value) {
+		_setFormattedValue: function Adapter$_setFormattedValue(formatName, value) {
 			var state = this["_" + formatName + "State"];
 
 			var formatMethod = this["get_" + formatName + "Format"];
@@ -281,7 +231,7 @@
 
 			var converted = format ? format.convertBack(value) : value;
 
-			var prop = this.get_propertyChain();
+			var prop = this._propertyChain;
 			var meta = prop.lastTarget(this._target).meta;
 
 			meta.clearIssues(this);
@@ -318,15 +268,71 @@
 			}
 		},
 
-		// Raw Value
-		////////////////////////////////////////////////////////////////////////
-		get_rawValue: function Adapter$get_rawValue() {
-			this.initialize();
+		// Various methods.
+		///////////////////////////////////////////////////////////////////////
+		ready: function Adapter$ready(callback) {
+			this._readySignal.waitForAll(callback);
+		},
+		toString: function Adapter$toString() {
+			return this.get_systemValue();
+		},
+		
+		// Properties that are intended to be used by templates.
+		///////////////////////////////////////////////////////////////////////
+		get_target: function Adapter$get_target() {
+			return this._target;
+		},
+		get_propertyPath: function Adapter$get_propertyPath() {
+			return this._propertyPath;
+		},
+		get_propertyChain: function Adapter$get_propertyChain() {
+			return this._propertyChain;
+		},
+		get_label: function Adapter$get_label() {
+			// if no label is specified then use the property label
+			return this._label || this._propertyChain.get_label();
+		},
+		get_helptext: function Adapter$get_helptext() {
+			// help text may also be included in the model?
+			return this._helptext || "";
+		},
+		get_allowedValues: function Adapter$get_allowedValues() {
+			if (!this._allowedValues) {
+				if (!this._propertyChain.get_isValueType()) {
+					var prop = this._propertyChain.lastProperty();
+					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
+					var targetObj = this._propertyChain.lastTarget(this._target);
+					if (rule) {
+						this._allowedValues = rule.values(targetObj);
 
-			return this.get_propertyChain().value(this._target);
+						// watch for changes to the allowed values list and update options
+						Sys.Observer.addCollectionChanged(this._allowedValues, ExoWeb.Functor.apply(this, this._reloadOptions));
+					}
+				}
+			}
+
+			return this._allowedValues;
+		},
+		get_options: function Adapter$get_options() {
+			if (!this._options) {
+
+				var allowed = this.get_allowedValues();
+
+				this._options = [];
+
+				for (var a = 0; a < allowed.length; a++)
+					Array.add(this._options, new OptionAdapter(this, allowed[a]));
+			}
+
+			return this._options;
+		},
+		get_rawValue: function Adapter$get_rawValue() {
+			this._ensureObservable();
+
+			return this._propertyChain.value(this._target);
 		},
 		set_rawValue: function Adapter$set_rawValue(value, changed) {
-			var prop = this.get_propertyChain();
+			var prop = this._propertyChain;
 
 			if (changed === undefined)
 				changed = prop.value(this._target) !== value;
@@ -342,64 +348,49 @@
 				}
 			}
 		},
-
-		// System Value
-		//////////////////////////////////////////////////////////////////////////////////////////
 		get_systemFormat: function Adapter$get_systemFormat() {
 			if (!this._systemState.Format) {
-				var jstype = this.get_propertyChain().get_jstype();
+				var jstype = this._propertyChain.get_jstype();
 
 				if (this._systemState.FormatName)
 					this._systemState.Format = jstype.formats[this._systemState.FormatName];
-				else if (!(this._systemState.Format = this.get_propertyChain().get_format()))
+				else if (!(this._systemState.Format = this._propertyChain.get_format()))
 					this._systemState.Format = jstype.formats.$system || jstype.formats.$display;
 			}
 
 			return this._systemState.Format;
 		},
 		get_systemValue: function Adapter$get_systemValue() {
-			return this.getFormattedValue("system");
+			return this._getFormattedValue("system");
 		},
 		set_systemValue: function Adapter$set_systemValue(value) {
-			this.setFormattedValue("system", value);
+			this._setFormattedValue("system", value);
 		},
-
-		// Display Value
-		//////////////////////////////////////////////////////////////////////////////////////////
 		get_displayFormat: function Adapter$get_displayFormat() {
 			if (!this._displayState.Format) {
-				var jstype = this.get_propertyChain().get_jstype();
+				var jstype = this._propertyChain.get_jstype();
 
 				if (this._displayState.FormatName)
 					this._displayState.Format = jstype.formats[this._displayState.FormatName];
-				else if (!(this._displayState.Format = this.get_propertyChain().get_format()))
+				else if (!(this._displayState.Format = this._propertyChain.get_format()))
 					this._displayState.Format = jstype.formats.$display || jstype.formats.$system;
 			}
 
 			return this._displayState.Format;
 		},
 		get_displayValue: function Adapter$get_displayValue() {
-			return this.getFormattedValue("display");
+			return this._getFormattedValue("display");
 		},
 		set_displayValue: function Adapter$set_displayValue(value) {
-			this.setFormattedValue("display", value);
+			this._setFormattedValue("display", value);
 		},
 
-		// Pass validation events through to the target
-		///////////////////////////////////////////////////////////////////////////
+		// ???
 		addPropertyValidating: function Adapter$addPropertyValidating(propName, handler) {
-			var prop = this.get_propertyChain();
-			prop.lastTarget(this._target).meta.addPropertyValidating(prop.get_name(), handler);
+			this._propertyChain.lastTarget(this._target).meta.addPropertyValidating(this._propertyChain.get_name(), handler);
 		},
 		addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
-			var prop = this.get_propertyChain();
-			prop.lastTarget(this._target).meta.addPropertyValidated(prop.get_name(), handler);
-		},
-
-		// Override toString so that UI can bind to the adapter directly
-		///////////////////////////////////////////////////////////////////////////
-		toString: function Adapter$toString() {
-			return this.get_systemValue();
+			this._propertyChain.lastTarget(this._target).meta.addPropertyValidated(this._propertyChain.get_name(), handler);
 		}
 	}
 	ExoWeb.View.Adapter = Adapter;
@@ -410,22 +401,25 @@
 		this._parent = parent;
 		this._obj = obj;
 
-		if (this._obj) {
-			var _this = this;
-			Sys.Observer.makeObservable(this);
-			// subscribe to property changes to the option's label (value shouldn't change)
-			// TODO: can we make this more specific?
-			Sys.Observer.addPropertyChanged(this._obj, function(sender, args) {
-				_this._onTargetChanged(sender, args);
-			});
-		}
+		// watch for changes to properties of the source object and update the label
+		this._ensureObservable();
 	}
 
-	///////////////////////////////////////////////////////////////////////////////
 	OptionAdapter.prototype = {
-		// Pass property change events to the target object
-		///////////////////////////////////////////////////////////////////////////
-		_onTargetChanged: function(sender, args) {
+		// Internal book-keeping and setup methods
+		///////////////////////////////////////////////////////////////////////
+		_ensureObservable: function OptionAdapter$_ensureObservable() {
+			if (!this._observable) {
+				Sys.Observer.makeObservable(this);
+				
+				// subscribe to property changes to the option's label (value shouldn't change)
+				// TODO: can we make this more specific?
+				Sys.Observer.addPropertyChanged(this._obj, ExoWeb.Functor.apply(this, this._onTargetChanged));
+				
+				this._observable = true;
+			}
+		},
+		_onTargetChanged: function OptionAdapter$_onTargetChanged(sender, args) {
 			if (this._ignoreTargetEvents)
 				return;
 
