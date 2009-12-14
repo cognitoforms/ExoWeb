@@ -25,7 +25,7 @@
 		listProvider = fn;
 	}
 
-	var syncProvider = function() { throw "Not implemented" };
+	var syncProvider = ExoWeb.Load;
 	ExoWeb.Mapper.setSyncProvider = function(fn) {
 		syncProvider = fn;
 	}
@@ -890,7 +890,7 @@
 
 				var _this = this;
 				log("sync", "sending {length} changes to server", this.syncObject._queue);
-				syncProvider(opt.from, opt.id, this.syncObject._queue, function $model$sync$callback(response) {
+				syncProvider(null, null, true, false, null, this.syncObject._queue, function $model$sync$callback(response) {
 					if (response.length) {
 						log("sync", "applying {length} changes from server", response);
 						_this.syncObject.apply(response);
