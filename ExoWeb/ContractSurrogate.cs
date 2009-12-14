@@ -14,7 +14,7 @@ namespace ExoWeb
 
 		static ContractSurrogate()
 		{
-			surrogateTypes.Add(typeof(GraphInstance), typeof(GraphInstanceSurrogate));
+			//surrogateTypes.Add(typeof(GraphInstance), typeof(GraphInstanceSurrogate));
 		}
 
 		Dictionary<GraphType, Dictionary<string, GraphInstance>> instances = new Dictionary<GraphType,Dictionary<string,GraphInstance>>();

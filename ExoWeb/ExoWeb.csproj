@@ -71,9 +71,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ContractSurrogate.cs" />
-    <Compile Include="GetInstanceMethod.cs" />
+    <Compile Include="SaveMethod.cs" />
+    <Compile Include="RaiseEventMethod.cs" />
+    <Compile Include="LoadMethod.cs" />
     <Compile Include="GetTypeMethod.cs" />
-    <Compile Include="LoadPropertyMethod.cs" />
     <Compile Include="Rule.cs">
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />

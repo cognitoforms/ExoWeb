@@ -13,19 +13,25 @@ namespace ExoWeb
 	/// Outputs the JSON for the specified instance to the response stream.
 	/// </summary>
 	[DataContract]
-	internal class GetInstanceMethod : ServiceMethod
+	internal class LoadMethod : ServiceMethod
 	{
-		[DataMember]
+		[DataMember(Name = "type")]
 		string Type { get; set; }
 
-		[DataMember]
-		string Id { get; set; }
+		[DataMember(Name = "ids")]
+		string[] Ids { get; set; }
 
-		[DataMember]
+		[DataMember(Name = "paths")]
+		string[] Paths { get; set; }
+
+		[DataMember(Name = "includeAllowedValues")]
 		bool IncludeAllowedValues { get; set; }
 
-		[DataMember]
-		string[] Paths { get; set; }
+		[DataMember(Name = "includeTypes")]
+		bool IncludeTypes { get; set; }
+
+		[DataMember(Name = "changes")]
+		GraphTransaction Changes { get; set; }
 
 		StringDictionary paths;
 		Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> instances;
@@ -38,6 +44,30 @@ namespace ExoWeb
 		/// <param name="response"></param>
 		internal override void Invoke(HttpResponse response)
 		{
+			// Get the root type of instance being loaded
+			GraphType rootType = GraphContext.Current.GraphTypes[Type];
+
+			// Create an array of roots to be loaded
+			GraphInstance[] roots = new GraphInstance[Ids == null ? 0 : Ids.Length];
+
+			// Declare a variable to track changes that may occur during the load process
+			GraphTransaction newChanges = null;
+
+			// Apply changes before getting the root instances
+			if (Changes != null)
+				Changes.Perform(() =>
+				{
+					for (int i = 0; i < roots.Length; i++)
+						roots[i] = Changes.GetInstance(rootType, Ids[i]);
+				});
+
+			// Otherwise, just get the root instances
+			else
+			{
+				for (int i = 0; i < roots.Length; i++)
+					roots[i] = rootType.Create(Ids[i]);
+			}
+			
 			// Initialize lists used to track serialization information
 			this.paths = new StringDictionary();
 			this.instances = new Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>>();
@@ -46,20 +76,37 @@ namespace ExoWeb
 
 			// Build a set of unique property paths to match during recursion
 			if (Paths != null)
-			{
 				foreach (string path in Paths)
 					ProcessPath(path);
-			}
-
-			// Get the root instance
-			GraphInstance root = GraphContext.Current.GraphTypes[Type].Create(Id);
 
 			// Recursively build up the list of instances to serialize
-			ProcessInstance(root, "this");
+			foreach (GraphInstance root in roots)
+				ProcessInstance(root, "this");
 
-			// Serialize the list of instances
+			// Start the root element
 			response.Write("{\r\n");
 			bool isFirstType = true;
+
+			// Optionally serialize types
+			if (IncludeTypes)
+			{
+				response.Write("   \"types\": {\r\n");
+
+				foreach (GraphType instanceType in instances.Keys)
+				{
+					// Handle trailing commas after each rule
+					if (isFirstType)
+						isFirstType = false;
+					else
+						response.Write(",\r\n");
+					GetTypeMethod.OutputType(response, instanceType);
+				}
+				response.Write("\r\n   },\r\n");
+			}
+
+			// Serialize the list of instances
+			response.Write("   \"instances\": {\r\n");
+			isFirstType = true;
 			foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> type in instances)
 			{
 				// Get the current graph type
@@ -71,7 +118,7 @@ namespace ExoWeb
 				else
 					response.Write(",\r\n");
 
-				response.Write("   \"" + graphType.Name + "\": {\r\n");
+				response.Write("      \"" + graphType.Name + "\": {\r\n");
 				bool isFirstInstance = true;
 
 				// Output static properties
@@ -79,7 +126,7 @@ namespace ExoWeb
 				if (staticProperties.TryGetValue(graphType, out properties))
 				{
 					isFirstInstance = false;
-					response.Write("      \"static\": {\r\n");
+					response.Write("         \"static\": {\r\n");
 					bool isFirstProperty = true;
 					foreach (GraphProperty property in properties.Values)
 					{
@@ -90,7 +137,7 @@ namespace ExoWeb
 							response.Write(",\r\n");
 
 						// Output the property
-						response.Write("         \"" + property.Name + "\": ");
+						response.Write("            \"" + property.Name + "\": ");
 						GraphReferenceProperty reference = property as GraphReferenceProperty;
 						
 						// Serialize values
@@ -118,7 +165,7 @@ namespace ExoWeb
 						response.Write(",\r\n");
 
 					// Serialize the current instance
-					response.Write("      \"" + instance.Instance.Id + "\" : {\r\n");
+					response.Write("         \"" + instance.Instance.Id + "\" : {\r\n");
 					bool isFirstProperty = true;
 					foreach (GraphProperty property in graphType.Properties)
 					{
@@ -137,7 +184,7 @@ namespace ExoWeb
 							response.Write(",\r\n");
 
 						// Write out the property name and value
-						response.Write("         \"" + property.Name + "\": ");
+						response.Write("            \"" + property.Name + "\": ");
 						GraphReferenceProperty reference = property as GraphReferenceProperty;
 						if (reference != null)
 						{
@@ -159,10 +206,19 @@ namespace ExoWeb
 						else
 							OutputValue(response, (GraphValueProperty)property, instance.Instance.GetValue((GraphValueProperty)property));
 					}
-					response.Write("\r\n      }");
+					response.Write("\r\n         }");
 				}
-				response.Write("\r\n   }");
+				response.Write("\r\n      }");
 			}
+			response.Write("\r\n   }");
+
+			// Output the transaction log if changes occurred
+			if (newChanges != null && newChanges.FirstOrDefault() != null)
+			{
+				string changesJson = ToJson(typeof(GraphTransaction), newChanges);
+				response.Write(",\r\n   " + changesJson.Substring(1, changesJson.Length - 1));
+			}
+
 			response.Write("\r\n}");
 		}
 

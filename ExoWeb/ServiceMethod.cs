@@ -8,6 +8,7 @@ using System.Runtime.Serialization.Json;
 using System.ServiceModel.Dispatcher;
 using System.IO;
 using System.Web;
+using ExoGraph;
 
 namespace ExoWeb
 {
@@ -69,7 +70,8 @@ namespace ExoWeb
 		{
 			byte[] bytes = Encoding.UTF8.GetBytes(json);
 			XmlDictionaryReader reader = JsonReaderWriterFactory.CreateJsonReader(bytes, 0, bytes.Length, Encoding.UTF8, XmlDictionaryReaderQuotas.Max, null);
-			DataContractJsonSerializer serializer = new DataContractJsonSerializer(type, Type.EmptyTypes, Int32.MaxValue, true, new ContractSurrogate(), false);
+			// DataContractJsonSerializer serializer = new DataContractJsonSerializer(type, Type.EmptyTypes, Int32.MaxValue, true, new ContractSurrogate(), false);
+			DataContractJsonSerializer serializer = new DataContractJsonSerializer(type);
 			return serializer.ReadObject(reader);
 		}
 
@@ -83,7 +85,8 @@ namespace ExoWeb
 		{
 			MemoryStream stream = new MemoryStream();
 			XmlDictionaryWriter writer = JsonReaderWriterFactory.CreateJsonWriter(stream, Encoding.UTF8);
-			DataContractJsonSerializer serializer = new DataContractJsonSerializer(type, Type.EmptyTypes, Int32.MaxValue, true, new ContractSurrogate(), false);
+			//DataContractJsonSerializer serializer = new DataContractJsonSerializer(type, Type.EmptyTypes, Int32.MaxValue, true, new ContractSurrogate(), false);
+			DataContractJsonSerializer serializer = new DataContractJsonSerializer(type);
 			serializer.WriteObject(writer, value);
 			writer.Flush();
 			stream.Seek(0L, SeekOrigin.Begin);
@@ -117,7 +120,10 @@ namespace ExoWeb
 			Type method = Type.GetType("ExoWeb." + context.Request.PathInfo.Substring(1) + "Method");
 
 			// Set the content type to application/json
-			context.Response.ContentType = "application/json";
+			if (context.Request.QueryString["Debug"] == "true")
+				context.Response.ContentType = "text/plain";
+			else
+				context.Response.ContentType = "application/json";
 	
 			// Deserialize and invoke the service method
 			((ServiceMethod)FromJson(method, request)).Invoke(context.Response);

@@ -14,7 +14,7 @@ namespace ExoWeb
 	[DataContract]
 	internal class GetTypeMethod : ServiceMethod
 	{
-		[DataMember]
+		[DataMember(Name = "type")]
 		string Type { get; set; }
 		
 		/// <summary>
@@ -27,25 +27,30 @@ namespace ExoWeb
 			response.Cache.SetCacheability(HttpCacheability.Public);
 			response.Cache.SetExpires(DateTime.Now.AddDays(7));
 
-			// Get the requested graph type
-			GraphType type = GraphContext.Current.GraphTypes[Type];
+			// Output the requested graph type
+			response.Write("{\r\n   \"types\":\r\n   {\r\n");
+			OutputType(response, GraphContext.Current.GraphTypes[Type]);
+			response.Write("\r\n   }\r\n}");
+		}
 
+		internal static void OutputType(HttpResponse response, GraphType type)
+		{
 			// Get the rules defined for this type
 			Dictionary<string, IGrouping<string, Rule>> rules = ServiceHandler.RuleProvider.GetRules(type)
 				.GroupBy<Rule, string>((rule) => { return rule is PropertyRule ? ((PropertyRule)rule).Property.Name : ""; })
 				.ToDictionary<IGrouping<string, Rule>, string>((group) => { return group.Key; });
 
 			// Output the type meta data
-			response.Write("{\r\n   \"" + type.Name + "\": {");
+			response.Write("      \"" + type.Name + "\": {");
 			if (type.BaseType != null)
-				response.Write("\r\n      \"baseType\": \"" + type.BaseType.Name + "\",");
+				response.Write("\r\n         \"baseType\": \"" + type.BaseType.Name + "\",");
 
 			// Output type rules
 			IGrouping<string, Rule> typeRules;
 			if (rules.TryGetValue("", out typeRules))
 				OutputRules(response, typeRules);
 
-			response.Write("\r\n      \"properties\": {\r\n");
+			response.Write("\r\n         \"properties\": {\r\n");
 			bool isFirstProperty = true;
 			foreach (GraphProperty property in type.Properties)
 			{
@@ -61,9 +66,9 @@ namespace ExoWeb
 
 				// Output the property schema
 				if (property is GraphValueProperty)
-					response.Write("         \"" + property.Name + "\": { \"type\": \"" + GetJsonValueType(((GraphValueProperty)property).PropertyType) + "\"");
+					response.Write("            \"" + property.Name + "\": { \"type\": \"" + GetJsonValueType(((GraphValueProperty)property).PropertyType) + "\"");
 				else
-					response.Write("         \"" + property.Name + "\": { \"type\": \"" + ((GraphReferenceProperty)property).PropertyType.Name + "\"" + (((GraphReferenceProperty)property).IsList ? ", \"isList\": true" : ""));
+					response.Write("            \"" + property.Name + "\": { \"type\": \"" + ((GraphReferenceProperty)property).PropertyType.Name + "\"" + (((GraphReferenceProperty)property).IsList ? ", \"isList\": true" : ""));
 
 				// Indicate if the property is shared
 				if (property.IsStatic)
@@ -77,7 +82,7 @@ namespace ExoWeb
 				// Close the property
 				response.Write(" }");
 			}
-			response.Write("\r\n      }\r\n   }\r\n}");
+			response.Write("\r\n         }\r\n      }");
 		}
 
 		/// <summary>
@@ -85,21 +90,21 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="response"></param>
 		/// <param name="rules"></param>
-		void OutputRules(HttpResponse response, IEnumerable<Rule> rules)
+		static void OutputRules(HttpResponse response, IEnumerable<Rule> rules)
 		{
 			bool isFirstRule = true;
 			response.Write(", \"rules\": [");
 
 			foreach (Rule rule in rules)
 			{
-				// Handle trailing commas after each property
+				// Handle trailing commas after each rule
 				if (isFirstRule)
 					isFirstRule = false;
 				else
-					response.Write(",\r\n");
+					response.Write(", ");
 
 				DataContractAttribute contractAttribute = rule.GetType().GetCustomAttributes(typeof(DataContractAttribute), false).Cast<DataContractAttribute>().FirstOrDefault<DataContractAttribute>();
-				string ruleName = contractAttribute == null ? GetType().Name : contractAttribute.Name;
+				string ruleName = contractAttribute == null ? rule.GetType().Name : contractAttribute.Name;
 				response.Write("{ \"" + ruleName + "\": " + ToJson(rule.GetType(), rule) + " }");
 			}
 			response.Write("]");
