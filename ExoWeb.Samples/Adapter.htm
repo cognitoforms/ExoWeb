@@ -113,7 +113,7 @@
 				<td>(( BirthDate )) - simple property access</td>
 				<td>{{ BirthDate }}</td>
 			</tr>
-			<tr sys:attach="content" content:data="{@ Owner.Location, prefix=Owner, emptyOption=false }" class="dropdown" />
+			<tr sys:attach="content" content:data="{@ Owner.Location, prefix=Owner }" class="dropdown" />
 			<tr sys:attach="content" content:data="{@ Dealer.AvailableCars }" class="readonlylist" />
 			<tr sys:attach="content" content:data="{@ Cars }" class="checkboxlist" />
 			<tr>
@@ -194,6 +194,7 @@
 			<td>
 				<select class="sys-template" sys:value="{ binding systemValue }"
 					sys:attach="dataview" dataview:data="{ binding options }">
+					<option sys:if="{{ $index == 0 }}">-- select --</option>
 					<option sys:value="{ binding systemValue }">{ binding displayValue }</option>
 				</select>
 			</td>
