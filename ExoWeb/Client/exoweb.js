@@ -13,16 +13,24 @@ Object.copy = function Object$Copy(obj) {
 	if (typeof obj !== 'object') {
 		return obj;  // non-object have value sematics, so obj is already a copy.
 	} else {
-		var value = obj.valueOf();
-		if (obj != value) {
-			// the object is a standard object wrapper for a native type, say String.
-			// we can make a copy by instantiating a new object around the value.
-			return new obj.constructor(value);
-		} else {
-			// ok, we have a normal object. copy the whole thing, property-by-property.
-			var c = {};
-			for (var property in obj) c[property] = obj[property];
-			return c;
+		if (obj instanceof Array) {
+			var result = [];
+			for (var i = 0; i < obj.length; i++)
+				result.push(Object.copy(obj[i]));
+			return result;
+		}
+		else {
+			var value = obj.valueOf();
+			if (obj != value) {
+				// the object is a standard object wrapper for a native type, say String.
+				// we can make a copy by instantiating a new object around the value.
+				return new obj.constructor(value);
+			} else {
+				// ok, we have a normal object. copy the whole thing, property-by-property.
+				var c = {};
+				for (var property in obj) c[property] = obj[property];
+				return c;
+			}
 		}
 	}
 }
@@ -576,38 +584,56 @@ if (!Array.prototype.every) {
 	};
 }
  
-if (!Array.prototype.indexOf) {
-	Array.prototype.indexOf = function Array$indexOf(obj) {
-		for (var i = 0; i < this.length; i++)
-			if (this[i] === obj) return i;
-		
+if (!Array.prototype.indexOf)
+{
+	Array.prototype.indexOf = function(elt /*, from*/)
+	{
+		var len = this.length >>> 0;
+
+		var from = Number(arguments[1]) || 0;
+		from = (from < 0)
+			? Math.ceil(from)
+			: Math.floor(from);
+		if (from < 0)
+			from += len;
+
+		for (; from < len; from++)
+		{
+			if (from in this && this[from] === elt)
+				return from;
+		}
 		return -1;
 	};
 }
+
 
 (function() {
 	//////////////////////////////////////////////////////////////////////////////////////
 	// MS Ajax extensions
 
-	// Get's a DOM element's bindings
-	Sys.Binding.getElementBindings = function(el) {
-		return el.__msajaxbindings || [];
-	};
+	if (Sys.Binding) {
 
-	// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
-	Sys.Binding.mixin({
-		get_finalSourceObject: function() {
-			var src = this.get_source();
+		// Get's a DOM element's bindings
+		Sys.Binding.getElementBindings = function(el) {
+			return el.__msajaxbindings || [];
+		};
 
-			for (var i = 0; i < this._pathArray.length - 1; ++i)
-				src = src[this._pathArray[i]];
+		// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
+		Sys.Binding.mixin({
+			get_finalSourceObject: function() {
+				var src = this.get_source();
 
-			return src;
-		},
-		get_finalPath: function() {
-			return this._pathArray[this._pathArray.length - 1];
-		}
-	});
+				for (var i = 0; i < this._pathArray.length - 1; ++i)
+					src = src[this._pathArray[i]];
+
+				return src;
+			},
+			get_finalPath: function() {
+				return this._pathArray[this._pathArray.length - 1];
+			}
+		});
+		
+	}
 
 	function _raiseSpecificPropertyChanged(target, args) {
 		var func = target.__propertyChangeHandlers[args.get_propertyName()];
