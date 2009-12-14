@@ -104,12 +104,12 @@
 				});
 
 				ExoWeb.Mapper.setSyncProvider(function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback) {
-					var result = [];
+					var result = { changes: [] };
 
 					if (_this._syncHandler && _this._syncHandler instanceof Function) {
 						ExoWeb.trace.log("sync", "begin: mock sending changes to server");
 
-						result = _this._syncHandler(changes);
+						result.changes = _this._syncHandler(changes);
 
 						ExoWeb.trace.log("sync", "end: mock sending changes to server");
 					}

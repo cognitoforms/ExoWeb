@@ -58,7 +58,7 @@
 
 			// entities only: translate forward to the server's id
 			if (val instanceof ExoWeb.Model.ObjectBase)
-				result.Id = translator.forward(result.type, result.id) || result.id;
+				result.id = translator.forward(result.type, result.id) || result.id;
 
 			return result;
 		}
@@ -72,7 +72,7 @@
 			if (type.meta && type.meta instanceof ExoWeb.Model.Type) {
 				// don't alter the original object
 				val = Object.copy(val);
-				val.Id = translator.reverse(val.type, val.id) || val.id;
+				val.id = translator.reverse(val.type, val.id) || val.id;
 			}
 			
 			var fmt = type.formats && type.formats.$exograph;
@@ -109,7 +109,7 @@
 				}
 
 				if (change.newStartingIndex >= 0 || change.newItems) {
-					entry.Added = [];
+					entry.added = [];
 
 					var _this = this;
 					Array.forEach(change.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
@@ -117,7 +117,7 @@
 					});
 				}
 				if (change.oldStartingIndex >= 0 || change.oldItems) {
-					entry.Removed = [];
+					entry.removed = [];
 
 					var _this = this;
 					Array.forEach(change.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
@@ -214,7 +214,7 @@
 			Array.clear(this._queue);
 
 			// update each object with its new id
-			for (var i = 0; i < change.IdMap.length; i++) {
+			for (var i = 0; i < change.idChanges.length; i++) {
 				var idChange = change.idChanges[i];
 
 				var type = this._model.type(idChange.type);
@@ -270,13 +270,13 @@
 
 			var _this = this;
 			// apply added items
-			Array.forEach(change.Added, function(item) {
+			Array.forEach(change.added, function(item) {
 				var obj = fromExoGraph(_this._translator, item);
 				Sys.Observer.add(list, obj);
 			});
 
 			// apply removed items
-			Array.forEach(change.Removed, function(item) {
+			Array.forEach(change.removed, function(item) {
 				var obj = fromExoGraph(_this._translator, item);
 				Sys.Observer.remove(list, obj);
 			});

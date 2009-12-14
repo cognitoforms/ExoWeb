@@ -42,24 +42,24 @@ ChangeSet.prototype = {
 
 		return this;
 	},
-	ref: function AddReferenceChange(type, id, propName, refType, originalRefId, currentRefId) {
+	ref: function AddReferenceChange(type, id, propName, refType, oldRefId, newRefId) {
 		this._add({
 			__type: "ReferenceChange:#ExoGraph",
 			instance: this._instanceJson(type, id),
 			property: propName,
-			oldValue: originalRefId ? this._instanceJson(refType, originalRefId) : null,
-			currentValue: currentRefId ? this._instanceJson(refType, currentRefId) : null
+			oldValue: oldRefId ? this._instanceJson(refType, oldRefId) : null,
+			newValue: newRefId ? this._instanceJson(refType, newRefId) : null
 		});
 
 		return this;
 	},
-	val: function AddValueChange(type, id, propName, originalVal, currentVal) {
+	val: function AddValueChange(type, id, propName, oldValue, newValue) {
 		this._add({
 			__type: "ValueChange:#ExoGraph",
 			instance: this._instanceJson(type, id),
 			property: propName,
-			currentValue: currentVal,
-			oldValue: originalVal
+			newValue: newValue,
+			oldValue: oldValue
 		});
 
 		return this;
@@ -67,10 +67,10 @@ ChangeSet.prototype = {
 	addRef: function(type, id, propName, propType, itemId) {
 		this._add({
 			__type: "ListChange:#ExoGraph",
-			Instance: this._instanceJson(type, id),
-			Added: [this._instanceJson(propType, itemId)],
-			Property: propName,
-			Removed: []
+			instance: this._instanceJson(type, id),
+			added: [this._instanceJson(propType, itemId)],
+			property: propName,
+			removed: []
 		});
 
 		return this;
@@ -78,10 +78,10 @@ ChangeSet.prototype = {
 	delRef: function(type, id, propName, propType, itemId) {
 		this._add({
 			__type: "ListChange:#ExoGraph",
-			Instance: this._instanceJson(type, id),
-			Added: [],
-			Property: propName,
-			Removed: [this._instanceJson(propType, itemId)]
+			instance: this._instanceJson(type, id),
+			added: [],
+			property: propName,
+			removed: [this._instanceJson(propType, itemId)]
 		});
 
 		return this;
