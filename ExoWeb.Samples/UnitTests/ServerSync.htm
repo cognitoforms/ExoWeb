@@ -38,7 +38,7 @@
 				
 				// inpect the change log
 				equals(model.syncObject._queue.length, 1, "We should have 1 change in the log");
-				equals(model.syncObject._queue[0].__type, "Init:#ExoGraph", "It should be an init change");
+				equals(model.syncObject._queue[0].__type, "InitNew:#ExoGraph", "It should be an init change");
 				equals(model.syncObject._queue[0].Instance.Id, "?1", "The id should be the server id, NOT the client id");
 			});
 

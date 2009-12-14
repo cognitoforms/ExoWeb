@@ -12,9 +12,9 @@ ChangeSet.prototype = {
 	},
 	_instanceJson: function(type, id) {
 		return {
-			Id: id,
-			IsNew: this._isNew(id),
-			Type: type
+			id: id,
+			isNew: this._isNew(id),
+			type: type
 		};
 	},
 	build: function() {
@@ -22,13 +22,13 @@ ChangeSet.prototype = {
 			this._changes = [];
 		return this._changes;
 	},
-	commit: function commit(idMap) {
+	commit: function commit(change) {
 		var item = {
 			__type: "Commit:#ExoGraph",
-			IdMap: null
+			idChanges: null
 		};
 
-		item.IdMap = Array.clone(idMap);
+		item.idChanges = Array.clone(change);
 		
 		this._add(item);
 
@@ -36,8 +36,8 @@ ChangeSet.prototype = {
 	},
 	init: function CreateInstance(type, id) {
 		this._add({
-			__type: "Init:#ExoGraph",
-			Instance: this._instanceJson(type, id)
+			__type: "InitNew:#ExoGraph",
+			instance: this._instanceJson(type, id)
 		});
 
 		return this;
@@ -45,10 +45,10 @@ ChangeSet.prototype = {
 	ref: function AddReferenceChange(type, id, propName, refType, originalRefId, currentRefId) {
 		this._add({
 			__type: "ReferenceChange:#ExoGraph",
-			Instance: this._instanceJson(type, id),
-			Property: propName,
-			OriginalValue: originalRefId ? this._instanceJson(refType, originalRefId) : null,
-			CurrentValue: currentRefId ? this._instanceJson(refType, currentRefId) : null
+			instance: this._instanceJson(type, id),
+			property: propName,
+			oldValue: originalRefId ? this._instanceJson(refType, originalRefId) : null,
+			currentValue: currentRefId ? this._instanceJson(refType, currentRefId) : null
 		});
 
 		return this;
@@ -56,10 +56,10 @@ ChangeSet.prototype = {
 	val: function AddValueChange(type, id, propName, originalVal, currentVal) {
 		this._add({
 			__type: "ValueChange:#ExoGraph",
-			Instance: this._instanceJson(type, id),
-			Property: propName,
-			CurrentValue: currentVal,
-			OriginalValue: originalVal
+			instance: this._instanceJson(type, id),
+			property: propName,
+			currentValue: currentVal,
+			oldValue: originalVal
 		});
 
 		return this;

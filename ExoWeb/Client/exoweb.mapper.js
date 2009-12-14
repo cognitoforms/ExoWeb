@@ -35,18 +35,18 @@
 	ExoWeb.Model.ObjectBase.formats.$exograph = new ExoWeb.Model.Format({
 		convert: function(val) {
 			var json = {
-				Id: val.meta.id,
-				Type: val.meta.type.get_fullName()
+				id: val.meta.id,
+				type: val.meta.type.get_fullName()
 			};
 
 			if (val.meta.isNew)
-				json.IsNew = true;
+				json.isNew = true;
 
 			return json;
 		},
 		convertBack: function(val) {
-			var jstype = window[val.Type];
-			return jstype.meta.get(val.Id);
+			var jstype = window[val.type];
+			return jstype.meta.get(val.id);
 		}
 	});
 
@@ -58,7 +58,7 @@
 
 			// entities only: translate forward to the server's id
 			if (val instanceof ExoWeb.Model.ObjectBase)
-				result.Id = translator.forward(result.Type, result.Id) || result.Id;
+				result.Id = translator.forward(result.type, result.id) || result.id;
 
 			return result;
 		}
@@ -66,13 +66,13 @@
 
 	function fromExoGraph(translator, val) {
 		if (val) {
-			var type = window[val.Type];
+			var type = window[val.type];
 			
 			// entities only: translate back to the client's id
 			if (type.meta && type.meta instanceof ExoWeb.Model.Type) {
 				// don't alter the original object
 				val = Object.copy(val);
-				val.Id = translator.reverse(val.Type, val.Id) || val.Id;
+				val.Id = translator.reverse(val.type, val.id) || val.id;
 			}
 			
 			var fmt = type.formats && type.formats.$exograph;
@@ -104,8 +104,8 @@
 
 				var entry = {
 					__type: "ListChange:#ExoGraph",
-					Instance: toExoGraph(this._translator, obj),
-					Property: property.get_name()
+					instance: toExoGraph(this._translator, obj),
+					property: property.get_name()
 				}
 
 				if (change.newStartingIndex >= 0 || change.newItems) {
@@ -113,7 +113,7 @@
 
 					var _this = this;
 					Array.forEach(change.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
-						entry.Added.push(toExoGraph(_this._translator, obj));
+						entry.added.push(toExoGraph(_this._translator, obj));
 					});
 				}
 				if (change.oldStartingIndex >= 0 || change.oldItems) {
@@ -121,7 +121,7 @@
 
 					var _this = this;
 					Array.forEach(change.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
-						entry.Removed.push(toExoGraph(_this._translator, obj));
+						entry.removed.push(toExoGraph(_this._translator, obj));
 					});
 				}
 
@@ -133,8 +133,8 @@
 				log("sync", "queuing new object change");
 
 				this._events.push({
-					__type: "Init:#ExoGraph",
-					Instance: toExoGraph(this._translator, obj)
+					__type: "InitNew:#ExoGraph",
+					instance: toExoGraph(this._translator, obj)
 				});
 			}
 		},
@@ -144,7 +144,7 @@
 			// TODO: delete JSON format?
 			this._events.push({
 				__type: "Delete:#ExoGraph",
-				Instance: toExoGraph(this._translator, obj)
+				instance: toExoGraph(this._translator, obj)
 			});
 		},
 		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
@@ -154,20 +154,20 @@
 				log("sync", "queuing value change");
 				this._events.push({
 					__type: "ValueChange:#ExoGraph",
-					Instance: toExoGraph(this._translator, obj),
-					Property: property.get_name(),
-					OriginalValue: toExoGraph(this._translator, oldValue),
-					CurrentValue: toExoGraph(this._translator, newValue)
+					instance: toExoGraph(this._translator, obj),
+					property: property.get_name(),
+					oldValue: toExoGraph(this._translator, oldValue),
+					newValue: toExoGraph(this._translator, newValue)
 				});
 			}
 			else {
 				log("sync", "queuing reference change");
 				this._events.push({
 					__type: "ReferenceChange:#ExoGraph",
-					Instance: toExoGraph(this._translator, obj),
-					Property: property.get_name(),
-					OriginalValue: toExoGraph(this._translator, oldValue),
-					CurrentValue: toExoGraph(this._translator, newValue)
+					instance: toExoGraph(this._translator, obj),
+					property: property.get_name(),
+					oldValue: toExoGraph(this._translator, oldValue),
+					newValue: toExoGraph(this._translator, newValue)
 				});
 			}
 		}
@@ -195,7 +195,7 @@
 
 			var _this = this;
 			Array.forEach(changes, function(change) {
-				if (change.__type == "Init:#ExoGraph")
+				if (change.__type == "InitNew:#ExoGraph")
 					_this.applyInit(change);
 				else if (change.__type == "Delete:#ExoGraph")
 					_this.applyDelete(change);
@@ -215,57 +215,57 @@
 
 			// update each object with its new id
 			for (var i = 0; i < change.IdMap.length; i++) {
-				var idMap = change.IdMap[i];
+				var idChange = change.idChanges[i];
 
-				var type = this._model.type(idMap.Type);
-				type.changeObjectId(idMap.From, idMap.To);
+				var type = this._model.type(idChange.type);
+				type.changeObjectId(idChange.from, idChange.to);
 			}
 		},
 		applyInit: function ServerSync$applyInit(change) {
-			log("sync", "applyInit: Type = {Type}, Id = {Id}", change.Instance);
+			log("sync", "applyInit: Type = {Type}, Id = {Id}", change.instance);
 
-			var type = this._model.type(change.Instance.Type);
+			var type = this._model.type(change.instance.type);
 
 			if (!type)
-				log("sync", "ERROR - type {Type} was not found in model", change.Instance);
+				log("sync", "ERROR - type {Type} was not found in model", change.instance);
 
 			var jstype = type.get_jstype();
 			var newObj = new jstype();
 
 			// remember new object's generated id
-			this._translator.add(change.Instance.Type, newObj.meta.id, change.Instance.Id);
+			this._translator.add(change.instance.type, newObj.meta.id, change.instance.id);
 		},
 		applyRefChange: function ServerSync$applyRefChange(change) {
-			log("sync", "applyRefChange", change.Instance);
+			log("sync", "applyRefChange", change.instance);
 
-			var obj = fromExoGraph(this._translator, change.Instance);
+			var obj = fromExoGraph(this._translator, change.instance);
 
 			// TODO: validate original value?
 
-			if (change.CurrentValue) {
-				var ref = fromExoGraph(this._translator, change.CurrentValue);
+			if (change.newValue) {
+				var ref = fromExoGraph(this._translator, change.newValue);
 
 				// TODO: check for no ref
-				Sys.Observer.setValue(obj, change.Property, ref);
+				Sys.Observer.setValue(obj, change.property, ref);
 			}
 			else {
-				Sys.Observer.setValue(obj, change.Property, null);
+				Sys.Observer.setValue(obj, change.property, null);
 			}
 		},
 		applyValChange: function ServerSync$applyValChange(change) {
-			log("sync", "applyValChange", change.Instance);
+			log("sync", "applyValChange", change.instance);
 
-			var obj = fromExoGraph(this._translator, change.Instance);
+			var obj = fromExoGraph(this._translator, change.instance);
 
 			// TODO: validate original value?
 
-			Sys.Observer.setValue(obj, change.Property, change.CurrentValue);
+			Sys.Observer.setValue(obj, change.property, change.newValue);
 		},
 		applyListChange: function ServerSync$applyListChange(change) {
-			log("sync", "applyListChange", change.Instance);
+			log("sync", "applyListChange", change.instance);
 
-			var obj = fromExoGraph(this._translator, change.Instance);
-			var prop = obj.meta.property(change.Property);
+			var obj = fromExoGraph(this._translator, change.instance);
+			var prop = obj.meta.property(change.property);
 			var list = prop.value(obj);
 
 			var _this = this;
@@ -890,17 +890,17 @@
 
 				var _this = this;
 				log("sync", "sending {length} changes to server", this.syncObject._queue);
-				syncProvider(null, null, true, false, null, this.syncObject._queue, function $model$sync$callback(response) {
-					if (response.length) {
-						log("sync", "applying {length} changes from server", response);
-						_this.syncObject.apply(response);
+				syncProvider(opt.from, [], true, false, null, { changes: this.syncObject._queue }, function $model$sync$callback(response) {
+					if (response.changes.length) {
+						log("sync", "applying {length} changes from server", response.changes);
+						_this.syncObject.apply(response.changes);
 					}
 					else {
 						log("sync", "no changes from server", response);
 					}
 
 					if (callback && callback instanceof Function)
-						callback.call(this, response);
+						callback.call(this, response.changes);
 				});
 			},
 			startAutoSync: function $model$startAutoSync(varName, interval) {
