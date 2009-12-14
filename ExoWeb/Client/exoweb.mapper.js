@@ -701,7 +701,7 @@
 
 			// fetch object json
 			log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
-			objectProvider(mtype.get_fullName(), id, true, false, [], {}, signal.pending(function(result) {
+			objectProvider(mtype.get_fullName(), [id], true, false, [], null, signal.pending(function(result) {
 				objectJson = result.instances;
 			}));
 
@@ -930,7 +930,7 @@
 
 			with ({ varName: varName }) {
 				var query = options[varName];
-				objectProvider(query.from, query.id, true, false, query.and, {}, state[varName].signal.pending(function(result) {
+				objectProvider(query.from, [query.id], true, false, query.and, null, state[varName].signal.pending(function(result) {
 					state[varName].objectJson = result.instances;
 				}));
 			}
