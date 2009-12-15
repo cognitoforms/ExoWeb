@@ -60,6 +60,7 @@
     <Content Include="Adapter.htm" />
     <Content Include="Common\styles.css" />
     <Content Include="Common\styles.js" />
+    <Content Include="Validation.htm" />
     <Content Include="Edit.htm" />
     <Content Include="Mocks.htm" />
     <Content Include="Scripts\changeset.js" />

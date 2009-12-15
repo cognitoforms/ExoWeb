@@ -103,7 +103,7 @@ Type.registerNamespace("ExoWeb.UI");
 			this._for = value;
 		},
 		matches: function(e) {
-			return $(e).is(this._for);
+			return this._for && $(e).is(this._for);
 		},
 
 		// Arbitrary JavaScript
@@ -119,19 +119,19 @@ Type.registerNamespace("ExoWeb.UI");
 			var result = true;
 
 			if (this._if) {
-				var func = null;
-
-				try {
-					// turn arbitrary javascript code into function
-					func = new Function("$data", "$container", "return " + this._if + ";");
-				}
-				catch (e) {
-					throw ("Statement \"" + this._if + "\" causes the following error: " + e);
-				}
-
-				if (func) {
+				if (!this._ifFn) {
 					try {
-						result = func.apply(this, [e.control.get_data(), e]);
+						// turn arbitrary javascript code into function
+						this._ifFn = new Function("$data", "$container", "return " + this._if + ";");
+					}
+					catch (e) {
+						throw ("Statement \"" + this._if + "\" causes the following error: " + e);
+					}
+				}
+				
+				if (this._ifFn) {
+					try {
+						result = this._ifFn.apply(this, [e.control.get_data(), e]);
 					}
 					catch (e) {
 						result = false;
@@ -153,18 +153,20 @@ Type.registerNamespace("ExoWeb.UI");
 			// add a class that can be used to search for templates 
 			// and make sure that the template element is hidden
 			$(this.get_element()).addClass("vc3-template").hide();
+			allTemplates.push(this.get_element());
 		}
 	}
+
+	var allTemplates = [];
 
 	/// <summary>
 	/// Finds the first field template with a selector and filter that
 	/// match the given element and returns the template.
 	/// </summary>
 	Template.find = function(element) {
-		var templates = $(".vc3-template");
-		for (var t = 0; t < templates.length; t++) {
-			var tmpl = templates[t];
-			if (Template.isInstanceOfType(tmpl.control) && tmpl.control.test(element))
+		for (var t = allTemplates.length - 1; t >= 0; t--) {
+			var tmpl = allTemplates[t];
+			if (tmpl.control.test(element))
 				return tmpl;
 		}
 
