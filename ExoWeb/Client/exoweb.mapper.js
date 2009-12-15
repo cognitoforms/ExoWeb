@@ -94,10 +94,10 @@
 		this._translator = translator;
 
 		// listen for events
-		model.addListChanged(ExoWeb.Functor.apply(this, this.onListChanged));
-		model.addAfterPropertySet(ExoWeb.Functor.apply(this, this.onPropertyChanged));
-		model.addObjectRegistered(ExoWeb.Functor.apply(this, this.onObjectRegistered));
-		model.addObjectUnregistered(ExoWeb.Functor.apply(this, this.onObjectUnregistered));
+		model.addListChanged(this.onListChanged.setScope(this));
+		model.addAfterPropertySet(this.onPropertyChanged.setScope(this));
+		model.addObjectRegistered(this.onObjectRegistered.setScope(this));
+		model.addObjectUnregistered(this.onObjectUnregistered.setScope(this));
 	}
 
 	ExoGraphEventListener.mixin(ExoWeb.Functor.eventing);
@@ -214,7 +214,7 @@
 
 		model._sync = this;
 
-		this._listener.addChangeCaptured(ExoWeb.Functor.apply(this, this._onChangeCaptured));
+		this._listener.addChangeCaptured(this._onChangeCaptured.setScope(this));
 	}
 
 	ServerSync.mixin(ExoWeb.Functor.eventing);
@@ -223,8 +223,8 @@
 		update: function ServerSync$update(callback) {
 			log("sync", ".update() >> sending {0} changes", [this._changes.length]);
 			syncProvider(
-				{ changes: this._changes },											// changes
-				ExoWeb.Functor.apply(this, this._onUpdateSuccess, [callback])		// success callback
+				{ changes: this._changes },										// changes
+				this._onUpdateSuccess.setScope(this).appendArguments(callback)	// success callback
 			);
 		},
 		_onUpdateSuccess: function ServerSync$_onUpdateSuccess(response, callback) {
@@ -249,7 +249,7 @@
 			saveProvider(
 				{ type: context.meta.type.get_fullName(), id: context.meta.id },	// root
 				{ changes: this._changes },											// changes
-				ExoWeb.Functor.apply(this, this._onCommitSuccess, [callback])		// success callback
+				this._onCommitSuccess.setScope(this).appendArguments(callback)		// success callback
 			);
 		},
 		
@@ -293,7 +293,7 @@
 				this.beginApplyingChanges();
 
 				// apply each change
-				Array.forEach(changes, ExoWeb.Functor.apply(this, this.applyChange));
+				Array.forEach(changes, this.applyChange.setScope(this));
 
 				// add non-commit changes to the queue
 				Array.addRange(this._changes, $transform(changes).where(function(e) {

@@ -222,6 +222,32 @@ ExoWeb.trace = {
 		}
 	}
 
+	Function.prototype.setScope = function setScope(obj) {
+		var func = this;
+		return function() {
+			return func.apply(obj, arguments);
+		}
+	}
+
+	Function.prototype.prependArguments = function prependArguments(/* additional arguments */) {
+		var func = this;
+		var additional = Array.prototype.slice.call(arguments);
+		return function() {
+			Array.addRange(additional, Array.prototype.slice.call(arguments));
+			return func.apply(this, additional);
+		}
+	}
+
+	Function.prototype.appendArguments = function appendArguments(/* additional arguments */) {
+		var func = this;
+		var additional = Array.prototype.slice.call(arguments);
+		return function() {
+			var args = Array.prototype.slice.call(arguments);
+			Array.addRange(args, additional);
+			return func.apply(this, args);
+		}
+	}
+
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Functor() {
 		var funcs = [];
@@ -276,20 +302,6 @@ ExoWeb.trace = {
 				handler.apply(this, argsArray);
 		}
 	};
-
-	Functor.apply = function(target, callback, additionalArguments) {
-		return function() {
-			if (additionalArguments) {
-				var args = Array.prototype.slice.call(arguments);
-				if (additionalArguments)
-					Array.addRange(args, additionalArguments);
-				return callback.apply(target, args);
-			}
-			else {
-				return callback.apply(target, arguments);
-			}
-		}
-	}
 
 	ExoWeb.Functor = Functor;
 	///////////////////////////////////////////////////////////////////////////////

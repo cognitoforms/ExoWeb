@@ -113,7 +113,7 @@
 		
 		// Load the object this adapter is bound to and then load allowed values.
 		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath, 
-			this._readySignal.pending(ExoWeb.Functor.apply(this, this._loadAllowedValues)));
+			this._readySignal.pending(this._loadAllowedValues.setScope(this)));
 
 		// Add arbitrary options so that they are made available in templates.
 		this._extendProperties(options);
@@ -180,16 +180,16 @@
 				Sys.Observer.makeObservable(this);
 				
 				// subscribe to property changes at all points in the path
-				this._propertyChain.each(this._target, ExoWeb.Functor.apply(this, this._observeChanges));
+				this._propertyChain.each(this._target, this._observeChanges.setScope(this));
 				
 				this._observable = true;
 			}
 		},
 		_observeChanges: function Adapter$_observePropertyChange(obj, prop) {
 			if (prop.get_isEntityListType())
-				Sys.Observer.addCollectionChanged(prop.value(obj), ExoWeb.Functor.apply(this, this._onTargetChanged));
+				Sys.Observer.addCollectionChanged(prop.value(obj), this._onTargetChanged.setScope(this));
 			else
-				Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), ExoWeb.Functor.apply(this, this._onTargetChanged));
+				Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), this._onTargetChanged.setScope(this));
 		},
 		_onTargetChanged: function Adapter$_onTargetChanged(sender, args) {
 			if (this._ignoreTargetEvents)
@@ -306,7 +306,7 @@
 						this._allowedValues = rule.values(targetObj);
 
 						// watch for changes to the allowed values list and update options
-						Sys.Observer.addCollectionChanged(this._allowedValues, ExoWeb.Functor.apply(this, this._reloadOptions));
+						Sys.Observer.addCollectionChanged(this._allowedValues, this._reloadOptions.setScope(this));
 					}
 				}
 			}
@@ -414,7 +414,7 @@
 				
 				// subscribe to property changes to the option's label (value shouldn't change)
 				// TODO: can we make this more specific?
-				Sys.Observer.addPropertyChanged(this._obj, ExoWeb.Functor.apply(this, this._onTargetChanged));
+				Sys.Observer.addPropertyChanged(this._obj, this._onTargetChanged.setScope(this));
 				
 				this._observable = true;
 			}
