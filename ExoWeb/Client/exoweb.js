@@ -224,26 +224,46 @@ ExoWeb.trace = {
 
 	Function.prototype.setScope = function setScope(obj) {
 		var func = this;
-		return function() {
+		return function setScope$function() {
 			return func.apply(obj, arguments);
 		}
 	}
 
-	Function.prototype.prependArguments = function prependArguments(/* additional arguments */) {
+	Function.prototype.prependArguments = function prependArguments(/* arg1, arg2, ... */) {
 		var func = this;
 		var additional = Array.prototype.slice.call(arguments);
-		return function() {
+		return function prependArguments$function() {
 			Array.addRange(additional, Array.prototype.slice.call(arguments));
 			return func.apply(this, additional);
 		}
 	}
 
-	Function.prototype.appendArguments = function appendArguments(/* additional arguments */) {
+	Function.prototype.appendArguments = function appendArguments(/* arg1, arg2, ... */) {
 		var func = this;
 		var additional = Array.prototype.slice.call(arguments);
-		return function() {
+		return function appendArguments$function() {
 			var args = Array.prototype.slice.call(arguments);
 			Array.addRange(args, additional);
+			return func.apply(this, args);
+		}
+	}
+
+	Function.prototype.spliceArguments = function spliceArguments(/* start, howmany, item1, item2, ... */) {
+		var func = this;
+		var spliceArguments = arguments;
+		return function spliceArguments$function() {
+			var args = Array.prototype.slice.call(arguments);
+			args.splice.apply(args, spliceArguments);
+			return func.apply(this, args);
+		}
+	}
+
+	Function.prototype.sliceArguments = function sliceArguments(/* start, end */) {
+		var func = this;
+		var sliceArguments = arguments;
+		return function spliceArguments$function() {
+			var args = Array.prototype.slice.call(arguments);
+			args = args.slice.apply(args, sliceArguments);
 			return func.apply(this, args);
 		}
 	}

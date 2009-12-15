@@ -537,8 +537,8 @@
 
 			if (old !== val) {
 				obj[this._name] = val;
-				obj.meta.executeRules(this._name);
 				this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
+				obj.meta.executeRules(this._name);
 				Sys.Observer.raisePropertyChanged(obj, this._name);
 			}
 		},

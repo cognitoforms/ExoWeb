@@ -223,17 +223,22 @@
 		update: function ServerSync$update(callback) {
 			log("sync", ".update() >> sending {0} changes", [this._changes.length]);
 			syncProvider(
-				{ changes: this._changes },										// changes
-				this._onUpdateSuccess.setScope(this).appendArguments(callback)	// success callback
+				{ changes: this._changes },															// changes
+				this._onUpdateSuccess.setScope(this).appendArguments(callback).sliceArguments(0, 1)	// success callback
 			);
 		},
 		_onUpdateSuccess: function ServerSync$_onUpdateSuccess(response, callback) {
-			log("sync", "._onUpdateSuccess() >> applying {0} changes", [response.changes.length]);
+			if (response.changes) {
+				log("sync", "._onUpdateSuccess() >> applying {0} changes", [response.changes.length]);
 
-			// apply changes from server
-			if (response.changes.length)
-				this.apply(response.changes);
-
+				// apply changes from server
+				if (response.changes.length)
+					this.apply(response.changes);
+			}
+			else {
+				log("sync", "._onUpdateSuccess() >> no changes");
+			}
+			
 			if (callback && callback instanceof Function)
 				callback.call(this, response.changes);
 
@@ -247,9 +252,9 @@
 		commit: function ServerSync$commit(context, callback) {
 			log("sync", ".commit() >> sending {0} changes", [this._changes.length]);
 			saveProvider(
-				{ type: context.meta.type.get_fullName(), id: context.meta.id },	// root
-				{ changes: this._changes },											// changes
-				this._onCommitSuccess.setScope(this).appendArguments(callback)		// success callback
+				{ type: context.meta.type.get_fullName(), id: context.meta.id },						// root
+				{ changes: this._changes },																// changes
+				this._onCommitSuccess.setScope(this).appendArguments(callback).sliceArguments(0, 1)		// success callback
 			);
 		},
 		
@@ -257,11 +262,16 @@
 			// truncate the log after a commit has finished
 			this._truncateLog();
 
-			log("sync", "._onCommitSuccess() >> applying {0} changes", [response.changes.length]);
+			if (response.changes) {
+				log("sync", "._onCommitSuccess() >> applying {0} changes", [response.changes.length]);
 
-			// apply changes from server
-			if (response.changes.length)
-				this.apply(response.changes);
+				// apply changes from server
+				if (response.changes.length)
+					this.apply(response.changes);
+			}
+			else {
+				log("sync", "._onCommitSuccess() >> no changes");
+			}
 
 			if (callback && callback instanceof Function)
 				callback.call(this, response.changes);
@@ -424,6 +434,21 @@
 	ServerSync.registerClass("ExoWeb.Mapper.ServerSync");
 
 
+	//////////////////////////////////////////////////////////////////////////////////////
+	function TriggerUpdateRule(property) {
+		var prop = this.prop = property;
+
+		ExoWeb.Model.Rule.register(this, [property], true);
+	}
+	TriggerUpdateRule.prototype = {
+		execute: function(obj, callback) {
+			ServerSync.invokeUpdate(obj, callback);
+		},
+		toString: function() {
+			return "trigger update";
+		}
+	}
+	ExoWeb.Model.Rule.triggerUpdate = TriggerUpdateRule;
 
 	///////////////////////////////////////////////////////////////////////////	
 	function objectsFromJson(model, json, callback) {
