@@ -307,7 +307,7 @@
 
 				// add non-commit changes to the queue
 				Array.addRange(this._changes, $transform(changes).where(function(e) {
-					return e.__type != "Commit:#ExoGraph";
+					return e.__type != "Save:#ExoGraph";
 				}));
 			}
 			finally {
@@ -325,7 +325,7 @@
 				this.applyValChange(change);
 			else if (change.__type == "ListChange:#ExoGraph")
 				this.applyListChange(change);
-			else if (change.__type == "Commit:#ExoGraph")
+			else if (change.__type == "Save:#ExoGraph")
 				this.applyCommitChange(change);
 		},
 		applyCommitChange: function ServerSync$applyCommitChange(change) {

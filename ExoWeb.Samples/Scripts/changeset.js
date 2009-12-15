@@ -24,7 +24,7 @@ ChangeSet.prototype = {
 	},
 	commit: function commit(change) {
 		var item = {
-			__type: "Commit:#ExoGraph",
+			__type: "Save:#ExoGraph",
 			idChanges: null
 		};
 
