@@ -100,7 +100,7 @@
 						.build();
 				});
 
-				model.sync("driver");
+				ExoWeb.Mapper.ServerSync.invokeUpdate(model.driver);
 
 				equals(bob.Drivers.length, 0, "Bob should now have zero drivers");
 				equals(joe.Drivers.length, 1, "Joe should now have one driver");
@@ -112,7 +112,8 @@
 
 				// no changes on server
 				ExoWeb.Mock.sync(null);
-				model.sync("driver");
+				
+				ExoWeb.Mapper.ServerSync.invokeUpdate(model.driver);
 
 				equals(matt.meta.id, mattLegacyId, "Matt's id should still be the temporary id");
 
@@ -127,7 +128,8 @@
 						}
 					];
 				});
-				model.save("driver");
+				
+				ExoWeb.Mapper.ServerSync.invokeCommit(model.driver);
 
 				var changes = model.syncObject.get_Changes();
 				equals(changes.length, 0, "Queue should be empty after commit");

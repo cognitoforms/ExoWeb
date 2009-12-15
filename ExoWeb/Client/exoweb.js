@@ -277,9 +277,17 @@ ExoWeb.trace = {
 		}
 	};
 
-	Functor.apply = function(target, callback) {
+	Functor.apply = function(target, callback, additionalArguments) {
 		return function() {
-			return callback.apply(target, arguments);
+			if (additionalArguments) {
+				var args = Array.prototype.slice.call(arguments);
+				if (additionalArguments)
+					Array.addRange(args, additionalArguments);
+				return callback.apply(target, args);
+			}
+			else {
+				return callback.apply(target, arguments);
+			}
 		}
 	}
 

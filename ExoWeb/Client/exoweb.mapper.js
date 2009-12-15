@@ -25,7 +25,9 @@
 		listProvider = fn;
 	}
 
-	var syncProvider = ExoWeb.Load;
+	var syncProvider = function(changes, callback) {
+		ExoWeb.Load(null, null, false, false, null, changes, callback)
+	};
 	ExoWeb.Mapper.setSyncProvider = function(fn) {
 		syncProvider = fn;
 	}
@@ -194,48 +196,114 @@
 
 	///////////////////////////////////////////////////////////////////////////
 	function ServerSync(model) {
-		this._translator = new ExoWeb.Translator();
 		this._model = model;
-		
-		var applyingChanges = false;
-		var queue = [];
-		
-		var eventListener = new ExoGraphEventListener(this._model, this._translator);
-		eventListener.addChangeCaptured(function ServerSync$changeCaptured(e) {
-			if (!applyingChanges) queue.push(e);
-		});
-		
-		this.apply = function ServerSync$apply(changes) {
-			if (!changes || !(changes instanceof Array)) return;
+		this._changes = [];
+		this._translator = new ExoWeb.Translator();
+		this._listener = new ExoGraphEventListener(this._model, this._translator);
 
-			try {
-				applyingChanges = true;
-				var _this = this;
-				var newChanges = [];
-				Array.forEach(changes, function(change) {
-					_this.applyChange(change);
-					if (change.__type != "Commit:#ExoGraph")
-						newChanges.push(change);
-				});
-				Array.addRange(queue, newChanges);
-			}
-			finally {
-				applyingChanges = false;
-			}
+		var applyingChanges = false;
+		this.isApplyingChanges = function ServerSync$isApplyingChanges() {
+			return applyingChanges;
 		}
-		
-		this.get_Changes = function ServerSync$get_Changes() {
-			return Object.copy(queue);
+		this.beginApplyingChanges = function ServerSync$beginApplyingChanges() {
+			applyingChanges = true;
 		}
-		
-		this._addEvent("afterCommit", function() {
-			Array.clear(queue);
-		});
+		this.endApplyingChanges = function ServerSync$endApplyingChanges() {
+			applyingChanges = false;
+		}
+
+		model._sync = this;
+
+		this._listener.addChangeCaptured(ExoWeb.Functor.apply(this, this._onChangeCaptured));
 	}
 
 	ServerSync.mixin(ExoWeb.Functor.eventing);
 	
-	ServerSync.mixin({	
+	ServerSync.mixin({
+		update: function ServerSync$update(callback) {
+			log("sync", ".update() >> sending {0} changes", [this._changes.length]);
+			syncProvider(
+				{ changes: this._changes },											// changes
+				ExoWeb.Functor.apply(this, this._onUpdateSuccess, [callback])		// success callback
+			);
+		},
+		_onUpdateSuccess: function ServerSync$_onUpdateSuccess(response, callback) {
+			log("sync", "._onUpdateSuccess() >> applying {0} changes", [response.changes.length]);
+
+			// apply changes from server
+			if (response.changes.length)
+				this.apply(response.changes);
+
+			if (callback && callback instanceof Function)
+				callback.call(this, response.changes);
+
+			this._raiseEvent("updateSuccess");
+		},
+		_onUpdateFailed: function ServerSync$_onUpdateFailed() {
+			// TODO
+			this._raiseEvent("updateFailed");
+		},
+
+		commit: function ServerSync$commit(context, callback) {
+			log("sync", ".commit() >> sending {0} changes", [this._changes.length]);
+			saveProvider(
+				{ type: context.meta.type.get_fullName(), id: context.meta.id },	// root
+				{ changes: this._changes },											// changes
+				ExoWeb.Functor.apply(this, this._onCommitSuccess, [callback])		// success callback
+			);
+		},
+		
+		_onCommitSuccess: function ServerSync$_onCommitSuccess(response, callback) {
+			// truncate the log after a commit has finished
+			this._truncateLog();
+
+			log("sync", "._onCommitSuccess() >> applying {0} changes", [response.changes.length]);
+
+			// apply changes from server
+			if (response.changes.length)
+				this.apply(response.changes);
+
+			if (callback && callback instanceof Function)
+				callback.call(this, response.changes);
+
+			this._raiseEvent("commitSuccess");
+		},
+		_onCommitFailed: function ServerSync$_onCommitFailed() {
+			// TODO
+			this._raiseEvent("commitFailed");
+		},
+
+		_onChangeCaptured: function ServerSync$_onChangeCaptured(change) {
+			if (!this.isApplyingChanges())
+				this._changes.push(change);
+		},
+		
+		_truncateLog: function ServerSync$_truncateLog() {
+			Array.clear(this._changes);
+		},
+
+		get_Changes: function ServerSync$get_Changes() {
+			return this._changes;
+		},
+
+		apply: function ServerSync$_applyChanges(changes) {
+			if (!changes || !(changes instanceof Array)) return;
+
+			try {
+				this.beginApplyingChanges();
+
+				// apply each change
+				Array.forEach(changes, ExoWeb.Functor.apply(this, this.applyChange));
+
+				// add non-commit changes to the queue
+				Array.addRange(this._changes, $transform(changes).where(function(e) {
+					return e.__type != "Commit:#ExoGraph";
+				}));
+			}
+			finally {
+				this.endApplyingChanges();
+			}
+		},
 		applyChange: function ServerSync$applyChange(change) {
 			if (change.__type == "InitNew:#ExoGraph")
 				this.applyInit(change);
@@ -323,6 +391,35 @@
 			});
 		}
 	});
+
+	ServerSync.invokeUpdate = function ServerSync$invokeUpdate(context, callback) {
+		if (context instanceof ExoWeb.Model.ObjectBase) {
+			context = context.meta.type.get_model();
+		}
+
+		if (context instanceof ExoWeb.Model.Model) {
+			if (context._sync)
+				context._sync.update(callback);
+			else
+				// TODO
+				;
+		}
+	}
+	ServerSync.invokeCommit = function ServerSync$invokeCommit(context, callback) {
+		var model;
+		if (context instanceof ExoWeb.Model.ObjectBase) {
+			model = context.meta.type.get_model();
+		}
+		
+		if (model && model instanceof ExoWeb.Model.Model) {
+			if (model._sync)
+				model._sync.commit(context, callback);
+			else
+				// TODO
+				;
+		}
+	}
+
 	ExoWeb.Mapper.ServerSync = ServerSync;
 	ServerSync.registerClass("ExoWeb.Mapper.ServerSync");
 
@@ -915,70 +1012,33 @@
 
 		var allSignals = new ExoWeb.Signal("$model allSignals");
 
+		var sync = new ServerSync(model);
+
 		var state = {};
 
 		var ret = {
 			meta: model,
-			syncObject: new ServerSync(model),
+			syncObject: sync,
 			ready: function $model$ready(callback) { allSignals.waitForAll(callback); },
-			save: function $model$save(varName, callback) {
-				log("sync", "Save");
+			startAutoUpdate: function $model$startAutoUpdate(interval) {
+				log("sync", "auto-update enabled - interval of {0} milliseconds", [interval]);
 
-				var opt = options[varName];
-
-				var _this = this;
-				var changes = this.syncObject.get_Changes();
-				log("sync", "commiting {length} changes to server", changes);
-				saveProvider({ type: opt.from, id: opt.id }, { changes: changes }, function $model$save$callback(response) {
-					if (response.changes.length) {
-						log("sync", "applying {length} changes from server", response.changes);
-						_this.syncObject.apply(response.changes);
-					}
-					else {
-						log("sync", "no changes from server", response);
-					}
-
-					if (callback && callback instanceof Function)
-						callback.call(this, response.changes);
-				});
-			},
-			sync: function $model$sync(varName, callback) {
-				log("sync", "Sync");
-
-				var opt = options[varName];
+				this.stopAutoUpdate();
 
 				var _this = this;
-				var changes = this.syncObject.get_Changes();
-				log("sync", "sending {length} changes to server", changes);
-				syncProvider(opt.from, [], true, false, null, { changes: changes }, function $model$sync$callback(response) {
-					if (response.changes.length) {
-						log("sync", "applying {length} changes from server", response.changes);
-						_this.syncObject.apply(response.changes);
-					}
-					else {
-						log("sync", "no changes from server", response);
-					}
-
-					if (callback && callback instanceof Function)
-						callback.call(this, response.changes);
-				});
-			},
-			startAutoSync: function $model$startAutoSync(varName, interval) {
-				log("sync", "auto-sync enabled - interval of {0} milliseconds", [interval]);
-
-				var _this = this;
-				function doSync() {
-					log("sync", "auto-sync starting ({0})", [new Date()]);
-					_this.sync(varName, function $model$autoSyncCallback() {
-						log("sync", "auto-sync complete ({0})", [new Date()]);
-						window.setTimeout(doSync, interval);
+				function doUpdate() {
+					log("sync", "auto-update starting ({0})", [new Date()]);
+					sync.update(function $model$autoUpdateCallback() {
+						log("sync", "auto-update complete ({0})", [new Date()]);
+						_this._timeout = window.setTimeout(doUpdate, interval);
 					});
 				}
 
-				window.setTimeout(doSync, interval);
+				this._timeout = window.setTimeout(doUpdate, interval);
 			},
-			stopAutoSync: function $model$stopAutoSync() {
-				// TODO
+			stopAutoUpdate: function $model$stopAutoUpdate() {
+				if (this._timeout)
+					window.clearTimeout(this._timeout);
 			}
 		};
 

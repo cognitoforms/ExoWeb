@@ -110,7 +110,7 @@
 					return mockCallback(callback, [json], _this.listProviderDelay, $format(">> fetch: {0}({1}).{2}", arguments));
 				});
 
-				ExoWeb.Mapper.setSyncProvider(function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback) {
+				ExoWeb.Mapper.setSyncProvider(function(changes, callback) {
 					var result = { changes: [] };
 
 					if (_this.syncHandler && _this.syncHandler instanceof Function) {
