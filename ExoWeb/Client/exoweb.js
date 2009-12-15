@@ -59,7 +59,7 @@ ExoWeb.trace = {
 	//		rule: true
 	},
 	log: function log(category, message, args) {
-		if (!console)
+		if (typeof(console) === "undefined")
 			return;
 
 		var catStr;

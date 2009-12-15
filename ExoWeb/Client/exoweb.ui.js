@@ -76,7 +76,7 @@ Type.registerNamespace("ExoWeb.UI");
 	ExoWeb.UI.Toggle = Toggle;
 	Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control);
 
-	
+
 
 	///////////////////////////////////////////////////////////////////////////////
 	/// <summary>
@@ -171,9 +171,27 @@ Type.registerNamespace("ExoWeb.UI");
 		return null;
 	}
 
+	// bookkeeping for Template.load()...
+	var templateCount = 0;
+	var externalTemplatesSignal = new ExoWeb.Signal("external templates");
+
+	/// <summary>
+	/// Loads external templates into the page
+	/// </summary>
+	Template.load = function(path) {
+		var id = "exoweb-templates-" + (templateCount++);
+
+		$("<div id='" + id + "'/>")
+			.hide()
+			.appendTo("body")
+			.load(path, externalTemplatesSignal.pending(function() {
+				// activate controls
+				Sys.Application.activateElement(this);
+			}));
+	}
+
 	ExoWeb.UI.Template = Template;
 	Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
-
 
 	// TODO: rename content
 
@@ -226,18 +244,24 @@ Type.registerNamespace("ExoWeb.UI");
 		},
 		render: function() {
 			if (this._data && this._initialized) {
-				var tmpl = this.get_template();
+				log(['ui', "content"], "render()");
 
-				// get custom classes from template
-				var classes = $.trim($(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", ""));
+				var _this = this;
+				externalTemplatesSignal.waitForAll(function() {
+					log(['ui', "content"], "render() proceeding after all templates are loaded");
+					var tmpl = _this.get_template();
 
-				this._context = tmpl.instantiateIn(this.get_element(), null, this.get_data());
+					// get custom classes from template
+					var classes = $.trim($(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", ""));
 
-				// copy custom classes from template to content control
-				$(this.get_element()).addClass(classes);
+					_this._context = tmpl.instantiateIn(_this.get_element(), null, _this.get_data());
 
-				// necessary in order to render components found within the template (like a nested dataview)
-				this._context.initializeComponents();
+					// copy custom classes from template to content control
+					$(_this.get_element()).addClass(classes);
+
+					// necessary in order to render components found within the template (like a nested dataview)
+					_this._context.initializeComponents();
+				});
 			}
 		},
 		initialize: function() {
@@ -348,7 +372,7 @@ Type.registerNamespace("ExoWeb.UI");
 	}
 
 	window.$isLast = getIsLast;
-	
+
 	// Since this script is not loaded by System.Web.Handlers.ScriptResourceHandler
 	// invoke Sys.Application.notifyScriptLoaded to notify ScriptManager 
 	// that this is the end of the script.
