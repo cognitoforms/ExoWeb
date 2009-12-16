@@ -54,7 +54,7 @@ ExoWeb.trace = {
 	//		"$model": true,
 	//		tests: true,
 	//		mocks: true,
-	//		sync: true,
+	//		server: true,
 	//		ui: true,
 	//		rule: true
 	},

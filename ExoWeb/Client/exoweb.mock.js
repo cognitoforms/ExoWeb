@@ -11,9 +11,9 @@
 		this.objectProviderDelay = 0;
 		this.typeProviderDelay = 0;
 		this.listProviderDelay = 0;
-		this.syncProviderDelay = 0;
+		this.roundtripProviderDelay = 0;
 		this.saveProviderDelay = 0;
-		this.syncHandler = null;
+		this.roundtripHandler = null;
 		this.saveHandler = null;
 
 		this.simulateLazyLoading = false;
@@ -45,10 +45,10 @@
 				}
 			}
 		},
-		sync: function sync(handler) {
+		roundtrip: function roundtrip(handler) {
 			this._initObjects();
 
-			this.syncHandler = handler;
+			this.roundtripHandler = handler;
 		},
 		save: function save(handler) {
 			this._initObjects();
@@ -110,35 +110,35 @@
 					return mockCallback(callback, [json], _this.listProviderDelay, $format(">> fetch: {0}({1}).{2}", arguments));
 				});
 
-				ExoWeb.Mapper.setSyncProvider(function(changes, success, failed) {
+				ExoWeb.Mapper.setRoundtripProvider(function(changes, success, failed) {
 					var result = { changes: [] };
 
-					if (_this.syncHandler && _this.syncHandler instanceof Function) {
-						ExoWeb.trace.log("sync", "begin: mock sending changes to server");
+					if (_this.roundtripHandler && _this.roundtripHandler instanceof Function) {
+						ExoWeb.trace.log("server", "begin: mock roundtripping changes to server");
 
-						result.changes = _this.syncHandler(changes);
+						result.changes = _this.roundtripHandler(changes);
 
-						ExoWeb.trace.log("sync", "end: mock sending changes to server");
+						ExoWeb.trace.log("server", "end: mock roundtripping changes to server");
 					}
 					else {
-						ExoWeb.trace.log("sync", "no sync mocking");
+						ExoWeb.trace.log("server", "no roundtrip mocking");
 					}
 
-					return mockCallback(success, [result], _this.syncProviderDelay, $format(">> sync", arguments));
+					return mockCallback(success, [result], _this.roundtripProviderDelay, $format(">> roundtrip", arguments));
 				});
 				
 				ExoWeb.Mapper.setSaveProvider(function(root, changes, callback) {
 					var result = { changes: [] };
 
 					if (_this.saveHandler && _this.saveHandler instanceof Function) {
-						ExoWeb.trace.log("sync", "begin: mock commiting changes to server");
+						ExoWeb.trace.log("server", "begin: mock saving changes to server");
 
 						result.changes = _this.saveHandler(changes);
 
-						ExoWeb.trace.log("sync", "end: mock commiting changes to server");
+						ExoWeb.trace.log("server", "end: mock saving changes to server");
 					}
 					else {
-						ExoWeb.trace.log("sync", "no save mocking");
+						ExoWeb.trace.log("server", "no save mocking");
 					}
 
 					return mockCallback(callback, [result], _this.saveProviderDelay, $format(">> save", arguments));

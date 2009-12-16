@@ -25,11 +25,11 @@
 		listProvider = fn;
 	}
 
-	var syncProvider = function(changes, success, failed) {
+	var roundtripProvider = function(changes, success, failed) {
 		ExoWeb.Load(null, null, false, false, null, changes, success, failed)
 	};
-	ExoWeb.Mapper.setSyncProvider = function(fn) {
-		syncProvider = fn;
+	ExoWeb.Mapper.setRoundtripProvider = function(fn) {
+		roundtripProvider = fn;
 	}
 
 	var saveProvider = ExoWeb.Save;
@@ -109,7 +109,7 @@
 
 		// Model event handlers
 		onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
-			log("sync", "queuing list changes");
+			log("server", "queuing list changes");
 
 			for (var i = 0; i < listChanges.length; ++i) {
 				var listChange = listChanges[i];
@@ -142,7 +142,7 @@
 		},
 		onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
 			if (obj.meta.isNew) {
-				log("sync", "queuing new object change");
+				log("server", "queuing new object change");
 
 				var change = {
 					__type: "InitNew:#ExoGraph",
@@ -153,7 +153,7 @@
 			}
 		},
 		onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
-			log("sync", "queuing delete object change");
+			log("server", "queuing delete object change");
 
 			// TODO: delete JSON format?
 			var change = {
@@ -164,10 +164,10 @@
 			this._raiseEvent("changeCaptured", [change]);
 		},
 		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
-			log("sync", "queuing update");
+			log("server", "queuing update");
 
 			if (property.get_isValueType()) {
-				log("sync", "queuing value change");
+				log("server", "queuing value change");
 				var change = {
 					__type: "ValueChange:#ExoGraph",
 					instance: toExoGraph(this._translator, obj),
@@ -179,7 +179,7 @@
 				this._raiseEvent("changeCaptured", [change]);
 			}
 			else {
-				log("sync", "queuing reference change");
+				log("server", "queuing reference change");
 				var change = {
 					__type: "ReferenceChange:#ExoGraph",
 					instance: toExoGraph(this._translator, obj),
@@ -212,7 +212,7 @@
 			applyingChanges = false;
 		}
 
-		model._sync = this;
+		model._server = this;
 
 		this._listener.addChangeCaptured(this._onChangeCaptured.setScope(this));
 	}
@@ -221,16 +221,16 @@
 	
 	ServerSync.mixin({
 		startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
-			log("sync", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
+			log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
 
 			// cancel any pending roundtrip schedule
 			this.stopAutoRoundtrip();
 
 			var _this = this;
 			function doRoundtrip() {
-				log("sync", "auto-roundtrip starting ({0})", [new Date()]);
+				log("server", "auto-roundtrip starting ({0})", [new Date()]);
 				_this.roundtrip(function context$autoRoundtripCallback() {
-					log("sync", "auto-roundtrip complete ({0})", [new Date()]);
+					log("server", "auto-roundtrip complete ({0})", [new Date()]);
 					_this._timeout = window.setTimeout(doRoundtrip, interval);
 				});
 			}
@@ -245,22 +245,22 @@
 		// Roundtrip
 		///////////////////////////////////////////////////////////////////////
 		roundtrip: function ServerSync$roundtrip(success, failed) {
-			log("sync", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
-			syncProvider(
+			log("server", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
+			roundtripProvider(
 				{ changes: this._changes },																// changes
-				this._onRoundtripSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),		// success callback
+				this._onRoundtripSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
 				this._onRoundtripFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 			);
 		},
 		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(response, callback) {
 			if (response.changes) {
-				log("sync", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [response.changes.length]);
+				log("server", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [response.changes.length]);
 
 				if (response.changes.length > 0)
 					this.apply(response.changes);
 			}
 			else {
-				log("sync", "._onRoundtripSuccess() >> no changes");
+				log("server", "._onRoundtripSuccess() >> no changes");
 			}
 
 			this._raiseEvent("roundtripSuccess");
@@ -283,49 +283,49 @@
 			this._addEvent("roundtripFailed", handler);
 		},
 
-		// COMMIT
+		// Save
 		///////////////////////////////////////////////////////////////////////
-		commit: function ServerSync$commit(context, success, failed) {
-			log("sync", ".commit() >> sending {0} changes", [this._changes.length]);
+		save: function ServerSync$save(root, success, failed) {
+			log("server", ".save() >> sending {0} changes", [this._changes.length]);
 			saveProvider(
-				{ type: context.meta.type.get_fullName(), id: context.meta.id },						// root
-				{ changes: this._changes },																// changes
-				this._onCommitSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),		// success callback
-				this._onCommitFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
+				{ type: root.meta.type.get_fullName(), id: root.meta.id },							// root
+				{ changes: this._changes },															// changes
+				this._onSaveSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
+				this._onSaveFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 			);
 		},
-		_onCommitSuccess: function ServerSync$_onCommitSuccess(response, callback) {
+		_onSaveSuccess: function ServerSync$_onSaveSuccess(response, callback) {
 			this._truncateLog();
 
 			if (response.changes) {
-				log("sync", "._onCommitSuccess() >> applying {0} changes", [response.changes.length]);
+				log("server", "._onSaveSuccess() >> applying {0} changes", [response.changes.length]);
 
 				// apply changes from server
 				if (response.changes > 0)
 					this.apply(response.changes);
 			}
 			else {
-				log("sync", "._onCommitSuccess() >> no changes");
+				log("server", "._onSaveSuccess() >> no changes");
 			}
 
-			this._raiseEvent("commitSuccess");
+			this._raiseEvent("saveSuccess");
 			
 			if (callback && callback instanceof Function)
 				callback.call(this, response.changes);
 		},
-		addCommitSuccess: function ServerSync$addCommitSuccess(handler) {
-			this._addEvent("commitSuccess", handler);
+		addSaveSuccess: function ServerSync$addSaveSuccess(handler) {
+			this._addEvent("saveSuccess", handler);
 		},
-		_onCommitFailed: function ServerSync$_onCommitFailed(e, callback) {
-			log("error", "Commit Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
+		_onSaveFailed: function ServerSync$_onSaveFailed(e, callback) {
+			log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 			
-			this._raiseEvent("commitFailed", [e]);
+			this._raiseEvent("saveFailed", [e]);
 			
 			if (callback && callback instanceof Function)
 				callback.call(this);
 		},
-		addCommitFailed: function ServerSync$addCommitFailed(handler) {
-			this._addEvent("commitFailed", handler);
+		addSaveFailed: function ServerSync$addSaveFailed(handler) {
+			this._addEvent("saveFailed", handler);
 		},
 
 		// CHANGE TRACKING
@@ -352,7 +352,7 @@
 				// apply each change
 				Array.forEach(changes, this.applyChange.setScope(this));
 
-				// add non-commit changes to the queue
+				// add non-save changes to the queue
 				Array.addRange(this._changes, $transform(changes).where(function(e) {
 					return e.__type != "Save:#ExoGraph";
 				}));
@@ -373,9 +373,9 @@
 			else if (change.__type == "ListChange:#ExoGraph")
 				this.applyListChange(change);
 			else if (change.__type == "Save:#ExoGraph")
-				this.applyCommitChange(change);
+				this.applySaveChange(change);
 		},
-		applyCommitChange: function ServerSync$applyCommitChange(change) {
+		applySaveChange: function ServerSync$applySaveChange(change) {
 			// update each object with its new id
 			for (var i = 0; i < change.idChanges.length; i++) {
 				var idChange = change.idChanges[i];
@@ -385,12 +385,12 @@
 			}
 		},
 		applyInit: function ServerSync$applyInit(change) {
-			log("sync", "applyInit: Type = {Type}, Id = {Id}", change.instance);
+			log("server", "applyInit: Type = {Type}, Id = {Id}", change.instance);
 
 			var type = this._model.type(change.instance.type);
 
 			if (!type)
-				log("sync", "ERROR - type {Type} was not found in model", change.instance);
+				log("server", "ERROR - type {Type} was not found in model", change.instance);
 
 			var jstype = type.get_jstype();
 			var newObj = new jstype();
@@ -399,7 +399,7 @@
 			this._translator.add(change.instance.type, newObj.meta.id, change.instance.id);
 		},
 		applyRefChange: function ServerSync$applyRefChange(change) {
-			log("sync", "applyRefChange", change.instance);
+			log("server", "applyRefChange", change.instance);
 
 			var obj = fromExoGraph(this._translator, change.instance);
 
@@ -416,7 +416,7 @@
 			}
 		},
 		applyValChange: function ServerSync$applyValChange(change) {
-			log("sync", "applyValChange", change.instance);
+			log("server", "applyValChange", change.instance);
 
 			var obj = fromExoGraph(this._translator, change.instance);
 
@@ -425,7 +425,7 @@
 			Sys.Observer.setValue(obj, change.property, change.newValue);
 		},
 		applyListChange: function ServerSync$applyListChange(change) {
-			log("sync", "applyListChange", change.instance);
+			log("server", "applyListChange", change.instance);
 
 			var obj = fromExoGraph(this._translator, change.instance);
 			var prop = obj.meta.property(change.property);
@@ -446,37 +446,33 @@
 		}
 	});
 
-	ServerSync.Roundtrip = function ServerSync$Roundtrip(context, success, failed) {
-		if (context instanceof ExoWeb.Model.ObjectBase) {
-			context = context.meta.type.get_model();
+	ServerSync.Roundtrip = function ServerSync$Roundtrip(root, success, failed) {
+		if (root instanceof ExoWeb.Model.ObjectBase) {
+			root = context.meta.type.get_model();
 		}
 
-		if (context instanceof ExoWeb.Model.Model) {
-			if (context._sync)
-				context._sync.roundtrip(success, failed);
+		if (root instanceof ExoWeb.Model.Model) {
+			if (root._server)
+				root._server.roundtrip(success, failed);
 			else
 				// TODO
 				;
 		}
 	}
-	ServerSync.invokeCommit = function ServerSync$invokeCommit(context, success, failed) {
+	ServerSync.Save = function ServerSync$Save(root, success, failed) {
 		var model;
-		if (context instanceof ExoWeb.Model.ObjectBase) {
-			model = context.meta.type.get_model();
+		if (root instanceof ExoWeb.Model.ObjectBase) {
+			model = root.meta.type.get_model();
 		}
 		
 		if (model && model instanceof ExoWeb.Model.Model) {
-			if (model._sync)
-				model._sync.commit(context, success, failed);
+			if (model._server)
+				model._server.save(root, success, failed);
 			else
 				// TODO
 				;
 		}
 	}
-
-	ExoWeb.Mapper.ServerSync = ServerSync;
-	ServerSync.registerClass("ExoWeb.Mapper.ServerSync");
-
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function TriggerRoundtripRule(property) {
