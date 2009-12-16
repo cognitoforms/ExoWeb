@@ -95,11 +95,11 @@
 	Model.registerClass("ExoWeb.Model.Model");
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function ObjectBase() {
+	function Entity() {
 	}
 
-	ObjectBase.mixin({
-		toString: function ObjectBase$toString(formatName) {
+	Entity.mixin({
+		toString: function Entity$toString(formatName) {
 			var format;
 
 			if (formatName) {
@@ -114,7 +114,7 @@
 		}
 	});
 
-	ObjectBase.formats = {
+	Entity.formats = {
 		$system: new Format({
 			undefinedString: "",
 			nullString: "null",
@@ -131,8 +131,8 @@
 		})
 	}
 
-	ExoWeb.Model.ObjectBase = ObjectBase;
-	ObjectBase.registerClass("ExoWeb.Model.ObjectBase");
+	ExoWeb.Model.Entity = Entity;
+	Entity.registerClass("ExoWeb.Model.Entity");
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +202,7 @@
 			this.baseType = baseType;
 			baseType.derivedTypes.push(this);
 		} else {
-			baseJsType = ObjectBase;
+			baseJsType = Entity;
 			this.baseType = null;
 		}
 
@@ -325,9 +325,9 @@
 			var setter = function(val) {
 				fn.call(receiver, this, val);
 			};
-			
+
 			setter.__notifies = !!notifiesChanges;
-			
+
 			return setter;
 		},
 		get_model: function() {
@@ -597,7 +597,7 @@
 		value: function Property$value(obj, val) {
 			if (arguments.length == 2) {
 				var setter = obj["set_" + this._name];
-				
+
 				// If a generated setter is found then use it instead of observer, since it will emulate observer 
 				// behavior in order to allow application code to call it directly rather than going through the 
 				// observer.  Calling the setter in place of observer eliminates unwanted duplicate events.
@@ -1262,7 +1262,7 @@
 		convert: function(val) {
 			if (val === undefined)
 				return this._undefinedString;
-			
+
 			if (val == null)
 				return this._nullString;
 
@@ -1277,7 +1277,7 @@
 		convertBack: function(val) {
 			if (val == this._nullString)
 				return null;
-		
+
 			if (val == this._undefinedString)
 				return;
 

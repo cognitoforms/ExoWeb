@@ -39,7 +39,7 @@
 
 	Date.formats.$exograph = Date.formats.ShortDate;
 
-	ExoWeb.Model.ObjectBase.formats.$exograph = new ExoWeb.Model.Format({
+	ExoWeb.Model.Entity.formats.$exograph = new ExoWeb.Model.Format({
 		convert: function(val) {
 			var json = {
 				id: val.meta.id,
@@ -64,7 +64,7 @@
 			var result = fmt ? fmt.convert(val) : val;
 
 			// entities only: translate forward to the server's id
-			if (val instanceof ExoWeb.Model.ObjectBase)
+			if (val instanceof ExoWeb.Model.Entity)
 				result.id = translator.forward(result.type, result.id) || result.id;
 
 			return result;
@@ -464,7 +464,7 @@
 	});
 
 	ServerSync.Roundtrip = function ServerSync$Roundtrip(root, success, failed) {
-		if (root instanceof ExoWeb.Model.ObjectBase) {
+		if (root instanceof ExoWeb.Model.Entity) {
 			root = root.meta.type.get_model();
 		}
 
@@ -1104,9 +1104,9 @@
 
 		var ret = {
 			model: {
-				meta: model,
-				ready: function context$model$ready(callback) { allSignals.waitForAll(callback); }
+				meta: model
 			},
+			ready: function context$model$ready(callback) { allSignals.waitForAll(callback); },
 			server: new ServerSync(model)
 		};
 
@@ -1150,7 +1150,7 @@
 		// setup lazy loading on the container object to control
 		// lazy evaluation.  loading is considered complete at the same point
 		// model.ready() fires
-		ExoWeb.Model.LazyLoader.register(ret.model, {
+		ExoWeb.Model.LazyLoader.register(ret, {
 			load: function context$load(obj, propName, callback) {
 				log(["context", "lazyLoading"], "caller is waiting for ExoWeb.context.ready(), propName={1}", arguments);
 

@@ -33,7 +33,7 @@
 			if (properties.source) {
 				var evalSource = new Function("$element", "$index", "$dataItem", "return " + properties.source + ";");
 				source = evalSource(component.get_element(), templateContext.index, templateContext.dataItem);
-				
+
 				// don't try to eval the path against window
 				scopeChain = [];
 			}
@@ -44,7 +44,7 @@
 			ExoWeb.Model.LazyLoader.eval(source, properties.$default,
 				function(result) {
 					log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
-					
+
 					if (properties.transform && result instanceof Array) {
 						// generate transform function
 						var doTrans = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + properties.transform + ";");
@@ -107,12 +107,12 @@
 		// Track state for system and display formats, including the format and bad value.
 		this._systemState = { FormatName: systemFormat, Format: undefined, BadValue: undefined };
 		this._displayState = { FormatName: displayFormat, Format: undefined, BadValue: undefined };
-		
+
 		// Initialize the property chain.
 		this._initPropertyChain();
-		
+
 		// Load the object this adapter is bound to and then load allowed values.
-		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath, 
+		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath,
 			this._readySignal.pending(this._loadAllowedValues.setScope(this)));
 
 		// Add arbitrary options so that they are made available in templates.
@@ -178,10 +178,10 @@
 		_ensureObservable: function Adapter$_ensureObservable() {
 			if (!this._observable) {
 				Sys.Observer.makeObservable(this);
-				
+
 				// subscribe to property changes at all points in the path
 				this._propertyChain.each(this._target, this._observeChanges.setScope(this));
-				
+
 				this._observable = true;
 			}
 		},
@@ -201,7 +201,7 @@
 		},
 		_reloadOptions: function Adapter$_reloadOptions() {
 			this._options = null;
-			
+
 			Sys.Observer.raisePropertyChanged(this, "options");
 		},
 		_getFormattedValue: function Adapter$_getFormattedValue(formatName) {
@@ -276,9 +276,21 @@
 		toString: function Adapter$toString() {
 			return this.get_systemValue();
 		},
-		
+
 		// Properties that are intended to be used by templates.
 		///////////////////////////////////////////////////////////////////////
+		isType: function Adapter$isType(jstype) {
+
+			for (var propType = this._propertyChain.get_jstype(); propType !== null; propType = propType.getBaseType()) {
+				if (propType === jstype)
+					return true;
+			}
+
+			return false;
+		},
+		get_isList: function Adapter$get_isList() {
+			return this._propertyChain.get_isList();
+		},
 		get_target: function Adapter$get_target() {
 			return this._target;
 		},
@@ -411,11 +423,11 @@
 		_ensureObservable: function OptionAdapter$_ensureObservable() {
 			if (!this._observable) {
 				Sys.Observer.makeObservable(this);
-				
+
 				// subscribe to property changes to the option's label (value shouldn't change)
 				// TODO: can we make this more specific?
 				Sys.Observer.addPropertyChanged(this._obj, this._onTargetChanged.setScope(this));
-				
+
 				this._observable = true;
 			}
 		},

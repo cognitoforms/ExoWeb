@@ -103,7 +103,10 @@ Type.registerNamespace("ExoWeb.UI");
 			this._for = value;
 		},
 		matches: function(e) {
-			return this._for && $(e).is(this._for);
+			if (this._for === undefined)
+				return true;
+			
+			return $(e).is(this._for);
 		},
 
 		// Arbitrary JavaScript
@@ -128,7 +131,7 @@ Type.registerNamespace("ExoWeb.UI");
 						throw ("Statement \"" + this._if + "\" causes the following error: " + e);
 					}
 				}
-				
+
 				if (this._ifFn) {
 					try {
 						result = this._ifFn.apply(this, [e.control.get_data(), e]);

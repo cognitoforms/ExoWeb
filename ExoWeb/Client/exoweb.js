@@ -487,10 +487,10 @@ ExoWeb.trace = {
 				key = category;
 				category = null;
 			}
-			
+
 			if (category)
 				source = source[category] = (source[category] || {});
-			
+
 			return source[key] || null;
 		},
 		forward: function Translator$forward(category, key) {
@@ -505,17 +505,17 @@ ExoWeb.trace = {
 				key = category;
 				category = null;
 			}
-			
+
 			var forward = this._forwardDictionary;
 			if (category)
 				forward = forward[category] = (forward[category] || {});
-				
+
 			forward[key] = value;
-			
+
 			var reverse = this._reverseDictionary;
 			if (category)
 				reverse = reverse[category] = (reverse[category] || {});
-				
+
 			reverse[value] = key;
 		}
 	}
@@ -534,10 +534,10 @@ ExoWeb.trace = {
 			if (finalTarget)
 				finalTarget = getValue(finalTarget, path[i]);
 		}
-		
+
 		return finalTarget;
 	}
-	
+
 	ExoWeb.getLastTarget = getLastTarget;
 	window.$lastTarget = getLastTarget;
 

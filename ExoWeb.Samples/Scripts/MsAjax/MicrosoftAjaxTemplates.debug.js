@@ -866,7 +866,8 @@
 				s = "";
 			}
 			else {
-				s = this.index, ctx = this.parentContext;
+				s = this.index; 
+				var ctx = this.parentContext;
 				while (ctx && !ctx._global) {
 					s = ctx.index + "_" + s;
 					ctx = ctx.parentContext;
@@ -1198,8 +1199,8 @@
 										case 2: value ? Sys.UI.DomElement.addCssClass(element, name) : Sys.UI.DomElement.removeCssClass(element, name);
 											break;
 									}
-								} 
-							} 
+								}
+							}
 						} if (fnIndex) {
 							for (j = 0, m = fnIndex.length; j < m; j++) {
 								entry = fnIndex[j];
