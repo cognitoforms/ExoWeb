@@ -13,7 +13,7 @@
 		<script src="../Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
 		<script src="../Scripts/mock-driver.js" type="text/javascript"></script>
 		<script type="text/javascript">
-			var model = $model({ driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} });
+			var ctx = ExoWeb.context({ driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} });
 
 			setupTest("test1", { description: "Simple Chain Tests", expect: 5 }, function(chain) {
 				equals(3, chain.all().length, "Chain is 3-parts (\"Owner.Location.Address\").");
@@ -26,31 +26,31 @@
 			});
 
 			setupTest("test2", { description: "Value Tests", expect: 1 }, function(chain) {
-				var address = chain.value(model.driver);
+				var address = chain.value(ctx.model.driver);
 				ok(address instanceof LocationAddress, "Value is of type Address.");
 			});
 
 			setupTest("test3", { description: "Target Tests", expect: 1 }, function(chain) {
-				var loc = chain.lastTarget(model.driver);
+				var loc = chain.lastTarget(ctx.model.driver);
 				ok(loc instanceof OwnerLocation, "Target is an OwnerLocation.");
 			});
 
 			setupTest("test4", { description: "Extend Chain Tests", expect: 3 }, function(chain) {
-				var address = chain.value(model.driver);
+				var address = chain.value(ctx.model.driver);
 				ok(address instanceof LocationAddress, "address is a LocationAddress");
 
 				chain.append(address.meta.type.property("State.Abbreviation"));
 				equals(5, chain.all().length, "chain length should be 5 after appending \"State.Abbreviation\".");
 
-				var abbrev = chain.value(model.driver);
+				var abbrev = chain.value(ctx.model.driver);
 
 				equals(String, abbrev.constructor, "Abbreviation should return a string.");
 			});
 
 			timeoutTests(2000);
 			
-			model.ready(function() {
-				var chain = model.driver.meta.type.property("Owner.Location.Address");
+			ctx.model.ready(function() {
+				var chain = ctx.model.driver.meta.type.property("Owner.Location.Address");
 
 				executeTest("test1", chain);
 				executeTest("test2", chain);

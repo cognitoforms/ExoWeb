@@ -51,7 +51,7 @@ ExoWeb.trace = {
 	//		markupExt: true,
 	//		"~": true,
 	//		"@": true,
-	//		"$model": true,
+	//		context: true,
 	//		tests: true,
 	//		mocks: true,
 	//		server: true,

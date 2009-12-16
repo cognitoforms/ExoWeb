@@ -25,9 +25,9 @@
 				//		markupExt: true,
 				//		"~": true,
 				//		"@": true,
-						"$model": true,
+						context: true,
 				//		tests: true,
-						mocks: true,
+						mocks: true
 				}
 				
 			$extend("Product", function(type) {
@@ -40,7 +40,7 @@
 			});
 
 		
-			var model = $model({
+			var ctx = ExoWeb.context({
 				driver: { id: "1", from: "Driver" },
 				dealer: { id: "1", from: "Dealer" },
 				usedCar: {id: "200", from: "Car"}
@@ -50,10 +50,10 @@
 			init();
 			test("TODO: Placeholder Test", function() { });
 
-			model.ready(function() {
+			ctx.model.ready(function() {
 				test("polymorphic loading", function() {
 					ok(typeof (UsedCar) == "function", "UsedCar type should be loaded b/c instance of that type was fetched");
-					ok(model.usedCar instanceof UsedCar, "model.usedCar should be of type UsedCar even though base type was fetched");
+					ok(ctx.model.usedCar instanceof UsedCar, "ctx.model.usedCar should be of type UsedCar even though base type was fetched");
 				});
 
 				test("object pool and sub classes", function() {
@@ -66,21 +66,21 @@
 				});
 
 				test("instanceof operator", function() {
-					ok(model.driver instanceof Driver, "instance of type");
-					ok(model.driver instanceof Person, "instance of basetype");
+					ok(ctx.model.driver instanceof Driver, "instance of type");
+					ok(ctx.model.driver instanceof Person, "instance of basetype");
 
-					ok(model.usedCar instanceof Product, "double hop");
+					ok(ctx.model.usedCar instanceof Product, "double hop");
 
-					ok(!(model.driver instanceof Dealer), "not instance of unrelated type");
+					ok(!(ctx.model.driver instanceof Dealer), "not instance of unrelated type");
 				});
 
 				test("type members", function() {					
-					ok(model.driver.get_Cars(), "property on final type (execute)");
-					ok(model.driver.get_Name, "property on base type (exists)");
-					ok(model.driver.get_Name(), "property on base type (execute)");
+					ok(ctx.model.driver.get_Cars(), "property on final type (execute)");
+					ok(ctx.model.driver.get_Name, "property on base type (exists)");
+					ok(ctx.model.driver.get_Name(), "property on base type (execute)");
 
-					ok(model.usedCar.get_Name, "property on base type (double hop, exists)");
-					ok(model.usedCar.get_Name(), "property on base type (double hop, execute)");
+					ok(ctx.model.usedCar.get_Name, "property on base type (double hop, exists)");
+					ok(ctx.model.usedCar.get_Name(), "property on base type (double hop, execute)");
 				});
 
 				test("formats", function() {
@@ -90,7 +90,7 @@
 					ok(UsedCar.formats.longDesc !== Product.formats.Car, "UsedCar overrides longDesc");
 					ok(Car.formats.longDesc === Product.formats.longDesc, "Car inherits longDesc from base class");
 
-					ok(model.usedCar.toString("longDesc").startsWith("<UsedCar>"), "toString() should use inherited formats");
+					ok(ctx.model.usedCar.toString("longDesc").startsWith("<UsedCar>"), "toString() should use inherited formats");
 				});
 			});
 		</script>

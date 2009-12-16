@@ -15,7 +15,7 @@
     <script src="Scripts/sample-data.js" type="text/javascript"></script>
 
 	<script type="text/javascript">
-		var model = $model({
+		var ctx = ExoWeb.context({
 		driver: { id: "1", from: "Driver", and: ["Owner.Location.Address.State", "Cars", "Dealer"] }
 		}, function() {
 			console.log("---- DONE -----");
@@ -32,7 +32,7 @@
 
 
 <table>
-<!--	<tbody class="sys-template" sys:attach="dataview" dataview:data="{{ model.driver }}">
+<!--	<tbody class="sys-template" sys:attach="dataview" dataview:data="{{ ctx.model.driver }}">
 	</tbody>-->		
 </table>
 	

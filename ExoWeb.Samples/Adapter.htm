@@ -50,34 +50,12 @@
     		type.formats.$display = ExoWeb.Model.Format.fromTemplate("{Name}");
     	});
 
-    	var model = $model({
+    	var ctx = ExoWeb.context({
 	    	driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"] }
     	});
 
-    	model.ready(function() {
-    		// BEGIN: simulate user changes
-//    		model.startAutoSync("driver", 10000);
-
-//    		window.setTimeout(function() {
-//    			// change owner location from home to work
-//    			console.log("changing owner location from home to work");
-//    			model.sync.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
-//    		}, 1000);
-
-//    		window.setTimeout(function() {
-//    			// add new location option
-//    			console.log("adding new location option");
-//    			model.sync.apply(new ChangeSet()
-//    				.init("OwnerLocation", "+c0")
-//    				.val("OwnerLocation", "+c0", "Name", "", "New Location")
-//					.addRef("CarOwner", "1", "AvailableLocations", "OwnerLocation", "+c0")
-//					.build());
-//    		}, 5000);
+    	ctx.model.ready(function() {
     		
-//    		.ref("CarOwner", "1", "Location", "OwnerLocation", "1", "+c0")
-//			.delRef("CarOwner", "1", "AvailableLocations", "OwnerLocation", "1")
-			
-			// END: simulate user changes
     	});
     	
     	function add(type) {
@@ -115,7 +93,7 @@
 
 	<h1>Samples:</h1>
 	<table>
-		<tbody class="sys-template" sys:attach="dataview" dataview:data="{~ model.driver }">
+		<tbody class="sys-template" sys:attach="dataview" dataview:data="{~ ctx.model.driver }">
 			<tr sys:attach="content" content:data="{@ Name, prefix=Driver }" />
 			<tr sys:attach="content" content:data="{@ PhoneNumber, label=Phone Number }" />
 			<tr sys:attach="content" content:data="{@ BirthDate, label=Birthday }" />
@@ -150,8 +128,8 @@
 				<td>{~ Name }</td>
 			</tr>
 			<tr>
-				<td>(~ model.driver.Name ) - lazy eval scope chain</td>
-				<td>{~ model.driver.Name }</td>
+				<td>(~ ctx.model.driver.Name ) - lazy eval scope chain</td>
+				<td>{~ ctx.model.driver.Name }</td>
 			</tr>
 			<tr sys:attach="content" content:data="{@ Dealer }" class="dropdown" />
 			<tr sys:attach="content" content:data="{@ Dealer.Name, prefix=Dealer }" />

@@ -25,12 +25,12 @@
 				//		markupExt: true,
 				//		"~": true,
 				//		"@": true,
-						"$model": true,
+						context: true,
 				//		tests: true,
-						mocks: true,
+						mocks: true
 				}
 						
-			var model = $model({
+			var ctx = ExoWeb.context({
 				driver: { id: "1", from: "Driver" },
 				
 				// hack until Employee.All works...
@@ -42,14 +42,14 @@
 			init();
 			test("TODO: Placeholder Test", function() { });
 
-			model.ready(function() {
+			ctx.model.ready(function() {
 				function getAllowedSalesPersons() {
 					return $transform(Employee.meta.known()).where(function(obj) {return obj.HireDate <= this.DateCreated;}, this);
 				}
 								
 				test("list property", function() {
-					Driver.$AllowedSalesPersons.init(model.driver, []);
-					var list = model.driver.get_AllowedSalesPersons();
+					Driver.$AllowedSalesPersons.init(ctx.model.driver, []);
+					var list = ctx.model.driver.get_AllowedSalesPersons();
 					
 					// watch for changes
 					var listChanged = false;
@@ -61,30 +61,30 @@
 						basedOn: ["this.DateCreated" /*, "this.Employee.HireDate"*/]
 					});
 					
-					ok(model.driver.get_AllowedSalesPersons() === list, "setting up a calculated property should not cause a new list to be created so observers will still work");
+					ok(ctx.model.driver.get_AllowedSalesPersons() === list, "setting up a calculated property should not cause a new list to be created so observers will still work");
 					ok(listChanged, "setting up a calculated property should cause the list property to raise a collection change event");
-					same(getAllowedSalesPersons.apply(model.driver), list, "calculated property should have the correct values in it");
+					same(getAllowedSalesPersons.apply(ctx.model.driver), list, "calculated property should have the correct values in it");
 
-					var curDate = model.driver.get_DateCreated();
+					var curDate = ctx.model.driver.get_DateCreated();
 
 					// cause the list to recalculate but have NO changes
 					listChanged = false;
-					model.driver.set_DateCreated(new Date(curDate.getFullYear(), curDate.getMonth(), curDate.getDate()+1));
+					ctx.model.driver.set_DateCreated(new Date(curDate.getFullYear(), curDate.getMonth(), curDate.getDate()+1));
 					ok(!listChanged, "if the calculated list has no changes, don't raise a collecton changed event");
 
 					// cause the list to recalculate and HAVE changes (via Driver)
 					listChanged = false;
-					model.driver.set_DateCreated(new Date("1/2/2009"));
+					ctx.model.driver.set_DateCreated(new Date("1/2/2009"));
 					ok(listChanged, "list should change b/c the driver's created date changed");					
-					same(getAllowedSalesPersons.apply(model.driver), list, "calculated property should have the correct values in it");
+					same(getAllowedSalesPersons.apply(ctx.model.driver), list, "calculated property should have the correct values in it");
 
 					/*
 					TODO: rules than span types
 					// cause the list to recalculate and HAVE changes (via Driver)
 					listChanged = false;
-					model.e101.set_HireDate(new Date("1/3/2009"));
+					ctx.model.e101.set_HireDate(new Date("1/3/2009"));
 					ok(listChanged, "list should change b/c the employee's hire date changed");					
-					same(getAllowedSalesPersons.apply(model.driver), list, "calculated property should have the correct values in it");
+					same(getAllowedSalesPersons.apply(ctx.model.driver), list, "calculated property should have the correct values in it");
 					*/
 				});
 			});
