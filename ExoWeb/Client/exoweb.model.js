@@ -635,6 +635,8 @@
 		calculated: function(options) {
 			var prop = this;
 
+			prop._isCalculated = true;
+
 			var inputs;
 
 			if (options.basedOn) {

@@ -61,7 +61,7 @@
 		if (val) {
 			var type = val.constructor;
 			var fmt = type.formats && type.formats.$exograph;
-			var result = fmt ? fmt.convert(val) : val.toString();
+			var result = fmt ? fmt.convert(val) : val;
 
 			// entities only: translate forward to the server's id
 			if (val instanceof ExoWeb.Model.ObjectBase)
@@ -111,26 +111,26 @@
 		onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
 			log("server", "queuing list changes");
 
+			if (property._isCalculated) return;
+
 			for (var i = 0; i < listChanges.length; ++i) {
 				var listChange = listChanges[i];
 
 				var change = {
 					__type: "ListChange:#ExoGraph",
 					instance: toExoGraph(this._translator, obj),
-					property: property.get_name()
+					property: property.get_name(),
+					added: [],
+					removed: []
 				}
 
 				if (listChange.newStartingIndex >= 0 || listChange.newItems) {
-					change.added = [];
-
 					var _this = this;
 					Array.forEach(listChange.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
 						change.added.push(toExoGraph(_this._translator, obj));
 					});
 				}
 				if (listChange.oldStartingIndex >= 0 || listChange.oldItems) {
-					change.removed = [];
-
 					var _this = this;
 					Array.forEach(listChange.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
 						change.removed.push(toExoGraph(_this._translator, obj));
@@ -166,6 +166,8 @@
 		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 			log("server", "queuing update");
 
+			if (property._isCalculated) return;
+
 			if (property.get_isValueType()) {
 				log("server", "queuing value change");
 				var change = {
@@ -198,6 +200,7 @@
 	function ServerSync(model) {
 		this._model = model;
 		this._changes = [];
+		this._objectsExcludedFromSave = [];
 		this._translator = new ExoWeb.Translator();
 		this._listener = new ExoGraphEventListener(this._model, this._translator);
 
@@ -240,6 +243,20 @@
 		stopAutoRoundtrip: function ServerSync$stopAutoRoundtrip() {
 			if (this._timeout)
 				window.clearTimeout(this._timeout);
+		},
+		enableSave: function ServerSync$enableSave(obj) {
+			Array.remove(this._objectsExcludedFromSave, obj);
+		},
+		disableSave: function ServerSync$disableSave(obj) {
+			if (!Array.contains(this._objectsExcludedFromSave, obj))
+				this._objectsExcludedFromSave.push(obj);
+		},
+		canSave: function ServerSync$canSave(change) {
+			var obj = fromExoGraph(this._translator, change.instance);
+			if (obj && Array.contains(this._objectsExcludedFromSave, obj))
+				return false;
+
+			return true;
 		},
 
 		// Roundtrip
@@ -289,7 +306,7 @@
 			log("server", ".save() >> sending {0} changes", [this._changes.length]);
 			saveProvider(
 				{ type: root.meta.type.get_fullName(), id: root.meta.id },							// root
-				{ changes: this._changes },															// changes
+				{ changes: $transform(this._changes).where(this.canSave, this) },					// changes
 				this._onSaveSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
 				this._onSaveFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 			);
@@ -301,7 +318,7 @@
 				log("server", "._onSaveSuccess() >> applying {0} changes", [response.changes.length]);
 
 				// apply changes from server
-				if (response.changes > 0)
+				if (response.changes.length > 0)
 					this.apply(response.changes);
 			}
 			else {
@@ -448,7 +465,7 @@
 
 	ServerSync.Roundtrip = function ServerSync$Roundtrip(root, success, failed) {
 		if (root instanceof ExoWeb.Model.ObjectBase) {
-			root = context.meta.type.get_model();
+			root = root.meta.type.get_model();
 		}
 
 		if (root instanceof ExoWeb.Model.Model) {
