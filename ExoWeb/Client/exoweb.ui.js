@@ -311,8 +311,7 @@ Type.registerNamespace("ExoWeb.UI");
 			// if we are starting out with a dataview then look at the parent context rather than walking 
 			// up the dom (since the element will probably not be present in the dom)
 			if (!container && elementOrControl instanceof Sys.UI.DataView && elementOrControl._parentContext) {
-				context = elementOrControl._parentContext;
-				container = context.containerElement;
+				container = elementOrControl._parentContext.containerElement;
 			}
 			else {
 				subcontainer = getTemplateSubContainer(container || elementOrControl);
