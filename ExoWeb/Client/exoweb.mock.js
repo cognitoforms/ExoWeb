@@ -110,7 +110,7 @@
 					return mockCallback(callback, [json], _this.listProviderDelay, $format(">> fetch: {0}({1}).{2}", arguments));
 				});
 
-				ExoWeb.Mapper.setSyncProvider(function(changes, callback) {
+				ExoWeb.Mapper.setSyncProvider(function(changes, success, failed) {
 					var result = { changes: [] };
 
 					if (_this.syncHandler && _this.syncHandler instanceof Function) {
@@ -124,7 +124,7 @@
 						ExoWeb.trace.log("sync", "no sync mocking");
 					}
 
-					return mockCallback(callback, [result], _this.syncProviderDelay, $format(">> sync", arguments));
+					return mockCallback(success, [result], _this.syncProviderDelay, $format(">> sync", arguments));
 				});
 				
 				ExoWeb.Mapper.setSaveProvider(function(root, changes, callback) {

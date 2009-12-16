@@ -25,8 +25,8 @@
 		listProvider = fn;
 	}
 
-	var syncProvider = function(changes, callback) {
-		ExoWeb.Load(null, null, false, false, null, changes, callback)
+	var syncProvider = function(changes, success, failed) {
+		ExoWeb.Load(null, null, false, false, null, changes, success, failed)
 	};
 	ExoWeb.Mapper.setSyncProvider = function(fn) {
 		syncProvider = fn;
@@ -220,82 +220,107 @@
 	ServerSync.mixin(ExoWeb.Functor.eventing);
 	
 	ServerSync.mixin({
-		update: function ServerSync$update(callback) {
+		// UPDATE
+		///////////////////////////////////////////////////////////////////////
+		update: function ServerSync$update(success, failed) {
 			log("sync", ".update() >> sending {0} changes", [this._changes.length]);
 			syncProvider(
-				{ changes: this._changes },															// changes
-				this._onUpdateSuccess.setScope(this).appendArguments(callback).sliceArguments(0, 1)	// success callback
+				{ changes: this._changes },																// changes
+				this._onUpdateSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),		// success callback
+				this._onUpdateFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 			);
 		},
 		_onUpdateSuccess: function ServerSync$_onUpdateSuccess(response, callback) {
 			if (response.changes) {
 				log("sync", "._onUpdateSuccess() >> applying {0} changes", [response.changes.length]);
 
-				// apply changes from server
-				if (response.changes.length)
+				if (response.changes.length > 0)
 					this.apply(response.changes);
 			}
 			else {
 				log("sync", "._onUpdateSuccess() >> no changes");
 			}
+
+			this._raiseEvent("updateSuccess");
 			
 			if (callback && callback instanceof Function)
 				callback.call(this, response.changes);
-
-			this._raiseEvent("updateSuccess");
 		},
-		_onUpdateFailed: function ServerSync$_onUpdateFailed() {
-			// TODO
-			this._raiseEvent("updateFailed");
+		addUpdateSuccess: function ServerSync$addUpdateSuccess(handler) {
+			this._addEvent("updateSuccess", handler);
+		},
+		_onUpdateFailed: function ServerSync$_onUpdateFailed(e, callback) {
+			log("error", "Update Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
+			
+			this._raiseEvent("updateFailed", [e]);
+			
+			if (callback && callback instanceof Function)
+				callback.call(this);
+		},
+		addUpdateFailed: function ServerSync$addUpdateFailed(handler) {
+			this._addEvent("updateFailed", handler);
 		},
 
-		commit: function ServerSync$commit(context, callback) {
+		// COMMIT
+		///////////////////////////////////////////////////////////////////////
+		commit: function ServerSync$commit(context, success, failed) {
 			log("sync", ".commit() >> sending {0} changes", [this._changes.length]);
 			saveProvider(
 				{ type: context.meta.type.get_fullName(), id: context.meta.id },						// root
 				{ changes: this._changes },																// changes
-				this._onCommitSuccess.setScope(this).appendArguments(callback).sliceArguments(0, 1)		// success callback
+				this._onCommitSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),		// success callback
+				this._onCommitFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 			);
 		},
-		
 		_onCommitSuccess: function ServerSync$_onCommitSuccess(response, callback) {
-			// truncate the log after a commit has finished
 			this._truncateLog();
 
 			if (response.changes) {
 				log("sync", "._onCommitSuccess() >> applying {0} changes", [response.changes.length]);
 
 				// apply changes from server
-				if (response.changes.length)
+				if (response.changes > 0)
 					this.apply(response.changes);
 			}
 			else {
 				log("sync", "._onCommitSuccess() >> no changes");
 			}
 
+			this._raiseEvent("commitSuccess");
+			
 			if (callback && callback instanceof Function)
 				callback.call(this, response.changes);
-
-			this._raiseEvent("commitSuccess");
 		},
-		_onCommitFailed: function ServerSync$_onCommitFailed() {
-			// TODO
-			this._raiseEvent("commitFailed");
+		addCommitSuccess: function ServerSync$addCommitSuccess(handler) {
+			this._addEvent("commitSuccess", handler);
+		},
+		_onCommitFailed: function ServerSync$_onCommitFailed(e, callback) {
+			log("error", "Commit Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
+			
+			this._raiseEvent("commitFailed", [e]);
+			
+			if (callback && callback instanceof Function)
+				callback.call(this);
+		},
+		addCommitFailed: function ServerSync$addCommitFailed(handler) {
+			this._addEvent("commitFailed", handler);
 		},
 
+		// CHANGE TRACKING
+		///////////////////////////////////////////////////////////////////////
 		_onChangeCaptured: function ServerSync$_onChangeCaptured(change) {
 			if (!this.isApplyingChanges())
 				this._changes.push(change);
 		},
-		
 		_truncateLog: function ServerSync$_truncateLog() {
 			Array.clear(this._changes);
 		},
-
 		get_Changes: function ServerSync$get_Changes() {
 			return this._changes;
 		},
 
+		// APPLY CHANGES
+		///////////////////////////////////////////////////////////////////////
 		apply: function ServerSync$_applyChanges(changes) {
 			if (!changes || !(changes instanceof Array)) return;
 
@@ -329,9 +354,6 @@
 				this.applyCommitChange(change);
 		},
 		applyCommitChange: function ServerSync$applyCommitChange(change) {
-			// previous changes should be discarded on commit
-			this._raiseEvent("afterCommit");
-
 			// update each object with its new id
 			for (var i = 0; i < change.idChanges.length; i++) {
 				var idChange = change.idChanges[i];
@@ -402,20 +424,20 @@
 		}
 	});
 
-	ServerSync.invokeUpdate = function ServerSync$invokeUpdate(context, callback) {
+	ServerSync.invokeUpdate = function ServerSync$invokeUpdate(context, success, failed) {
 		if (context instanceof ExoWeb.Model.ObjectBase) {
 			context = context.meta.type.get_model();
 		}
 
 		if (context instanceof ExoWeb.Model.Model) {
 			if (context._sync)
-				context._sync.update(callback);
+				context._sync.update(success, failed);
 			else
 				// TODO
 				;
 		}
 	}
-	ServerSync.invokeCommit = function ServerSync$invokeCommit(context, callback) {
+	ServerSync.invokeCommit = function ServerSync$invokeCommit(context, success, failed) {
 		var model;
 		if (context instanceof ExoWeb.Model.ObjectBase) {
 			model = context.meta.type.get_model();
@@ -423,7 +445,7 @@
 		
 		if (model && model instanceof ExoWeb.Model.Model) {
 			if (model._sync)
-				model._sync.commit(context, callback);
+				model._sync.commit(context, success, failed);
 			else
 				// TODO
 				;
@@ -442,7 +464,7 @@
 	}
 	TriggerUpdateRule.prototype = {
 		execute: function(obj, callback) {
-			ServerSync.invokeUpdate(obj, callback);
+			ServerSync.invokeUpdate(obj, callback, callback);
 		},
 		toString: function() {
 			return "trigger update";
