@@ -677,7 +677,8 @@ if (!Array.prototype.indexOf)
 
 	function _raiseSpecificPropertyChanged(target, args) {
 		var func = target.__propertyChangeHandlers[args.get_propertyName()];
-		func(target);
+		if (func && func instanceof Function)
+			func(target);
 	}
 
 	// Converts observer events from being for ALL properties to a specific one.
