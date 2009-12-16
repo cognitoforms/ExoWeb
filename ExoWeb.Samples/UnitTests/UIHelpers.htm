@@ -17,7 +17,7 @@
 		<script src="../Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
 		<script src="../Scripts/mock-driver.js" type="text/javascript"></script>
 		<script type="text/javascript">
-			var ctx = ExoWeb.context({ driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} });
+			var ctx = ExoWeb.context({ model: { driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} } });
 
 			// reference the immediate parent dataview's data when that dataview is bound to a single object
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////

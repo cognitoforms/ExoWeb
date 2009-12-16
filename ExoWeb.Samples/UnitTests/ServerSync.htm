@@ -21,7 +21,7 @@
 			ExoWeb.Mock.roundtripProviderDelay = 0;
 			ExoWeb.Mock.simulateLazyLoading = false;
 
-			var ctx = ExoWeb.context({ driver: { id: "1", from: "Driver" } });
+			var ctx = ExoWeb.context({ model: { driver: { id: "1", from: "Driver" } } });
 
 			setupTest("test1", { description: "Apply Init with ID Translation", expect: 10 }, function() {
 				var undefined;

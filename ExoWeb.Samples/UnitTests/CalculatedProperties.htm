@@ -31,11 +31,13 @@
 				}
 						
 			var ctx = ExoWeb.context({
-				driver: { id: "1", from: "Driver" },
-				
-				// hack until Employee.All works...
-				e100: { id: "100", from: "Employee" },
-				e101: { id: "101", from: "Employee"},
+				model: {
+					driver: { id: "1", from: "Driver" },
+					
+					// hack until Employee.All works...
+					e100: { id: "100", from: "Employee" },
+					e101: { id: "101", from: "Employee"}
+				}
 			});
 
 			// for some reason explicit initialization and placeholder test (in order) enable asynchronous tests

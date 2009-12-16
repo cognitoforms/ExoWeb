@@ -1095,12 +1095,12 @@
 
 		// start loading the instances first, then load type data concurrently.
 		// this assumes that instances are slower to load than types due to caching
-		for (varName in options) {
+		for (varName in options.model) {
 			state[varName] = { signal: new ExoWeb.Signal("ExoWeb.context." + varName) };
 			allSignals.pending();
 
 			with ({ varName: varName }) {
-				var query = options[varName];
+				var query = options.model[varName];
 				objectProvider(query.from, [query.id], true, false, query.and, null, state[varName].signal.pending(function context$objects$callback(result) {
 					state[varName].objectJson = result.instances;
 				}));
@@ -1108,18 +1108,18 @@
 		}
 
 		// load types
-		for (varName in options) {
-			fetchTypes(model, options[varName], state[varName].signal.pending());
+		for (varName in options.model) {
+			fetchTypes(model, options.model[varName], state[varName].signal.pending());
 		}
 
 		// process instances as they finish loading
-		for (varName in options) {
+		for (varName in options.model) {
 			with ({ varName: varName }) {
 				state[varName].signal.waitForAll(function context$model() {
 
 					// load the json. this may happen asynchronously to increment the signal just in case
 					objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
-						var query = options[varName];
+						var query = options.model[varName];
 						var mtype = model.type(query.from);
 						ret.model[varName] = mtype.get(query.id);
 

@@ -16,8 +16,12 @@
 
 	<script type="text/javascript">
 		var ctx = ExoWeb.context({
-		driver: { id: "1", from: "Driver", and: ["Owner.Location.Address.State", "Cars", "Dealer"] }
-		}, function() {
+			model: {
+				driver: { id: "1", from: "Driver", and: ["Owner.Location.Address.State", "Cars", "Dealer"] }
+			}
+		});
+		
+		ctx.model.ready(function() {
 			console.log("---- DONE -----");
 		});
 		//, "Owner.Location", "Cars", "Dealer",

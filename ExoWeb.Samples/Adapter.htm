@@ -51,7 +51,9 @@
     	});
 
     	var ctx = ExoWeb.context({
-	    	driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"] }
+    		model: {
+	    		driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"] }
+	    	}
     	});
 
     	ctx.model.ready(function() {

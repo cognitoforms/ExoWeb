@@ -41,9 +41,11 @@
 
 		
 			var ctx = ExoWeb.context({
-				driver: { id: "1", from: "Driver" },
-				dealer: { id: "1", from: "Dealer" },
-				usedCar: {id: "200", from: "Car"}
+				model: {
+					driver: { id: "1", from: "Driver" },
+					dealer: { id: "1", from: "Dealer" },
+					usedCar: {id: "200", from: "Car"}
+				}
 			});
 
 			// for some reason explicit initialization and placeholder test (in order) enable asynchronous tests
