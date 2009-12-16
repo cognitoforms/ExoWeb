@@ -45,7 +45,7 @@ namespace ExoWeb
 		internal override void Invoke(HttpResponse response)
 		{
 			// Get the root type of instance being loaded
-			GraphType rootType = GraphContext.Current.GraphTypes[Type];
+			GraphType rootType = (Type != null) ? GraphContext.Current.GraphTypes[Type] : null;
 
 			// Create an array of roots to be loaded
 			GraphInstance[] roots = new GraphInstance[Ids == null ? 0 : Ids.Length];
