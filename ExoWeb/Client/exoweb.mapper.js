@@ -220,6 +220,27 @@
 	ServerSync.mixin(ExoWeb.Functor.eventing);
 	
 	ServerSync.mixin({
+		startAutoUpdate: function ServerSync$startAutoUpdate(interval) {
+			log("sync", "auto-update enabled - interval of {0} milliseconds", [interval]);
+
+			this.stopAutoUpdate();
+
+			var _this = this;
+			function doUpdate() {
+				log("sync", "auto-update starting ({0})", [new Date()]);
+				sync.update(function context$autoUpdateCallback() {
+					log("sync", "auto-update complete ({0})", [new Date()]);
+					_this._timeout = window.setTimeout(doUpdate, interval);
+				});
+			}
+
+			this._timeout = window.setTimeout(doUpdate, interval);
+		},
+		stopAutoUpdate: function ServerSync$stopAutoUpdate() {
+			if (this._timeout)
+				window.clearTimeout(this._timeout);
+		},
+
 		// UPDATE
 		///////////////////////////////////////////////////////////////////////
 		update: function ServerSync$update(success, failed) {
@@ -457,12 +478,13 @@
 
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function TriggerUpdateRule(property) {
+	function TriggerRoundtripRule(property) {
 		var prop = this.prop = property;
 
 		ExoWeb.Model.Rule.register(this, [property], true);
 	}
-	TriggerUpdateRule.prototype = {
+
+	TriggerRoundtripRule.prototype = {
 		execute: function(obj, callback) {
 			ServerSync.invokeUpdate(obj, callback, callback);
 		},
@@ -470,7 +492,14 @@
 			return "trigger update";
 		}
 	}
-	ExoWeb.Model.Rule.triggerUpdate = TriggerUpdateRule;
+
+	ExoWeb.Mapper.TriggerRoundtripRule = ExoWeb.Model.Rule.triggerRoundtrip = TriggerRoundtripRule;
+
+	ExoWeb.Model.Property.mixin({
+		triggersRoundtrip: function() {
+			var rule = new TriggerRoundtripRule(this);
+		}
+	});
 
 	///////////////////////////////////////////////////////////////////////////	
 	function objectsFromJson(model, json, callback) {
@@ -1052,52 +1081,28 @@
 		}
 	})();
 
-	///////////////////////////////////////////////////////////////////////////////
-	// Globals
-	window.$model = function $model(options) {
+	ExoWeb.context = function context(options) {
 		var model = new ExoWeb.Model.Model();
 
-		var allSignals = new ExoWeb.Signal("$model allSignals");
-
-		var sync = new ServerSync(model);
+		var allSignals = new ExoWeb.Signal("ExoWeb.context allSignals");
 
 		var state = {};
 
 		var ret = {
-			meta: model,
-			syncObject: sync,
-			ready: function $model$ready(callback) { allSignals.waitForAll(callback); },
-			startAutoUpdate: function $model$startAutoUpdate(interval) {
-				log("sync", "auto-update enabled - interval of {0} milliseconds", [interval]);
-
-				this.stopAutoUpdate();
-
-				var _this = this;
-				function doUpdate() {
-					log("sync", "auto-update starting ({0})", [new Date()]);
-					sync.update(function $model$autoUpdateCallback() {
-						log("sync", "auto-update complete ({0})", [new Date()]);
-						_this._timeout = window.setTimeout(doUpdate, interval);
-					});
-				}
-
-				this._timeout = window.setTimeout(doUpdate, interval);
-			},
-			stopAutoUpdate: function $model$stopAutoUpdate() {
-				if (this._timeout)
-					window.clearTimeout(this._timeout);
-			}
+			model: { meta: model },
+			server: new ServerSync(model),
+			ready: function context$ready(callback) { allSignals.waitForAll(callback); }
 		};
 
 		// start loading the instances first, then load type data concurrently.
 		// this assumes that instances are slower to load than types due to caching
 		for (varName in options) {
-			state[varName] = { signal: new ExoWeb.Signal("$model." + varName) };
+			state[varName] = { signal: new ExoWeb.Signal("ExoWeb.context." + varName) };
 			allSignals.pending();
 
 			with ({ varName: varName }) {
 				var query = options[varName];
-				objectProvider(query.from, [query.id], true, false, query.and, null, state[varName].signal.pending(function(result) {
+				objectProvider(query.from, [query.id], true, false, query.and, null, state[varName].signal.pending(function context$objects$callback(result) {
 					state[varName].objectJson = result.instances;
 				}));
 			}
@@ -1111,13 +1116,13 @@
 		// process instances as they finish loading
 		for (varName in options) {
 			with ({ varName: varName }) {
-				state[varName].signal.waitForAll(function() {
+				state[varName].signal.waitForAll(function context$model() {
 
 					// load the json. this may happen asynchronously to increment the signal just in case
-					objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function() {
+					objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
 						var query = options[varName];
 						var mtype = model.type(query.from);
-						ret[varName] = mtype.get(query.id);
+						ret.model[varName] = mtype.get(query.id);
 
 						// model object has been successfully loaded!
 						allSignals.oneDone();
@@ -1129,13 +1134,13 @@
 		// setup lazy loading on the container object to control
 		// lazy evaluation.  loading is considered complete at the same point
 		// model.ready() fires
-		ExoWeb.Model.LazyLoader.register(ret, {
-			load: function(obj, propName, callback) {
-				log(["$model", "lazyLoading"], "caller is waiting for $model.ready(), propName={1}", arguments);
+		ExoWeb.Model.LazyLoader.register(ret.model, {
+			load: function context$load(obj, propName, callback) {
+				log(["context", "lazyLoading"], "caller is waiting for ExoWeb.context.ready(), propName={1}", arguments);
 
 				// objects are already loading so just queue up the calls
-				allSignals.waitForAll(function() {
-					log(["$model", "lazyLoading"], "raising $model.ready()");
+				allSignals.waitForAll(function context$load$callback() {
+					log(["context", "lazyLoading"], "raising ExoWeb.context.ready()");
 
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					callback();
