@@ -220,66 +220,67 @@
 	ServerSync.mixin(ExoWeb.Functor.eventing);
 	
 	ServerSync.mixin({
-		startAutoUpdate: function ServerSync$startAutoUpdate(interval) {
-			log("sync", "auto-update enabled - interval of {0} milliseconds", [interval]);
+		startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
+			log("sync", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
 
-			this.stopAutoUpdate();
+			// cancel any pending roundtrip schedule
+			this.stopAutoRoundtrip();
 
 			var _this = this;
-			function doUpdate() {
-				log("sync", "auto-update starting ({0})", [new Date()]);
-				sync.update(function context$autoUpdateCallback() {
-					log("sync", "auto-update complete ({0})", [new Date()]);
-					_this._timeout = window.setTimeout(doUpdate, interval);
+			function doRoundtrip() {
+				log("sync", "auto-roundtrip starting ({0})", [new Date()]);
+				_this.roundtrip(function context$autoRoundtripCallback() {
+					log("sync", "auto-roundtrip complete ({0})", [new Date()]);
+					_this._timeout = window.setTimeout(doRoundtrip, interval);
 				});
 			}
 
-			this._timeout = window.setTimeout(doUpdate, interval);
+			this._timeout = window.setTimeout(doRoundtrip, interval);
 		},
-		stopAutoUpdate: function ServerSync$stopAutoUpdate() {
+		stopAutoRoundtrip: function ServerSync$stopAutoRoundtrip() {
 			if (this._timeout)
 				window.clearTimeout(this._timeout);
 		},
 
-		// UPDATE
+		// Roundtrip
 		///////////////////////////////////////////////////////////////////////
-		update: function ServerSync$update(success, failed) {
-			log("sync", ".update() >> sending {0} changes", [this._changes.length]);
+		roundtrip: function ServerSync$roundtrip(success, failed) {
+			log("sync", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
 			syncProvider(
 				{ changes: this._changes },																// changes
-				this._onUpdateSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),		// success callback
-				this._onUpdateFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
+				this._onRoundtripSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),		// success callback
+				this._onRoundtripFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 			);
 		},
-		_onUpdateSuccess: function ServerSync$_onUpdateSuccess(response, callback) {
+		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(response, callback) {
 			if (response.changes) {
-				log("sync", "._onUpdateSuccess() >> applying {0} changes", [response.changes.length]);
+				log("sync", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [response.changes.length]);
 
 				if (response.changes.length > 0)
 					this.apply(response.changes);
 			}
 			else {
-				log("sync", "._onUpdateSuccess() >> no changes");
+				log("sync", "._onRoundtripSuccess() >> no changes");
 			}
 
-			this._raiseEvent("updateSuccess");
+			this._raiseEvent("roundtripSuccess");
 			
 			if (callback && callback instanceof Function)
 				callback.call(this, response.changes);
 		},
-		addUpdateSuccess: function ServerSync$addUpdateSuccess(handler) {
-			this._addEvent("updateSuccess", handler);
+		addRoundtripSuccess: function ServerSync$addRoundtripSuccess(handler) {
+			this._addEvent("roundtripSuccess", handler);
 		},
-		_onUpdateFailed: function ServerSync$_onUpdateFailed(e, callback) {
-			log("error", "Update Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
+		_onRoundtripFailed: function ServerSync$_onRoundtripFailed(e, callback) {
+			log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 			
-			this._raiseEvent("updateFailed", [e]);
+			this._raiseEvent("roundtripFailed", [e]);
 			
 			if (callback && callback instanceof Function)
 				callback.call(this);
 		},
-		addUpdateFailed: function ServerSync$addUpdateFailed(handler) {
-			this._addEvent("updateFailed", handler);
+		addRoundtripFailed: function ServerSync$addRoundtripFailed(handler) {
+			this._addEvent("roundtripFailed", handler);
 		},
 
 		// COMMIT
@@ -445,14 +446,14 @@
 		}
 	});
 
-	ServerSync.invokeUpdate = function ServerSync$invokeUpdate(context, success, failed) {
+	ServerSync.Roundtrip = function ServerSync$Roundtrip(context, success, failed) {
 		if (context instanceof ExoWeb.Model.ObjectBase) {
 			context = context.meta.type.get_model();
 		}
 
 		if (context instanceof ExoWeb.Model.Model) {
 			if (context._sync)
-				context._sync.update(success, failed);
+				context._sync.roundtrip(success, failed);
 			else
 				// TODO
 				;
@@ -486,10 +487,10 @@
 
 	TriggerRoundtripRule.prototype = {
 		execute: function(obj, callback) {
-			ServerSync.invokeUpdate(obj, callback, callback);
+			ServerSync.Roundtrip(obj, callback, callback);
 		},
 		toString: function() {
-			return "trigger update";
+			return "trigger roundtrip";
 		}
 	}
 
@@ -1089,9 +1090,11 @@
 		var state = {};
 
 		var ret = {
-			model: { meta: model },
-			server: new ServerSync(model),
-			ready: function context$ready(callback) { allSignals.waitForAll(callback); }
+			model: {
+				meta: model,
+				ready: function context$model$ready(callback) { allSignals.waitForAll(callback); }
+			},
+			server: new ServerSync(model)
 		};
 
 		// start loading the instances first, then load type data concurrently.
