@@ -312,7 +312,7 @@
 			);
 		},
 		_onSaveSuccess: function ServerSync$_onSaveSuccess(response, callback) {
-			this._truncateLog();
+			this._truncateLog(this.canSave.setScope(this));
 
 			if (response.changes) {
 				log("server", "._onSaveSuccess() >> applying {0} changes", [response.changes.length]);
@@ -351,8 +351,19 @@
 			if (!this.isApplyingChanges())
 				this._changes.push(change);
 		},
-		_truncateLog: function ServerSync$_truncateLog() {
-			Array.clear(this._changes);
+		_truncateLog: function ServerSync$_truncateLog(func) {
+			if (func && func instanceof Function) {
+				for (var i = 0; i < this._changes.length; i++) {
+					var change = this._changes[i];
+					if (func.call(this, change)) {
+						Array.removeAt(this._changes, i);
+						i--;
+					}
+				}
+			}
+			else {
+				Array.clear(this._changes);
+			}
 		},
 		get_Changes: function ServerSync$get_Changes() {
 			return this._changes;
@@ -398,7 +409,7 @@
 				var idChange = change.idChanges[i];
 
 				var type = this._model.type(idChange.type);
-				type.changeObjectId(idChange.from, idChange.to);
+				type.changeObjectId(idChange.oldId, idChange.newId);
 			}
 		},
 		applyInit: function ServerSync$applyInit(change) {
