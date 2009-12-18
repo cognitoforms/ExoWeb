@@ -29,7 +29,7 @@ namespace ExoWeb
 
 			// Output the requested graph type
 			response.Write("{\r\n   \"types\":\r\n   {\r\n");
-			OutputType(response, GraphContext.Current.GraphTypes[Type]);
+			OutputType(response, GraphContext.Current.GetGraphType(Type));
 			response.Write("\r\n   }\r\n}");
 		}
 

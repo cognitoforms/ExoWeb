@@ -45,7 +45,7 @@ namespace ExoWeb
 		internal override void Invoke(HttpResponse response)
 		{
 			// Get the root type of instance being loaded
-			GraphType rootType = (Type != null) ? GraphContext.Current.GraphTypes[Type] : null;
+			GraphType rootType = (Type != null) ? GraphContext.Current.GetGraphType(Type) : null;
 
 			// Create an array of roots to be loaded
 			GraphInstance[] roots = new GraphInstance[Ids == null ? 0 : Ids.Length];
@@ -294,7 +294,7 @@ namespace ExoWeb
 					throw new ArgumentException("'" + path + "' is not a valid static property path.");
 
 				// Get the graph type
-				GraphType graphType = GraphContext.Current.GraphTypes[steps[0]];
+				GraphType graphType = GraphContext.Current.GetGraphType(steps[0]);
 				if (graphType == null)
 					throw new ArgumentException("'" + steps[0] + "' is not a valid graph type for the static property path of '" + path + "'.");
 

@@ -47,7 +47,7 @@ namespace ExoWeb
 				GraphInstanceSurrogate surrogate = (GraphInstanceSurrogate)obj;
 
 				// Get the actual graph type
-				GraphType type = GraphContext.Current.GraphTypes[surrogate.Type];
+				GraphType type = GraphContext.Current.GetGraphType(surrogate.Type);
 
 				// Create the type instance cache if not initialized
 				Dictionary<string, GraphInstance> typeInstances;
