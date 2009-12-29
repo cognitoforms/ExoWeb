@@ -42,6 +42,7 @@ ExoWeb.trace = {
 	// The following flags can be turned on to see debugging info.
 	// Rather than editing the code below, set them in your application's page
 	flags: {
+	//		all: true,
 	//		signal: true,
 	//		typeInit: true,
 	//		objectInit: true,
@@ -67,11 +68,10 @@ ExoWeb.trace = {
 		if (!(category instanceof Array))
 			category = [category];
 
-		var enable = false;
-		for (var i = 0; i < category.length; ++i) {
+		var enable = !!ExoWeb.trace.flags.all;
+		for (var i = 0; !enable && i < category.length; ++i) {
 			if (ExoWeb.trace.flags[category[i]]) {
 				enable = true;
-				break;
 			}
 		}
 
