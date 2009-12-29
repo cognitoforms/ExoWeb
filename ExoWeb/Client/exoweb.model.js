@@ -656,33 +656,35 @@
 					// re-calculate the list values
 					var newList = options.fn.apply(obj);
 
-					// compare the new list to the old one to see if changes were made
-					var curList = prop.value(obj);
+					LazyLoader.load(newList, null, function() {
+						// compare the new list to the old one to see if changes were made
+						var curList = prop.value(obj);
 
-					if (!curList) {
-						curList = [];
-						prop.init(obj, curList);
-					}
-
-					if (newList.length === curList.length) {
-						var noChanges = true;
-
-						for (var i = 0; i < newList.length; ++i) {
-							if (newList[i] !== curList[i]) {
-								noChanges = false;
-								break;
-							}
+						if (!curList) {
+							curList = [];
+							prop.init(obj, curList);
 						}
 
-						if (noChanges)
-							return;
-					}
+						if (newList.length === curList.length) {
+							var noChanges = true;
 
-					// update the current list so observers will receive the change events
-					curList.beginUpdate();
-					curList.clear();
-					curList.addRange(newList);
-					curList.endUpdate();
+							for (var i = 0; i < newList.length; ++i) {
+								if (newList[i] !== curList[i]) {
+									noChanges = false;
+									break;
+								}
+							}
+
+							if (noChanges)
+								return;
+						}
+
+						// update the current list so observers will receive the change events
+						curList.beginUpdate();
+						curList.clear();
+						curList.addRange(newList);
+						curList.endUpdate();
+					});
 				}
 			else
 				execute = function(obj) {
