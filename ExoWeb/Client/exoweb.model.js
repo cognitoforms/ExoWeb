@@ -4,6 +4,7 @@
 	var undefined;
 
 	var log = ExoWeb.trace.log;
+	var throwAndLog = ExoWeb.trace.throwAndLog;
 
 	var disableConstruction = false;
 
@@ -38,7 +39,7 @@
 			}
 
 			if (!type)
-				throw $format("Invalid property path: {0}", [path]);
+				throwAndLog(["model"], "Invalid property path: {0}", [path]);
 		}
 		else {
 			type = thisType;
@@ -106,7 +107,7 @@
 				format = this.constructor.formats[formatName];
 
 				if (!format)
-					throw $format("Invalid format: {0}", arguments);
+					throwAndLog(["formatting"], "Invalid format: {0}", arguments);
 			} else
 				format = this.constructor.formats.$display || this.constructor.formats.$system;
 
@@ -151,7 +152,7 @@
 		var jstype = window[name];
 
 		if (jstype)
-			throw $format("'{1}' has already been declared", arguments)
+			throwAndLog(["model"], "'{1}' has already been declared", arguments)
 
 		function construct(id) {
 			if (!disableConstruction) {
@@ -238,6 +239,8 @@
 				id = this.newId();
 				obj.meta.isNew = true;
 			}
+			else
+				id = id.toLowerCase();
 
 			obj.meta.id = id;
 			Sys.Observer.makeObservable(obj);
@@ -251,6 +254,9 @@
 			this._model.notifyObjectRegistered(obj);
 		},
 		changeObjectId: function Type$changeObjectId(oldId, newId) {
+			oldId = oldId.toLowerCase();
+			newId = newId.toLowerCase();
+			
 			var obj = this._pool[oldId];
 
 			// TODO: throw exceptions?
@@ -280,6 +286,7 @@
 			delete obj.meta;
 		},
 		get: function Type$get(id) {
+			id = id.toLowerCase();
 			return this._pool[id] || this._legacyPool[id];
 		},
 		// Gets an array of all objects of this type that have been registered.
@@ -372,7 +379,7 @@
 
 		addRule: function Type$addRule(rule, prop) {
 			if (prop.get_containingType() !== this)
-				throw "TODO: implement cross type rules";
+				throwAndLog(["rules"], "TODO: implement cross type rules");
 
 			var propName = prop.get_name();
 			var rules = this._rules[propName];
@@ -532,7 +539,7 @@
 
 		setter: function(obj, val) {
 			if (!this.canSetValue(obj, val))
-				throw $format("Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
+				throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
 
 			var old = obj[this._name];
 
@@ -713,7 +720,7 @@
 		this._properties = properties.length ? properties : [properties];
 
 		if (this._properties.length == 0)
-			throw ("PropertyChain cannot be zero-length.");
+			throwAndLog(["model"], "PropertyChain cannot be zero-length.");
 	}
 
 	PropertyChain.prototype = {
@@ -725,10 +732,10 @@
 		},
 		each: function(obj, callback) {
 			if (!callback || typeof (callback) != "function")
-				throw ("Invalid Parameter: callback function");
+				throwAndLog(["model"], "Invalid Parameter: callback function");
 
 			if (!obj)
-				throw ("Invalid Parameter: source object");
+				throwAndLog(["model"], "Invalid Parameter: source object");
 
 			var target = obj;
 			for (var p = 0; p < this._properties.length; p++) {
@@ -1436,7 +1443,7 @@
 						else if (errorCallback)
 							errorCallback("Property is undefined: " + prop);
 						else
-							throw $format("Cannot complete property evaluation because a property is undefined: {0}", [prop]);
+							throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [prop]);
 					}
 					else if (nextTarget != null)
 						LazyLoader.eval(nextTarget, path, successCallback, errorCallback, []);
@@ -1458,7 +1465,7 @@
 						if (errorCallback)
 							errorCallback("Property is undefined: " + prop)
 						else
-							throw $format("Cannot complete property evaluation because a property is undefined: {0}", [prop]);
+							throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [prop]);
 
 						return;
 					}
@@ -1511,12 +1518,11 @@
 			if (propName && reg.byProp)
 				loader = reg.byProp[propName];
 
-			var loader;
 			if (!loader)
 				loader = reg.allProps;
 
 			if (!loader)
-				throw $format("Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", [obj, propName]);
+				throwAndLog(["lazyLoad"], "Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", [obj, propName]);
 
 			loader.load(obj, propName, callback);
 		}

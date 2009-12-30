@@ -1,5 +1,6 @@
 ﻿; (function() {
 	var log = ExoWeb.trace.log;
+	var throwAndLog = ExoWeb.trace.throwAndLog;
 
 	Type.registerNamespace("ExoWeb.View");
 
@@ -60,35 +61,38 @@
 						});
 					}
 					else {
-						try {
-							var doFormat = function(obj) {
-								if (properties.format && result.constructor.formats && result.constructor.formats[properties.format])
-									return obj.constructor.formats[properties.format].convert(obj);
+						function doFormat(obj) {
+							if (properties.format && result.constructor.formats && result.constructor.formats[properties.format])
+								return obj.constructor.formats[properties.format].convert(obj);
 
-								return obj;
-							}
+							return obj;
+						}
 
-							if (properties.$default) {
-								var props = properties.$default.split(".");
-								var last = props.splice(-1);
-								ExoWeb.Model.LazyLoader.eval(source, props.join("."), function(target) {
-									Sys.Observer.addSpecificPropertyChanged(target, last, function(obj) {
-										Sys.Observer.setValue(component, targetProperty, doFormat(ExoWeb.getValue(target, last)));
-									});
+						if (properties.$default) {
+							var props = properties.$default.split(".");
+							var last = props.splice(-1);
+							ExoWeb.Model.LazyLoader.eval(source, props.join("."), function(target) {
+								Sys.Observer.addSpecificPropertyChanged(target, last, function(obj) {
+									Sys.Observer.setValue(component, targetProperty, doFormat(ExoWeb.getValue(target, last)));
 								});
-							}
+							},
+							function(err) {
+								throwAndLog(["~", "markupExt"], "Couldn't listen for change events on '{0}', {1}", [properties.$default, err]);
+							});
+						}
 
-							result = doFormat(result);
-						}
-						catch (e) {
-							console.log(e);
-						}
+						result = doFormat(result);
 					}
 
-					Sys.Observer.setValue(component, targetProperty, result);
+					try {
+						Sys.Observer.setValue(component, targetProperty, result);
+					}
+					catch (err) {
+						throwAndLog(["~", "markupExt"], "Path '{0}' was evaluated but the '{2}' property on the target could not be set, {1}", [properties.$default, err, targetProperty]);
+					}
 				},
 				function(err) {
-					throw err;
+					throwAndLog(["~", "markupExt"], "Couldn't evaluate path '{0}', {1}", [properties.$default, err]);
 				},
 				scopeChain
 			);
@@ -113,7 +117,11 @@
 
 		// Load the object this adapter is bound to and then load allowed values.
 		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath,
-			this._readySignal.pending(this._loadAllowedValues.setScope(this)));
+			this._readySignal.pending(this._loadAllowedValues.setScope(this)),
+			this._readySignal.orPending(function(err) {
+				throwAndLog(["@", "markupExt"], "Couldn't evaluate path '{0}', {1}", [propertyPath, err]);
+			})
+		);
 
 		// Add arbitrary options so that they are made available in templates.
 		this._extendProperties(options);
@@ -158,7 +166,7 @@
 			// get the property chain for this adapter starting at the source object
 			this._propertyChain = sourceObject.meta.property(this._propertyPath);
 			if (!this._propertyChain)
-				throw ($format("Property \"{p}\" could not be found.", { p: this._propertyPath }));
+				throwAndLog(["@", "markupExt"], "Property \"{p}\" could not be found.", { p: this._propertyPath });
 
 			// if the target is an adapter, prepend it's property chain
 			if (this._target instanceof Adapter)
@@ -171,7 +179,13 @@
 				var targetObj = this._propertyChain.lastTarget(this._target);
 				if (rule && rule.propertyChain()) {
 					var target = rule.propertyChain().get_isStatic() ? window : targetObj;
-					ExoWeb.Model.LazyLoader.eval(target, rule.propertyChain().fullName(), this._readySignal.pending());
+
+					ExoWeb.Model.LazyLoader.eval(target, rule.propertyChain().fullName(),
+						this._readySignal.pending(),
+						this._readySignal.orPending(function(err) {
+							throwAndLog(["@", "markupExt"], "Couldn't evaluate allowed values path '{0}', {1}", [rule.propertyChain().fullName(), err]);
+						})
+					);
 				}
 			}
 		},

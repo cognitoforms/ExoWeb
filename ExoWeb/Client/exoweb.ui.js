@@ -5,6 +5,7 @@ Type.registerNamespace("ExoWeb.UI");
 	var undefined;
 
 	var log = ExoWeb.trace.log;
+	var throwAndLog = ExoWeb.trace.throwAndLog;
 
 	///////////////////////////////////////////////////////////////////////////////
 	Toggle = function(element) {
@@ -105,7 +106,7 @@ Type.registerNamespace("ExoWeb.UI");
 		matches: function(e) {
 			if (this._for === undefined)
 				return true;
-			
+
 			return $(e).is(this._for);
 		},
 
@@ -128,7 +129,7 @@ Type.registerNamespace("ExoWeb.UI");
 						this._ifFn = new Function("$data", "$container", "return " + this._if + ";");
 					}
 					catch (e) {
-						throw ("Statement \"" + this._if + "\" causes the following error: " + e);
+						throwAndLog(["ui", "templates"], "Statement \"" + this._if + "\" causes the following error: " + e);
 					}
 				}
 
@@ -224,9 +225,8 @@ Type.registerNamespace("ExoWeb.UI");
 				var element = this.get_element();
 				this._template = Template.find(element);
 
-				if (!this._template) {
-					throw ("This content region does not match any available templates.");
-				}
+				if (!this._template)
+					throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}", [this._data]);
 			}
 
 			if (!Sys.UI.Template.isInstanceOfType(this._template))
@@ -249,11 +249,11 @@ Type.registerNamespace("ExoWeb.UI");
 		},
 		render: function() {
 			if (this._data && this._initialized) {
-				log(['ui', "content"], "render()");
+				log(['ui', "templates"], "render()");
 
 				var _this = this;
 				externalTemplatesSignal.waitForAll(function() {
-					log(['ui', "content"], "render() proceeding after all templates are loaded");
+					log(['ui', "templates"], "render() proceeding after all templates are loaded");
 					var tmpl = _this.get_template();
 
 					// get custom classes from template

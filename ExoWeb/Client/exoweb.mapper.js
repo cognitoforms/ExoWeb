@@ -5,6 +5,7 @@
 	var STATIC_ID = "static";
 
 	var log = ExoWeb.trace.log;
+	var throwAndLog = ExoWeb.trace.throwAndLog;
 
 	var objectProvider = ExoWeb.Load;
 	ExoWeb.Mapper.setObjectProvider = function(fn) {
@@ -17,8 +18,7 @@
 	}
 
 	var listProvider = function(ownerType, ownerId, propName) {
-		log("error", "NOT IMPLEMENTED: listProvider({0}, {1}, {2})", arguments);
-		throw "Not implemented";
+		throwAndLog(["lazyLoad"], "NOT IMPLEMENTED: listProvider({0}, {1}, {2})", arguments);
 	};
 
 	ExoWeb.Mapper.setListProvider = function(fn) {
@@ -583,7 +583,7 @@
 			log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
 
 			if (!prop) {
-				throw $format("Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
+				throwAndLog(["objectInit"], "Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
 			}
 			else {
 				prop = prop.lastProperty();
@@ -748,7 +748,7 @@
 
 	function getObject(model, propType, id, finalType, forLoading) {
 		if (id === STATIC_ID)
-			throw $format("getObject() can only be called for instances (id='{0}')", [id]);
+			throwAndLog(["objectInit", "lazyLoad"], "getObject() can only be called for instances (id='{0}')", [id]);
 
 		// get model type
 		var mtype = getType(model, finalType, propType);
@@ -1163,11 +1163,11 @@
 		// model.ready() fires
 		ExoWeb.Model.LazyLoader.register(ret, {
 			load: function context$load(obj, propName, callback) {
-				log(["context", "lazyLoading"], "caller is waiting for ExoWeb.context.ready(), propName={1}", arguments);
+				log(["context", "lazyLoad"], "caller is waiting for ExoWeb.context.ready(), propName={1}", arguments);
 
 				// objects are already loading so just queue up the calls
 				allSignals.waitForAll(function context$load$callback() {
-					log(["context", "lazyLoading"], "raising ExoWeb.context.ready()");
+					log(["context", "lazyLoad"], "raising ExoWeb.context.ready()");
 
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					callback();

@@ -182,7 +182,7 @@
 			}
 
 			if (!source)
-				throw $format("Object not found: {0}({1})", [type, id]);
+				ExoWeb.trace.throwAndLog(["mocks"], "Object not found: {0}({1})", [type, id]);
 
 			if (!result[type])
 				result[type] = {};

@@ -57,37 +57,60 @@ ExoWeb.trace = {
 	//		mocks: true,
 	//		server: true,
 	//		ui: true,
-	//		rule: true
-	},
-	log: function log(category, message, args) {
-		if (typeof(console) === "undefined")
-			return;
+	//		templates: true,
+	//		rule: true,
+	//		model: true
+},
+_isEnabled: function _isEnabled(category) {
+	if (ExoWeb.trace.flags.all)
+		return true;
 
-		var catStr;
-
-		if (!(category instanceof Array))
-			category = [category];
-
-		var enable = !!ExoWeb.trace.flags.all;
-		for (var i = 0; !enable && i < category.length; ++i) {
+	if (category instanceof Array) {
+		for (var i = 0; i < category.length; ++i) {
 			if (ExoWeb.trace.flags[category[i]]) {
-				enable = true;
+				return true;
 			}
 		}
-
-		if (!enable)
-			return;
-
-		catStr = category.join(", ");
-		
-		console.log("[" + category + "]: " + $format(message, args));
+		return false;
 	}
-};
+	else {
+		return !!ExoWeb.trace.flags[category];
+	}
+},
+_formatMessage: function _formatMessage(category, message, args) {
+	if (!(category instanceof Array))
+		category = [category];
+	var catStr = category.join(", ");
+	
+	return "[" + catStr + "]: " + $format(message, args);
+},
+log: function log(category, message, args) {
+	if (typeof (console) === "undefined")
+		return;
+		
+	if(ExoWeb.trace._isEnabled(category))
+		console.log(ExoWeb.trace._formatMessage(category, message, args));
+},
+throwAndLog: function throwAndLog(category, message, args) {
+	message = $format(message, args);
+
+	if (!(category instanceof Array))
+		category = [category, "error"];
+	else
+		category.push("error");
+
+	if (typeof (console) !== "undefined")
+		console.error(ExoWeb.trace._formatMessage(category, message));
+	
+	throw message;
+}
+};
 
 (function() {
 	var undefined;
 
 	var log = ExoWeb.trace.log;
+	var throwAndLog = ExoWeb.trace.throwAndLog;
 
 	function Signal(debugLabel) {
 		this._waitForAll = [];
@@ -99,10 +122,15 @@ ExoWeb.trace = {
 	}
 
 	Signal.mixin({
-		pending: function(callback) {
+		pending: function Signal$pending(callback) {
 			this._pending++;
 			log("signal", "(++{_pending}) {_debugLabel}", this);
-
+			return this._genCallback(callback);
+		},
+		orPending: function Signal$orPending(callback) {
+			return this._genCallback(callback);
+		},
+		_genCallback: function Signal$_genCallback(callback) {
 			if (callback) {
 				var _oneDoneFn = this._oneDoneFn;
 				return function() {
@@ -113,7 +141,7 @@ ExoWeb.trace = {
 			else
 				return this._oneDoneFn;
 		},
-		waitForAll: function(callback) {
+		waitForAll: function Signal$waitForAll(callback) {
 			if (!callback)
 				return;
 
@@ -122,7 +150,7 @@ ExoWeb.trace = {
 			} else
 				this._waitForAll.push(callback);
 		},
-		oneDone: function() {
+		oneDone: function Signal$oneDone() {
 			log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
 
 			--this._pending;
@@ -528,7 +556,7 @@ ExoWeb.trace = {
 		if (path.constructor == String)
 			path = path.split(".");
 		else if (!(path instanceof Array))
-			throw ("invalid parameter propertyPath");
+			throwAndLog(["$lastTarget", "core"], "invalid parameter propertyPath");
 
 		for (var i = 0; i < path.length - 1; i++) {
 			if (finalTarget)

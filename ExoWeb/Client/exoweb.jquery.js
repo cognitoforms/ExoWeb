@@ -55,7 +55,7 @@
 		var ruleType = ExoWeb.Model.Rule[ruleName];
 
 		if (!ruleType)
-			throw $format("Unknown rule in selector: " + ruleName);
+			ExoWeb.trace.throwAndLog(["ui", "jquery"], "Unknown rule in selector: " + ruleName);
 
 		return $(obj).rules(ruleType).length > 0;
 	};
