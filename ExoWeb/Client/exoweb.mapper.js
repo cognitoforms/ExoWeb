@@ -774,17 +774,24 @@
 		var signal = new ExoWeb.Signal("fetchType(" + typeName + ")");
 
 		// request the type
-		typeProvider(typeName, signal.pending(function(result) {
+		typeProvider(typeName,
+			signal.pending(function(result) {
 
-			// load type
-			typesFromJson(model, result.types);
+				// load type
+				typesFromJson(model, result.types);
 
-			// ensure base classes are loaded too
-			for (var b = model.type(typeName).baseType; b; b = b.baseType) {
-				if (!ExoWeb.Model.LazyLoader.isLoaded(b))
-					ExoWeb.Model.LazyLoader.load(b, null, signal.pending());
-			}
-		}));
+				// ensure base classes are loaded too
+				for (var b = model.type(typeName).baseType; b; b = b.baseType) {
+					if (!ExoWeb.Model.LazyLoader.isLoaded(b))
+						ExoWeb.Model.LazyLoader.load(b, null, signal.pending());
+				}
+			}),
+			signal.orPending(function(error){
+				ExoWeb.trace.logError("typeInit", 
+					"Failed to load {typeName} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+					{ typeName: typeName, error: error });
+			})
+		);
 
 		// after properties and base class are loaded, then return results
 		signal.waitForAll(function() {
@@ -1129,9 +1136,16 @@
 
 			with ({ varName: varName }) {
 				var query = options.model[varName];
-				objectProvider(query.from, [query.id], true, false, query.and, null, state[varName].signal.pending(function context$objects$callback(result) {
-					state[varName].objectJson = result.instances;
-				}));
+				objectProvider(query.from, [query.id], true, false, query.and, null,
+					state[varName].signal.pending(function context$objects$callback(result) {
+						state[varName].objectJson = result.instances;
+					}),
+					state[varName].signal.orPending(function context$objects$callback(error) {
+						ExoWeb.trace.logError("objectInit", 
+							"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+							{ query: query, error: error });
+					})
+				);
 			}
 		}
 
