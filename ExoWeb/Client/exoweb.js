@@ -91,25 +91,30 @@ log: function log(category, message, args) {
 	if(ExoWeb.trace._isEnabled(category))
 		console.log(ExoWeb.trace._formatMessage(category, message, args));
 },
-throwAndLog: function throwAndLog(category, message, args) {
-	message = $format(message, args);
-
+logError: function logError(category, message, args){
+	if (typeof (console) === "undefined")
+		return;
+		
 	if (!(category instanceof Array))
 		category = [category, "error"];
 	else
 		category.push("error");
 
-	if (typeof (console) !== "undefined")
-		console.error(ExoWeb.trace._formatMessage(category, message));
-	
-	throw message;
+	console.error(ExoWeb.trace._formatMessage(category, message, args));
+},
+throwAndLog: function throwAndLog(category, message, args) {
+	ExoWeb.trace.logError(category, message, args);
+
+	throw $format(message, args);
 }
-};
+
+};
 
 (function() {
 	var undefined;
 
 	var log = ExoWeb.trace.log;
+	var logError = ExoWeb.trace.logError;
 	var throwAndLog = ExoWeb.trace.throwAndLog;
 
 	function Signal(debugLabel) {
@@ -123,6 +128,9 @@ throwAndLog: function throwAndLog(category, message, args) {
 
 	Signal.mixin({
 		pending: function Signal$pending(callback) {
+			if (this._pending == 0)
+				Signal.allPending.push(this);
+		
 			this._pending++;
 			log("signal", "(++{_pending}) {_debugLabel}", this);
 			return this._genCallback(callback);
@@ -130,12 +138,21 @@ throwAndLog: function throwAndLog(category, message, args) {
 		orPending: function Signal$orPending(callback) {
 			return this._genCallback(callback);
 		},
+		_doCallback: function Signal$_doCallback(name, thisPtr, callback, args) {
+			try {
+				callback.apply(thisPtr, args);
+			}
+			catch (e) {
+				logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
+			}
+		},
 		_genCallback: function Signal$_genCallback(callback) {
 			if (callback) {
-				var _oneDoneFn = this._oneDoneFn;
-				return function() {
-					callback.apply(this, arguments);
-					_oneDoneFn.apply(this, arguments);
+				with ({ signal: this }) {
+					return function() {
+						signal._doCallback("pending", this, callback, arguments);
+						signal.oneDone();
+					}
 				}
 			}
 			else
@@ -145,9 +162,9 @@ throwAndLog: function throwAndLog(category, message, args) {
 			if (!callback)
 				return;
 
-			if (this._pending == 0) {
-				callback();
-			} else
+			if (this._pending == 0)
+				this._doCallback("waitForAll", this, callback);
+			else
 				this._waitForAll.push(callback);
 		},
 		oneDone: function Signal$oneDone() {
@@ -155,10 +172,15 @@ throwAndLog: function throwAndLog(category, message, args) {
 
 			--this._pending;
 
+			if (this._pending == 0)
+				Array.remove(Signal.allPending, this);
+
 			while (this._pending == 0 && this._waitForAll.length > 0)
-				Array.dequeue(this._waitForAll).apply(this, arguments);
+				this._doCallback("waitForAll", this, Array.dequeue(this._waitForAll));
 		}
 	});
+
+	Signal.allPending = [];
 
 	ExoWeb.Signal = Signal;
 
@@ -592,7 +614,7 @@ throwAndLog: function throwAndLog(category, message, args) {
 		if (!values)
 			return str;
 
-		return str.replace(/{([a-z0-9_]+)}/ig, function(match, expr) {
+		return str.replace(/{([a-z0-9_.]+)}/ig, function(match, expr) {
 			return evalPath(values, expr, "", match).toString();
 		});
 	}
@@ -678,30 +700,6 @@ if (!Array.prototype.indexOf)
 (function() {
 	//////////////////////////////////////////////////////////////////////////////////////
 	// MS Ajax extensions
-
-	if (Sys.Binding) {
-
-		// Get's a DOM element's bindings
-		Sys.Binding.getElementBindings = function(el) {
-			return el.__msajaxbindings || [];
-		};
-
-		// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
-		Sys.Binding.mixin({
-			get_finalSourceObject: function() {
-				var src = this.get_source();
-
-				for (var i = 0; i < this._pathArray.length - 1; ++i)
-					src = src[this._pathArray[i]];
-
-				return src;
-			},
-			get_finalPath: function() {
-				return this._pathArray[this._pathArray.length - 1];
-			}
-		});
-
-	}
 
 	function _raiseSpecificPropertyChanged(target, args) {
 		var func = target.__propertyChangeHandlers[args.get_propertyName()];
