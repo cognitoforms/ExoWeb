@@ -99,6 +99,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Client\exoweb.view.js" />
+    <Content Include="Client\start.debug.js" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
