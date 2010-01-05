@@ -1,16 +1,6 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.Web;
-using System.Web.Services;
-using System.IO;
-using System.Runtime.Serialization;
-using System.ServiceModel.Dispatcher;
-using ExoGraph;
-using System.Collections.Specialized;
-using System.Xml;
-using System.Runtime.Serialization.Json;
-using System.Text;
 
 namespace ExoWeb
 {
@@ -113,6 +103,11 @@ namespace ExoWeb
 					Sys.Net.WebServiceProxy.invoke('ExoWeb.axd', 'Save', false, { root: root, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 				}
 
+				// Define the ExoWeb.RaiseEvent method
+				ExoWeb.RaiseEvent = function(eventType, instance, event, changes, onSuccess, onFailure)
+				{
+					Sys.Net.WebServiceProxy.invoke('ExoWeb.axd', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+				}
 			");
 
 		}

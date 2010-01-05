@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.IO;
 using System.Runtime.Serialization;
-using System.Xml;
 using System.Runtime.Serialization.Json;
 using System.ServiceModel.Dispatcher;
-using System.IO;
+using System.Text;
 using System.Web;
-using ExoGraph;
+using System.Xml;
 
 namespace ExoWeb
 {
@@ -116,8 +114,19 @@ namespace ExoWeb
 					request = reader.ReadToEnd();
 			}
 
+			Type method;
+
+			// Get the type of the registered event
+			if (context.Request.PathInfo.StartsWith("/RaiseEvent"))
+			{
+				string eventTypeName = context.Request.PathInfo.Substring(context.Request.PathInfo.LastIndexOf("/") + 1);
+				Type eventType = ServiceHandler.GetEvent(eventTypeName);
+				method = typeof(RaiseEventMethod<>).MakeGenericType(eventType);
+			}
+
 			// Determine the service method being called
-			Type method = Type.GetType("ExoWeb." + context.Request.PathInfo.Substring(1) + "Method");
+			else
+				method = Type.GetType("ExoWeb." + context.Request.PathInfo.Substring(1) + "Method");
 
 			// Set the content type to application/json
 			if (context.Request.QueryString["Debug"] == "true")
