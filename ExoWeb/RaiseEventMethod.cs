@@ -37,9 +37,7 @@ namespace ExoWeb
 			});
 
 			// Serialize the event
-			response.Write("{\r\n   \"result\": {\r\n");
-			response.Write(ToJson(typeof(TEvent), Event));
-			response.Write("   \r\n}");
+			response.Write("{\r\n   \"result\": " + ToJson(typeof(TEvent), Event));
 
 			// Output the transaction log if changes occurred
 			if (newChanges != null && newChanges.FirstOrDefault() != null)
