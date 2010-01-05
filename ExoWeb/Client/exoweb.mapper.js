@@ -40,6 +40,11 @@
 			saveProvider = fn;
 		}
 
+		var eventProvider = ExoWeb.RaiseEvent;
+		ExoWeb.Mapper.setEventProvider = function(fn) {
+			eventProvider = fn;
+		}
+
 		Date.formats.$exograph = Date.formats.ShortDate;
 
 		ExoWeb.Model.Entity.formats.$exograph = new ExoWeb.Model.Format({
@@ -262,6 +267,50 @@
 				return true;
 			},
 
+			// Raise Event
+			///////////////////////////////////////////////////////////////////////
+			raiseEvent: function ServerSync$raiseEvent(name, obj, event, success, failed) {
+				log("server", "ServerSync.raiseEvent() >> {0}", [name]);
+				eventProvider(
+					name,																					// event name
+					ExoWeb.Model.Entity.formats.$exograph.convert(obj),										// instance
+					event,																					// custom event object
+					{ changes: this._changes },																// changes
+					this._onRaiseEventSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
+					this._onRoundtripFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
+				);
+			},
+			_onRaiseEventSuccess: function ServerSync$_onRaiseEventSuccess(response, callback) {
+				if (response.changes) {
+					log("server", "ServerSync._onRaiseEventSuccess() >> applying {0} changes", [response.changes.length]);
+
+					if (response.changes.length > 0)
+						this.apply(response.changes);
+				}
+				else {
+					log("server", "._onRaiseEventSuccess() >> no changes");
+				}
+
+				this._raiseEvent("raiseEventSuccess");
+				
+				if (callback && callback instanceof Function)
+					callback.call(this, response.result);
+			},
+			addRaiseEventSuccess: function ServerSync$addRaiseEventSuccess(handler) {
+				this._addEvent("raiseEventSuccess", handler);
+			},
+			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(e, callback) {
+				log("error", "Raise Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
+				
+				this._raiseEvent("raiseEventFailed", [e]);
+				
+				if (callback && callback instanceof Function)
+					callback.call(this);
+			},
+			addRaiseEventFailed: function ServerSync$addRaiseEventFailed(handler) {
+				this._addEvent("raiseEventFailed", handler);
+			},
+			
 			// Roundtrip
 			///////////////////////////////////////////////////////////////////////
 			roundtrip: function ServerSync$roundtrip(success, failed) {
