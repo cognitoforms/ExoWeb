@@ -182,10 +182,10 @@
 					if (rule && rule.propertyChain()) {
 						var target = rule.propertyChain().get_isStatic() ? window : targetObj;
 	
-						ExoWeb.Model.LazyLoader.eval(target, rule.propertyChain().fullName(),
+						ExoWeb.Model.LazyLoader.eval(target, rule.propertyChain().get_path(),
 							this._readySignal.pending(),
 							this._readySignal.orPending(function(err) {
-								throwAndLog(["@", "markupExt"], "Couldn't evaluate allowed values path '{0}', {1}", [rule.propertyChain().fullName(), err]);
+								throwAndLog(["@", "markupExt"], "Couldn't evaluate allowed values path '{0}', {1}", [rule.propertyChain().get_path(), err]);
 							})
 						);
 					}

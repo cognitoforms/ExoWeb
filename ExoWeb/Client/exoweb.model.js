@@ -68,8 +68,9 @@
 					type = thisType;
 
 				Array.dequeue(part);
-				return type.property(part.join("."));
 			}
+			
+			return type.property(part.join("."));
 		}
 
 		Model.prototype = {
@@ -532,7 +533,7 @@
 			rule: function Property$rule(type) {
 				if (this._rules) {
 					for (var i = 0; i < this._rules.length; i++) {
-						var rule = rules[i];
+						var rule = this._rules[i];
 						if (rule instanceof type)
 							return rule;
 					}
