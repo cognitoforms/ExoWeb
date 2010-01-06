@@ -6,7 +6,7 @@
 
 		var evalAffectsScope = false;
 		eval("evalAffectsScope = true;");
-		
+
 		var undefined;
 
 		var log = ExoWeb.trace.log;
@@ -18,15 +18,29 @@
 		function Model() {
 			this._types = {};
 
+			this._validatingQueue = new EventQueue(
+						function(e) {
+							var meta = e.sender;							
+							var issues = meta._propertyIssues[e.propName];
+							meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName])
+						},
+						function(a, b) {
+							return a.sender == b.sender && a.propName == b.propName;
+						}
+					);
+
 			this._validatedQueue = new EventQueue(
 						function(e) {
-							e.sender._raisePropertyValidated(e.property);
+							var meta = e.sender;
+							var propName = e.property;
+							
+							var issues = meta._propertyIssues[propName];
+							meta._raiseEvent("propertyValidated:" + propName, [meta, issues ? issues : []])
 						},
 						function(a, b) {
 							return a.sender == b.sender && a.property == b.property;
 						}
 					);
-
 		}
 
 		Model.property = function(path, thisType) {
@@ -48,19 +62,27 @@
 					throwAndLog(["model"], "Invalid property path: {0}", [path]);
 			}
 			else {
-				type = thisType;
-				Array.dequeue(part);  // remove this reference			
-			}
+				if (thisType instanceof Function)
+					type = thisType.meta;
+				else
+					type = thisType;
 
-			return type.property(part.join("."));
+				Array.dequeue(part);
+				return type.property(part.join("."));
+			}
 		}
 
 		Model.prototype = {
 			addType: function Model$addType(name, base) {
 				return this._types[name] = new Type(this, name, base);
 			},
-			get_validatedQueue: function() {
-				return this._validatedQueue;
+			beginValidation: function Model$beginValidation() {
+				this._validatingQueue.startQueueing();
+				this._validatedQueue.startQueueing();
+			},
+			endValidation: function Model$endValidation() {
+				this._validatingQueue.stopQueueing();
+				this._validatedQueue.stopQueueing();
 			},
 			type: function(name) {
 				return this._types[name];
@@ -70,12 +92,6 @@
 			},
 			notifyAfterPropertySet: function(obj, property, newVal, oldVal) {
 				this._raiseEvent("afterPropertySet", [obj, property, newVal, oldVal]);
-			},
-			addBeforePropertyGet: function(func) {
-				this._addEvent("beforePropertySet", func);
-			},
-			notifyBeforePropertyGet: function(obj, property) {
-				this._raiseEvent("beforePropertySet", [obj, property]);
 			},
 			addObjectRegistered: function(func) {
 				this._addEvent("objectRegistered", func);
@@ -195,7 +211,7 @@
 			else {
 				jstype = construct;
 			}
-			
+
 			this._jstype = window[name] = jstype;
 
 			// setup inheritance
@@ -207,7 +223,12 @@
 
 				this.baseType = baseType;
 				baseType.derivedTypes.push(this);
-			} else {
+
+				// inherit all shortcut properties that have aleady been defined
+				for (var propName in baseType._properties)
+					jstype["$" + propName] = baseType._properties[propName];
+			}
+			else {
 				baseJsType = Entity;
 				this.baseType = null;
 			}
@@ -261,7 +282,7 @@
 			changeObjectId: function Type$changeObjectId(oldId, newId) {
 				oldId = oldId.toLowerCase();
 				newId = newId.toLowerCase();
-				
+
 				var obj = this._pool[oldId];
 
 				// TODO: throw exceptions?
@@ -311,20 +332,35 @@
 
 				return list;
 			},
-			addProperty: function(propName, jstype, isList, label, format, isStatic) {
-				var prop = new Property(this, propName, jstype, isList, label, format, isStatic);
+			addProperty: function(def) {
+				var format = def.format;
+				if (format && format.constructor === String) {
+					format = def.type.formats[format];
 
-				this._properties[propName] = prop;
+					if (!format)
+						throwAndLog("model", "Cannot create property {0}.{1} because there is not a '{2}' format defined for {3}", [this._fullName, def.name, def.format, def.type]);
+				}
+
+				var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic);
+
+				this._properties[def.name] = prop;
 
 				// modify jstype to include functionality based on the type definition
-				this._jstype["$" + propName] = prop;
+				function genPropertyShortcut(mtype) {
+					mtype._jstype["$" + def.name] = prop;
+
+					mtype.derivedTypes.forEach(function(t) {
+						genPropertyShortcut(t);
+					});
+				}
+				genPropertyShortcut(this);
 
 				// add members to all instances of this type
 				//this._jstype.prototype["$" + propName] = prop;  // is this useful?
-				this._jstype.prototype["get_" + propName] = this._makeGetter(prop, prop.getter);
+				this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop.getter);
 
 				if (!prop.get_isList())
-					this._jstype.prototype["set_" + propName] = this._makeSetter(prop, prop.setter, true);
+					this._jstype.prototype["set_" + def.name] = this._makeSetter(prop, prop.setter, true);
 
 				return prop;
 			},
@@ -381,120 +417,96 @@
 
 				return prop;
 			},
-
-			addRule: function Type$addRule(rule, prop) {
-				if (prop.get_containingType() !== this)
-					throwAndLog(["rules"], "TODO: implement cross type rules");
-
-				var propName = prop.get_name();
-				var rules = this._rules[propName];
-
-				if (!rules) {
-					this._rules[propName] = [rule];
+			addRule: function Type$addRule(rule) {
+				function Type$addRule$init(obj, prop) {
+					Type$addRule$fn(obj, prop, rule.init ? rule.init : rule.execute);
 				}
-				else
-					rules.push(rule);
-			},
-			getRule: function Type$getRule(propName, type) {
-				var rules = this._rules[propName];
+				function Type$addRule$execute(obj, prop) {
+					Type$addRule$fn(obj, prop, rule.execute);
+				}
 
-				if (rules) {
-					for (var i = 0; i < rules.length; i++) {
-						var rule = rules[i];
-						if (rule instanceof type)
-							return rule;
+				function Type$addRule$fn(obj, prop, fn) {
+					if (rule._isExecuting)
+						return;
+
+					try {
+						prop.get_containingType().get_model().beginValidation();
+						rule._isExecuting = true;
+						log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+						fn.call(rule, obj);
+					}
+					catch (err) {
+						throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
+					}
+					finally {
+						rule._isExecuting = false;
+						prop.get_containingType().get_model().endValidation();
 					}
 				}
-				return this.baseType ? this.baseType.getRule(propName, type) : null;
-			},
-			getPropertyRules: function Type$getPropertyRules(propName /*, result */) {
-				var result = arguments[1] || [];
 
-				var rules = this._rules[propName];
+				for (var i = 0; i < rule.inputs.length; ++i) {
+					var input = rule.inputs[i];
+					var prop = input.property;
 
-				if (rules) {
-					for (var i = 0; i < rules.length; i++)
-						result.push(rules[i]);
+					if(input.get_dependsOnChange())
+						prop.addChanged(Type$addRule$execute);
+
+					if(input.get_dependsOnInit())
+						prop.addInited(Type$addRule$init);
+					
+					(prop instanceof PropertyChain ? prop.lastProperty() : prop)._addRule(rule);
 				}
-
-				if (this.baseType)
-					this.baseType.getPropertyRules(propName, result);
-
-				return result;
 			},
-			//		constraint: function(condition, issueDesc) {
-			//			var type = this;
-			//			var issueProps = [];
-
-			//			// update description and discover the properties the issue should be bound to
-			//			issueDesc = issueDesc.replace(/\$([a-z0-9_]+)/ig,
-			//						function(s, propName) {
-			//							var prop = type.property(propName);
-
-			//							if ($.inArray(prop.lastProperty(), issueProps) < 0)
-			//								issueProps.push(prop.lastProperty());
-
-			//							return prop.get_label();
-			//						}
-			//					);
-
-			//			var inputProps = Rule.inferInputs(this, condition);
-
-			//			var err = new RuleIssue(issueDesc, issueProps);
-
-			//			type.rule(
-			//						inputProps,
-			//						function(obj) {
-			//							obj.meta.issueIf(err, !condition.apply(obj));
-			//						},
-			//						false,
-			//						[err]);
-
-			//			return this;
-			//		},
-
 			// Executes all rules that have a particular property as input
 			executeRules: function Type$executeRules(obj, prop, start) {
-				var i = (start ? start : 0);
+
 				var processing;
+				
+				if(start === undefined)
+					this._model.beginValidation();
+				
+				try {
+					var i = (start ? start : 0);
 
-				var rules = this.getPropertyRules(prop);
+					var rules = prop.get_rules();
+					if (rules) {
+						while (processing = (i < rules.length)) {
+							var rule = rules[i];
+							if (!rule._isExecuting) {
+								rule._isExecuting = true;
 
-				if (rules) {
-					while (processing = (i < rules.length)) {
-						var rule = rules[i];
-						if (!rule._isExecuting) {
-							rule._isExecuting = true;
-
-							if (rule.isAsync) {
-								// run rule asynchronously, and then pickup running next rules afterwards
-								var _this = this;
-								log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-								rule.execute(obj, function(obj) {
-									rule._isExecuting = false;
-									_this.executeRules(obj, prop, i + 1);
-								});
-								break;
-							}
-							else {
-								try {
+								if (rule.isAsync) {
+									// run rule asynchronously, and then pickup running next rules afterwards
+									var _this = this;
 									log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-									rule.execute(obj);
+									rule.execute(obj, function(obj) {
+										rule._isExecuting = false;
+										_this.executeRules(obj, prop, i + 1);
+									});
+									break;
 								}
-								finally {
-									rule._isExecuting = false;
+								else {
+									try {
+										log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+										rule.execute(obj);
+									}
+									finally {
+										rule._isExecuting = false;
+									}
 								}
 							}
-						}
 
-						++i;
+							++i;
+						}
 					}
 				}
-
-				if (!processing)
-					this._model.get_validatedQueue().raise();
+				finally {
+					if (!processing)
+						this._model.endValidation();
+				}
 			}
 		}
+		Type.mixin(ExoWeb.Functor.eventing);
 		ExoWeb.Model.Type = Type;
 		Type.registerClass("ExoWeb.Model.Type");
 
@@ -517,14 +529,28 @@
 		}
 
 		Property.mixin({
-			rule: function(type) {
-				return this._containingType.getRule(this._name, type);
+			rule: function Property$rule(type) {
+				if (this._rules) {
+					for (var i = 0; i < this._rules.length; i++) {
+						var rule = rules[i];
+						if (rule instanceof type)
+							return rule;
+					}
+				}
+				return null;
 			},
-
+			_addRule: function Property$_addRule(type) {
+				if (!this._rules)
+					this._rules = [type];
+				else
+					this._rules.push(type);
+			},
+			get_rules: function Property$get_rules() {
+				return this._rules;
+			},
 			toString: function() {
 				return this.get_label();
 			},
-
 			get_containingType: function() {
 				return this._containingType;
 			},
@@ -538,7 +564,6 @@
 			},
 
 			getter: function(obj) {
-				this._containingType.get_model().notifyBeforePropertyGet(obj, this);
 				return obj[this._name];
 			},
 
@@ -550,8 +575,9 @@
 
 				if (old !== val) {
 					obj[this._name] = val;
+					
+					this._raiseEvent("changed", [obj, this]);
 					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
-					obj.meta.executeRules(this._name);
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
 			},
@@ -583,9 +609,8 @@
 			get_name: function() {
 				return this._name;
 			},
-
-			get_uniqueName: function() {
-				return this._containingType.get_fullName() + "$" + this._name;
+			get_path: function() {
+				return this._isStatic ? (this._containingType.get_fullName() + "." + this._name) : this._name;
 			},
 			canSetValue: function Property$canSetValue(obj, val) {
 				// only allow values of the correct data type to be set in the model
@@ -639,78 +664,155 @@
 
 					Sys.Observer.makeObservable(val);
 					Sys.Observer.addCollectionChanged(val, function(sender, args) {
-						obj.meta.executeRules(prop._name);
+						prop._raiseEvent("changed", [target, prop]);
 						prop._containingType.get_model().notifyListChanged(target, prop, args.get_changes());
 					});
 				}
-			},
 
-			calculated: function(options) {
+				this._raiseEvent("inited", [target, this]);
+			},
+			isInited: function Property$isInited(obj) {
+				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
+				var curVal = target[this._name];
+
+				return curVal !== undefined;
+			},
+			// starts listening for when property.init() is called. Use obj argument to
+			// optionally filter the events to a specific object
+			addInited: function Property$addInited(handler, obj) {
+				var f;
+
+				if (obj)
+					f = function(target, property) {
+						if (obj === target)
+							handler(target, property);
+					}
+				else
+					f = handler;
+
+				this._addEvent("inited", f);
+			},
+			// starts listening for change events on the property. Use obj argument to
+			// optionally filter the events to a specific object
+			addChanged: function Property$addChanged(handler, obj) {
+				var f;
+
+				if (obj)
+					f = function(target, property) {
+						if (obj === target)
+							handler(target, property);
+					}
+				else
+					f = handler;
+
+				this._addEvent("changed", f);
+			},
+			// Adds a rule to the property that will update its value
+			// based on a calculation.
+			calculated: function Property$calculated(options) {
 				var prop = this;
 
 				prop._isCalculated = true;
 
-				var inputs;
+				var rootType;
+				if (options.rootType)
+					rootType = options.rootType.meta;
+				else
+					rootType = prop._containingType;
 
+				var inputs;
 				if (options.basedOn) {
-					var type = prop._containingType;
-					inputs = options.basedOn.map(function(propName) {
-						return Model.property(propName, type);
+					inputs = options.basedOn.map(function(p) {
+						if (p instanceof Property)
+							return new RuleInput(p);
+
+						var input;
+						var parts = p.split(" of ");
+						if(parts.length >= 2) {
+							input = new RuleInput(Model.property(parts[1], rootType));
+							var events = parts[0].split(",");
+							
+							input.set_dependsOnInit(events.indexOf("init") >= 0);
+							input.set_dependsOnChange(events.indexOf("change") >= 0);
+						}
+						else {
+							input = new RuleInput(Model.property(parts[0], rootType));
+							input.set_dependsOnInit(true);
+						}
+
+						if (!input.property)
+							throwAndLog("model", "Calculated property {0}.{1} is based on an invalid property: {2}", [rootType.get_fullName(), prop._name, p]);
+
+						return input;
 					});
 				}
-				else
-					inputs = ModelRule.inferInputs(this._containingType, options.fn);
+				else {
+					inputs = Rule.inferInputs(rootType, options.fn);
+					inputs.forEach(function(input) {
+						input.set_dependsOnInit(true);
+					});
+				}
 
-				var execute;
+				var rule = {
+					init: function Property$calculated$init(obj, property) {
+						if (!prop.isInited(obj) && inputs.every(function(input) { return input.property.isInited(obj); })) {
+							// init the calculated property
+							prop.init(obj, options.fn.apply(obj));
+						}
+					},
+					execute: function Property$calculated$recalc(obj) {
+						if (prop._isList) {
+							calc = function Property$calculated$calcList(obj) {
+								// re-calculate the list values
+								var newList = options.fn.apply(obj);
 
-				if (this._isList)
-					execute = function(obj) {
-						// re-calculate the list values
-						var newList = options.fn.apply(obj);
+								LazyLoader.load(newList, null, function() {
+									// compare the new list to the old one to see if changes were made
+									var curList = prop.value(obj);
 
-						LazyLoader.load(newList, null, function() {
-							// compare the new list to the old one to see if changes were made
-							var curList = prop.value(obj);
-
-							if (!curList) {
-								curList = [];
-								prop.init(obj, curList);
-							}
-
-							if (newList.length === curList.length) {
-								var noChanges = true;
-
-								for (var i = 0; i < newList.length; ++i) {
-									if (newList[i] !== curList[i]) {
-										noChanges = false;
-										break;
+									if (!curList) {
+										curList = [];
+										prop.init(obj, curList);
 									}
-								}
 
-								if (noChanges)
-									return;
+									if (newList.length === curList.length) {
+										var noChanges = true;
+
+										for (var i = 0; i < newList.length; ++i) {
+											if (newList[i] !== curList[i]) {
+												noChanges = false;
+												break;
+											}
+										}
+
+										if (noChanges)
+											return;
+									}
+
+									// update the current list so observers will receive the change events
+									curList.beginUpdate();
+									curList.clear();
+									curList.addRange(newList);
+									curList.endUpdate();
+								});
 							}
+						}
+						else {
+							Sys.Observer.setValue(obj, prop._name, options.fn.apply(obj));
+						}
+					},
+					toString: function() { return "calculation of " + prop._name; }
+				};
 
-							// update the current list so observers will receive the change events
-							curList.beginUpdate();
-							curList.clear();
-							curList.addRange(newList);
-							curList.endUpdate();
-						});
-					}
-				else
-					execute = function(obj) {
-						Sys.Observer.setValue(obj, prop._name, options.fn.apply(obj));
-					}
+				Rule.register(rule, inputs);
 
-				Rule.register({ execute: execute, toString: function() { return "calculation of " + prop._name; } }, inputs);
-
-				// go ahead and calculate this property for all objects
-				Array.forEach(this._containingType.known(), execute);
+				// go ahead and calculate this property for all known objects
+				//Array.forEach(this._containingType.known(), calc);
 
 				return this;
 			}
 		});
+		Property.mixin(ExoWeb.Functor.eventing);
 		ExoWeb.Model.Property = Property;
 		Property.registerClass("ExoWeb.Model.Property");
 
@@ -735,26 +837,60 @@
 			append: function(prop) {
 				Array.addRange(this._properties, prop.all());
 			},
-			each: function(obj, callback) {
+			// Iterates over all objects along a property chain starting with the root object (obj).
+			// An optional propFilter can be specified to only iterate over objects on one property
+			// within the chain.
+			each: function(obj, callback, propFilter /*, target, p*/) {
 				if (!callback || typeof (callback) != "function")
 					throwAndLog(["model"], "Invalid Parameter: callback function");
 
 				if (!obj)
 					throwAndLog(["model"], "Invalid Parameter: source object");
 
-				var target = obj;
-				for (var p = 0; p < this._properties.length; p++) {
+				var target = arguments[3] || obj;
+				var lastProp = null;
+				for (var p = arguments[4] || 0; p < this._properties.length && (!propFilter || lastProp !== propFilter); p++) {
 					var prop = this._properties[p];
-					callback(target, prop);
+					var enableCallback = (!propFilter || prop === propFilter);
+
+					if (target instanceof Array) {
+						for (var i = 0; i < target.length; ++i) {
+							if (enableCallback) {
+								if (callback(target[i], prop) === false)
+									return false;
+							}
+
+							if (this.each(obj, callback, propFilter, prop.value(target[i]), p + 1) === false)
+								return false;
+						}
+					}
+					else if (enableCallback) {
+						if (callback(target, prop) === false) {
+							return false;
+						}
+					}
+
 					target = prop.value(target);
+					lastProp = prop;
 				}
+
+				return true;
 			},
-			fullName: function() {
-				var name = "";
-				Array.forEach(this._properties, function(prop) {
-					name += (name.length > 0 ? "." : (prop.get_isStatic() ? prop.get_containingType().get_fullName() + "." : "")) + prop.get_name();
-				});
-				return name;
+			get_path: function PropertyChain$get_path() {
+				if (!this._path) {
+					var parts = [];
+					if (this._properties[0].get_isStatic())
+						parts.push(this._properties[0].get_containingType().get_fullName());
+
+					this._properties.forEach(function(p) { parts.push(p.get_name()); })
+
+					this._path = parts.join(".");
+				}
+
+				return this._path;
+			},
+			firstProperty: function() {
+				return this._properties[0];
 			},
 			lastProperty: function() {
 				return this._properties[this._properties.length - 1];
@@ -772,14 +908,99 @@
 					Array.insert(this._properties, 0, newProps[p]);
 				}
 			},
-			canSetValue: function canSetValue(obj, value) {
+			canSetValue: function PropertyChain$canSetValue(obj, value) {
 				return this.lastProperty().canSetValue(this.lastTarget(obj), value);
 			},
+			// Determines if this property chain connects two objects.
+			// viaProperty is optional but will speed up the search.
+			connects: function PropertyChain$connects(fromRoot, toObj, viaProperty) {
+				var connected = false;
 
+				this.each(fromRoot, function(target) {
+					if (target === toObj) {
+						connected = true;
+						return false;
+					}
+				}, viaProperty);
+
+				return connected;
+			},
+			// Listens for when property.init() is called on all properties in the chain. Use obj argument to
+			// optionally filter the events to a specific object
+			addInited: function PropertyChain$addInited(handler, obj) {
+				var chain = this;
+
+				if (this._properties.length == 1) {
+					// OPTIMIZATION: no need to search all known objects for single property chains
+					this._properties[0].addInited(function PropertyChain$_raiseInited$1Prop(sender, property) {
+						handler(sender, chain);
+					}, obj);
+				}
+				else {
+					for (var p = 0; p < this._properties.length; p++) {
+						with ({ priorProp: p == 0 ? undefined : this._properties[p - 1] }) {
+							if (obj) {
+								// CASE: using object filter
+								this._properties[p].addInited(function PropertyChain$_raiseInited$1Obj(sender, property) {
+									if (chain.isInited(obj))
+										handler(obj, chain);
+								}, obj);
+							}
+							else {
+								// CASE: no object filter
+								this._properties[p].addInited(function PropertyChain$_raiseInited$Multi(sender, property) {
+									// scan all known objects of this type and raise event for any instance connected
+									// to the one that sent the event.
+									Array.forEach(chain.firstProperty().get_containingType().known(), function(known) {
+										if (chain.connects(known, sender, priorProp) && chain.isInited(known))
+											handler(known, chain);
+									});
+								});
+							}
+						}
+					}
+				}
+			},
+			// starts listening for change events along the property chain on any known instances. Use obj argument to
+			// optionally filter the events to a specific object
+			addChanged: function PropertyChain$addChanged(handler, obj) {
+				var chain = this;
+
+				if (this._properties.length == 1) {
+					// OPTIMIZATION: no need to search all known objects for single property chains
+					this._properties[0].addChanged(function PropertyChain$_raiseChanged$1Prop(sender, property) {
+						handler(sender, chain);
+					}, obj);
+				}
+				else {
+					for (var p = 0; p < this._properties.length; p++) {
+						with ({ priorProp: p == 0 ? undefined : this._properties[p - 1] }) {
+							if (obj) {
+								// CASE: using object filter
+								this._properties[p].addChanged(function PropertyChain$_raiseChanged$1Obj(sender, property) {
+									if (chain.connects(obj, sender, priorProp))
+										handler(obj, chain);
+								});
+							}
+							else {
+								// CASE: no object filter
+								this._properties[p].addChanged(function PropertyChain$_raiseChanged$Multi(sender, property) {
+									// scan all known objects of this type and raise event for any instance connected
+									// to the one that sent the event.
+									Array.forEach(chain.firstProperty().get_containingType().known(), function(known) {
+										if (chain.connects(known, sender, priorProp))
+											handler(known, chain);
+									});
+								});
+							}
+						}
+					}
+				}
+			},
 			// Property pass-through methods
 			///////////////////////////////////////////////////////////////////////
 			get_containingType: function PropertyChain$get_containingType() {
-				return this.lastProperty().get_containingType();
+				return this.firstProperty().get_containingType();
 			},
 			get_jstype: function PropertyChain$get_jstype() {
 				return this.lastProperty().get_jstype();
@@ -809,24 +1030,34 @@
 			get_isEntityListType: function PropertyChain$get_isEntityListType() {
 				return this.lastProperty().get_isEntityListType();
 			},
-			get_uniqueName: function PropertyChain$get_uniqueName() {
-				return this.lastProperty().get_uniqueName();
+			get_rules: function PropertyChain$_get_rules() {
+				return this.lastProperty().get_rules();
 			},
 			value: function PropertyChain$value(obj, val) {
-				if (arguments.length == 2) {
-					obj = this.lastTarget(obj);
-					Sys.Observer.setValue(obj, this.get_name(), val);
-				}
-				else {
-					var target = obj;
-					for (var p = 0; p < this._properties.length; p++) {
-						var prop = this._properties[p];
-						target = prop.value(target);
+				var target = this.lastTarget(obj);
+				var prop = this.lastProperty();
+
+				if (arguments.length == 2)
+					prop.value(target, val);
+				else
+					return prop.value(target);
+			},
+			isInited: function PropertyChain$isInited(obj) {
+				var allInited = true;
+				this.each(obj, function(target, property) {
+					if (!property.isInited(target)) {
+						allInited = false;
+						return false;
 					}
-					return target;
-				}
+				});
+
+				return allInited;
+			},
+			toString: function() {
+				return this.get_label();
 			}
-		}
+		},
+
 		ExoWeb.Model.PropertyChain = PropertyChain;
 		PropertyChain.registerClass("ExoWeb.Model.PropertyChain");
 
@@ -840,15 +1071,16 @@
 		}
 
 		ObjectMeta.prototype = {
-			executeRules: function(propName) {
-				this.type.get_model().get_validatedQueue().push({ sender: this, property: propName });
-				this._raisePropertyValidating(propName);
-				this.type.executeRules(this._obj, propName);
+			executeRules: function ObjectMeta$executeRules(prop) {
+				this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
+				this._raisePropertyValidating(prop.get_name());
+
+				this.type.executeRules(this._obj, prop);
 			},
-			property: function(propName) {
+			property: function ObjectMeta$property(propName) {
 				return this.type.property(propName);
 			},
-			clearIssues: function(origin) {
+			clearIssues: function ObjectMeta$clearIssues(origin) {
 				var issues = this._issues;
 
 				for (var i = issues.length - 1; i >= 0; --i) {
@@ -856,12 +1088,12 @@
 
 					if (issue.get_origin() == origin) {
 						this._removeIssue(i);
-						this._queuePropertiesValidated(issue.get_properties());
+						this._raisePropertiesValidated(issue.get_properties());
 					}
 				}
 			},
 
-			issueIf: function(issue, condition) {
+			issueIf: function ObjectMeta$issueIf(issue, condition) {
 				// always remove and re-add the issue to preserve order
 				var idx = $.inArray(issue, this._issues);
 
@@ -872,7 +1104,7 @@
 					this._addIssue(issue);
 
 				if ((idx < 0 && condition) || (idx >= 0 && !condition))
-					this._queuePropertiesValidated(issue.get_properties());
+					this._raisePropertiesValidated(issue.get_properties());
 			},
 
 			_addIssue: function(issue) {
@@ -908,7 +1140,7 @@
 				}
 			},
 
-			issues: function(prop) {
+			issues: function ObjectMeta$issues(prop) {
 				if (!prop)
 					return this._issues;
 
@@ -928,22 +1160,17 @@
 
 				return ret;
 			},
-
-			_queuePropertiesValidated: function(properties) {
-				var queue = this.type.get_model().get_validatedQueue();
-
+			_raisePropertiesValidated: function(properties) {
+				var queue = this.type.get_model()._validatedQueue;
 				for (var i = 0; i < properties.length; ++i)
 					queue.push({ sender: this, property: properties[i].get_name() });
-			},
-			_raisePropertyValidated: function(propName) {
-				var issues = this._propertyIssues[propName];
-				this._raiseEvent("propertyValidated:" + propName, [this, issues ? issues : []])
 			},
 			addPropertyValidated: function(propName, handler) {
 				this._addEvent("propertyValidated:" + propName, handler);
 			},
 			_raisePropertyValidating: function(propName) {
-				this._raiseEvent("propertyValidating:" + propName)
+				var queue = this.type.get_model()._validatingQueue;
+				queue.push({sender: this, propName: propName});
 			},
 			addPropertyValidating: function(propName, handler) {
 				this._addEvent("propertyValidating:" + propName, handler);
@@ -959,21 +1186,22 @@
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Rule() { }
 
-		Rule.register = function register(rule, properties, isAsync) {
+		Rule.register = function Rule$register(rule, inputs, isAsync) {
 			rule.isAsync = !!isAsync;
-
-			for (var i = 0; i < properties.length; ++i) {
-				var prop = properties[i];
-				prop.get_containingType().addRule(rule, prop);
-			}
+			
+			rule.inputs = inputs.map(function(item) { 
+				return item instanceof RuleInput ? item : new RuleInput(item);
+			});
+			
+			rule.inputs[0].property.get_containingType().addRule(rule);
 		}
 
-		Rule.inferInputs = function inferInputs(rootType, func) {
+		Rule.inferInputs = function Rule$inferInputs(rootType, func) {
 			var inputs = [];
 			var match;
 
 			while (match = /this\.([a-zA-Z0-9_.]+)/g.exec(func.toString())) {
-				inputs.push(rootType.property(match[1]).lastProperty());
+				inputs.push( new RuleInput(rootType.property(match[1]).lastProperty()) );
 			}
 
 			return inputs;
@@ -981,6 +1209,28 @@
 		ExoWeb.Model.Rule = Rule;
 		Rule.registerClass("ExoWeb.Model.Rule");
 
+		//////////////////////////////////////////////////////////////////////////////////////
+		function RuleInput(property) {
+			this.property = property;
+		}
+
+		RuleInput.prototype = {
+			set_dependsOnInit: function RuleInput$set_dependsOnInit(value) {
+				this._init = value;
+			},
+			get_dependsOnInit: function RuleInput$get_dependsOnInit() {
+				return this._init === undefined ? false : this._init;
+			},
+			set_dependsOnChange: function RuleInput$set_dependsOnChange(value) {
+				this._change = value;
+			},
+			get_dependsOnChange: function RuleInput$get_dependsOnChange() {
+				return this._change === undefined ? true : this._change;
+			}
+		};
+		ExoWeb.Model.RuleInput = RuleInput;
+		RuleInput.registerClass("ExoWeb.Model.RuleInput");
+		
 		//////////////////////////////////////////////////////////////////////////////////////
 		function RequiredRule(options, properties) {
 			this.prop = properties[0];
@@ -1068,22 +1318,6 @@
 					this._propertyChain = ExoWeb.Model.Model.property(this.path, this.prop.get_containingType());
 
 					delete this._needsInit;
-				}
-			},
-			addChanged: function(obj, handler) {
-				this._init();
-
-				if (this._propertyChain) {
-					this._propertyChain.each(obj, function(obj, prop) {
-						if (prop.get_isEntityListType())
-							Sys.Observer.addCollectionChanged(prop.value(obj), function(sender, args) {
-								handler(sender, args);
-							});
-						else
-							Sys.Observer.addSpecificPropertyChanged(obj, prop.get_name(), function(sender, args) {
-								handler(sender, args);
-							});
-					});
 				}
 			},
 			execute: function(obj) {
@@ -1175,25 +1409,35 @@
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		function EventQueue(raise, areEqual) {
+			this._queueing = 0;
 			this._queue = [];
 			this._raise = raise;
 			this._areEqual = areEqual;
 		}
 
 		EventQueue.prototype = {
-			push: function(item) {
-				// don't double queue items...
-				if (this._areEqual) {
-					for (var i = 0; i < this._queue.length; ++i) {
-						if (this._areEqual(item, this._queue[i]))
-							return;
-					}
-				}
-
-				this._queue.push(item);
+			startQueueing: function EventQueue$startQueueing() {
+				++this._queueing;
 			},
+			stopQueueing: function EventQueue$stopQueueing() {
+				if(--this._queueing === 0)
+					this.raiseQueue();
+			},
+			push: function EventQueue$push(item) {
+				if(this._queueing) {
+					if (this._areEqual) {
+						for (var i = 0; i < this._queue.length; ++i) {
+							if (this._areEqual(item, this._queue[i]))
+								return;
+						}
+					}
 
-			raise: function() {
+					this._queue.push(item);
+				}
+				else
+					this._raise(item);
+			},
+			raiseQueue: function EventQueue$raiseQueue() {
 				try {
 					for (var i = 0; i < this._queue.length; ++i)
 						this._raise(this._queue[i]);
@@ -1320,30 +1564,12 @@
 		ExoWeb.Model.Format = Format;
 		Format.registerClass("ExoWeb.Model.Format");
 
-		//////////////////////////////////////////////////////////////////////////////////////
-		// utilities			
-		Date.prototype.subtract = function(d) {
-			var diff = this - d;
-
-			var milliseconds = Math.floor(diff % 1000);
-			diff = diff / 1000;
-			var seconds = Math.floor(diff % 60);
-			diff = diff / 60;
-			var minutes = Math.floor(diff % 60);
-			diff = diff / 60;
-			var hours = Math.floor(diff % 24);
-			diff = diff / 24;
-			var days = Math.floor(diff);
-
-			return { days: days, hours: hours, minutes: minutes, seconds: seconds, milliseconds: milliseconds };
-		}
-
 		// Type Format Strings
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 		Number.formats = {};
 		String.formats = {};
 		Date.formats = {};
+		TimeSpan.formats = {};
 		Boolean.formats = {};
 
 		//TODO: number formatting include commas
@@ -1401,10 +1627,10 @@
 		Boolean.formats.$system = Boolean.formats.TrueFalse;
 		Boolean.formats.$display = Boolean.formats.YesNo;
 
-		Date.formats.ShortDate = new Format({
-			description: "mm/dd/yyyy",
+		Date.formats.DateTime = new Format({
+			description: "mm/dd/yyyy hh:mm AM/PM",
 			convert: function(val) {
-				return val.format("MM/dd/yyyy");
+				return val.format("MM/dd/yyyy h:mm tt");
 			},
 			convertBack: function(str) {
 				var val = Date.parseInvariant(str);
@@ -1416,13 +1642,105 @@
 			}
 		});
 
-		Date.formats.$system = Date.formats.ShortDate;
+		Date.formats.ShortDate = new Format({
+			description: "mm/dd/yyyy",
+			convert: function(val) {
+				return val.format("M/d/yyyy");
+			},
+			convertBack: function(str) {
+				var val = Date.parseInvariant(str);
 
+				if (val != null)
+					return val;
+
+				throw "invalid date";
+			}
+		});
+
+		Date.formats.Time = new Format({
+			description: "HH:MM AM/PM",
+			convert: function(val) {
+				return val.format("h:mm tt");
+			},
+			convertBack: function(str) {
+				var parser = /^(1[0-2]|0?[1-9]):([0-5][0-9]) *(AM?|(PM?))$/i;
+
+				var parts = str.match(parser);
+
+				if (!parts)
+					throw "invalid time";
+
+				// build new date, start with current data and overwite the time component
+				var val = new Date();
+
+				// hours
+				if (parts[4])
+					val.setHours(parseInt(parts[1], 10) + 12);  // PM
+				else
+					val.setHours(parseInt(parts[1], 10));  // AM
+
+				// minutes
+				val.setMinutes(parseInt(parts[2], 10));
+
+				// keep the rest of the time component clean
+				val.setSeconds(0);
+				val.setMilliseconds(0);
+
+				return val;
+			}
+		});
+
+		Date.formats.$system = Date.formats.DateTime;
+		Date.formats.$display = Date.formats.DateTime;
+
+		TimeSpan.formats.Meeting = new ExoWeb.Model.Format({
+			convert: function(val) {
+				var num;
+				var label;
+
+				if (val.totalHours < 1) {
+					num = Math.round(val.totalMinutes);
+					label = "minute";
+				}
+				else if (val.totalDays < 1) {
+					num = Math.round(val.totalHours * 100) / 100;
+					label = "hour";
+				}
+				else {
+					num = Math.round(val.totalDays * 100) / 100;
+					label = "day";
+				}
+
+				return num == 1 ? (num + " " + label) : (num + " " + label + "s");
+			},
+			convertBack: function(str) {
+				var parser = /^([0-9]+(\.[0-9]+)?) *(m((inute)?s)?|h((our)?s?)|hr|d((ay)?s)?)$/i;
+
+				var parts = str.match(parser);
+
+				if (!parts)
+					throw "invalid format";
+
+				var num = parseFloat(parts[1]);
+				var ms;
+
+				if (parts[3].startsWith("m"))
+					ms = num * 60 * 1000;
+				else if (parts[3].startsWith("h"))
+					ms = num * 60 * 60 * 1000;
+				else if (parts[3].startsWith("d"))
+					ms = num * 24 * 60 * 60 * 1000;
+
+				return new TimeSpan(ms);
+			}
+		});
+
+		TimeSpan.formats.$display = TimeSpan.formats.Meeting;
+		TimeSpan.formats.$system = TimeSpan.formats.Meeting;  // TODO: implement Exact format
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		function LazyLoader() {
 		}
-
 		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain) {
 			if (!path)
 				path = [];

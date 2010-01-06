@@ -168,7 +168,7 @@
 					__type: "Delete:#ExoGraph",
 					instance: toExoGraph(this._translator, obj)
 				};
-				
+
 				this._raiseEvent("changeCaptured", [change]);
 			},
 			onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
@@ -716,7 +716,8 @@
 				var propType = getJsType(model, propJson.type);
 				var format = propJson.format ? propType.formats[propJson.format] : null;
 
-				var prop = mtype.addProperty(propName, propType, propJson.isList, propJson.label, format, propJson.isStatic);
+				var prop = mtype.addProperty({ name: propName, type: propType, isList: propJson.isList, label: propJson.label, format: format, isStatic: propJson.isStatic });
+
 
 				// setup static properties for lazy loading
 				if (propJson.isStatic) {
