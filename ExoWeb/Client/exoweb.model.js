@@ -1336,21 +1336,30 @@
 		AllowedValuesRule.prototype = {
 			_init: function() {
 				if (this._needsInit) {
-					this._propertyChain = ExoWeb.Model.Model.property(this.path, this.prop.get_containingType());
+					// type is undefined or not loaded
+					if (LazyLoader.isLoaded(this.prop.get_containingType()))
+						this._propertyChain = ExoWeb.Model.Model.property(this.path, this.prop.get_containingType());
 
 					delete this._needsInit;
 				}
 			},
 			execute: function(obj) {
 				this._init();
-				var val = this.prop.value(obj);
-
-				if (val instanceof Array) {
-					var allowed = this.values(obj);
-					obj.meta.issueIf(this.err, !val.every(function(item) { return allowed.indexOf(item) >= 0; }));
-				}
-				else {
-					obj.meta.issueIf(this.err, val && !Array.contains(this.values(obj), val));
+				
+				// get the list of allowed values of the property for the given object
+				var allowed = this.values(obj);
+				
+				// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
+				if (allowed !== undefined && LazyLoader.isLoaded(allowed)) {
+				
+					// get the current value of the property for the given object
+					var val = this.prop.value(obj);
+	
+					// ensure that the value or list of values is in the allowed values list (single and multi-select)
+					if (val instanceof Array)
+						obj.meta.issueIf(this.err, !val.every(function(item) { return Array.contains(allowed, item); }));
+					else
+						obj.meta.issueIf(this.err, val && !Array.contains(allowed, val));
 				}
 			},
 			propertyChain: function(obj) {
@@ -1836,6 +1845,9 @@
 		}
 
 		LazyLoader.isLoaded = function LazyLoader$isLoaded(obj, propName) {
+			if (obj === undefined)
+				return false;
+
 			var reg = obj._lazyLoader;
 
 			if (!reg)
