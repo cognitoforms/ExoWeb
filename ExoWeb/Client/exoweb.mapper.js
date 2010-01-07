@@ -272,7 +272,7 @@
 				log("server", "ServerSync.raiseEvent() >> {0}", [name]);
 				eventProvider(
 					name,																					// event name
-					ExoWeb.Model.Entity.formats.$exograph.convert(obj),										// instance
+					toExoGraph(this._translator, obj),														// instance
 					event,																					// custom event object
 					{ changes: this._changes },																// changes
 					this._onRaiseEventSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
