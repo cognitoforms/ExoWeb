@@ -45,8 +45,6 @@
 			eventProvider = fn;
 		}
 
-		Date.formats.$exograph = Date.formats.ShortDate;
-
 		ExoWeb.Model.Entity.formats.$exograph = new ExoWeb.Model.Format({
 			convert: function(val) {
 				var json = {

@@ -7,6 +7,7 @@ using System.ServiceModel.Dispatcher;
 using System.Text;
 using System.Web;
 using System.Xml;
+using ExoGraph;
 
 namespace ExoWeb
 {
@@ -33,6 +34,14 @@ namespace ExoWeb
 			jsonIntrinsicTypes[typeof(double)] = "Number";
 			jsonIntrinsicTypes[typeof(decimal)] = "Number";
 			jsonIntrinsicTypes[typeof(DateTime)] = "Date";
+			jsonIntrinsicTypes[typeof(bool?)] = "Boolean";
+			jsonIntrinsicTypes[typeof(byte?)] = "Number";
+			jsonIntrinsicTypes[typeof(int?)] = "Number";
+			jsonIntrinsicTypes[typeof(long?)] = "Number";
+			jsonIntrinsicTypes[typeof(float?)] = "Number";
+			jsonIntrinsicTypes[typeof(double?)] = "Number";
+			jsonIntrinsicTypes[typeof(decimal?)] = "Number";
+			jsonIntrinsicTypes[typeof(DateTime?)] = "Date";
 		}
 
 		protected static string GetJsonValueType(Type type)

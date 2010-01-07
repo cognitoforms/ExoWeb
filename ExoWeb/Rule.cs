@@ -130,18 +130,7 @@ namespace ExoWeb
 	
 	#endregion
 
-	#region IRuleProvider
-
-	public interface IRuleProvider
-	{
-		IEnumerable<Rule> GetRules(GraphType type);
-	}
-
-	#endregion
-
-	#region DataAnnotationsRuleProvider
-
-	public class DataAnnotationsRuleProvider : IRuleProvider
+	public class DataAnnotationsRuleProvider : IServiceAdapter
 	{
 		#region IRuleProvider Members
 
@@ -171,8 +160,6 @@ namespace ExoWeb
 
 			return rules;
 		}
-
-		#endregion
 	}
 
 	#endregion

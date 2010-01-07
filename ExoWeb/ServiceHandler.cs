@@ -9,7 +9,7 @@ namespace ExoWeb
 	/// </summary>
 	public class ServiceHandler : IHttpHandler
 	{
-		static IRuleProvider ruleProvider;
+		static IServiceAdapter adapter;
 		static Dictionary<string, Type> customEvents = new Dictionary<string,Type>();
 
 		/// <summary>
@@ -35,15 +35,15 @@ namespace ExoWeb
 			}
 		}
 
-		public static IRuleProvider RuleProvider
+		public static IServiceAdapter Adapter
 		{
 			get
 			{
-				return ruleProvider;
+				return adapter;
 			}
 			set
 			{
-				ruleProvider = value;
+				adapter = value;
 			}
 		}
 

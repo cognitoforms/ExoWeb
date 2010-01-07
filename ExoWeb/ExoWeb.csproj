@@ -71,6 +71,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ContractSurrogate.cs" />
+    <Compile Include="IServiceAdapter.cs" />
     <Compile Include="SaveMethod.cs" />
     <Compile Include="RaiseEventMethod.cs" />
     <Compile Include="LoadMethod.cs" />
