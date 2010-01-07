@@ -20,7 +20,7 @@
 
 			this._validatingQueue = new EventQueue(
 						function(e) {
-							var meta = e.sender;							
+							var meta = e.sender;
 							var issues = meta._propertyIssues[e.propName];
 							meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName])
 						},
@@ -33,7 +33,7 @@
 						function(e) {
 							var meta = e.sender;
 							var propName = e.property;
-							
+
 							var issues = meta._propertyIssues[propName];
 							meta._raiseEvent("propertyValidated:" + propName, [meta, issues ? issues : []])
 						},
@@ -45,7 +45,8 @@
 
 		Model.property = function(path, thisType) {
 			var part = path.split(".");
-			var isGlobal = part[0] !== "this";
+			var firstStep = parsePropertyStep(part[0]);
+			var isGlobal = firstStep.property !== "this";
 
 			var type;
 
@@ -62,15 +63,22 @@
 					throwAndLog(["model"], "Invalid property path: {0}", [path]);
 			}
 			else {
-				if (thisType instanceof Function)
+				if (firstStep.cast) {
+					type = window[firstStep.cast];
+
+					if (!type)
+						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [path, firstStep.cast]);
+					type = type.meta;
+				}
+				else if (thisType instanceof Function)
 					type = thisType.meta;
 				else
 					type = thisType;
 
 				Array.dequeue(part);
 			}
-			
-			return type.property(part.join("."));
+
+			return new PropertyChain(type, part);
 		}
 
 		Model.prototype = {
@@ -388,35 +396,19 @@
 			get_jstype: function() {
 				return this._jstype;
 			},
-			property: function(name) {
-				var p = (name.indexOf(".") >= 0) ? name.substring(0, name.indexOf(".")) : name;
+			property: function(name, thisOnly) {
+				if (!thisOnly)
+					return new PropertyChain(this, name);
 
 				var prop;
-				for (var t = this; t && !prop; t = t.baseType)
-					prop = t._properties[p];
+				for (var t = this; t && !prop; t = t.baseType) {
+					prop = t._properties[name];
 
-				if (prop) {
-					var prop = new PropertyChain(prop);
-
-					// evaluate the remainder of the property path
-					if (name.indexOf(".") >= 0) {
-						var remainder = name.substring(name.indexOf(".") + 1);
-
-						var type = prop.get_jstype().meta;
-
-						var children = type.property(remainder);
-						if (children)
-							prop.append(children);
-						else {
-							// if finding a child property failed then return null
-							// TODO: should this be more lax and burden consuming 
-							// code with checking the property chain for nulls?
-							prop = null;
-						}
-					}
+					if (prop)
+						return prop;
 				}
 
-				return prop;
+				return null;
 			},
 			addRule: function Type$addRule(rule) {
 				function Type$addRule$init(obj, prop) {
@@ -449,12 +441,12 @@
 					var input = rule.inputs[i];
 					var prop = input.property;
 
-					if(input.get_dependsOnChange())
+					if (input.get_dependsOnChange())
 						prop.addChanged(Type$addRule$execute);
 
-					if(input.get_dependsOnInit())
+					if (input.get_dependsOnInit())
 						prop.addInited(Type$addRule$init);
-					
+
 					(prop instanceof PropertyChain ? prop.lastProperty() : prop)._addRule(rule);
 				}
 			},
@@ -462,10 +454,10 @@
 			executeRules: function Type$executeRules(obj, prop, start) {
 
 				var processing;
-				
-				if(start === undefined)
+
+				if (start === undefined)
 					this._model.beginValidation();
-				
+
 				try {
 					var i = (start ? start : 0);
 
@@ -539,8 +531,8 @@
 			this._format = format;
 			this._isList = !!isList;
 			this._isStatic = !!isStatic;
-			
-			if(containingType.get_originForNewProperties())
+
+			if (containingType.get_originForNewProperties())
 				this._origin = containingType.get_originForNewProperties();
 		}
 
@@ -748,7 +740,7 @@
 			// based on a calculation.
 			calculated: function Property$calculated(options) {
 				var prop = this;
-				
+
 				var rootType;
 				if (options.rootType)
 					rootType = options.rootType.meta;
@@ -763,10 +755,10 @@
 
 						var input;
 						var parts = p.split(" of ");
-						if(parts.length >= 2) {
+						if (parts.length >= 2) {
 							input = new RuleInput(Model.property(parts[1], rootType));
 							var events = parts[0].split(",");
-							
+
 							input.set_dependsOnInit(events.indexOf("init") >= 0);
 							input.set_dependsOnChange(events.indexOf("change") >= 0);
 						}
@@ -834,7 +826,7 @@
 						}
 						else {
 							var newValue = options.fn.apply(obj);
-							if(newValue !== prop.value(obj))
+							if (newValue !== prop.value(obj))
 								Sys.Observer.setValue(obj, prop._name, newValue);
 						}
 					},
@@ -860,11 +852,59 @@
 		/// single property of the root object.
 		/// </summary>
 		///////////////////////////////////////////////////////////////////////////
-		function PropertyChain(properties) {
-			this._properties = properties.length ? properties : [properties];
+		function PropertyChain(rootType, path) {
+			var type = rootType;
+			var chain = this;
+
+			this._properties = [];
+			this._filters = [];
+
+			(path instanceof Array ? path : path.split(".")).forEach(function(step) {
+				var parsed = parsePropertyStep(step);
+
+				if (!parsed)
+					throwAndLog("model", "Syntax error in property path: {0}", [path]);
+
+				var prop = type.property(parsed.property, true);
+
+				if (!prop)
+					throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}", [path, type.get_fullName(), parsed.property]);
+
+				chain._properties.push(prop);
+
+				if (parsed.cast) {
+					type = type.get_model().type(parsed.cast);
+
+					if (!type)
+						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [path, parsed.cast]);
+
+					with ({type: type.get_jstype() }) {
+						chain._filters[chain._properties.length - 1] = function(target) {
+							return target instanceof type;
+						};
+					}
+				}
+				else
+					type = prop.get_jstype().meta;
+
+			});
 
 			if (this._properties.length == 0)
 				throwAndLog(["model"], "PropertyChain cannot be zero-length.");
+		}
+
+		function parsePropertyStep(step) {
+			var parsed = step.match(/^([a-z0-9_]+)(<([a-z0-9_]+)>)?$/i);
+
+			if (!parsed)
+				return null;
+
+			var result = { property: parsed[1] };
+
+			if (parsed[3])
+				result.cast = parsed[3];
+
+			return result;
 		}
 
 		PropertyChain.prototype = {
@@ -892,7 +932,7 @@
 
 					if (target instanceof Array) {
 						for (var i = 0; i < target.length; ++i) {
-							if (enableCallback) {
+							if (enableCallback && (!this._filters[p] || this._filters[p](target))) {
 								if (callback(target[i], prop) === false)
 									return false;
 							}
@@ -901,10 +941,9 @@
 								return false;
 						}
 					}
-					else if (enableCallback) {
-						if (callback(target, prop) === false) {
+					else if (enableCallback && (!this._filters[p] || this._filters[p](target))) {
+						if (callback(target, prop) === false)
 							return false;
-						}
 					}
 
 					target = prop.value(target);
@@ -1207,7 +1246,7 @@
 			},
 			_raisePropertyValidating: function(propName) {
 				var queue = this.type.get_model()._validatingQueue;
-				queue.push({sender: this, propName: propName});
+				queue.push({ sender: this, propName: propName });
 			},
 			addPropertyValidating: function(propName, handler) {
 				this._addEvent("propertyValidating:" + propName, handler);
@@ -1225,11 +1264,11 @@
 
 		Rule.register = function Rule$register(rule, inputs, isAsync) {
 			rule.isAsync = !!isAsync;
-			
-			rule.inputs = inputs.map(function(item) { 
+
+			rule.inputs = inputs.map(function(item) {
 				return item instanceof RuleInput ? item : new RuleInput(item);
 			});
-			
+
 			rule.inputs[0].property.get_containingType().addRule(rule);
 		}
 
@@ -1238,7 +1277,7 @@
 			var match;
 
 			while (match = /this\.([a-zA-Z0-9_.]+)/g.exec(func.toString())) {
-				inputs.push( new RuleInput(rootType.property(match[1]).lastProperty()) );
+				inputs.push(new RuleInput(rootType.property(match[1]).lastProperty()));
 			}
 
 			return inputs;
@@ -1267,7 +1306,7 @@
 		};
 		ExoWeb.Model.RuleInput = RuleInput;
 		RuleInput.registerClass("ExoWeb.Model.RuleInput");
-		
+
 		//////////////////////////////////////////////////////////////////////////////////////
 		function RequiredRule(options, properties) {
 			this.prop = properties[0];
@@ -1466,11 +1505,11 @@
 				++this._queueing;
 			},
 			stopQueueing: function EventQueue$stopQueueing() {
-				if(--this._queueing === 0)
+				if (--this._queueing === 0)
 					this.raiseQueue();
 			},
 			push: function EventQueue$push(item) {
-				if(this._queueing) {
+				if (this._queueing) {
 					if (this._areEqual) {
 						for (var i = 0; i < this._queue.length; ++i) {
 							if (this._areEqual(item, this._queue[i]))
