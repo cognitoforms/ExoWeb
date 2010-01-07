@@ -638,19 +638,30 @@
 				if (val === null || val === undefined)
 					return true;
 
-				var valType;
-
-				if (val.constructor)
-					valType = val.constructor;
+				if (val.constructor) {
+					// for entities check base types as well
+					if (val.constructor.meta) {
+						for (var valType = val.constructor.meta; valType; valType = valType.baseType)
+							if (valType._jstype === this._jstype)
+								return true;
+						
+						return false;
+					}
+					else {
+						return val.constructor === this._jstype
+					}
+				}
 				else {
+					var valType;
+
 					switch (typeof (val)) {
 						case "string": valType = String; break;
 						case "number": valType = Number; break;
 						case "boolean": valType = Boolean; break;
 					}
-				};
 
-				return valType === this._jstype;
+					return valType === this._jstype;
+				};
 			},
 			value: function Property$value(obj, val) {
 				if (arguments.length == 2) {
@@ -666,6 +677,11 @@
 				}
 				else {
 					var target = (this._isStatic ? this._containingType.get_jstype() : obj);
+
+					if (target == undefined)
+						ExoWeb.trace.throwAndLog(["model"], 
+							"Cannot get value for {0}static property \"{1}\" on type \"{2}\": target is undefined.",
+							[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
 
 					// access directly since the caller might make a distinction between null and undefined
 					return target[this._name];
