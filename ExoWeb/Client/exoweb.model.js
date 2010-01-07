@@ -593,9 +593,12 @@
 
 				if (old !== val) {
 					obj[this._name] = val;
-					
-					this._raiseEvent("changed", [obj, this]);
+
+					// NOTE: property change should be broadcast before rules are run so that if 
+					// any rule causes a roundtrip to the server these changes will be available
 					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
+
+					this._raiseEvent("changed", [obj, this]);
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
 			},
