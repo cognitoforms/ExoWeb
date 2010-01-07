@@ -277,7 +277,7 @@
 					event,																					// custom event object
 					{ changes: this._changes },																// changes
 					this._onRaiseEventSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
-					this._onRoundtripFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
+					this._onRaiseEventFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)	// failed callback
 				);
 			},
 			_onRaiseEventSuccess: function ServerSync$_onRaiseEventSuccess(response, callback) {
@@ -299,7 +299,7 @@
 			addRaiseEventSuccess: function ServerSync$addRaiseEventSuccess(handler) {
 				this._addEvent("raiseEventSuccess", handler);
 			},
-			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(e, callback) {
+			_onRaiseEventFailed: function ServerSync$_onRaiseEventFailed(e, callback) {
 				log("error", "Raise Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 				
 				this._raiseEvent("raiseEventFailed", [e]);
