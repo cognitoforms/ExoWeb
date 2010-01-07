@@ -333,7 +333,7 @@
 
 				return list;
 			},
-			addProperty: function(def) {
+			addProperty: function Type$addProperty(def) {
 				var format = def.format;
 				if (format && format.constructor === String) {
 					format = def.type.formats[format];
@@ -505,6 +505,18 @@
 					if (!processing)
 						this._model.endValidation();
 				}
+			},
+			set_originForNewProperties: function(value) {
+				this._originForNewProperties = value;
+			},
+			get_originForNewProperties: function() {
+				return this._originForNewProperties;
+			},
+			set_origin: function(value) {
+				this._origin = value;
+			},
+			get_origin: function() {
+				return this._origin;
 			}
 		}
 		Type.mixin(ExoWeb.Functor.eventing);
@@ -527,6 +539,9 @@
 			this._format = format;
 			this._isList = !!isList;
 			this._isStatic = !!isStatic;
+			
+			if(containingType.get_originForNewProperties())
+				this._origin = containingType.get_originForNewProperties();
 		}
 
 		Property.mixin({
@@ -563,7 +578,9 @@
 			get_format: function() {
 				return this._format;
 			},
-
+			get_origin: function() {
+				return this._origin ? this._origin : this._containingType.get_origin();
+			},
 			getter: function(obj) {
 				return obj[this._name];
 			},
@@ -712,9 +729,7 @@
 			// based on a calculation.
 			calculated: function Property$calculated(options) {
 				var prop = this;
-
-				prop._isCalculated = true;
-
+				
 				var rootType;
 				if (options.rootType)
 					rootType = options.rootType.meta;
@@ -799,7 +814,9 @@
 							}
 						}
 						else {
-							Sys.Observer.setValue(obj, prop._name, options.fn.apply(obj));
+							var newValue = options.fn.apply(obj);
+							if(newValue !== prop.value(obj))
+								Sys.Observer.setValue(obj, prop._name, newValue);
 						}
 					},
 					toString: function() { return "calculation of " + prop._name; }

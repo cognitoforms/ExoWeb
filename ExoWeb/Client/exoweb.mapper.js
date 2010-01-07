@@ -115,9 +115,11 @@
 
 			// Model event handlers
 			onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
-				log("server", "queuing list changes");
 
-				if (property._isCalculated) return;
+				if (property.get_origin() !== "server")
+					return;
+
+				log("server", "logging list change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 
 				for (var i = 0; i < listChanges.length; ++i) {
 					var listChange = listChanges[i];
@@ -148,7 +150,7 @@
 			},
 			onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
 				if (obj.meta.isNew) {
-					log("server", "queuing new object change");
+					log("server", "logging new: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
 
 					var change = {
 						__type: "InitNew:#ExoGraph",
@@ -159,7 +161,7 @@
 				}
 			},
 			onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
-				log("server", "queuing delete object change");
+				log("server", "logging delete: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
 
 				// TODO: delete JSON format?
 				var change = {
@@ -170,12 +172,11 @@
 				this._raiseEvent("changeCaptured", [change]);
 			},
 			onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
-				log("server", "queuing update");
-
-				if (property._isCalculated) return;
+				if (property.get_origin() !== "server")
+					return;
 
 				if (property.get_isValueType()) {
-					log("server", "queuing value change");
+					log("server", "logging value change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 					var change = {
 						__type: "ValueChange:#ExoGraph",
 						instance: toExoGraph(this._translator, obj),
@@ -187,7 +188,7 @@
 					this._raiseEvent("changeCaptured", [change]);
 				}
 				else {
-					log("server", "queuing reference change");
+					log("server", "logging reference change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 					var change = {
 						__type: "ReferenceChange:#ExoGraph",
 						instance: toExoGraph(this._translator, obj),
@@ -731,6 +732,7 @@
 					}
 				}
 			}
+			mtype.set_originForNewProperties("client");
 		}
 
 		function getJsType(model, typeName, forLoading) {
@@ -785,6 +787,7 @@
 					// if type doesn't exist, setup a ghost type
 					if (!mtype) {
 						mtype = model.addType(type, baseType);
+						mtype.set_origin("server");
 
 						if (!forLoading || family.length > 0) {
 							log("typeInit", "{0} (ghost)", [type]);
