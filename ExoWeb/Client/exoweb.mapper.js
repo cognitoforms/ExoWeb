@@ -80,14 +80,14 @@
 		function fromExoGraph(translator, val) {
 			if (val) {
 				var type = window[val.type];
-				
+
 				// entities only: translate back to the client's id
 				if (type.meta && type.meta instanceof ExoWeb.Model.Type) {
 					// don't alter the original object
 					val = Object.copy(val);
 					val.id = translator.reverse(val.type, val.id) || val.id;
 				}
-				
+
 				var fmt = type.formats && type.formats.$exograph;
 				return fmt ? fmt.convertBack(val) : val;
 			}
@@ -156,7 +156,7 @@
 						__type: "InitNew:#ExoGraph",
 						instance: toExoGraph(this._translator, obj)
 					};
-					
+
 					this._raiseEvent("changeCaptured", [change]);
 				}
 			},
@@ -228,7 +228,7 @@
 		}
 
 		ServerSync.mixin(ExoWeb.Functor.eventing);
-		
+
 		ServerSync.mixin({
 			startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
 				log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
@@ -291,7 +291,7 @@
 				}
 
 				this._raiseEvent("raiseEventSuccess");
-				
+
 				if (callback && callback instanceof Function)
 					callback.call(this, response.result);
 			},
@@ -300,23 +300,23 @@
 			},
 			_onRaiseEventFailed: function ServerSync$_onRaiseEventFailed(e, callback) {
 				log("error", "Raise Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
-				
+
 				this._raiseEvent("raiseEventFailed", [e]);
-				
+
 				if (callback && callback instanceof Function)
 					callback.call(this);
 			},
 			addRaiseEventFailed: function ServerSync$addRaiseEventFailed(handler) {
 				this._addEvent("raiseEventFailed", handler);
 			},
-			
+
 			// Roundtrip
 			///////////////////////////////////////////////////////////////////////
 			roundtrip: function ServerSync$roundtrip(success, failed) {
 				log("server", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
 				roundtripProvider(
-					{ changes: this._changes },																// changes
-					this._onRoundtripSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
+					{ changes: this._changes }, 															// changes
+					this._onRoundtripSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1), // success callback
 					this._onRoundtripFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 				);
 			},
@@ -332,7 +332,7 @@
 				}
 
 				this._raiseEvent("roundtripSuccess");
-				
+
 				if (callback && callback instanceof Function)
 					callback.call(this, response.changes);
 			},
@@ -341,9 +341,9 @@
 			},
 			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(e, callback) {
 				log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
-				
+
 				this._raiseEvent("roundtripFailed", [e]);
-				
+
 				if (callback && callback instanceof Function)
 					callback.call(this);
 			},
@@ -356,9 +356,9 @@
 			save: function ServerSync$save(root, success, failed) {
 				log("server", ".save() >> sending {0} changes", [this._changes.length]);
 				saveProvider(
-					{ type: root.meta.type.get_fullName(), id: root.meta.id },							// root
-					{ changes: $transform(this._changes).where(this.canSave, this) },					// changes
-					this._onSaveSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
+					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 						// root
+					{changes: $transform(this._changes).where(this.canSave, this) }, 				// changes
+					this._onSaveSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1), // success callback
 					this._onSaveFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 				);
 			},
@@ -377,7 +377,7 @@
 				}
 
 				this._raiseEvent("saveSuccess");
-				
+
 				if (callback && callback instanceof Function)
 					callback.call(this, response.changes);
 			},
@@ -386,9 +386,9 @@
 			},
 			_onSaveFailed: function ServerSync$_onSaveFailed(e, callback) {
 				log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
-				
+
 				this._raiseEvent("saveFailed", [e]);
-				
+
 				if (callback && callback instanceof Function)
 					callback.call(this);
 			},
@@ -534,7 +534,7 @@
 				if (root._server)
 					root._server.roundtrip(success, failed);
 				else
-					// TODO
+				// TODO
 					;
 			}
 		}
@@ -543,12 +543,12 @@
 			if (root instanceof ExoWeb.Model.ObjectBase) {
 				model = root.meta.type.get_model();
 			}
-			
+
 			if (model && model instanceof ExoWeb.Model.Model) {
 				if (model._server)
 					model._server.save(root, success, failed);
 				else
-					// TODO
+				// TODO
 					;
 			}
 		}
@@ -840,8 +840,8 @@
 							ExoWeb.Model.LazyLoader.load(b, null, signal.pending());
 					}
 				}),
-				signal.orPending(function(error){
-					ExoWeb.trace.logError("typeInit", 
+				signal.orPending(function(error) {
+					ExoWeb.trace.logError("typeInit",
 						"Failed to load {typeName} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 						{ typeName: typeName, error: error });
 				})
@@ -866,33 +866,35 @@
 			});
 		}).dontDoubleUp({ callbackArg: 2 });
 
-		function fetchPathTypes(model, jstype, props, callback) {
-			var propName = Array.dequeue(props);
+		function fetchPathTypes(model, jstype, path, callback) {
+			var step = Array.dequeue(path.steps);
 
 			// locate property definition in model
 			// If property is not yet in model skip it. It might be in a derived type and it will be lazy loaded.
-			var prop = jstype.meta.property(propName);
-			if (!prop) {
-				if (jstype.meta.derivedTypes) {
-					// TODO: handle multiple levels of derived types
-					for (var i = 0, len = jstype.meta.derivedTypes.length, derivedType = null; i < len; i++) {
-						if (derivedType = jstype.meta.derivedTypes[i].get_jstype()) {
-							if (prop = derivedType.meta.property(propName)) {
-								break;
-							}
-						}
-					}
-				}
-			}
+			var prop = jstype.meta.property(step.property);
 
 			// Load the type of the property if its not yet loaded
 			if (prop) {
-				var mtype = prop.get_jstype().meta;
+				var mtype;
+				if (step.cast) {
+					mtype = model.type(step.cast);
+
+					// if this type has never been seen, go and fetch it and resume later
+					if (!mtype) {
+						Array.insert(path.steps, 0, step);
+						fetchType(model, step.cast, function() {
+							fetchPathTypes(model, jstype, path, callback);
+						});
+						return;
+					}
+				}
+				else
+					mtype = prop.get_jstype().meta;
 
 				if (mtype && !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 					fetchType(model, mtype.get_fullName(), function(jstype) {
-						if (props.length > 0)
-							fetchPathTypes(model, jstype, props, callback);
+						if (path.steps.length > 0)
+							fetchPathTypes(model, jstype, path, callback);
 						else if (callback)
 							callback();
 					});
@@ -910,20 +912,18 @@
 			function rootTypeLoaded(jstype) {
 				if (query.and) {
 					Array.forEach(query.and, function(path) {
-						var steps = path.split(".");
-
-						if (steps[0] === "this") {
-							Array.dequeue(steps);
-							fetchPathTypes(model, jstype, steps, signal.pending());
+						if (path.steps[0].property === "this") {
+							Array.dequeue(path.steps);
+							fetchPathTypes(model, jstype, path, signal.pending());
 						}
 						else {
 							// this is a static property
 
-							var typeName = Array.dequeue(steps);
+							var typeName = Array.dequeue(path.steps).property;
 							var mtype = model.type(typeName);
 
 							function fetchStaticPathTypes() {
-								fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), steps, signal.pending());
+								fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), path, signal.pending());
 							}
 
 							if (!mtype) {
@@ -1190,12 +1190,27 @@
 
 				with ({ varName: varName }) {
 					var query = options.model[varName];
-					objectProvider(query.from, [query.id], true, false, query.and, null,
+
+					query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
+					
+					// only send properties to server
+					query.serverPaths = query.and.map(function(path) {
+						var strPath;
+						path.steps.forEach(function(step) {
+							if (!strPath)
+								strPath = step.property;
+							else
+								strPath += "." + step.property;
+						});
+						return strPath;
+					});
+
+					objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
 						state[varName].signal.pending(function context$objects$callback(result) {
 							state[varName].objectJson = result.instances;
 						}),
 						state[varName].signal.orPending(function context$objects$callback(error) {
-							ExoWeb.trace.logError("objectInit", 
+							ExoWeb.trace.logError("objectInit",
 								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 								{ query: query, error: error });
 						})
@@ -1271,5 +1286,5 @@
 	else {
 		execute();
 	}
-		
+
 })();

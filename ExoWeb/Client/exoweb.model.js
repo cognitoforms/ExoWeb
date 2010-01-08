@@ -44,15 +44,15 @@
 		}
 
 		Model.property = function(path, thisType) {
-			var part = path.split(".");
-			var firstStep = parsePropertyStep(part[0]);
+			var tokens = new PathTokens(path);
+			var firstStep = tokens.steps[0];
 			var isGlobal = firstStep.property !== "this";
 
 			var type;
 
 			if (isGlobal) {
 				// locate first model type
-				for (var t = window[Array.dequeue(part)]; t && part.length > 0; t = t[Array.dequeue(part)]) {
+				for (var t = window[Array.dequeue(tokens.steps).property]; t && tokens.steps.length > 0; t = t[Array.dequeue(tokens.steps).property]) {
 					if (t.meta) {
 						type = t.meta;
 						break;
@@ -75,10 +75,10 @@
 				else
 					type = thisType;
 
-				Array.dequeue(part);
+				Array.dequeue(tokens.steps);
 			}
 
-			return new PropertyChain(type, part);
+			return new PropertyChain(type, tokens);
 		}
 
 		Model.prototype = {
@@ -398,7 +398,7 @@
 			},
 			property: function(name, thisOnly) {
 				if (!thisOnly)
-					return new PropertyChain(this, name);
+					return new PropertyChain(this, new PathTokens(name));
 
 				var prop;
 				for (var t = this; t && !prop; t = t.baseType) {
@@ -635,8 +635,8 @@
 					if (val.constructor.meta) {
 						for (var valType = val.constructor.meta; valType; valType = valType.baseType)
 							if (valType._jstype === this._jstype)
-								return true;
-						
+							return true;
+
 						return false;
 					}
 					else {
@@ -671,7 +671,7 @@
 					var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 
 					if (target == undefined)
-						ExoWeb.trace.throwAndLog(["model"], 
+						ExoWeb.trace.throwAndLog(["model"],
 							"Cannot get value for {0}static property \"{1}\" on type \"{2}\": target is undefined.",
 							[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
 
@@ -845,6 +845,76 @@
 		ExoWeb.Model.Property = Property;
 		Property.registerClass("ExoWeb.Model.Property");
 
+		///////////////////////////////////////////////////////////////////////////
+		function PathTokens(expression) {
+			this.expression = expression;
+
+			this.steps = expression.split(".").map(function(step) {
+				var parsed = step.match(/^([a-z0-9_]+)(<([a-z0-9_]+)>)?$/i);
+
+				if (!parsed)
+					return null;
+
+				var result = { property: parsed[1] };
+
+				if (parsed[3])
+					result.cast = parsed[3];
+
+				return result;
+			});
+		}
+
+		PathTokens.normalizePaths = function PathTokens$normalizePaths(paths) {
+			var result = [];
+
+			paths.forEach(function(p) {
+				var stack = [];
+				var parent;
+				var start = 0;
+				var pLen = p.length;
+
+				for (var i = 0; i < pLen; ++i) {
+					var c = p[i];
+
+					if (c === '{' || c === ',' || c === '}') {
+						var seg = p.substring(start, i).trim();
+						start = i + 1;
+
+						if (c === '{') {
+							if (parent) {
+								stack.push(parent);
+								parent += "." + seg
+							}
+							else
+								parent = seg;
+						}
+						else {   // ',' or '}'
+							if (seg.length > 0)
+								result.push(new PathTokens(parent ? parent + "." + seg : seg));
+
+							if (c === '}')
+								parent = stack.length == 0 ? undefined : stack.pop();
+						}
+					}
+				}
+
+				if (stack.length > 0)
+					throwAndLog("model", "Unclosed '{' in path: {0}", [p]);
+
+				if (start === 0)
+					result.push(new PathTokens(p.trim()));
+			});
+			return result;
+		}
+
+		PathTokens.mixin({
+			toString: function PathTokens$toString() {
+				return this.expression;
+			}
+		});
+		ExoWeb.Model.PathTokens = PathTokens;
+		PathTokens.registerClass("ExoWeb.Model.PathTokens");
+
 		///////////////////////////////////////////////////////////////////////////////
 		/// <summary>
 		/// Encapsulates the logic required to work with a chain of properties and
@@ -852,33 +922,31 @@
 		/// single property of the root object.
 		/// </summary>
 		///////////////////////////////////////////////////////////////////////////
-		function PropertyChain(rootType, path) {
+		function PropertyChain(rootType, pathTokens) {
 			var type = rootType;
 			var chain = this;
 
 			this._properties = [];
 			this._filters = [];
 
-			(path instanceof Array ? path : path.split(".")).forEach(function(step) {
-				var parsed = parsePropertyStep(step);
-
-				if (!parsed)
+			pathTokens.steps.forEach(function(step) {
+				if (!step)
 					throwAndLog("model", "Syntax error in property path: {0}", [path]);
 
-				var prop = type.property(parsed.property, true);
+				var prop = type.property(step.property, true);
 
 				if (!prop)
-					throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}", [path, type.get_fullName(), parsed.property]);
+					throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}", [pathTokens, type.get_fullName(), step.property]);
 
 				chain._properties.push(prop);
 
-				if (parsed.cast) {
-					type = type.get_model().type(parsed.cast);
+				if (step.cast) {
+					type = type.get_model().type(step.cast);
 
 					if (!type)
-						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [path, parsed.cast]);
+						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [pathTokens, step.cast]);
 
-					with ({type: type.get_jstype() }) {
+					with ({ type: type.get_jstype() }) {
 						chain._filters[chain._properties.length - 1] = function(target) {
 							return target instanceof type;
 						};
@@ -891,20 +959,6 @@
 
 			if (this._properties.length == 0)
 				throwAndLog(["model"], "PropertyChain cannot be zero-length.");
-		}
-
-		function parsePropertyStep(step) {
-			var parsed = step.match(/^([a-z0-9_]+)(<([a-z0-9_]+)>)?$/i);
-
-			if (!parsed)
-				return null;
-
-			var result = { property: parsed[1] };
-
-			if (parsed[3])
-				result.cast = parsed[3];
-
-			return result;
 		}
 
 		PropertyChain.prototype = {
@@ -1400,16 +1454,16 @@
 			},
 			execute: function(obj) {
 				this._init();
-				
+
 				// get the list of allowed values of the property for the given object
 				var allowed = this.values(obj);
-				
+
 				// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
 				if (allowed !== undefined && LazyLoader.isLoaded(allowed)) {
-				
+
 					// get the current value of the property for the given object
 					var val = this.prop.value(obj);
-	
+
 					// ensure that the value or list of values is in the allowed values list (single and multi-select)
 					if (val instanceof Array)
 						obj.meta.issueIf(this.err, !val.every(function(item) { return Array.contains(allowed, item); }));
