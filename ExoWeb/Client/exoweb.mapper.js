@@ -460,7 +460,13 @@
 					var idChange = change.idChanges[i];
 
 					var type = this._model.type(idChange.type);
-					type.changeObjectId(idChange.oldId, idChange.newId);
+					var currentId = this._translator.reverse(idChange.type, idChange.oldId);
+					
+					// TODO: handle id that doesn't exist on client
+					if (!currentId)
+						continue;
+					
+					type.changeObjectId(currentId, idChange.newId);	
 				}
 			},
 			applyInit: function ServerSync$applyInit(change) {

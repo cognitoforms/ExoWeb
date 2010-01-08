@@ -303,9 +303,9 @@
 
 						t._legacyPool[oldId] = obj;
 					}
-				}
 
-				obj.meta.id = newId;
+					obj.meta.id = newId;
+				}
 			},
 			unregister: function Type$unregister(obj) {
 				this._model.notifyObjectUnregistered(obj);
