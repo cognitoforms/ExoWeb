@@ -969,8 +969,7 @@
 				Array.addRange(this._properties, prop.all());
 			},
 			// Iterates over all objects along a property chain starting with the root object (obj).
-			// An optional propFilter can be specified to only iterate over objects on one property
-			// within the chain.
+			// An optional propFilter can be specified to only iterate over objects that are RETURNED by the property filter.
 			each: function(obj, callback, propFilter /*, target, p*/) {
 				if (!callback || typeof (callback) != "function")
 					throwAndLog(["model"], "Invalid Parameter: callback function");
@@ -978,28 +977,43 @@
 				if (!obj)
 					throwAndLog(["model"], "Invalid Parameter: source object");
 
+				// invoke callback on obj first
 				var target = arguments[3] || obj;
 				var lastProp = null;
-				for (var p = arguments[4] || 0; p < this._properties.length && (!propFilter || lastProp !== propFilter); p++) {
+				for (var p = arguments[4] || 0; p < this._properties.length; p++) {
 					var prop = this._properties[p];
-					var enableCallback = (!propFilter || prop === propFilter);
+					var canSkipRemainingProps = propFilter && lastProp === propFilter;
+					var enableCallback = (!propFilter || lastProp === propFilter);
 
 					if (target instanceof Array) {
+						// if the target is a list, invoke the callback once per item in the list
 						for (var i = 0; i < target.length; ++i) {
-							if (enableCallback && (!this._filters[p] || this._filters[p](target))) {
-								if (callback(target[i], prop) === false)
-									return false;
+							if (enableCallback) {
+								// take into account any any chain filters along the way
+								if (!this._filters[p] || this._filters[p](target)) {
+									if (callback(target[i], prop) === false)
+										return false;
+								}
 							}
 
-							if (this.each(obj, callback, propFilter, prop.value(target[i]), p + 1) === false)
+							// continue along the chain for this list item
+							if (!canSkipRemainingProps && this.each(obj, callback, propFilter, prop.value(target[i]), p + 1) === false)
 								return false;
 						}
 					}
-					else if (enableCallback && (!this._filters[p] || this._filters[p](target))) {
-						if (callback(target, prop) === false)
-							return false;
+					else if (enableCallback) {
+						// take into account any chain filters along the way
+						if (!this._filters[p] || this._filters[p](target)) {
+							if (callback(target, prop) === false)
+								return false;
+						}
 					}
 
+					// if a property filter is used and was just evaluated, stop early
+					if (canSkipRemainingProps)
+						break;
+
+					// move to next property in the chain
 					target = prop.value(target);
 					lastProp = prop;
 				}
