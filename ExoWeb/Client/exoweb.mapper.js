@@ -270,6 +270,9 @@
 			///////////////////////////////////////////////////////////////////////
 			raiseEvent: function ServerSync$raiseEvent(name, obj, event, success, failed) {
 				log("server", "ServerSync.raiseEvent() >> {0}", [name]);
+				
+				this._raiseEvent("raiseEventBegin");
+				
 				eventProvider(
 					name,																					// event name
 					toExoGraph(this._translator, obj),														// instance
@@ -278,6 +281,9 @@
 					this._onRaiseEventSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
 					this._onRaiseEventFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)	// failed callback
 				);
+			},
+			addRaiseEventBegin: function ServerSync$addRaiseEventBegin(handler) {
+				this._addEvent("raiseEventBegin", handler);
 			},
 			_onRaiseEventSuccess: function ServerSync$_onRaiseEventSuccess(response, callback) {
 				if (response.changes) {
@@ -314,11 +320,17 @@
 			///////////////////////////////////////////////////////////////////////
 			roundtrip: function ServerSync$roundtrip(success, failed) {
 				log("server", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
+				
+				this._raiseEvent("roundtripBegin");
+				
 				roundtripProvider(
 					{ changes: this._changes }, 															// changes
 					this._onRoundtripSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1), // success callback
 					this._onRoundtripFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 				);
+			},
+			addRoundtripBegin: function ServerSync$addRoundtripBegin(handler) {
+				this._addEvent("roundtripBegin", handler);
 			},
 			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(response, callback) {
 				if (response.changes) {
@@ -355,12 +367,18 @@
 			///////////////////////////////////////////////////////////////////////
 			save: function ServerSync$save(root, success, failed) {
 				log("server", ".save() >> sending {0} changes", [this._changes.length]);
+				
+				this._raiseEvent("saveBegin");
+				
 				saveProvider(
 					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 						// root
 					{changes: $transform(this._changes).where(this.canSave, this) }, 				// changes
 					this._onSaveSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1), // success callback
 					this._onSaveFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)		// failed callback
 				);
+			},
+			addSaveBegin: function ServerSync$addSaveBegin(handler) {
+				this._addEvent("saveBegin", handler);
 			},
 			_onSaveSuccess: function ServerSync$_onSaveSuccess(response, callback) {
 				this._truncateLog(this.canSave.setScope(this));
