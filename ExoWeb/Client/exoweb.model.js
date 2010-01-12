@@ -1758,6 +1758,13 @@
 			}
 		});
 
+		Number.formats.Percent = new Format({
+			description: "##.#%",
+			convert: function(val) {
+				return (val * 100).toPrecision(3).toString() + " %";
+			}
+		});
+
 		Number.formats.$system = Number.formats.Float;
 
 		String.formats.Phone = new Format({
