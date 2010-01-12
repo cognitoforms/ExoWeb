@@ -509,6 +509,9 @@
 			},
 			get_origin: function() {
 				return this._origin;
+			},
+			toString: function() {
+				return this.get_fullName();
 			}
 		}
 		Type.mixin(ExoWeb.Functor.eventing);
@@ -750,10 +753,14 @@
 				var inputs;
 				if (options.basedOn) {
 					inputs = options.basedOn.map(function(p) {
-						if (p instanceof Property)
-							return new RuleInput(p);
-
 						var input;
+
+						//						if (p instanceof Property || p instanceof PropertyChain) {
+						//							input = new RuleInput(p);
+						//							input.set_dependsOnInit(true);
+						//							return input;
+						//						}
+
 						var parts = p.split(" of ");
 						if (parts.length >= 2) {
 							input = new RuleInput(Model.property(parts[1], rootType));
@@ -923,6 +930,7 @@
 		/// </summary>
 		///////////////////////////////////////////////////////////////////////////
 		function PropertyChain(rootType, pathTokens) {
+			this._rootType = rootType;
 			var type = rootType;
 			var chain = this;
 
@@ -947,7 +955,7 @@
 						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [pathTokens, step.cast]);
 
 					with ({ type: type.get_jstype() }) {
-						chain._filters[chain._properties.length - 1] = function(target) {
+						chain._filters[chain._properties.length] = function(target) {
 							return target instanceof type;
 						};
 					}
@@ -970,7 +978,7 @@
 			},
 			// Iterates over all objects along a property chain starting with the root object (obj).
 			// An optional propFilter can be specified to only iterate over objects that are RETURNED by the property filter.
-			each: function(obj, callback, propFilter /*, target, p*/) {
+			each: function(obj, callback, propFilter /*, target, p, lastProp*/) {
 				if (!callback || typeof (callback) != "function")
 					throwAndLog(["model"], "Invalid Parameter: callback function");
 
@@ -979,7 +987,7 @@
 
 				// invoke callback on obj first
 				var target = arguments[3] || obj;
-				var lastProp = null;
+				var lastProp = arguments[5] || null;
 				for (var p = arguments[4] || 0; p < this._properties.length; p++) {
 					var prop = this._properties[p];
 					var canSkipRemainingProps = propFilter && lastProp === propFilter;
@@ -988,18 +996,19 @@
 					if (target instanceof Array) {
 						// if the target is a list, invoke the callback once per item in the list
 						for (var i = 0; i < target.length; ++i) {
-							if (enableCallback) {
-								// take into account any any chain filters along the way
-								if (!this._filters[p] || this._filters[p](target)) {
-									if (callback(target[i], prop) === false)
-										return false;
-								}
-							}
+							// take into account any any chain filters along the way
+							if (!this._filters[p] || this._filters[p](target[i])) {
 
-							// continue along the chain for this list item
-							if (!canSkipRemainingProps && this.each(obj, callback, propFilter, prop.value(target[i]), p + 1) === false)
-								return false;
+								if (enableCallback && callback(target[i], prop) === false)
+									return false;
+
+								// continue along the chain for this list item
+								if (!canSkipRemainingProps && this.each(obj, callback, propFilter, prop.value(target[i]), p + 1, prop) === false)
+									return false;
+							}
 						}
+						// subsequent properties already visited in preceding loop
+						return true;
 					}
 					else if (enableCallback) {
 						// take into account any chain filters along the way
@@ -1095,8 +1104,8 @@
 								this._properties[p].addInited(function PropertyChain$_raiseInited$Multi(sender, property) {
 									// scan all known objects of this type and raise event for any instance connected
 									// to the one that sent the event.
-									Array.forEach(chain.firstProperty().get_containingType().known(), function(known) {
-										if (chain.connects(known, sender, priorProp) && chain.isInited(known))
+									Array.forEach(chain._rootType.known(), function(known) {
+										if (chain.isInited(known) && chain.connects(known, sender, priorProp))
 											handler(known, chain);
 									});
 								});
@@ -1131,8 +1140,8 @@
 								this._properties[p].addChanged(function PropertyChain$_raiseChanged$Multi(sender, property) {
 									// scan all known objects of this type and raise event for any instance connected
 									// to the one that sent the event.
-									Array.forEach(chain.firstProperty().get_containingType().known(), function(known) {
-										if (chain.connects(known, sender, priorProp))
+									Array.forEach(chain._rootType.known(), function(known) {
+										if (chain.isInited(known) && chain.connects(known, sender, priorProp))
 											handler(known, chain);
 									});
 								});
@@ -1144,7 +1153,7 @@
 			// Property pass-through methods
 			///////////////////////////////////////////////////////////////////////
 			get_containingType: function PropertyChain$get_containingType() {
-				return this.firstProperty().get_containingType();
+				return this._rootType;
 			},
 			get_jstype: function PropertyChain$get_jstype() {
 				return this.lastProperty().get_jstype();
