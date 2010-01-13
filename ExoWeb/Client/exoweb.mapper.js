@@ -900,6 +900,9 @@
 				// locate property definition in model
 				var prop = jstype.meta.property(step.property);
 
+				if (prop.get_isValueType())
+					break;
+
 				// Load the type of the property if its not yet loaded
 				var mtype;
 				if (step.cast) {
@@ -918,7 +921,7 @@
 					mtype = prop.get_jstype().meta;
 
 				// if property's type isn't load it, then fetch it
-				if (mtype && !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+				if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 					fetchType(model, mtype.get_fullName(), function(jstype) {
 						fetchPathTypes(model, jstype, path, callback);
 					});

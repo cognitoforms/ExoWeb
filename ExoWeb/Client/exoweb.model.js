@@ -601,11 +601,11 @@
 			},
 
 			get_isEntityType: function() {
-				return this.get_jstype().meta && !this._isList;
+				return !!this.get_jstype().meta && !this._isList;
 			},
 
 			get_isEntityListType: function() {
-				return this.get_jstype().meta && this._isList;
+				return !!this.get_jstype().meta && this._isList;
 			},
 
 			get_isValueType: function() {
