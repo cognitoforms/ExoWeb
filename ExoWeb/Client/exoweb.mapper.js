@@ -270,15 +270,15 @@
 			///////////////////////////////////////////////////////////////////////
 			raiseEvent: function ServerSync$raiseEvent(name, obj, event, success, failed) {
 				log("server", "ServerSync.raiseEvent() >> {0}", [name]);
-				
+
 				this._raiseEvent("raiseEventBegin");
-				
+
 				eventProvider(
-					name,																					// event name
-					toExoGraph(this._translator, obj),														// instance
-					event,																					// custom event object
-					{ changes: this._changes },																// changes
-					this._onRaiseEventSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1),	// success callback
+					name, 																				// event name
+					toExoGraph(this._translator, obj), 													// instance
+					event, 																				// custom event object
+					{changes: this._changes }, 															// changes
+					this._onRaiseEventSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1), // success callback
 					this._onRaiseEventFailed.setScope(this).appendArguments(failed).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -320,9 +320,9 @@
 			///////////////////////////////////////////////////////////////////////
 			roundtrip: function ServerSync$roundtrip(success, failed) {
 				log("server", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
-				
+
 				this._raiseEvent("roundtripBegin");
-				
+
 				roundtripProvider(
 					{ changes: this._changes }, 															// changes
 					this._onRoundtripSuccess.setScope(this).appendArguments(success).sliceArguments(0, 1), // success callback
@@ -367,9 +367,9 @@
 			///////////////////////////////////////////////////////////////////////
 			save: function ServerSync$save(root, success, failed) {
 				log("server", ".save() >> sending {0} changes", [this._changes.length]);
-				
+
 				this._raiseEvent("saveBegin");
-				
+
 				saveProvider(
 					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 						// root
 					{changes: $transform(this._changes).where(this.canSave, this) }, 				// changes
@@ -479,12 +479,12 @@
 
 					var type = this._model.type(idChange.type);
 					var currentId = this._translator.reverse(idChange.type, idChange.oldId);
-					
+
 					// TODO: handle id that doesn't exist on client
 					if (!currentId)
 						continue;
-					
-					type.changeObjectId(currentId, idChange.newId);	
+
+					type.changeObjectId(currentId, idChange.newId);
 				}
 			},
 			applyInit: function ServerSync$applyInit(change) {
@@ -891,14 +891,13 @@
 		}).dontDoubleUp({ callbackArg: 2 });
 
 		function fetchPathTypes(model, jstype, path, callback) {
-			var step = Array.dequeue(path.steps);
+			var step;
 
-			// locate property definition in model
-			// If property is not yet in model skip it. It might be in a derived type and it will be lazy loaded.
-			var prop = jstype.meta.property(step.property);
+			while (step = Array.dequeue(path.steps)) {
+				// locate property definition in model
+				var prop = jstype.meta.property(step.property);
 
-			// Load the type of the property if its not yet loaded
-			if (prop) {
+				// Load the type of the property if its not yet loaded
 				var mtype;
 				if (step.cast) {
 					mtype = model.type(step.cast);
@@ -915,18 +914,22 @@
 				else
 					mtype = prop.get_jstype().meta;
 
+				// if property's type isn't load it, then fetch it
 				if (mtype && !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 					fetchType(model, mtype.get_fullName(), function(jstype) {
-						if (path.steps.length > 0)
-							fetchPathTypes(model, jstype, path, callback);
-						else if (callback)
-							callback();
+						fetchPathTypes(model, jstype, path, callback);
 					});
+
+					// path walking will resume with callback
+					return;
 				}
-				else if (callback)
-					callback();
+
+				// keep walking the path
+				jstype = mtype.get_jstype();
 			}
-			else if (callback)
+
+			// done walking path
+			if (callback)
 				callback();
 		}
 
@@ -1216,7 +1219,7 @@
 					var query = options.model[varName];
 
 					query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
-					
+
 					// only send properties to server
 					query.serverPaths = query.and.map(function(path) {
 						var strPath;
