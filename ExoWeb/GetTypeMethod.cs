@@ -68,7 +68,7 @@ namespace ExoWeb
 				if (property is GraphValueProperty)
 					response.Write("            \"" + property.Name + "\": { \"type\": \"" + GetJsonValueType(((GraphValueProperty)property).PropertyType) + "\"");
 				else
-					response.Write("            \"" + property.Name + "\": { \"type\": \"" + ((GraphReferenceProperty)property).PropertyType.Name + "\"" + (((GraphReferenceProperty)property).IsList ? ", \"isList\": true" : ""));
+					response.Write("            \"" + property.Name + "\": { \"type\": \"" + GetJsonReferenceType(((GraphReferenceProperty)property).PropertyType) + "\"" + (((GraphReferenceProperty)property).IsList ? ", \"isList\": true" : ""));
 
 				// Indicate if the property is shared
 				if (property.IsStatic)

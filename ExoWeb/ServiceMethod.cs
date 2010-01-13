@@ -52,7 +52,15 @@ namespace ExoWeb
 
 			return null;
 		}
-	
+
+		protected static string GetJsonReferenceType(GraphType type)
+		{
+			string jsonType = "";
+			for (GraphType t = type; t != null; t = t.BaseType)
+				jsonType += (string.IsNullOrEmpty(jsonType) ? "" : ">") + t.Name;
+			return jsonType;
+		}
+
 		// Cache a converter to serialize and deserialize JSON data
 		static JsonQueryStringConverter converter = new JsonQueryStringConverter();
 
