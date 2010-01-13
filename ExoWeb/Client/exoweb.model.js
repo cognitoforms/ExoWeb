@@ -43,7 +43,7 @@
 					);
 		}
 
-		Model.property = function(path, thisType) {
+		Model.property = function Model$property(path, thisType) {
 			var tokens = new PathTokens(path);
 			var firstStep = tokens.steps[0];
 			var isGlobal = firstStep.property !== "this";
@@ -1466,7 +1466,7 @@
 			this._needsInit = true;
 		}
 		AllowedValuesRule.prototype = {
-			_init: function() {
+			_init: function AllowedValuesRule$_init() {
 				if (this._needsInit) {
 					// type is undefined or not loaded
 					if (LazyLoader.isLoaded(this.prop.get_containingType()))
@@ -1475,7 +1475,7 @@
 					delete this._needsInit;
 				}
 			},
-			execute: function(obj) {
+			execute: function AllowedValuesRule$execute(obj) {
 				this._init();
 
 				// get the list of allowed values of the property for the given object
@@ -1494,18 +1494,18 @@
 						obj.meta.issueIf(this.err, val && !Array.contains(allowed, val));
 				}
 			},
-			propertyChain: function(obj) {
+			propertyChain: function AllowedValuesRule$propertyChain(obj) {
 				this._init();
 				return this._propertyChain;
 			},
-			values: function(obj) {
+			values: function AllowedValuesRule$values(obj) {
 				this._init();
 				if (this._propertyChain) {
 					// get the allowed values from the property chain
 					return this._propertyChain.value(obj);
 				}
 			},
-			toString: function() {
+			toString: function AllowedValuesRule$toString() {
 				return $format("{0}.{1} allowed values", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
 			}
 		}
