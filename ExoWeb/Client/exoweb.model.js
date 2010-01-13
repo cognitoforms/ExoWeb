@@ -695,7 +695,7 @@
 					var prop = this;
 
 					Sys.Observer.makeObservable(val);
-					Sys.Observer.addCollectionChanged(val, function(sender, args) {
+					Sys.Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
 						prop._raiseEvent("changed", [target, prop]);
 						prop._containingType.get_model().notifyListChanged(target, prop, args.get_changes());
 					});
@@ -937,7 +937,7 @@
 			this._properties = [];
 			this._filters = [];
 
-			pathTokens.steps.forEach(function(step) {
+			pathTokens.steps.forEach(function PropertyChain$eachToken(step) {
 				if (!step)
 					throwAndLog("model", "Syntax error in property path: {0}", [path]);
 

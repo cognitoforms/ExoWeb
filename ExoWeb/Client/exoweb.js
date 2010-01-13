@@ -328,18 +328,18 @@ Type.registerNamespace("ExoWeb");
 		}
 
 		Functor.eventing = {
-			_addEvent: function(name, func) {
+			_addEvent: function Functor$_addEvent(name, func) {
 				if (!this["_" + name])
 					this["_" + name] = new Functor();
 
 				this["_" + name].add(func);
 			},
-			_removeEvent: function(name, func) {
+			_removeEvent: function Functor$_removeEvent(name, func) {
 				var handler = this["_" + name];
 				if (handler)
 					handler.remove(func);
 			},
-			_raiseEvent: function(name, argsArray) {
+			_raiseEvent: function Functor$_raiseEvent(name, argsArray) {
 				var handler = this["_" + name];
 				if (handler)
 					handler.apply(this, argsArray || []);

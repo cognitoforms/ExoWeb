@@ -536,13 +536,13 @@
 
 				var _this = this;
 				// apply added items
-				Array.forEach(change.added, function(item) {
+				Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
 					var obj = fromExoGraph(_this._translator, item);
 					Sys.Observer.add(list, obj);
 				});
 
 				// apply removed items
-				Array.forEach(change.removed, function(item) {
+				Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
 					var obj = fromExoGraph(_this._translator, item);
 					Sys.Observer.remove(list, obj);
 				});
