@@ -197,10 +197,12 @@
 					else {
 						type.register(this);
 
-						for (var propName in type._properties) {
-							var prop = type._properties[propName];
-							if (!prop.get_isStatic() && prop.get_isList()) {
-								prop.init(this, []);
+						for (var t = type; t != null; t = t.baseType) {
+							for (var propName in t._properties) {
+								var prop = t._properties[propName];
+								if (!prop.get_isStatic() && prop.get_isList()) {
+									prop.init(this, []);
+								}
 							}
 						}
 					}
