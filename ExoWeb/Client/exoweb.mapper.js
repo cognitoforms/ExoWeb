@@ -454,6 +454,9 @@
 						return e.__type != "Save:#ExoGraph";
 					}));
 				}
+				catch (e) {
+					ExoWeb.trace.throwAndLog(["server"], e);
+				}
 				finally {
 					this.endApplyingChanges();
 				}
