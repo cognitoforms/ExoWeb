@@ -1021,6 +1021,7 @@
 		// Object Loader
 		function ObjectLazyLoader() {
 			this._requests = {};
+			this._typePaths = {};
 		}
 
 		ObjectLazyLoader.mixin({
@@ -1032,9 +1033,31 @@
 
 				var objectJson;
 
+				function getRelativePaths(obj, typePaths) {
+					var relPaths = [];
+
+					for (var typeName in typePaths) {
+						var jstype = window[typeName];
+
+						if (jstype && jstype.meta) {
+							var paths = typePaths[typeName];
+							for (var i = 0; i < paths.length; i++) {
+								var path = paths[i].expression;
+								var chain = ExoWeb.Model.Model.property(path, jstype.meta);
+								var rootedPath = chain.rootedPath(obj.meta.type);
+								if (rootedPath)
+									relPaths.push(rootedPath);
+							}
+						}
+					}
+
+					return relPaths;
+				}
+
 				// fetch object json
 				log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
-				objectProvider(mtype.get_fullName(), [id], true, false, [], null, signal.pending(function(result) {
+				// NOTE: should changes be included here?
+				objectProvider(mtype.get_fullName(), [id], true, false, getRelativePaths(obj, this._typePaths), null, signal.pending(function(result) {
 					objectJson = result.instances;
 				}));
 
@@ -1054,6 +1077,17 @@
 
 		(function() {
 			var instance = new ObjectLazyLoader();
+
+			ObjectLazyLoader.addPaths = function ObjectLazyLoader$addPaths(rootType, paths) {
+				var typePaths = instance._typePaths[rootType];
+				if (!typePaths)
+					typePaths = instance._typePaths[rootType] = [];
+				for (var i = 0; i < paths.length; i++) {
+					var path = paths[i];
+					if (!Array.contains(typePaths, path))
+						typePaths.push(path);
+				}
+			}
 
 			ObjectLazyLoader.register = function(obj) {
 				if (!ExoWeb.Model.LazyLoader.isRegistered(obj, instance))
@@ -1225,6 +1259,9 @@
 					var query = options.model[varName];
 
 					query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
+
+					// store the paths for later use
+					ObjectLazyLoader.addPaths(query.from, query.and);
 
 					// only send properties to server
 					query.serverPaths = query.and.map(function(path) {

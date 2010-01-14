@@ -1032,17 +1032,19 @@
 				return true;
 			},
 			get_path: function PropertyChain$get_path() {
-				if (!this._path) {
-					var parts = [];
-					if (this._properties[0].get_isStatic())
-						parts.push(this._properties[0].get_containingType().get_fullName());
-
-					this._properties.forEach(function(p) { parts.push(p.get_name()); })
-
-					this._path = parts.join(".");
-				}
+				if (!this._path)
+					this._path = this.getPathFromIndex(0);
 
 				return this._path;
+			},
+			getPathFromIndex: function PropertyChain$getPathFromIndex(startIndex) {
+				var parts = [];
+				if (this._properties[startIndex].get_isStatic())
+					parts.push(this._properties[startIndex].get_containingType().get_fullName());
+
+				this._properties.slice(startIndex).forEach(function(p) { parts.push(p.get_name()); })
+
+				return parts.join(".");
 			},
 			firstProperty: function() {
 				return this._properties[0];
@@ -1079,6 +1081,14 @@
 				}, viaProperty);
 
 				return connected;
+			},
+			rootedPath: function PropertyChain$rootedPath(rootType) {
+				for (var i = 0; i < this._properties.length; i++) {
+					if (this._properties[i]._containingType == rootType) {
+						var path = this.getPathFromIndex(i);
+						return (this._properties[i]._isStatic ? "" : "this.") + path;
+					}
+				}
 			},
 			// Listens for when property.init() is called on all properties in the chain. Use obj argument to
 			// optionally filter the events to a specific object
