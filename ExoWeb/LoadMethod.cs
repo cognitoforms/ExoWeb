@@ -103,11 +103,30 @@ namespace ExoWeb
 				}
 				response.Write("\r\n   },\r\n");
 			}
-
+			
 			// Serialize the list of instances
 			response.Write("   \"instances\": {\r\n");
 			isFirstType = true;
+
+			// Create a new dictionary that collapses synonymous Graph Types
+			Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> collapsedInstances = new Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>>();
 			foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> type in instances)
+			{
+				GraphType synonymousType = null;
+				foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> existingType in collapsedInstances)
+					if (type.Key.QualifiedName == existingType.Key.QualifiedName)
+						synonymousType = existingType.Key;
+
+				Dictionary<GraphInstance, GraphInstanceInfo> srcInstances = (synonymousType != null) ?
+					srcInstances = collapsedInstances[synonymousType] :
+					srcInstances = collapsedInstances[type.Key] = new Dictionary<GraphInstance, GraphInstanceInfo>();
+
+				foreach (KeyValuePair<GraphInstance, GraphInstanceInfo> inst in type.Value)
+					if (!srcInstances.ContainsKey(inst.Key))
+						srcInstances.Add(inst.Key, inst.Value);
+			}
+
+			foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> type in collapsedInstances)
 			{
 				// Get the current graph type
 				GraphType graphType = type.Key;
