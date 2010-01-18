@@ -228,7 +228,7 @@ Type.registerNamespace("ExoWeb.UI");
 					this._template = Template.find(element);
 
 					if (!this._template)
-						throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}", [this._data]);
+						throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}, Element={1}.{2}", [this._data, element.tagName, element.className]);
 				}
 
 				if (!Sys.UI.Template.isInstanceOfType(this._template))
@@ -269,6 +269,9 @@ Type.registerNamespace("ExoWeb.UI");
 						// necessary in order to render components found within the template (like a nested dataview)
 						_this._context.initializeComponents();
 					});
+				}
+				else {
+					$(this._element).empty();
 				}
 			},
 			initialize: function() {
