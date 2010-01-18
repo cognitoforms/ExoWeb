@@ -24,7 +24,7 @@
 					Sys.Observer.setValue(component, targetProperty, adapter);
 				});
 			}, false);
-	
+
 		// Lazy eval markup extension
 		Sys.Application.registerMarkupExtension("~",
 			function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
@@ -171,8 +171,11 @@
 					throwAndLog(["@", "markupExt"], "Property \"{p}\" could not be found.", { p: this._propertyPath });
 	
 				// if the target is an adapter, prepend it's property chain
-				if (this._target instanceof Adapter)
+				if (this._target instanceof Adapter) {
 					this._propertyChain.prepend(this._target.get_propertyChain());
+					this._parentAdapter = this._target;
+					this._target = this._target.get_target();
+				}
 			},
 			_loadAllowedValues: function Adapter$_loadAllowedValues() {
 				if (!this._propertyChain.get_isValueType()) {
