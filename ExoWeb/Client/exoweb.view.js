@@ -29,10 +29,10 @@
 		Sys.Application.registerMarkupExtension("~",
 			function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
 				log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + " (evaluating)");
-	
+
 				var source;
 				var scopeChain;
-	
+
 				if (properties.source) {
 					var evalSource = new Function("$element", "$index", "$dataItem", "return " + properties.source + ";");
 					source = evalSource(component.get_element(), templateContext.index, templateContext.dataItem);
@@ -43,7 +43,7 @@
 				else {
 					source = templateContext.dataItem;
 				}
-	
+
 				ExoWeb.Model.LazyLoader.eval(source, properties.$default,
 					function(result) {
 						log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
@@ -87,7 +87,20 @@
 						}
 	
 						try {
-							Sys.Observer.setValue(component, targetProperty, result);
+							if (properties.required) {
+								var path = properties.required;
+								
+								// check for instance property format
+								if (path.startsWith("this."))
+									path = path.substring(5);
+								
+								ExoWeb.Model.LazyLoader.eval(source, path, function() {
+									Sys.Observer.setValue(component, targetProperty, result);
+								});
+							}
+							else {
+								Sys.Observer.setValue(component, targetProperty, result);
+							}
 						}
 						catch (err) {
 							throwAndLog(["~", "markupExt"], "Path '{0}' was evaluated but the '{2}' property on the target could not be set, {1}", [properties.$default, err, targetProperty]);
