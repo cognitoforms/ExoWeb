@@ -303,39 +303,15 @@ Type.registerNamespace("ExoWeb.UI");
 			return null;
 		}
 
-		function getParentContextData(elementOrControl, index, level) {
-
-			if (elementOrControl.control instanceof Sys.UI.DataView)
-				elementOrControl = elementOrControl.control;
-			else if (elementOrControl instanceof Sys.UI.Template)
-				elementOrControl = elementOrControl.get_element();
-
-			if (!level)
-				level = 1;
-
-			var container;
-			var subcontainer;
-			for (var i = 0; i < level; i++) {
-				// if we are starting out with a dataview then look at the parent context rather than walking 
-				// up the dom (since the element will probably not be present in the dom)
-				if (!container && elementOrControl instanceof Sys.UI.DataView && elementOrControl._parentContext) {
-					container = elementOrControl._parentContext.containerElement;
-				}
-				else {
-					subcontainer = getTemplateSubContainer(container || elementOrControl);
-
-					if (!subcontainer)
-						throw Error.invalidOperation("Not within a container template.");
-
-					container = subcontainer.parentNode;
-				}
-			}
+		function getDataForContainer(container, subcontainer) {
+			if (!container)
+				return;
 
 			var data = null;
 
 			if (container.control instanceof ExoWeb.UI.Content) {
 				// content control doesn't currenlty support lists, so return the data object
-				return container.control.get_data();
+				data = container.control.get_data();
 			}
 			else if (container.control instanceof Sys.UI.DataView) {
 				var containerContexts = container.control.get_contexts();
@@ -371,6 +347,36 @@ Type.registerNamespace("ExoWeb.UI");
 			}
 
 			return data;
+		}
+
+		function getParentContextData(elementOrControl, index, level, dataType) {
+
+			if (elementOrControl.control instanceof Sys.UI.DataView)
+				elementOrControl = elementOrControl.control;
+			else if (elementOrControl instanceof Sys.UI.Template)
+				elementOrControl = elementOrControl.get_element();
+
+			var effectiveLevel = level || 1;
+
+			var container;
+			var subcontainer;
+			for (var i = 0; i < effectiveLevel || (dataType && !(getDataForContainer(container, subcontainer) instanceof dataType)); i++) {
+				// if we are starting out with a dataview then look at the parent context rather than walking 
+				// up the dom (since the element will probably not be present in the dom)
+				if (!container && elementOrControl instanceof Sys.UI.DataView && elementOrControl._parentContext) {
+					container = elementOrControl._parentContext.containerElement;
+				}
+				else {
+					subcontainer = getTemplateSubContainer(container || elementOrControl);
+
+					if (!subcontainer)
+						throw Error.invalidOperation("Not within a container template.");
+
+					container = subcontainer.parentNode;
+				}
+			}
+			
+			return getDataForContainer(container, subcontainer);
 		}
 
 		window.$parentContextData = getParentContextData;
