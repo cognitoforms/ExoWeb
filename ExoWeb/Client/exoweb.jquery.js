@@ -7,7 +7,7 @@
 		//////////////////////////////////////////////////////////////////////////////////////
 		// validation events
 		var ensureInited = function($el) {
-			if (!ExoWeb.Model)
+			if (!window.ExoWeb)
 				return;
 
 			if ($el.attr("__validating") === undefined) {
@@ -58,7 +58,7 @@
 		// selectors for rules
 
 		jQuery.expr[":"].rule = function(obj, index, meta, stack) {
-			if (!ExoWeb.Model)
+			if (!window.ExoWeb)
 				return false;
 
 			var ruleName = meta[3];
@@ -102,25 +102,35 @@
 			}
 		}
 
-		if (Sys && Sys.UI && Sys.UI.Template) {
-			var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
-			Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
-				var ret = instantiateInBase.apply(this, arguments);
 
-				processElements(ret.nodes, "added");
-				return ret;
+		var intercepting = false;
+
+		function ensureIntercepting() {
+			if (intercepting)
+				return;
+
+			intercepting = true;
+
+			if (window.Sys && Sys.UI && Sys.UI.Template) {
+				var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
+				Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
+					var ret = instantiateInBase.apply(this, arguments);
+
+					processElements(ret.nodes, "added");
+					return ret;
+				}
 			}
-		}
 
-		if (Sys && Sys.WebForms) {
-			Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function(sender, evt) {
-				processElements(evt.get_panelsUpdating(), "deleted");
-			});
+			if (window.Sys && Sys.WebForms) {
+				Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function(sender, evt) {
+					processElements(evt.get_panelsUpdating(), "deleted");
+				});
 
-			Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function(sender, evt) {
-				processElements(evt.get_panelsCreated(), "added");
-				processElements(evt.get_panelsUpdated(), "added");
-			});
+				Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function(sender, evt) {
+					processElements(evt.get_panelsCreated(), "added");
+					processElements(evt.get_panelsUpdated(), "added");
+				});
+			}
 		}
 
 		// matches elements as they are dynamically added to the DOM
@@ -136,6 +146,7 @@
 				deleted: deleted
 			});
 
+			ensureIntercepting();			
 			return this;
 		}
 
@@ -194,7 +205,7 @@
 		}
 	}
 
-	if (Sys && Sys.loader) {
+	if (window.Sys && Sys.loader) {
 		Sys.loader.registerScript("ExoWebJquery", null, execute);
 	}
 	else {
