@@ -146,8 +146,11 @@
 				deleted: deleted
 			});
 
-			ensureIntercepting();			
-			return this;
+			ensureIntercepting();
+
+			// really shouldn't chain calls b/c only elements
+			// currently in the DOM would be affected.
+			return null;
 		}
 
 		// Gets all Sys.Bindings for an element
