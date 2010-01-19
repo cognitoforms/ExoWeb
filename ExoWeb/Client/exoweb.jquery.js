@@ -1,12 +1,16 @@
 ﻿
 (function() {
+	var undefined;
 
 	function execute() {
-		
+
 		//////////////////////////////////////////////////////////////////////////////////////
 		// validation events
 		var ensureInited = function($el) {
-			if (typeof ($el.attr("__validating")) == "undefined") {
+			if (!ExoWeb.Model)
+				return;
+
+			if ($el.attr("__validating") === undefined) {
 				// register for model validation events
 				var bindings = $el.liveBindings();
 
@@ -54,6 +58,9 @@
 		// selectors for rules
 
 		jQuery.expr[":"].rule = function(obj, index, meta, stack) {
+			if (!ExoWeb.Model)
+				return false;
+
 			var ruleName = meta[3];
 			var ruleType = ExoWeb.Model.Rule[ruleName];
 
@@ -64,6 +71,8 @@
 		};
 
 		jQuery.expr[":"].bound = function(obj, index, meta, stack) {
+			if (!ExoWeb.Model)
+				return false;
 			return $(obj).liveBindings().length > 0;
 		};
 
@@ -71,39 +80,60 @@
 		// helpers for MS AJAX and model integration
 		var everRegs = [];
 
-		var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
-		Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
-			var ret = instantiateInBase.apply(this, arguments);
-
-			// rebind validation events
-			for (var e = 0; e < ret.nodes.length; ++e) {
-				var newElement = ret.nodes[e];
+		function processElements(els, action) {
+			for (var e = 0; e < els.length; ++e) {
+				var el = els[e];
 
 				for (var i = 0; i < everRegs.length; ++i) {
 					var reg = everRegs[i];
 
+					var handler = reg[action];
+
+					if (!handler)
+						continue;
+
 					// test root
-					if ($(newElement).is(reg.selector))
-						reg.handler.apply(newElement);
+					if ($(el).is(reg.selector))
+						handler.apply(el);
 
 					// test children
-					$(reg.selector, newElement).each(reg.handler);
+					$(reg.selector, el).each(handler);
 				}
 			}
+		}
 
-			return ret;
+		if (Sys && Sys.UI && Sys.UI.Template) {
+			var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
+			Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
+				var ret = instantiateInBase.apply(this, arguments);
+
+				processElements(ret.nodes, "added");
+				return ret;
+			}
+		}
+
+		if (Sys && Sys.WebForms) {
+			Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function(sender, evt) {
+				processElements(evt.get_panelsUpdating(), "deleted");
+			});
+
+			Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function(sender, evt) {
+				processElements(evt.get_panelsCreated(), "added");
+				processElements(evt.get_panelsUpdated(), "added");
+			});
 		}
 
 		// matches elements as they are dynamically added to the DOM
-		jQuery.fn.ever = function(f) {
+		jQuery.fn.ever = function(added, deleted) {
 			// apply now
-			this.each(f);
+			this.each(added);
 
 			// and then watch for dom changes
 			everRegs.push({
 				selector: this.selector,
 				context: this.context,
-				handler: f
+				added: added,
+				deleted: deleted
 			});
 
 			return this;
@@ -116,6 +146,9 @@
 
 		// Gets all model rules associated with the property an element is bound to
 		jQuery.fn.rules = function(ruleType) {
+			if (!ExoWeb.Model)
+				return [];
+
 			var rules = [];
 			var bindings = $(this).liveBindings();
 
@@ -147,7 +180,7 @@
 		}
 
 		// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
-		function Sys_Binding_getFinalSourceObject(binding){
+		function Sys_Binding_getFinalSourceObject(binding) {
 			var src = binding.get_source();
 
 			for (var i = 0; i < binding._pathArray.length - 1; ++i)
@@ -155,8 +188,8 @@
 
 			return src;
 		}
-		
-		function Sys_Binding_getFinalPath(binding){
+
+		function Sys_Binding_getFinalPath(binding) {
 			return binding._pathArray[binding._pathArray.length - 1];
 		}
 	}
