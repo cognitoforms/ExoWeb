@@ -2094,7 +2094,7 @@
 		LazyLoader.registerClass("ExoWeb.Model.LazyLoader");
 	}
 
-	if (Sys && Sys.loader) {
+	if (window.Sys && Sys.loader) {
 		Sys.loader.registerScript("ExoWebModel", null, execute);
 	}
 	else {

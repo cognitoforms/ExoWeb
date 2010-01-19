@@ -544,7 +544,7 @@
 		})();
 	}
 
-	if (Sys && Sys.loader) {
+	if (window.Sys && Sys.loader) {
 		Sys.loader.registerScript("ExoWebView", null, execute);
 	}
 	else {

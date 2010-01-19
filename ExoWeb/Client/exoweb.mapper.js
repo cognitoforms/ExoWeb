@@ -1350,7 +1350,7 @@
 		}
 	}
 
-	if (Sys && Sys.loader) {
+	if (window.Sys && Sys.loader) {
 		Sys.loader.registerScript("ExoWebMapper", null, execute);
 	}
 	else {

@@ -384,7 +384,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 	}
 
-	if (Sys && Sys.loader) {
+	if (window.Sys && Sys.loader) {
 		Sys.loader.registerScript("ExoWebUi", null, execute);
 	}
 	else {

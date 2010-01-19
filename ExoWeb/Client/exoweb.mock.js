@@ -301,7 +301,7 @@
 		ExoWeb.Mock = new Mock();
 	}
 
-	if (Sys && Sys.loader) {
+	if (window.Sys && Sys.loader) {
 		Sys.loader.registerScript("ExoWebMock", null, execute);
 	}
 	else {

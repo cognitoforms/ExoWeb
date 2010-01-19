@@ -698,7 +698,7 @@ Type.registerNamespace("ExoWeb");
 		}
 	}
 
-	if (Sys && Sys.loader) {
+	if (window.Sys && Sys.loader) {
 		Sys.loader.registerScript("ExoWeb", null, execute);
 	}
 	else {
