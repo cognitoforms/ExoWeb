@@ -260,7 +260,7 @@ namespace ExoWeb
 		void OutputReference(HttpResponse response, GraphReferenceProperty property, GraphInstance instance)
 		{
 			if (instance != null)
-				response.Write("{ \"id\": \"" + instance.Id + "\"" + (property.PropertyType != instance.Type ? ", \"type\": \"" + instance.Type.Name +"\"" : "") + " }");
+				response.Write("{ \"id\": \"" + instance.Id + "\"" + (property.PropertyType != instance.Type ? ", \"type\": \"" + GetJsonReferenceType(instance.Type, property.PropertyType) + "\"" : "") + " }");
 			else
 				response.Write("null");
 		}
