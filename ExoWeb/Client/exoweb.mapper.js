@@ -59,7 +59,16 @@
 			},
 			convertBack: function(val) {
 				var jstype = window[val.type];
-				return jstype.meta.get(val.id);
+
+				var obj = jstype.meta.get(val.id);
+
+				if (!obj) {
+					obj = new jstype(val.id);
+					ObjectLazyLoader.register(obj);
+					log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), val.id]);
+				}
+
+				return obj;
 			}
 		});
 
@@ -526,21 +535,33 @@
 				var obj = fromExoGraph(this._translator, change.instance);
 
 				var translator = this._translator;
+				var model = this._model;
 
-				if (change.newValue) {
-					ensureJsType(this._model, change.newValue.type, 
-						function applyRefChange$typeLoaded(mtype) {
-							var ref = fromExoGraph(translator, change.newValue);
+				function applyRefChange$execute() {
+					if (change.newValue) {
+						ensureJsType(model, change.newValue.type, 
+							function applyRefChange$typeLoaded(mtype) {
+								var ref = fromExoGraph(translator, change.newValue);
 
-							Sys.Observer.setValue(obj, change.property, ref);
-							
-							callback();
-						});
+								Sys.Observer.setValue(obj, change.property, ref);
+
+								callback();
+							});
+					}
+					else {
+						Sys.Observer.setValue(obj, change.property, null);
+
+						callback();
+					}
+				}
+
+				if (!ExoWeb.Model.LazyLoader.isLoaded(obj, change.property)) {
+					ExoWeb.Model.LazyLoader.eval(obj, change.property, function() {
+						applyRefChange$execute();
+					});
 				}
 				else {
-					Sys.Observer.setValue(obj, change.property, null);
-
-					callback();
+					applyRefChange$execute();
 				}
 			},
 			applyValChange: function ServerSync$applyValChange(change, callback) {
@@ -548,34 +569,54 @@
 
 				var obj = fromExoGraph(this._translator, change.instance);
 
-				// TODO: validate original value?
+				function applyValChange$execute() {
+					Sys.Observer.setValue(obj, change.property, change.newValue);
+					callback();
+				}
 
-				Sys.Observer.setValue(obj, change.property, change.newValue);
-
-				callback();
+				if (!ExoWeb.Model.LazyLoader.isLoaded(obj, change.property)) {
+					ExoWeb.Model.LazyLoader.eval(obj, change.property, function() {
+						applyValChange$execute();
+					});
+				}
+				else {
+					applyValChange$execute();
+				}
 			},
 			applyListChange: function ServerSync$applyListChange(change, callback) {
 				log("server", "applyListChange", change.instance);
 
 				var obj = fromExoGraph(this._translator, change.instance);
-				var prop = obj.meta.property(change.property);
-				var list = prop.value(obj);
 
 				var translator = this._translator;
 
-				// apply added items
-				Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
-					var obj = fromExoGraph(translator, item);
-					Sys.Observer.add(list, obj);
-				});
+				function applyListChange$execute() {
+					var prop = obj.meta.property(change.property);
+					var list = prop.value(obj);
 
-				// apply removed items
-				Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
-					var obj = fromExoGraph(translator, item);
-					Sys.Observer.remove(list, obj);
-				});
+					// apply added items
+					Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
+						var childObj = fromExoGraph(translator, item);
+						Sys.Observer.add(list, childObj);
+					});
 
-				callback();
+					// apply removed items
+					Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
+						var childObj = fromExoGraph(translator, item);
+						Sys.Observer.remove(list, childObj);
+					});
+
+					callback();
+				}
+
+				if (!ExoWeb.Model.LazyLoader.isLoaded(obj, change.property)) {
+					ExoWeb.Model.LazyLoader.eval(obj, change.property, function() {
+						applyListChange$execute();
+					});
+				}
+				else {
+					applyListChange$execute();
+				}
 			}
 		});
 
