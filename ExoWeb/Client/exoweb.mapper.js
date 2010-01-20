@@ -498,18 +498,20 @@
 			applySaveChange: function ServerSync$applySaveChange(change, callback) {
 				log("server", "applySaveChange: {length} changes", change.idChanges);
 
-				// update each object with its new id
-				for (var i = 0; i < change.idChanges.length; i++) {
-					var idChange = change.idChanges[i];
+				if (change.idChanges) {
+					// update each object with its new id
+					for (var i = 0; i < change.idChanges.length; i++) {
+						var idChange = change.idChanges[i];
 
-					var type = this._model.type(idChange.type);
-					var currentId = this._translator.reverse(idChange.type, idChange.oldId);
+						var type = this._model.type(idChange.type);
+						var currentId = this._translator.reverse(idChange.type, idChange.oldId);
 
-					// TODO: handle id that doesn't exist on client
-					if (!currentId)
-						continue;
+						// TODO: handle id that doesn't exist on client
+						if (!currentId)
+							continue;
 
-					type.changeObjectId(currentId, idChange.newId);
+						type.changeObjectId(currentId, idChange.newId);
+					}
 				}
 
 				callback();
