@@ -440,42 +440,55 @@
 
 			// APPLY CHANGES
 			///////////////////////////////////////////////////////////////////////
-			apply: function ServerSync$_applyChanges(changes) {
+			apply: function ServerSync$apply(changes) {
 				if (!changes || !(changes instanceof Array)) return;
 
 				try {
+					log("server", "begin applying {length} changes", changes);
+
 					this.beginApplyingChanges();
 
-					// apply each change
-					Array.forEach(changes, this.applyChange.setScope(this));
+					var signal = new ExoWeb.Signal();
 
-					// add non-save changes to the queue
-					Array.addRange(this._changes, $transform(changes).where(function(e) {
-						return e.__type != "Save:#ExoGraph";
-					}));
+					var server = this;
+
+					function processChange() {
+						var change = Array.dequeue(changes);
+
+						if (change) {
+							if (change.__type != "Save:#ExoGraph")
+								server._changes.push(change);
+
+							var callback = signal.pending(processChange);
+
+							if (change.__type == "InitNew:#ExoGraph")
+								server.applyInitChange(change, callback);
+							else if (change.__type == "ReferenceChange:#ExoGraph")
+								server.applyRefChange(change, callback);
+							else if (change.__type == "ValueChange:#ExoGraph")
+								server.applyValChange(change, callback);
+							else if (change.__type == "ListChange:#ExoGraph")
+								server.applyListChange(change, callback);
+							else if (change.__type == "Save:#ExoGraph")
+								server.applySaveChange(change, callback);
+						}
+					}
+
+					processChange();
+
+					signal.waitForAll(function() {
+						log("server", "done applying changes");
+						server.endApplyingChanges();
+					});
 				}
 				catch (e) {
 					ExoWeb.trace.throwAndLog(["server"], e);
-				}
-				finally {
 					this.endApplyingChanges();
 				}
 			},
-			applyChange: function ServerSync$applyChange(change) {
-				if (change.__type == "InitNew:#ExoGraph")
-					this.applyInit(change);
-				else if (change.__type == "Delete:#ExoGraph")
-					this.applyDelete(change);
-				else if (change.__type == "ReferenceChange:#ExoGraph")
-					this.applyRefChange(change);
-				else if (change.__type == "ValueChange:#ExoGraph")
-					this.applyValChange(change);
-				else if (change.__type == "ListChange:#ExoGraph")
-					this.applyListChange(change);
-				else if (change.__type == "Save:#ExoGraph")
-					this.applySaveChange(change);
-			},
-			applySaveChange: function ServerSync$applySaveChange(change) {
+			applySaveChange: function ServerSync$applySaveChange(change, callback) {
+				log("server", "applySaveChange: {length} changes", change.idChanges);
+
 				// update each object with its new id
 				for (var i = 0; i < change.idChanges.length; i++) {
 					var idChange = change.idChanges[i];
@@ -489,39 +502,48 @@
 
 					type.changeObjectId(currentId, idChange.newId);
 				}
+
+				callback();
 			},
-			applyInit: function ServerSync$applyInit(change) {
-				log("server", "applyInit: Type = {Type}, Id = {Id}", change.instance);
+			applyInitChange: function ServerSync$applyInitChange(change, callback) {
+				log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
 
-				var type = this._model.type(change.instance.type);
+				var translator = this._translator;
 
-				if (!type)
-					log("server", "ERROR - type {Type} was not found in model", change.instance);
+				ensureJsType(this._model, change.instance.type, 
+					function applyInitChange$typeLoaded(jstype) {
+						var newObj = new jstype();
 
-				var jstype = type.get_jstype();
-				var newObj = new jstype();
+						// remember new object's generated id
+						translator.add(change.instance.type, newObj.meta.id, change.instance.id);
 
-				// remember new object's generated id
-				this._translator.add(change.instance.type, newObj.meta.id, change.instance.id);
+						callback();
+					});
 			},
-			applyRefChange: function ServerSync$applyRefChange(change) {
+			applyRefChange: function ServerSync$applyRefChange(change, callback) {
 				log("server", "applyRefChange", change.instance);
 
 				var obj = fromExoGraph(this._translator, change.instance);
 
-				// TODO: validate original value?
+				var translator = this._translator;
 
 				if (change.newValue) {
-					var ref = fromExoGraph(this._translator, change.newValue);
+					ensureJsType(this._model, change.newValue.type, 
+						function applyRefChange$typeLoaded(mtype) {
+							var ref = fromExoGraph(translator, change.newValue);
 
-					// TODO: check for no ref
-					Sys.Observer.setValue(obj, change.property, ref);
+							Sys.Observer.setValue(obj, change.property, ref);
+							
+							callback();
+						});
 				}
 				else {
 					Sys.Observer.setValue(obj, change.property, null);
+
+					callback();
 				}
 			},
-			applyValChange: function ServerSync$applyValChange(change) {
+			applyValChange: function ServerSync$applyValChange(change, callback) {
 				log("server", "applyValChange", change.instance);
 
 				var obj = fromExoGraph(this._translator, change.instance);
@@ -529,26 +551,31 @@
 				// TODO: validate original value?
 
 				Sys.Observer.setValue(obj, change.property, change.newValue);
+
+				callback();
 			},
-			applyListChange: function ServerSync$applyListChange(change) {
+			applyListChange: function ServerSync$applyListChange(change, callback) {
 				log("server", "applyListChange", change.instance);
 
 				var obj = fromExoGraph(this._translator, change.instance);
 				var prop = obj.meta.property(change.property);
 				var list = prop.value(obj);
 
-				var _this = this;
+				var translator = this._translator;
+
 				// apply added items
 				Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
-					var obj = fromExoGraph(_this._translator, item);
+					var obj = fromExoGraph(translator, item);
 					Sys.Observer.add(list, obj);
 				});
 
 				// apply removed items
 				Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
-					var obj = fromExoGraph(_this._translator, item);
+					var obj = fromExoGraph(translator, item);
 					Sys.Observer.remove(list, obj);
 				});
+
+				callback();
 			}
 		});
 
@@ -605,6 +632,24 @@
 		});
 
 		///////////////////////////////////////////////////////////////////////////	
+		function ensureJsType(model, typeName, callback) {
+			var mtype = model.type(typeName);
+
+			if (!mtype) {
+				fetchType(model, typeName, function(jstype) {
+					callback.apply(this, [jstype]);
+				});
+			}
+			else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+				ExoWeb.Model.LazyLoader.load(mtype, null, function(jstype) {
+					callback.apply(this, [jstype]);
+				});
+			}
+			else {
+				callback.apply(this, [mtype.get_jstype()]);
+			}
+		}
+
 		function objectsFromJson(model, json, callback) {
 			var signal = new ExoWeb.Signal("objectsFromJson");
 
