@@ -170,10 +170,19 @@ Type.registerNamespace("ExoWeb.UI");
 		/// match the given element and returns the template.
 		/// </summary>
 		Template.find = function(element) {
+			log(["templates"], 
+				"attempt to find match for element = {0}{1}, data = {2}",
+				[element.tagName, element.className ? "." + element.className : "", element.control.get_data()]);
+
 			for (var t = allTemplates.length - 1; t >= 0; t--) {
 				var tmpl = allTemplates[t];
-				if (tmpl.control.test(element))
+				if (tmpl.control.test(element)) {
+					log(["templates"], "TEMPLATE MATCHES!: for = {_for}, if = {_if}", tmpl.control);
 					return tmpl;
+				}
+				else {
+					log(["templates"], "template does not match: for = {_for}, if = {_if}", tmpl.control);
+				}
 			}
 
 			return null;
