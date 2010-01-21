@@ -231,19 +231,16 @@ Type.registerNamespace("ExoWeb.UI");
 		}
 
 		Content.prototype = {
-			get_template: function(data) {
-				if (!this._template) {
-					var element = this.get_element();
-					this._template = Template.find(element, data);
+			getTemplate: function(data) {
+				var tmpl = Template.find(this._element, data);
 
-					if (!this._template)
-						throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}, Element={1}.{2}", [data, element.tagName, element.className]);
-				}
+				if (!tmpl)
+					throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}, Element={1}.{2}", [data, this._element.tagName, this._element.className]);
 
-				if (!Sys.UI.Template.isInstanceOfType(this._template))
-					this._template = new Sys.UI.Template(this._template);
+				if (!Sys.UI.Template.isInstanceOfType(tmpl))
+					tmpl = new Sys.UI.Template(tmpl);
 
-				return this._template;
+				return tmpl;
 			},
 			get_data: function() {
 				return this._data;
@@ -284,23 +281,26 @@ Type.registerNamespace("ExoWeb.UI");
 						else {
 							len = data.length;
 						}
-						this._contexts = new Array(len);
+						_this._contexts = new Array(len);
 						for (var i = 0; i < len; i++) {
 							var item = list[i];
-							var itemTemplate = _this.get_template(item);
+							var itemTemplate = _this.getTemplate(item);
 
 							// get custom classes from template
-							var classes = $.trim($(itemTemplate.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", ""));
+							var classes = $(itemTemplate.get_element()).attr("class");
+							if (classes)
+								classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
 
-							this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+							_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
 							
 							// copy custom classes from template to content control
-							$(container).addClass(classes);
+							if (classes)
+								$(container).addClass(classes);
 						}
 
 						// necessary in order to render components found within the template (like a nested dataview)
-						for (var i = 0, l = this._contexts.length; i < l; i++) {
-							var ctx = this._contexts[i];
+						for (var i = 0, l = _this._contexts.length; i < l; i++) {
+							var ctx = _this._contexts[i];
 							if (ctx) ctx.initializeComponents();
 						}
 					});
