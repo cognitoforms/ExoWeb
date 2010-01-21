@@ -120,7 +120,7 @@ Type.registerNamespace("ExoWeb.UI");
 			set_if: function(value) {
 				this._if = value;
 			},
-			satisfies: function(e) {
+			satisfies: function(element, data) {
 				// return true by default if no filter
 				var result = true;
 
@@ -130,16 +130,16 @@ Type.registerNamespace("ExoWeb.UI");
 							// turn arbitrary javascript code into function
 							this._ifFn = new Function("$data", "$container", "return " + this._if + ";");
 						}
-						catch (e) {
-							throwAndLog(["ui", "templates"], "Statement \"" + this._if + "\" causes the following error: " + e);
+						catch (ex) {
+							throwAndLog(["ui", "templates"], "Statement \"" + this._if + "\" causes the following error: " + ex);
 						}
 					}
 
 					if (this._ifFn) {
 						try {
-							result = this._ifFn.apply(this, [e.control.get_data(), e]);
+							result = this._ifFn.apply(this, [data, element]);
 						}
-						catch (e) {
+						catch (ex) {
 							result = false;
 						}
 					}
@@ -148,9 +148,9 @@ Type.registerNamespace("ExoWeb.UI");
 				return result;
 			},
 
-			test: function(e) {
+			test: function(element, data) {
 				// determines if the given element matches this template
-				return this.matches(e) && this.satisfies(e);
+				return this.matches(element) && this.satisfies(element, data);
 			},
 
 			initialize: function() {
@@ -169,14 +169,14 @@ Type.registerNamespace("ExoWeb.UI");
 		/// Finds the first field template with a selector and filter that
 		/// match the given element and returns the template.
 		/// </summary>
-		Template.find = function(element) {
+		Template.find = function(element, data) {
 			log(["templates"], 
 				"attempt to find match for element = {0}{1}, data = {2}",
-				[element.tagName, element.className ? "." + element.className : "", element.control.get_data()]);
+				[element.tagName, element.className ? "." + element.className : "", data]);
 
 			for (var t = allTemplates.length - 1; t >= 0; t--) {
 				var tmpl = allTemplates[t];
-				if (tmpl.control.test(element)) {
+				if (tmpl.control.test(element, data)) {
 					log(["templates"], "TEMPLATE MATCHES!: for = {_for}, if = {_if}", tmpl.control);
 					return tmpl;
 				}
@@ -231,13 +231,13 @@ Type.registerNamespace("ExoWeb.UI");
 		}
 
 		Content.prototype = {
-			get_template: function() {
+			get_template: function(data) {
 				if (!this._template) {
 					var element = this.get_element();
-					this._template = Template.find(element);
+					this._template = Template.find(element, data);
 
 					if (!this._template)
-						throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}, Element={1}.{2}", [this._data, element.tagName, element.className]);
+						throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}, Element={1}.{2}", [data, element.tagName, element.className]);
 				}
 
 				if (!Sys.UI.Template.isInstanceOfType(this._template))
@@ -252,11 +252,11 @@ Type.registerNamespace("ExoWeb.UI");
 				this._data = value;
 				this.render();
 			},
-			get_context: function() {
-				return this._context;
+			get_contexts: function() {
+				return this._contexts;
 			},
-			set_context: function(value) {
-				this._context = value;
+			get_parentContext: function() {
+				return Sys.UI.Template.findContext(this.get_element());
 			},
 			render: function() {
 				if (this._data && this._initialized) {
@@ -265,18 +265,42 @@ Type.registerNamespace("ExoWeb.UI");
 					var _this = this;
 					externalTemplatesSignal.waitForAll(function() {
 						log(['ui', "templates"], "render() proceeding after all templates are loaded");
-						var tmpl = _this.get_template();
+						
+						// ripped off from dataview
+						var pctx = _this.get_parentContext();
+						var container = _this.get_element();
+						var data = _this._data;
+						var list = data;
+						var len;
+						if ((data === null) || (typeof(data) === "undefined")) {
+							len = 0;
+						}
+						else if (!(data instanceof Array)) {
+							list = [data];
+							len = 1;
+						}
+						else {
+							len = data.length;
+						}
+						this._contexts = new Array(len);
+						for (var i = 0; i < len; i++) {
+							var item = list[i];
+							var itemTemplate = _this.get_template(item);
 
-						// get custom classes from template
-						var classes = $.trim($(tmpl.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", ""));
+							// get custom classes from template
+							var classes = $.trim($(itemTemplate.get_element()).attr("class").replace("vc3-template", "").replace("sys-template", ""));
 
-						_this._context = tmpl.instantiateIn(_this.get_element(), null, _this.get_data());
-
-						// copy custom classes from template to content control
-						$(_this.get_element()).addClass(classes);
+							this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+							
+							// copy custom classes from template to content control
+							$(container).addClass(classes);
+						}
 
 						// necessary in order to render components found within the template (like a nested dataview)
-						_this._context.initializeComponents();
+						for (var i = 0, l = this._contexts.length; i < l; i++) {
+							var ctx = this._contexts[i];
+							if (ctx) ctx.initializeComponents();
+						}
 					});
 				}
 				else {
