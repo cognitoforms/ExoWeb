@@ -303,7 +303,7 @@ Type.registerNamespace("ExoWeb.UI");
 			return null;
 		}
 
-		function getDataForContainer(container, subcontainer) {
+		function getDataForContainer(container, subcontainer, index) {
 			if (!container)
 				return;
 
@@ -360,7 +360,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 			var container;
 			var subcontainer;
-			for (var i = 0; i < effectiveLevel || (dataType && !(getDataForContainer(container, subcontainer) instanceof dataType)); i++) {
+			for (var i = 0; i < effectiveLevel || (dataType && !(getDataForContainer(container, subcontainer, index) instanceof dataType)); i++) {
 				// if we are starting out with a dataview then look at the parent context rather than walking 
 				// up the dom (since the element will probably not be present in the dom)
 				if (!container && elementOrControl instanceof Sys.UI.DataView && elementOrControl._parentContext) {
@@ -376,7 +376,7 @@ Type.registerNamespace("ExoWeb.UI");
 				}
 			}
 			
-			return getDataForContainer(container, subcontainer);
+			return getDataForContainer(container, subcontainer, index);
 		}
 
 		window.$parentContextData = getParentContextData;
