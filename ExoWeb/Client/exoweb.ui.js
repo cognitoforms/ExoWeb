@@ -256,7 +256,9 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._contexts;
 			},
 			get_parentContext: function() {
-				return Sys.UI.Template.findContext(this.get_element());
+				if (!this._parentContext)
+					this._parentContext = Sys.UI.Template.findContext(this.get_element());
+				return this._parentContext;
 			},
 			render: function() {
 				if (this._data && this._initialized) {
@@ -382,12 +384,14 @@ Type.registerNamespace("ExoWeb.UI");
 			return data;
 		}
 
-		function getParentContextData(elementOrControl, index, level, dataType) {
+		function getParentContextData(target, index, level, dataType) {
 
-			if (elementOrControl.control instanceof Sys.UI.DataView)
-				elementOrControl = elementOrControl.control;
-			else if (elementOrControl instanceof Sys.UI.Template)
-				elementOrControl = elementOrControl.get_element();
+			if (target.control instanceof Sys.UI.DataView)
+				target = target.control;
+			else if (target instanceof Sys.UI.Template)
+				target = target.get_element();
+			else if (target instanceof Sys.UI.TemplateContext)
+				target = target.containerElement;
 
 			var effectiveLevel = level || 1;
 
@@ -396,11 +400,11 @@ Type.registerNamespace("ExoWeb.UI");
 			for (var i = 0; i < effectiveLevel || (dataType && !(getDataForContainer(container, subcontainer, index) instanceof dataType)); i++) {
 				// if we are starting out with a dataview then look at the parent context rather than walking 
 				// up the dom (since the element will probably not be present in the dom)
-				if (!container && elementOrControl instanceof Sys.UI.DataView && elementOrControl._parentContext) {
-					container = elementOrControl._parentContext.containerElement;
+				if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
+					container = target._parentContext.containerElement;
 				}
 				else {
-					subcontainer = getTemplateSubContainer(container || elementOrControl);
+					subcontainer = getTemplateSubContainer(container || target);
 
 					if (!subcontainer)
 						throw Error.invalidOperation("Not within a container template.");
