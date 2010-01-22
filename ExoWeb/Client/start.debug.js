@@ -69,7 +69,4 @@ ExoWeb.AllScripts = [
 	Sys.scripts.ExoWebJquery
 ];
 
-// use the msajax path as the base path since the ajax scripts are expected to reside there
-Sys.loader.basePath = "../vc3web_client/msajax";
-
 Sys.activateDom = false;
