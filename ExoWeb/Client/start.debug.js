@@ -1,9 +1,12 @@
 Type.registerNamespace("ExoWeb");
 
+var exoScripts = document.getElementsByTagName("script");
+var exoStartUrl = exoScripts[exoScripts.length - 1].src;
+var exoBasePath = exoStartUrl.slice(0, exoStartUrl.lastIndexOf("/") + 1)
 Sys.loader.defineScripts(null, [
 	{
-		releaseUrl: "%/../exoweb/exoweb.js",
-		debugUrl: "%/../exoweb/exoweb.js",
+		releaseUrl: exoBasePath + "exoweb.js",
+		debugUrl:  exoBasePath + "exoweb.js",
 		name: "ExoWeb",
 		executionDependencies: ["Core"],
 		isLoaded: !!(ExoWeb && ExoWeb.Functor)
@@ -16,43 +19,43 @@ Sys.loader.defineScripts(null, [
 		isLoaded: !!(ExoWeb && ExoWeb.Load)
 	},
 	{
-		releaseUrl: "%/../exoweb/exoweb.model.js",
-		debugUrl: "%/../exoweb/exoweb.model.js",
+		releaseUrl: exoBasePath + "exoweb.model.js",
+		debugUrl: exoBasePath + "exoweb.model.js",
 		name: "ExoWebModel",
 		executionDependencies: ["Core", "ExoWeb"],
 		isLoaded: !!(ExoWeb && ExoWeb.Model)
 	},
 	{
-		releaseUrl: "%/../exoweb/exoweb.mapper.js",
-		debugUrl: "%/../exoweb/exoweb.mapper.js",
+		releaseUrl: exoBasePath + "exoweb.mapper.js",
+		debugUrl: exoBasePath + "exoweb.mapper.js",
 		name: "ExoWebMapper",
 		executionDependencies: ["Core", "ExoWeb", "ExoWebHandler", "ExoWebModel"],
 		isLoaded: !!(ExoWeb && ExoWeb.Mapper)
 	},
 	{
-		releaseUrl: "%/../exoweb/exoweb.view.js",
-		debugUrl: "%/../exoweb/exoweb.view.js",
+		releaseUrl: exoBasePath + "exoweb.view.js",
+		debugUrl: exoBasePath + "exoweb.view.js",
 		name: "ExoWebView",
 		executionDependencies: ["Core", "Templates", "ExoWeb", "ExoWebModel"],
 		isLoaded: !!(ExoWeb && ExoWeb.View)
 	},
 	{
-		releaseUrl: "%/../exoweb/exoweb.ui.js",
-		debugUrl: "%/../exoweb/exoweb.ui.js",
+		releaseUrl: exoBasePath + "exoweb.ui.js",
+		debugUrl: exoBasePath + "exoweb.ui.js",
 		name: "ExoWebUi",
 		executionDependencies: ["Core", "Templates", "jQuery", "ExoWeb"],
 		isLoaded: !!(ExoWeb && ExoWeb.UI)
 	},
 	{
-		releaseUrl: "%/../exoweb/exoweb.mock.js",
-		debugUrl: "%/../exoweb/exoweb.mock.js",
+		releaseUrl: exoBasePath + "exoweb.mock.js",
+		debugUrl: exoBasePath + "exoweb.mock.js",
 		name: "ExoWebMock",
 		executionDependencies: ["Core", "ExoWeb", "ExoWebMapper", "ExoWebModel"],
 		isLoaded: !!(ExoWeb && ExoWeb.Mock)
 	},
 	{
-		releaseUrl: "%/../exoweb/exoweb.jquery.js",
-		debugUrl: "%/../exoweb/exoweb.jquery.js",
+		releaseUrl: exoBasePath + "exoweb.jquery.js",
+		debugUrl: exoBasePath + "exoweb.jquery.js",
 		name: "ExoWebJquery",
 		executionDependencies: ["Core", "Templates", "jQuery", "ExoWeb"],
 		isLoaded: !!(window.jQuery && window.jQuery.fn.validated)
