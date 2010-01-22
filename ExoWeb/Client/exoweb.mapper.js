@@ -73,7 +73,7 @@
 		});
 
 		function toExoGraph(translator, val) {
-			if (val) {
+			if (val !== undefined && val !== null) {
 				var type = val.constructor;
 				var fmt = type.formats && type.formats.$exograph;
 				var result = fmt ? fmt.convert(val) : val;
@@ -87,7 +87,7 @@
 		}
 
 		function fromExoGraph(translator, val) {
-			if (val) {
+			if (val !== undefined && val !== null) {
 				var type = window[val.type];
 
 				// entities only: translate back to the client's id
