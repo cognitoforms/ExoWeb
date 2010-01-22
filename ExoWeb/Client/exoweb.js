@@ -404,7 +404,7 @@ Type.registerNamespace("ExoWeb");
 			input: function() {
 				return this.array || this;
 			},
-			where: function where(filter, thisPtr) {
+			where: function Transform$where(filter, thisPtr) {
 				if (!(filter instanceof Function))
 					filter = compileFilterFunction(filter);
 
@@ -422,7 +422,7 @@ Type.registerNamespace("ExoWeb");
 
 				return new Transform(output);
 			},
-			groupBy: function groupBy(groups, thisPtr) {
+			groupBy: function Transform$groupBy(groups, thisPtr) {
 				if (!(groups instanceof Function))
 					groups = compileGroupsFunction(groups);
 
@@ -448,7 +448,7 @@ Type.registerNamespace("ExoWeb");
 				}
 				return new Transform(output);
 			},
-			orderBy: function orderBy(ordering, thisPtr) {
+			orderBy: function Transform$orderBy(ordering, thisPtr) {
 				if (!(ordering instanceof Function))
 					ordering = compileOrderingFunction(ordering);
 
