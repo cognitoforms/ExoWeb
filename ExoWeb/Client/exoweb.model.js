@@ -1493,8 +1493,7 @@
 				// get the list of allowed values of the property for the given object
 				var allowed = this.values(obj);
 
-				// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
-				if (allowed !== undefined && LazyLoader.isLoaded(allowed)) {
+				if (allowed !== undefined) {
 
 					// get the current value of the property for the given object
 					var val = this.prop.value(obj);
@@ -1514,7 +1513,11 @@
 				this._init();
 				if (this._propertyChain) {
 					// get the allowed values from the property chain
-					return this._propertyChain.value(obj);
+					var values = this._propertyChain.value(obj);
+
+					// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
+					if (values !== undefined && LazyLoader.isLoaded(values))
+						return values;
 				}
 			},
 			toString: function AllowedValuesRule$toString() {

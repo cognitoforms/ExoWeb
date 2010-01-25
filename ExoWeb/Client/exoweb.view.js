@@ -132,7 +132,7 @@
 
 			// Load the object this adapter is bound to and then load allowed values.
 			ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath,
-				this._readySignal.pending(this._loadAllowedValues.setScope(this)),
+				this._readySignal.pending(),
 				this._readySignal.orPending(function(err) {
 					throwAndLog(["@", "markupExt"], "Couldn't evaluate path '{0}', {1}", [propertyPath, err]);
 				})
@@ -188,23 +188,6 @@
 					this._propertyChain.prepend(this._target.get_propertyChain());
 					this._parentAdapter = this._target;
 					this._target = this._target.get_target();
-				}
-			},
-			_loadAllowedValues: function Adapter$_loadAllowedValues() {
-				if (!this._propertyChain.get_isValueType()) {
-					var prop = this._propertyChain.lastProperty();
-					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-					var targetObj = this._propertyChain.lastTarget(this._target);
-					if (rule && rule.propertyChain()) {
-						var target = rule.propertyChain().get_isStatic() ? window : targetObj;
-
-						ExoWeb.Model.LazyLoader.eval(target, rule.propertyChain().get_path(),
-							this._readySignal.pending(),
-							this._readySignal.orPending(function(err) {
-								throwAndLog(["@", "markupExt"], "Couldn't evaluate allowed values path '{0}', {1}", [rule.propertyChain().get_path(), err]);
-							})
-						);
-					}
 				}
 			},
 			_ensureObservable: function Adapter$_ensureObservable() {
@@ -350,8 +333,10 @@
 						if (rule) {
 							this._allowedValues = rule.values(targetObj);
 
-							// watch for changes to the allowed values list and update options
-							Sys.Observer.addCollectionChanged(this._allowedValues, this._reloadOptions.setScope(this));
+							if (this._allowedValues !== undefined) {
+								// watch for changes to the allowed values list and update options
+								Sys.Observer.addCollectionChanged(this._allowedValues, this._reloadOptions.setScope(this));
+							}
 						}
 					}
 				}
