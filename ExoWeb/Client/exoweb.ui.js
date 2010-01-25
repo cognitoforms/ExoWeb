@@ -231,7 +231,7 @@ Type.registerNamespace("ExoWeb.UI");
 		}
 
 		Content.prototype = {
-			getTemplate: function(data) {
+			getTemplate: function Content$getTemplate(data) {
 				var tmpl = Template.find(this._element, data);
 
 				if (!tmpl)
@@ -242,27 +242,27 @@ Type.registerNamespace("ExoWeb.UI");
 
 				return tmpl;
 			},
-			get_data: function() {
+			get_data: function Content$get_data() {
 				return this._data;
 			},
-			set_data: function(value) {
+			set_data: function Content$set_data(value) {
 				this._data = value;
 				this.render();
 			},
-			get_contexts: function() {
+			get_contexts: function Content$get_contexts() {
 				return this._contexts;
 			},
-			get_parentContext: function() {
+			get_parentContext: function Content$get_parentContext() {
 				if (!this._parentContext)
 					this._parentContext = Sys.UI.Template.findContext(this.get_element());
 				return this._parentContext;
 			},
-			render: function() {
+			render: function Content$render() {
 				if (this._data && this._initialized) {
 					log(['ui', "templates"], "render()");
 
 					var _this = this;
-					externalTemplatesSignal.waitForAll(function() {
+					externalTemplatesSignal.waitForAll(function Content$externalTemplatesSignal() {
 						log(['ui', "templates"], "render() proceeding after all templates are loaded");
 						
 						// ripped off from dataview
@@ -291,7 +291,12 @@ Type.registerNamespace("ExoWeb.UI");
 							if (classes)
 								classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
 
-							_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+							try {
+								_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+							}
+							catch (e) {
+								ExoWeb.trace.throwAndLog(["ui"], e);
+							}
 							
 							// copy custom classes from template to content control
 							if (classes)
@@ -309,7 +314,7 @@ Type.registerNamespace("ExoWeb.UI");
 					$(this._element).empty();
 				}
 			},
-			initialize: function() {
+			initialize: function Content$initialize() {
 				Content.callBaseMethod(this, "initialize");
 
 				// TODO: include meta info about field?
