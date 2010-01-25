@@ -10,7 +10,7 @@ Type.registerNamespace("ExoWeb.UI");
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
 		///////////////////////////////////////////////////////////////////////////////
-		Toggle = function(element) {
+		function Toggle(element) {
 			Toggle.initializeBase(this, [element]);
 		}
 
@@ -92,7 +92,7 @@ Type.registerNamespace("ExoWeb.UI");
 		/// <example>
 		///		<div sys:attach="template" template:for="table.inputform tr" template:if="<some condition>"></div>
 		/// </example>
-		Template = function(element) {
+		function Template(element) {
 			Template.initializeBase(this, [element]);
 		}
 
@@ -170,7 +170,7 @@ Type.registerNamespace("ExoWeb.UI");
 		/// match the given element and returns the template.
 		/// </summary>
 		Template.find = function(element, data) {
-			log(["templates"], 
+			log(["templates"],
 				"attempt to find match for element = {0}{1}, data = {2}",
 				[element.tagName, element.className ? "." + element.className : "", data]);
 
@@ -226,7 +226,7 @@ Type.registerNamespace("ExoWeb.UI");
 		/// <example>
 		///		<div sys:attach="content" content:data="{{ somedata }}"></div>
 		/// </example>
-		Content = function(element) {
+		function Content(element) {
 			Content.initializeBase(this, [element]);
 		}
 
@@ -264,14 +264,14 @@ Type.registerNamespace("ExoWeb.UI");
 					var _this = this;
 					externalTemplatesSignal.waitForAll(function Content$externalTemplatesSignal() {
 						log(['ui', "templates"], "render() proceeding after all templates are loaded");
-						
+
 						// ripped off from dataview
 						var pctx = _this.get_parentContext();
 						var container = _this.get_element();
 						var data = _this._data;
 						var list = data;
 						var len;
-						if ((data === null) || (typeof(data) === "undefined")) {
+						if ((data === null) || (typeof (data) === "undefined")) {
 							len = 0;
 						}
 						else if (!(data instanceof Array)) {
@@ -297,7 +297,7 @@ Type.registerNamespace("ExoWeb.UI");
 							catch (e) {
 								ExoWeb.trace.throwAndLog(["ui"], e);
 							}
-							
+
 							// copy custom classes from template to content control
 							if (classes)
 								$(container).addClass(classes);
@@ -328,6 +328,62 @@ Type.registerNamespace("ExoWeb.UI");
 
 		ExoWeb.UI.Content = Content;
 		Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
+
+
+		///////////////////////////////////////////////////////////////////////////////
+		/// <summary>
+		/// 
+		/// </summary>
+		///
+		/// <example>
+		///		<div sys:attach="html" html:url="http://www.google.com"></div>
+		/// </example>
+		function Html(element) {
+			Html.initializeBase(this, [element]);
+		}
+
+		Html.prototype = {
+			get_source: function Html$get_source() {
+				return this._source;
+			},
+			set_source: function Html$set_source(value) {
+				this._source = value;
+			},
+			get_loadingClass: function Html$get_loadingClass() {
+				return this._loadingClass;
+			},
+			set_loadingClass: function Html$set_loadingClass(value) {
+				this._loadingClass = value;
+			},
+			get_url: function Html$get_url() {
+				return this._url;
+			},
+			set_url: function Html$set_url(value) {
+				this._url = value;
+			},
+			get_path: function Html$get_path() {
+				return $format(this.get_url(), this.get_source());
+			},
+			initialize: function Html$initialize() {
+				Html.callBaseMethod(this, "initialize");
+
+				var path = this.get_path();
+				var element = this.get_element();
+				var loadingClass = this.get_loadingClass();
+
+				$(element).addClass(loadingClass);
+
+				$(element).load(path, function(responseText, status, response) {
+					$(element).removeClass(loadingClass);
+
+					if (status != "success" && status != "notmodified")
+						ExoWeb.trace.throwAndLog("ui", "Failed to load html: status = {status}", { status: status, response: response });
+				});
+			}
+		}
+
+		ExoWeb.UI.Html = Html;
+		Html.registerClass("ExoWeb.UI.Html", Sys.UI.Control);
 
 		function getTemplateSubContainer(childElement) {
 			var element = childElement;
@@ -417,7 +473,7 @@ Type.registerNamespace("ExoWeb.UI");
 					container = subcontainer.parentNode;
 				}
 			}
-			
+
 			return getDataForContainer(container, subcontainer, index);
 		}
 
