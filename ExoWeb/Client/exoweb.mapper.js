@@ -1034,8 +1034,27 @@
 				if (query.and) {
 					Array.forEach(query.and, function(path) {
 						if (path.steps[0].property === "this") {
-							Array.dequeue(path.steps);
-							fetchPathTypes(model, jstype, path, signal.pending());
+							var step = Array.dequeue(path.steps);
+							var mtype = jstype.meta;
+
+							function fetchRootTypePaths() {
+								fetchPathTypes(model, mtype.get_jstype(), path, signal.pending());
+							}
+
+							// handle the case where the root object is cast to a derived type
+							if (step.cast) {
+								mtype = model.type(step.cast);
+								if (!mtype)
+									fetchType(model, step.cast, signal.pending(function () {
+										mtype = model.type(step.cast);
+										fetchRootTypePaths();
+									}));
+								else
+									fetchRootTypePaths();
+							}
+							else {
+								fetchRootTypePaths();
+							}
 						}
 						else {
 							// this is a static property
