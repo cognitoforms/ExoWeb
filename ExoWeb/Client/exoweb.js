@@ -380,8 +380,16 @@ Type.registerNamespace("ExoWeb");
 	}
 
 	var compileFilterFunction = (function compileFilterFunction(filter) {
-		var parser = /([a-z_$][0-9a-z_$]*)([.]?)/gi;
-		filter = filter.replace(parser, function(match, name, more) {
+		var parser = /(([a-z_$][0-9a-z_$]*)([.]?))|(('([^']|\')*')|("([^"]|\")*"))/gi;
+		var skipWords = ["true", "false", "$index"];
+
+		filter = filter.replace(parser, function(match, ignored, name, more, strLiteral) {
+			if (strLiteral.length > 0 || skipWords.indexOf(name) >= 0)
+				return match;
+
+			if (name === "$item")
+				return "";
+				
 			if (more.length > 0)
 				return "get('" + name + "')" + more;
 
