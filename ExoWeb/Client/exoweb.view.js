@@ -123,6 +123,9 @@
 			this._ignoreTargetEvents = false;
 			this._readySignal = new ExoWeb.Signal();
 
+			if (options.optionsOrder)
+				this._optionsOrder = options.optionsOrder;
+
 			// Track state for system and display formats, including the format and bad value.
 			this._systemState = { FormatName: systemFormat, Format: undefined, BadValue: undefined };
 			this._displayState = { FormatName: displayFormat, Format: undefined, BadValue: undefined };
@@ -201,12 +204,6 @@
 				}
 			},
 			_onTargetChanged: function Adapter$_onTargetChanged() {
-
-
-
-
-
-
 				if (this._ignoreTargetEvents)
 					return;
 

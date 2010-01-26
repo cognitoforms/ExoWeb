@@ -257,9 +257,6 @@
 
 			// helpers
 			jstype.meta = this;
-			with ({ type: this }) {
-				jstype.get = function(id) { return type.get(id); };
-			}
 
 			// done...
 			this._jstype.registerClass(name, baseJsType);
@@ -531,6 +528,7 @@
 		function Property(containingType, name, jstype, isList, label, format, isStatic) {
 			this._containingType = containingType;
 			this._name = name;
+			this._fieldName = "_" + name;
 			this._jstype = jstype;
 			this._label = label || name.replace(/([^A-Z]+)([A-Z])/g, "$1 $2");
 			this._format = format;
@@ -579,17 +577,17 @@
 				return this._origin ? this._origin : this._containingType.get_origin();
 			},
 			getter: function(obj) {
-				return obj[this._name];
+				return obj[this._fieldName];
 			},
 
 			setter: function(obj, val) {
 				if (!this.canSetValue(obj, val))
 					throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
 
-				var old = obj[this._name];
+				var old = obj[this._fieldName];
 
 				if (old !== val) {
-					obj[this._name] = val;
+					obj[this._fieldName] = val;
 
 					// NOTE: property change should be broadcast before rules are run so that if 
 					// any rule causes a roundtrip to the server these changes will be available
@@ -681,17 +679,17 @@
 							[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
 
 					// access directly since the caller might make a distinction between null and undefined
-					return target[this._name];
+					return target[this._fieldName];
 				}
 			},
 			init: function Property$init(obj, val, force) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-				var curVal = target[this._name];
+				var curVal = target[this._fieldName];
 
 				if (curVal !== undefined && !(force === undefined || force))
 					return;
 
-				target[this._name] = val;
+				target[this._fieldName] = val;
 
 				if (val instanceof Array) {
 					var prop = this;
@@ -707,7 +705,7 @@
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-				var curVal = target[this._name];
+				var curVal = target[this._fieldName];
 
 				return curVal !== undefined;
 			},
@@ -756,12 +754,6 @@
 				if (options.basedOn) {
 					inputs = options.basedOn.map(function(p) {
 						var input;
-
-						//						if (p instanceof Property || p instanceof PropertyChain) {
-						//							input = new RuleInput(p);
-						//							input.set_dependsOnInit(true);
-						//							return input;
-						//						}
 
 						var parts = p.split(" of ");
 						if (parts.length >= 2) {
@@ -843,9 +835,6 @@
 				};
 
 				Rule.register(rule, inputs);
-
-				// go ahead and calculate this property for all known objects
-				//Array.forEach(this._containingType.known(), calc);
 
 				return this;
 			}
