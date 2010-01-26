@@ -410,11 +410,27 @@
 				return null;
 			},
 			addRule: function Type$addRule(rule) {
-				function Type$addRule$init(obj, prop) {
-					Type$addRule$fn(obj, prop, rule.init ? rule.init : rule.execute);
+				function Type$addRule$init(obj, prop, newValue, oldValue) {
+					if (oldValue === undefined)
+						Type$addRule$fn(obj, prop, rule.init ? rule.init : rule.execute);
 				}
-				function Type$addRule$execute(obj, prop) {
-					Type$addRule$fn(obj, prop, rule.execute);
+				function Type$addRule$changed(obj, prop, newValue, oldValue) {
+					if (oldValue !== undefined)
+						Type$addRule$fn(obj, prop, rule.execute);
+				}
+				function Type$addRule$get(obj, prop, value) {
+					try {
+						// Only execute rule on property get if the property has not been initialized.
+						// This is based on the assumption that a rule should only fire on property
+						// get for the purpose of lazy initializing the property value.
+						if (value === undefined)
+							Type$addRule$fn(obj, prop, rule.execute);
+						else
+							log("model", "Property has already been initialized.");
+					}
+					catch (e) {
+						ExoWeb.trace.log("model", e);
+					}
 				}
 
 				function Type$addRule$fn(obj, prop, fn) {
@@ -441,10 +457,13 @@
 					var prop = input.property;
 
 					if (input.get_dependsOnChange())
-						prop.addChanged(Type$addRule$execute);
+						prop.addChanged(Type$addRule$changed);
 
 					if (input.get_dependsOnInit())
-						prop.addInited(Type$addRule$init);
+						prop.addChanged(Type$addRule$init);
+
+					if (input.get_dependsOnGet())
+						prop.addGet(Type$addRule$get);
 
 					(prop instanceof PropertyChain ? prop.lastProperty() : prop)._addRule(rule);
 				}
@@ -577,6 +596,7 @@
 				return this._origin ? this._origin : this._containingType.get_origin();
 			},
 			getter: function(obj) {
+				this._raiseEvent("get", [obj, this, obj[this._fieldName]]);
 				return obj[this._fieldName];
 			},
 
@@ -593,7 +613,7 @@
 					// any rule causes a roundtrip to the server these changes will be available
 					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
 
-					this._raiseEvent("changed", [obj, this]);
+					this._raiseEvent("changed", [obj, this, val, old]);
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
 			},
@@ -701,7 +721,7 @@
 					});
 				}
 
-				this._raiseEvent("inited", [target, this]);
+				this._raiseEvent("changed", [target, this, val, undefined]);
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
@@ -709,9 +729,10 @@
 
 				return curVal !== undefined;
 			},
-			// starts listening for when property.init() is called. Use obj argument to
+
+			// starts listening for get events on the property. Use obj argument to
 			// optionally filter the events to a specific object
-			addInited: function Property$addInited(handler, obj) {
+			addGet: function Property$addGet(handler, obj) {
 				var f;
 
 				if (obj)
@@ -722,8 +743,9 @@
 				else
 					f = handler;
 
-				this._addEvent("inited", f);
+				this._addEvent("get", f);
 			},
+
 			// starts listening for change events on the property. Use obj argument to
 			// optionally filter the events to a specific object
 			addChanged: function Property$addChanged(handler, obj) {
@@ -781,54 +803,47 @@
 					});
 				}
 
+				// calculated property should always be initialized when first accessed
+				input = new RuleInput(this);
+				input.set_dependsOnGet(true);
+				inputs.push(input);
+
 				var rule = {
-					init: function Property$calculated$init(obj, property) {
+					init: function Property$calculated$init(obj) {
 						if (!prop.isInited(obj) && inputs.every(function(input) { return input.property.isInited(obj); })) {
-							// init the calculated property
-							prop.init(obj, options.fn.apply(obj));
+							this.execute(obj);
 						}
 					},
-					execute: function Property$calculated$recalc(obj) {
+					execute: function Property$calculated$execute(obj) {
 						if (prop._isList) {
-							calc = function Property$calculated$calcList(obj) {
-								// re-calculate the list values
-								var newList = options.fn.apply(obj);
+							// re-calculate the list values
+							var newList = options.fn.apply(obj);
 
-								LazyLoader.load(newList, null, function() {
-									// compare the new list to the old one to see if changes were made
-									var curList = prop.value(obj);
+							// compare the new list to the old one to see if changes were made
+							var curList = prop.value(obj);
 
-									if (!curList) {
-										curList = [];
-										prop.init(obj, curList);
+							if (newList.length === curList.length) {
+								var noChanges = true;
+
+								for (var i = 0; i < newList.length; ++i) {
+									if (newList[i] !== curList[i]) {
+										noChanges = false;
+										break;
 									}
+								}
 
-									if (newList.length === curList.length) {
-										var noChanges = true;
-
-										for (var i = 0; i < newList.length; ++i) {
-											if (newList[i] !== curList[i]) {
-												noChanges = false;
-												break;
-											}
-										}
-
-										if (noChanges)
-											return;
-									}
-
-									// update the current list so observers will receive the change events
-									curList.beginUpdate();
-									curList.clear();
-									curList.addRange(newList);
-									curList.endUpdate();
-								});
+								if (noChanges)
+									return;
 							}
+
+							// update the current list so observers will receive the change events
+							curList.beginUpdate();
+							curList.clear();
+							curList.addRange(newList);
+							curList.endUpdate();
 						}
 						else {
-							var newValue = options.fn.apply(obj);
-							if (newValue !== prop.value(obj))
-								Sys.Observer.setValue(obj, prop._name, newValue);
+							prop.value(obj, options.fn.apply(obj));
 						}
 					},
 					toString: function() { return "calculation of " + prop._name; }
@@ -1079,41 +1094,14 @@
 					}
 				}
 			},
-			// Listens for when property.init() is called on all properties in the chain. Use obj argument to
+			// starts listening for the get event of the last property in the chain on any known instances. Use obj argument to
 			// optionally filter the events to a specific object
-			addInited: function PropertyChain$addInited(handler, obj) {
+			addGet: function PropertyChain$addGet(handler, obj) {
 				var chain = this;
 
-				if (this._properties.length == 1) {
-					// OPTIMIZATION: no need to search all known objects for single property chains
-					this._properties[0].addInited(function PropertyChain$_raiseInited$1Prop(sender, property) {
-						handler(sender, chain);
-					}, obj);
-				}
-				else {
-					for (var p = 0; p < this._properties.length; p++) {
-						with ({ priorProp: p == 0 ? undefined : this._properties[p - 1] }) {
-							if (obj) {
-								// CASE: using object filter
-								this._properties[p].addInited(function PropertyChain$_raiseInited$1Obj(sender, property) {
-									if (chain.isInited(obj))
-										handler(obj, chain);
-								}, obj);
-							}
-							else {
-								// CASE: no object filter
-								this._properties[p].addInited(function PropertyChain$_raiseInited$Multi(sender, property) {
-									// scan all known objects of this type and raise event for any instance connected
-									// to the one that sent the event.
-									Array.forEach(chain._rootType.known(), function(known) {
-										if (chain.isInited(known) && chain.connects(known, sender, priorProp))
-											handler(known, chain);
-									});
-								});
-							}
-						}
-					}
-				}
+				this.lastProperty().addGet(function PropertyChain$_raiseGet(sender, property, value) {
+					handler(sender, chain, value);
+				}, obj);
 			},
 			// starts listening for change events along the property chain on any known instances. Use obj argument to
 			// optionally filter the events to a specific object
@@ -1380,6 +1368,12 @@
 			},
 			get_dependsOnChange: function RuleInput$get_dependsOnChange() {
 				return this._change === undefined ? true : this._change;
+			},
+			set_dependsOnGet: function RuleInput$set_dependsOnGet(value) {
+				this._get = value;
+			},
+			get_dependsOnGet: function RuleInput$get_dependsOnGet() {
+				return this._get === undefined ? false : this._get;
 			}
 		};
 		ExoWeb.Model.RuleInput = RuleInput;
