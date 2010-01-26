@@ -378,7 +378,7 @@ Type.registerNamespace("ExoWeb");
 			this.array = array;
 		}
 	}
-	
+
 	var compileFilterFunction = (function compileFilterFunction(filter) {
 		var parser = /([a-z_$][0-9a-z_$]*)([.]?)/gi;
 		filter = filter.replace(parser, function(match, name, more) {
@@ -392,7 +392,7 @@ Type.registerNamespace("ExoWeb");
 	}).cached({ key: function(filter) { return filter; } });
 
 	var compileGroupsFunction = (function compileGroupsFunction(groups) {
-		return new Function("$item", "$index", "return $item['" + groups.split(",").join("']['") + "'];");
+		return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
 	}).cached({ key: function(groups) { return groups; } });
 
 	var compileOrderingFunction = (function compileOrderingFunction(ordering) {
@@ -527,6 +527,7 @@ Type.registerNamespace("ExoWeb");
 
 		return obj;
 	}
+	ExoWeb.evalPath = evalPath;
 
 	///////////////////////////////////////////////////////////////////////////
 	function Translator() {
@@ -734,7 +735,9 @@ else {
 	execute();
 }
 
-})();
+
+
+})();
 
 ///////////////////////////////////////////////////////////////////////////////
 // Simulate homogenous browsers
