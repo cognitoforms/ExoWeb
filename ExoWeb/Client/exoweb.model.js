@@ -363,12 +363,21 @@
 				}
 				genPropertyShortcut(this);
 
-				// add members to all instances of this type
-				//this._jstype.prototype["$" + propName] = prop;  // is this useful?
-				this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop.getter);
+				if (prop.get_isStatic()) {
+					// for static properties add member to javascript type
+					this._jstype["get_" + def.name] = this._makeGetter(prop, prop.getter);
+				}
+				else {
+					// for instance properties add member to all instances of this javascript type
+					this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop.getter);
+				}
 
-				if (!prop.get_isList())
-					this._jstype.prototype["set_" + def.name] = this._makeSetter(prop, prop.setter, true);
+				if (!prop.get_isList()) {
+					if (prop.get_isStatic())
+						this._jstype["set_" + def.name] = this._makeSetter(prop, prop.setter, true);
+					else
+						this._jstype.prototype["set_" + def.name] = this._makeSetter(prop, prop.setter, true);
+				}
 
 				return prop;
 			},
