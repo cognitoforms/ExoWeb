@@ -131,6 +131,10 @@
 		}
 
 		Entity.mixin({
+			set: function Entity$set(properties) {
+				for (var prop in properties)
+					this["set_" + prop](properties[prop]);
+			},
 			toString: function Entity$toString(formatName) {
 				var format;
 
@@ -185,9 +189,10 @@
 			if (jstype)
 				throwAndLog(["model"], "'{1}' has already been declared", arguments)
 
-			function construct(id) {
+			function construct(idOrProps) {
 				if (!disableConstruction) {
-					if (id) {
+					if (idOrProps && idOrProps.constructor === String) {
+						var id = idOrProps;
 						var obj = type.get(id);
 						if (obj)
 							return obj;
@@ -197,6 +202,7 @@
 					else {
 						type.register(this);
 
+						// init list properties
 						for (var t = type; t != null; t = t.baseType) {
 							for (var propName in t._properties) {
 								var prop = t._properties[propName];
@@ -205,6 +211,10 @@
 								}
 							}
 						}
+
+						// set properties passed into constructor
+						if (idOrProps)
+							this.set(idOrProps);
 					}
 				}
 			}
@@ -213,7 +223,7 @@
 
 			if (evalAffectsScope) {
 				// use eval to generate the type so the function name appears in the debugger
-				var ctorScript = $format("function {type}(id) { var obj=construct.apply(this, arguments); if(obj) return obj; };" +
+				var ctorScript = $format("function {type}(idOrProps) { var obj=construct.apply(this, arguments); if(obj) return obj; };" +
 					"jstype = {type};",
 					{ type: name });
 
