@@ -157,8 +157,8 @@
 					// indicates "no value", which is distinct from "no selection"
 					var ids = str.split("|");
 					var ctor = window[ids[0]];
-					if (ctor)
-						return ctor.get(ids[1]);
+					if (ctor && ctor.meta)
+						return ctor.meta.get(ids[1]);
 				}
 			})
 		}
