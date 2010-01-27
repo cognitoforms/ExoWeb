@@ -132,7 +132,7 @@ namespace ExoWeb
 
 	public class DataAnnotationsRuleProvider : IServiceAdapter
 	{
-		#region IRuleProvider Members
+		#region IServiceAdapter Members
 
 		public IEnumerable<Rule> GetRules(GraphType type)
 		{
@@ -160,7 +160,12 @@ namespace ExoWeb
 
 			return rules;
 		}
-	}
 
-	#endregion
+		public string GetFormatName(GraphProperty property)
+		{
+			throw new NotImplementedException();
+		}
+
+		#endregion
+	}
 }

@@ -74,6 +74,11 @@ namespace ExoWeb
 				if (property.IsStatic)
 					response.Write(", \"isStatic\": true");
 
+				// Output format name if applicable
+				string formatName = ServiceHandler.Adapter.GetFormatName(property);
+				if (!string.IsNullOrEmpty(formatName))
+					response.Write(", \"format\": \"" + formatName + "\"");
+
 				// Output property rules
 				IGrouping<string, Rule> propertyRules;
 				if (rules.TryGetValue(property.Name, out propertyRules))

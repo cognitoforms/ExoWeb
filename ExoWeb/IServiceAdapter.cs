@@ -11,6 +11,8 @@ namespace ExoWeb
 	public interface IServiceAdapter
 	{
 		IEnumerable<Rule> GetRules(GraphType type);
+
+		string GetFormatName(GraphProperty property);
 	}
 
 	#endregion
