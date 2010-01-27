@@ -350,7 +350,7 @@
 
 					this._options = [];
 
-					for (var a = 0; a < allowed.length; a++)
+					for (var a = 0; allowed && a < allowed.length; a++)
 						Array.add(this._options, new OptionAdapter(this, allowed[a]));
 				}
 

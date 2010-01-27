@@ -1513,7 +1513,8 @@
 			},
 			values: function AllowedValuesRule$values(obj) {
 				this._init();
-				if (this._propertyChain) {
+				if (this._propertyChain && (this._propertyChain.lastProperty()._isStatic || this._propertyChain.lastTarget(obj))) {
+
 					// get the allowed values from the property chain
 					var values = this._propertyChain.value(obj);
 
