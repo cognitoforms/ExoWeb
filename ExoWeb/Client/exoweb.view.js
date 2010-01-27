@@ -123,8 +123,8 @@
 			this._ignoreTargetEvents = false;
 			this._readySignal = new ExoWeb.Signal();
 
-			if (options.optionsOrder)
-				this._optionsOrder = options.optionsOrder;
+			if (options.optionsTransform)
+				this._optionsTransform = options.optionsTransform;
 
 			// Track state for system and display formats, including the format and bad value.
 			this._systemState = { FormatName: systemFormat, Format: undefined, BadValue: undefined };
@@ -331,6 +331,9 @@
 							this._allowedValues = rule.values(targetObj);
 
 							if (this._allowedValues !== undefined) {
+								if (this._optionsTransform)
+									this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(this._allowedValues).live();
+
 								// watch for changes to the allowed values list and update options
 								Sys.Observer.addCollectionChanged(this._allowedValues, this._reloadOptions.setScope(this));
 							}

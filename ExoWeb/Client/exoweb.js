@@ -369,14 +369,8 @@ Type.registerNamespace("ExoWeb");
 	ExoWeb.EvalWrapper = EvalWrapper;
 
 	///////////////////////////////////////////////////////////////////////////////
-	function Transform(array, root) {
-		if (!root) {
-			Function.mixin(Transform.prototype, array);
-			return array;
-		}
-		else {
-			this.array = array;
-		}
+	function Transform(root) {
+		this.array = root;
 	}
 
 	var compileFilterFunction = (function compileFilterFunction(filter) {
@@ -389,7 +383,7 @@ Type.registerNamespace("ExoWeb");
 
 			if (name === "$item")
 				return "";
-				
+
 			if (more.length > 0)
 				return "get('" + name + "')" + more;
 
@@ -438,7 +432,13 @@ Type.registerNamespace("ExoWeb");
 
 
 	Transform.mixin({
-		input: function() {
+		_next: function Transform$_next(fn, args, output) {
+			Function.mixin(Transform.prototype, output);
+			output.prior = this;
+			output.transform = { fn: fn, args: args };
+			return output;
+		},
+		input: function Transform$input() {
 			return this.array || this;
 		},
 		where: function Transform$where(filter, thisPtr) {
@@ -457,7 +457,7 @@ Type.registerNamespace("ExoWeb");
 					output.push(item);
 			}
 
-			return new Transform(output);
+			return this._next(this.where, arguments, output);
 		},
 		groupBy: function Transform$groupBy(groups, thisPtr) {
 			if (!(groups instanceof Function))
@@ -483,7 +483,7 @@ Type.registerNamespace("ExoWeb");
 				if (!group)
 					output.push({ group: groupKey, items: [item] });
 			}
-			return new Transform(output);
+			return this._next(this.groupBy, arguments, output);
 		},
 		orderBy: function Transform$orderBy(ordering, thisPtr) {
 			if (!(ordering instanceof Function))
@@ -503,12 +503,49 @@ Type.registerNamespace("ExoWeb");
 			else
 				output.sort(function() { return ordering.apply(this, arguments); });
 
-			return new Transform(output);
+			return this._next(this.orderBy, arguments, output);
+		},
+		// Watches for changes on the root input into the transform
+		// and raises observable change events on this item as the 
+		// results change.
+		live: function Transform$live() {
+			var chain = [];
+			for (var step = this; step; step = step.prior) {
+				Array.insert(chain, 0, step);
+			}
+
+			// make a new observable array
+			var input = this.input();
+			var output = Sys.Observer.makeObservable(new Array(input.length));
+
+			var len = input.length;
+			for (var i = 0; i < len; i++)
+				output[i] = input[i];
+
+			// watch for changes to root input and rerun transform chain as needed
+			Sys.Observer.addCollectionChanged(chain[0].input(), function() {
+				// re-run the transform on the newly changed input
+				var newResult = $transform(chain[0].input());
+
+				for (var i = 1; i < chain.length; ++i) {
+					var step = chain[i];
+					newResult = step.transform.fn.apply(newResult, step.transform.args);
+				}
+
+				// apply the changes to the output.
+				// must use the original list so that the events can be seen
+				output.beginUpdate();
+				output.clear();
+				output.addRange(newResult);
+				output.endUpdate();
+			});
+
+			return this._next(this.live, arguments, output);
 		}
 	});
 
 	ExoWeb.Transform = Transform;
-	window.$transform = function $transform(array) { return new Transform(array, true); };
+	window.$transform = function $transform(array) { return new Transform(array); };
 
 	function evalPath(obj, path, nullValue, undefinedValue) {
 		var steps = path.split(".");
@@ -745,7 +782,7 @@ else {
 
 
 
-})();
+})();
 
 ///////////////////////////////////////////////////////////////////////////////
 // Simulate homogenous browsers

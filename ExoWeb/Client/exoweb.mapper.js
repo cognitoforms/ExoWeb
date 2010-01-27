@@ -127,8 +127,12 @@
 
 				if (property.get_origin() !== "server")
 					return;
+					
+				if(obj instanceof Function)
+					log("server", "logging list change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
+				else
+					log("server", "logging list change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 
-				log("server", "logging list change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 
 				for (var i = 0; i < listChanges.length; ++i) {
 					var listChange = listChanges[i];
