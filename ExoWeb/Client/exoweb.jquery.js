@@ -56,7 +56,6 @@
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		// selectors for rules
-
 		jQuery.expr[":"].rule = function(obj, index, meta, stack) {
 			if (!window.ExoWeb)
 				return false;
@@ -74,6 +73,44 @@
 			if (!ExoWeb.Model)
 				return false;
 			return $(obj).liveBindings().length > 0;
+		};
+
+		//////////////////////////////////////////////////////////////////////////////////////
+		// helpers for working with ms ajax controls
+
+		jQuery.expr[":"].dataview = function(obj, index, meta, stack) {
+			return obj.control instanceof Sys.UI.DataView;
+		};
+
+		jQuery.expr[":"].control = function(obj, index, meta, stack) {
+			var typeName = meta[3];
+			var jstype = new Function("{return " + typeName + ";}");
+
+			return obj.control instanceof jstype;
+		};
+
+		jQuery.fn.control = function(propName, propValue) {
+			var control = this.get(0).control;
+
+			if (arguments.length == 0) {
+				return control;
+			}
+			else if (arguments.length == 1) {
+				return control["get_" + propName]();
+			}
+			else {
+				control["set_" + propName](propValue);
+				return this;
+			}
+		};
+
+		jQuery.fn.commands = function(commands) {
+			var control = this.control();
+			control.add_command(function(sender, args) {
+				var handler = commands[args.get_commandName()];
+					if (handler)
+						handler(sender, args);
+			});
 		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
