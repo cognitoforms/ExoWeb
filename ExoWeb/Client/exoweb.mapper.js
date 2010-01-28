@@ -20,10 +20,9 @@
 			typeProvider = fn;
 		}
 
-		var listProvider = function(ownerType, ownerId, propName) {
-			throwAndLog(["lazyLoad"], "NOT IMPLEMENTED: listProvider({0}, {1}, {2})", arguments);
+		var listProvider = function(ownerType, ownerId, propName, success, failed) {
+			ExoWeb.Load(ownerType, [ownerId], true, false, ["this." + propName], null, success, failed)
 		};
-
 		ExoWeb.Mapper.setListProvider = function(fn) {
 			listProvider = fn;
 		}
@@ -1275,7 +1274,7 @@
 				var objectJson;
 
 				listProvider(ownerType, list._ownerId, propName, signal.pending(function(result) {
-					objectJson = result;
+					objectJson = result.instances;
 				}));
 
 				// ensure that the property type is loaded as well.
@@ -1288,7 +1287,43 @@
 				signal.waitForAll(function() {
 					log("list", "{0}({1}).{2}", [ownerType, list._ownerId, propName]);
 
-					var listJson = objectJson[ownerType][list._ownerId][propName];
+					// The actual type name and id as found in the resulting json.
+					var jsonId = list._ownerId;
+					var jsonType = ownerType;
+
+					// Find the given type and id in the object json.  The type key may be a dervied type.
+					function searchJson(mtype, id) {
+						// The given type is a key that is present in the result json.
+						if (objectJson[mtype.get_fullName()]) {
+
+							// The id is also a key.
+							if (objectJson[mtype.get_fullName()][id]) {
+								jsonType = mtype.get_fullName();
+								jsonId = id;
+								return true;
+							}
+
+							// Ids returned from the server are not always in the same case as ids on the client, so check one-by-one.
+							for (varId in objectJson[mtype.get_fullName()]) {
+								if (varId.toLowerCase() == id.toLowerCase()) {
+									jsonType = mtype.get_fullName();
+									jsonId = varId;
+									return true;
+								}
+							}
+						}
+
+						// Check derived types recursively.
+						for (var i = 0; i < mtype.derivedTypes.length; i++) {
+							if (searchJson(mtype.derivedTypes[i], id))
+								return true;
+						}
+					}
+
+					if (!searchJson(window[ownerType].meta, list._ownerId))
+						ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, list._ownerId]);
+
+					var listJson = objectJson[jsonType][jsonId][propName];
 
 					// populate the list with objects
 					for (var i = 0; i < listJson.length; i++) {
@@ -1309,7 +1344,7 @@
 						propType.get_jstype() :
 						getObject(model, ownerType, list._ownerId, null))) {
 
-						delete objectJson[ownerType][list._ownerId];
+						delete objectJson[jsonType][jsonId];
 					}
 
 					ListLazyLoader.unregister(list, this);
@@ -1457,7 +1492,7 @@
 					}
 				}
 			}
-			
+
 			// setup lazy loading on the container object to control
 			// lazy evaluation.  loading is considered complete at the same point
 			// model.ready() fires

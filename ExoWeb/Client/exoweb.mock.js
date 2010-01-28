@@ -10,7 +10,7 @@
 		function Mock() {
 			this._types = null;
 			this._objects = null;
-			
+
 			this.objectProviderDelay = 0;
 			this.typeProviderDelay = 0;
 			this.listProviderDelay = 0;
@@ -74,7 +74,7 @@
 			_initObjects: function() {
 				if (!this._objects) {
 					this._objects = {};
-					
+
 					var _this = this;
 
 					ExoWeb.Mapper.setObjectProvider(function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback) {
@@ -96,19 +96,19 @@
 					});
 
 					ExoWeb.Mapper.setListProvider(function(ownerType, ownerId, ownerProperty, callback) {
-						var json = {};
-						json[ownerType] = {};
-						json[ownerType][ownerId] = {};
+						var json = { instances: {} };
+						json.instances[ownerType] = {};
+						json.instances[ownerType][ownerId] = {};
 
 						// pass ids
 						var refs = _this._objects[ownerType][ownerId][ownerProperty];
-						json[ownerType][ownerId][ownerProperty] = refs;
+						json.instances[ownerType][ownerId][ownerProperty] = refs;
 
 						// include object data also
 						var propType = window[ownerType].meta.property(ownerProperty).get_jstype().meta.get_fullName();
 
 						for (var i = 0; i < refs.length; ++i)
-							_this._appendObject(json, propType, refs[i]);
+							_this._appendObject(json.instances, propType, refs[i]);
 
 						return mockCallback(callback, [json], _this.listProviderDelay, $format(">> fetch: {0}({1}).{2}", arguments));
 					});
@@ -129,7 +129,7 @@
 
 						return mockCallback(success, [result], _this.roundtripProviderDelay, $format(">> roundtrip", arguments));
 					});
-					
+
 					ExoWeb.Mapper.setSaveProvider(function(root, changes, callback) {
 						var result = { changes: [] };
 
@@ -288,7 +288,7 @@
 
 					callback.apply(this, args);
 				}, delay);
-				
+
 				return;
 			}
 
