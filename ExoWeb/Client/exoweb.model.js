@@ -225,8 +225,11 @@
 						for (var t = type; t != null; t = t.baseType) {
 							for (var propName in t._properties) {
 								var prop = t._properties[propName];
-								if (!prop.get_isStatic() && prop.get_isList()) {
-									prop.init(this, []);
+								if (!prop.get_isStatic()) {
+									if (prop.get_isList())
+										prop.init(this, []);
+									else
+										prop.init(this, undefined);
 								}
 							}
 						}
@@ -449,11 +452,11 @@
 			},
 			addRule: function Type$addRule(rule) {
 				function Type$addRule$init(obj, prop, newValue, oldValue) {
-					if (oldValue === undefined)
+					if (arguments.length == 3)
 						Type$addRule$fn(obj, prop, rule.init ? rule.init : rule.execute);
 				}
 				function Type$addRule$changed(obj, prop, newValue, oldValue) {
-					if (oldValue !== undefined)
+					if (arguments.length == 4)
 						Type$addRule$fn(obj, prop, rule.execute);
 				}
 				function Type$addRule$get(obj, prop, value) {
@@ -645,13 +648,22 @@
 				var old = obj[this._fieldName];
 
 				if (old !== val) {
+					var defined = obj.hasOwnProperty(this._fieldName);
+
 					obj[this._fieldName] = val;
 
 					// NOTE: property change should be broadcast before rules are run so that if 
 					// any rule causes a roundtrip to the server these changes will be available
-					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
+					if (defined)
+						this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
+					else
+						this._containingType.get_model().notifyAfterPropertySet(obj, this, val);
 
-					this._raiseEvent("changed", [obj, this, val, old]);
+					if (defined)
+						this._raiseEvent("changed", [obj, this, val, old]);
+					else
+						this._raiseEvent("changed", [obj, this, val]);
+
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
 			},
@@ -759,7 +771,7 @@
 					});
 				}
 
-				this._raiseEvent("changed", [target, this, val, undefined]);
+				this._raiseEvent("changed", [target, this, val]);
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
