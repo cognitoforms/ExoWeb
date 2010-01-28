@@ -508,11 +508,7 @@
 						var idChange = change.idChanges[i];
 
 						var type = this._model.type(idChange.type);
-						var currentId = this._translator.reverse(idChange.type, idChange.oldId);
-
-						// TODO: handle id that doesn't exist on client
-						if (!currentId)
-							continue;
+						var currentId = this._translator.reverse(idChange.type, idChange.oldId) || idChange.oldId;
 
 						type.changeObjectId(currentId, idChange.newId);
 					}
