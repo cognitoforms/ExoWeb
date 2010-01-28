@@ -131,9 +131,28 @@
 		}
 
 		Entity.mixin({
-			set: function Entity$set(properties) {
-				for (var prop in properties)
-					this["set_" + prop](properties[prop]);
+			set: function Entity$set( /*[properties] or [propName, propValue] */) {
+				if (arguments.length == 2) {
+					var propName = arguments[0];
+					var propValue = arguments[1];
+					this._accessor("set", propName).call(this, propValue);
+				}
+				else {
+					var properties = arguments[0];
+					for (var prop in properties)
+						this._accessor("set", prop).call(this, properties[prop]);
+				}
+			},
+			get: function Entity$get(propName) {
+				return this._accessor("get", propName).call(this);
+			},
+			_accessor: function Entity$_accessor(getOrSet, property) {
+				var fn = this[getOrSet + "_" + property];
+
+				if (!fn)
+					throwAndLog("model", "Unknown property: {0}.{1}", [this.meta.type.get_fullName(), property]);
+
+				return fn;
 			},
 			toString: function Entity$toString(formatName) {
 				var format;
