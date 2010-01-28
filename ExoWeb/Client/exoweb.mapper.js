@@ -127,8 +127,8 @@
 
 				if (property.get_origin() !== "server")
 					return;
-					
-				if(obj instanceof Function)
+
+				if (obj instanceof Function)
 					log("server", "logging list change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
 				else
 					log("server", "logging list change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
@@ -525,7 +525,7 @@
 
 				var translator = this._translator;
 
-				ensureJsType(this._model, change.instance.type, 
+				ensureJsType(this._model, change.instance.type,
 					function applyInitChange$typeLoaded(jstype) {
 						var newObj = new jstype();
 
@@ -545,7 +545,7 @@
 
 				function applyRefChange$execute() {
 					if (change.newValue) {
-						ensureJsType(model, change.newValue.type, 
+						ensureJsType(model, change.newValue.type,
 							function applyRefChange$typeLoaded(mtype) {
 								var ref = fromExoGraph(translator, change.newValue);
 
@@ -1049,7 +1049,7 @@
 							if (step.cast) {
 								mtype = model.type(step.cast);
 								if (!mtype)
-									fetchType(model, step.cast, signal.pending(function () {
+									fetchType(model, step.cast, signal.pending(function() {
 										mtype = model.type(step.cast);
 										fetchRootTypePaths();
 									}));
@@ -1360,22 +1360,18 @@
 				server: new ServerSync(model)
 			};
 
-			// start loading the instances first, then load type data concurrently.
-			// this assumes that instances are slower to load than types due to caching
-			for (varName in options.model) {
-				state[varName] = { signal: new ExoWeb.Signal("ExoWeb.context." + varName) };
-				allSignals.pending();
+			if (options.types) {
+				// allow specifying types and paths apart from instance data
+				for (var i = 0; i < options.types.length; i++) {
+					var typeQuery = options.types[i];
 
-				with ({ varName: varName }) {
-					var query = options.model[varName];
-
-					query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
+					typeQuery.and = ExoWeb.Model.PathTokens.normalizePaths(typeQuery.and);
 
 					// store the paths for later use
-					ObjectLazyLoader.addPaths(query.from, query.and);
+					ObjectLazyLoader.addPaths(typeQuery.from, typeQuery.and);
 
 					// only send properties to server
-					query.serverPaths = query.and.map(function(path) {
+					typeQuery.serverPaths = typeQuery.and.map(function(path) {
 						var strPath;
 						path.steps.forEach(function(step) {
 							if (!strPath)
@@ -1386,7 +1382,38 @@
 						return strPath;
 					});
 
-					objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
+					fetchTypes(model, typeQuery, allSignals.pending());
+				}
+			}
+
+			if (options.model) {
+				// start loading the instances first, then load type data concurrently.
+				// this assumes that instances are slower to load than types due to caching
+				for (varName in options.model) {
+					state[varName] = { signal: new ExoWeb.Signal("ExoWeb.context." + varName) };
+					allSignals.pending();
+
+					with ({ varName: varName }) {
+						var query = options.model[varName];
+
+						query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
+
+						// store the paths for later use
+						ObjectLazyLoader.addPaths(query.from, query.and);
+
+						// only send properties to server
+						query.serverPaths = query.and.map(function(path) {
+							var strPath;
+							path.steps.forEach(function(step) {
+								if (!strPath)
+									strPath = step.property;
+								else
+									strPath += "." + step.property;
+							});
+							return strPath;
+						});
+
+						objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
 						state[varName].signal.pending(function context$objects$callback(result) {
 							state[varName].objectJson = result.instances;
 						}),
@@ -1396,32 +1423,33 @@
 								{ query: query, error: error });
 						})
 					);
+					}
+				}
+
+				// load types
+				for (varName in options.model) {
+					fetchTypes(model, options.model[varName], state[varName].signal.pending());
+				}
+
+				// process instances as they finish loading
+				for (varName in options.model) {
+					with ({ varName: varName }) {
+						state[varName].signal.waitForAll(function context$model() {
+
+							// load the json. this may happen asynchronously to increment the signal just in case
+							objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
+								var query = options.model[varName];
+								var mtype = model.type(query.from);
+								ret.model[varName] = mtype.get(query.id);
+
+								// model object has been successfully loaded!
+								allSignals.oneDone();
+							}));
+						})
+					}
 				}
 			}
-
-			// load types
-			for (varName in options.model) {
-				fetchTypes(model, options.model[varName], state[varName].signal.pending());
-			}
-
-			// process instances as they finish loading
-			for (varName in options.model) {
-				with ({ varName: varName }) {
-					state[varName].signal.waitForAll(function context$model() {
-
-						// load the json. this may happen asynchronously to increment the signal just in case
-						objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
-							var query = options.model[varName];
-							var mtype = model.type(query.from);
-							ret.model[varName] = mtype.get(query.id);
-
-							// model object has been successfully loaded!
-							allSignals.oneDone();
-						}));
-					})
-				}
-			}
-
+			
 			// setup lazy loading on the container object to control
 			// lazy evaluation.  loading is considered complete at the same point
 			// model.ready() fires
