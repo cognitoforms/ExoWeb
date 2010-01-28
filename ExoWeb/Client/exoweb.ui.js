@@ -12,6 +12,7 @@ Type.registerNamespace("ExoWeb.UI");
 		///////////////////////////////////////////////////////////////////////////////
 		function Toggle(element) {
 			Toggle.initializeBase(this, [element]);
+			var _propertyChain;
 		}
 
 		Toggle.prototype = {
@@ -40,11 +41,16 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._source;
 			},
 			get_value: function Toggle$get_value() {
-				var getter = this._source["get_" + this._on];
-				if (getter)
-					return getter.call(this._source);
-				else
-					return this._source[this._on];
+				if (this._source instanceof ExoWeb.Model.Entity) {
+					return this._propertyChain.value(this._source);
+				}
+				else {
+					var getter = this._source["get_" + this._on];
+					if (getter)
+						return getter.call(this._source);
+					else
+						return this._source[this._on];
+				}
 			},
 			execute: function Toggle$execute() {
 				var val = this.get_value();
@@ -67,12 +73,19 @@ Type.registerNamespace("ExoWeb.UI");
 				if (!this._source)
 					this._source = getParentContextData(this._element);
 
-				this.execute();
-
 				var _this = this;
-				Sys.Observer.addSpecificPropertyChanged(this._source, this._on, function() {
-					_this.execute();
-				});
+
+				if (this._source instanceof ExoWeb.Model.Entity) {
+					this._propertyChain = ExoWeb.Model.Model.property('this.' + this._on, this._source.meta);
+					this._propertyChain.addChanged(function() { _this.execute(); }, this._source);
+				}
+				else {
+					Sys.Observer.addSpecificPropertyChanged(this._source, this._on, function() {
+						_this.execute();
+					});
+				}
+				
+				this.execute();
 			}
 		}
 
