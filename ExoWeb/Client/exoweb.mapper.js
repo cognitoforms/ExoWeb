@@ -188,7 +188,11 @@
 					return;
 
 				if (property.get_isValueType()) {
-					log("server", "logging value change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
+					if (obj instanceof Function)
+						log("server", "logging value change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
+					else
+						log("server", "logging value change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
+					
 					var change = {
 						__type: "ValueChange:#ExoGraph",
 						instance: toExoGraph(this._translator, obj),
@@ -200,7 +204,11 @@
 					this._raiseEvent("changeCaptured", [change]);
 				}
 				else {
-					log("server", "logging reference change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
+					if (obj instanceof Function)
+						log("server", "logging reference change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
+					else
+						log("server", "logging reference change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
+					
 					var change = {
 						__type: "ReferenceChange:#ExoGraph",
 						instance: toExoGraph(this._translator, obj),
