@@ -899,43 +899,45 @@
 		PathTokens.normalizePaths = function PathTokens$normalizePaths(paths) {
 			var result = [];
 
-			paths.forEach(function(p) {
-				var stack = [];
-				var parent;
-				var start = 0;
-				var pLen = p.length;
+			if (paths) {
+				paths.forEach(function(p) {
+					var stack = [];
+					var parent;
+					var start = 0;
+					var pLen = p.length;
 
-				for (var i = 0; i < pLen; ++i) {
-					var c = p[i];
+					for (var i = 0; i < pLen; ++i) {
+						var c = p[i];
 
-					if (c === '{' || c === ',' || c === '}') {
-						var seg = p.substring(start, i).trim();
-						start = i + 1;
+						if (c === '{' || c === ',' || c === '}') {
+							var seg = p.substring(start, i).trim();
+							start = i + 1;
 
-						if (c === '{') {
-							if (parent) {
-								stack.push(parent);
-								parent += "." + seg
+							if (c === '{') {
+								if (parent) {
+									stack.push(parent);
+									parent += "." + seg
+								}
+								else
+									parent = seg;
 							}
-							else
-								parent = seg;
-						}
-						else {   // ',' or '}'
-							if (seg.length > 0)
-								result.push(new PathTokens(parent ? parent + "." + seg : seg));
+							else {   // ',' or '}'
+								if (seg.length > 0)
+									result.push(new PathTokens(parent ? parent + "." + seg : seg));
 
-							if (c === '}')
-								parent = stack.length == 0 ? undefined : stack.pop();
+								if (c === '}')
+									parent = stack.length == 0 ? undefined : stack.pop();
+							}
 						}
 					}
-				}
 
-				if (stack.length > 0)
-					throwAndLog("model", "Unclosed '{' in path: {0}", [p]);
+					if (stack.length > 0)
+						throwAndLog("model", "Unclosed '{' in path: {0}", [p]);
 
-				if (start === 0)
-					result.push(new PathTokens(p.trim()));
-			});
+					if (start === 0)
+						result.push(new PathTokens(p.trim()));
+				});
+			}
 			return result;
 		}
 
