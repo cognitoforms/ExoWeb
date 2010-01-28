@@ -6,7 +6,7 @@ using ExoGraph;
 
 namespace ExoWeb
 {
-	#region IRuleProvider
+	#region IServiceAdapter
 
 	public interface IServiceAdapter
 	{

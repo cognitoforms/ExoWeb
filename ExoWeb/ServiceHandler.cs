@@ -19,7 +19,7 @@ namespace ExoWeb
 		public void ProcessRequest(HttpContext context)
 		{
 			if (context.Request.PathInfo == "/Script")
-				OutputScript(context.Response);
+				OutputScript(context);
 			else
 				ServiceMethod.Invoke(context);
 		}
@@ -73,41 +73,56 @@ namespace ExoWeb
 		/// Outputs the javascript used to enable ExoWeb usage.
 		/// </summary>
 		/// <param name="response"></param>
-		void OutputScript(HttpResponse response)
+		void OutputScript(HttpContext context)
 		{
-			response.ContentType = "application/javascript";
+			// Enable caching
+			context.Response.Cache.SetCacheability(HttpCacheability.Public);
+			context.Response.Cache.SetExpires(DateTime.Now.AddDays(7));
 
-			response.Write(
+			context.Response.ContentType = "application/javascript";
+
+			context.Response.Write(
 			@"
-				// Indicate that the script requires the WebServices component
-				Sys.require([Sys.scripts.WebServices]);
+				(function() {
 
-				// Declare the ExoWeb namespace
-				Type.registerNamespace('ExoWeb');
+					function execute() {
 
-				// Define the ExoWeb.GetType method
-				ExoWeb.GetType = function(type, onSuccess, onFailure)
-				{
-					Sys.Net.WebServiceProxy.invoke('ExoWeb.axd', 'GetType', true, { type: type }, onSuccess, onFailure, null, 1000000, false, null);
-				}
+						// Declare the ExoWeb namespace
+						Type.registerNamespace('ExoWeb');
 
-				// Define the ExoWeb.Load method
-				ExoWeb.Load = function(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure)
-				{
-					Sys.Net.WebServiceProxy.invoke('ExoWeb.axd', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
-				}
+						// Define the ExoWeb.GetType method
+						ExoWeb.GetType = function(type, onSuccess, onFailure)
+						{
+							Sys.Net.WebServiceProxy.invoke('" +  context.Request.ApplicationPath + @"/ExoWeb.axd', 'GetType', true, { type: type }, onSuccess, onFailure, null, 1000000, false, null);
+						}
 
-				// Define the ExoWeb.Save method
-				ExoWeb.Save = function(root, changes, onSuccess, onFailure)
-				{
-					Sys.Net.WebServiceProxy.invoke('ExoWeb.axd', 'Save', false, { root: root, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
-				}
+						// Define the ExoWeb.Load method
+						ExoWeb.Load = function(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure)
+						{
+							Sys.Net.WebServiceProxy.invoke('" + context.Request.ApplicationPath + @"/ExoWeb.axd', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+						}
 
-				// Define the ExoWeb.RaiseEvent method
-				ExoWeb.RaiseEvent = function(eventType, instance, event, changes, onSuccess, onFailure)
-				{
-					Sys.Net.WebServiceProxy.invoke('ExoWeb.axd', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
-				}
+						// Define the ExoWeb.Save method
+						ExoWeb.Save = function(root, changes, onSuccess, onFailure)
+						{
+							Sys.Net.WebServiceProxy.invoke('" + context.Request.ApplicationPath + @"/ExoWeb.axd', 'Save', false, { root: root, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+						}
+
+						// Define the ExoWeb.RaiseEvent method
+						ExoWeb.RaiseEvent = function(eventType, instance, event, changes, onSuccess, onFailure)
+						{
+							Sys.Net.WebServiceProxy.invoke('" + context.Request.ApplicationPath + @"/ExoWeb.axd', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+						}
+					
+						}
+
+						if (window.Sys && Sys.loader) {
+								Sys.loader.registerScript('ExoWebHandler', null, execute);
+						}
+						else {
+								execute();
+						}
+				})();
 			");
 
 		}

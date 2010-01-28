@@ -36,7 +36,8 @@ namespace ExoWeb
 		internal static void OutputType(HttpResponse response, GraphType type)
 		{
 			// Get the rules defined for this type
-			Dictionary<string, IGrouping<string, Rule>> rules = ServiceHandler.Adapter.GetRules(type)
+			Dictionary<string, IGrouping<string, Rule>> rules = ServiceHandler.Adapter == null ? null : 
+				ServiceHandler.Adapter.GetRules(type)
 				.GroupBy<Rule, string>((rule) => { return rule is PropertyRule ? ((PropertyRule)rule).Property.Name : ""; })
 				.ToDictionary<IGrouping<string, Rule>, string>((group) => { return group.Key; });
 
@@ -47,7 +48,7 @@ namespace ExoWeb
 
 			// Output type rules
 			IGrouping<string, Rule> typeRules;
-			if (rules.TryGetValue("", out typeRules))
+			if (rules != null && rules.TryGetValue("", out typeRules))
 				OutputRules(response, typeRules);
 
 			response.Write("\r\n         \"properties\": {\r\n");
@@ -81,7 +82,7 @@ namespace ExoWeb
 
 				// Output property rules
 				IGrouping<string, Rule> propertyRules;
-				if (rules.TryGetValue(property.Name, out propertyRules))
+				if (rules != null && rules.TryGetValue(property.Name, out propertyRules))
 					OutputRules(response, propertyRules);
 
 				// Close the property

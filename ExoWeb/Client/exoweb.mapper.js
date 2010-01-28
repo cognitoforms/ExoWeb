@@ -1379,6 +1379,18 @@
 					});
 
 					fetchTypes(model, typeQuery, allSignals.pending());
+
+					objectProvider(typeQuery.from, null, true, false, typeQuery.serverPaths, null,
+						allSignals.pending(function context$objects$callback(result) {
+					        // load the json. this may happen asynchronously to increment the signal just in case
+					        objectsFromJson(model, result.instances, allSignals.pending());
+						}),
+						allSignals.orPending(function context$objects$callback(error) {
+						    ExoWeb.trace.logError("objectInit",
+								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+								{ query: query, error: error });
+						})
+					);
 				}
 			}
 

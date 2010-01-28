@@ -15,7 +15,7 @@ Sys.loader.defineScripts(null, [
 	    releaseUrl: exoBasePath + "ExoWeb.axd/Script",
 	    debugUrl: exoBasePath + "ExoWeb.axd/Script",
 		name: "ExoWebHandler",
-		executionDependencies: ["Core", "ExoWeb"],
+		executionDependencies: ["Core", "WebServices", "ExoWeb"],
 		isLoaded: !!(ExoWeb && ExoWeb.Load)
 	},
 	{

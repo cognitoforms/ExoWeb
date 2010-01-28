@@ -127,13 +127,13 @@ namespace ExoWeb
 		[DataMember(Name = "max", EmitDefaultValue = false)]
 		public int MaximumLength { get; private set; }
 	}
-	
+
 	#endregion
 
-	public class DataAnnotationsRuleProvider : IServiceAdapter
-	{
-		#region IServiceAdapter Members
+	#region DataAnnotationsAdapter
 
+	public class DataAnnotationsAdapter : IServiceAdapter
+	{
 		public IEnumerable<Rule> GetRules(GraphType type)
 		{
 			List<Rule> rules = new List<Rule>();
@@ -155,6 +155,13 @@ namespace ExoWeb
 					RangeAttribute rangeAttribute = property.GetAttributes<RangeAttribute>().FirstOrDefault();
 					if (rangeAttribute != null)
 						rules.Add(new RangeRule(property, rangeAttribute.Minimum, rangeAttribute.Maximum));
+
+					// Allowed Values
+					GraphProperty allowValuesSource = AllowedValuesAttribute.GetAllowedValues(property);
+					if (allowValuesSource != null)
+						rules.Add(new AllowedValuesRule(property, 
+							allowValuesSource.IsStatic ? allowValuesSource.DeclaringType.Name + "." + allowValuesSource.Name : "this." + allowValuesSource.Name, 
+							!allowValuesSource.IsStatic));
 				}
 			}
 
@@ -163,9 +170,52 @@ namespace ExoWeb
 
 		public string GetFormatName(GraphProperty property)
 		{
-			throw new NotImplementedException();
+			return null;
+		}
+	}
+
+	#endregion
+
+	#region AllowedValuesAttribute
+
+	public class AllowedValuesAttribute : ValidationAttribute
+	{
+		public string From { get; set; }
+
+		public string For { get; set; }
+
+		public override bool IsValid(object value)
+		{
+			return true;
 		}
 
-		#endregion
+		/// <summary>
+		/// Gets the property that provides allowed values for the specified <see cref="GraphProperty"/>.
+		/// </summary>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		public static GraphProperty GetAllowedValues(GraphProperty property)
+		{
+			// First see if there is an allowed values attribute on the specified property
+			AllowedValuesAttribute allowedValues = property.GetAttributes<AllowedValuesAttribute>().FirstOrDefault();
+			if (allowedValues != null)
+				return property.DeclaringType.Properties[allowedValues.From];
+
+			// Then see if there is an allowed values attribute on the type of the property
+			if (property is GraphReferenceProperty)
+			{
+				allowedValues = ((GraphReferenceProperty)property).PropertyType.GetAttributes<AllowedValuesAttribute>().FirstOrDefault();
+				if (allowedValues != null)
+					return ((GraphReferenceProperty)property).PropertyType.Properties[allowedValues.From];
+			}
+
+			// Finally, see if another property on the declaring type provides allowed values for this property
+			return (from p in property.DeclaringType.Properties
+					  from attr in p.GetAttributes<AllowedValuesAttribute>()
+					  where attr.For == property.Name
+					  select p).FirstOrDefault();
+		}
 	}
+
+	#endregion
 }

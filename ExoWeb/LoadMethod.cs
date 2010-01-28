@@ -378,8 +378,9 @@ namespace ExoWeb
 				if (!allowedValues.TryGetValue(instance.Type, out allowedValuesRules))
 				{
 					allowedValues[instance.Type] = allowedValuesRules = new Dictionary<GraphProperty, AllowedValuesRule>();
-					foreach (AllowedValuesRule rule in ServiceHandler.Adapter.GetRules(instance.Type).Where((rule) => { return rule is AllowedValuesRule && ((AllowedValuesRule)rule).AutoInclude; }))
-						allowedValuesRules[rule.Property] = rule;
+					if (ServiceHandler.Adapter != null)
+						foreach (AllowedValuesRule rule in ServiceHandler.Adapter.GetRules(instance.Type).Where((rule) => { return rule is AllowedValuesRule && ((AllowedValuesRule)rule).AutoInclude; }))
+							allowedValuesRules[rule.Property] = rule;
 				}
 
 				// Process allowed values rules for each reference property
