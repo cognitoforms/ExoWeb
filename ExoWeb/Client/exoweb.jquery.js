@@ -90,17 +90,17 @@
 		};
 
 		jQuery.fn.control = function(propName, propValue) {
-			var control = this.get(0).control;
-
 			if (arguments.length == 0) {
-				return control;
+				return this.get(0).control;
 			}
 			else if (arguments.length == 1) {
-				return control["get_" + propName]();
+				return this.get(0).control["get_" + propName]();
 			}
 			else {
-				control["set_" + propName](propValue);
-				return this;
+				this.each(function(element) {
+					element.control["set_" + propName](propValue);
+					return this;
+				});
 			}
 		};
 
