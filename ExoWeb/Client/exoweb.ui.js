@@ -202,8 +202,10 @@ Type.registerNamespace("ExoWeb.UI");
 		}
 
 		// bookkeeping for Template.load()...
+		// consider wrapper object to clean up after templates are loaded?
 		var templateCount = 0;
 		var externalTemplatesSignal = new ExoWeb.Signal("external templates");
+		var lastTemplateRequestSignal;
 
 		/// <summary>
 		/// Loads external templates into the page
@@ -211,12 +213,29 @@ Type.registerNamespace("ExoWeb.UI");
 		Template.load = function(path) {
 			var id = "exoweb-templates-" + (templateCount++);
 
+			var lastReq = lastTemplateRequestSignal;
+
+			// set the last request signal to the new signal and increment
+			var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
+			var callback = signal.pending(function(elem) {
+				log("ui", "Activating elements for templates \"{0}\"", [id]);
+				Sys.Application.activateElement(elem);  // activate controls
+			});
+
 			$("<div id='" + id + "'/>")
 				.hide()
 				.appendTo("body")
 				.load(path, externalTemplatesSignal.pending(function() {
-					// activate controls
-					Sys.Application.activateElement(this);
+					var elem = this;
+
+					// if there is a pending request then wait for it to complete
+					if (lastReq) {
+						log("ui", "Templates \"{0}\" complete and waiting.", [id]);
+						lastReq.waitForAll(function() { callback(elem); });
+					}
+					else {
+						callback(elem);
+					}
 				}));
 		}
 
