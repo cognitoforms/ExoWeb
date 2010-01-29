@@ -459,12 +459,12 @@
 					if (wasInited)
 						Type$addRule$fn(obj, prop, rule.execute);
 				}
-				function Type$addRule$get(obj, prop, value) {
+				function Type$addRule$get(obj, prop, value, isInited) {
 					try {
 						// Only execute rule on property get if the property has not been initialized.
 						// This is based on the assumption that a rule should only fire on property
 						// get for the purpose of lazy initializing the property value.
-						if (value === undefined)
+						if (!isInited)
 							Type$addRule$fn(obj, prop, rule.execute);
 						else
 							log("model", "Property has already been initialized.");
@@ -637,7 +637,7 @@
 				return this._origin ? this._origin : this._containingType.get_origin();
 			},
 			getter: function(obj) {
-				this._raiseEvent("get", [obj, this, obj[this._fieldName]]);
+				this._raiseEvent("get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
 				return obj[this._fieldName];
 			},
 
@@ -778,9 +778,9 @@
 				var f;
 
 				if (obj)
-					f = function(target, property) {
+					f = function(target, property, value, isInited) {
 						if (obj === target)
-							handler(target, property);
+							handler(target, property, value, isInited);
 					}
 				else
 					f = handler;
@@ -853,7 +853,7 @@
 
 				var rule = {
 					init: function Property$calculated$init(obj) {
-						if (!prop.isInited(obj) && inputs.every(function(input) { return input.property.isInited(obj); })) {
+						if (!prop.isInited(obj) && inputs.every(function(input) { return input.property == prop || input.property.isInited(obj); })) {
 							this.execute(obj);
 						}
 					},
@@ -861,6 +861,13 @@
 						if (prop._isList) {
 							// re-calculate the list values
 							var newList = options.fn.apply(obj);
+
+							// Initialize list if needed.  A calculated list property cannot depend on initialization 
+							// of a server-based list property since initialization is done when the object is constructed 
+							// and before data is available.  If it depends only on the change of the server-based list 
+							// property then initialization will not happen until the property value is requested.
+							if (!prop.isInited(obj))
+								prop.init(obj, []);
 
 							// compare the new list to the old one to see if changes were made
 							var curList = prop.value(obj);
@@ -1152,8 +1159,8 @@
 			addGet: function PropertyChain$addGet(handler, obj) {
 				var chain = this;
 
-				this.lastProperty().addGet(function PropertyChain$_raiseGet(sender, property, value) {
-					handler(sender, chain, value);
+				this.lastProperty().addGet(function PropertyChain$_raiseGet(sender, property, value, isInited) {
+					handler(sender, chain, value, isInited);
 				}, obj);
 			},
 			// starts listening for change events along the property chain on any known instances. Use obj argument to
