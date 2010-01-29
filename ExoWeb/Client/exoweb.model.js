@@ -1082,6 +1082,11 @@
 
 					// move to next property in the chain
 					target = prop.value(target);
+
+					// break early if the target is undefined
+					if (target === undefined || target === null)
+						break;
+
 					lastProp = prop;
 				}
 
@@ -1125,9 +1130,12 @@
 				return this.lastProperty().canSetValue(this.lastTarget(obj), value);
 			},
 			// Determines if this property chain connects two objects.
-			// viaProperty is optional but will speed up the search.
 			connects: function PropertyChain$connects(fromRoot, toObj, viaProperty) {
 				var connected = false;
+
+				// perform simple comparison if no property is defined
+				if (!viaProperty)
+					return fromRoot === toObj;
 
 				this.each(fromRoot, function(target) {
 					if (target === toObj) {
