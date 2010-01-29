@@ -378,7 +378,7 @@ Type.registerNamespace("ExoWeb");
 		var skipWords = ["true", "false", "$index"];
 
 		filter = filter.replace(parser, function(match, ignored, name, more, strLiteral) {
-			if (strLiteral.length > 0 || skipWords.indexOf(name) >= 0)
+			if (strLiteral === undefined || strLiteral === null || strLiteral.length > 0 || skipWords.indexOf(name) >= 0)
 				return match;
 
 			if (name === "$item")
@@ -405,7 +405,7 @@ Type.registerNamespace("ExoWeb");
 			orderings.push({
 				path: path,
 				ab: dir === "desc" ? 1 : -1,
-				nulls: nullsLast.length > 0 ? 1 : -1
+				nulls: (nullsLast !== undefined && nullsLast !== null && nullsLast.length > 0) ? 1 : -1
 			});
 		});
 
