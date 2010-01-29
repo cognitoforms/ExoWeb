@@ -451,12 +451,12 @@
 				return null;
 			},
 			addRule: function Type$addRule(rule) {
-				function Type$addRule$init(obj, prop, newValue, oldValue) {
-					if (arguments.length == 3)
+				function Type$addRule$init(obj, prop, newValue, oldValue, wasInited) {
+					if (!wasInited)
 						Type$addRule$fn(obj, prop, rule.init ? rule.init : rule.execute);
 				}
-				function Type$addRule$changed(obj, prop, newValue, oldValue) {
-					if (arguments.length == 4)
+				function Type$addRule$changed(obj, prop, newValue, oldValue, wasInited) {
+					if (wasInited)
 						Type$addRule$fn(obj, prop, rule.execute);
 				}
 				function Type$addRule$get(obj, prop, value) {
@@ -648,21 +648,15 @@
 				var old = obj[this._fieldName];
 
 				if (old !== val) {
-					var defined = obj.hasOwnProperty(this._fieldName);
+					var wasInited = this.isInited(obj);
 
 					obj[this._fieldName] = val;
 
 					// NOTE: property change should be broadcast before rules are run so that if 
 					// any rule causes a roundtrip to the server these changes will be available
-					if (defined)
-						this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old);
-					else
-						this._containingType.get_model().notifyAfterPropertySet(obj, this, val);
+					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old, wasInited);
 
-					if (defined)
-						this._raiseEvent("changed", [obj, this, val, old]);
-					else
-						this._raiseEvent("changed", [obj, this, val]);
+					this._raiseEvent("changed", [obj, this, val, old, wasInited]);
 
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
@@ -771,13 +765,11 @@
 					});
 				}
 
-				this._raiseEvent("changed", [target, this, val]);
+				this._raiseEvent("changed", [target, this, val, undefined, false]);
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-				var curVal = target[this._fieldName];
-
-				return curVal !== undefined;
+				return target.hasOwnProperty(this._fieldName);
 			},
 
 			// starts listening for get events on the property. Use obj argument to
@@ -856,6 +848,7 @@
 				// calculated property should always be initialized when first accessed
 				input = new RuleInput(this);
 				input.set_dependsOnGet(true);
+				input.set_dependsOnChange(false);
 				inputs.push(input);
 
 				var rule = {
@@ -1170,8 +1163,8 @@
 
 				if (this._properties.length == 1) {
 					// OPTIMIZATION: no need to search all known objects for single property chains
-					this._properties[0].addChanged(function PropertyChain$_raiseChanged$1Prop(sender, property) {
-						handler(sender, chain);
+					this._properties[0].addChanged(function PropertyChain$_raiseChanged$1Prop(sender, property, val, oldVal, wasInited) {
+						handler(sender, chain, val, oldVal, wasInited);
 					}, obj);
 				}
 				else {
@@ -1179,19 +1172,19 @@
 						with ({ priorProp: p == 0 ? undefined : this._properties[p - 1] }) {
 							if (obj) {
 								// CASE: using object filter
-								this._properties[p].addChanged(function PropertyChain$_raiseChanged$1Obj(sender, property) {
+								this._properties[p].addChanged(function PropertyChain$_raiseChanged$1Obj(sender, property, val, oldVal, wasInited) {
 									if (chain.connects(obj, sender, priorProp))
-										handler(obj, chain);
+										handler(obj, chain, val, oldVal, wasInited);
 								});
 							}
 							else {
 								// CASE: no object filter
-								this._properties[p].addChanged(function PropertyChain$_raiseChanged$Multi(sender, property) {
+								this._properties[p].addChanged(function PropertyChain$_raiseChanged$Multi(sender, property, val, oldVal, wasInited) {
 									// scan all known objects of this type and raise event for any instance connected
 									// to the one that sent the event.
 									Array.forEach(chain._rootType.known(), function(known) {
 										if (chain.isInited(known) && chain.connects(known, sender, priorProp))
-											handler(known, chain);
+											handler(known, chain, val, oldVal, wasInited);
 									});
 								});
 							}
