@@ -48,6 +48,8 @@
 					function(result) {
 						log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
 
+						var target = result;
+
 						if (properties.transform && result instanceof Array) {
 							// generate transform function
 							var doTrans = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + properties.transform + ";");
@@ -72,10 +74,10 @@
 
 							if (properties.$default) {
 								var props = properties.$default.split(".");
-								var last = props.splice(-1);
-								ExoWeb.Model.LazyLoader.eval(source, props.join("."), function(target) {
-									Sys.Observer.addSpecificPropertyChanged(target, last, function(obj) {
-										Sys.Observer.setValue(component, targetProperty, doFormat(ExoWeb.getValue(target, last)));
+								var lastProp = props.splice(-1);
+								ExoWeb.Model.LazyLoader.eval(source, props.join("."), function(lastTarget) {
+									Sys.Observer.addSpecificPropertyChanged(lastTarget, lastProp, function(obj) {
+										Sys.Observer.setValue(component, targetProperty, doFormat(ExoWeb.getValue(lastTarget, lastProp)));
 									});
 								},
 								function(err) {
@@ -94,7 +96,7 @@
 								if (path.startsWith("this."))
 									path = path.substring(5);
 
-								ExoWeb.Model.LazyLoader.eval(source, path, function() {
+								ExoWeb.Model.LazyLoader.eval(target, path, function() {
 									Sys.Observer.setValue(component, targetProperty, result);
 								});
 							}
