@@ -1711,6 +1711,7 @@
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Format(options) {
+			this._paths = options.paths;
 			this._convert = options.convert;
 			this._convertBack = options.convertBack;
 			this._description = options.description;
@@ -1719,7 +1720,14 @@
 		}
 
 		Format.fromTemplate = (function Format$fromTemplate(convertTemplate) {
+			var paths = [];
+			convertTemplate.replace(/{([a-z0-9_.]+)}/ig, function(match, expr) {
+				paths.push(expr);
+				return expr;
+			});
+
 			return new Format({
+				paths: paths,
 				convert: function convert(obj) {
 					if (obj === null || obj === undefined)
 						return "";
@@ -1730,6 +1738,9 @@
 		}).cached({ key: function(convertTemplate) { return convertTemplate; } });
 
 		Format.mixin({
+			getPaths: function() {
+				return this._paths || [];
+			},
 			convert: function(val) {
 				if (val === undefined)
 					return this._undefinedString;

@@ -207,9 +207,31 @@
 				if (this._ignoreTargetEvents)
 					return;
 
-				Sys.Observer.raisePropertyChanged(this, "rawValue");
-				Sys.Observer.raisePropertyChanged(this, "systemValue");
-				Sys.Observer.raisePropertyChanged(this, "displayValue");
+				var _this = this;
+				var rawValue = this.get_rawValue();
+
+				// raise raw value changed event
+				ExoWeb.Model.LazyLoader.eval(rawValue, null, function() {
+					Sys.Observer.raisePropertyChanged(_this, "rawValue");
+				});
+
+				// raise system value changed event
+				var systemSignal = new ExoWeb.Signal("Adapter.systemValue");
+				Array.forEach(this.get_systemFormat().getPaths(), function(path) {
+					ExoWeb.Model.LazyLoader.eval(rawValue, path, systemSignal.pending());
+				});
+				systemSignal.waitForAll(function() {
+					Sys.Observer.raisePropertyChanged(_this, "systemValue");
+				});
+
+				// raise display value changed event
+				var displaySignal = new ExoWeb.Signal("Adapter.displayValue");
+				Array.forEach(this.get_displayFormat().getPaths(), function(path) {
+					ExoWeb.Model.LazyLoader.eval(rawValue, path, displaySignal.pending());
+				});
+				displaySignal.waitForAll(function() {
+					Sys.Observer.raisePropertyChanged(_this, "displayValue");
+				});
 			},
 			_reloadOptions: function Adapter$_reloadOptions() {
 				this._options = null;
