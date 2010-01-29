@@ -217,18 +217,22 @@
 
 				// raise system value changed event
 				var systemSignal = new ExoWeb.Signal("Adapter.systemValue");
-				Array.forEach(this.get_systemFormat().getPaths(), function(path) {
-					ExoWeb.Model.LazyLoader.eval(rawValue, path, systemSignal.pending());
-				});
+				if (rawValue !== undefined && rawValue != null) {
+					Array.forEach(this.get_systemFormat().getPaths(), function(path) {
+						ExoWeb.Model.LazyLoader.eval(rawValue, path, systemSignal.pending());
+					});
+				}
 				systemSignal.waitForAll(function() {
 					Sys.Observer.raisePropertyChanged(_this, "systemValue");
 				});
 
 				// raise display value changed event
 				var displaySignal = new ExoWeb.Signal("Adapter.displayValue");
-				Array.forEach(this.get_displayFormat().getPaths(), function(path) {
-					ExoWeb.Model.LazyLoader.eval(rawValue, path, displaySignal.pending());
-				});
+				if (rawValue !== undefined && rawValue != null) {
+					Array.forEach(this.get_displayFormat().getPaths(), function(path) {
+						ExoWeb.Model.LazyLoader.eval(rawValue, path, displaySignal.pending());
+					});
+				}
 				displaySignal.waitForAll(function() {
 					Sys.Observer.raisePropertyChanged(_this, "displayValue");
 				});

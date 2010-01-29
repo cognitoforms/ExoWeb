@@ -192,7 +192,7 @@
 						log("server", "logging value change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
 					else
 						log("server", "logging value change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
-					
+
 					var change = {
 						__type: "ValueChange:#ExoGraph",
 						instance: toExoGraph(this._translator, obj),
@@ -208,7 +208,7 @@
 						log("server", "logging reference change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
 					else
 						log("server", "logging reference change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
-					
+
 					var change = {
 						__type: "ReferenceChange:#ExoGraph",
 						instance: toExoGraph(this._translator, obj),
@@ -1425,11 +1425,11 @@
 
 					objectProvider(typeQuery.from, null, true, false, typeQuery.serverPaths, null,
 						allSignals.pending(function context$objects$callback(result) {
-					        // load the json. this may happen asynchronously to increment the signal just in case
-					        objectsFromJson(model, result.instances, allSignals.pending());
+							// load the json. this may happen asynchronously to increment the signal just in case
+							objectsFromJson(model, result.instances, allSignals.pending());
 						}),
 						allSignals.orPending(function context$objects$callback(error) {
-						    ExoWeb.trace.logError("objectInit",
+							ExoWeb.trace.logError("objectInit",
 								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 								{ query: query, error: error });
 						})
