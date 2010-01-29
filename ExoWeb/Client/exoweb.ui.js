@@ -41,8 +41,9 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._source;
 			},
 			get_value: function Toggle$get_value() {
-				if (this._source instanceof ExoWeb.Model.Entity) {
-					return this._propertyChain.value(this._source);
+				if (this._source instanceof ExoWeb.Model.Entity ) {
+					if(this._propertyChain.lastTarget(this._source))
+						return this._propertyChain.value(this._source);
 				}
 				else {
 					var getter = this._source["get_" + this._on];
