@@ -74,7 +74,7 @@
 
 							if (properties.$default) {
 								var props = properties.$default.split(".");
-								var lastProp = props.splice(-1);
+								var lastProp = props.pop();
 								ExoWeb.Model.LazyLoader.eval(source, props.join("."), function(lastTarget) {
 									Sys.Observer.addSpecificPropertyChanged(lastTarget, lastProp, function(obj) {
 										Sys.Observer.setValue(component, targetProperty, doFormat(ExoWeb.getValue(lastTarget, lastProp)));
