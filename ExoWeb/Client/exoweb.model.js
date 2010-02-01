@@ -228,7 +228,7 @@
 								if (!prop.get_isStatic()) {
 									if (prop.get_isList())
 										prop.init(this, []);
-									else
+									else if (prop.get_origin() == "server")
 										prop.init(this, undefined);
 								}
 							}
