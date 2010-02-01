@@ -378,7 +378,7 @@ Type.registerNamespace("ExoWeb");
 		var skipWords = ["true", "false", "$index"];
 
 		filter = filter.replace(parser, function(match, ignored, name, more, strLiteral) {
-			if (strLiteral === undefined || strLiteral === null || strLiteral.length > 0 || skipWords.indexOf(name) >= 0)
+			if ((strLiteral !== undefined && strLiteral !== null && strLiteral.length > 0) || skipWords.indexOf(name) >= 0)
 				return match;
 
 			if (name === "$item")
