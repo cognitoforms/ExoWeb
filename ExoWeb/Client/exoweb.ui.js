@@ -12,50 +12,44 @@ Type.registerNamespace("ExoWeb.UI");
 		///////////////////////////////////////////////////////////////////////////////
 		function Toggle(element) {
 			Toggle.initializeBase(this, [element]);
-			var _propertyChain;
 		}
 
 		Toggle.prototype = {
 			set_action: function Toggle$set_action(value) {
 				this._action = value;
+				this.execute();
 			},
 			get_action: function Toggle$get_action() {
 				return this._action;
 			},
 			set_on: function Toggle$set_on(value) {
 				this._on = value;
+				this.execute();
 			},
 			get_on: function Toggle$get_on() {
 				return this._on;
 			},
 			set_when: function Toggle$set_when(value) {
 				this._when = value;
+				this.execute();
 			},
 			get_when: function Toggle$get_when() {
 				return this._when;
 			},
-			set_source: function Toggle$set_source(value) {
-				this._source = value;
-			},
-			get_source: function Toggle$get_source() {
-				return this._source;
-			},
-			get_value: function Toggle$get_value() {
-				if (this._source instanceof ExoWeb.Model.Entity ) {
-					if(this._propertyChain.lastTarget(this._source))
-						return this._propertyChain.value(this._source);
-				}
-				else {
-					var getter = this._source["get_" + this._on];
-					if (getter)
-						return getter.call(this._source);
-					else
-						return this._source[this._on];
-				}
-			},
 			execute: function Toggle$execute() {
-				var val = this.get_value();
-				if (val == this._when) {
+				if (!this.get_isInitialized() || !this.hasOwnProperty("_on"))
+					return;
+
+				var equals;
+
+				if (this._when instanceof Function)
+					equals = !!this._when(this._on);
+				else if (typeof (this._on) === "boolean" && this._when === undefined)
+					equals = this._on;
+				else
+					equals = this._on === this._when;
+
+				if (equals) {
 					if (this._action == "hide")
 						$(this.get_element()).hide();
 					else
@@ -70,22 +64,6 @@ Type.registerNamespace("ExoWeb.UI");
 			},
 			initialize: function Toggle$initialize() {
 				Toggle.callBaseMethod(this, "initialize");
-
-				if (!this._source)
-					this._source = getParentContextData(this._element);
-
-				var _this = this;
-
-				if (this._source instanceof ExoWeb.Model.Entity) {
-					this._propertyChain = ExoWeb.Model.Model.property('this.' + this._on, this._source.meta);
-					this._propertyChain.addChanged(function() { _this.execute(); }, this._source);
-				}
-				else {
-					Sys.Observer.addSpecificPropertyChanged(this._source, this._on, function() {
-						_this.execute();
-					});
-				}
-				
 				this.execute();
 			}
 		}
