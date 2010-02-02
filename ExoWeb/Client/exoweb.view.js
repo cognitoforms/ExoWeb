@@ -384,6 +384,32 @@
 
 				return this._options;
 			},
+			get_selected: function Adapter$get_selected(obj) {
+				var rawValue = this.get_rawValue();
+
+				if (rawValue instanceof Array)
+					return Array.contains(rawValue, obj);
+				else
+					return rawValue == obj;
+			},
+			set_selected: function Adapter$set_selected(obj, selected) {
+				var rawValue = this.get_rawValue();
+
+				if (rawValue instanceof Array) {
+					if (selected && !Array.contains(rawValue, obj))
+						rawValue.add(obj);
+					else if (!selected && Array.contains(rawValue, obj))
+						rawValue.remove(obj);
+				}
+				else {
+					if (!obj)
+						this.set_systemValue(null);
+					else {
+						var value = (this.get_systemFormat()) ? this.get_systemFormat().convert(obj) : obj;
+						this.set_systemValue(value);
+					}
+				}
+			},
 			get_rawValue: function Adapter$get_rawValue() {
 				this._ensureObservable();
 
@@ -501,30 +527,10 @@
 				return format ? format.convert(this._obj) : this._obj;
 			},
 			get_selected: function OptionAdapter$get_selected() {
-				var source = this._parent.get_rawValue();
-
-				if (source instanceof Array)
-					return Array.contains(source, this._obj);
-				else
-					return source == this._obj;
+				return this._parent.get_selected(this._obj);
 			},
 			set_selected: function OptionAdapter$set_selected(value) {
-				var source = this._parent.get_rawValue();
-
-				if (source instanceof Array) {
-					if (value && !Array.contains(source, this._obj))
-						source.add(this._obj);
-					else if (!value && Array.contains(source, this._obj))
-						source.remove(this._obj);
-				}
-				else {
-					if (!this._obj)
-						this._parent.set_systemValue(null);
-					else {
-						var value = (this._parent.get_systemFormat()) ? this._parent.get_systemFormat().convert(this._obj) : this._obj;
-						this._parent.set_systemValue(value);
-					}
-				}
+				this._parent.set_selected(this._obj, value);
 			},
 
 			// Pass validation events through to the target
