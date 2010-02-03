@@ -61,7 +61,7 @@
 							// watch for changes to the list and refresh
 							Sys.Observer.makeObservable(list);
 							Sys.Observer.addCollectionChanged(list, function() {
-								Sys.Observer.setValue(component, targetProperty, doTrans(list, component.get_element(), templateContext.index, templateContext.dataItem));
+								Sys.Observer.setValue(component, properties.targetProperty || targetProperty, doTrans(list, component.get_element(), templateContext.index, templateContext.dataItem));
 							});
 						}
 						else {
@@ -77,7 +77,7 @@
 								var lastProp = props.pop();
 								ExoWeb.Model.LazyLoader.eval(source, props.join("."), function(lastTarget) {
 									Sys.Observer.addSpecificPropertyChanged(lastTarget, lastProp, function(obj) {
-										Sys.Observer.setValue(component, targetProperty, doFormat(ExoWeb.getValue(lastTarget, lastProp)));
+										Sys.Observer.setValue(component, properties.targetProperty || targetProperty, doFormat(ExoWeb.getValue(lastTarget, lastProp)));
 									});
 								},
 								function(err) {
@@ -97,15 +97,15 @@
 									path = path.substring(5);
 
 								ExoWeb.Model.LazyLoader.eval(target, path, function() {
-									Sys.Observer.setValue(component, targetProperty, result);
+									Sys.Observer.setValue(component, properties.targetProperty || targetProperty, result);
 								});
 							}
 							else {
-								Sys.Observer.setValue(component, targetProperty, result);
+								Sys.Observer.setValue(component, properties.targetProperty || targetProperty, result);
 							}
 						}
 						catch (err) {
-							throwAndLog(["~", "markupExt"], "Path '{0}' was evaluated but the '{2}' property on the target could not be set, {1}", [properties.$default, err, targetProperty]);
+							throwAndLog(["~", "markupExt"], "Path '{0}' was evaluated but the '{2}' property on the target could not be set, {1}", [properties.$default, err, properties.targetProperty || targetProperty]);
 						}
 					},
 					function(err) {
@@ -221,7 +221,12 @@
 				var systemSignal = new ExoWeb.Signal("Adapter.systemValue");
 				if (rawValue !== undefined && rawValue != null) {
 					Array.forEach(this.get_systemFormat().getPaths(), function(path) {
-						ExoWeb.Model.LazyLoader.eval(rawValue, path, systemSignal.pending());
+						if (rawValue instanceof Array)
+							Array.forEach(rawValue, function(val) {
+								ExoWeb.Model.LazyLoader.eval(val, path, systemSignal.pending());
+							});
+						else
+							ExoWeb.Model.LazyLoader.eval(rawValue, path, systemSignal.pending());
 					});
 				}
 				systemSignal.waitForAll(function() {
@@ -232,7 +237,12 @@
 				var displaySignal = new ExoWeb.Signal("Adapter.displayValue");
 				if (rawValue !== undefined && rawValue != null) {
 					Array.forEach(this.get_displayFormat().getPaths(), function(path) {
-						ExoWeb.Model.LazyLoader.eval(rawValue, path, displaySignal.pending());
+						if (rawValue instanceof Array)
+							Array.forEach(rawValue, function(val) {
+								ExoWeb.Model.LazyLoader.eval(val, path, displaySignal.pending());
+							});
+						else
+							ExoWeb.Model.LazyLoader.eval(rawValue, path, displaySignal.pending());
 					});
 				}
 				displaySignal.waitForAll(function() {
