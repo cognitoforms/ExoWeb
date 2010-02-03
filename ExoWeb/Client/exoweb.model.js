@@ -938,7 +938,7 @@
 					var pLen = p.length;
 
 					for (var i = 0; i < pLen; ++i) {
-						var c = p[i];
+						var c = p.charAt(i);
 
 						if (c === '{' || c === ',' || c === '}') {
 							var seg = p.substring(start, i).trim();
