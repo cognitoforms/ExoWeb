@@ -242,6 +242,21 @@
 				applyingChanges = false;
 			}
 
+			var captureRegisteredObjects = false;
+			model.addObjectRegistered(function(obj) {
+				// if an existing object is registered then register for lazy loading
+				if (!obj.meta.isNew && captureRegisteredObjects && !applyingChanges) {
+					ObjectLazyLoader.register(obj);
+					log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
+				}
+			});
+			this.isCapturingRegisteredObjects = function ServerSync$isCapturingRegisteredObjects() {
+				return captureRegisteredObjects;
+			}
+			this.beginCapturingRegisteredObjects = function ServerSync$beginCapturingRegisteredObjects() {
+				captureRegisteredObjects = true;
+			}
+
 			model._server = this;
 
 			this._listener.addChangeCaptured(this._onChangeCaptured.setScope(this));
@@ -1516,6 +1531,11 @@
 						callback();
 					});
 				}
+			});
+
+			allSignals.waitForAll(function() {
+				// begin watching for existing objects that are created
+				ret.server.beginCapturingRegisteredObjects();
 			});
 
 			return ret;
