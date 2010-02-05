@@ -549,8 +549,8 @@
 
 			// CHANGE TRACKING
 			///////////////////////////////////////////////////////////////////////
-			_captureChange: function ServerSync$_captureChange(change, force) {
-				if (!this.isApplyingChanges() || force === true) {
+			_captureChange: function ServerSync$_captureChange(change) {
+				if (!this.isApplyingChanges()) {
 					this._changes.push(change);
 					Sys.Observer.raisePropertyChanged(this, "Changes");
 				}
@@ -627,12 +627,16 @@
 
 					var server = this;
 
+					var hasChanges = false;
+
 					function processChange() {
 						var change = Array.dequeue(changes);
 
 						if (change) {
-							if (change.__type != "Save:#ExoGraph")
-								server._captureChange(change, true);
+							if (change.__type != "Save:#ExoGraph") {
+								hasChanges = true;
+								server._changes.push(change);
+							}
 
 							var callback = signal.pending(processChange);
 
@@ -654,6 +658,8 @@
 					signal.waitForAll(function() {
 						log("server", "done applying changes");
 						server.endApplyingChanges();
+						if (hasChanges)
+							Sys.Observer.raisePropertyChanged(this, "Changes");
 					});
 				}
 				catch (e) {
