@@ -21,14 +21,18 @@
 
 					var meta = srcObj.meta || srcObj;
 
-					// wire up validating/validated events
-					meta.addPropertyValidating(propName, function(sender, issues) {
-						$el.trigger('validating');
-					});
+					if (meta && meta.addPropertyValidating) {
+						// wire up validating/validated events
+						meta.addPropertyValidating(propName, function(sender, issues) {
+							$el.trigger('validating');
+						});
+					}
 
-					meta.addPropertyValidated(propName, function(sender, issues) {
-						$el.trigger("validated", [issues]);
-					});
+					if (meta && meta.addPropertyValidated) {
+						meta.addPropertyValidated(propName, function(sender, issues) {
+							$el.trigger("validated", [issues]);
+						});
+					}
 				}
 
 				// don't double register for events
@@ -108,8 +112,8 @@
 			var control = this.control();
 			control.add_command(function(sender, args) {
 				var handler = commands[args.get_commandName()];
-					if (handler)
-						handler(sender, args);
+				if (handler)
+					handler(sender, args);
 			});
 		};
 
