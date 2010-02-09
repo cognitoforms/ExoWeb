@@ -610,6 +610,13 @@
 				}
 				return null;
 			},
+			isDefinedBy: function Property$isDefinedBy(mtype) {
+				for (var type = mtype; type; type = type.baseType)
+					if (this._containingType === type)
+						return true;
+				
+				return false;
+			},
 			_addRule: function Property$_addRule(type) {
 				if (!this._rules)
 					this._rules = [type];
@@ -1148,7 +1155,7 @@
 			},
 			rootedPath: function PropertyChain$rootedPath(rootType) {
 				for (var i = 0; i < this._properties.length; i++) {
-					if (this._properties[i]._containingType == rootType) {
+					if (this._properties[i].isDefinedBy(rootType)) {
 						var path = this.getPathFromIndex(i);
 						return (this._properties[i]._isStatic ? "" : "this.") + path;
 					}
