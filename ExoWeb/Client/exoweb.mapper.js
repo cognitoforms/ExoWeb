@@ -11,36 +11,36 @@
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
 		var objectProvider = ExoWeb.Load;
-		ExoWeb.Mapper.setObjectProvider = function(fn) {
+		ExoWeb.Mapper.setObjectProvider = function setObjectProvider(fn) {
 			objectProvider = fn;
 		}
 
 		var typeProvider = ExoWeb.GetType;
-		ExoWeb.Mapper.setTypeProvider = function(fn) {
+		ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 			typeProvider = fn;
 		}
 
-		var listProvider = function(ownerType, ownerId, propName, success, failed) {
+		var listProvider = function listProvider(ownerType, ownerId, propName, success, failed) {
 			ExoWeb.Load(ownerType, [ownerId], true, false, ["this." + propName], null, success, failed)
 		};
-		ExoWeb.Mapper.setListProvider = function(fn) {
+		ExoWeb.Mapper.setListProvider = function setListProvider(fn) {
 			listProvider = fn;
 		}
 
-		var roundtripProvider = function(changes, success, failed) {
-			ExoWeb.Load(null, null, false, false, null, changes, success, failed)
+		var roundtripProvider = function roundtripProvider(changes, success, failed) {
+			ExoWeb.Load(null, null, false, false, null, changes, success, failed);
 		};
-		ExoWeb.Mapper.setRoundtripProvider = function(fn) {
+		ExoWeb.Mapper.setRoundtripProvider = function setRoundtripProvider(fn) {
 			roundtripProvider = fn;
 		}
 
 		var saveProvider = ExoWeb.Save;
-		ExoWeb.Mapper.setSaveProvider = function(fn) {
+		ExoWeb.Mapper.setSaveProvider = function setSaveProvider(fn) {
 			saveProvider = fn;
 		}
 
 		var eventProvider = ExoWeb.RaiseEvent;
-		ExoWeb.Mapper.setEventProvider = function(fn) {
+		ExoWeb.Mapper.setEventProvider = function setEventProvider(fn) {
 			eventProvider = fn;
 		}
 
@@ -307,8 +307,10 @@
 					name, 																										// event name
 					toExoGraph(this._translator, obj), 																			// instance
 					event, 																										// custom event object
+					false, 																									// include allowed values
+					ObjectLazyLoader.getRelativePaths(obj), 																	// paths
 					{changes: this._changes }, 																					// changes
-					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),	// success callback
+					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), // success callback
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed, automatic).sliceArguments(0, 1)		// failed callback
 				);
 			},
@@ -321,6 +323,10 @@
 			},
 			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(response, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
+
+				if (response.instances) {
+					objectsFromJson(this._model, response.instances);
+				}
 
 				if (response.changes) {
 					log("server", "ServerSync._onRaiseServerEventSuccess() >> applying {0} changes", [response.changes.length]);
@@ -627,18 +633,19 @@
 
 					var server = this;
 
-					var hasChanges = false;
+					var totalChanges = changes.length;
+					var newChanges = 0;
 
-					function processChange() {
+					function processNextChange() {
 						var change = Array.dequeue(changes);
 
 						if (change) {
 							if (change.__type != "Save:#ExoGraph") {
-								hasChanges = true;
+								newChanges++;
 								server._changes.push(change);
 							}
 
-							var callback = signal.pending(processChange);
+							var callback = signal.pending(processNextChange);
 
 							if (change.__type == "InitNew:#ExoGraph")
 								server.applyInitChange(change, callback);
@@ -653,13 +660,15 @@
 						}
 					}
 
-					processChange();
+					processNextChange();
 
 					signal.waitForAll(function() {
-						log("server", "done applying changes");
+						log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
 						server.endApplyingChanges();
-						if (hasChanges)
-							Sys.Observer.raisePropertyChanged(this, "Changes");
+						if (newChanges > 0) {
+							log("server", "raising \"Changes\" property change event");
+							Sys.Observer.raisePropertyChanged(server, "Changes");
+						}
 					});
 				}
 				catch (e) {
@@ -700,7 +709,7 @@
 					});
 			},
 			applyRefChange: function ServerSync$applyRefChange(change, callback) {
-				log("server", "applyRefChange", change.instance);
+				log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
 				var obj = fromExoGraph(this._translator, change.instance);
 
@@ -1308,31 +1317,10 @@
 
 				var objectJson;
 
-				function getRelativePaths(obj, typePaths) {
-					var relPaths = [];
-
-					for (var typeName in typePaths) {
-						var jstype = window[typeName];
-
-						if (jstype && jstype.meta) {
-							var paths = typePaths[typeName];
-							for (var i = 0; i < paths.length; i++) {
-								var path = paths[i].expression;
-								var chain = ExoWeb.Model.Model.property(path, jstype.meta);
-								var rootedPath = chain.rootedPath(obj.meta.type);
-								if (rootedPath)
-									relPaths.push(rootedPath);
-							}
-						}
-					}
-
-					return relPaths;
-				}
-
 				// fetch object json
 				log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 				// NOTE: should changes be included here?
-				objectProvider(mtype.get_fullName(), [id], true, false, getRelativePaths(obj, this._typePaths), null, signal.pending(function(result) {
+				objectProvider(mtype.get_fullName(), [id], true, false, ObjectLazyLoader.getRelativePaths(obj), null, signal.pending(function(result) {
 					objectJson = result.instances;
 				}));
 
@@ -1362,6 +1350,27 @@
 					if (!Array.contains(typePaths, path))
 						typePaths.push(path);
 				}
+			}
+
+			ObjectLazyLoader.getRelativePaths = function getRelativePaths(obj) {
+				var relPaths = [];
+
+				for (var typeName in instance._typePaths) {
+					var jstype = window[typeName];
+
+					if (jstype && jstype.meta) {
+						var paths = instance._typePaths[typeName];
+						for (var i = 0; i < paths.length; i++) {
+							var path = paths[i].expression;
+							var chain = ExoWeb.Model.Model.property(path, jstype.meta);
+							var rootedPath = chain.rootedPath(obj.meta.type);
+							if (rootedPath)
+								relPaths.push(rootedPath);
+						}
+					}
+				}
+
+				return relPaths;
 			}
 
 			ObjectLazyLoader.register = function(obj) {
@@ -1626,15 +1635,15 @@
 						});
 
 						objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
-						state[varName].signal.pending(function context$objects$callback(result) {
-							state[varName].objectJson = result.instances;
-						}),
-						state[varName].signal.orPending(function context$objects$callback(error) {
-							ExoWeb.trace.logError("objectInit",
-								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-								{ query: query, error: error });
-						})
-					);
+							state[varName].signal.pending(function context$objects$callback(result) {
+								state[varName].objectJson = result.instances;
+							}),
+							state[varName].signal.orPending(function context$objects$callback(error) {
+								ExoWeb.trace.logError("objectInit",
+									"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+									{ query: query, error: error });
+							})
+						);
 					}
 				}
 

@@ -1,19 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Runtime.Serialization;
-using ExoGraph;
 using System.Collections.Specialized;
+using System.Linq;
+using System.Runtime.Serialization;
 using System.Web;
+using ExoGraph;
 
 namespace ExoWeb
 {
+	#region LoadMethod
+
 	/// <summary>
 	/// Outputs the JSON for the specified instance to the response stream.
 	/// </summary>
 	[DataContract]
-	internal class LoadMethod : ServiceMethod
+	internal class LoadMethod : InstanceMethodBase
 	{
 		[DataMember(Name = "type")]
 		string Type { get; set; }
@@ -32,11 +33,6 @@ namespace ExoWeb
 
 		[DataMember(Name = "changes")]
 		GraphTransaction Changes { get; set; }
-
-		StringDictionary paths;
-		Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> instances;
-		Dictionary<GraphType, Dictionary<GraphProperty, GraphProperty>> staticProperties;
-		Dictionary<GraphType, Dictionary<GraphProperty, AllowedValuesRule>> allowedValues;
 
 		/// <summary>
 		/// Outputs the JSON for the specified instance to the response stream.
@@ -67,7 +63,7 @@ namespace ExoWeb
 				for (int i = 0; i < roots.Length; i++)
 					roots[i] = rootType.Create(Ids[i]);
 			}
-			
+
 			// Initialize lists used to track serialization information
 			this.paths = new StringDictionary();
 			this.instances = new Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>>();
@@ -81,154 +77,22 @@ namespace ExoWeb
 
 			// Recursively build up the list of instances to serialize
 			foreach (GraphInstance root in roots)
-				ProcessInstance(root, "this");
+				ProcessInstance(root, "this", IncludeAllowedValues);
 
 			// Start the root element
 			response.Write("{\r\n");
-			bool isFirstType = true;
 
 			// Optionally serialize types
 			if (IncludeTypes)
 			{
 				response.Write("   \"types\": {\r\n");
-
-				foreach (GraphType instanceType in instances.Keys)
-				{
-					// Handle trailing commas after each rule
-					if (isFirstType)
-						isFirstType = false;
-					else
-						response.Write(",\r\n");
-					GetTypeMethod.OutputType(response, instanceType);
-				}
+				OutputTypes(response);
 				response.Write("\r\n   },\r\n");
 			}
-			
+
 			// Serialize the list of instances
 			response.Write("   \"instances\": {\r\n");
-			isFirstType = true;
-
-			// Create a new dictionary that collapses synonymous Graph Types
-			Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> collapsedInstances = new Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>>();
-			foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> type in instances)
-			{
-				GraphType synonymousType = null;
-				foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> existingType in collapsedInstances)
-					if (type.Key.QualifiedName == existingType.Key.QualifiedName)
-						synonymousType = existingType.Key;
-
-				Dictionary<GraphInstance, GraphInstanceInfo> srcInstances = (synonymousType != null) ?
-					srcInstances = collapsedInstances[synonymousType] :
-					srcInstances = collapsedInstances[type.Key] = new Dictionary<GraphInstance, GraphInstanceInfo>();
-
-				foreach (KeyValuePair<GraphInstance, GraphInstanceInfo> inst in type.Value)
-					if (!srcInstances.ContainsKey(inst.Key))
-						srcInstances.Add(inst.Key, inst.Value);
-			}
-
-			foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> type in collapsedInstances)
-			{
-				// Get the current graph type
-				GraphType graphType = type.Key;
-
-				// Handle trailing commas after each type
-				if (isFirstType)
-					isFirstType = false;
-				else
-					response.Write(",\r\n");
-
-				response.Write("      \"" + graphType.Name + "\": {\r\n");
-				bool isFirstInstance = true;
-
-				// Output static properties
-				Dictionary<GraphProperty, GraphProperty> properties;
-				if (staticProperties.TryGetValue(graphType, out properties))
-				{
-					isFirstInstance = false;
-					response.Write("         \"static\": {\r\n");
-					bool isFirstProperty = true;
-					foreach (GraphProperty property in properties.Values)
-					{
-						// Handle trailing commas after each property
-						if (isFirstProperty)
-							isFirstProperty = false;
-						else
-							response.Write(",\r\n");
-
-						// Output the property
-						response.Write("            \"" + property.Name + "\": ");
-						GraphReferenceProperty reference = property as GraphReferenceProperty;
-						
-						// Serialize values
-						if (reference == null)
-							OutputValue(response, (GraphValueProperty)property, graphType.GetValue((GraphValueProperty)property));						
-						
-						// Serialize lists
-						else if (reference.IsList)
-							OutputList(response, reference, graphType.GetList(reference));
-
-						// Serialize references
-						else
-							OutputReference(response, reference, graphType.GetReference(reference));
-					}
-					response.Write("\r\n      }");
-				}
-
-				// Serialize instances
-				foreach (GraphInstanceInfo instance in type.Value.Values)
-				{
-					// Handle trailing commas after each instance
-					if (isFirstInstance)
-						isFirstInstance = false;
-					else
-						response.Write(",\r\n");
-
-					// Serialize the current instance
-					response.Write("         \"" + instance.Instance.Id + "\" : {\r\n");
-					bool isFirstProperty = true;
-					foreach (GraphProperty property in graphType.Properties)
-					{
-						// Skip properties that cannot be serialized
-						if (property is GraphValueProperty && GetJsonValueType(((GraphValueProperty)property).PropertyType) == null)
-							continue;
-
-						// Skip static properties, as these must be explicitly serialized
-						if (property.IsStatic)
-							continue;
-
-						// Handle trailing commas after each property
-						if (isFirstProperty)
-							isFirstProperty = false;
-						else
-							response.Write(",\r\n");
-
-						// Write out the property name and value
-						response.Write("            \"" + property.Name + "\": ");
-						GraphReferenceProperty reference = property as GraphReferenceProperty;
-						if (reference != null)
-						{
-							// Serialize lists
-							if (reference.IsList)
-							{
-								if (instance.HasList(reference))
-									OutputList(response, reference, instance.Instance.GetList(reference));
-								else
-									response.Write("\"deferred\"");
-							}
-
-							// Serialize references
-							else
-								OutputReference(response, reference, instance.Instance.GetReference(reference));
-						}
-
-						// Serialize values
-						else
-							OutputValue(response, (GraphValueProperty)property, instance.Instance.GetValue((GraphValueProperty)property));
-					}
-					response.Write("\r\n         }");
-				}
-				response.Write("\r\n      }");
-			}
+			OutputInstances(response);
 			response.Write("\r\n   }");
 
 			// Output the transaction log if changes occurred
@@ -240,57 +104,31 @@ namespace ExoWeb
 
 			response.Write("\r\n}");
 		}
+	}
 
-		/// <summary>
-		/// Outputs property values as JSON to the response stream.
-		/// </summary>
-		/// <param name="response"></param>
-		/// <param name="property"></param>
-		/// <param name="value"></param>
-		void OutputValue(HttpResponse response, GraphValueProperty property, object value)
-		{
-			response.Write(ToJson(property.PropertyType, value));
-		}
+	#endregion
 
-		/// <summary>
-		/// Outputs property references as JSON to the response stream.
-		/// </summary>
-		/// <param name="response"></param>
-		/// <param name="instance"></param>
-		void OutputReference(HttpResponse response, GraphReferenceProperty property, GraphInstance instance)
-		{
-			if (instance != null)
-				response.Write("{ \"id\": \"" + instance.Id + "\"" + (property.PropertyType != instance.Type ? ", \"type\": \"" + GetJsonReferenceType(instance.Type) + "\"" : "") + " }");
-			else
-				response.Write("null");
-		}
+	#region InstanceMethodBase
 
-		/// <summary>
-		/// Outputs property list references as JSON to the response stream.
-		/// </summary>
-		/// <param name="response"></param>
-		/// <param name="list"></param>
-		void OutputList(HttpResponse response, GraphReferenceProperty property, GraphInstanceList list)
-		{
-			response.Write("[ ");
-			bool isFirstItem = true;
-			foreach (GraphInstance child in list)
-			{
-				if (isFirstItem)
-					isFirstItem = false;
-				else
-					response.Write(", ");
+	[DataContract]
+	internal abstract class InstanceMethodBase : ServiceMethod
+	{
+		#region Fields
 
-				OutputReference(response, property, child);
-			}
-			response.Write(" ]");
-		}
+		protected StringDictionary paths;
+		protected Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> instances;
+		protected Dictionary<GraphType, Dictionary<GraphProperty, GraphProperty>> staticProperties;
+		protected Dictionary<GraphType, Dictionary<GraphProperty, AllowedValuesRule>> allowedValues;
+
+		#endregion
+
+		#region Methods
 
 		/// <summary>
 		/// Processes static and instance property paths in order to determine the information to serialize.
 		/// </summary>
 		/// <param name="path"></param>
-		void ProcessPath(string path)
+		protected void ProcessPath(string path)
 		{
 			// Instance Path
 			if (path.StartsWith("this."))
@@ -363,7 +201,7 @@ namespace ExoWeb
 		/// <param name="instances"></param>
 		/// <param name="paths"></param>
 		/// <param name="path"></param>
-		void ProcessInstance(GraphInstance instance, string path)
+		protected void ProcessInstance(GraphInstance instance, string path, bool includeAllowedValues)
 		{
 			// Determine the reference properties to be processed
 			List<GraphReferenceProperty> properties = new List<GraphReferenceProperty>(instance.Type.Properties
@@ -372,7 +210,7 @@ namespace ExoWeb
 
 			// Preprocess allow values, as this may add to the properties being processed
 			Dictionary<GraphProperty, AllowedValuesRule> allowedValuesRules = null;
-			if (IncludeAllowedValues)
+			if (includeAllowedValues)
 			{
 				// Get the allowed values rules for the current instance type
 				if (!allowedValues.TryGetValue(instance.Type, out allowedValuesRules))
@@ -436,7 +274,7 @@ namespace ExoWeb
 				{
 					// Process each child instance
 					foreach (GraphInstance childInstance in instance.GetList(reference))
-						ProcessInstance(childInstance, childPath);
+						ProcessInstance(childInstance, childPath, includeAllowedValues);
 
 					// Mark the list to be included during serialization
 					instanceInfo.IncludeList(reference);
@@ -447,36 +285,240 @@ namespace ExoWeb
 				{
 					GraphInstance childInstance = instance.GetReference(reference);
 					if (childInstance != null)
-						ProcessInstance(childInstance, childPath);
+						ProcessInstance(childInstance, childPath, includeAllowedValues);
 				}
 			}
 		}
 
 		/// <summary>
-		/// Tracks an instance being serialized and each list property that must be serialized with it.
+		/// Output type information as JSON to the response stream.
 		/// </summary>
-		class GraphInstanceInfo
+		/// <param name="response"></param>
+		protected void OutputTypes(HttpResponse response)
 		{
-			Dictionary<GraphReferenceProperty, GraphReferenceProperty> lists;
+			bool isFirstType = true;
 
-			internal GraphInstance Instance { get; private set; }
-
-			internal GraphInstanceInfo(GraphInstance instance)
+			foreach (GraphType instanceType in instances.Keys)
 			{
-				this.Instance = instance;
+				// Handle trailing commas after each rule
+				if (isFirstType)
+					isFirstType = false;
+				else
+					response.Write(",\r\n");
+				GetTypeMethod.OutputType(response, instanceType);
+			}
+			response.Write("\r\n   },\r\n");
+		}
+
+		/// <summary>
+		/// Output instances as JSON to the response stream.
+		/// </summary>
+		/// <param name="response"></param>
+		protected void OutputInstances(HttpResponse response)
+		{
+			bool isFirstType = true;
+
+			// Create a new dictionary that collapses synonymous Graph Types
+			Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> collapsedInstances = new Dictionary<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>>();
+			foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> type in instances)
+			{
+				GraphType synonymousType = null;
+				foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> existingType in collapsedInstances)
+					if (type.Key.QualifiedName == existingType.Key.QualifiedName)
+						synonymousType = existingType.Key;
+
+				Dictionary<GraphInstance, GraphInstanceInfo> srcInstances = (synonymousType != null) ?
+					srcInstances = collapsedInstances[synonymousType] :
+					srcInstances = collapsedInstances[type.Key] = new Dictionary<GraphInstance, GraphInstanceInfo>();
+
+				foreach (KeyValuePair<GraphInstance, GraphInstanceInfo> inst in type.Value)
+					if (!srcInstances.ContainsKey(inst.Key))
+						srcInstances.Add(inst.Key, inst.Value);
 			}
 
-			internal void IncludeList(GraphReferenceProperty list)
+			foreach (KeyValuePair<GraphType, Dictionary<GraphInstance, GraphInstanceInfo>> type in collapsedInstances)
 			{
-				if (lists == null)
-					lists = new Dictionary<GraphReferenceProperty, GraphReferenceProperty>();
-				lists[list] = list;
-			}
+				// Get the current graph type
+				GraphType graphType = type.Key;
 
-			internal bool HasList(GraphReferenceProperty list)
-			{
-				return lists != null && lists.ContainsKey(list);
+				// Handle trailing commas after each type
+				if (isFirstType)
+					isFirstType = false;
+				else
+					response.Write(",\r\n");
+
+				response.Write("      \"" + graphType.Name + "\": {\r\n");
+				bool isFirstInstance = true;
+
+				// Output static properties
+				Dictionary<GraphProperty, GraphProperty> properties;
+				if (staticProperties.TryGetValue(graphType, out properties))
+				{
+					isFirstInstance = false;
+					response.Write("         \"static\": {\r\n");
+					bool isFirstProperty = true;
+					foreach (GraphProperty property in properties.Values)
+					{
+						// Handle trailing commas after each property
+						if (isFirstProperty)
+							isFirstProperty = false;
+						else
+							response.Write(",\r\n");
+
+						// Output the property
+						response.Write("            \"" + property.Name + "\": ");
+						GraphReferenceProperty reference = property as GraphReferenceProperty;
+
+						// Serialize values
+						if (reference == null)
+							OutputValue(response, (GraphValueProperty)property, graphType.GetValue((GraphValueProperty)property));
+
+						// Serialize lists
+						else if (reference.IsList)
+							OutputList(response, reference, graphType.GetList(reference));
+
+						// Serialize references
+						else
+							OutputReference(response, reference, graphType.GetReference(reference));
+					}
+					response.Write("\r\n      }");
+				}
+
+				// Serialize instances
+				foreach (GraphInstanceInfo instance in type.Value.Values)
+				{
+					// Handle trailing commas after each instance
+					if (isFirstInstance)
+						isFirstInstance = false;
+					else
+						response.Write(",\r\n");
+
+					// Serialize the current instance
+					response.Write("         \"" + instance.Instance.Id + "\" : {\r\n");
+					bool isFirstProperty = true;
+					foreach (GraphProperty property in graphType.Properties)
+					{
+						// Skip properties that cannot be serialized
+						if (property is GraphValueProperty && GetJsonValueType(((GraphValueProperty)property).PropertyType) == null)
+							continue;
+
+						// Skip static properties, as these must be explicitly serialized
+						if (property.IsStatic)
+							continue;
+
+						// Handle trailing commas after each property
+						if (isFirstProperty)
+							isFirstProperty = false;
+						else
+							response.Write(",\r\n");
+
+						// Write out the property name and value
+						response.Write("            \"" + property.Name + "\": ");
+						GraphReferenceProperty reference = property as GraphReferenceProperty;
+						if (reference != null)
+						{
+							// Serialize lists
+							if (reference.IsList)
+							{
+								if (instance.HasList(reference))
+									OutputList(response, reference, instance.Instance.GetList(reference));
+								else
+									response.Write("\"deferred\"");
+							}
+
+							// Serialize references
+							else
+								OutputReference(response, reference, instance.Instance.GetReference(reference));
+						}
+
+						// Serialize values
+						else
+							OutputValue(response, (GraphValueProperty)property, instance.Instance.GetValue((GraphValueProperty)property));
+					}
+					response.Write("\r\n         }");
+				}
+				response.Write("\r\n      }");
 			}
 		}
+
+		/// <summary>
+		/// Outputs property values as JSON to the response stream.
+		/// </summary>
+		/// <param name="response"></param>
+		/// <param name="property"></param>
+		/// <param name="value"></param>
+		protected void OutputValue(HttpResponse response, GraphValueProperty property, object value)
+		{
+			response.Write(ToJson(property.PropertyType, value));
+		}
+
+		/// <summary>
+		/// Outputs property references as JSON to the response stream.
+		/// </summary>
+		/// <param name="response"></param>
+		/// <param name="instance"></param>
+		protected void OutputReference(HttpResponse response, GraphReferenceProperty property, GraphInstance instance)
+		{
+			if (instance != null)
+				response.Write("{ \"id\": \"" + instance.Id + "\"" + (property.PropertyType != instance.Type ? ", \"type\": \"" + GetJsonReferenceType(instance.Type) + "\"" : "") + " }");
+			else
+				response.Write("null");
+		}
+
+		/// <summary>
+		/// Outputs property list references as JSON to the response stream.
+		/// </summary>
+		/// <param name="response"></param>
+		/// <param name="list"></param>
+		protected void OutputList(HttpResponse response, GraphReferenceProperty property, GraphInstanceList list)
+		{
+			response.Write("[ ");
+			bool isFirstItem = true;
+			foreach (GraphInstance child in list)
+			{
+				if (isFirstItem)
+					isFirstItem = false;
+				else
+					response.Write(", ");
+
+				OutputReference(response, property, child);
+			}
+			response.Write(" ]");
+		}
+
+		#endregion
 	}
+
+	#endregion
+
+	#region GraphInstanceInfo
+
+	/// <summary>
+	/// Tracks an instance being serialized and each list property that must be serialized with it.
+	/// </summary>
+	internal class GraphInstanceInfo
+	{
+		Dictionary<GraphReferenceProperty, GraphReferenceProperty> lists;
+
+		internal GraphInstance Instance { get; private set; }
+
+		internal GraphInstanceInfo(GraphInstance instance)
+		{
+			this.Instance = instance;
+		}
+
+		internal void IncludeList(GraphReferenceProperty list)
+		{
+			if (lists == null)
+				lists = new Dictionary<GraphReferenceProperty, GraphReferenceProperty>();
+			lists[list] = list;
+		}
+
+		internal bool HasList(GraphReferenceProperty list)
+		{
+			return lists != null && lists.ContainsKey(list);
+		}
+	}
+
+	#endregion
 }
