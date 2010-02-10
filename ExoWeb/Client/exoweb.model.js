@@ -413,12 +413,12 @@
 
 				return prop;
 			},
-			_makeGetter: function(receiver, fn) {
+			_makeGetter: function Type$_makeGetter(receiver, fn) {
 				return function() {
 					return fn.call(receiver, this);
 				}
 			},
-			_makeSetter: function(receiver, fn, notifiesChanges) {
+			_makeSetter: function Type$_makeSetter(receiver, fn, notifiesChanges) {
 				var setter = function(val) {
 					fn.call(receiver, this, val);
 				};
@@ -427,16 +427,16 @@
 
 				return setter;
 			},
-			get_model: function() {
+			get_model: function Type$get_model() {
 				return this._model;
 			},
-			get_fullName: function() {
+			get_fullName: function Type$get_fullName() {
 				return this._fullName;
 			},
-			get_jstype: function() {
+			get_jstype: function Type$get_jstype() {
 				return this._jstype;
 			},
-			property: function(name, thisOnly) {
+			property: function Type$property(name, thisOnly) {
 				if (!thisOnly)
 					return new PropertyChain(this, new PathTokens(name));
 
@@ -557,19 +557,19 @@
 						this._model.endValidation();
 				}
 			},
-			set_originForNewProperties: function(value) {
+			set_originForNewProperties: function Type$set_originForNewProperties(value) {
 				this._originForNewProperties = value;
 			},
-			get_originForNewProperties: function() {
+			get_originForNewProperties: function Type$get_originForNewProperties() {
 				return this._originForNewProperties;
 			},
-			set_origin: function(value) {
+			set_origin: function Type$set_origin(value) {
 				this._origin = value;
 			},
-			get_origin: function() {
+			get_origin: function Type$get_origin() {
 				return this._origin;
 			},
-			toString: function() {
+			toString: function Type$toString() {
 				return this.get_fullName();
 			}
 		}
