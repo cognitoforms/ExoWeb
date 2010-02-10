@@ -375,7 +375,7 @@ Type.registerNamespace("ExoWeb");
 
 	var compileFilterFunction = (function compileFilterFunction(filter) {
 		var parser = /(([a-z_$][0-9a-z_$]*)([.]?))|(('([^']|\')*')|("([^"]|\")*"))/gi;
-		var skipWords = ["true", "false", "$index"];
+		var skipWords = ["true", "false", "$index", "null"];
 
 		filter = filter.replace(parser, function(match, ignored, name, more, strLiteral) {
 			if ((strLiteral !== undefined && strLiteral !== null && strLiteral.length > 0) || skipWords.indexOf(name) >= 0)
@@ -782,7 +782,8 @@ else {
 
 
 
-})();
+
+})();
 
 ///////////////////////////////////////////////////////////////////////////////
 // Simulate homogenous browsers
