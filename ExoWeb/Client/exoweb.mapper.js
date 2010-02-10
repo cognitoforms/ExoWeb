@@ -308,14 +308,14 @@
 					event = {};
 
 				eventProvider(
-					name, 																										// event name
-					toExoGraph(this._translator, obj), 																			// instance
-					event, 																										// custom event object
-					false, 																										// include allowed values
-					ObjectLazyLoader.getRelativePaths(obj), 																	// paths
-					{changes: this._changes }, 																					// changes
-					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), // success callback
-					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed, automatic).sliceArguments(0, 1)		// failed callback
+					name, 																												// event name
+					toExoGraph(this._translator, obj), 																					// instance
+					event, 																												// custom event object
+					false, 																												// include allowed values
+					ObjectLazyLoader.getRelativePaths(obj), 																			// paths
+					{changes: this._changes }, 																							// changes
+					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
 			addRaiseServerEventBegin: function ServerSync$addRaiseServerEventBegin(handler, includeAutomatic) {
@@ -384,9 +384,9 @@
 				this._raiseEvent("roundtripBegin", [automatic]);
 
 				roundtripProvider(
-					{ changes: this._changes }, 																		// changes
-					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), // success callback
-					this._onRoundtripFailed.setScope(this).appendArguments(failed, automatic).sliceArguments(0, 1)		// failed callback
+					{ changes: this._changes }, 																				// changes
+					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
 			addRoundtripBegin: function ServerSync$addRoundtripBegin(handler, includeAutomatic) {
@@ -472,10 +472,10 @@
 				this._raiseEvent("saveBegin", [automatic]);
 
 				saveProvider(
-					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 							// root
-					{changes: this.get_Changes() }, 													// changes
-					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), // success callback
-					this._onSaveFailed.setScope(this).appendArguments(failed, automatic).sliceArguments(0, 1)		// failed callback
+					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 												// root
+					{changes: this.get_Changes() }, 																		// changes
+					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
 			addSaveBegin: function ServerSync$addSaveBegin(handler, includeAutomatic) {
