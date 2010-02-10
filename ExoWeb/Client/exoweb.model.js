@@ -43,7 +43,7 @@
 					);
 		}
 
-		Model.property = function Model$property(path, thisType) {
+		Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback*/) {
 			var tokens = new PathTokens(path);
 			var firstStep = tokens.steps[0];
 			var isGlobal = firstStep.property !== "this";
@@ -78,7 +78,10 @@
 				Array.dequeue(tokens.steps);
 			}
 
-			return new PropertyChain(type, tokens);
+			var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+			var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
+
+			return new PropertyChain(type, tokens, lazyLoadTypes, callback);
 		}
 
 		Model.prototype = {
@@ -614,7 +617,7 @@
 				for (var type = mtype; type; type = type.baseType)
 					if (this._containingType === type)
 						return true;
-				
+
 				return false;
 			},
 			_addRule: function Property$_addRule(type) {
@@ -994,7 +997,7 @@
 		/// single property of the root object.
 		/// </summary>
 		///////////////////////////////////////////////////////////////////////////
-		function PropertyChain(rootType, pathTokens) {
+		function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
 			this._rootType = rootType;
 			var type = rootType;
 			var chain = this;
@@ -1002,7 +1005,17 @@
 			this._properties = [];
 			this._filters = [];
 
-			pathTokens.steps.forEach(function PropertyChain$eachToken(step) {
+			// initialize optional arguments
+			var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+			var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
+			var allowAsync = !!(lazyLoadTypes && callback);
+
+			var chain = this;
+
+			// process each step in the path either synchronously or asynchronously depending on arguments
+			var processStep = function PropertyChain$processStep() {
+				var step = Array.dequeue(pathTokens.steps);
+
 				if (!step)
 					throwAndLog("model", "Syntax error in property path: {0}", [path]);
 
@@ -1028,10 +1041,29 @@
 				else
 					type = prop.get_jstype().meta;
 
-			});
+				if (pathTokens.steps.length == 0) {
+					// processing the path is complete, verify that chain is not zero-length
+					if (chain._properties.length == 0)
+						throwAndLog(["model"], "PropertyChain cannot be zero-length.");
 
-			if (this._properties.length == 0)
-				throwAndLog(["model"], "PropertyChain cannot be zero-length.");
+					// if asynchronous processing was allowed, invoke the callback
+					if (allowAsync)
+						callback(chain);
+				}
+				else {
+					// process the next step in the path, first ensuring that the type is loaded if lazy loading is allowed
+					if (allowAsync && !LazyLoader.isLoaded(type))
+						LazyLoader.load(type, null, processStep);
+					else
+						processStep();
+				}
+			}
+
+			// begin processing steps in the path
+			if (!LazyLoader.isLoaded(type))
+				LazyLoader.load(type, processStep);
+			else
+				processStep();
 		}
 
 		PropertyChain.prototype = {
