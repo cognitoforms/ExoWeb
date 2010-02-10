@@ -303,11 +303,15 @@
 
 				this._raiseEvent("raiseServerEventBegin", [automatic]);
 
+				// if no event object is provided then use an empty object
+				if (event === undefined || event === null)
+					event = {};
+
 				eventProvider(
 					name, 																										// event name
 					toExoGraph(this._translator, obj), 																			// instance
 					event, 																										// custom event object
-					false, 																									// include allowed values
+					false, 																										// include allowed values
 					ObjectLazyLoader.getRelativePaths(obj), 																	// paths
 					{changes: this._changes }, 																					// changes
 					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), // success callback
