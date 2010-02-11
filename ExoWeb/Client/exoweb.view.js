@@ -44,28 +44,56 @@
 					source = templateContext.dataItem;
 				}
 
+				var prepareValue = null;
+
+				var setValue = function lazy$setValue(value) {
+					var finalValue = value;
+					if (prepareValue && prepareValue instanceof Function)
+						finalValue = prepareValue(value);
+
+					Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
+				}
+
 				ExoWeb.Model.LazyLoader.eval(source, properties.$default,
-					function(result) {
+					function lazy$Loaded(result) {
 						log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
 
-						var target = result;
-
+						// Begin up-front setup required such as setting prepare function and watching for changes
+						////////////////////////////////////////////////////////////////////////////////////
 						if (properties.transform && result instanceof Array) {
 							// generate transform function
 							var doTrans = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + properties.transform + ";");
 
-							// transform the result to use now
-							var list = result;
-							result = doTrans(list, component.get_element(), templateContext.index, templateContext.dataItem);
+							// setup prepare function to perform the transform
+							prepareValue = function doTransform(listValue) {
+								return doTrans(listValue, component.get_element(), templateContext.index, templateContext.dataItem);
+							}
 
 							// watch for changes to the list and refresh
+							var list = result;
 							Sys.Observer.makeObservable(list);
-							Sys.Observer.addCollectionChanged(list, function() {
-								Sys.Observer.setValue(component, properties.targetProperty || targetProperty, doTrans(list, component.get_element(), templateContext.index, templateContext.dataItem));
+							Sys.Observer.addCollectionChanged(list, function lazy$listChanged$transform(list, evt) {
+								// if additional paths are required then load them before updating the value
+								if (properties.required) {
+									Array.forEach(evt.get_changes(), function(change) {
+										var signal = new ExoWeb.Signal("required path");
+										Array.forEach(change.newItems || [], function(item) {
+											ExoWeb.Model.LazyLoader.eval(item, properties.required, signal.pending());
+										});
+										signal.waitForAll(function lazy$requiredLoaded() {
+											setValue(result);
+										});
+									});
+								}
+								// otherwise, simply update the value
+								else {
+									setValue(result);
+								}
 							});
 						}
 						else {
-							function doFormat(obj) {
+							// setup prepare function to use the specified format
+							prepareValue = function doFormat(obj) {
 								if (properties.format && result.constructor.formats && result.constructor.formats[properties.format])
 									return obj.constructor.formats[properties.format].convert(obj);
 
@@ -73,35 +101,67 @@
 							}
 
 							if (properties.$default) {
+								// watch for changes to the last property in the path
 								var props = properties.$default.split(".");
 								var lastProp = props.pop();
-								ExoWeb.Model.LazyLoader.eval(source, props.join("."), function(lastTarget) {
-									Sys.Observer.addSpecificPropertyChanged(lastTarget, lastProp, function(obj) {
-										Sys.Observer.setValue(component, properties.targetProperty || targetProperty, doFormat(ExoWeb.getValue(lastTarget, lastProp)));
-									});
-								},
-								function(err) {
-									throwAndLog(["~", "markupExt"], "Couldn't listen for change events on '{0}', {1}", [properties.$default, err]);
-								});
+								ExoWeb.Model.LazyLoader.eval(source, props.join("."),
+									function lazy$beginWatch(lastTarget) {
+										Sys.Observer.addSpecificPropertyChanged(lastTarget, lastProp, function(obj) {
+											setValue(ExoWeb.getValue(lastTarget, lastProp));
+										});
+
+									},
+									function lazy$noWatch(err) {
+										throwAndLog(["~", "markupExt"], "Couldn't listen for change events on '{0}', {1}", [properties.$default, err]);
+									}
+								);
+							}
+						}
+						if (properties.required) {
+							var watchItemRequiredPaths = function watchItemRequiredPaths(item) {
+								if (item.meta) {
+									try {
+										var chain = item.meta.type.property(properties.required);
+										if (chain) {
+											chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited) {
+												// when a point in the required path changes then refresh the value
+												setValue(result);
+											}, item);
+										}
+									}
+									catch (e) {
+										ExoWeb.trace.logError(["markupExt", "~"], e);
+									}
+								}
 							}
 
-							result = doFormat(result);
+							// attempt to watch changes along the required path
+							var list = (result instanceof Array) ? result : [result];
+							Array.forEach(list, watchItemRequiredPaths);
+							Sys.Observer.makeObservable(list);
+							Sys.Observer.addCollectionChanged(list, function lazy$listChanged$watchRequired(list, evt) {
+								Array.forEach(evt.get_changes(), function(change) {
+									Array.forEach(change.newItems || [], watchItemRequiredPaths);
+								});
+							});
 						}
+						// End of up-front setup
+						////////////////////////////////////////////////////////////////////////////////////
 
 						try {
+							// Load additional required paths
 							if (properties.required) {
-								var path = properties.required;
-
-								// check for instance property format
-								if (path.startsWith("this."))
-									path = path.substring(5);
-
-								ExoWeb.Model.LazyLoader.eval(target, path, function() {
-									Sys.Observer.setValue(component, properties.targetProperty || targetProperty, result);
+								var signal = new ExoWeb.Signal("required path");
+								var list = (result instanceof Array) ? result : [result];
+								Array.forEach(list, function() {
+									ExoWeb.Model.LazyLoader.eval(result, properties.required, signal.pending());
+								});
+								signal.waitForAll(function lazy$requiredLoaded() {
+									setValue(result);
 								});
 							}
 							else {
-								Sys.Observer.setValue(component, properties.targetProperty || targetProperty, result);
+								setValue(result);
 							}
 						}
 						catch (err) {
