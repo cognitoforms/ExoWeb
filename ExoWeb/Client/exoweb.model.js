@@ -2092,6 +2092,53 @@
 				successCallback(target);
 		}
 
+		LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain) {
+			var signal = new ExoWeb.Signal();
+			var results = [];
+			var errors = [];
+			var successCallbacks = [];
+			var errorCallbacks = [];
+
+			var allSucceeded = true;
+
+			Array.forEach(target, function(subTarget, i) {
+				results.push(null);
+				errors.push(null);
+				successCallbacks.push(signal.pending(function(result) {
+					results[i] = result;
+				}));
+				errorCallbacks.push(signal.orPending(function(err) {
+					allSucceeded = false;
+					errors[i] = err;
+				}));
+			});
+
+			Array.forEach(target, function(subTarget, i) {
+				LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain);
+			});
+
+			signal.waitForAll(function() {
+				if (allSucceeded) {
+					// call the success callback if one exists
+					if (successCallback)
+						successCallback(results);
+				}
+				else if (errorCallback) {
+					errorCallback(errors);
+				}
+				else {
+					var numErrors = 0;
+					Array.forEach(errors, function(e) {
+						if (e) {
+							logError(["lazyLoad"], e);
+							numErrors += 1;
+						}
+						throwAndLog(["lazyLoad"], "{0} errors encountered while attempting to eval paths for all items in the target array.", [numErrors]);
+					});
+				}
+			});
+		}
+
 		LazyLoader.isLoaded = function LazyLoader$isLoaded(obj, propName) {
 			if (obj === undefined)
 				return false;

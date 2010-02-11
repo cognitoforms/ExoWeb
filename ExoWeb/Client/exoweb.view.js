@@ -76,11 +76,7 @@
 								// if additional paths are required then load them before updating the value
 								if (properties.required) {
 									Array.forEach(evt.get_changes(), function(change) {
-										var signal = new ExoWeb.Signal("required path");
-										Array.forEach(change.newItems || [], function(item) {
-											ExoWeb.Model.LazyLoader.eval(item, properties.required, signal.pending());
-										});
-										signal.waitForAll(function lazy$requiredLoaded() {
+										ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function() {
 											setValue(result);
 										});
 									});
@@ -151,12 +147,8 @@
 						try {
 							// Load additional required paths
 							if (properties.required) {
-								var signal = new ExoWeb.Signal("required path");
 								var list = (result instanceof Array) ? result : [result];
-								Array.forEach(list, function() {
-									ExoWeb.Model.LazyLoader.eval(result, properties.required, signal.pending());
-								});
-								signal.waitForAll(function lazy$requiredLoaded() {
+								ExoWeb.Model.LazyLoader.evalAll(list, properties.required, function() {
 									setValue(result);
 								});
 							}
