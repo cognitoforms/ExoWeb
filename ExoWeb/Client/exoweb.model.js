@@ -804,9 +804,9 @@
 				var f;
 
 				if (obj)
-					f = function(target, property) {
+					f = function(target) {
 						if (obj === target)
-							handler(target, property);
+							handler.apply(this, arguments);
 					}
 				else
 					f = handler;
