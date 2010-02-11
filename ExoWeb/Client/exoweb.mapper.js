@@ -311,8 +311,6 @@
 					name, 																												// event name
 					toExoGraph(this._translator, obj), 																					// instance
 					event, 																												// custom event object
-					false, 																												// include allowed values
-					ObjectLazyLoader.getRelativePaths(obj), 																			// paths
 					{changes: this._changes }, 																							// changes
 					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback

@@ -109,9 +109,9 @@ namespace ExoWeb
 						}
 
 						// Define the ExoWeb.RaiseEvent method
-						ExoWeb.RaiseEvent = function(eventType, instance, event, includeAllowedValues, paths, changes, onSuccess, onFailure)
+						ExoWeb.RaiseEvent = function(eventType, instance, event, changes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + context.Request.ApplicationPath + @"/ExoWeb.axd', 'RaiseEvent/' + eventType, false, { instance: instance, includeAllowedValues: includeAllowedValues, paths: paths, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + context.Request.ApplicationPath + @"/ExoWeb.axd', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 					}
 
