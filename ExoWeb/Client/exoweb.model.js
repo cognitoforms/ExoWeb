@@ -774,7 +774,8 @@
 
 					Sys.Observer.makeObservable(val);
 					Sys.Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
-						prop._raiseEvent("changed", [target, prop]);
+						// oldValue is not currently implemented for lists
+						prop._raiseEvent("changed", [target, prop, val, undefined, true]);
 						prop._containingType.get_model().notifyListChanged(target, prop, args.get_changes());
 					});
 				}
