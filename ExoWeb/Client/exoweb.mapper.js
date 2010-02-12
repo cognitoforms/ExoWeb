@@ -486,8 +486,6 @@
 			_onSaveSuccess: function ServerSync$_onSaveSuccess(response, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
-				this._truncateLog(this.canSave.setScope(this));
-
 				if (response.changes) {
 					log("server", "._onSaveSuccess() >> applying {0} changes", [response.changes.length]);
 
@@ -637,28 +635,79 @@
 
 					var totalChanges = changes.length;
 					var newChanges = 0;
+					var ignoreCount = 0;
+
+					// NOTE: "save" changes are processed before the changes that they affect since the instances 
+					// that are serialized and sent back to the client will always refer to their persisted 
+					// identifiers, which will not be reflected on the client until the id changes are applied.  
+					// Naively processing changes in order can result in cases where a change refers to an item 
+					// that is already on the client by an id that it is not yet aware of.  The client will then 
+					// fetch this data from the server, resulting in duplicate data and perhaps unexpected UI 
+					// behavior.  If the data sent from the server refers to objects using point-in-time ids, 
+					// then this process can be greatly simplified to simply process changes in order.
 
 					function processNextChange() {
-						var change = Array.dequeue(changes);
+						var change = null;
+
+						// don't record the change if we are still ignoring changes prior to a save
+						var recordChange = (ignoreCount == 0);
+
+						// look for remaining changes that are save changes, but only if 
+						// we are finished processing changes that occurred before a save
+						var saveChanges = null;
+						if (ignoreCount == 0) {
+							saveChanges = $transform(changes).where(function(c) {
+								return c.__type === "Save:#ExoGraph";
+							});
+						}
+
+						// process the next save change
+						if (saveChanges && saveChanges.length > 0) {
+							// get the first save change
+							change = saveChanges[0];
+							// don't record changes before changes were saved
+							ignoreCount = Array.indexOf(changes, change);
+							// remove the change from the underlying array
+							Array.remove(changes, change);
+						}
+						// process the next change of any kind
+						else {
+							// decrement ignore count until it reaches zero
+							ignoreCount = ignoreCount > 0 ? ignoreCount - 1 : 0;
+							// pull off the next change to process
+							change = Array.dequeue(changes);
+						}
 
 						if (change) {
 							if (change.__type != "Save:#ExoGraph") {
 								newChanges++;
-								server._changes.push(change);
+
+								if (recordChange)
+									server._changes.push(change);
 							}
 
 							var callback = signal.pending(processNextChange);
 
-							if (change.__type == "InitNew:#ExoGraph")
+							if (change.__type == "InitNew:#ExoGraph") {
 								server.applyInitChange(change, callback);
-							else if (change.__type == "ReferenceChange:#ExoGraph")
+							}
+							else if (change.__type == "ReferenceChange:#ExoGraph") {
 								server.applyRefChange(change, callback);
-							else if (change.__type == "ValueChange:#ExoGraph")
+							}
+							else if (change.__type == "ValueChange:#ExoGraph") {
 								server.applyValChange(change, callback);
-							else if (change.__type == "ListChange:#ExoGraph")
+							}
+							else if (change.__type == "ListChange:#ExoGraph") {
 								server.applyListChange(change, callback);
-							else if (change.__type == "Save:#ExoGraph")
-								server.applySaveChange(change, callback);
+							}
+							else if (change.__type == "Save:#ExoGraph") {
+								server.applySaveChange(change, function() {
+									// changes have been applied so truncate the log to this point
+									server._truncateLog(server.canSave.setScope(server));
+
+									callback.apply(this, arguments);
+								});
+							}
 						}
 					}
 
