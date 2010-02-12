@@ -89,11 +89,20 @@
 			if (val !== undefined && val !== null) {
 				var type = window[val.type];
 
-				// entities only: translate back to the client's id
+				// Entities only: translate back to the client's id.  This is necessary to handle the fact that ids are created on 
+				// both the client and server.  Also, in some cases a transaction references an entity that was created on the server 
+				// and then committed, so that the id actually references an object that already exists on the client but with a different id.
+				//--------------------------------------------------------------------------------------------------------
 				if (type.meta && type.meta instanceof ExoWeb.Model.Type) {
 					// don't alter the original object
 					val = Object.copy(val);
-					val.id = translator.reverse(val.type, val.id) || val.id;
+
+					// get the server id, either translated or as the serialized entity id itself
+					var serverId = translator.forward(val.type, val.id) || val.id;
+					// get the client id, either a reverse translation of the server id or the server id itself
+					var clientId = translator.reverse(val.type, serverId) || serverId;
+
+					val.id = clientId;
 				}
 
 				var fmt = type.formats && type.formats.$exograph;
@@ -667,8 +676,9 @@
 							change = saveChanges[0];
 							// don't record changes before changes were saved
 							ignoreCount = Array.indexOf(changes, change);
-							// remove the change from the underlying array
-							Array.remove(changes, change);
+							// remove the save change from the underlying array if there are no preceeding changes
+							if (ignoreCount == 0)
+								Array.remove(changes, change);
 						}
 						// process the next change of any kind
 						else {
@@ -735,10 +745,25 @@
 					for (var i = 0; i < change.idChanges.length; i++) {
 						var idChange = change.idChanges[i];
 
-						var type = this._model.type(idChange.type);
-						var currentId = this._translator.reverse(idChange.type, idChange.oldId) || idChange.oldId;
+						var serverOldId = idChange.oldId;
+						var clientOldId = this._translator.reverse(idChange.type, serverOldId);
 
-						type.changeObjectId(currentId, idChange.newId);
+						// If the client recognizes the old id then this is an object we have seen before
+						if (clientOldId) {
+							var type = this._model.type(idChange.type);
+							type.changeObjectId(clientOldId, idChange.newId)
+							Array.remove(change.idChanges, idChange);
+							i--;
+						}
+						// Otherwise, make a note of the new object created on the server so that we can correct the ids later
+						else {
+							// The server knows the correct old id, but the client will see a new object created with a
+							// persisted id since it was created and then committed.  Translate from the persisted id 
+							// to the server's old id so that we can reverse it when creating new objects from the server.
+							var serverOldId = idChange.oldId;
+							var clientOldId = idChange.newId;
+							this._translator.add(idChange.type, clientOldId, serverOldId);
+						}
 					}
 				}
 
@@ -751,10 +776,16 @@
 
 				ensureJsType(this._model, change.instance.type,
 					function applyInitChange$typeLoaded(jstype) {
+						// Create the new object
 						var newObj = new jstype();
 
-						// remember new object's generated id
-						translator.add(change.instance.type, newObj.meta.id, change.instance.id);
+						// Check for a translation between the old id that was reported and an actual old id.  This is
+						// needed since new objects that are created on the server and then committed will result in an accurate
+						// id change record, but "instance.id" for this change will actually be the persisted id.
+						var serverOldId = translator.forward(change.instance.type, change.instance.id) || change.instance.id;
+
+						// Remember the object's client-generated new id and the corresponding server-generated new id
+						translator.add(change.instance.type, newObj.meta.id, serverOldId);
 
 						callback();
 					});

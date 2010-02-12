@@ -339,6 +339,8 @@
 					}
 
 					obj.meta.id = newId;
+
+					return true;
 				}
 			},
 			unregister: function Type$unregister(obj) {
@@ -614,9 +616,11 @@
 				return null;
 			},
 			isDefinedBy: function Property$isDefinedBy(mtype) {
-				for (var type = mtype; type; type = type.baseType)
-					if (this._containingType === type)
+				for (var type = mtype; type; type = type.baseType) {
+					if (this._containingType === type) {
 						return true;
+					}
+				}
 
 				return false;
 			},
