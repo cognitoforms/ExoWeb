@@ -117,13 +117,12 @@
 							var watchItemRequiredPaths = function watchItemRequiredPaths(item) {
 								if (item.meta) {
 									try {
-										var chain = item.meta.type.property(properties.required);
-										if (chain) {
+										ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
 											chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited) {
 												// when a point in the required path changes then refresh the value
 												setValue(result);
 											}, item);
-										}
+										});
 									}
 									catch (e) {
 										ExoWeb.trace.logError(["markupExt", "~"], e);
