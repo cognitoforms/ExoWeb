@@ -457,11 +457,11 @@
 			},
 			addRule: function Type$addRule(rule) {
 				function Type$addRule$init(obj, prop, newValue, oldValue, wasInited) {
-					if (!wasInited)
-						Type$addRule$fn(obj, prop, rule.init ? rule.init : rule.execute);
+					if (!wasInited && rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj); }))
+						Type$addRule$fn(obj, prop, rule.execute);
 				}
 				function Type$addRule$changed(obj, prop, newValue, oldValue, wasInited) {
-					if (wasInited)
+					if (wasInited && rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj); }))
 						Type$addRule$fn(obj, prop, rule.execute);
 				}
 				function Type$addRule$get(obj, prop, value, isInited) {
@@ -867,11 +867,6 @@
 				inputs.push(input);
 
 				var rule = {
-					init: function Property$calculated$init(obj) {
-						if (!prop.isInited(obj) && inputs.every(function(input) { return input.property == prop || input.property.isInited(obj); })) {
-							this.execute(obj);
-						}
-					},
 					execute: function Property$calculated$execute(obj) {
 						if (prop._isList) {
 							// re-calculate the list values
