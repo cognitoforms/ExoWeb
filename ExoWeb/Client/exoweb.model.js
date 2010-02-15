@@ -818,50 +818,11 @@
 
 				this._addEvent("changed", f);
 			},
-			// Adds a rule to the property that will update its value
-			// based on a calculation.
-			calculated: function Property$calculated(options) {
+			addCalculatedRule: function Property$addCalculatedRule(calculateFn, inputs) {
 				var prop = this;
 
-				var rootType;
-				if (options.rootType)
-					rootType = options.rootType.meta;
-				else
-					rootType = prop._containingType;
-
-				var inputs;
-				if (options.basedOn) {
-					inputs = options.basedOn.map(function(p) {
-						var input;
-
-						var parts = p.split(" of ");
-						if (parts.length >= 2) {
-							input = new RuleInput(Model.property(parts[1], rootType));
-							var events = parts[0].split(",");
-
-							input.set_dependsOnInit(events.indexOf("init") >= 0);
-							input.set_dependsOnChange(events.indexOf("change") >= 0);
-						}
-						else {
-							input = new RuleInput(Model.property(parts[0], rootType));
-							input.set_dependsOnInit(true);
-						}
-
-						if (!input.property)
-							throwAndLog("model", "Calculated property {0}.{1} is based on an invalid property: {2}", [rootType.get_fullName(), prop._name, p]);
-
-						return input;
-					});
-				}
-				else {
-					inputs = Rule.inferInputs(rootType, options.fn);
-					inputs.forEach(function(input) {
-						input.set_dependsOnInit(true);
-					});
-				}
-
 				// calculated property should always be initialized when first accessed
-				input = new RuleInput(this);
+				var input = new RuleInput(prop);
 				input.set_dependsOnGet(true);
 				input.set_dependsOnChange(false);
 				inputs.push(input);
@@ -870,7 +831,7 @@
 					execute: function Property$calculated$execute(obj) {
 						if (prop._isList) {
 							// re-calculate the list values
-							var newList = options.fn.apply(obj);
+							var newList = calculateFn.apply(obj);
 
 							// Initialize list if needed.  A calculated list property cannot depend on initialization 
 							// of a server-based list property since initialization is done when the object is constructed 
@@ -903,13 +864,64 @@
 							curList.endUpdate();
 						}
 						else {
-							prop.value(obj, options.fn.apply(obj));
+							prop.value(obj, calculateFn.apply(obj));
 						}
 					},
 					toString: function() { return "calculation of " + prop._name; }
 				};
 
 				Rule.register(rule, inputs);
+			},
+			// Adds a rule to the property that will update its value
+			// based on a calculation.
+			calculated: function Property$calculated(options) {
+				var prop = this;
+				var rootType = (options.rootType) ? options.rootType.meta : prop._containingType;
+
+				if (options.basedOn) {
+					var signal = new ExoWeb.Signal("calculated property dependencies");
+					var inputs = [];
+
+					// setup loading of each property path that the calculation is based on
+					Array.forEach(options.basedOn, function(p, i) {
+						var dependsOnChange;
+						var dependsOnInit = true;
+
+						// if the event was specified then parse it
+						var parts = p.split(" of ");
+						if (parts.length >= 2) {
+							var events = parts[0].split(",");
+							dependsOnInit = (events.indexOf("init") >= 0);
+							dependsOnChange = (events.indexOf("change") >= 0);
+						}
+
+						var path = (parts.length >= 2) ? parts[1] : p;
+						Model.property(path, rootType, true, signal.pending(function Property$calculated$chainLoaded(chain) {
+							var input = new RuleInput(chain);
+
+							if (!input.property)
+								throwAndLog("model", "Calculated property {0}.{1} is based on an invalid property: {2}", [rootType.get_fullName(), prop._name, p]);
+
+							input.set_dependsOnInit(dependsOnInit);
+							if (dependsOnChange !== undefined)
+								input.set_dependsOnChange(dependsOnChange);
+
+							inputs.push(input);
+						}));
+					});
+
+					// wait until all property information is available to initialize the calculation
+					signal.waitForAll(function() {
+						prop.addCalculatedRule(options.fn, inputs);
+					});
+				}
+				else {
+					var inputs = Rule.inferInputs(rootType, options.fn);
+					inputs.forEach(function(input) {
+						input.set_dependsOnInit(true);
+					});
+					prop.addCalculatedRule(options.fn, inputs);
+				}
 
 				return this;
 			}
@@ -2019,7 +2031,7 @@
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		function LazyLoader() {
 		}
-		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain) {
+		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain/*, continueFn*/) {
 			if (!path)
 				path = [];
 			else if (!(path instanceof Array))
@@ -2027,6 +2039,10 @@
 
 			scopeChain = scopeChain || [window];
 			target = target || Array.dequeue(scopeChain);
+
+			// Allow an invocation to specify continuing loading properties using a given function, by default this is LazyLoader.eval.
+			// This is used by evalAll to ensure that array properties can be force loaded at any point in the path.
+			var continueFn = arguments.length == 6 && arguments[5] instanceof Function ? arguments[5] : LazyLoader.eval;
 
 			while (path.length > 0) {
 				var prop = Array.dequeue(path);
@@ -2039,7 +2055,7 @@
 							if (scopeChain.length > 0) {
 								Array.insert(path, 0, prop);
 
-								LazyLoader.eval(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain);
+								continueFn(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain, continueFn);
 							}
 							else if (errorCallback)
 								errorCallback("Property is undefined: " + prop);
@@ -2047,7 +2063,7 @@
 								throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [prop]);
 						}
 						else if (nextTarget != null)
-							LazyLoader.eval(nextTarget, path, successCallback, errorCallback, []);
+							continueFn(nextTarget, path, successCallback, errorCallback, [], continueFn);
 						else if (successCallback)
 							successCallback(null);
 					});
@@ -2114,7 +2130,7 @@
 			});
 
 			Array.forEach(target, function(subTarget, i) {
-				LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain);
+				LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, LazyLoader.evalAll);
 			});
 
 			signal.waitForAll(function() {
