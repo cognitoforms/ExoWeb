@@ -35,7 +35,12 @@
 
 				if (properties.source) {
 					var evalSource = new Function("$element", "$index", "$dataItem", "return " + properties.source + ";");
-					source = evalSource(component.get_element(), templateContext.index, templateContext.dataItem);
+					var element = null;
+					if (Sys.Component.isInstanceOfType(component))
+						element = component.get_element();
+					else if (component instanceof Element)
+						element = component;
+					source = evalSource(element, templateContext.index, templateContext.dataItem);
 
 					// don't try to eval the path against window
 					scopeChain = [];
