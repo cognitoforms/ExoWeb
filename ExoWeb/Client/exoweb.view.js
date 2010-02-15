@@ -147,8 +147,7 @@
 						try {
 							// Load additional required paths
 							if (properties.required) {
-								var list = (result instanceof Array) ? result : [result];
-								ExoWeb.Model.LazyLoader.evalAll(list, properties.required, function() {
+								ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function() {
 									setValue(result);
 								});
 							}

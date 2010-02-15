@@ -2117,6 +2117,8 @@
 
 			var allSucceeded = true;
 
+			target = (target instanceof Array) ? target : [target];
+
 			Array.forEach(target, function(subTarget, i) {
 				results.push(null);
 				errors.push(null);
@@ -2146,7 +2148,7 @@
 					var numErrors = 0;
 					Array.forEach(errors, function(e) {
 						if (e) {
-							logError(["lazyLoad"], e);
+							ExoWeb.trace.logError(["lazyLoad"], e);
 							numErrors += 1;
 						}
 						throwAndLog(["lazyLoad"], "{0} errors encountered while attempting to eval paths for all items in the target array.", [numErrors]);
