@@ -819,17 +819,16 @@
 				this._addEvent("changed", f);
 			},
 			addCalculatedRule: function Property$addCalculatedRule(calculateFn, inputs) {
-				var prop = this;
-
 				// calculated property should always be initialized when first accessed
-				var input = new RuleInput(prop);
+				var input = new RuleInput(this);
 				input.set_dependsOnGet(true);
 				input.set_dependsOnChange(false);
 				inputs.push(input);
 
 				var rule = {
+					prop: this,
 					execute: function Property$calculated$execute(obj) {
-						if (prop._isList) {
+						if (this.prop._isList) {
 							// re-calculate the list values
 							var newList = calculateFn.apply(obj);
 
@@ -837,11 +836,11 @@
 							// of a server-based list property since initialization is done when the object is constructed 
 							// and before data is available.  If it depends only on the change of the server-based list 
 							// property then initialization will not happen until the property value is requested.
-							if (!prop.isInited(obj))
-								prop.init(obj, []);
+							if (!this.prop.isInited(obj))
+								this.prop.init(obj, []);
 
 							// compare the new list to the old one to see if changes were made
-							var curList = prop.value(obj);
+							var curList = this.prop.value(obj);
 
 							if (newList.length === curList.length) {
 								var noChanges = true;
@@ -864,10 +863,10 @@
 							curList.endUpdate();
 						}
 						else {
-							prop.value(obj, calculateFn.apply(obj));
+							this.prop.value(obj, calculateFn.apply(obj));
 						}
 					},
-					toString: function() { return "calculation of " + prop._name; }
+					toString: function() { return "calculation of " + this.prop._name; }
 				};
 
 				Rule.register(rule, inputs);
@@ -1079,15 +1078,15 @@
 		}
 
 		PropertyChain.prototype = {
-			all: function() {
+			all: function PropertyChain$all() {
 				return this._properties;
 			},
-			append: function(prop) {
+			append: function PropertyChain$append(prop) {
 				Array.addRange(this._properties, prop.all());
 			},
 			// Iterates over all objects along a property chain starting with the root object (obj).
 			// An optional propFilter can be specified to only iterate over objects that are RETURNED by the property filter.
-			each: function(obj, callback, propFilter /*, target, p, lastProp*/) {
+			each: function PropertyChain$each(obj, callback, propFilter /*, target, p, lastProp*/) {
 				if (!callback || typeof (callback) != "function")
 					throwAndLog(["model"], "Invalid Parameter: callback function");
 
