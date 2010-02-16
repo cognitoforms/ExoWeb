@@ -321,7 +321,7 @@
 					toExoGraph(this._translator, obj), 																					// instance
 					event, 																												// custom event object
 					{changes: this._changes }, 																							// changes
-					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -392,7 +392,7 @@
 
 				roundtripProvider(
 					{ changes: this._changes }, 																				// changes
-					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -481,7 +481,7 @@
 				saveProvider(
 					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 												// root
 					{changes: this.get_Changes() }, 																		// changes
-					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -562,7 +562,7 @@
 					window.clearTimeout(this._saveTimeout);
 			},
 
-			// CHANGE TRACKING
+			// Various
 			///////////////////////////////////////////////////////////////////////
 			_captureChange: function ServerSync$_captureChange(change) {
 				if (!this.isApplyingChanges()) {
@@ -757,12 +757,12 @@
 						}
 						// Otherwise, make a note of the new object created on the server so that we can correct the ids later
 						else {
-							// The server knows the correct old id, but the client will see a new object created with a
-							// persisted id since it was created and then committed.  Translate from the persisted id 
-							// to the server's old id so that we can reverse it when creating new objects from the server.
+							// The server knows the correct old id, but the client will see a new object created with a persisted id 
+							// since it was created and then committed.  Translate from the persisted id to the server's old id so that 
+							// we can reverse it when creating new objects from the server.  Also, a reverse record should not be added.
 							var serverOldId = idChange.oldId;
 							var clientOldId = idChange.newId;
-							this._translator.add(idChange.type, clientOldId, serverOldId);
+							this._translator.add(idChange.type, clientOldId, serverOldId, true);
 						}
 					}
 				}

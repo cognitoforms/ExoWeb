@@ -581,15 +581,9 @@ Type.registerNamespace("ExoWeb");
 	}
 	Translator.prototype = {
 		lookup: function Translator$lookup(source, category, key) {
-			if (arguments.length == 2) {
-				key = category;
-				category = null;
+			if (source[category]) {
+				return source[category][key] || null;
 			}
-
-			if (category)
-				source = source[category] = (source[category] || {});
-
-			return source[key] || null;
 		},
 		forward: function Translator$forward(category, key) {
 			return this.lookup(this._forwardDictionary, category, key);
@@ -597,24 +591,22 @@ Type.registerNamespace("ExoWeb");
 		reverse: function Translator$reverse(category, key) {
 			return this.lookup(this._reverseDictionary, category, key);
 		},
-		add: function Translator$addMapping(category, key, value) {
-			if (!value) {
-				value = key;
-				key = category;
-				category = null;
+		add: function Translator$addMapping(category, key, value/*, suppressReverse*/) {
+			// look for optional suppress reverse lookup argument
+			var suppressReverse = (arguments.length == 4 && arguments[3].constructor === Boolean) ? arguments[3] : false;
+
+			// lazy initialize the forward dictionary for the category
+			if (!this._forwardDictionary[category])
+				this._forwardDictionary[category] = {};
+			this._forwardDictionary[category][key] = value;
+
+			// don't add to the reverse dictionary if the suppress flag is specified
+			if (!suppressReverse) {
+				// lazy initialize the reverse dictionary for the category
+				if (!this._reverseDictionary[category])
+					this._reverseDictionary[category] = {};
+				this._reverseDictionary[category][value] = key;
 			}
-
-			var forward = this._forwardDictionary;
-			if (category)
-				forward = forward[category] = (forward[category] || {});
-
-			forward[key] = value;
-
-			var reverse = this._reverseDictionary;
-			if (category)
-				reverse = reverse[category] = (reverse[category] || {});
-
-			reverse[value] = key;
 		}
 	}
 	ExoWeb.Translator = Translator;
