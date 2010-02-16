@@ -581,7 +581,7 @@ Type.registerNamespace("ExoWeb");
 	}
 	Translator.prototype = {
 		lookup: function Translator$lookup(source, category, key) {
-			if (!key) {
+			if (arguments.length == 2) {
 				key = category;
 				category = null;
 			}
