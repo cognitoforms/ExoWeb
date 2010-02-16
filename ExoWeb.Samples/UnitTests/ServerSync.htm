@@ -21,65 +21,65 @@
 			ExoWeb.Mock.roundtripProviderDelay = 0;
 			ExoWeb.Mock.simulateLazyLoading = false;
 
-			var ctx = ExoWeb.context({ model: { driver: { id: "1", from: "Driver" } } });
+			var context = ExoWeb.context({ model: { driver: { id: "1", from: "Driver" } } });
 
 			setupTest("test1", { description: "Apply Init with ID Translation", expect: 10 }, function() {
 				var undefined;
 
 				equals(Dealer.meta.get("+c0"), undefined, "Dealer should not exist before init");
 
-				ctx.server.apply(new ChangeSet().init("Dealer", "?1").build());
+				context.server.apply(new ChangeSet().init("Dealer", "?1").build());
 
 				var newDealer = Dealer.meta.get("+c0");
 				ok(newDealer, "Dealer should exist after init by client generated id");
 				
 				// check that id translation is setup
-				equals(ctx.server._translator.forward("Dealer", "+c0"), "?1", "Should be able to translate from client id to server id");
-				equals(ctx.server._translator.reverse("Dealer", "?1"), "+c0", "Should be able to translate from server id to client id");
+				equals(context.server._translator.forward("Dealer", "+c0"), "?1", "Should be able to translate from client id to server id");
+				equals(context.server._translator.reverse("Dealer", "?1"), "+c0", "Should be able to translate from server id to client id");
 				
 				// inpect the change log
-				var changes = ctx.server.get_Changes();
+				var changes = context.server.get_Changes();
 				equals(changes.length, 1, "We should have 1 change in the log");
 				equals(changes[0].__type, "InitNew:#ExoGraph", "It should be an init change");
 				equals(changes[0].instance.id, "?1", "The id should be the server id, NOT the client id");
 				
 				newDealer.set_Name("Bill");
-				changes = ctx.server.get_Changes();
+				changes = context.server.get_Changes();
 				equals(changes.length, 2, "We should now have 2 change in the log");
 				equals(changes[1].__type, "ValueChange:#ExoGraph", "The most recent should be a value change");
 				equals(changes[1].instance.id, "?1", "The id should be the server id, NOT the client id");
 			});
 
 			setupTest("test2", { description: "Apply Reference Property Change", expect: 2 }, function() {
-				equals(ctx.model.driver.Owner.Location.meta.id, "1", "Driver's owner's location should be 1");
+				equals(context.model.driver.get_Owner().get_Location().meta.id, "1", "Driver's owner's location should be 1");
 
-				ctx.server.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
+				context.server.apply(new ChangeSet().ref("CarOwner", "1", "Location", "OwnerLocation", "1", "2").build());
 
-				equals(ctx.model.driver.Owner.Location.meta.id, "2", "Driver's owner's location should be 2");
+				equals(context.model.driver.get_Owner().get_Location().meta.id, "2", "Driver's owner's location should be 2");
 			});
 
 			setupTest("test3", { description: "Apply Value Property Change", expect: 2 }, function() {
-				equals(ctx.model.driver.Owner.Location.Name, "Work", "Driver's owner's location name should be Work");
+				equals(context.model.driver.get_Owner().get_Location().get_Name(), "Work", "Driver's owner's location name should be Work");
 
-				ctx.server.apply(new ChangeSet().val("OwnerLocation", "2", "Name", "Work", "Play").build());
+				context.server.apply(new ChangeSet().val("OwnerLocation", "2", "Name", "Work", "Play").build());
 
-				equals(ctx.model.driver.Owner.Location.Name, "Play", "Driver's owner's location name should be Play");
+				equals(context.model.driver.get_Owner().get_Location().get_Name(), "Play", "Driver's owner's location name should be Play");
 			});
 
 			setupTest("test4", { description: "Apply List Property Changes", expect: 7 }, function() {
-				equals(ctx.model.driver.Cars.length, 2, "Driver should have 2 cars");
-				equals(ctx.model.driver.Cars[0].Name, "Sentra", "First car is Sentra");
-				equals(ctx.model.driver.Cars[1].Name, "Bike", "Second car is Bike");
+				equals(context.model.driver.get_Cars().length, 2, "Driver should have 2 cars");
+				equals(context.model.driver.get_Cars()[0].get_Name(), "Sentra", "First car is Sentra");
+				equals(context.model.driver.get_Cars()[1].get_Name(), "Bike", "Second car is Bike");
 
-				ctx.server.apply(new ChangeSet().delRef("Driver", "1", "Cars", "Car", "2").build());
+				context.server.apply(new ChangeSet().delRef("Driver", "1", "Cars", "Car", "2").build());
 
-				equals(ctx.model.driver.Cars.length, 1, "Driver should now have 1 car");
-				equals(ctx.model.driver.Cars[0].Name, "Sentra", "First car is Sentra");
+				equals(context.model.driver.get_Cars().length, 1, "Driver should now have 1 car");
+				equals(context.model.driver.get_Cars()[0].get_Name(), "Sentra", "First car is Sentra");
 
-				ctx.server.apply(new ChangeSet().addRef("Driver", "1", "Cars", "Car", "3").build());
+				context.server.apply(new ChangeSet().addRef("Driver", "1", "Cars", "Car", "3").build());
 
-				equals(ctx.model.driver.Cars.length, 2, "Driver should now have 2 cars");
-				equals(ctx.model.driver.Cars[1].Name, "Tank", "Second car is Tank");
+				equals(context.model.driver.get_Cars().length, 2, "Driver should now have 2 cars");
+				equals(context.model.driver.get_Cars()[1].get_Name(), "Tank", "Second car is Tank");
 			});
 
 			setupTest("test5", { description: "Client-Server Changes from Server", expect: 4 }, function() {
@@ -87,8 +87,8 @@
 				var bob = CarOwner.meta.get("1");
 				var joe = CarOwner.meta.get("2");
 
-				equals(bob.Drivers.length, 1, "Bob should have one driver");
-				equals(joe.Drivers.length, 0, "Joe should have no drivers");
+				equals(bob.get_Drivers().length, 1, "Bob should have one driver");
+				equals(joe.get_Drivers().length, 0, "Joe should have no drivers");
 
 				bryan.set_Owner(joe);
 
@@ -100,10 +100,10 @@
 						.build();
 				});
 
-				ctx.server.roundtrip();
+				context.server.roundtrip();
 
-				equals(bob.Drivers.length, 0, "Bob should now have zero drivers");
-				equals(joe.Drivers.length, 1, "Joe should now have one driver");
+				equals(bob.get_Drivers().length, 0, "Bob should now have zero drivers");
+				equals(joe.get_Drivers().length, 1, "Joe should now have one driver");
 			});
 
 			setupTest("test6", { description: "Client-Server Commit (Changing Ids)", expect: 13 }, function() {
@@ -113,7 +113,7 @@
 				// no changes on server
 				ExoWeb.Mock.roundtrip(null);
 				
-				ctx.server.roundtrip();
+				context.server.roundtrip();
 
 				equals(matt.meta.id, mattLegacyId, "Matt's id should still be the temporary id");
 
@@ -124,14 +124,14 @@
 					return [
 						{
 							__type: "Save:#ExoGraph",
-							idChanges: [{ type: "Driver", from: mattLegacyId, to: mattNewId}]
+							idChanges: [{ type: "Driver", oldId: mattLegacyId, newId: mattNewId}]
 						}
 					];
 				});
 				
-				ctx.server.save(ctx.model.driver);
+				context.server.save(context.model.driver);
 
-				var changes = ctx.server.get_Changes();
+				var changes = context.server.get_Changes();
 				equals(changes.length, 0, "Queue should be empty after commit");
 
 				equals(matt.meta.id, mattNewId, "Matt's id should be a new permanent id");
@@ -151,7 +151,7 @@
 
 			timeoutTests(5000);
 
-			ctx.model.ready(function() {
+			context.ready(function() {
 				executeTest("test1");
 				executeTest("test2");
 				executeTest("test3");
