@@ -127,7 +127,7 @@ ExoWeb.Mock.objects({
 			Dealer: { id: "1" },
 			MilesDriven: 100000,
 			DateCreated: new Date("1/1/2007"),
-			SalesPerson: {id: 100},
+			SalesPerson: {id: "100"},
 			Notes: null
 		}
 	},
@@ -215,7 +215,7 @@ ExoWeb.Mock.objects({
 	}
 });
 
-ExoWeb.Mock.sync({
+ExoWeb.Mock.roundtrip({
 	// no behavior by default
 });
 
