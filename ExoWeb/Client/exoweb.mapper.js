@@ -303,7 +303,7 @@
 
 			// Raise Server Event
 			///////////////////////////////////////////////////////////////////////
-			raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, success, failed/*, automatic */) {
+			raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed/*, automatic */) {
 				Sys.Observer.setValue(this, "PendingServerEvent", true);
 
 				log("server", "ServerSync.raiseServerEvent() >> {0}", [name]);
@@ -316,12 +316,16 @@
 				if (event === undefined || event === null)
 					event = {};
 
+				// If includeAllChanges is true, then use all changes including those 
+				// that should not be saved, otherwise only use changes that can be saved.
+				var changes = includeAllChanges ? this._changes : this.get_Changes();
+
 				eventProvider(
 					name, 																												// event name
 					toExoGraph(this._translator, obj), 																					// instance
 					event, 																												// custom event object
-					{changes: this._changes }, 																							// changes
-					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
+					{changes: changes }, 																								// changes
+					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -392,7 +396,7 @@
 
 				roundtripProvider(
 					{ changes: this._changes }, 																				// changes
-					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
+					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
 					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -481,7 +485,7 @@
 				saveProvider(
 					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 												// root
 					{changes: this.get_Changes() }, 																		// changes
-					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
+					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
 					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
