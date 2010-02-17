@@ -887,10 +887,15 @@ Object.copy = function Object$Copy(obj) {
 				// we can make a copy by instantiating a new object around the value.
 				return new obj.constructor(value);
 			} else {
-				// ok, we have a normal object. copy the whole thing, property-by-property.
-				var c = {};
-				for (var property in obj) c[property] = obj[property];
-				return c;
+				// don't clone entities
+				if (ExoWeb.Model && obj instanceof ExoWeb.Model.Entity)
+					return obj;
+				else {
+					// ok, we have a normal object. copy the whole thing, property-by-property.
+					var c = {};
+					for (var property in obj) c[property] = obj[property];
+					return c;
+				}
 			}
 		}
 	}
