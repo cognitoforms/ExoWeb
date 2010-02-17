@@ -661,7 +661,11 @@
 
 				var old = obj[this._fieldName];
 
-				if (old !== val) {
+				// compare values so that this check is accurate for primitives
+				var oldValue = (old === undefined || old === null) ? old : old.valueOf();
+				var newValue = (val === undefined || val === null) ? val : val.valueOf();
+
+				if (oldValue !== newValue) {
 					var wasInited = this.isInited(obj);
 
 					obj[this._fieldName] = val;
