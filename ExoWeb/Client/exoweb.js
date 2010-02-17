@@ -851,7 +851,23 @@ if (!Array.prototype.indexOf)
 	};
 }
 
+if (!Array.prototype.some) {
+	Array.prototype.some = function(fun /*, thisp*/) {
+		var i = 0,
+		len = this.length >>> 0;
 
+		if (typeof fun != "function")
+			throw new TypeError();
+
+		var thisp = arguments[1];
+		for (; i < len; i++) {
+			if (i in this && fun.call(thisp, this[i], i, this))
+				return true;
+		}
+
+		return false;
+	};
+}
 
 // original function grabbed from http://oranlooney.com/functional-javascript/
 Object.copy = function Object$Copy(obj) {
