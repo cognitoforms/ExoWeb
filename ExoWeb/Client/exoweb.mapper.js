@@ -289,6 +289,18 @@
 						handler.apply(this, arguments);
 				});
 			},
+			addRequestBegin: function ServerSync$addRequestBegin(handler, includeAutomatic) {
+				this._addEventHandler("requestBegin", handler, includeAutomatic);
+			},
+			addRequestEnd: function ServerSync$addRequestEnd(handler, includeAutomatic) {
+				this._addEventHandler("requestEnd", handler, includeAutomatic);
+			},
+			addRequestSuccess: function ServerSync$addRequestSuccess(handler, includeAutomatic) {
+				this._addEventHandler("requestSuccess", handler, includeAutomatic);
+			},
+			addRequestFailed: function ServerSync$addRequestFailed(handler, includeAutomatic) {
+				this._addEventHandler("requestFailed", handler, includeAutomatic, 1);
+			},
 			enableSave: function ServerSync$enableSave(obj) {
 				if (Array.contains(this._objectsExcludedFromSave, obj)) {
 					Array.remove(this._objectsExcludedFromSave, obj);
@@ -320,6 +332,7 @@
 
 				var automatic = arguments.length == 6 && arguments[5] === true;
 
+				this._raiseEvent("requestBegin", [automatic]);
 				this._raiseEvent("raiseServerEventBegin", [automatic]);
 
 				// if no event object is provided then use an empty object
@@ -356,7 +369,9 @@
 					log("server", "._onRaiseServerEventSuccess() >> no changes");
 				}
 
+				this._raiseEvent("requestEnd", [automatic]);
 				this._raiseEvent("raiseServerEventEnd", [automatic]);
+				this._raiseEvent("requestSuccess", [automatic]);
 				this._raiseEvent("raiseServerEventSuccess", [automatic]);
 
 				if (callback && callback instanceof Function)
@@ -367,7 +382,9 @@
 
 				log("error", "Raise Server Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 
+				this._raiseEvent("requestEnd", [automatic]);
 				this._raiseEvent("raiseServerEventEnd", [automatic]);
+				this._raiseEvent("requestFailed", [e, automatic]);
 				this._raiseEvent("raiseServerEventFailed", [e, automatic]);
 
 				if (callback && callback instanceof Function)
@@ -395,6 +412,7 @@
 
 				var automatic = arguments.length == 3 && arguments[2] === true;
 
+				this._raiseEvent("requestBegin", [automatic]);
 				this._raiseEvent("roundtripBegin", [automatic]);
 
 				roundtripProvider(
@@ -416,7 +434,9 @@
 					log("server", "._onRoundtripSuccess() >> no changes");
 				}
 
+				this._raiseEvent("requestEnd", [automatic]);
 				this._raiseEvent("roundtripEnd", [automatic]);
+				this._raiseEvent("requestSuccess", [automatic]);
 				this._raiseEvent("roundtripSuccess", [automatic]);
 
 				if (callback && callback instanceof Function)
@@ -427,7 +447,9 @@
 
 				log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 
+				this._raiseEvent("requestEnd", [automatic]);
 				this._raiseEvent("roundtripEnd", [automatic]);
+				this._raiseEvent("requestFailed", [e, automatic]);
 				this._raiseEvent("roundtripFailed", [e, automatic]);
 
 				if (callback && callback instanceof Function)
@@ -477,6 +499,7 @@
 
 				var automatic = arguments.length == 4 && arguments[3] === true;
 
+				this._raiseEvent("requestBegin", [automatic]);
 				this._raiseEvent("saveBegin", [automatic]);
 
 				saveProvider(
@@ -500,7 +523,9 @@
 					log("server", "._onSaveSuccess() >> no changes");
 				}
 
+				this._raiseEvent("requestEnd", [automatic]);
 				this._raiseEvent("saveEnd", [automatic]);
+				this._raiseEvent("requestSuccess", [automatic]);
 				this._raiseEvent("saveSuccess", [automatic]);
 
 				if (callback && callback instanceof Function)
@@ -511,7 +536,9 @@
 
 				log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 
+				this._raiseEvent("requstEnd", [automatic]);
 				this._raiseEvent("saveEnd", [automatic]);
+				this._raiseEvent("requestFailed", [e, automatic]);
 				this._raiseEvent("saveFailed", [e, automatic]);
 
 				if (callback && callback instanceof Function)
