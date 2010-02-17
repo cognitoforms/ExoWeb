@@ -279,6 +279,16 @@
 		ServerSync.mixin(ExoWeb.Functor.eventing);
 
 		ServerSync.mixin({
+			_addEventHandler: function ServerSync$_addEventHandler(name, handler, includeAutomatic, automaticArgIndex) {
+				if (automaticArgIndex === undefined) automaticArgIndex = 0;
+				this._addEvent(name, function() {
+					var automatic = arguments.length > automaticArgIndex ? arguments[automaticArgIndex] : null;
+
+					// only raise automated events if the subscriber requests them
+					if (!automatic || includeAutomatic)
+						handler.apply(this, arguments);
+				});
+			},
 			enableSave: function ServerSync$enableSave(obj) {
 				if (Array.contains(this._objectsExcludedFromSave, obj)) {
 					Array.remove(this._objectsExcludedFromSave, obj);
@@ -325,16 +335,9 @@
 					toExoGraph(this._translator, obj), 																					// instance
 					event, 																												// custom event object
 					{changes: changes }, 																								// changes
-					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
-			},
-			addRaiseServerEventBegin: function ServerSync$addRaiseServerEventBegin(handler, includeAutomatic) {
-				this._addEvent("raiseServerEventBegin", function(automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
 			},
 			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(response, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
@@ -353,34 +356,34 @@
 					log("server", "._onRaiseServerEventSuccess() >> no changes");
 				}
 
+				this._raiseEvent("raiseServerEventEnd", [automatic]);
 				this._raiseEvent("raiseServerEventSuccess", [automatic]);
 
 				if (callback && callback instanceof Function)
 					callback.call(this, response.result);
-			},
-			addRaiseServerEventSuccess: function ServerSync$addRaiseServerEventSuccess(handler, includeAutomatic) {
-				this._addEvent("raiseServerEventSuccess", function(automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
 			},
 			_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(e, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
 				log("error", "Raise Server Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 
+				this._raiseEvent("raiseServerEventEnd", [automatic]);
 				this._raiseEvent("raiseServerEventFailed", [e, automatic]);
 
 				if (callback && callback instanceof Function)
 					callback.call(this);
 			},
+			addRaiseServerEventBegin: function ServerSync$addRaiseServerEventBegin(handler, includeAutomatic) {
+				this._addEventHandler("raiseServerEventBegin", handler, includeAutomatic);
+			},
+			addRaiseServerEventEnd: function ServerSync$addRaiseServerEventEnd(handler, includeAutomatic) {
+				this._addEventHandler("raiseServerEventEnd", handler, includeAutomatic);
+			},
+			addRaiseServerEventSuccess: function ServerSync$addRaiseServerEventSuccess(handler, includeAutomatic) {
+				this._addEventHandler("raiseServerEventSuccess", handler, includeAutomatic);
+			},
 			addRaiseServerEventFailed: function ServerSync$addRaiseServerEventFailed(handler, includeAutomatic) {
-				this._addEvent("raiseServerEventFailed", function(e, automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
+				this._addEventHandler("raiseServerEventFailed", handler, includeAutomatic, 1);
 			},
 
 			// Roundtrip
@@ -396,16 +399,9 @@
 
 				roundtripProvider(
 					{ changes: this._changes }, 																				// changes
-					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
-			},
-			addRoundtripBegin: function ServerSync$addRoundtripBegin(handler, includeAutomatic) {
-				this._addEvent("roundtripBegin", function(automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
 			},
 			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(response, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
@@ -420,34 +416,22 @@
 					log("server", "._onRoundtripSuccess() >> no changes");
 				}
 
+				this._raiseEvent("roundtripEnd", [automatic]);
 				this._raiseEvent("roundtripSuccess", [automatic]);
 
 				if (callback && callback instanceof Function)
 					callback.call(this, response.changes);
-			},
-			addRoundtripSuccess: function ServerSync$addRoundtripSuccess(handler, includeAutomatic) {
-				this._addEvent("roundtripSuccess", function(automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
 			},
 			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(e, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
 				log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 
+				this._raiseEvent("roundtripEnd", [automatic]);
 				this._raiseEvent("roundtripFailed", [e, automatic]);
 
 				if (callback && callback instanceof Function)
 					callback.call(this);
-			},
-			addRoundtripFailed: function ServerSync$addRoundtripFailed(handler, includeAutomatic) {
-				this._addEvent("roundtripFailed", function(e, automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
 			},
 			startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
 				log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
@@ -467,8 +451,21 @@
 				this._roundtripTimeout = window.setTimeout(doRoundtrip, interval);
 			},
 			stopAutoRoundtrip: function ServerSync$stopAutoRoundtrip() {
-				if (this._roundtripTimeout)
+				if (this._roundtripTimeout) {
 					window.clearTimeout(this._roundtripTimeout);
+				}
+			},
+			addRoundtripBegin: function ServerSync$addRoundtripBegin(handler, includeAutomatic) {
+				this._addEventHandler("roundtripBegin", handler, includeAutomatic);
+			},
+			addRoundtripEnd: function ServerSync$addRoundtripEnd(handler, includeAutomatic) {
+				this._addEventHandler("roundtripEnd", handler, includeAutomatic);
+			},
+			addRoundtripSuccess: function ServerSync$addRoundtripSuccess(handler, includeAutomatic) {
+				this._addEventHandler("roundtripSuccess", handler, includeAutomatic);
+			},
+			addRoundtripFailed: function ServerSync$addRoundtripFailed(handler, includeAutomatic) {
+				this._addEventHandler("roundtripFailed", handler, includeAutomatic, 1);
 			},
 
 			// Save
@@ -485,16 +482,9 @@
 				saveProvider(
 					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 												// root
 					{changes: this.get_Changes() }, 																		// changes
-					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
-			},
-			addSaveBegin: function ServerSync$addSaveBegin(handler, includeAutomatic) {
-				this._addEvent("saveBegin", function(automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
 			},
 			_onSaveSuccess: function ServerSync$_onSaveSuccess(response, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
@@ -510,34 +500,22 @@
 					log("server", "._onSaveSuccess() >> no changes");
 				}
 
+				this._raiseEvent("saveEnd", [automatic]);
 				this._raiseEvent("saveSuccess", [automatic]);
 
 				if (callback && callback instanceof Function)
 					callback.call(this, response.changes);
-			},
-			addSaveSuccess: function ServerSync$addSaveSuccess(handler, includeAutomatic) {
-				this._addEvent("saveSuccess", function(automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
 			},
 			_onSaveFailed: function ServerSync$_onSaveFailed(e, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
 				log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
 
+				this._raiseEvent("saveEnd", [automatic]);
 				this._raiseEvent("saveFailed", [e, automatic]);
 
 				if (callback && callback instanceof Function)
 					callback.call(this);
-			},
-			addSaveFailed: function ServerSync$addSaveFailed(handler, includeAutomatic) {
-				this._addEvent("saveFailed", function(e, automatic) {
-					// only raise automated events if the subscriber requests them
-					if (!automatic || includeAutomatic)
-						handler.apply(this, arguments);
-				});
 			},
 			startAutoSave: function ServerSync$startAutoSave(root, interval) {
 				log("server", "auto-save enabled - interval of {0} milliseconds", [interval]);
@@ -562,8 +540,21 @@
 				this._saveTimeout = window.setTimeout(doSave, interval);
 			},
 			stopAutoSave: function ServerSync$stopAutoSave() {
-				if (this._saveTimeout)
+				if (this._saveTimeout) {
 					window.clearTimeout(this._saveTimeout);
+				}
+			},
+			addSaveBegin: function ServerSync$addSaveBegin(handler, includeAutomatic) {
+				this._addEventHandler("saveBegin", handler, includeAutomatic);
+			},
+			addSaveEnd: function ServerSync$addSaveEnd(handler, includeAutomatic) {
+				this._addEventHandler("saveEnd", handler, includeAutomatic);
+			},
+			addSaveSuccess: function ServerSync$addSaveSuccess(handler, includeAutomatic) {
+				this._addEventHandler("saveSuccess", handler, includeAutomatic);
+			},
+			addSaveFailed: function ServerSync$addSaveFailed(handler, includeAutomatic) {
+				this._addEventHandler("saveFailed", handler, includeAutomatic, 1);
 			},
 
 			// Various
