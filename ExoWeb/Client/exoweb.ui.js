@@ -280,6 +280,9 @@ Type.registerNamespace("ExoWeb.UI");
 						// content is not necessarily in order because of waiting on external templates.
 						$(_this._element).empty();
 
+						// Raise the rendering event
+						if (jQuery) jQuery(this._element).trigger("rendering", [this]);
+
 						// ripped off from dataview
 						var pctx = _this.get_parentContext();
 						var container = _this.get_element();
@@ -323,13 +326,16 @@ Type.registerNamespace("ExoWeb.UI");
 							var ctx = _this._contexts[i];
 							if (ctx) ctx.initializeComponents();
 						}
+
+						// Raise the rendered event
+						if (jQuery) jQuery(_this._element).trigger("rendered", [_this]);
 					});
 				}
 			},
 			initialize: function Content$initialize() {
 				Content.callBaseMethod(this, "initialize");
 
-				// TODO: include meta info about field?
+				// marker attribute used by helper methods to identify as a content control
 				this._element._exowebcontent = {};
 
 				this._initialized = true;
@@ -341,6 +347,22 @@ Type.registerNamespace("ExoWeb.UI");
 		ExoWeb.UI.Content = Content;
 		Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
 
+		// override refresh in order to raise rendering and rendered events
+		var dataviewRefreshBase = Sys.UI.DataView.prototype.refresh;
+		Sys.UI.DataView.prototype.refresh = function Sys$UI$DataView$refreshOverride() {
+			// Don't raise the event if the data has not been set.  The refresh method will also exit early if an 
+			// onRendering handler chooses to cancel rendering.  In this case the event will still be raised.
+			var raiseEvent = this._setData;
+
+			// Raise the rendering event.
+			if (raiseEvent && jQuery) jQuery(this._element).trigger("rendering", [this]);
+
+			// Invoke base function
+			dataviewRefreshBase.apply(this, arguments);
+
+			// Raise the rendered event
+			if (raiseEvent && jQuery) jQuery(this._element).trigger("rendered", [this]);
+		}
 
 		///////////////////////////////////////////////////////////////////////////////
 		/// <summary>
