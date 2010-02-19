@@ -276,6 +276,10 @@ Type.registerNamespace("ExoWeb.UI");
 					externalTemplatesSignal.waitForAll(function Content$externalTemplatesSignal() {
 						log(['ui', "templates"], "render() proceeding after all templates are loaded");
 
+						// Failing to empty content before rending can result in invalid content since rendering 
+						// content is not necessarily in order because of waiting on external templates.
+						$(_this._element).empty();
+
 						// ripped off from dataview
 						var pctx = _this.get_parentContext();
 						var container = _this.get_element();
@@ -320,9 +324,6 @@ Type.registerNamespace("ExoWeb.UI");
 							if (ctx) ctx.initializeComponents();
 						}
 					});
-				}
-				else {
-					$(this._element).empty();
 				}
 			},
 			initialize: function Content$initialize() {
