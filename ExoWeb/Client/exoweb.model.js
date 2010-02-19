@@ -1225,7 +1225,7 @@
 				if (this._properties.length == 1) {
 					// OPTIMIZATION: no need to search all known objects for single property chains
 					this._properties[0].addChanged(function PropertyChain$_raiseChanged$1Prop(sender, property, val, oldVal, wasInited) {
-						handler(sender, chain, val, oldVal, wasInited);
+						handler(sender, chain, val, oldVal, wasInited, property);
 					}, obj);
 				}
 				else {
@@ -1235,7 +1235,7 @@
 								// CASE: using object filter
 								this._properties[p].addChanged(function PropertyChain$_raiseChanged$1Obj(sender, property, val, oldVal, wasInited) {
 									if (chain.connects(obj, sender, priorProp))
-										handler(obj, chain, val, oldVal, wasInited);
+										handler(obj, chain, val, oldVal, wasInited, property);
 								});
 							}
 							else {
@@ -1245,7 +1245,7 @@
 									// to the one that sent the event.
 									Array.forEach(chain._rootType.known(), function(known) {
 										if (chain.isInited(known) && chain.connects(known, sender, priorProp))
-											handler(known, chain, val, oldVal, wasInited);
+											handler(known, chain, val, oldVal, wasInited, property);
 									});
 								});
 							}
