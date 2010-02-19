@@ -51,7 +51,14 @@
 
 				var prepareValue = null;
 
-				var setValue = function lazy$setValue(value) {
+				var setValue = function lazy$setValue(value, msg) {
+					log(["~", "markupExt"], "~ {path}, required=[{required}] (set) {message}- {value}", {
+						path: (properties.$default || "(no path)"),
+						required: properties.required || "",
+						message: msg ? msg + " " : "",
+						value: value
+					});
+
 					var finalValue = value;
 					if (prepareValue && prepareValue instanceof Function)
 						finalValue = prepareValue(value);
@@ -78,17 +85,26 @@
 							var list = result;
 							Sys.Observer.makeObservable(list);
 							Sys.Observer.addCollectionChanged(list, function lazy$listChanged$transform(list, evt) {
+								// take a count of all added and removed items
+								var added = 0, removed = 0;
+								Array.forEach(evt.get_changes(), function(change) {
+									if (change.newItems) added += change.newItems.length;
+									if (change.oldItems) removed += change.oldItems.length;
+								});
+
+								var msg = "changes to underlying list [" + added + " added, " + removed + " removed]";
+
 								// if additional paths are required then load them before updating the value
 								if (properties.required) {
 									Array.forEach(evt.get_changes(), function(change) {
 										ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function() {
-											setValue(result);
+											setValue(result, msg);
 										});
 									});
 								}
 								// otherwise, simply update the value
 								else {
-									setValue(result);
+									setValue(result, msg);
 								}
 							});
 						}
@@ -103,12 +119,13 @@
 
 							if (properties.$default) {
 								// watch for changes to the last property in the path
+								// TODO: really this should be any point in the path
 								var props = properties.$default.split(".");
 								var lastProp = props.pop();
 								ExoWeb.Model.LazyLoader.eval(source, props.join("."),
 									function lazy$beginWatch(lastTarget) {
 										Sys.Observer.addSpecificPropertyChanged(lastTarget, lastProp, function(obj) {
-											setValue(ExoWeb.getValue(lastTarget, lastProp));
+											setValue(ExoWeb.getValue(lastTarget, lastProp), lastProp + " property change");
 										});
 
 									},
@@ -123,9 +140,9 @@
 								if (item.meta) {
 									try {
 										ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
-											chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited) {
+											chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited, triggerProperty) {
 												// when a point in the required path changes then refresh the value
-												setValue(result);
+												setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
 											}, item);
 										});
 									}
@@ -152,11 +169,11 @@
 							// Load additional required paths
 							if (properties.required) {
 								ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function() {
-									setValue(result);
+									setValue(result, "required path loaded");
 								});
 							}
 							else {
-								setValue(result);
+								setValue(result, "no required path");
 							}
 						}
 						catch (err) {
@@ -323,7 +340,17 @@
 					var formatMethod = this["get_" + formatName + "Format"];
 					if (formatMethod) {
 						var format = formatMethod.call(this);
-						return format ? format.convert(rawValue) : rawValue;
+						if (format) {
+							if (rawValue instanceof Array) {
+								return rawValue.map(function(value) { return format.convert(value); });
+							}
+							else {
+								return format.convert(rawValue);
+							}
+						}
+						else {
+							return rawValue;
+						}
 					}
 				}
 			},
