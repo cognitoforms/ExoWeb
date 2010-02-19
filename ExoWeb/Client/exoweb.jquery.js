@@ -74,7 +74,7 @@
 		};
 
 		jQuery.expr[":"].bound = function(obj, index, meta, stack) {
-			if (!ExoWeb.Model)
+			if (!(window.ExoWeb && ExoWeb.Model))
 				return false;
 			return $(obj).liveBindings().length > 0;
 		};
@@ -201,7 +201,7 @@
 
 		// Gets all model rules associated with the property an element is bound to
 		jQuery.fn.rules = function(ruleType) {
-			if (!ExoWeb.Model)
+			if (!(window.ExoWeb && ExoWeb.Model))
 				return [];
 
 			var rules = [];
