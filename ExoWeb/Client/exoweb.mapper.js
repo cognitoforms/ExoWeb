@@ -358,11 +358,11 @@
 				var changes = includeAllChanges ? this._changes : this.get_Changes();
 
 				eventProvider(
-					name,																												// event name
-					toExoGraph(this._translator, obj),																					// instance
-					event,																												// custom event object
-					{changes: changes },																								// changes
-					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					name, 																											// event name
+					toExoGraph(this._translator, obj), 																				// instance
+					event, 																											// custom event object
+					{changes: changes }, 																							// changes
+					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -433,8 +433,8 @@
 				this._raiseEvent("roundtripBegin", [automatic]);
 
 				roundtripProvider(
-					{ changes: this._changes },																					// changes
-					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					{ changes: this._changes }, 																				// changes
+					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -523,9 +523,9 @@
 				this._raiseEvent("saveBegin", [automatic]);
 
 				saveProvider(
-					{ type: root.meta.type.get_fullName(), id: root.meta.id },												// root
-					{changes: this.get_Changes() },																			// changes
-					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1),			// success callback
+					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 											// root
+					{changes: this.get_Changes() }, 																		// changes
+					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
 					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
 				);
 			},
@@ -948,7 +948,7 @@
 				}
 			}
 		};
-		
+
 		ServerSync.Save = function ServerSync$Save(root, success, failed) {
 			var model;
 			if (root instanceof ExoWeb.Model.ObjectBase) {
@@ -1809,16 +1809,19 @@
 							return strPath;
 						});
 
-						objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
-							state[varName].signal.pending(function context$objects$callback(result) {
-								state[varName].objectJson = result.instances;
-							}),
-							state[varName].signal.orPending(function context$objects$callback(error) {
-								ExoWeb.trace.logError("objectInit",
-									"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-									{ query: query, error: error });
-							})
-						);
+						// fetch object state if an id of a persisted object was specified
+						if (query.id !== newId && query.id !== null && query.id !== undefined && query.id !== "") {
+							objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
+								state[varName].signal.pending(function context$objects$callback(result) {
+									state[varName].objectJson = result.instances;
+								}),
+								state[varName].signal.orPending(function context$objects$callback(error) {
+									ExoWeb.trace.logError("objectInit",
+										"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+										{ query: query, error: error });
+								})
+							);
+						}
 					})(varNameLoad);
 				}
 
@@ -1832,15 +1835,33 @@
 					(function(varName) {
 						state[varName].signal.waitForAll(function context$model() {
 
-							// load the json. this may happen asynchronously to increment the signal just in case
-							objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
-								var query = options.model[varName];
-								var mtype = model.type(query.from);
-								ret.model[varName] = mtype.get(query.id);
+							var query = options.model[varName];
+							
+							// construct a new object if a "newId" was specified
+							if (query.id === newId) {
+								ret.model[varName] = new (model.type(query.from).get_jstype())();
 
 								// model object has been successfully loaded!
 								allSignals.oneDone();
-							}));
+							}
+
+							// otherwise, load the object from json if an id was specified
+							else if (query.id !== null && query.id !== undefined && query.id !== "") {
+								// load the json. this may happen asynchronously to increment the signal just in case
+								objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
+									var query = options.model[varName];
+									var mtype = model.type(query.from);
+									ret.model[varName] = mtype.get(query.id);
+
+									// model object has been successfully loaded!
+									allSignals.oneDone();
+								}));
+							}
+							
+							else {
+								// model object has been successfully loaded!
+								allSignals.oneDone();
+							}
 						});
 					})(varNameFinish);
 				}
@@ -1889,7 +1910,14 @@
 				pending.add(callback);
 			}
 		};
+	
+		// object constant to single to mapper to create a new instance rather than load one
+		var newId = new Object();
+		window.$newId = function $newId() {
+			return newId;
+		}
 	}
+
 
 	if (window.Sys && Sys.loader) {
 		Sys.loader.registerScript("ExoWebMapper", null, execute);
