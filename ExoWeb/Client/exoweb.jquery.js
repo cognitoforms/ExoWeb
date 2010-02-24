@@ -7,8 +7,9 @@
 		//////////////////////////////////////////////////////////////////////////////////////
 		// validation events
 		var ensureInited = function($el) {
-			if (!window.ExoWeb)
+			if (!window.ExoWeb) {
 				return;
+			}
 
 			if ($el.attr("__validating") === undefined) {
 				// register for model validation events
@@ -38,7 +39,7 @@
 				// don't double register for events
 				$el.attr("__validating", true);
 			}
-		}
+		};
 
 		jQuery.fn.validated = function(f) {
 			this.each(function() {
@@ -47,7 +48,7 @@
 			});
 
 			return this;
-		}
+		};
 
 		jQuery.fn.validating = function(f) {
 			this.each(function() {
@@ -56,7 +57,7 @@
 			});
 
 			return this;
-		}
+		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		// rendering events
@@ -64,42 +65,47 @@
 			$(this).each(function() {
 				var target = this;
 				$(this).bind("rendering", function(evt) {
-					if (!onlyRaiseOnTarget || evt.target == target)
+					if (!onlyRaiseOnTarget || evt.target == target) {
 						f.apply(this, arguments);
+					}
 				});
 			});
 			return this;
-		}
+		};
 
 		jQuery.fn.rendered = function(f, onlyRaiseOnTarget) {
 			$(this).each(function() {
 				var target = this;
 				$(this).bind("rendered", function(evt) {
-					if (!onlyRaiseOnTarget || evt.target == target)
+					if (!onlyRaiseOnTarget || evt.target == target) {
 						f.apply(this, arguments);
+					}
 				});
 			});
 			return this;
-		}
+		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		// selectors for rules
 		jQuery.expr[":"].rule = function(obj, index, meta, stack) {
-			if (!window.ExoWeb)
+			if (!window.ExoWeb) {
 				return false;
+			}
 
 			var ruleName = meta[3];
 			var ruleType = ExoWeb.Model.Rule[ruleName];
 
-			if (!ruleType)
+			if (!ruleType) {
 				ExoWeb.trace.throwAndLog(["ui", "jquery"], "Unknown rule in selector: " + ruleName);
+			}
 
 			return $(obj).rules(ruleType).length > 0;
 		};
 
 		jQuery.expr[":"].bound = function(obj, index, meta, stack) {
-			if (!(window.ExoWeb && ExoWeb.Model))
+			if (!(window.ExoWeb && ExoWeb.Model)) {
 				return false;
+			}
 			return $(obj).liveBindings().length > 0;
 		};
 
@@ -118,7 +124,7 @@
 		};
 
 		jQuery.fn.control = function(propName, propValue) {
-			if (arguments.length == 0) {
+			if (arguments.length === 0) {
 				return this.get(0).control;
 			}
 			else if (arguments.length == 1) {
@@ -136,8 +142,9 @@
 			var control = this.control();
 			control.add_command(function(sender, args) {
 				var handler = commands[args.get_commandName()];
-				if (handler)
+				if (handler) {
 					handler(sender, args);
+				}
 			});
 		};
 
@@ -154,12 +161,14 @@
 
 					var handler = reg[action];
 
-					if (!handler)
+					if (!handler) {
 						continue;
+					}
 
 					// test root
-					if ($(el).is(reg.selector))
+					if ($(el).is(reg.selector)) {
 						handler.apply(el);
+					}
 
 					// test children
 					$(reg.selector, el).each(handler);
@@ -179,7 +188,7 @@
 
 					processElements(ret.nodes, "added");
 					return ret;
-				}
+				};
 				interceptingTemplates = true;
 			}
 
@@ -222,17 +231,18 @@
 			// really shouldn't chain calls b/c only elements
 			// currently in the DOM would be affected.
 			return null;
-		}
+		};
 
 		// Gets all Sys.Bindings for an element
 		jQuery.fn.liveBindings = function() {
 			return this.get(0).__msajaxbindings || [];
-		}
+		};
 
 		// Gets all model rules associated with the property an element is bound to
 		jQuery.fn.rules = function(ruleType) {
-			if (!(window.ExoWeb && ExoWeb.Model))
+			if (!(window.ExoWeb && ExoWeb.Model)) {
 				return [];
+			}
 
 			var rules = [];
 			var bindings = $(this).liveBindings();
@@ -253,23 +263,26 @@
 					var propName = Sys_Binding_getFinalPath(binding);
 					prop = srcObj.meta.property(propName);
 				}
-				else
+				else {
 					continue;
+				}
 
 				var rule = prop.rule(ruleType);
-				if (rule)
+				if (rule) {
 					rules.push(rule);
+				}
 			}
 
 			return rules;
-		}
+		};
 
 		// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
 		function Sys_Binding_getFinalSourceObject(binding) {
 			var src = binding.get_source();
 
-			for (var i = 0; i < binding._pathArray.length - 1; ++i)
+			for (var i = 0; i < binding._pathArray.length - 1; ++i) {
 				src = src[binding._pathArray[i]];
+			}
 
 			return src;
 		}

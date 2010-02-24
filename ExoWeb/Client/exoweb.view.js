@@ -36,10 +36,12 @@
 				if (properties.source) {
 					var evalSource = new Function("$element", "$index", "$dataItem", "return " + properties.source + ";");
 					var element = null;
-					if (Sys.Component.isInstanceOfType(component))
+					if (Sys.Component.isInstanceOfType(component)) {
 						element = component.get_element();
-					else if (component instanceof Element)
+					}
+					else if (component instanceof Element) {
 						element = component;
+					}
 					source = evalSource(element, templateContext.index, templateContext.dataItem);
 
 					// don't try to eval the path against window
@@ -60,11 +62,12 @@
 					});
 
 					var finalValue = value;
-					if (prepareValue && prepareValue instanceof Function)
+					if (prepareValue && prepareValue instanceof Function) {
 						finalValue = prepareValue(value);
+					}
 
 					Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
-				}
+				};
 
 				ExoWeb.Model.LazyLoader.eval(source, properties.$default,
 					function lazy$Loaded(result) {
@@ -79,7 +82,7 @@
 							// setup prepare function to perform the transform
 							prepareValue = function doTransform(listValue) {
 								return doTrans(listValue, component.get_element(), templateContext.index, templateContext.dataItem);
-							}
+							};
 
 							// watch for changes to the list and refresh
 							var list = result;
@@ -88,8 +91,12 @@
 								// take a count of all added and removed items
 								var added = 0, removed = 0;
 								Array.forEach(evt.get_changes(), function(change) {
-									if (change.newItems) added += change.newItems.length;
-									if (change.oldItems) removed += change.oldItems.length;
+									if (change.newItems) {
+										added += change.newItems.length;
+									}
+									if (change.oldItems) {
+										removed += change.oldItems.length;
+									}
 								});
 
 								var msg = "changes to underlying list [" + added + " added, " + removed + " removed]";
@@ -111,11 +118,12 @@
 						else {
 							// setup prepare function to use the specified format
 							prepareValue = function doFormat(obj) {
-								if (properties.format && result.constructor.formats && result.constructor.formats[properties.format])
+								if (properties.format && result.constructor.formats && result.constructor.formats[properties.format]) {
 									return obj.constructor.formats[properties.format].convert(obj);
+								}
 
 								return obj;
-							}
+							};
 
 							if (properties.$default) {
 								// watch for changes to the last property in the path
@@ -150,13 +158,13 @@
 										ExoWeb.trace.logError(["markupExt", "~"], e);
 									}
 								}
-							}
+							};
 
 							// attempt to watch changes along the required path
-							var list = (result instanceof Array) ? result : [result];
-							Array.forEach(list, watchItemRequiredPaths);
-							Sys.Observer.makeObservable(list);
-							Sys.Observer.addCollectionChanged(list, function lazy$listChanged$watchRequired(list, evt) {
+							var listToWatch = (result instanceof Array) ? result : [result];
+							Array.forEach(listToWatch, watchItemRequiredPaths);
+							Sys.Observer.makeObservable(listToWatch);
+							Sys.Observer.addCollectionChanged(listToWatch, function lazy$listChanged$watchRequired(list, evt) {
 								Array.forEach(evt.get_changes(), function(change) {
 									Array.forEach(change.newItems || [], watchItemRequiredPaths);
 								});
@@ -197,8 +205,9 @@
 			this._ignoreTargetEvents = false;
 			this._readySignal = new ExoWeb.Signal();
 
-			if (options.optionsTransform)
+			if (options.optionsTransform) {
 				this._optionsTransform = options.optionsTransform;
+			}
 
 			// Track state for system and display formats, including the format and bad value.
 			this._systemState = { FormatName: systemFormat, Format: undefined, BadValue: undefined };
@@ -231,20 +240,23 @@
 						var setter = this["set_" + optionName];
 
 						// if the option is already defined don't overwrite critical properties (e.g.: value)
-						if (getter && !Array.contains(allowedOverrides, optionName))
+						if (getter && !Array.contains(allowedOverrides, optionName)) {
 							continue;
+						}
 
 						// create a getter and setter if they don't exist
-						if (!getter || !(getter instanceof Function))
+						if (!getter || !(getter instanceof Function)) {
 							getter = this["get_" + optionName] =
 								(function makeGetter(adapter, optionName) {
 									return function Adapter$customGetter() { return adapter["_" + optionName]; };
 								})(this, optionName);
-						if (!setter || !(setter instanceof Function))
+						}
+						if (!setter || !(setter instanceof Function)) {
 							setter = this["set_" + optionName] =
 								(function makeSetter(adapter, optionName) {
 									return function Adapter$customSetter(value) { adapter["_" + optionName] = value; };
 								})(this, optionName);
+						}
 
 						// set the option value
 						setter.call(this, options[optionName]);
@@ -257,8 +269,9 @@
 
 				// get the property chain for this adapter starting at the source object
 				this._propertyChain = sourceObject.meta.property(this._propertyPath);
-				if (!this._propertyChain)
+				if (!this._propertyChain) {
 					throwAndLog(["@", "markupExt"], "Property \"{p}\" could not be found.", { p: this._propertyPath });
+				}
 
 				// if the target is an adapter, prepend it's property chain
 				if (this._target instanceof Adapter) {
@@ -278,8 +291,9 @@
 				}
 			},
 			_onTargetChanged: function Adapter$_onTargetChanged() {
-				if (this._ignoreTargetEvents)
+				if (this._ignoreTargetEvents) {
 					return;
+				}
 
 				var _this = this;
 				var rawValue = this.get_rawValue();
@@ -291,14 +305,16 @@
 
 				// raise system value changed event
 				var systemSignal = new ExoWeb.Signal("Adapter.systemValue");
-				if (rawValue !== undefined && rawValue != null) {
+				if (rawValue !== undefined && rawValue !== null) {
 					Array.forEach(this.get_systemFormat().getPaths(), function(path) {
-						if (rawValue instanceof Array)
+						if (rawValue instanceof Array) {
 							Array.forEach(rawValue, function(val) {
 								ExoWeb.Model.LazyLoader.eval(val, path, systemSignal.pending());
 							});
-						else
+						}
+						else {
 							ExoWeb.Model.LazyLoader.eval(rawValue, path, systemSignal.pending());
+						}
 					});
 				}
 				systemSignal.waitForAll(function() {
@@ -307,14 +323,16 @@
 
 				// raise display value changed event
 				var displaySignal = new ExoWeb.Signal("Adapter.displayValue");
-				if (rawValue !== undefined && rawValue != null) {
+				if (rawValue !== undefined && rawValue !== null) {
 					Array.forEach(this.get_displayFormat().getPaths(), function(path) {
-						if (rawValue instanceof Array)
+						if (rawValue instanceof Array) {
 							Array.forEach(rawValue, function(val) {
 								ExoWeb.Model.LazyLoader.eval(val, path, displaySignal.pending());
 							});
-						else
+						}
+						else {
 							ExoWeb.Model.LazyLoader.eval(rawValue, path, displaySignal.pending());
+						}
 					});
 				}
 				displaySignal.waitForAll(function() {
@@ -332,8 +350,9 @@
 				var state = this["_" + formatName + "State"];
 
 				if (state) {
-					if (state.BadValue !== undefined)
+					if (state.BadValue !== undefined) {
 						return state.BadValue;
+					}
 
 					var rawValue = this.get_rawValue();
 
@@ -357,9 +376,11 @@
 			_setFormattedValue: function Adapter$_setFormattedValue(formatName, value) {
 				var state = this["_" + formatName + "State"];
 
+				var format;
 				var formatMethod = this["get_" + formatName + "Format"];
-				if (formatMethod)
-					var format = formatMethod.call(this);
+				if (formatMethod) {
+					format = formatMethod.call(this);
+				}
 
 				var converted = format ? format.convertBack(value) : value;
 
@@ -379,11 +400,13 @@
 					meta.issueIf(issue, true);
 
 					// Update the model with the bad value if possible
-					if (prop.canSetValue(this._target, value))
+					if (prop.canSetValue(this._target, value)) {
 						prop.value(this._target, value);
-					else
+					}
 					// run the rules to preserve the order of issues
+					else {
 						meta.executeRules(prop);
+					}
 				}
 				else {
 					var changed = prop.value(this._target) !== converted;
@@ -392,8 +415,9 @@
 						delete state.BadValue;
 
 						// force rules to run again in order to trigger validation events
-						if (!changed)
+						if (!changed) {
 							meta.executeRules(prop);
+						}
 					}
 
 					this.set_rawValue(converted, changed);
@@ -414,8 +438,9 @@
 			isType: function Adapter$isType(jstype) {
 
 				for (var propType = this._propertyChain.get_jstype(); propType !== null; propType = propType.getBaseType()) {
-					if (propType === jstype)
+					if (propType === jstype) {
 						return true;
+					}
 				}
 
 				return false;
@@ -451,8 +476,9 @@
 							this._allowedValues = rule.values(targetObj);
 
 							if (this._allowedValues !== undefined) {
-								if (this._optionsTransform)
+								if (this._optionsTransform) {
 									this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(this._allowedValues).live();
+								}
 
 								// watch for changes to the allowed values list and update options
 								Sys.Observer.addCollectionChanged(this._allowedValues, this._reloadOptions.setScope(this));
@@ -470,8 +496,9 @@
 
 					this._options = [];
 
-					for (var a = 0; allowed && a < allowed.length; a++)
+					for (var a = 0; allowed && a < allowed.length; a++) {
 						Array.add(this._options, new OptionAdapter(this, allowed[a]));
+					}
 				}
 
 				return this._options;
@@ -479,23 +506,28 @@
 			get_selected: function Adapter$get_selected(obj) {
 				var rawValue = this.get_rawValue();
 
-				if (rawValue instanceof Array)
+				if (rawValue instanceof Array) {
 					return Array.contains(rawValue, obj);
-				else
+				}
+				else {
 					return rawValue == obj;
+				}
 			},
 			set_selected: function Adapter$set_selected(obj, selected) {
 				var rawValue = this.get_rawValue();
 
 				if (rawValue instanceof Array) {
-					if (selected && !Array.contains(rawValue, obj))
+					if (selected && !Array.contains(rawValue, obj)) {
 						rawValue.add(obj);
-					else if (!selected && Array.contains(rawValue, obj))
+					}
+					else if (!selected && Array.contains(rawValue, obj)) {
 						rawValue.remove(obj);
+					}
 				}
 				else {
-					if (!obj)
+					if (!obj) {
 						this.set_systemValue(null);
+					}
 					else {
 						var value = (this.get_systemFormat()) ? this.get_systemFormat().convert(obj) : obj;
 						this.set_systemValue(value);
@@ -510,8 +542,9 @@
 			set_rawValue: function Adapter$set_rawValue(value, changed) {
 				var prop = this._propertyChain;
 
-				if (changed === undefined)
+				if (changed === undefined) {
 					changed = prop.value(this._target) !== value;
+				}
 
 				if (changed) {
 					this._ignoreTargetEvents = true;
@@ -528,10 +561,12 @@
 				if (!this._systemState.Format) {
 					var jstype = this._propertyChain.get_jstype();
 
-					if (this._systemState.FormatName)
+					if (this._systemState.FormatName) {
 						this._systemState.Format = jstype.formats[this._systemState.FormatName];
-					else if (!(this._systemState.Format = this._propertyChain.get_format()))
+					}
+					else if (!(this._systemState.Format = this._propertyChain.get_format())) {
 						this._systemState.Format = jstype.formats.$system || jstype.formats.$display;
+					}
 				}
 
 				return this._systemState.Format;
@@ -546,10 +581,12 @@
 				if (!this._displayState.Format) {
 					var jstype = this._propertyChain.get_jstype();
 
-					if (this._displayState.FormatName)
+					if (this._displayState.FormatName) {
 						this._displayState.Format = jstype.formats[this._displayState.FormatName];
-					else if (!(this._displayState.Format = this._propertyChain.get_format()))
+					}
+					else if (!(this._displayState.Format = this._propertyChain.get_format())) {
 						this._displayState.Format = jstype.formats.$display || jstype.formats.$system;
+					}
 				}
 
 				return this._displayState.Format;
@@ -568,12 +605,12 @@
 			addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
 				this._propertyChain.lastTarget(this._target).meta.addPropertyValidated(this._propertyChain.get_name(), handler);
 			}
-		}
+		};
 		ExoWeb.View.Adapter = Adapter;
 		Adapter.registerClass("ExoWeb.View.Adapter");
 
 		///////////////////////////////////////////////////////////////////////////////
-		OptionAdapter = function(parent, obj) {
+		function OptionAdapter(parent, obj) {
 			this._parent = parent;
 			this._obj = obj;
 
@@ -596,8 +633,9 @@
 				}
 			},
 			_onTargetChanged: function OptionAdapter$_onTargetChanged(sender, args) {
-				if (this._ignoreTargetEvents)
+				if (this._ignoreTargetEvents) {
 					return;
+				}
 
 				Sys.Observer.raisePropertyChanged(this, "label");
 			},
@@ -635,7 +673,7 @@
 				var prop = this._parent.get_propertyChain();
 				prop.lastTarget(this._parent._target).meta.addPropertyValidated(prop.get_name(), handler);
 			}
-		}
+		};
 		ExoWeb.View.OptionAdapter = OptionAdapter;
 		OptionAdapter.registerClass("ExoWeb.View.OptionAdapter");
 
@@ -664,7 +702,7 @@
 						}
 					);
 				}
-			}
+			};
 		})();
 	}
 

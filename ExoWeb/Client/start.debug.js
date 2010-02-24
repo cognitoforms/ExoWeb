@@ -3,7 +3,7 @@
 
 	var exoScripts = document.getElementsByTagName("script");
 	var exoStartUrl = exoScripts[exoScripts.length - 1].src;
-	var exoBasePath = exoStartUrl.slice(0, exoStartUrl.lastIndexOf("/") + 1)
+	var exoBasePath = exoStartUrl.slice(0, exoStartUrl.lastIndexOf("/") + 1);
 	Sys.loader.defineScripts(null, [
 		{
 			releaseUrl: exoBasePath + "exoweb.js",

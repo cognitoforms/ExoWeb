@@ -1,11 +1,12 @@
 ﻿Function.prototype.mixin = function(methods, object) {
-	if(!object)
+	if(!object) {
 		object = this.prototype;
+	}
 
 	for (var m in methods) {
 		object[m] = methods[m];
 	}
-}
+};
 
 Type.registerNamespace("ExoWeb");
 
@@ -39,8 +40,9 @@ Type.registerNamespace("ExoWeb");
 			//		model: true
 		},
 		_isEnabled: function _isEnabled(category) {
-			if (ExoWeb.trace.flags.all)
+			if (ExoWeb.trace.flags.all) {
 				return true;
+			}
 
 			if (category instanceof Array) {
 				for (var i = 0; i < category.length; ++i) {
@@ -55,27 +57,34 @@ Type.registerNamespace("ExoWeb");
 			}
 		},
 		_formatMessage: function _formatMessage(category, message, args) {
-			if (!(category instanceof Array))
+			if (!(category instanceof Array)) {
 				category = [category];
+			}
+
 			var catStr = category.join(", ");
 
 			return "[" + catStr + "]: " + $format(message, args);
 		},
 		log: function log(category, message, args) {
-			if (typeof (console) === "undefined")
+			if (typeof (console) === "undefined") {
 				return;
+			}
 
-			if (ExoWeb.trace._isEnabled(category))
+			if (ExoWeb.trace._isEnabled(category)) {
 				console.log(ExoWeb.trace._formatMessage(category, message, args));
+			}
 		},
 		logError: function logError(category, message, args) {
-			if (typeof (console) === "undefined")
+			if (typeof (console) === "undefined") {
 				return;
+			}
 
-			if (!(category instanceof Array))
+			if (!(category instanceof Array)) {
 				category = [category, "error"];
-			else
+			}
+			else {
 				category.push("error");
+			}
 
 			console.error(ExoWeb.trace._formatMessage(category, message, args));
 		},
@@ -101,8 +110,9 @@ Type.registerNamespace("ExoWeb");
 
 	Signal.mixin({
 		pending: function Signal$pending(callback) {
-			if (this._pending == 0)
+			if (this._pending === 0) {
 				Signal.allPending.push(this);
+			}
 
 			this._pending++;
 			log("signal", "(++{_pending}) {_debugLabel}", this);
@@ -121,35 +131,40 @@ Type.registerNamespace("ExoWeb");
 		},
 		_genCallback: function Signal$_genCallback(callback) {
 			if (callback) {
-				with ({ signal: this }) {
-					return function() {
-						signal._doCallback("pending", this, callback, arguments);
-						signal.oneDone();
-					}
-				}
+				var signal = this;
+				return function() {
+					signal._doCallback("pending", this, callback, arguments);
+					signal.oneDone();
+				};
 			}
-			else
+			else {
 				return this._oneDoneFn;
+			}
 		},
 		waitForAll: function Signal$waitForAll(callback) {
-			if (!callback)
+			if (!callback) {
 				return;
+			}
 
-			if (this._pending == 0)
+			if (this._pending === 0) {
 				this._doCallback("waitForAll", this, callback, []);
-			else
+			}
+			else {
 				this._waitForAll.push(callback);
+			}
 		},
 		oneDone: function Signal$oneDone() {
 			log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
 
 			--this._pending;
 
-			if (this._pending == 0)
+			if (this._pending === 0) {
 				Array.remove(Signal.allPending, this);
+			}
 
-			while (this._pending == 0 && this._waitForAll.length > 0)
+			while (this._pending === 0 && this._waitForAll.length > 0) {
 				this._doCallback("waitForAll", this, Array.dequeue(this._waitForAll), []);
+			}
 		}
 	});
 
@@ -168,20 +183,22 @@ Type.registerNamespace("ExoWeb");
 
 			var origCallback;
 
-			if (options.callbackArg < arguments.length)
+			if (options.callbackArg < arguments.length) {
 				origCallback = arguments[options.callbackArg];
+			}
 
 			// determine what values to use to group callers
 			var groupBy;
 
 			if (options.groupBy) {
-				groupBy = options.groupBy.apply(this, arguments)
+				groupBy = options.groupBy.apply(this, arguments);
 			}
 			else {
 				groupBy = [this];
 				for (var i = 0; i < arguments.length; ++i) {
-					if (i != options.callbackArg)
+					if (i != options.callbackArg) {
 						groupBy.push(arguments[i]);
+					}
 				}
 			}
 
@@ -192,8 +209,9 @@ Type.registerNamespace("ExoWeb");
 				var call = calls[c];
 
 				// TODO: handle optional params better
-				if (groupBy.length != call.groupBy.length)
+				if (groupBy.length != call.groupBy.length) {
 					continue;
+				}
 
 				callInProgress = call;
 				for (var i = 0; i < groupBy.length; ++i) {
@@ -212,8 +230,9 @@ Type.registerNamespace("ExoWeb");
 				// make sure the original callback is invoked and that cleanup occurs
 				call.callback.add(function() {
 					Array.remove(calls, call);
-					if (origCallback)
+					if (origCallback) {
 						origCallback.apply(this, arguments);
+					}
 				});
 
 				// pass the new callback to the inner function
@@ -224,8 +243,8 @@ Type.registerNamespace("ExoWeb");
 				// wait for the original call to complete
 				callInProgress.callback.add(origCallback);
 			}
-		}
-	}
+		};
+	};
 
 	Function.prototype.cached = function(options) {
 		var proceed = this;
@@ -242,15 +261,15 @@ Type.registerNamespace("ExoWeb");
 			}
 
 			return result;
-		}
-	}
+		};
+	};
 
 	Function.prototype.setScope = function setScope(obj) {
 		var func = this;
 		return function setScope$function() {
 			return func.apply(obj, arguments);
-		}
-	}
+		};
+	};
 
 	Function.prototype.prependArguments = function prependArguments(/* arg1, arg2, ... */) {
 		var func = this;
@@ -258,8 +277,8 @@ Type.registerNamespace("ExoWeb");
 		return function prependArguments$function() {
 			Array.addRange(additional, Array.prototype.slice.call(arguments));
 			return func.apply(this, additional);
-		}
-	}
+		};
+	};
 
 	Function.prototype.appendArguments = function appendArguments(/* arg1, arg2, ... */) {
 		var func = this;
@@ -268,36 +287,37 @@ Type.registerNamespace("ExoWeb");
 			var args = Array.prototype.slice.call(arguments);
 			Array.addRange(args, additional);
 			return func.apply(this, args);
-		}
-	}
+		};
+	};
 
 	Function.prototype.spliceArguments = function spliceArguments(/* start, howmany, item1, item2, ... */) {
 		var func = this;
-		var spliceArguments = arguments;
+		var spliceArgs = arguments;
 		return function spliceArguments$function() {
 			var args = Array.prototype.slice.call(arguments);
-			args.splice.apply(args, spliceArguments);
+			args.splice.apply(args, spliceArgs);
 			return func.apply(this, args);
-		}
-	}
+		};
+	};
 
 	Function.prototype.sliceArguments = function sliceArguments(/* start, end */) {
 		var func = this;
-		var sliceArguments = arguments;
+		var sliceArgs = arguments;
 		return function spliceArguments$function() {
 			var args = Array.prototype.slice.call(arguments);
-			args = args.slice.apply(args, sliceArguments);
+			args = args.slice.apply(args, sliceArgs);
 			return func.apply(this, args);
-		}
-	}
+		};
+	};
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Functor() {
 		var funcs = [];
 
 		var f = function() {
-			for (var i = 0; i < funcs.length; ++i)
+			for (var i = 0; i < funcs.length; ++i) {
 				funcs[i].apply(this, arguments);
+			}
 		};
 
 		f._funcs = funcs;
@@ -311,12 +331,13 @@ Type.registerNamespace("ExoWeb");
 		for (var i = 0; i < arguments.length; ++i) {
 			var f = arguments[i];
 
-			if (f == null)
+			if (f === null) {
 				continue;
+			}
 
 			this._funcs.push(f);
 		}
-	}
+	};
 
 	Functor.remove = function(old) {
 		for (var i = this._funcs.length - 1; i >= 0; --i) {
@@ -325,24 +346,27 @@ Type.registerNamespace("ExoWeb");
 				break;
 			}
 		}
-	}
+	};
 
 	Functor.eventing = {
 		_addEvent: function Functor$_addEvent(name, func) {
-			if (!this["_" + name])
+			if (!this["_" + name]) {
 				this["_" + name] = new Functor();
+			}
 
 			this["_" + name].add(func);
 		},
 		_removeEvent: function Functor$_removeEvent(name, func) {
 			var handler = this["_" + name];
-			if (handler)
+			if (handler) {
 				handler.remove(func);
+			}
 		},
 		_raiseEvent: function Functor$_raiseEvent(name, argsArray) {
 			var handler = this["_" + name];
-			if (handler)
+			if (handler) {
 				handler.apply(this, argsArray || []);
+			}
 		}
 	};
 
@@ -357,11 +381,13 @@ Type.registerNamespace("ExoWeb");
 		get: function(member) {
 			var propValue = getValue(this.value, member);
 
-			if (propValue === undefined)
+			if (propValue === undefined) {
 				propValue = window[member];
+			}
 
-			if (propValue === undefined)
+			if (propValue === undefined) {
 				throw new TypeError(member + " is undefined");
+			}
 
 			return new EvalWrapper(propValue);
 		}
@@ -378,14 +404,17 @@ Type.registerNamespace("ExoWeb");
 		var skipWords = ["true", "false", "$index", "null"];
 
 		filter = filter.replace(parser, function(match, ignored, name, more, strLiteral) {
-			if ((strLiteral !== undefined && strLiteral !== null && strLiteral.length > 0) || skipWords.indexOf(name) >= 0)
+			if ((strLiteral !== undefined && strLiteral !== null && strLiteral.length > 0) || skipWords.indexOf(name) >= 0) {
 				return match;
+			}
 
-			if (name === "$item")
+			if (name === "$item") {
 				return "";
+			}
 
-			if (more.length > 0)
+			if (more.length > 0) {
 				return "get('" + name + "')" + more;
+			}
 
 			return "get('" + name + "').value";
 		});
@@ -416,18 +445,22 @@ Type.registerNamespace("ExoWeb");
 				var a = evalPath(aObj, order.path, null, null);
 				var b = evalPath(bObj, order.path, null, null);
 
-				if (a === null && b !== null)
+				if (a === null && b !== null) {
 					return order.nulls;
-				if (a !== null && b === null)
+				}
+				if (a !== null && b === null) {
 					return -order.nulls;
-				if (a < b)
+				}
+				if (a < b) {
 					return order.ab;
-				if (a > b)
+				}
+				if (a > b) {
 					return -order.ab;
+				}
 			}
 
 			return 0;
-		}
+		};
 	}).cached({ key: function(ordering) { return ordering; } });
 
 
@@ -442,8 +475,9 @@ Type.registerNamespace("ExoWeb");
 			return this.array || this;
 		},
 		where: function Transform$where(filter, thisPtr) {
-			if (!(filter instanceof Function))
+			if (!(filter instanceof Function)) {
 				filter = compileFilterFunction(filter);
+			}
 
 			var output = [];
 
@@ -453,15 +487,17 @@ Type.registerNamespace("ExoWeb");
 			for (var i = 0; i < len; ++i) {
 				var item = input[i];
 
-				if (filter.apply(thisPtr || item, [item, i]))
+				if (filter.apply(thisPtr || item, [item, i])) {
 					output.push(item);
+				}
 			}
 
 			return this._next(this.where, arguments, output);
 		},
 		groupBy: function Transform$groupBy(groups, thisPtr) {
-			if (!(groups instanceof Function))
+			if (!(groups instanceof Function)) {
 				groups = compileGroupsFunction(groups);
+			}
 
 			var output = [];
 
@@ -480,28 +516,33 @@ Type.registerNamespace("ExoWeb");
 					}
 				}
 
-				if (!group)
+				if (!group) {
 					output.push({ group: groupKey, items: [item] });
+				}
 			}
 			return this._next(this.groupBy, arguments, output);
 		},
 		orderBy: function Transform$orderBy(ordering, thisPtr) {
-			if (!(ordering instanceof Function))
+			if (!(ordering instanceof Function)) {
 				ordering = compileOrderingFunction(ordering);
+			}
 
 			var input = this.input();
 			var output = new Array(input.length);
 
 			// make new array
 			var len = input.length;
-			for (var i = 0; i < len; i++)
+			for (var i = 0; i < len; i++) {
 				output[i] = input[i];
+			}
 
 			// sort array in place
-			if (!thisPtr)
+			if (!thisPtr) {
 				output.sort(ordering);
-			else
+			}
+			else {
 				output.sort(function() { return ordering.apply(this, arguments); });
+			}
 
 			return this._next(this.orderBy, arguments, output);
 		},
@@ -519,8 +560,9 @@ Type.registerNamespace("ExoWeb");
 			var output = Sys.Observer.makeObservable(new Array(input.length));
 
 			var len = input.length;
-			for (var i = 0; i < len; i++)
+			for (var i = 0; i < len; i++) {
 				output[i] = input[i];
+			}
 
 			// watch for changes to root input and rerun transform chain as needed
 			Sys.Observer.addCollectionChanged(chain[0].input(), function() {
@@ -550,25 +592,31 @@ Type.registerNamespace("ExoWeb");
 	function evalPath(obj, path, nullValue, undefinedValue) {
 		var steps = path.split(".");
 
-		if (obj === null)
+		if (obj === null) {
 			return arguments.length >= 3 ? nullValue : null;
-		if (obj === undefined)
+		}
+		if (obj === undefined) {
 			return arguments.length >= 4 ? undefinedValue : undefined;
+		}
 
 		for (var i = 0; i < steps.length; ++i) {
 			var name = steps[i];
-			var obj = ExoWeb.getValue(obj, name);
+			obj = ExoWeb.getValue(obj, name);
 
-			if (obj === null)
+			if (obj === null) {
 				return arguments.length >= 3 ? nullValue : null;
-			if (obj === undefined)
+			}
+			if (obj === undefined) {
 				return arguments.length >= 4 ? undefinedValue : undefined;
+			}
 		}
 
-		if (obj === null)
+		if (obj === null) {
 			return arguments.length >= 3 ? nullValue : null;
-		if (obj === undefined)
+		}
+		if (obj === undefined) {
 			return arguments.length >= 4 ? undefinedValue : undefined;
+		}
 
 		return obj;
 	}
@@ -596,33 +644,38 @@ Type.registerNamespace("ExoWeb");
 			var suppressReverse = (arguments.length == 4 && arguments[3].constructor === Boolean) ? arguments[3] : false;
 
 			// lazy initialize the forward dictionary for the category
-			if (!this._forwardDictionary[category])
+			if (!this._forwardDictionary[category]) {
 				this._forwardDictionary[category] = {};
+			}
 			this._forwardDictionary[category][key] = value;
 
 			// don't add to the reverse dictionary if the suppress flag is specified
 			if (!suppressReverse) {
 				// lazy initialize the reverse dictionary for the category
-				if (!this._reverseDictionary[category])
+				if (!this._reverseDictionary[category]) {
 					this._reverseDictionary[category] = {};
+				}
 				this._reverseDictionary[category][value] = key;
 			}
 		}
-	}
+	};
 	ExoWeb.Translator = Translator;
 
 	function getLastTarget(target, propertyPath) {
 		var path = propertyPath;
 		var finalTarget = target;
 
-		if (path.constructor == String)
+		if (path.constructor == String) {
 			path = path.split(".");
-		else if (!(path instanceof Array))
+		}
+		else if (!(path instanceof Array)) {
 			throwAndLog(["$lastTarget", "core"], "invalid parameter propertyPath");
+		}
 
 		for (var i = 0; i < path.length - 1; i++) {
-			if (finalTarget)
+			if (finalTarget) {
 				finalTarget = getValue(finalTarget, path[i]);
+			}
 		}
 
 		return finalTarget;
@@ -651,8 +704,9 @@ Type.registerNamespace("ExoWeb");
 	///////////////////////////////////////////////////////////////////////////////
 	// Globals
 	function $format(str, values) {
-		if (!values)
+		if (!values) {
 			return str;
+		}
 
 		return str.replace(/{([a-z0-9_.]+)}/ig, function(match, expr) {
 			return evalPath(values, expr, "", match).toString();
@@ -695,8 +749,9 @@ Type.registerNamespace("ExoWeb");
 
 	function _raiseSpecificPropertyChanged(target, args) {
 		var func = target.__propertyChangeHandlers[args.get_propertyName()];
-		if (func && func instanceof Function)
+		if (func && func instanceof Function) {
 			func(target);
+		}
 	}
 
 	// Converts observer events from being for ALL properties to a specific one.
@@ -711,8 +766,9 @@ Type.registerNamespace("ExoWeb");
 
 		var func = target.__propertyChangeHandlers[property];
 
-		if (!func)
+		if (!func) {
 			target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
+		}
 
 		func.add(handler);
 	};
@@ -758,11 +814,12 @@ Type.registerNamespace("ExoWeb");
 			if (ctx && ctx.updating) {
 				ctx.dirty = true;
 				return;
-			};
-			if (notify) // added
+			}
+			if (notify) {
 				Sys.Observer.raisePropertyChanged(mainTarget, path[0]);
+			}
 		}
-	}
+	};
 }
 
 if (window.Sys && Sys.loader) {
@@ -782,14 +839,16 @@ else {
 if (!Array.prototype.map) {
 	Array.prototype.map = function(fun /*, thisp*/) {
 		var len = this.length >>> 0;
-		if (typeof fun != "function")
+		if (typeof fun != "function") {
 			throw new TypeError();
+		}
 
 		var res = new Array(len);
 		var thisp = arguments[1];
 		for (var i = 0; i < len; i++) {
-			if (i in this)
+			if (i in this) {
 				res[i] = fun.call(thisp, this[i], i, this);
+			}
 		}
 
 		return res;
@@ -801,13 +860,15 @@ if (!Array.prototype.forEach)
 	Array.prototype.forEach = function Array$forEach(fun /*, thisp*/)
 	{
 		var len = this.length >>> 0;
-		if (typeof fun != "function")
+		if (typeof fun != "function") {
 			throw new TypeError();
+		}
 
 		var thisp = arguments[1];
 		for (var i = 0; i < len; i++) {
-			if (i in this)
+			if (i in this) {
 				fun.call(thisp, this[i], i, this);
+			}
 		}
 	};
 }
@@ -815,14 +876,15 @@ if (!Array.prototype.forEach)
 if (!Array.prototype.every) {
 	Array.prototype.every = function Array$every(fun /*, thisp*/) {
 		var len = this.length >>> 0;
-		if (typeof fun != "function")
+		if (typeof fun != "function") {
 			throw new TypeError();
+		}
 
 		var thisp = arguments[1];
 		for (var i = 0; i < len; i++) {
-			if (i in this &&
-		  !fun.call(thisp, this[i], i, this))
+			if (i in this && !fun.call(thisp, this[i], i, this)) {
 				return false;
+			}
 		}
 
 		return true;
@@ -836,16 +898,18 @@ if (!Array.prototype.indexOf)
 		var len = this.length >>> 0;
 
 		var from = Number(arguments[1]) || 0;
-		from = (from < 0)
-			? Math.ceil(from)
-			: Math.floor(from);
-		if (from < 0)
+
+		from = (from < 0) ? Math.ceil(from) : Math.floor(from);
+
+		if (from < 0) {
 			from += len;
+		}
 
 		for (; from < len; from++)
 		{
-			if (from in this && this[from] === elt)
+			if (from in this && this[from] === elt) {
 				return from;
+			}
 		}
 		return -1;
 	};
@@ -856,13 +920,15 @@ if (!Array.prototype.some) {
 		var i = 0,
 		len = this.length >>> 0;
 
-		if (typeof fun != "function")
+		if (typeof fun != "function") {
 			throw new TypeError();
+		}
 
 		var thisp = arguments[1];
 		for (; i < len; i++) {
-			if (i in this && fun.call(thisp, this[i], i, this))
+			if (i in this && fun.call(thisp, this[i], i, this)) {
 				return true;
+			}
 		}
 
 		return false;
@@ -876,8 +942,9 @@ Object.copy = function Object$Copy(obj) {
 	} else {
 		if (obj instanceof Array) {
 			var result = [];
-			for (var i = 0; i < obj.length; i++)
+			for (var i = 0; i < obj.length; i++) {
 				result.push(Object.copy(obj[i]));
+			}
 			return result;
 		}
 		else {
@@ -888,15 +955,18 @@ Object.copy = function Object$Copy(obj) {
 				return new obj.constructor(value);
 			} else {
 				// don't clone entities
-				if (ExoWeb.Model && obj instanceof ExoWeb.Model.Entity)
+				if (ExoWeb.Model && obj instanceof ExoWeb.Model.Entity) {
 					return obj;
+				}
 				else {
 					// ok, we have a normal object. copy the whole thing, property-by-property.
 					var c = {};
-					for (var property in obj) c[property] = obj[property];
+					for (var property in obj) {
+						c[property] = obj[property];
+					}
 					return c;
 				}
 			}
 		}
 	}
-}
+};

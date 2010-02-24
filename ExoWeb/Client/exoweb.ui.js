@@ -37,36 +37,44 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._when;
 			},
 			execute: function Toggle$execute() {
-				if (!this.get_isInitialized() || !this.hasOwnProperty("_on"))
+				if (!this.get_isInitialized() || !this.hasOwnProperty("_on")) {
 					return;
+				}
 
 				var equals;
 
-				if (this._when instanceof Function)
+				if (this._when instanceof Function) {
 					equals = !!this._when(this._on);
-				else if (typeof (this._on) === "boolean" && this._when === undefined)
+				}
+				else if (typeof (this._on) === "boolean" && this._when === undefined) {
 					equals = this._on;
-				else
-					equals = this._on === this._when;
-
-				if (equals) {
-					if (this._action == "hide")
-						$(this.get_element()).hide();
-					else
-						$(this.get_element()).show();
 				}
 				else {
-					if (this._action == "hide")
-						$(this.get_element()).show();
-					else
+					equals = this._on === this._when;
+				}
+
+				if (equals) {
+					if (this._action == "hide") {
 						$(this.get_element()).hide();
+					}
+					else {
+						$(this.get_element()).show();
+					}
+				}
+				else {
+					if (this._action == "hide") {
+						$(this.get_element()).show();
+					}
+					else {
+						$(this.get_element()).hide();
+					}
 				}
 			},
 			initialize: function Toggle$initialize() {
 				Toggle.callBaseMethod(this, "initialize");
 				this.execute();
 			}
-		}
+		};
 
 		ExoWeb.UI.Toggle = Toggle;
 		Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control);
@@ -98,8 +106,9 @@ Type.registerNamespace("ExoWeb.UI");
 				this._for = value;
 			},
 			matches: function(e) {
-				if (this._for === undefined)
+				if (this._for === undefined) {
 					return true;
+				}
 
 				return $(e).is(this._for);
 			},
@@ -122,8 +131,8 @@ Type.registerNamespace("ExoWeb.UI");
 							// turn arbitrary javascript code into function
 							this._ifFn = new Function("$data", "$container", "return " + this._if + ";");
 						}
-						catch (ex) {
-							throwAndLog(["ui", "templates"], "Statement \"" + this._if + "\" causes the following error: " + ex);
+						catch (compileError) {
+							throwAndLog(["ui", "templates"], "Statement \"" + this._if + "\" causes the following error: " + compileError);
 						}
 					}
 
@@ -131,7 +140,7 @@ Type.registerNamespace("ExoWeb.UI");
 						try {
 							result = this._ifFn.apply(this, [data, element]);
 						}
-						catch (ex) {
+						catch (executeError) {
 							result = false;
 						}
 					}
@@ -153,7 +162,7 @@ Type.registerNamespace("ExoWeb.UI");
 				$(this.get_element()).addClass("vc3-template").hide();
 				allTemplates.push(this.get_element());
 			}
-		}
+		};
 
 		var allTemplates = [];
 
@@ -178,7 +187,7 @@ Type.registerNamespace("ExoWeb.UI");
 			}
 
 			return null;
-		}
+		};
 
 		// bookkeeping for Template.load()...
 		// consider wrapper object to clean up after templates are loaded?
@@ -195,7 +204,8 @@ Type.registerNamespace("ExoWeb.UI");
 			var lastReq = lastTemplateRequestSignal;
 
 			// set the last request signal to the new signal and increment
-			var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
+			lastTemplateRequestSignal = new ExoWeb.Signal(id);
+			var signal = lastTemplateRequestSignal;
 			var callback = signal.pending(function(elem) {
 				log("ui", "Activating elements for templates \"{0}\"", [id]);
 				Sys.Application.activateElement(elem);  // activate controls
@@ -216,7 +226,7 @@ Type.registerNamespace("ExoWeb.UI");
 						callback(elem);
 					}
 				}));
-		}
+		};
 
 		ExoWeb.UI.Template = Template;
 		Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
@@ -245,11 +255,13 @@ Type.registerNamespace("ExoWeb.UI");
 			getTemplate: function Content$getTemplate(data) {
 				var tmpl = Template.find(this._element, data);
 
-				if (!tmpl)
+				if (!tmpl) {
 					throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}, Element={1}.{2}", [data, this._element.tagName, this._element.className]);
+				}
 
-				if (!Sys.UI.Template.isInstanceOfType(tmpl))
+				if (!Sys.UI.Template.isInstanceOfType(tmpl)) {
 					tmpl = new Sys.UI.Template(tmpl);
+				}
 
 				return tmpl;
 			},
@@ -264,8 +276,9 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._contexts;
 			},
 			get_parentContext: function Content$get_parentContext() {
-				if (!this._parentContext)
+				if (!this._parentContext) {
 					this._parentContext = Sys.UI.Template.findContext(this.get_element());
+				}
 				return this._parentContext;
 			},
 			render: function Content$render() {
@@ -281,7 +294,9 @@ Type.registerNamespace("ExoWeb.UI");
 						$(_this._element).empty();
 
 						// Raise the rendering event
-						if (jQuery) jQuery(this._element).trigger("rendering", [this]);
+						if (jQuery) {
+							jQuery(this._element).trigger("rendering", [this]);
+						}
 
 						// ripped off from dataview
 						var pctx = _this.get_parentContext();
@@ -306,8 +321,9 @@ Type.registerNamespace("ExoWeb.UI");
 
 							// get custom classes from template
 							var classes = $(itemTemplate.get_element()).attr("class");
-							if (classes)
+							if (classes) {
 								classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
+							}
 
 							try {
 								_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
@@ -317,18 +333,23 @@ Type.registerNamespace("ExoWeb.UI");
 							}
 
 							// copy custom classes from template to content control
-							if (classes)
+							if (classes) {
 								$(container).addClass(classes);
+							}
 						}
 
 						// necessary in order to render components found within the template (like a nested dataview)
-						for (var i = 0, l = _this._contexts.length; i < l; i++) {
-							var ctx = _this._contexts[i];
-							if (ctx) ctx.initializeComponents();
+						for (var j = 0, l = _this._contexts.length; j < l; j++) {
+							var ctx = _this._contexts[j];
+							if (ctx) {
+								ctx.initializeComponents();
+							}
 						}
 
 						// Raise the rendered event
-						if (jQuery) jQuery(_this._element).trigger("rendered", [_this]);
+						if (jQuery) {
+							jQuery(_this._element).trigger("rendered", [_this]);
+						}
 					});
 				}
 			},
@@ -342,7 +363,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 				this.render();
 			}
-		}
+		};
 
 		ExoWeb.UI.Content = Content;
 		Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
@@ -355,14 +376,18 @@ Type.registerNamespace("ExoWeb.UI");
 			var raiseEvent = this._setData;
 
 			// Raise the rendering event.
-			if (raiseEvent && jQuery) jQuery(this._element).trigger("rendering", [this]);
+			if (raiseEvent && jQuery) {
+				jQuery(this._element).trigger("rendering", [this]);
+			}
 
 			// Invoke base function
 			dataviewRefreshBase.apply(this, arguments);
 
 			// Raise the rendered event
-			if (raiseEvent && jQuery) jQuery(this._element).trigger("rendered", [this]);
-		}
+			if (raiseEvent && jQuery) {
+				jQuery(this._element).trigger("rendered", [this]);
+			}
+		};
 
 		///////////////////////////////////////////////////////////////////////////////
 		/// <summary>
@@ -410,11 +435,12 @@ Type.registerNamespace("ExoWeb.UI");
 				$(element).load(path, function(responseText, status, response) {
 					$(element).removeClass(loadingClass);
 
-					if (status != "success" && status != "notmodified")
+					if (status != "success" && status != "notmodified") {
 						ExoWeb.trace.throwAndLog("ui", "Failed to load html: status = {status}", { status: status, response: response });
+					}
 				});
 			}
-		}
+		};
 
 		ExoWeb.UI.Html = Html;
 		Html.registerClass("ExoWeb.UI.Html", Sys.UI.Control);
@@ -423,19 +449,22 @@ Type.registerNamespace("ExoWeb.UI");
 			var element = childElement;
 
 			// find the first parent that has an attached ASP.NET Ajax dataview or ExoWeb content control
-			while (element.parentNode && !element.parentNode._msajaxtemplate && !element.parentNode._exowebcontent)
+			while (element.parentNode && !element.parentNode._msajaxtemplate && !element.parentNode._exowebcontent) {
 				element = element.parentNode;
+			}
 
 			// containing template was not found
-			if (element.parentNode && (element.parentNode._msajaxtemplate || element.parentNode._exowebcontent))
+			if (element.parentNode && (element.parentNode._msajaxtemplate || element.parentNode._exowebcontent)) {
 				return element;
+			}
 
 			return null;
 		}
 
 		function getDataForContainer(container, subcontainer, index) {
-			if (!container)
+			if (!container) {
 				return;
+			}
 
 			var data = null;
 
@@ -448,17 +477,20 @@ Type.registerNamespace("ExoWeb.UI");
 				var containerData = container.control.get_data();
 
 				// ensure an array for conformity
-				if (!(containerData instanceof Array))
+				if (!(containerData instanceof Array)) {
 					containerData = [containerData];
+				}
 
 				if (containerContexts) {
 					// if there is only one context in the array then the index must be zero
-					if (containerContexts.length == 1)
+					if (containerContexts.length == 1) {
 						index = 0;
+					}
 
-					if (index != undefined && index.constructor == Number) {
-						if (index >= containerContexts.length)
+					if (index !== undefined && index !== null && index.constructor === Number) {
+						if (index >= containerContexts.length) {
 							log("ui", "invalid index");
+						}
 						else {
 							var indexedContext = containerContexts[index];
 							var indexedData = containerData[index];
@@ -469,8 +501,9 @@ Type.registerNamespace("ExoWeb.UI");
 						// try to find the right context based on the element's position in the dom
 						for (var i = 0, l = containerContexts.length; i < l; i++) {
 							var childContext = containerContexts[i];
-							if (childContext && childContext.containerElement === container && Sys._indexOf(childContext.nodes, subcontainer) > -1)
+							if (childContext && childContext.containerElement === container && Sys._indexOf(childContext.nodes, subcontainer) > -1) {
 								data = childContext.dataItem;
+							}
 						}
 					}
 				}
@@ -481,12 +514,15 @@ Type.registerNamespace("ExoWeb.UI");
 
 		function getParentContextData(target, index, level, dataType) {
 
-			if (target.control instanceof Sys.UI.DataView)
+			if (target.control instanceof Sys.UI.DataView) {
 				target = target.control;
-			else if (target instanceof Sys.UI.Template)
+			}
+			else if (target instanceof Sys.UI.Template) {
 				target = target.get_element();
-			else if (target instanceof Sys.UI.TemplateContext)
+			}
+			else if (target instanceof Sys.UI.TemplateContext) {
 				target = target.containerElement;
+			}
 
 			var effectiveLevel = level || 1;
 
@@ -501,8 +537,9 @@ Type.registerNamespace("ExoWeb.UI");
 				else {
 					subcontainer = getTemplateSubContainer(container || target);
 
-					if (!subcontainer)
+					if (!subcontainer) {
 						throw Error.invalidOperation("Not within a container template.");
+					}
 
 					container = subcontainer.parentNode;
 				}
@@ -539,7 +576,7 @@ Type.registerNamespace("ExoWeb.UI");
 				}
 			}
 			return prefix + s;
-		}
+		};
 
 		// call jQuery.ever to make sure it intercepts template rendering since
 		// we know the ASP.NET AJAX templates script is loaded at this point

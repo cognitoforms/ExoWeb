@@ -36,9 +36,7 @@
 				for (var typeName in def) {
 					var objDefs = def[typeName];
 
-					var objects = this._objects[typeName];
-
-					if (!objects) {
+					if (!this._objects[typeName]) {
 						this._objects[typeName] = objDefs;
 					}
 					else {
@@ -87,8 +85,8 @@
 							json = { types: {}, instances: {}, changes: {} };
 							paths = prepPaths(paths);
 							for (var i = 0; i < ids.length; i++) {
-								_this._query(type, ids[i], paths.instance, json.instances);
-								_this._queryStatic(paths.static, json.instances);
+								_this._query(type, ids[i], paths.instancePaths, json.instances);
+								_this._queryStatic(paths.staticPaths, json.instances);
 							}
 						}
 
@@ -107,8 +105,9 @@
 						// include object data also
 						var propType = window[ownerType].meta.property(ownerProperty).get_jstype().meta.get_fullName();
 
-						for (var i = 0; i < refs.length; ++i)
+						for (var i = 0; i < refs.length; ++i) {
 							_this._appendObject(json.instances, propType, refs[i]);
+						}
 
 						return mockCallback(callback, [json], _this.listProviderDelay, $format(">> fetch: {0}({1}).{2}", arguments));
 					});
@@ -151,8 +150,9 @@
 			_appendObject: function _appendObject(json, type, ref) {
 				var t = ref.type ? finalType(ref.type) : type;
 
-				if (!json[t])
+				if (!json[t]) {
 					json[t] = {};
+				}
 
 				json[t][ref.id] = this._objects[t][ref.id];
 			},
@@ -164,8 +164,9 @@
 				}
 			},
 			_query: function _query(type, id, paths, result, depth) {
-				if (depth == undefined)
+				if (depth === undefined) {
 					depth = 0;
+				}
 
 				var source = this._objects[type][id];
 
@@ -184,14 +185,17 @@
 					}
 				}
 
-				if (!source)
+				if (!source) {
 					ExoWeb.trace.throwAndLog(["mocks"], "Object not found: {0}({1})", [type, id]);
+				}
 
-				if (!result[type])
+				if (!result[type]) {
 					result[type] = {};
+				}
 
-				if (!result[type][id])
+				if (!result[type][id]) {
 					result[type][id] = {};
+				}
 
 				for (var propName in source) {
 					var val = source[propName];
@@ -202,8 +206,8 @@
 					if (!Array.contains(intrinsics, propType)) {
 						var inPath = false;
 
-						for (var i = 0; i < paths.length; ++i) {
-							if (paths[i].length > depth && paths[i][depth] === propName) {
+						for (var j = 0; j < paths.length; ++j) {
+							if (paths[j].length > depth && paths[j][depth] === propName) {
 								inPath = true;
 								break;
 							}
@@ -211,8 +215,9 @@
 
 						if (inPath) {
 							// include object(s) referenced by id
-							if (!prop.isList)
+							if (!prop.isList) {
 								this._query(propType, val.id, paths, result, depth + 1);
+							}
 							else {
 								Array.forEach(val, function(ref) {
 									this._query(propType, ref.id, paths, result, depth + 1);
@@ -244,24 +249,26 @@
 				return result;
 			},
 			_getProperty: function _getProperty(containingType, name) {
-				for (var type = this._types[containingType]; type != null; type = (type.baseType ? this._types[finalType(type.baseType)] : null)) {
-					if (type.properties[name])
+				for (var type = this._types[containingType]; type !== null; type = (type.baseType ? this._types[finalType(type.baseType)] : null)) {
+					if (type.properties[name]) {
 						return type.properties[name];
+					}
 				}
 				return null;
 			}
 		});
 
 		function finalType(typeString) {
-			if (!typeString)
+			if (!typeString) {
 				return typeString;
+			}
 
 			var delim = typeString.indexOf(">");
 			return delim < 0 ? typeString : typeString.substr(0, delim);
 		}
 
 		function prepPaths(path) {
-			var ret = { instance: [], static: [] };
+			var ret = { instanceProps: [], staticProps: [] };
 
 			if (path) {
 				Array.forEach(path, function(p) {
@@ -269,10 +276,11 @@
 
 					if (parts[0] === "this") {
 						Array.dequeue(parts);
-						ret.instance.push(parts);
+						ret.instanceProps.push(parts);
 					}
-					else
-						ret.static.push(parts);
+					else {
+						ret.staticProps.push(parts);
+					}
 				});
 			}
 
