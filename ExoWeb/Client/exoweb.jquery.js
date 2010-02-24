@@ -168,15 +168,11 @@
 		}
 
 
-		var intercepting = false;
+		var interceptingTemplates = false;
+		var interceptingWebForms = false;
 
 		function ensureIntercepting() {
-			if (intercepting)
-				return;
-
-			intercepting = true;
-
-			if (window.Sys && Sys.UI && Sys.UI.Template) {
+			if (!interceptingTemplates && window.Sys && Sys.UI && Sys.UI.Template) {
 				var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
 				Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
 					var ret = instantiateInBase.apply(this, arguments);
@@ -184,9 +180,10 @@
 					processElements(ret.nodes, "added");
 					return ret;
 				}
+				interceptingTemplates = true;
 			}
 
-			if (window.Sys && Sys.WebForms) {
+			if (!interceptingWebForms && window.Sys && Sys.WebForms) {
 				Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function(sender, evt) {
 					processElements(evt.get_panelsUpdating(), "deleted");
 				});
@@ -195,11 +192,20 @@
 					processElements(evt.get_panelsCreated(), "added");
 					processElements(evt.get_panelsUpdated(), "added");
 				});
+				interceptingWebForms = true;
 			}
 		}
 
 		// matches elements as they are dynamically added to the DOM
 		jQuery.fn.ever = function(added, deleted) {
+
+			// If the function is called in any way other than as a method on the 
+			// jQuery object, then intercept and return early.
+			if (!(this instanceof jQuery)) {
+				ensureIntercepting();
+				return;
+			}
+
 			// apply now
 			this.each(added);
 

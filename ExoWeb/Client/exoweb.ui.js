@@ -540,6 +540,12 @@ Type.registerNamespace("ExoWeb.UI");
 			}
 			return prefix + s;
 		}
+
+		// call jQuery.ever to make sure it intercepts template rendering since
+		// we know the ASP.NET AJAX templates script is loaded at this point
+		if (jQuery.fn.ever) {
+			jQuery.fn.ever.call();
+		}
 	}
 
 	if (window.Sys && Sys.loader) {
