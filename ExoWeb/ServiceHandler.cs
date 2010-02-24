@@ -81,6 +81,9 @@ namespace ExoWeb
 
 			context.Response.ContentType = "application/javascript";
 
+			string path = context.Request.ApplicationPath;
+			path += path.EndsWith("/") ? "ExoWeb.axd" : "/ExoWeb.axd";
+
 			context.Response.Write(
 			@"
 				(function() {
@@ -93,25 +96,25 @@ namespace ExoWeb
 						// Define the ExoWeb.GetType method
 						ExoWeb.GetType = function(type, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" +  context.Request.ApplicationPath + @"/ExoWeb.axd', 'GetType', true, { type: type }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, { type: type }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Load method
 						ExoWeb.Load = function(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + context.Request.ApplicationPath + @"/ExoWeb.axd', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Save method
 						ExoWeb.Save = function(root, changes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + context.Request.ApplicationPath + @"/ExoWeb.axd', 'Save', false, { root: root, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Save', false, { root: root, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.RaiseEvent method
 						ExoWeb.RaiseEvent = function(eventType, instance, event, changes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + context.Request.ApplicationPath + @"/ExoWeb.axd', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 					}
 
