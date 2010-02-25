@@ -135,7 +135,6 @@
 										Sys.Observer.addSpecificPropertyChanged(lastTarget, lastProp, function(obj) {
 											setValue(ExoWeb.getValue(lastTarget, lastProp), lastProp + " property change");
 										});
-
 									},
 									function lazy$noWatch(err) {
 										throwAndLog(["~", "markupExt"], "Couldn't listen for change events on '{0}', {1}", [properties.$default, err]);
@@ -149,8 +148,10 @@
 									try {
 										ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
 											chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited, triggerProperty) {
-												// when a point in the required path changes then refresh the value
-												setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
+												// when a point in the required path changes then load the chain and refresh the value
+												ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load() {
+													setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
+												});
 											}, item);
 										});
 									}
