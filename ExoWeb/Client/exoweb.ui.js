@@ -37,7 +37,12 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._when;
 			},
 			execute: function Toggle$execute() {
-				if (!this.get_isInitialized() || !this.hasOwnProperty("_on")) {
+				// Ensure that the control is initialized, has an element, and the "on" property has been set.
+				// Scenario 1:  The set_on or set_when methods may be called before the control has been initialized.
+				// Scenario 2:  If a lazy markup extension is used to set the "on" or "when" properties then a callback could set the 
+				//				property value when the element is undefined, possibly because of template re-rendering.
+				// Scenario 3:  If a lazy markup extension is used to set the "on" property then it may not have a value when initialized.
+				if (!this.get_isInitialized() || this._element === undefined || this._element === null || !this.hasOwnProperty("_on")) {
 					return;
 				}
 
