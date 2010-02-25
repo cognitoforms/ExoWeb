@@ -2094,10 +2094,10 @@
 
 				// hours
 				if (parts[4]) {
-					val.setHours(parseInt(parts[1], 10) + 12);  // PM
+					val.setHours((parseInt(parts[1], 10) % 12) + 12);  // PM
 				}
 				else {
-					val.setHours(parseInt(parts[1], 10));  // AM
+					val.setHours(parseInt(parts[1], 10) % 12);  // AM
 				}
 
 				// minutes
