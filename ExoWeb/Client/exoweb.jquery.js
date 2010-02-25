@@ -235,7 +235,13 @@
 
 		// Gets all Sys.Bindings for an element
 		jQuery.fn.liveBindings = function() {
-			return this.get(0).__msajaxbindings || [];
+			var bindings = [];
+			this.each(function() {
+				if(this.__msajaxbindings)
+					Array.addRange(bindings, this.__msajaxbindings);
+			});
+
+			return bindings;
 		};
 
 		// Gets all model rules associated with the property an element is bound to
@@ -274,6 +280,42 @@
 			}
 
 			return rules;
+		};
+
+		jQuery.fn.issues = function() {
+			var issues = [];
+
+			var bindings = $(this).liveBindings();
+
+			for (var i = 0; i < bindings.length; i++) {
+				var binding = bindings[i];
+				var srcObj = Sys_Binding_getFinalSourceObject(binding);
+
+				var target;
+				var prop;
+
+				if (srcObj instanceof ExoWeb.View.Adapter) {
+					var chain = srcObj.get_propertyChain();
+					prop = chain.lastProperty();
+					target = chain.lastTarget(srcObj.get_target());
+				}
+				else if (srcObj instanceof ExoWeb.View.OptionAdapter) {
+					var chain = srcObj.get_parent().get_propertyChain();
+					prop = chain.lastProperty();
+					target = chain.lastTarget(srcObj.get_parent().get_target());
+				}
+				else if (srcObj instanceof ExoWeb.Model.ObjectBase) {
+					var propName = Sys_Binding_getFinalPath(binding);
+					prop = srcObj.meta.property(propName);
+					target = srcObj;
+				}
+				else {
+					continue;
+				}
+
+				Array.addRange(issues, target.meta.issues(prop));
+			}
+			return issues;
 		};
 
 		// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
