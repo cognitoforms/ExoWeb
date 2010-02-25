@@ -804,9 +804,9 @@
 				else {
 					var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 
-					if (target === undefined) {
+					if (target === undefined || target === null) {
 						ExoWeb.trace.throwAndLog(["model"],
-							"Cannot get value for {0}static property \"{1}\" on type \"{2}\": target is undefined.",
+							"Cannot get value for {0}static property \"{1}\" on type \"{2}\": target is null or undefined.",
 							[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
 					}
 
@@ -1245,20 +1245,26 @@
 
 				return parts.join(".");
 			},
-			firstProperty: function() {
+			firstProperty: function PropertyChain$firstProperty() {
 				return this._properties[0];
 			},
-			lastProperty: function() {
+			lastProperty: function PropertyChain$lastProperty() {
 				return this._properties[this._properties.length - 1];
 			},
-			lastTarget: function(obj) {
+			lastTarget: function PropertyChain$lastTarget(obj) {
 				for (var p = 0; p < this._properties.length - 1; p++) {
 					var prop = this._properties[p];
+
+					// exit early (and return undefined) on null or undefined
+					if (obj === undefined || obj === null) {
+						return;
+					}
+
 					obj = prop.value(obj);
 				}
 				return obj;
 			},
-			prepend: function(prop) {
+			prepend: function PropertyChain$prepend(prop) {
 				var newProps = prop.all();
 				for (var p = newProps.length - 1; p >= 0; p--) {
 					Array.insert(this._properties, 0, newProps[p]);
@@ -1314,11 +1320,11 @@
 					}, obj);
 				}
 				else {
-					for (var p = 0; p < this._properties.length; p++) {
-						var priorProp = (p === 0) ? undefined : this._properties[p - 1];
+					Array.forEach(this._properties, function(prop, index) {
+						var priorProp = (index === 0) ? undefined : chain._properties[index - 1];
 						if (obj) {
 							// CASE: using object filter
-							this._properties[p].addChanged(function PropertyChain$_raiseChanged$1Obj(sender, property, val, oldVal, wasInited) {
+							prop.addChanged(function PropertyChain$_raiseChanged$1Obj(sender, property, val, oldVal, wasInited) {
 								if (chain.connects(obj, sender, priorProp)) {
 									handler(obj, chain, val, oldVal, wasInited, property);
 								}
@@ -1326,7 +1332,7 @@
 						}
 						else {
 							// CASE: no object filter
-							this._properties[p].addChanged(function PropertyChain$_raiseChanged$Multi(sender, property, val, oldVal, wasInited) {
+							prop.addChanged(function PropertyChain$_raiseChanged$Multi(sender, property, val, oldVal, wasInited) {
 								// scan all known objects of this type and raise event for any instance connected
 								// to the one that sent the event.
 								Array.forEach(chain._rootType.known(), function(known) {
@@ -1336,7 +1342,7 @@
 								});
 							});
 						}
-					}
+					});
 				}
 			},
 			// Property pass-through methods
@@ -2182,6 +2188,13 @@
 			var continueFn = arguments.length == 6 && arguments[5] instanceof Function ? arguments[5] : LazyLoader.eval;
 
 			while (path.length > 0) {
+				// If an array is encountered and this call originated from "evalAll" then delegate to "evalAll", otherwise 
+				// this will most likely be an error condition unless the remainder of the path are properties of Array.
+				if (continueFn == LazyLoader.evalAll && target instanceof Array) {
+					continueFn(target, path, successCallback, errorCallback, scopeChain, continueFn);
+					return;
+				}
+
 				var prop = Array.dequeue(path);
 
 				if (!LazyLoader.isLoaded(target, prop)) {
