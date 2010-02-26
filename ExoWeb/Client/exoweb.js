@@ -323,11 +323,12 @@ Type.registerNamespace("ExoWeb");
 		f._funcs = funcs;
 		f.add = Functor.add;
 		f.remove = Functor.remove;
+		f.isEmpty = Functor.isEmpty;
 
 		return f;
 	}
 
-	Functor.add = function() {
+	Functor.add = function Functor$add() {
 		for (var i = 0; i < arguments.length; ++i) {
 			var f = arguments[i];
 
@@ -339,13 +340,17 @@ Type.registerNamespace("ExoWeb");
 		}
 	};
 
-	Functor.remove = function(old) {
+	Functor.remove = function Functor$remove(old) {
 		for (var i = this._funcs.length - 1; i >= 0; --i) {
 			if (this._funcs[i] === old) {
 				this._funcs.splice(i, 1);
 				break;
 			}
 		}
+	};
+
+	Functor.isEmpty = function Functor$isEmpty() {
+		return this._funcs.length === 0;
 	};
 
 	Functor.eventing = {
@@ -750,14 +755,14 @@ Type.registerNamespace("ExoWeb");
 	function _raiseSpecificPropertyChanged(target, args) {
 		var func = target.__propertyChangeHandlers[args.get_propertyName()];
 		if (func && func instanceof Function) {
-			func(target);
+			func.apply(this, arguments);
 		}
 	}
 
 	// Converts observer events from being for ALL properties to a specific one.
 	// This is an optimization that prevents handlers interested only in a single
 	// property from being run when other, unrelated properties change.
-	Sys.Observer.addSpecificPropertyChanged = function(target, property, handler) {
+	Sys.Observer.addSpecificPropertyChanged = function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
 		if (!target.__propertyChangeHandlers) {
 			target.__propertyChangeHandlers = {};
 
@@ -773,6 +778,213 @@ Type.registerNamespace("ExoWeb");
 		func.add(handler);
 	};
 
+	Sys.Observer.removeSpecificPropertyChanged = function Sys$Observer$removeSpecificPropertyChanged(target, property, handler) {
+		var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
+
+		if (func) {
+			func.remove(handler);
+
+			// if the functor is empty then remove the callback as an optimization
+			if (func.isEmpty()) {
+				delete target.__propertyChangeHandlers[property];
+
+				var hasHandlers = false;
+				for (var handler in target.__propertyChangeHandlers) {
+					hasHandlers = true;
+				}
+
+				if (!hasHandlers) {
+					delete target.__propertyChangeHandlers;
+					Sys.Observer.removePropertyChanged(target, _raiseSpecificPropertyChanged);
+				}
+			}
+		}
+	}
+
+	function PropertyObserver(name) {
+		this._source = null;
+		this._name = name;
+		this._events = [];
+		this._handler = null;
+		this._callback = null;
+		this._prev = null;
+		this._next = null;
+	}
+
+	PropertyObserver.prototype = {
+		addEvent: function PropertyObserver$addEvent(handler) {
+			this._events.push(handler);
+		},
+		removeEvent: function PropertyObserver$removeObserver(handler) {
+			if (Array.contains(this._events, handler)) {
+				Array.remove(this._events, handler);
+			}
+		},
+		raiseEvents: function PropertyObserver$raiseEvents(result) {
+			var result = ExoWeb.getValue(this._source, this._name);
+			for (var i = 0; i < this._events.length; i++) {
+				var evt = this._events[i];
+				if (evt(result)) {
+					Array.removeAt(this._events, i--);
+				}
+			}
+		},
+		wait: function PropertyObserver$wait(handler) {
+			if (this._prev) {
+				var _this = this;
+
+				if (this._callback) {
+					this._prev.removeEvent(this._callback);
+				}
+
+				this._callback = function(source) {
+					if (source !== undefined && source !== null) {
+						_this.start(source, handler);
+						_this._callback = null;
+						return true;
+					}
+				};
+
+				this._prev.addEvent(this._callback);
+			}
+		},
+		start: function PropertyObserver$start(source, handler) {
+			if (this._source) {
+				ExoWeb.trace.throwAndLog(["observer"], "Cannot start an observer that is already started.");
+			}
+
+			var _this = this;
+
+			this._source = source;
+			this._handler = function propHandler(sender, args) {
+				var observer = _this;
+
+				// Notify following properties to stop watching the old source and wait for a new one.
+				if (_this._next) {
+					_this._next.stopAndWait(handler);
+				}
+
+				// Call the actual handler.
+				handler.apply(this, arguments);
+
+				// Process events and remove those that are satisfied.
+				_this.raiseEvents();
+			};
+
+			// Process events and remove those that are satisfied.
+			_this.raiseEvents();
+
+			// Use Sys Observer to watch for changes.
+			Sys.Observer.addSpecificPropertyChanged(this._source, this._name, this._handler);
+		},
+		stop: function PropertyObserver$stop() {
+			if (this._source) {
+				// Remove the event.
+				Sys.Observer.removeSpecificPropertyChanged(this._source, this._name, this._handler);
+
+				// Null-out the source.
+				this._source = null;
+			}
+		},
+		stopAndWait: function PropertyObserver$stopAndWait(handler) {
+			this.stop();
+			this.wait(handler);
+
+			// Stop following handlers as well.
+			if (this._next) {
+				this._next.stopAndWait(handler);
+			}
+		}
+	}
+
+	Sys.Observer.addPathChanged = function Sys$Observer$addPathChanged(target, path, handler) {
+		if (target === undefined || target === null) {
+			return;
+		}
+
+		if (!target.__pathChangeHandlers) {
+			target.__pathChangeHandlers = {};
+		}
+
+		// Create a PropertyObserver for each step in the path.
+		var source = target;
+		var lastProp = null;
+
+		var list = path;
+		if (path instanceof Array) {
+			path = Array.join(path, ".");
+		}
+		else {
+			list = path.split(".");
+		}
+
+		var properties = list.map(function(item, index, list) {
+			var prop = new PropertyObserver(item);
+
+			// Set up forward and reverse references.
+			if (lastProp !== null) {
+				prop._prev = lastProp;
+				lastProp._next = prop;
+			}
+
+			if (source === undefined || source === null) {
+				// The source is undefined, wait on changes to the prior step to check for a value.
+				prop.wait(handler);
+			}
+			else {
+				// Start watching for changes at this step.
+				prop.start(source, handler);
+				
+				// Move the source to the next step in the path.
+				source = ExoWeb.getValue(source, prop._name);
+			}
+
+			lastProp = prop;
+
+			return prop;
+		});
+
+		var pathChangeHandlers = target.__pathChangeHandlers[path];
+		if (!pathChangeHandlers) {
+			target.__pathChangeHandlers[path] = pathChangeHandlers = [];
+		}
+		pathChangeHandlers.push({ properties: properties, handler: handler });
+	};
+
+	Sys.Observer.removePathChanged = function Sys$Observer$removePathChanged(target, path, handler) {
+		if (path instanceof Array) {
+			path = Array.join(path, ".");
+		}
+
+		var pathChangeHandlers = target.__pathChangeHandlers ? target.__pathChangeHandlers[path] : null;
+
+		if (pathChangeHandlers) {
+			// Search the list for handlers that match the given handler and stop and remove them
+			for (var i = 0; i < pathChangeHandlers.length; i++) {
+				var pathChangeHandler = pathChangeHandlers[i];
+				if (pathChangeHandler.handler === handler) {
+					Array.forEach(pathChangeHandler.properties, function(prop) {
+						prop.stop();
+					});
+					Array.removeAt(pathChangeHandlers, i--);
+				}
+			}
+
+			// If the array is empty then remove the callbacks as an optimization
+			if (pathChangeHandlers.length === 0) {
+				delete target.__pathChangeHandlers[path];
+
+				var hasHandlers = false;
+				for (var handler in target.__pathChangeHandlers) {
+					hasHandlers = true;
+				}
+
+				if (!hasHandlers) {
+					delete target.__pathChangeHandlers;
+				}
+			}
+		}
+	};
 
 	// Supress raising of property changed when a generated setter is already raising the event
 	Sys.Observer._setValue = function Sys$Observer$_setValue(target, propertyName, value) {

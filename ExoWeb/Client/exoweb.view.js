@@ -69,124 +69,139 @@
 					Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
 				};
 
-				ExoWeb.Model.LazyLoader.eval(source, properties.$default,
-					function lazy$Loaded(result) {
-						log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
+				var setup = function lazy$setup(result, monitorChangesFromSource) {
+					if (properties.transform && result instanceof Array) {
+						// generate transform function
+						var doTrans = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + properties.transform + ";");
 
-						// Begin up-front setup required such as setting prepare function and watching for changes
-						////////////////////////////////////////////////////////////////////////////////////
-						if (properties.transform && result instanceof Array) {
-							// generate transform function
-							var doTrans = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + properties.transform + ";");
+						// setup prepare function to perform the transform
+						prepareValue = function doTransform(listValue) {
+							return doTrans(listValue, component.get_element(), templateContext.index, templateContext.dataItem);
+						};
 
-							// setup prepare function to perform the transform
-							prepareValue = function doTransform(listValue) {
-								return doTrans(listValue, component.get_element(), templateContext.index, templateContext.dataItem);
-							};
+						// watch for changes to the list and refresh
+						var list = result;
+						Sys.Observer.makeObservable(list);
+						Sys.Observer.addCollectionChanged(list, function lazy$listChanged$transform(list, evt) {
+							// take a count of all added and removed items
+							var added = 0, removed = 0;
+							Array.forEach(evt.get_changes(), function(change) {
+								if (change.newItems) {
+									added += change.newItems.length;
+								}
+								if (change.oldItems) {
+									removed += change.oldItems.length;
+								}
+							});
 
-							// watch for changes to the list and refresh
-							var list = result;
-							Sys.Observer.makeObservable(list);
-							Sys.Observer.addCollectionChanged(list, function lazy$listChanged$transform(list, evt) {
-								// take a count of all added and removed items
-								var added = 0, removed = 0;
+							var msg = "changes to underlying list [" + added + " added, " + removed + " removed]";
+
+							// if additional paths are required then load them before updating the value
+							if (properties.required) {
 								Array.forEach(evt.get_changes(), function(change) {
-									if (change.newItems) {
-										added += change.newItems.length;
-									}
-									if (change.oldItems) {
-										removed += change.oldItems.length;
-									}
+									ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function() {
+										setValue(result, msg);
+									});
 								});
+							}
+							// otherwise, simply update the value
+							else {
+								setValue(result, msg);
+							}
+						});
+					}
+					else {
+						// setup prepare function to use the specified format
+						prepareValue = function doFormat(obj) {
+							if (properties.format && result.constructor.formats && result.constructor.formats[properties.format]) {
+								return obj.constructor.formats[properties.format].convert(obj);
+							}
 
-								var msg = "changes to underlying list [" + added + " added, " + removed + " removed]";
+							return obj;
+						};
 
-								// if additional paths are required then load them before updating the value
-								if (properties.required) {
-									Array.forEach(evt.get_changes(), function(change) {
-										ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function() {
-											setValue(result, msg);
-										});
+						if (properties.$default && monitorChangesFromSource) {
+							Sys.Observer.addPathChanged(source, properties.$default, function(sender, args) {
+								setValue(ExoWeb.getValue(source, properties.$default), args.get_propertyName() + " property change");
+							});
+						}
+					}
+					if (properties.required) {
+						var watchItemRequiredPaths = function watchItemRequiredPaths(item) {
+							if (item.meta) {
+								try {
+									ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
+										chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited, triggerProperty) {
+											// when a point in the required path changes then load the chain and refresh the value
+											ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load() {
+												setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
+											});
+										}, item);
 									});
 								}
-								// otherwise, simply update the value
-								else {
-									setValue(result, msg);
+								catch (e) {
+									ExoWeb.trace.logError(["markupExt", "~"], e);
 								}
+							}
+						};
+
+						// attempt to watch changes along the required path
+						var listToWatch = (result instanceof Array) ? result : [result];
+						Array.forEach(listToWatch, watchItemRequiredPaths);
+						Sys.Observer.makeObservable(listToWatch);
+						Sys.Observer.addCollectionChanged(listToWatch, function lazy$listChanged$watchRequired(list, evt) {
+							Array.forEach(evt.get_changes(), function(change) {
+								Array.forEach(change.newItems || [], watchItemRequiredPaths);
+							});
+						});
+					}
+				}
+
+				ExoWeb.Model.LazyLoader.eval(source, properties.$default,
+					function lazy$Loaded(result, message) {
+						log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
+
+						var init = function lazy$init(result) {
+							try {
+								// Load additional required paths
+								if (properties.required) {
+									ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function() {
+										setValue(result, message || "required path loaded");
+									});
+								}
+								else {
+									setValue(result, message || "no required path");
+								}
+							}
+							catch (err) {
+								throwAndLog(["~", "markupExt"], "Path '{0}' was evaluated but the '{2}' property on the target could not be set, {1}", [properties.$default, err, properties.targetProperty || targetProperty]);
+							}
+						}
+
+						if (result === undefined || result === null) {
+							setValue(result, "no value");
+
+							var isSetup = false;
+
+							Sys.Observer.addPathChanged(source, properties.$default, function(target, args) {
+								// A property has changed, so get the current value.
+								var result = ExoWeb.getValue(source, properties.$default);
+
+								// If we now have a value, ensure initialization and set the value.
+								if (result !== undefined && result !== null) {
+									if (!isSetup) {
+										setup(result, false);
+										init(result, args.get_propertyName() + " property change");
+										isSetup = true;
+									}
+								}
+
+								setValue(result, args.get_propertyName() + " property change");
 							});
 						}
 						else {
-							// setup prepare function to use the specified format
-							prepareValue = function doFormat(obj) {
-								if (properties.format && result.constructor.formats && result.constructor.formats[properties.format]) {
-									return obj.constructor.formats[properties.format].convert(obj);
-								}
-
-								return obj;
-							};
-
-							if (properties.$default) {
-								// watch for changes to the last property in the path
-								// TODO: really this should be any point in the path
-								var props = properties.$default.split(".");
-								var lastProp = props.pop();
-								ExoWeb.Model.LazyLoader.eval(source, props.join("."),
-									function lazy$beginWatch(lastTarget) {
-										Sys.Observer.addSpecificPropertyChanged(lastTarget, lastProp, function(obj) {
-											setValue(ExoWeb.getValue(lastTarget, lastProp), lastProp + " property change");
-										});
-									},
-									function lazy$noWatch(err) {
-										throwAndLog(["~", "markupExt"], "Couldn't listen for change events on '{0}', {1}", [properties.$default, err]);
-									}
-								);
-							}
-						}
-						if (properties.required) {
-							var watchItemRequiredPaths = function watchItemRequiredPaths(item) {
-								if (item.meta) {
-									try {
-										ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
-											chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited, triggerProperty) {
-												// when a point in the required path changes then load the chain and refresh the value
-												ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load() {
-													setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
-												});
-											}, item);
-										});
-									}
-									catch (e) {
-										ExoWeb.trace.logError(["markupExt", "~"], e);
-									}
-								}
-							};
-
-							// attempt to watch changes along the required path
-							var listToWatch = (result instanceof Array) ? result : [result];
-							Array.forEach(listToWatch, watchItemRequiredPaths);
-							Sys.Observer.makeObservable(listToWatch);
-							Sys.Observer.addCollectionChanged(listToWatch, function lazy$listChanged$watchRequired(list, evt) {
-								Array.forEach(evt.get_changes(), function(change) {
-									Array.forEach(change.newItems || [], watchItemRequiredPaths);
-								});
-							});
-						}
-						// End of up-front setup
-						////////////////////////////////////////////////////////////////////////////////////
-
-						try {
-							// Load additional required paths
-							if (properties.required) {
-								ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function() {
-									setValue(result, "required path loaded");
-								});
-							}
-							else {
-								setValue(result, "no required path");
-							}
-						}
-						catch (err) {
-							throwAndLog(["~", "markupExt"], "Path '{0}' was evaluated but the '{2}' property on the target could not be set, {1}", [properties.$default, err, properties.targetProperty || targetProperty]);
+							setup(result, true);
+							init(result);
 						}
 					},
 					function(err) {
