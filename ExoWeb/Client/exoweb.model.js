@@ -1993,7 +1993,7 @@
 			},
 			convertBack: function(str) {
 				if (!/^([-\+])?(\d+)?\,?(\d+)?\,?(\d+)?\,?(\d+)$/.test(str)) {
-					throw "invalid format";
+					throw new Error("invalid format");
 				}
 
 				return parseInt(str, 10);
@@ -2006,7 +2006,11 @@
 				return val.toString();
 			},
 			convertBack: function(str) {
-				return parseFloat(str);
+				var val = parseFloat(str);
+				if (isNaN(val)) {
+					throw new Error("invalid format");
+				}
+				return val;
 			}
 		});
 
@@ -2023,7 +2027,7 @@
 			description: "###-###-####",
 			convertBack: function(str) {
 				if (!/^[0-9]{3}-[0-9]{3}-[0-9]{4}$/.test(str)) {
-					throw "invalid format";
+					throw new Error("invalid format");
 				}
 
 				return str;
@@ -2061,7 +2065,7 @@
 					return val;
 				}
 
-				throw "invalid date";
+				throw new Error("invalid date");
 			}
 		});
 
@@ -2077,7 +2081,7 @@
 					return val;
 				}
 
-				throw "invalid date";
+				throw new Error("invalid date");
 			}
 		});
 
@@ -2092,7 +2096,7 @@
 				var parts = str.match(parser);
 
 				if (!parts) {
-					throw "invalid time";
+					throw new Error("invalid time");
 				}
 
 				// build new date, start with current data and overwite the time component
@@ -2146,7 +2150,7 @@
 				var parts = str.match(parser);
 
 				if (!parts) {
-					throw "invalid format";
+					throw new Error("invalid format");
 				}
 
 				var num = parseFloat(parts[1]);
