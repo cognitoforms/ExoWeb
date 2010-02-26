@@ -281,13 +281,18 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._contexts;
 			},
 			get_parentContext: function Content$get_parentContext() {
-				if (!this._parentContext) {
-					this._parentContext = Sys.UI.Template.findContext(this.get_element());
+				if (!this._parentContext && this._element !== undefined && this._element !== null) {
+					this._parentContext = Sys.UI.Template.findContext(this._element);
 				}
 				return this._parentContext;
 			},
 			render: function Content$render() {
-				if (this._data && this._initialized) {
+				// Ensure that the control is initialized, has an element, and the "data" property has been set.
+				// Scenario 1:  The set_data method may be called before the control has been initialized.
+				// Scenario 2:  If a lazy markup extension is used to set the "data" property then a callback could set the 
+				//				property value when the element is undefined, possibly because of template re-rendering.
+				// Scenario 3:  If a lazy markup extension is used to set the "data" property then it may not have a value when initialized.
+				if (this._data && this._initialized && this._element !== undefined && this._element !== null) {
 					log(['ui', "templates"], "render()");
 
 					var _this = this;
