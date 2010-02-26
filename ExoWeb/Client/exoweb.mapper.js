@@ -1855,7 +1855,7 @@
 									var obj = mtype.get(query.id);
 
 									if (obj === undefined) {
-										throw new ReferenceError($format("Could not get {0} with id = {1}.", [mtype.get_name(), query.id]));
+										throw new ReferenceError($format("Could not get {0} with id = {1}.", [mtype.get_fullName(), query.id]));
 									}
 
 									ret.model[varName] = obj;
