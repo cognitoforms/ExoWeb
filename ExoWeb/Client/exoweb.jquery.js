@@ -88,7 +88,7 @@
 		//////////////////////////////////////////////////////////////////////////////////////
 		// selectors for rules
 		jQuery.expr[":"].rule = function(obj, index, meta, stack) {
-			if (!window.ExoWeb) {
+			if (!(window.ExoWeb && ExoWeb.Model)) {
 				return false;
 			}
 

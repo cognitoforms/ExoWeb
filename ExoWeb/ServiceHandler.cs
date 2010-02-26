@@ -84,6 +84,8 @@ namespace ExoWeb
 			string path = context.Request.ApplicationPath;
 			path += path.EndsWith("/") ? "ExoWeb.axd" : "/ExoWeb.axd";
 
+			string cachehash = context.Request.QueryString["cachehash"];
+
 			context.Response.Write(
 			@"
 				(function() {
@@ -91,30 +93,30 @@ namespace ExoWeb
 					function execute() {
 
 						// Declare the ExoWeb namespace
-						Type.registerNamespace('ExoWeb');
+						Type.registerNamespace('ExoWeb.WebService');
 
 						// Define the ExoWeb.GetType method
-						ExoWeb.GetType = function(type, onSuccess, onFailure)
+						ExoWeb.WebService.GetType = function ExoWeb$WebService$GetType(type, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, { type: type }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, { type: type, cachehash: " + cachehash + @" }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Load method
-						ExoWeb.Load = function(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure)
+						ExoWeb.WebService.Load = function ExoWeb$WebService$Load(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure)
 						{
 							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Save method
-						ExoWeb.Save = function(root, changes, onSuccess, onFailure)
+						ExoWeb.WebService.Save = function ExoWeb$WebService$Save(root, changes, onSuccess, onFailure)
 						{
 							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Save', false, { root: root, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.RaiseEvent method
-						ExoWeb.RaiseEvent = function(eventType, instance, event, changes, onSuccess, onFailure)
+						ExoWeb.WebService.RaiseEvent = function ExoWeb$WebService$RaiseEvent(eventType, instance, event, changes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType , false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 					}
 

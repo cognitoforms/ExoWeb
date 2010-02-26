@@ -10,36 +10,36 @@
 		var log = ExoWeb.trace.log;
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
-		var objectProvider = ExoWeb.Load;
+		var objectProvider = ExoWeb.WebService.Load;
 		ExoWeb.Mapper.setObjectProvider = function setObjectProvider(fn) {
 			objectProvider = fn;
 		};
 
-		var typeProvider = ExoWeb.GetType;
+		var typeProvider = ExoWeb.WebService.GetType;
 		ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 			typeProvider = fn;
 		};
 
 		var listProvider = function listProvider(ownerType, ownerId, propName, success, failed) {
-			ExoWeb.Load(ownerType, [ownerId], true, false, ["this." + propName], null, success, failed);
+			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, ["this." + propName], null, success, failed);
 		};
 		ExoWeb.Mapper.setListProvider = function setListProvider(fn) {
 			listProvider = fn;
 		};
 
 		var roundtripProvider = function roundtripProvider(changes, success, failed) {
-			ExoWeb.Load(null, null, false, false, null, changes, success, failed);
+			ExoWeb.WebService.Load(null, null, false, false, null, changes, success, failed);
 		};
 		ExoWeb.Mapper.setRoundtripProvider = function setRoundtripProvider(fn) {
 			roundtripProvider = fn;
 		};
 
-		var saveProvider = ExoWeb.Save;
+		var saveProvider = ExoWeb.WebService.Save;
 		ExoWeb.Mapper.setSaveProvider = function setSaveProvider(fn) {
 			saveProvider = fn;
 		};
 
-		var eventProvider = ExoWeb.RaiseEvent;
+		var eventProvider = ExoWeb.WebService.RaiseEvent;
 		ExoWeb.Mapper.setEventProvider = function setEventProvider(fn) {
 			eventProvider = fn;
 		};
