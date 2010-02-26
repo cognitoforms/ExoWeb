@@ -1836,7 +1836,7 @@
 						state[varName].signal.waitForAll(function context$model() {
 
 							var query = options.model[varName];
-							
+
 							// construct a new object if a "newId" was specified
 							if (query.id === newId) {
 								ret.model[varName] = new (model.type(query.from).get_jstype())();
@@ -1851,13 +1851,20 @@
 								objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
 									var query = options.model[varName];
 									var mtype = model.type(query.from);
-									ret.model[varName] = mtype.get(query.id);
+
+									var obj = mtype.get(query.id);
+
+									if (obj === undefined) {
+										throw new ReferenceError($format("Could not get {0} with id = {1}.", [mtype.get_name(), query.id]));
+									}
+
+									ret.model[varName] = obj;
 
 									// model object has been successfully loaded!
 									allSignals.oneDone();
 								}));
 							}
-							
+
 							else {
 								// model object has been successfully loaded!
 								allSignals.oneDone();
@@ -1910,7 +1917,7 @@
 				pending.add(callback);
 			}
 		};
-	
+
 		// object constant to single to mapper to create a new instance rather than load one
 		var newId = new Object();
 		window.$newId = function $newId() {
