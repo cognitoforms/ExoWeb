@@ -1901,7 +1901,7 @@
 
 		var pendingExtensions = {};
 
-		window.$extend = function $extend(typeName, callback) {
+		function extendOne(typeName, callback) {
 			var jstype = window[typeName];
 
 			if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
@@ -1915,6 +1915,26 @@
 				}
 
 				pending.add(callback);
+			}
+		}
+
+		window.$extend = function $extend(typeInfo, callback) {
+			if (typeInfo instanceof Array) {
+				var signal = new ExoWeb.Signal("extend");
+
+				var types = [];
+				Array.forEach(typeInfo, function(item, index) {
+					extendOne(item, signal.pending(function(type) {
+						types[index] = type;
+					}));
+				});
+				
+				signal.waitForAll(function() {
+					callback.apply(window, types);
+				});
+			}
+			else {
+				extendOne(typeInfo, callback);
 			}
 		};
 
