@@ -58,7 +58,7 @@ Type.registerNamespace("ExoWeb");
 		},
 		_formatMessage: function _formatMessage(category, message, args) {
 			if (!(category instanceof Array)) {
-				category = [category];
+				category = [category];	
 			}
 
 			var catStr = category.join(", ");
@@ -123,7 +123,9 @@ Type.registerNamespace("ExoWeb");
 		},
 		_doCallback: function Signal$_doCallback(name, thisPtr, callback, args) {
 			try {
-				callback.apply(thisPtr, args || []);
+				window.setTimeout(function() {
+					callback.apply(thisPtr, args || []);
+				}, 1);
 			}
 			catch (e) {
 				logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
@@ -133,8 +135,7 @@ Type.registerNamespace("ExoWeb");
 			if (callback) {
 				var signal = this;
 				return function() {
-					signal._doCallback("pending", this, callback, arguments);
-					signal.oneDone();
+					signal._doCallback("pending", this, function() { callback.apply(this, arguments); signal.oneDone(); }, arguments);
 				};
 			}
 			else {
@@ -934,7 +935,7 @@ Type.registerNamespace("ExoWeb");
 			else {
 				// Start watching for changes at this step.
 				prop.start(source, handler);
-				
+
 				// Move the source to the next step in the path.
 				source = ExoWeb.getValue(source, prop._name);
 			}
@@ -1044,7 +1045,7 @@ else {
 
 
 
-})();
+})();
 
 ///////////////////////////////////////////////////////////////////////////////
 // Simulate homogenous browsers
