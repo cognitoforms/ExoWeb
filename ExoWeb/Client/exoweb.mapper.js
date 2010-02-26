@@ -302,16 +302,16 @@
 				});
 			},
 			addRequestBegin: function ServerSync$addRequestBegin(handler, includeAutomatic) {
-				this._addEventHandler("requestBegin", handler, includeAutomatic);
+				this._addEventHandler("requestBegin", handler, includeAutomatic, 1);
 			},
 			addRequestEnd: function ServerSync$addRequestEnd(handler, includeAutomatic) {
-				this._addEventHandler("requestEnd", handler, includeAutomatic);
+				this._addEventHandler("requestEnd", handler, includeAutomatic, 1);
 			},
 			addRequestSuccess: function ServerSync$addRequestSuccess(handler, includeAutomatic) {
-				this._addEventHandler("requestSuccess", handler, includeAutomatic);
+				this._addEventHandler("requestSuccess", handler, includeAutomatic, 3);
 			},
 			addRequestFailed: function ServerSync$addRequestFailed(handler, includeAutomatic) {
-				this._addEventHandler("requestFailed", handler, includeAutomatic, 1);
+				this._addEventHandler("requestFailed", handler, includeAutomatic, 3);
 			},
 			enableSave: function ServerSync$enableSave(obj) {
 				if (Array.contains(this._objectsExcludedFromSave, obj)) {
@@ -358,66 +358,66 @@
 				var changes = includeAllChanges ? this._changes : this.get_Changes();
 
 				eventProvider(
-					name, 																											// event name
-					toExoGraph(this._translator, obj), 																				// instance
-					event, 																											// custom event object
-					{changes: changes }, 																							// changes
-					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
-					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
+					name,																						// event name
+					toExoGraph(this._translator, obj),															// instance
+					event,																						// custom event object
+					{changes: changes },																		// changes
+					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic),			// success callback
+					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)	// failed callback
 				);
 			},
-			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(response, callback, automatic) {
+			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-				if (response.instances) {
-					objectsFromJson(this._model, response.instances);
+				if (result.instances) {
+					objectsFromJson(this._model, result.instances);
 				}
 
-				if (response.changes) {
-					log("server", "ServerSync._onRaiseServerEventSuccess() >> applying {0} changes", [response.changes.length]);
+				if (result.changes) {
+					log("server", "ServerSync._onRaiseServerEventSuccess() >> applying {0} changes", [result.changes.length]);
 
-					if (response.changes.length > 0) {
-						this.apply(response.changes);
+					if (result.changes.length > 0) {
+						this.apply(result.changes);
 					}
 				}
 				else {
 					log("server", "._onRaiseServerEventSuccess() >> no changes");
 				}
 
-				this._raiseEvent("requestEnd", [automatic]);
-				this._raiseEvent("raiseServerEventEnd", [automatic]);
-				this._raiseEvent("requestSuccess", [automatic]);
-				this._raiseEvent("raiseServerEventSuccess", [automatic]);
+				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("raiseServerEventEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
+				this._raiseEvent("raiseServerEventSuccess", [result, userContext, methodName, automatic]);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this, response.result);
+					callback.call(this, result, userContext, methodName);
 				}
 			},
-			_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(e, callback, automatic) {
+			_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-				log("error", "Raise Server Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
+				log("error", "Raise Server Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
 
-				this._raiseEvent("requestEnd", [automatic]);
-				this._raiseEvent("raiseServerEventEnd", [automatic]);
-				this._raiseEvent("requestFailed", [e, automatic]);
-				this._raiseEvent("raiseServerEventFailed", [e, automatic]);
+				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("raiseServerEventEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("requestFailed", [result, userContext, methodName, automatic]);
+				this._raiseEvent("raiseServerEventFailed", [result, userContext, methodName, automatic]);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this);
+					callback.call(this, result, userContext, methodName);
 				}
 			},
 			addRaiseServerEventBegin: function ServerSync$addRaiseServerEventBegin(handler, includeAutomatic) {
-				this._addEventHandler("raiseServerEventBegin", handler, includeAutomatic);
+				this._addEventHandler("raiseServerEventBegin", handler, includeAutomatic, 1);
 			},
 			addRaiseServerEventEnd: function ServerSync$addRaiseServerEventEnd(handler, includeAutomatic) {
-				this._addEventHandler("raiseServerEventEnd", handler, includeAutomatic);
+				this._addEventHandler("raiseServerEventEnd", handler, includeAutomatic, 1);
 			},
 			addRaiseServerEventSuccess: function ServerSync$addRaiseServerEventSuccess(handler, includeAutomatic) {
-				this._addEventHandler("raiseServerEventSuccess", handler, includeAutomatic);
+				this._addEventHandler("raiseServerEventSuccess", handler, includeAutomatic, 3);
 			},
 			addRaiseServerEventFailed: function ServerSync$addRaiseServerEventFailed(handler, includeAutomatic) {
-				this._addEventHandler("raiseServerEventFailed", handler, includeAutomatic, 1);
+				this._addEventHandler("raiseServerEventFailed", handler, includeAutomatic, 3);
 			},
 
 			// Roundtrip
@@ -433,46 +433,46 @@
 				this._raiseEvent("roundtripBegin", [automatic]);
 
 				roundtripProvider(
-					{ changes: this._changes }, 																				// changes
-					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
-					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
+					{ changes: this._changes }, 															// changes
+					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic), 			// success callback
+					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic)	// failed callback
 				);
 			},
-			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(response, callback, automatic) {
+			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-				if (response.changes) {
-					log("server", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [response.changes.length]);
+				if (result.changes) {
+					log("server", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [result.changes.length]);
 
-					if (response.changes.length > 0) {
-						this.apply(response.changes);
+					if (result.changes.length > 0) {
+						this.apply(result.changes);
 					}
 				}
 				else {
 					log("server", "._onRoundtripSuccess() >> no changes");
 				}
 
-				this._raiseEvent("requestEnd", [automatic]);
-				this._raiseEvent("roundtripEnd", [automatic]);
-				this._raiseEvent("requestSuccess", [automatic]);
-				this._raiseEvent("roundtripSuccess", [automatic]);
+				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("roundtripEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
+				this._raiseEvent("roundtripSuccess", [result, userContext, methodName, automatic]);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this, response.changes);
+					callback.call(this, result, userContext, methodName);
 				}
 			},
-			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(e, callback, automatic) {
+			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-				log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
+				log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
 
-				this._raiseEvent("requestEnd", [automatic]);
-				this._raiseEvent("roundtripEnd", [automatic]);
-				this._raiseEvent("requestFailed", [e, automatic]);
-				this._raiseEvent("roundtripFailed", [e, automatic]);
+				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("roundtripEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("requestFailed", [result, userContext, methodName, automatic]);
+				this._raiseEvent("roundtripFailed", [result, userContext, methodName, automatic]);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this);
+					callback.call(this, result, userContext, methodName);
 				}
 			},
 			startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
@@ -498,16 +498,16 @@
 				}
 			},
 			addRoundtripBegin: function ServerSync$addRoundtripBegin(handler, includeAutomatic) {
-				this._addEventHandler("roundtripBegin", handler, includeAutomatic);
+				this._addEventHandler("roundtripBegin", handler, includeAutomatic, 1);
 			},
 			addRoundtripEnd: function ServerSync$addRoundtripEnd(handler, includeAutomatic) {
-				this._addEventHandler("roundtripEnd", handler, includeAutomatic);
+				this._addEventHandler("roundtripEnd", handler, includeAutomatic, 1);
 			},
 			addRoundtripSuccess: function ServerSync$addRoundtripSuccess(handler, includeAutomatic) {
-				this._addEventHandler("roundtripSuccess", handler, includeAutomatic);
+				this._addEventHandler("roundtripSuccess", handler, includeAutomatic, 3);
 			},
 			addRoundtripFailed: function ServerSync$addRoundtripFailed(handler, includeAutomatic) {
-				this._addEventHandler("roundtripFailed", handler, includeAutomatic, 1);
+				this._addEventHandler("roundtripFailed", handler, includeAutomatic, 3);
 			},
 
 			// Save
@@ -523,48 +523,48 @@
 				this._raiseEvent("saveBegin", [automatic]);
 
 				saveProvider(
-					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 											// root
-					{changes: this.get_Changes() }, 																		// changes
-					this._onSaveSuccess.setScope(this).appendArguments(success, automatic).sliceArguments(0, 1), 		// success callback
-					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic).sliceArguments(0, 1)	// failed callback
+					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 						// root
+					{changes: this.get_Changes() }, 												// changes
+					this._onSaveSuccess.setScope(this).appendArguments(success, automatic),			// success callback
+					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)	// failed callback
 				);
 			},
-			_onSaveSuccess: function ServerSync$_onSaveSuccess(response, callback, automatic) {
+			_onSaveSuccess: function ServerSync$_onSaveSuccess(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
-				if (response.changes) {
-					log("server", "._onSaveSuccess() >> applying {0} changes", [response.changes.length]);
+				if (result.changes) {
+					log("server", "._onSaveSuccess() >> applying {0} changes", [result.changes.length]);
 
 					// apply changes from server
-					if (response.changes.length > 0) {
-						this.apply(response.changes);
+					if (result.changes.length > 0) {
+						this.apply(result.changes);
 					}
 				}
 				else {
 					log("server", "._onSaveSuccess() >> no changes");
 				}
 
-				this._raiseEvent("requestEnd", [automatic]);
-				this._raiseEvent("saveEnd", [automatic]);
-				this._raiseEvent("requestSuccess", [automatic]);
-				this._raiseEvent("saveSuccess", [automatic]);
+				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("saveEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
+				this._raiseEvent("saveSuccess", [result, userContext, methodName, automatic]);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this, response.changes);
+					callback.call(this, result, userContext, methodName);
 				}
 			},
-			_onSaveFailed: function ServerSync$_onSaveFailed(e, callback, automatic) {
+			_onSaveFailed: function ServerSync$_onSaveFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
-				log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", e);
+				log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
 
-				this._raiseEvent("requstEnd", [automatic]);
-				this._raiseEvent("saveEnd", [automatic]);
-				this._raiseEvent("requestFailed", [e, automatic]);
-				this._raiseEvent("saveFailed", [e, automatic]);
+				this._raiseEvent("requstEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("saveEnd", [[result, userContext, methodName], automatic]);
+				this._raiseEvent("requestFailed", [result, userContext, methodName, automatic]);
+				this._raiseEvent("saveFailed", [result, userContext, methodName, automatic]);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this);
+					callback.call(this, result, userContext, methodName);
 				}
 			},
 			startAutoSave: function ServerSync$startAutoSave(root, interval) {
@@ -601,10 +601,10 @@
 				this._addEventHandler("saveEnd", handler, includeAutomatic);
 			},
 			addSaveSuccess: function ServerSync$addSaveSuccess(handler, includeAutomatic) {
-				this._addEventHandler("saveSuccess", handler, includeAutomatic);
+				this._addEventHandler("saveSuccess", handler, includeAutomatic, 3);
 			},
 			addSaveFailed: function ServerSync$addSaveFailed(handler, includeAutomatic) {
-				this._addEventHandler("saveFailed", handler, includeAutomatic, 1);
+				this._addEventHandler("saveFailed", handler, includeAutomatic, 3);
 			},
 
 			// Various
@@ -1919,6 +1919,7 @@
 		}
 
 		window.$extend = function $extend(typeInfo, callback) {
+			// If typeInfo is an arry of type names, then use a signal to wait until all types are loaded.
 			if (typeInfo instanceof Array) {
 				var signal = new ExoWeb.Signal("extend");
 
@@ -1928,11 +1929,13 @@
 						types[index] = type;
 					}));
 				});
-				
+
 				signal.waitForAll(function() {
+					// When all types are available, call the original callback.
 					callback.apply(window, types);
 				});
 			}
+			// If typeInfo is a single type name, avoid the overhead of signal and just call extendOne directly.
 			else {
 				extendOne(typeInfo, callback);
 			}
