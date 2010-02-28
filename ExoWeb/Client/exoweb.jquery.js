@@ -323,7 +323,7 @@
 			var src = binding.get_source();
 
 			for (var i = 0; i < binding._pathArray.length - 1; ++i) {
-				src = src[binding._pathArray[i]];
+				src = src[binding._pathArray[i]] || src["get_" + binding._pathArray[i]]();
 			}
 
 			return src;
