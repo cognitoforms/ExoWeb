@@ -281,7 +281,7 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._contexts;
 			},
 			get_parentContext: function Content$get_parentContext() {
-				if (!this._parentContext && this._element !== undefined && this._element !== null) {
+				if (!this._parentContext) {
 					this._parentContext = Sys.UI.Template.findContext(this._element);
 				}
 				return this._parentContext;
@@ -297,68 +297,70 @@ Type.registerNamespace("ExoWeb.UI");
 
 					var _this = this;
 					externalTemplatesSignal.waitForAll(function Content$externalTemplatesSignal() {
-						log(['ui', "templates"], "render() proceeding after all templates are loaded");
+						if (_this._element !== undefined && _this._element !== null) {
+							log(['ui', "templates"], "render() proceeding after all templates are loaded");
 
-						// Failing to empty content before rending can result in invalid content since rendering 
-						// content is not necessarily in order because of waiting on external templates.
-						$(_this._element).empty();
+							// Failing to empty content before rending can result in invalid content since rendering 
+							// content is not necessarily in order because of waiting on external templates.
+							$(_this._element).empty();
 
-						// Raise the rendering event
-						if (jQuery) {
-							jQuery(this._element).trigger("rendering", [this]);
-						}
-
-						// ripped off from dataview
-						var pctx = _this.get_parentContext();
-						var container = _this.get_element();
-						var data = _this._data;
-						var list = data;
-						var len;
-						if ((data === null) || (typeof (data) === "undefined")) {
-							len = 0;
-						}
-						else if (!(data instanceof Array)) {
-							list = [data];
-							len = 1;
-						}
-						else {
-							len = data.length;
-						}
-						_this._contexts = new Array(len);
-						for (var i = 0; i < len; i++) {
-							var item = list[i];
-							var itemTemplate = _this.getTemplate(item);
-
-							// get custom classes from template
-							var classes = $(itemTemplate.get_element()).attr("class");
-							if (classes) {
-								classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
+							// Raise the rendering event
+							if (jQuery) {
+								jQuery(this._element).trigger("rendering", [this]);
 							}
 
-							try {
-								_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+							// ripped off from dataview
+							var pctx = _this.get_parentContext();
+							var container = _this.get_element();
+							var data = _this._data;
+							var list = data;
+							var len;
+							if ((data === null) || (typeof (data) === "undefined")) {
+								len = 0;
 							}
-							catch (e) {
-								ExoWeb.trace.throwAndLog(["ui"], e);
+							else if (!(data instanceof Array)) {
+								list = [data];
+								len = 1;
+							}
+							else {
+								len = data.length;
+							}
+							_this._contexts = new Array(len);
+							for (var i = 0; i < len; i++) {
+								var item = list[i];
+								var itemTemplate = _this.getTemplate(item);
+
+								// get custom classes from template
+								var classes = $(itemTemplate.get_element()).attr("class");
+								if (classes) {
+									classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
+								}
+
+								try {
+									_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+								}
+								catch (e) {
+									ExoWeb.trace.throwAndLog(["ui"], e);
+								}
+
+								// copy custom classes from template to content control
+								if (classes) {
+									$(container).addClass(classes);
+								}
 							}
 
-							// copy custom classes from template to content control
-							if (classes) {
-								$(container).addClass(classes);
+							// necessary in order to render components found within the template (like a nested dataview)
+							for (var j = 0, l = _this._contexts.length; j < l; j++) {
+								var ctx = _this._contexts[j];
+								if (ctx) {
+									ctx.initializeComponents();
+								}
 							}
-						}
 
-						// necessary in order to render components found within the template (like a nested dataview)
-						for (var j = 0, l = _this._contexts.length; j < l; j++) {
-							var ctx = _this._contexts[j];
-							if (ctx) {
-								ctx.initializeComponents();
+							// Raise the rendered event
+							if (jQuery) {
+								jQuery(_this._element).trigger("rendered", [_this]);
 							}
-						}
-
-						// Raise the rendered event
-						if (jQuery) {
-							jQuery(_this._element).trigger("rendered", [_this]);
 						}
 					});
 				}
