@@ -184,19 +184,18 @@
 							var isSetup = false;
 
 							Sys.Observer.addPathChanged(source, properties.$default, function(target, args) {
-								// A property has changed, so get the current value.
-								var result = ExoWeb.getValue(source, properties.$default);
-
-								// If we now have a value, ensure initialization and set the value.
-								if (result !== undefined && result !== null) {
-									if (!isSetup) {
-										setup(result, false);
-										init(result, args.get_propertyName() + " property change");
-										isSetup = true;
+								ExoWeb.Model.LazyLoader.eval(source, properties.$default, function lazy$Loaded(result, message) {
+									// If we now have a value, ensure initialization and set the value.
+									if (result !== undefined && result !== null) {
+										if (!isSetup) {
+											setup(result, false);
+											init(result, args.get_propertyName() + " property change");
+											isSetup = true;
+										}
 									}
-								}
 
-								setValue(result, args.get_propertyName() + " property change");
+									setValue(result, args.get_propertyName() + " property change");
+								});
 							});
 						}
 						else {
