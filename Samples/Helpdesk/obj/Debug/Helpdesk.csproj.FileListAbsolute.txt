@@ -1,0 +1,37 @@
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\Helpdesk.dll
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\Helpdesk.pdb
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\obj\Debug\ResolveAssemblyReference.cache
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\obj\Debug\Helpdesk.dll
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\obj\Debug\Helpdesk.pdb
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\ExoGraph.dll
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\ExoGraph.EntityFramework.dll
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\ExoGraph.pdb
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\ExoGraph.EntityFramework.pdb
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\ExoWeb.dll
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\ExoWeb.pdb
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\Microsoft.Web.Mvc.dll
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\ExoRule.dll
+c:\users\thomasja\Projects\Helpdesk\Helpdesk\bin\ExoRule.pdb
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\Helpdesk.dll
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\Helpdesk.pdb
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\ExoGraph.dll
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\ExoGraph.EntityFramework.dll
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\ExoRule.dll
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\ExoWeb.dll
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\Microsoft.Web.Mvc.dll
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\ExoGraph.pdb
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\ExoGraph.EntityFramework.pdb
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\ExoRule.pdb
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\bin\ExoWeb.pdb
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\obj\Debug\Helpdesk.dll
+C:\Users\thomasja\Projects\HelpdeskDemo\Helpdesk\obj\Debug\Helpdesk.pdb
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\bin\Helpdesk.dll
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\bin\Helpdesk.pdb
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\bin\ExoGraph.pdb
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\bin\ExoGraph.EntityFramework.pdb
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\bin\ExoRule.pdb
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\bin\ExoWeb.pdb
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\obj\Debug\Helpdesk.dll
+C:\Users\matthewb.VC3_CAE\My Projects\VC3.Public\ExoWeb\Samples\Helpdesk\obj\Debug\Helpdesk.pdb

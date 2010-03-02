@@ -1,0 +1,137 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Schema Namespace="Helpdesk" Alias="Self" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+  <EntityContainer Name="RequestModel" annotation:LazyLoadingEnabled="true">
+    <EntitySet Name="Users" EntityType="Helpdesk.User" />
+    <EntitySet Name="Categories" EntityType="Helpdesk.Category" />
+    <EntitySet Name="Priorities" EntityType="Helpdesk.Priority" />
+    <EntitySet Name="Requests" EntityType="Helpdesk.Request" />
+    <AssociationSet Name="FK_Request_AssignedTo" Association="Helpdesk.FK_Request_AssignedTo">
+      <End Role="aspnet_Users" EntitySet="Users" />
+      <End Role="Request" EntitySet="Requests" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Request_User" Association="Helpdesk.FK_Request_User">
+      <End Role="aspnet_Users" EntitySet="Users" />
+      <End Role="Request" EntitySet="Requests" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Category_ParentCategory" Association="Helpdesk.FK_Category_ParentCategory">
+      <End Role="Category" EntitySet="Categories" />
+      <End Role="Category1" EntitySet="Categories" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Request_Category" Association="Helpdesk.FK_Request_Category">
+      <End Role="Category" EntitySet="Categories" />
+      <End Role="Request" EntitySet="Requests" />
+    </AssociationSet>
+    <AssociationSet Name="FK_Request_Priority" Association="Helpdesk.FK_Request_Priority">
+      <End Role="Priority" EntitySet="Priorities" />
+      <End Role="Request" EntitySet="Requests" />
+    </AssociationSet>
+  </EntityContainer>
+  <EntityType Name="User">
+    <Key>
+      <PropertyRef Name="UserId" />
+    </Key>
+    <Property Name="ApplicationId" Type="Guid" Nullable="false" />
+    <Property Name="UserId" Type="Guid" Nullable="false" />
+    <Property Name="UserName" Type="String" Nullable="false" MaxLength="256" Unicode="true" FixedLength="false" />
+    <Property Name="LoweredUserName" Type="String" Nullable="false" MaxLength="256" Unicode="true" FixedLength="false" />
+    <Property Name="MobileAlias" Type="String" MaxLength="16" Unicode="true" FixedLength="false" />
+    <Property Name="IsAnonymous" Type="Boolean" Nullable="false" />
+    <Property Name="LastActivityDate" Type="DateTime" Nullable="false" />
+    <NavigationProperty Name="Assignments" Relationship="Helpdesk.FK_Request_AssignedTo" FromRole="aspnet_Users" ToRole="Request" />
+    <NavigationProperty Name="Requests" Relationship="Helpdesk.FK_Request_User" FromRole="aspnet_Users" ToRole="Request" />
+  </EntityType>
+  <EntityType Name="Category">
+    <Key>
+      <PropertyRef Name="CategoryId" />
+    </Key>
+    <Property Name="CategoryId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="Name" Type="String" Nullable="false" MaxLength="30" Unicode="true" FixedLength="false" />
+    <Property Name="ParentCategoryId" Type="Int32" />
+    <NavigationProperty Name="Category1" Relationship="Helpdesk.FK_Category_ParentCategory" FromRole="Category" ToRole="Category1" />
+    <NavigationProperty Name="Category2" Relationship="Helpdesk.FK_Category_ParentCategory" FromRole="Category1" ToRole="Category" />
+    <NavigationProperty Name="Requests" Relationship="Helpdesk.FK_Request_Category" FromRole="Category" ToRole="Request" />
+  </EntityType>
+  <EntityType Name="Priority">
+    <Key>
+      <PropertyRef Name="PriorityId" />
+    </Key>
+    <Property Name="PriorityId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="Name" Type="String" Nullable="false" MaxLength="30" Unicode="true" FixedLength="false" />
+    <NavigationProperty Name="Requests" Relationship="Helpdesk.FK_Request_Priority" FromRole="Priority" ToRole="Request" />
+  </EntityType>
+  <EntityType Name="Request">
+    <Key>
+      <PropertyRef Name="RequestId" />
+    </Key>
+    <Property Name="RequestId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+    <Property Name="UserId" Type="Guid" Nullable="false" a:GetterAccess="Private" xmlns:a="http://schemas.microsoft.com/ado/2006/04/codegeneration" a:SetterAccess="Private" />
+    <Property Name="CategoryId" Type="Int32" Nullable="false" a:GetterAccess="Private" xmlns:a="http://schemas.microsoft.com/ado/2006/04/codegeneration" a:SetterAccess="Private" />
+    <Property Name="PriorityId" Type="Int32" Nullable="false" a:GetterAccess="Private" xmlns:a="http://schemas.microsoft.com/ado/2006/04/codegeneration" a:SetterAccess="Private" />
+    <Property Name="Description" Type="String" Nullable="false" MaxLength="Max" Unicode="false" FixedLength="false" />
+    <Property Name="AssignedToUserId" Type="Guid" a:GetterAccess="Private" xmlns:a="http://schemas.microsoft.com/ado/2006/04/codegeneration" a:SetterAccess="Private" />
+    <NavigationProperty Name="AssignedTo" Relationship="Helpdesk.FK_Request_AssignedTo" FromRole="Request" ToRole="aspnet_Users" />
+    <NavigationProperty Name="User" Relationship="Helpdesk.FK_Request_User" FromRole="Request" ToRole="aspnet_Users" />
+    <NavigationProperty Name="Category" Relationship="Helpdesk.FK_Request_Category" FromRole="Request" ToRole="Category" />
+    <NavigationProperty Name="Priority" Relationship="Helpdesk.FK_Request_Priority" FromRole="Request" ToRole="Priority" />
+  </EntityType>
+  <Association Name="FK_Request_AssignedTo">
+    <End Role="aspnet_Users" Type="Helpdesk.User" Multiplicity="0..1" />
+    <End Role="Request" Type="Helpdesk.Request" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="aspnet_Users">
+        <PropertyRef Name="UserId" />
+      </Principal>
+      <Dependent Role="Request">
+        <PropertyRef Name="AssignedToUserId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Request_User">
+    <End Role="aspnet_Users" Type="Helpdesk.User" Multiplicity="1" />
+    <End Role="Request" Type="Helpdesk.Request" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="aspnet_Users">
+        <PropertyRef Name="UserId" />
+      </Principal>
+      <Dependent Role="Request">
+        <PropertyRef Name="UserId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Category_ParentCategory">
+    <End Role="Category" Type="Helpdesk.Category" Multiplicity="0..1" />
+    <End Role="Category1" Type="Helpdesk.Category" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Category">
+        <PropertyRef Name="CategoryId" />
+      </Principal>
+      <Dependent Role="Category1">
+        <PropertyRef Name="ParentCategoryId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Request_Category">
+    <End Role="Category" Type="Helpdesk.Category" Multiplicity="1" />
+    <End Role="Request" Type="Helpdesk.Request" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Category">
+        <PropertyRef Name="CategoryId" />
+      </Principal>
+      <Dependent Role="Request">
+        <PropertyRef Name="CategoryId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+  <Association Name="FK_Request_Priority">
+    <End Role="Priority" Type="Helpdesk.Priority" Multiplicity="1" />
+    <End Role="Request" Type="Helpdesk.Request" Multiplicity="*" />
+    <ReferentialConstraint>
+      <Principal Role="Priority">
+        <PropertyRef Name="PriorityId" />
+      </Principal>
+      <Dependent Role="Request">
+        <PropertyRef Name="PriorityId" />
+      </Dependent>
+    </ReferentialConstraint>
+  </Association>
+</Schema>

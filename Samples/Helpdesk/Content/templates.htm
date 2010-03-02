@@ -1,0 +1,95 @@
+﻿
+<span class="sys-template" sys:attach="template" template:for="span.document">
+	<a class="link" onclick="preview(this)">{binding displayValue}</a>
+</span>
+
+<!-- field editors -->
+<!-- readonly -->
+<span class="sys-template" sys:attach="template" template:for=".readonly span, span.readonly">
+	<span sys:innerText="{ binding displayValue }"></span>
+</span>
+
+<!-- single entity, combo -->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:if="!$data.get_isList() && $data.isType(ExoWeb.Model.Entity) && $data.get_customProperty">
+	<select sys:if="{{ $dataItem.get_options().length > 0 }}" class="sys-template" sys:value="{ binding systemValue }"
+		sys:attach="dataview" dataview:data="{ binding options }">
+		<option sys:if="{{ $index == 0 }}" value="">-- select --</option>
+		<option sys:value="{ binding systemValue }">{ binding displayValue }</option>
+		<option sys:if="{{ $isLast(this, $index) }}" value="null">-- Other --</option>
+	</select>
+	<select sys:if="{{ $dataItem.get_options().length == 0 }}" sys:value="{ binding systemValue }">
+		<option value="">-- select --</option>
+		<option value="null">-- Other --</option>
+	</select>
+	<span sys:attach="toggle" toggle:on="systemValue" toggle:when="null">
+		<span sys:attach="content" content:data="{@ {{ $dataItem.get_customProperty() }}, source={{ $dataItem.get_target() }} }"></span>
+	</span>
+</span>
+
+<!-- single entity references (radio)-->
+<span class="sys-template" sys:attach="template" template:for=".field.radio span" template:if="!$data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
+    <div class="sys-template" sys:attach="dataview" dataview:data="{ binding options }">
+	    <p class="list"><input type="radio" id="option" sys:name="{{ $context.parentContext.getInstanceId('group') }}" sys:checked="{ binding selected }" /><label sys:for="{{ $id('option') }}">{ binding displayValue }</label></p>
+    </div>
+</span>
+
+<!-- single entity references (dropdown)-->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:if="!$data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
+	<select class="sys-template" sys:value="{ binding systemValue }"
+		sys:attach="dataview" dataview:data="{ binding options }">
+		<option sys:if="{{ $index == 0 }}"></option>
+		<option sys:value="{ binding systemValue }">{ binding displayValue }</option>
+	</select>
+</span>
+
+<!-- multiple entity references -->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:if="$data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
+	<div class='validation'></div>
+	<div class="sys-template" sys:attach="dataview" dataview:data="{ binding options }" >
+		<input type="checkbox" id="option" sys:checked="{ binding selected }" />
+		<label sys:for="{{ $id('option') }}">{ binding displayValue }</label><br />
+	</div>
+</span>
+
+<!-- boolean, default-->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:if="$data.isType(Boolean)">
+	<input type='checkbox' sys:checked="{ binding rawValue }" />
+</span>
+
+<!-- date, time only -->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:if="$data.isType(Date) && $data.get_displayFormat() === Date.formats.Time">
+	<input type='text' sys:value="{ binding displayValue }" />
+</span>
+
+<!-- date, default -->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:if="$data.isType(Date)">
+	<input type='text' class='datepicker' sys:value="{ binding displayValue }" />
+</span>
+
+<!-- string, html editor -->
+<span class="sys-template" sys:attach="template" template:for=".text span, span.text" template:if="$data.isType(String)">
+	<textarea sys:value="{ binding displayValue }" cols="60" rows="4"></textarea>
+</span>
+
+<!-- *, default -->
+<span class="sys-template" sys:attach="template" template:for=".field span">
+	<input type='text' sys:value="{ binding displayValue }" />
+</span>
+
+<!-- form layouts -->
+
+<!-- div layouts -->
+<div class="sys-template field" sys:attach="template" template:for=".form div">
+	<p>
+        <label for="{binding label}"><span>{ binding label }</span>:</label>
+        <span sys:attach="content" content:data="{~ }" />
+    </p>
+</div>
+
+<!-- tabular layout -->
+<table style='display: none'>
+<tr class="sys-template field" sys:attach="template" template:for="table.form tr">
+	<td class='label'>{binding label}</td>
+	<td><span sys:attach="content" content:data="{~ }"></span></td>
+</tr>
+</table>

@@ -1,0 +1,35 @@
+﻿<html>
+
+<head>
+<script src="/scripts/jquery-1.3.2.js"></script>
+<script>
+	var baseurl = 'http://search.yahooapis.com/ImageSearchService/V1/imageSearch?appid=YahooDemo&output=json&query='
+
+	function search() {
+		var search = $("#search").val()
+		var surl = baseurl + escape(search) + '&callback=?'
+		$.getJSON(surl, function (data) {
+			var res = '<h1>Search for ' + search + '</h1>'
+			res += '<p>There were ' + data.ResultSet.totalResultsAvailable + ' results.</p>'
+			for (var i = 0; i < data.ResultSet.Result.length; i++) {
+				var result = data.ResultSet.Result[i]
+				var resultStr = '<img src="' + result['Thumbnail']['Url'] + '" align="left">';
+				resultStr += '<a href="' + result['ClickUrl'] + '">' + result['Title'] + '</a><br clear="left"/>'
+				res += resultStr
+			}
+			$("#result").html(res)
+		})
+	}
+
+	$(document).ready(function () {
+		$("#searchBtn").click(search)
+	});
+
+</script>
+</head>
+
+<body>
+    <input type="text" name="search" id="search"> <input type="button" value="Search" id="searchBtn">
+    <div id="result"></div>
+</body>
+</html>

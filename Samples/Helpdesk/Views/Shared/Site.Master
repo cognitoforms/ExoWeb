@@ -1,0 +1,123 @@
+﻿<%@ Master Language="C#" Inherits="System.Web.Mvc.ViewMasterPage" %>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title><asp:ContentPlaceHolder ID="TitleContent" runat="server" /></title>
+    <link href="../../Content/Site.css" rel="stylesheet" type="text/css" />	
+	<script src="http://ajax.microsoft.com/ajax/beta/0911/Start.debug.js" type="text/javascript"></script>
+	<script src="/Scripts/Exoweb/Start.debug.js" type="text/javascript" ></script>
+	<script>
+		Sys.require(ExoWeb.AllScripts,
+			function () {
+
+				ExoWeb.UI.Template.load("/Content/templates.htm");
+
+				ExoWeb.trace.flags = { error: true }
+
+				$extend("Category", function (type) { type.formats.$display = ExoWeb.Model.Format.fromTemplate("{Name}"); });
+				$extend("Priority", function (type) { type.formats.$display = ExoWeb.Model.Format.fromTemplate("{Name}"); });
+				$extend("User", function (type) { type.formats.$display = ExoWeb.Model.Format.fromTemplate("{UserName}"); });
+				$extend("Request", function (type) {
+					type.$Priority.triggersRoundtrip();
+					type.$Category.triggersRoundtrip();
+				});
+
+				function setState(el, prefix, current, all) {
+					all.forEach(function (state) {
+						if (current === state)
+							el.addClass(prefix + "-" + state);
+						else
+							el.removeClass(prefix + "-" + state);
+					});
+				}
+
+				$("input:bound, select:bound, textarea:bound").ever(function () {
+					$(this).validated(function (sender, issues) {
+
+						// locate validation area
+						var $area = $(this).closest(".field");
+						var $validation = $area.find(".validation");
+
+						if ($validation.size() == 0) {
+							$validation = $(this).next();
+
+							if (!$validation.is('.validation')) {
+								// container not found so inject it
+								$validation = $(this).after("<div class='validation'></div>").next();
+							}
+						}
+
+						var states = ["some", "none"];
+
+						if (issues.length == 0) {
+							setState($(this), "validated", "none", states);
+							setState($validation, "validation", "none", states);
+							setState($area, "validated", "none", states);
+						} else {
+							setState($(this), "validated", "some", states);
+							setState($validation, "validation", "some", states);
+							setState($area, "validated", "some", states);
+
+							$validation.text(issues[0].get_message());
+						}
+					});
+				});
+
+			});
+	</script>
+	<style>
+		.validation
+		{
+		    color: Red;
+		}
+		.sys-template {display: none;}
+	</style>
+</head>
+
+<body
+	xmlns:sys="javascript:Sys" 
+	xmlns:dataview="javascript:Sys.UI.DataView" 
+	xmlns:content="javascript:ExoWeb.UI.Content" 
+	xmlns:template="javascript:ExoWeb.UI.Template"
+	xmlns:toggle="javascript:ExoWeb.UI.Toggle"
+	sys:activate="*">
+	
+    <div class="page">
+
+        <div id="header">
+            <div id="title">
+                <h1>Helpdesk</h1>
+            </div>
+              
+            <div id="logindisplay">
+                <% Html.RenderPartial("LogOnUserControl"); %>
+            </div> 
+            
+            <div id="menucontainer">
+            
+                <ul id="menu">              
+                    <li><%= Html.ActionLink("Home", "Index", "Home")%></li>
+                    <li><%= Html.ActionLink("About", "About", "Home")%></li>
+<%
+	if (Request.IsAuthenticated)
+	{
+%>
+                    <li><%= Html.ActionLink("Requests", "Index", "Requests")%></li>
+<%
+	}
+%>
+                </ul>
+            
+            </div>
+        </div>
+
+        <div id="main">
+            <asp:ContentPlaceHolder ID="MainContent" runat="server" />
+
+            <div id="footer">
+            </div>
+        </div>
+    </div>
+</body>
+</html>
