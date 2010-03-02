@@ -358,12 +358,12 @@
 				var changes = includeAllChanges ? this._changes : this.get_Changes();
 
 				eventProvider(
-					name,																						// event name
-					toExoGraph(this._translator, obj),															// instance
-					event,																						// custom event object
-					{changes: changes },																		// changes
-					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic),			// success callback
-					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)	// failed callback
+					name,
+					toExoGraph(this._translator, obj),
+					event,
+					{changes: changes },
+					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic),
+					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
 			},
 			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, userContext, methodName, callback, automatic) {
@@ -433,9 +433,9 @@
 				this._raiseEvent("roundtripBegin", [automatic]);
 
 				roundtripProvider(
-					{ changes: this._changes }, 															// changes
-					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic), 			// success callback
-					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic)	// failed callback
+					{ changes: this._changes },
+					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic),
+					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
 			},
 			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, userContext, methodName, callback, automatic) {
@@ -523,10 +523,10 @@
 				this._raiseEvent("saveBegin", [automatic]);
 
 				saveProvider(
-					{ type: root.meta.type.get_fullName(), id: root.meta.id }, 						// root
-					{changes: this.get_Changes() }, 												// changes
-					this._onSaveSuccess.setScope(this).appendArguments(success, automatic),			// success callback
-					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)	// failed callback
+					{ type: root.meta.type.get_fullName(), id: root.meta.id },
+					{changes: this.get_Changes() },
+					this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
+					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
 			},
 			_onSaveSuccess: function ServerSync$_onSaveSuccess(result, userContext, methodName, callback, automatic) {
@@ -1179,7 +1179,13 @@
 			// that may eventually be fetched
 			var family = typeName.split(">");
 
-			return window[family[0]] || getType(model, null, family, forLoading).get_jstype();
+			var type = window[family[0]];
+
+			if (type === undefined) {
+				type = getType(model, null, family, forLoading).get_jstype();
+			}
+
+			return type;
 		}
 
 		function flattenTypes(types, flattened) {
@@ -1484,9 +1490,14 @@
 				// fetch object json
 				log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 				// NOTE: should changes be included here?
-				objectProvider(mtype.get_fullName(), [id], true, false, ObjectLazyLoader.getRelativePaths(obj), null, signal.pending(function(result) {
-					objectJson = result.instances;
-				}));
+				objectProvider(mtype.get_fullName(), [id], true, false, ObjectLazyLoader.getRelativePaths(obj), null,
+					signal.pending(function(result) {
+						objectJson = result.instances;
+					}),
+					signal.orPending(function(e) {
+						ExoWeb.trace.logError("lazyLoad", e);
+					})
+				);
 
 				// does the object's type need to be loaded too?
 				if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
@@ -1495,6 +1506,10 @@
 
 				// wait for type and instance json to load
 				signal.waitForAll(function() {
+					if (!objectJson) {
+						return;
+					}
+
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					objectsFromJson(mtype.get_model(), objectJson);
 					callback();
@@ -1620,9 +1635,14 @@
 
 				var objectJson;
 
-				listProvider(ownerType, list._ownerId, propName, signal.pending(function(result) {
-					objectJson = result.instances;
-				}));
+				listProvider(ownerType, list._ownerId, propName,
+					signal.pending(function(result) {
+						objectJson = result.instances;
+					}),
+					signal.orPending(function(e) {
+						ExoWeb.trace.logError("lazyLoad", e);
+					})
+				);
 
 				// ensure that the property type is loaded as well.
 				// if the list has objects that are subtypes, those will be loaded later
@@ -1632,6 +1652,10 @@
 				}
 
 				signal.waitForAll(function() {
+					if (!objectJson) {
+						return;
+					}
+
 					log("list", "{0}({1}).{2}", [ownerType, list._ownerId, propName]);
 
 					// The actual type name and id as found in the resulting json.
