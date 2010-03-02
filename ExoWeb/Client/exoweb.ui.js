@@ -165,7 +165,10 @@ Type.registerNamespace("ExoWeb.UI");
 				// add a class that can be used to search for templates 
 				// and make sure that the template element is hidden
 				$(this.get_element()).addClass("vc3-template").hide();
-				allTemplates.push(this.get_element());
+
+				if (this.get_element().control.constructor !== String) {
+					allTemplates.push(this.get_element());
+				}
 			}
 		};
 
@@ -182,12 +185,15 @@ Type.registerNamespace("ExoWeb.UI");
 
 			for (var t = allTemplates.length - 1; t >= 0; t--) {
 				var tmpl = allTemplates[t];
-				if (tmpl.control.test(element, data)) {
-					log(["templates"], "TEMPLATE MATCHES!: for = {_for}, if = {_if}", tmpl.control);
-					return tmpl;
-				}
-				else {
-					log(["templates"], "template does not match: for = {_for}, if = {_if}", tmpl.control);
+
+				if (tmpl.control instanceof Template) {
+					if (tmpl.control.test(element, data)) {
+						log(["templates"], "TEMPLATE MATCHES!: for = {_for}, if = {_if}", tmpl.control);
+						return tmpl;
+					}
+					else {
+						log(["templates"], "template does not match: for = {_for}, if = {_if}", tmpl.control);
+					}
 				}
 			}
 
@@ -336,12 +342,7 @@ Type.registerNamespace("ExoWeb.UI");
 									classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
 								}
 
-								try {
-									_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
-								}
-								catch (e) {
-									ExoWeb.trace.throwAndLog(["ui"], e);
-								}
+								_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
 
 								// copy custom classes from template to content control
 								if (classes) {
@@ -370,8 +371,6 @@ Type.registerNamespace("ExoWeb.UI");
 
 				// marker attribute used by helper methods to identify as a content control
 				this._element._exowebcontent = {};
-
-				this._initialized = true;
 
 				this.render();
 			}
