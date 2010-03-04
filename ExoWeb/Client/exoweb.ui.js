@@ -306,7 +306,7 @@ Type.registerNamespace("ExoWeb.UI");
 						if (_this._element !== undefined && _this._element !== null) {
 							log(['ui', "templates"], "render() proceeding after all templates are loaded");
 
-							// Failing to empty content before rending can result in invalid content since rendering 
+							// Failing to empty content before rendering can result in invalid content since rendering 
 							// content is not necessarily in order because of waiting on external templates.
 							$(_this._element).empty();
 
@@ -479,11 +479,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 			var data = null;
 
-			if (container.control instanceof ExoWeb.UI.Content) {
-				// content control doesn't currenlty support lists, so return the data object
-				data = container.control.get_data();
-			}
-			else if (container.control instanceof Sys.UI.DataView) {
+			if (container.control instanceof Sys.UI.DataView || container.control instanceof ExoWeb.UI.Content) {
 				var containerContexts = container.control.get_contexts();
 				var containerData = container.control.get_data();
 
@@ -537,13 +533,12 @@ Type.registerNamespace("ExoWeb.UI");
 
 			var effectiveLevel = level || 1;
 
-			var container;
-			var subcontainer;
+			var container, subcontainer;
 			for (var i = 0; i < effectiveLevel || (dataType && !(getDataForContainer(container, subcontainer, index) instanceof dataType)); i++) {
 				// if we are starting out with a dataview then look at the parent context rather than walking 
 				// up the dom (since the element will probably not be present in the dom)
 				if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
-					container = target._parentContext.containerElement;
+					container = target.get_parentContext().containerElement;
 				}
 				else {
 					subcontainer = getTemplateSubContainer(container || target);
