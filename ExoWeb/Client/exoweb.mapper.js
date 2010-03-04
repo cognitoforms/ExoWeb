@@ -361,7 +361,7 @@
 					name,
 					toExoGraph(this._translator, obj),
 					event,
-					{changes: changes },
+					{ changes: changes },
 					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic),
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
@@ -524,7 +524,7 @@
 
 				saveProvider(
 					{ type: root.meta.type.get_fullName(), id: root.meta.id },
-					{changes: this.get_Changes() },
+					{ changes: this.get_Changes() },
 					this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
 					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
 				);

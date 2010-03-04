@@ -325,15 +325,14 @@
 					id = this.newId();
 					obj.meta.isNew = true;
 				}
-				else {
-					id = id.toLowerCase();
-				}
+
+				var key = id.toLowerCase();
 
 				obj.meta.id = id;
 				Sys.Observer.makeObservable(obj);
 
 				for (var t = this; t; t = t.baseType) {
-					t._pool[id] = obj;
+					t._pool[key] = obj;
 					if (t._known) {
 						t._known.add(obj);
 					}
@@ -342,19 +341,19 @@
 				this._model.notifyObjectRegistered(obj);
 			},
 			changeObjectId: function Type$changeObjectId(oldId, newId) {
-				oldId = oldId.toLowerCase();
-				newId = newId.toLowerCase();
+				var oldKey = oldId.toLowerCase();
+				var newKey = newId.toLowerCase();
 
-				var obj = this._pool[oldId];
+				var obj = this._pool[oldKey];
 
 				// TODO: throw exceptions?
 				if (obj) {
 					for (var t = this; t; t = t.baseType) {
-						t._pool[newId] = obj;
+						t._pool[newKey] = obj;
 
-						delete t._pool[oldId];
+						delete t._pool[oldKey];
 
-						t._legacyPool[oldId] = obj;
+						t._legacyPool[oldKey] = obj;
 					}
 
 					obj.meta.id = newId;
@@ -366,7 +365,7 @@
 				this._model.notifyObjectUnregistered(obj);
 
 				for (var t = this; t; t = t.baseType) {
-					delete t._pool[obj.meta.id];
+					delete t._pool[obj.meta.id.toLowerCase()];
 
 					if (t._known) {
 						t._known.remove(obj);
@@ -377,8 +376,8 @@
 				delete obj.meta;
 			},
 			get: function Type$get(id) {
-				id = id.toLowerCase();
-				return this._pool[id] || this._legacyPool[id];
+				var key = id.toLowerCase();
+				return this._pool[key] || this._legacyPool[key];
 			},
 			// Gets an array of all objects of this type that have been registered.
 			// The returned array is observable and collection changed events will be raised
