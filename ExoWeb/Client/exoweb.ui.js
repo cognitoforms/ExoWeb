@@ -286,7 +286,7 @@ Type.registerNamespace("ExoWeb.UI");
 			get_contexts: function Content$get_contexts() {
 				return this._contexts;
 			},
-			get_parentContext: function Content$get_parentContext() {
+			get_templateContext: function Content$get_templateContext() {
 				if (!this._parentContext) {
 					this._parentContext = Sys.UI.Template.findContext(this._element);
 				}
@@ -316,7 +316,7 @@ Type.registerNamespace("ExoWeb.UI");
 							}
 
 							// ripped off from dataview
-							var pctx = _this.get_parentContext();
+							var pctx = _this.get_templateContext();
 							var container = _this.get_element();
 							var data = _this._data;
 							var list = data;
@@ -538,7 +538,7 @@ Type.registerNamespace("ExoWeb.UI");
 				// if we are starting out with a dataview then look at the parent context rather than walking 
 				// up the dom (since the element will probably not be present in the dom)
 				if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
-					container = target.get_parentContext().containerElement;
+					container = target.get_templateContext().containerElement;
 				}
 				else {
 					subcontainer = getTemplateSubContainer(container || target);
