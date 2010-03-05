@@ -75,6 +75,7 @@
     <Content Include="Common\Scripts\QUnit\qunit.js" />
     <Content Include="Core\Observers.htm" />
     <Content Include="Core\Transform.htm" />
+    <Content Include="Model\CalculatedProperties.htm" />
     <Content Include="Model\Types.htm" />
     <Content Include="Web.config" />
   </ItemGroup>

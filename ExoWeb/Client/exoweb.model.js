@@ -133,6 +133,18 @@
 
 		Model.mixin(ExoWeb.Functor.eventing);
 
+		Model.getJsType = function Model$getJsType(name) {
+			var obj = window;
+			var steps = name.split(".");
+			Array.forEach(steps, function Model$getJsType$step(step) {
+				obj = obj[step];
+				if (obj === undefined) {
+					throw Error($format("The tpye \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+				}
+			});
+			return obj;
+		};
+
 		ExoWeb.Model.Model = Model;
 		Model.registerClass("ExoWeb.Model.Model");
 
@@ -940,7 +952,7 @@
 				var rootType = (options.rootType) ? options.rootType.meta : prop._containingType;
 
 				if (options.basedOn) {
-					var signal = new ExoWeb.Signal("calculated property dependencies");
+					this._readySignal = new ExoWeb.Signal("calculated property dependencies");
 					var inputs = [];
 
 					// setup loading of each property path that the calculation is based on
@@ -957,7 +969,7 @@
 						}
 
 						var path = (parts.length >= 2) ? parts[1] : p;
-						Model.property(path, rootType, true, signal.pending(function Property$calculated$chainLoaded(chain) {
+						Model.property(path, rootType, true, prop._readySignal.pending(function Property$calculated$chainLoaded(chain) {
 							var input = new RuleInput(chain);
 
 							if (!input.property) {
@@ -974,7 +986,7 @@
 					});
 
 					// wait until all property information is available to initialize the calculation
-					signal.waitForAll(function() {
+					this._readySignal.waitForAll(function() {
 						prop.addCalculatedRule(options.fn, inputs);
 					});
 				}

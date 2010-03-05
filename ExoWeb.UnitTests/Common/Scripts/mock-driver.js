@@ -8,6 +8,7 @@ if (ExoWeb.Mock) {
 		Person: {
 			properties: {
 				Name: { type: "String", rules: [{ required: {} }, { stringLength: { max: 40}}] },
+				BirthDate: { type: "Date", format: "ShortDate" },
 				PhoneNumber: { type: "String", format: "Phone", rules: [{ required: {}}] }
 			}
 		},
@@ -16,7 +17,6 @@ if (ExoWeb.Mock) {
 			properties: {
 				Owner: { type: "CarOwner" },
 				Cars: { type: "Car>Product", isList: true, rules: [{ required: {} }, { allowedValues: { source: "this.Dealer.AvailableCars"}}] },
-				BirthDate: { type: "Date", format: "ShortDate" },
 				Dealer: { type: "Dealer>Person", rules: [{ allowedValues: { source: "Dealer.All"}}] },
 				MilesDriven: { type: "Number", rules: [{ range: { min: 0}}] },
 				DateCreated: { type: "Date" },
@@ -99,18 +99,21 @@ if (ExoWeb.Mock) {
 			},
 			100: {
 				Name: "Joe Salesperson",
+				BirthDate: new Date("03/01/1987"),
 				PhoneNumber: "123-123-1234",
 				Title: "Salesperson",
 				HireDate: new Date("1/1/2005")
 			},
 			101: {
 				Name: "New Salesperson",
+				BirthDate: new Date("12/22/1980"),
 				PhoneNumber: "123-123-1234",
 				Title: "Salesperson",
 				HireDate: new Date("1/1/2009")
 			},
 			102: {
 				Name: "Jane Manager",
+				BirthDate: new Date("01/30/1956"),
 				PhoneNumber: "123-123-1234",
 				Title: "Manager"
 			}
