@@ -44,7 +44,7 @@ namespace ExoWeb
 			// Output the type meta data
 			response.Write("      \"" + type.Name + "\": {");
 			if (type.BaseType != null)
-				response.Write("\r\n         \"baseType\": \"" + type.BaseType.Name + "\",");
+				response.Write("\r\n         \"baseType\": \"" + GetJsonReferenceType(type.BaseType) + "\",");
 
 			// Output type rules
 			IGrouping<string, Rule> typeRules;
