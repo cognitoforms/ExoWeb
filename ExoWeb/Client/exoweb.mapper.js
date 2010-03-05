@@ -1806,7 +1806,7 @@
 						allSignals.orPending(function context$objects$callback(error) {
 							ExoWeb.trace.logError("objectInit",
 								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-								{ query: query, error: error });
+								{ query: typeQuery, error: error });
 						})
 					);
 				}
