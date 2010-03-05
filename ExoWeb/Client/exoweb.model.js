@@ -1745,18 +1745,6 @@
 
 		Rule.allowedValues = AllowedValuesRule;
 
-		Property.mixin({
-			allowedValues: function(options) {
-
-				// create a rule that will recalculate allowed values when dependencies change
-				var source = this.get_name() + "AllowedValues";
-				var valuesProp = this.get_containingType().addProperty(source, this.get_jstype(), true);
-				valuesProp.calculated(options);
-
-				var rule = new AllowedValuesRule({ source: source }, [this]);
-			}
-		});
-
 		///////////////////////////////////////////////////////////////////////////////////////
 		function StringLengthRule(options, properties) {
 			this.prop = properties[0];
