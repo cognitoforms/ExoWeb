@@ -176,6 +176,11 @@ namespace ExoWeb
 				GraphReferenceProperty reference = graphProperty as GraphReferenceProperty;
 				if (reference != null)
 				{
+					// Get the cached set of instances to be serialized for the property type
+					if (!instances.TryGetValue(reference.PropertyType, out typeInstances))
+						instances[reference.PropertyType] = typeInstances = new Dictionary<GraphInstance, GraphInstanceInfo>();
+		
+					// Static lists
 					if (reference.IsList)
 					{
 						foreach (GraphInstance instance in graphType.GetList(reference))
@@ -184,6 +189,8 @@ namespace ExoWeb
 								typeInstances.Add(instance, new GraphInstanceInfo(instance));
 						}
 					}
+
+					// Static references
 					else
 					{
 						GraphInstance instance = graphType.GetReference(reference);
