@@ -1187,7 +1187,7 @@
 			// that may eventually be fetched
 			var family = typeName.split(">");
 
-			var jstype = ExoWeb.Model.Model.getJsType(family[0]);
+			var jstype = ExoWeb.Model.Model.getJsType(family[0], true);
 
 			if (jstype === undefined) {
 				jstype = getType(model, null, family, forLoading).get_jstype();
@@ -1934,7 +1934,7 @@
 		var pendingExtensions = {};
 
 		function extendOne(typeName, callback) {
-			var jstype = ExoWeb.Model.Model.getJsType(typeName);
+			var jstype = ExoWeb.Model.Model.getJsType(typeName, true);
 
 			if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
 				callback(jstype);
