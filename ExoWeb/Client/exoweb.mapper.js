@@ -66,7 +66,7 @@
 				return json;
 			},
 			convertBack: function(val) {
-				var jstype = ExoWeb.Model.getJsType(val.type);
+				var jstype = ExoWeb.Model.Model.getJsType(val.type);
 
 				var obj = jstype.meta.get(val.id);
 
@@ -97,7 +97,7 @@
 
 		function fromExoGraph(translator, val) {
 			if (val !== undefined && val !== null) {
-				var type = ExoWeb.Model.getJsType(val.type);
+				var type = ExoWeb.Model.Model.getJsType(val.type);
 
 				// Entities only: translate back to the client's id.  This is necessary to handle the fact that ids are created on 
 				// both the client and server.  Also, in some cases a transaction references an entity that was created on the server 
@@ -1187,7 +1187,7 @@
 			// that may eventually be fetched
 			var family = typeName.split(">");
 
-			var jstype = ExoWeb.Model.getJsType(family[0]);
+			var jstype = ExoWeb.Model.Model.getJsType(family[0]);
 
 			if (jstype === undefined) {
 				jstype = getType(model, null, family, forLoading).get_jstype();
@@ -1545,7 +1545,7 @@
 				var relPaths = [];
 
 				for (var typeName in instance._typePaths) {
-					var jstype = ExoWeb.Model.getJsType(typeName);
+					var jstype = ExoWeb.Model.Model.getJsType(typeName);
 
 					if (jstype && jstype.meta) {
 						var paths = instance._typePaths[typeName];
@@ -1700,7 +1700,7 @@
 						}
 					}
 
-					if (!searchJson(ExoWeb.Model.getJsType(ownerType).meta, list._ownerId)) {
+					if (!searchJson(ExoWeb.Model.Model.getJsType(ownerType).meta, list._ownerId)) {
 						ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, list._ownerId]);
 					}
 
@@ -1934,7 +1934,7 @@
 		var pendingExtensions = {};
 
 		function extendOne(typeName, callback) {
-			var jstype = ExoWeb.Model.getJsType(typeName);
+			var jstype = ExoWeb.Model.Model.getJsType(typeName);
 
 			if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
 				callback(jstype);
