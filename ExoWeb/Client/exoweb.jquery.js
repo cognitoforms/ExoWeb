@@ -188,11 +188,24 @@
 			if (!interceptingTemplates && window.Sys && Sys.UI && Sys.UI.Template) {
 				var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
 				Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
-					var ret = instantiateInBase.apply(this, arguments);
+					var context = instantiateInBase.apply(this, arguments);
 
-					processElements(ret.nodes, "added");
-					return ret;
+					processElements(context.nodes, "added");
+					return context;
 				};
+
+				// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
+				// dispose is too late because the nodes will have been cleared out.
+				var clearContainersBase = Sys.UI.DataView.prototype._clearContainers;
+				Sys.UI.DataView.prototype._clearContainers = function() {
+					var contexts = this.get_contexts();
+					
+					for (var i = 0; i < contexts.length; i++)
+						processElements(contexts[i].nodes, "deleted");
+						
+					clearContainersBase.apply(this, arguments);
+				}
+
 				interceptingTemplates = true;
 			}
 
@@ -241,7 +254,7 @@
 		jQuery.fn.liveBindings = function() {
 			var bindings = [];
 			this.each(function() {
-				if(this.__msajaxbindings)
+				if (this.__msajaxbindings)
 					Array.addRange(bindings, this.__msajaxbindings);
 			});
 
