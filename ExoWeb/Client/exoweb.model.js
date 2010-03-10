@@ -2102,7 +2102,14 @@
 
 		Boolean.formats.TrueFalse = new Format({
 			convert: function(val) { return val ? "true" : "false"; },
-			convertBack: function(str) { return (str.toLowerCase() == "true"); }
+			convertBack: function(str) {
+				if (str.toLowerCase() == "true") {
+					return true;
+				}
+				else if (str.toLowerCase() == "false") {
+					return false;
+				}
+			}
 		});
 
 		Boolean.formats.$system = Boolean.formats.TrueFalse;
