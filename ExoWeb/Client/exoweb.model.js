@@ -237,7 +237,7 @@
 		Entity.formats = {
 			$system: new Format({
 				undefinedString: "",
-				nullString: "null",
+				nullString: "",
 				convert: function(obj) {
 					return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
 				},
