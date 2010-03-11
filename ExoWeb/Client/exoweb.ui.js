@@ -36,6 +36,18 @@ Type.registerNamespace("ExoWeb.UI");
 			get_when: function Toggle$get_when() {
 				return this._when;
 			},
+			add_shown: function Toggle$add_shown(handler) {
+				this._addHandler("shown", handler);
+			},
+			remove_shown: function Toggle$remove_shown(handler) {
+				this._removeHandler("shown", handler);
+			},
+			add_hidden: function Toggle$add_hidden(handler) {
+				this._addHandler("hidden", handler);
+			},
+			remove_hidden: function Toggle$remove_hidden(handler) {
+				this._removeHandler("hidden", handler);
+			},
 			execute: function Toggle$execute() {
 				// Ensure that the control is initialized, has an element, and the "on" property has been set.
 				// Scenario 1:  The set_on or set_when methods may be called before the control has been initialized.
@@ -58,21 +70,16 @@ Type.registerNamespace("ExoWeb.UI");
 					equals = this._on === this._when;
 				}
 
-				if (equals) {
-					if (this._action == "hide") {
-						$(this.get_element()).hide();
-					}
-					else {
-						$(this.get_element()).show();
-					}
+				var $el = $(this.get_element());
+				var visible = $el.is(":visible");
+				var show = (equals && this._action != "hide") || (!equals && this._action == "hide");
+				if (show && !visible) {
+					$el.show();
+					Sys.Observer.raiseEvent(this, "shown");
 				}
-				else {
-					if (this._action == "hide") {
-						$(this.get_element()).show();
-					}
-					else {
-						$(this.get_element()).hide();
-					}
+				else if (!show && visible) {
+					$el.hide();
+					Sys.Observer.raiseEvent(this, "hidden");
 				}
 			},
 			initialize: function Toggle$initialize() {
@@ -241,9 +248,6 @@ Type.registerNamespace("ExoWeb.UI");
 
 		ExoWeb.UI.Template = Template;
 		Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
-
-		// TODO: rename content
-
 
 		///////////////////////////////////////////////////////////////////////////////
 		/// <summary>

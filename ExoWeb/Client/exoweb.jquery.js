@@ -183,6 +183,7 @@
 
 		var interceptingTemplates = false;
 		var interceptingWebForms = false;
+		var partialPageLoadOccurred = false;
 
 		function ensureIntercepting() {
 			if (!interceptingTemplates && window.Sys && Sys.UI && Sys.UI.Template) {
@@ -199,10 +200,10 @@
 				var clearContainersBase = Sys.UI.DataView.prototype._clearContainers;
 				Sys.UI.DataView.prototype._clearContainers = function() {
 					var contexts = this.get_contexts();
-					
+
 					for (var i = 0; i < contexts.length; i++)
 						processElements(contexts[i].nodes, "deleted");
-						
+
 					clearContainersBase.apply(this, arguments);
 				}
 
@@ -211,11 +212,17 @@
 
 			if (!interceptingWebForms && window.Sys && Sys.WebForms) {
 				Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function(sender, evt) {
+					partialPageLoadOccurred = true;
 					processElements(evt.get_panelsUpdating(), "deleted");
 				});
 
 				Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function(sender, evt) {
-					processElements(evt.get_panelsCreated(), "added");
+					// Only process elements for update panels that were added if we have actually done a partial update.
+					// This is needed so that the "ever" handler is not called twice when a panel is added to the page on first page load.
+					if (partialPageLoadOccurred) {
+						processElements(evt.get_panelsCreated(), "added");
+					}
+
 					processElements(evt.get_panelsUpdated(), "added");
 				});
 				interceptingWebForms = true;
