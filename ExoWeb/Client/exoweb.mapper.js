@@ -799,7 +799,7 @@
 				}
 			},
 			applySaveChange: function ServerSync$applySaveChange(change, callback) {
-				log("server", "applySaveChange: {length} changes", change.idChanges);
+				log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
 
 				if (change.idChanges) {
 					// update each object with its new id

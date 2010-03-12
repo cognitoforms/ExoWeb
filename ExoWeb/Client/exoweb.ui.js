@@ -287,6 +287,29 @@ Type.registerNamespace("ExoWeb.UI");
 				this._data = value;
 				this.render();
 			},
+			get_disabled: function Content$get_disabled() {
+				return this._disabled === undefined ? false : this._disabled;
+			},
+			set_disabled: function Content$set_disabled(value) {
+				var newValue;
+
+				if (value.constructor === Boolean) {
+					newValue = value;
+				}
+				else if (value.constructor === String) {
+					newValue = Boolean.formats.TrueFalse.convertBack(value);
+				}
+				else {
+					ExoWeb.trace.throwAndLog(["ui", "content"], "Invalid value for property \"disabled\": {0}.", [value]);
+				}
+
+				var oldValue = this._disabled;
+				this._disabled = newValue;
+
+				if (oldValue === true && newValue === false) {
+					this.render();
+				}
+			},
 			get_contexts: function Content$get_contexts() {
 				return this._contexts;
 			},
@@ -296,13 +319,29 @@ Type.registerNamespace("ExoWeb.UI");
 				}
 				return this._parentContext;
 			},
-			render: function Content$render() {
+			_canRender: function Content$_canRender() {
 				// Ensure that the control is initialized, has an element, and the "data" property has been set.
 				// Scenario 1:  The set_data method may be called before the control has been initialized.
 				// Scenario 2:  If a lazy markup extension is used to set the "data" property then a callback could set the 
 				//				property value when the element is undefined, possibly because of template re-rendering.
 				// Scenario 3:  If a lazy markup extension is used to set the "data" property then it may not have a value when initialized.
-				if (this._data && this._initialized && this._element !== undefined && this._element !== null) {
+				// Also check that the control has not been disabled.
+				return !!(this._data && this._initialized && this._element !== undefined && this._element !== null && !this.get_disabled());
+			},
+			add_rendering: function Content$add_rendering(handler) {
+				this._addHandler("rendering", handler);
+			},
+			remove_rendering: function Content$remove_rendering(handler) {
+				this._removeHandler("rendering", handler);
+			},
+			add_rendered: function Content$add_rendered(handler) {
+				this._addHandler("rendered", handler);
+			},
+			remove_rendered: function Content$remove_rendered(handler) {
+				this._removeHandler("rendered", handler);
+			},
+			render: function Content$render() {
+				if (this._canRender()) {
 					log(['ui', "templates"], "render()");
 
 					var _this = this;
@@ -314,10 +353,8 @@ Type.registerNamespace("ExoWeb.UI");
 							// content is not necessarily in order because of waiting on external templates.
 							$(_this._element).empty();
 
-							// Raise the rendering event
-							if (jQuery) {
-								jQuery(this._element).trigger("rendering", [this]);
-							}
+							var renderArgs = new Sys.Data.DataEventArgs(_this._data);
+							Sys.Observer.raiseEvent(_this, "rendering", renderArgs);
 
 							// ripped off from dataview
 							var pctx = _this.get_templateContext();
@@ -362,10 +399,7 @@ Type.registerNamespace("ExoWeb.UI");
 								}
 							}
 
-							// Raise the rendered event
-							if (jQuery) {
-								jQuery(_this._element).trigger("rendered", [_this]);
-							}
+							Sys.Observer.raiseEvent(_this, "rendered", renderArgs);
 						}
 					});
 				}
@@ -382,27 +416,6 @@ Type.registerNamespace("ExoWeb.UI");
 
 		ExoWeb.UI.Content = Content;
 		Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
-
-		// override refresh in order to raise rendering and rendered events
-		var dataviewRefreshBase = Sys.UI.DataView.prototype.refresh;
-		Sys.UI.DataView.prototype.refresh = function Sys$UI$DataView$refreshOverride() {
-			// Don't raise the event if the data has not been set.  The refresh method will also exit early if an 
-			// onRendering handler chooses to cancel rendering.  In this case the event will still be raised.
-			var raiseEvent = this._setData;
-
-			// Raise the rendering event.
-			if (raiseEvent && jQuery) {
-				jQuery(this._element).trigger("rendering", [this]);
-			}
-
-			// Invoke base function
-			dataviewRefreshBase.apply(this, arguments);
-
-			// Raise the rendered event
-			if (raiseEvent && jQuery) {
-				jQuery(this._element).trigger("rendered", [this]);
-			}
-		};
 
 		///////////////////////////////////////////////////////////////////////////////
 		/// <summary>

@@ -60,32 +60,6 @@
 		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		// rendering events
-		jQuery.fn.rendering = function(f, onlyRaiseOnTarget) {
-			$(this).each(function() {
-				var target = this;
-				$(this).bind("rendering", function(evt) {
-					if (!onlyRaiseOnTarget || evt.target == target) {
-						f.apply(this, arguments);
-					}
-				});
-			});
-			return this;
-		};
-
-		jQuery.fn.rendered = function(f, onlyRaiseOnTarget) {
-			$(this).each(function() {
-				var target = this;
-				$(this).bind("rendered", function(evt) {
-					if (!onlyRaiseOnTarget || evt.target == target) {
-						f.apply(this, arguments);
-					}
-				});
-			});
-			return this;
-		};
-
-		//////////////////////////////////////////////////////////////////////////////////////
 		// selectors for rules
 		jQuery.expr[":"].rule = function(obj, index, meta, stack) {
 			if (!(window.ExoWeb && ExoWeb.Model)) {
