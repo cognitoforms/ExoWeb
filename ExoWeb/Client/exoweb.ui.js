@@ -36,6 +36,9 @@ Type.registerNamespace("ExoWeb.UI");
 			get_when: function Toggle$get_when() {
 				return this._when;
 			},
+			get_visible: function Toggle$get_visible() {
+				return this._visible;
+			},
 			add_shown: function Toggle$add_shown(handler) {
 				this._addHandler("shown", handler);
 			},
@@ -70,17 +73,32 @@ Type.registerNamespace("ExoWeb.UI");
 					equals = this._on === this._when;
 				}
 
-				var $el = $(this.get_element());
-				var visible = $el.is(":visible");
-				var show = (equals && this._action != "hide") || (!equals && this._action == "hide");
-				if (show && !visible) {
-					$el.show();
-					Sys.Observer.raiseEvent(this, "shown");
+				// hide or show the element depending on the conditions
+				if ((equals && this._action != "hide") || (!equals && this._action == "hide")) {
+					// show the element
+					$(this.get_element()).show();
+
+					// visibility has changed so raise event
+					if (this._visible === undefined || this._visible === false) {
+						Sys.Observer.raiseEvent(this, "shown");
+					}
+					
+					// update status
+					this._visible = true;
 				}
-				else if (!show && visible) {
-					$el.hide();
-					Sys.Observer.raiseEvent(this, "hidden");
+				else {
+					// hide the element
+					$(this.get_element()).hide();
+
+					// visibility has changed so raise event
+					if (this._visible === undefined || this._visible === true) {
+						Sys.Observer.raiseEvent(this, "hidden");
+					}
+
+					// update status
+					this._visible = false;
 				}
+
 			},
 			initialize: function Toggle$initialize() {
 				Toggle.callBaseMethod(this, "initialize");
