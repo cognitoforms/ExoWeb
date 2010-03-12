@@ -280,8 +280,10 @@
 			return rules;
 		};
 
-		jQuery.fn.issues = function() {
+		jQuery.fn.issues = function(options) {
 			var issues = [];
+
+			options = options || { refresh: false };
 
 			var bindings = $(this).liveBindings();
 
@@ -310,6 +312,9 @@
 				else {
 					continue;
 				}
+
+				if (options.refresh)
+					target.meta.executeRules(prop);
 
 				Array.addRange(issues, target.meta.issues(prop));
 			}
