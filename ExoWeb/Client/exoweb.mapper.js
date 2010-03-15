@@ -1495,10 +1495,18 @@
 
 				var objectJson;
 
+				// Get the paths from the original query(ies) that apply to this object (based on type).
+				var paths = ObjectLazyLoader.getRelativePaths(obj);
+
+				// Add the property to load if specified.  Assumes an instance property.
+				if (propName && !Array.contains(paths, "this." + propName)) {
+					paths.push("this." + propName);
+				}
+
 				// fetch object json
 				log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 				// NOTE: should changes be included here?
-				objectProvider(mtype.get_fullName(), [id], true, false, ObjectLazyLoader.getRelativePaths(obj), null,
+				objectProvider(mtype.get_fullName(), [id], true, false, paths, null,
 					signal.pending(function(result) {
 						objectJson = result.instances;
 					}),
