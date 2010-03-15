@@ -335,13 +335,42 @@
 					return true;
 				}
 			},
-			canSave: function ServerSync$canSave(change) {
-				var obj = fromExoGraph(this._translator, change.instance);
-				if (obj && Array.contains(this._objectsExcludedFromSave, obj)) {
-					return false;
+			_canSaveObject: function ServerSync$_canSaveObject(obj) {
+				if (!obj) {
+					ExoWeb.trace.throwAndLog("server", "Unable to test whether object can be saved:  Object does not exist.");
 				}
 
-				return true;
+				return !Array.contains(this._objectsExcludedFromSave, obj);
+			},
+			canSave: function ServerSync$canSave(change) {
+				// For list changes additionally check added and removed objects.
+				if (change.__type == "ListChange:#ExoGraph") {
+					var ignore = true;
+
+					// Search added and removed for an object that can be saved.
+					Array.forEach(change.added, function(item) {
+						var addedObj = fromExoGraph(this._translator, item);
+						if (this._canSaveObject(addedObj)) {
+							ignore = false;
+						}
+					}, this);
+					Array.forEach(change.removed, function(item) {
+						var removedObj = fromExoGraph(this._translator, item);
+						if (this._canSaveObject(removedObj)) {
+							ignore = false;
+						}
+					}, this);
+
+					// If no "savable" object was found in added or 
+					// removed then this change cannot be saved.
+					if (ignore) {
+						return false;
+					}
+				}
+
+				// Ensure that the instance that the change pertains to can be saved.
+				var instanceObj = fromExoGraph(this._translator, change.instance);
+				return this._canSaveObject(instanceObj);
 			},
 
 			// Raise Server Event
