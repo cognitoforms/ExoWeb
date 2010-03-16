@@ -13,6 +13,8 @@ namespace ExoWeb
 		IEnumerable<Rule> GetRules(GraphType type);
 
 		string GetFormatName(GraphProperty property);
+
+		void OnError(IServiceError error);
 	}
 
 	#endregion

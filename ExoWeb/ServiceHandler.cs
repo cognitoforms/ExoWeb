@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Web;
+using System.Text;
 
 namespace ExoWeb
 {
@@ -18,10 +19,31 @@ namespace ExoWeb
 		/// <param name="context"></param>
 		public void ProcessRequest(HttpContext context)
 		{
-			if (context.Request.PathInfo == "/Script")
-				OutputScript(context);
-			else
-				ServiceMethod.Invoke(context);
+			try
+			{
+				if (context.Request.PathInfo == "/Script")
+					OutputScript(context);
+				else
+					ServiceMethod.Invoke(context);
+			}
+			catch (Exception e)
+			{
+				// Create an error to log
+				var error = new LogErrorMethod();
+
+				error.Type = e.GetBaseException().GetType().FullName;
+				error.StackTrace = GetFullStackTrace(e);
+				error.Message = e.GetBaseException().Message;
+				error.Url = context.Request.RawUrl;
+
+				// Allow adapters to log the error
+				Adapter.OnError(error);
+
+				// Also send the error information to the client
+				context.Response.Clear();
+				context.Response.ContentType = "application/json";
+				context.Response.Write(ServiceMethod.ToJson(typeof(LogErrorMethod), error));
+			}
 		}
 
 		/// <summary>
@@ -118,6 +140,12 @@ namespace ExoWeb
 						{
 							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType , false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
+
+						// Define the ExoWeb.LogError method
+						ExoWeb.WebService.LogError = function ExoWeb$WebService$LogError(type, message, stackTrace, url, refererUrl, onSuccess, onFailure)
+						{
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'LogError', false, { type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl }, onSuccess, onFailure, null, 1000000, false, null);
+						}
 					}
 
 					if (window.Sys && Sys.loader) {
@@ -128,7 +156,29 @@ namespace ExoWeb
 					}
 				})();
 			");
+		}
 
+		/// <summary>
+		/// Utility method for getting the full stack trace for a list
+		/// of chained exceptions.
+		/// </summary>
+		/// <param name="error">Last exception in chain</param>
+		/// <returns>Stack trace</returns>
+		static string GetFullStackTrace(Exception error)
+		{
+			// Include exception info in the message
+			var errors = new Stack<Exception>();
+			for (Exception e = error; null != e; e = e.InnerException)
+				errors.Push(e);
+
+			StringBuilder stackTrace = new StringBuilder();
+			while (errors.Count > 0)
+			{
+				Exception e = (Exception)errors.Pop();
+				stackTrace.AppendFormat("{0}\n {1}\n{2}\n\n", e.Message, e.GetType().FullName, e.StackTrace);
+			}
+
+			return stackTrace.ToString();
 		}
 	}
 }

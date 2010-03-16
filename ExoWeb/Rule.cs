@@ -134,7 +134,7 @@ namespace ExoWeb
 
 	public class DataAnnotationsAdapter : IServiceAdapter
 	{
-		public IEnumerable<Rule> GetRules(GraphType type)
+		IEnumerable<Rule> IServiceAdapter.GetRules(GraphType type)
 		{
 			List<Rule> rules = new List<Rule>();
 
@@ -168,10 +168,13 @@ namespace ExoWeb
 			return rules;
 		}
 
-		public string GetFormatName(GraphProperty property)
+		string IServiceAdapter.GetFormatName(GraphProperty property)
 		{
 			return null;
 		}
+
+		void IServiceAdapter.OnError(IServiceError error)
+		{ }
 	}
 
 	#endregion

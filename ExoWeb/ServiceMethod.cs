@@ -81,7 +81,7 @@ namespace ExoWeb
 		/// <typeparam name="T"></typeparam>
 		/// <param name="json"></param>
 		/// <returns></returns>
-		protected static object FromJson(Type type, string json)
+		protected internal static object FromJson(Type type, string json)
 		{
 			byte[] bytes = Encoding.UTF8.GetBytes(json);
 			XmlDictionaryReader reader = JsonReaderWriterFactory.CreateJsonReader(bytes, 0, bytes.Length, Encoding.UTF8, XmlDictionaryReaderQuotas.Max, null);
@@ -96,7 +96,7 @@ namespace ExoWeb
 		/// <param name="type"></param>
 		/// <param name="value"></param>
 		/// <returns></returns>
-		protected static string ToJson(Type type, object value)
+		protected internal static string ToJson(Type type, object value)
 		{
 			MemoryStream stream = new MemoryStream();
 			XmlDictionaryWriter writer = JsonReaderWriterFactory.CreateJsonWriter(stream, Encoding.UTF8);

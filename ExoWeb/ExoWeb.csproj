@@ -70,6 +70,7 @@
     <Reference Include="System.Web.Mobile" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="LogErrorMethod.cs" />
     <Compile Include="IServiceAdapter.cs" />
     <Compile Include="SaveMethod.cs" />
     <Compile Include="RaiseEventMethod.cs" />
