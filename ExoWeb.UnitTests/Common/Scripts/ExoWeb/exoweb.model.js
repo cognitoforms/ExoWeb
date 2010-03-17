@@ -65,12 +65,12 @@
 			}
 			else {
 				if (firstStep.cast) {
-					type = window[firstStep.cast];
+					var jstype = Model.getJsType(firstStep.cast);
 
-					if (!type) {
+					if (!jstype) {
 						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [path, firstStep.cast]);
 					}
-					type = type.meta;
+					type = jstype.meta;
 				}
 				else if (thisType instanceof Function) {
 					type = thisType.meta;
@@ -128,20 +128,58 @@
 			},
 			notifyListChanged: function(obj, property, changes) {
 				this._raiseEvent("listChanged", [obj, property, changes]);
+			},
+			_ensureNamespace: function Model$_ensureNamespace(name, parentNamespace) {
+				var target = parentNamespace;
+
+				if (target.constructor === String) {
+					var nsTokens = target.split(".");
+					target = window;
+					Array.forEach(nsTokens, function(token) {
+						target = target[token];
+
+						if (target === undefined) {
+							ExoWeb.trace.throwAndLog("model", "Parent namespace \"{0}\" could not be found.", parentNamespace);
+						}
+					});
+				}
+				else if (target === undefined || target === null) {
+					target = window;
+				}
+
+				// create the namespace object if it doesn't exist, otherwise return the existing namespace
+				if (!(name in target)) {
+					var result = target[name] = {};
+					return result;
+				}
+				else {
+					return target[name];
+				}
 			}
 		};
 
 		Model.mixin(ExoWeb.Functor.eventing);
 
-		Model.getJsType = function Model$getJsType(name) {
+		Model.getJsType = function Model$getJsType(name, allowUndefined) {
+			/// <summary>
+			/// Retrieves the JavaScript constructor function corresponding to the given full type name.
+			/// </summary>
+			/// <returns type="Object" />
+
 			var obj = window;
 			var steps = name.split(".");
-			Array.forEach(steps, function Model$getJsType$step(step) {
+			for (var i = 0; i < steps.length; i++) {
+				var step = steps[i];
 				obj = obj[step];
 				if (obj === undefined) {
-					throw Error($format("The tpye \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+					if (allowUndefined) {
+						return;
+					}
+					else {
+						throw Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+					}
 				}
-			});
+			}
 			return obj;
 		};
 
@@ -199,16 +237,16 @@
 		Entity.formats = {
 			$system: new Format({
 				undefinedString: "",
-				nullString: "null",
+				nullString: "",
 				convert: function(obj) {
 					return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
 				},
 				convertBack: function(str) {
 					// indicates "no value", which is distinct from "no selection"
 					var ids = str.split("|");
-					var ctor = window[ids[0]];
-					if (ctor && ctor.meta) {
-						return ctor.meta.get(ids[1]);
+					var jstype = Model.getJsType(ids[0]);
+					if (jstype && jstype.meta) {
+						return jstype.meta.get(ids[1]);
 					}
 				}
 			})
@@ -231,11 +269,25 @@
 			// generate class and constructor
 			var type = this;
 
-			var jstype = window[name];
+			var jstype = Model.getJsType(name, true);
 
 			if (jstype) {
 				throwAndLog(["model"], "'{1}' has already been declared", arguments);
 			}
+
+			// create namespaces as needed
+			var nameTokens = name.split("."), 
+				token = Array.dequeue(nameTokens),
+				namespaceObj = window;
+			while (nameTokens.length > 0) {
+				namespaceObj = model._ensureNamespace(token, namespaceObj);
+				token = Array.dequeue(nameTokens);
+			}
+
+			// the final name to use is the last token
+			var finalName = token;
+			// the full name (used as the function label) must be a valid identifier
+			var fullName = name.replace(/\./ig, "$");
 
 			function construct(idOrProps) {
 				if (!disableConstruction) {
@@ -278,7 +330,7 @@
 				// use eval to generate the type so the function name appears in the debugger
 				var ctorScript = $format("function {type}(idOrProps) { var obj=construct.apply(this, arguments); if(obj) return obj; };" +
 					"jstype = {type};",
-					{ type: name });
+					{ "type": fullName });
 
 				eval(ctorScript);
 			}
@@ -286,7 +338,7 @@
 				jstype = construct;
 			}
 
-			this._jstype = window[name] = jstype;
+			this._jstype = namespaceObj[finalName] = jstype;
 
 			// setup inheritance
 			this.derivedTypes = [];
@@ -337,15 +389,14 @@
 					id = this.newId();
 					obj.meta.isNew = true;
 				}
-				else {
-					id = id.toLowerCase();
-				}
+
+				var key = id.toLowerCase();
 
 				obj.meta.id = id;
 				Sys.Observer.makeObservable(obj);
 
 				for (var t = this; t; t = t.baseType) {
-					t._pool[id] = obj;
+					t._pool[key] = obj;
 					if (t._known) {
 						t._known.add(obj);
 					}
@@ -354,19 +405,19 @@
 				this._model.notifyObjectRegistered(obj);
 			},
 			changeObjectId: function Type$changeObjectId(oldId, newId) {
-				oldId = oldId.toLowerCase();
-				newId = newId.toLowerCase();
+				var oldKey = oldId.toLowerCase();
+				var newKey = newId.toLowerCase();
 
-				var obj = this._pool[oldId];
+				var obj = this._pool[oldKey];
 
 				// TODO: throw exceptions?
 				if (obj) {
 					for (var t = this; t; t = t.baseType) {
-						t._pool[newId] = obj;
+						t._pool[newKey] = obj;
 
-						delete t._pool[oldId];
+						delete t._pool[oldKey];
 
-						t._legacyPool[oldId] = obj;
+						t._legacyPool[oldKey] = obj;
 					}
 
 					obj.meta.id = newId;
@@ -378,7 +429,7 @@
 				this._model.notifyObjectUnregistered(obj);
 
 				for (var t = this; t; t = t.baseType) {
-					delete t._pool[obj.meta.id];
+					delete t._pool[obj.meta.id.toLowerCase()];
 
 					if (t._known) {
 						t._known.remove(obj);
@@ -389,8 +440,8 @@
 				delete obj.meta;
 			},
 			get: function Type$get(id) {
-				id = id.toLowerCase();
-				return this._pool[id] || this._legacyPool[id];
+				var key = id.toLowerCase();
+				return this._pool[key] || this._legacyPool[key];
 			},
 			// Gets an array of all objects of this type that have been registered.
 			// The returned array is observable and collection changed events will be raised
@@ -953,7 +1004,7 @@
 				var rootType = (options.rootType) ? options.rootType.meta : prop._containingType;
 
 				if (options.basedOn) {
-					var signal = new ExoWeb.Signal("calculated property dependencies");
+					this._readySignal = new ExoWeb.Signal("calculated property dependencies");
 					var inputs = [];
 
 					// setup loading of each property path that the calculation is based on
@@ -970,7 +1021,7 @@
 						}
 
 						var path = (parts.length >= 2) ? parts[1] : p;
-						Model.property(path, rootType, true, signal.pending(function Property$calculated$chainLoaded(chain) {
+						Model.property(path, rootType, true, prop._readySignal.pending(function Property$calculated$chainLoaded(chain) {
 							var input = new RuleInput(chain);
 
 							if (!input.property) {
@@ -987,7 +1038,7 @@
 					});
 
 					// wait until all property information is available to initialize the calculation
-					signal.waitForAll(function() {
+					this._readySignal.waitForAll(function() {
 						prop.addCalculatedRule(options.fn, inputs);
 					});
 				}
@@ -1010,8 +1061,11 @@
 		function PathTokens(expression) {
 			this.expression = expression;
 
+			// replace "." in type casts so that they do not interfere with splitting path
+			expression = expression.replace(/<[^>]*>/ig, function(e) { return e.replace(/\./ig, "$_$"); });
+
 			this.steps = expression.split(".").map(function(step) {
-				var parsed = step.match(/^([a-z0-9_]+)(<([a-z0-9_]+)>)?$/i);
+				var parsed = step.match(/^([a-z0-9_]+)(<([a-z0-9_$]+)>)?$/i);
 
 				if (!parsed) {
 					return null;
@@ -1020,7 +1074,8 @@
 				var result = { property: parsed[1] };
 
 				if (parsed[3]) {
-					result.cast = parsed[3];
+					// restore "." in type case expression
+					result.cast = parsed[3].replace(/\$_\$/ig, ".");
 				}
 
 				return result;
@@ -1746,18 +1801,6 @@
 
 		Rule.allowedValues = AllowedValuesRule;
 
-		Property.mixin({
-			allowedValues: function(options) {
-
-				// create a rule that will recalculate allowed values when dependencies change
-				var source = this.get_name() + "AllowedValues";
-				var valuesProp = this.get_containingType().addProperty(source, this.get_jstype(), true);
-				valuesProp.calculated(options);
-
-				var rule = new AllowedValuesRule({ source: source }, [this]);
-			}
-		});
-
 		///////////////////////////////////////////////////////////////////////////////////////
 		function StringLengthRule(options, properties) {
 			this.prop = properties[0];
@@ -2059,7 +2102,14 @@
 
 		Boolean.formats.TrueFalse = new Format({
 			convert: function(val) { return val ? "true" : "false"; },
-			convertBack: function(str) { return (str.toLowerCase() == "true"); }
+			convertBack: function(str) {
+				if (str.toLowerCase() == "true") {
+					return true;
+				}
+				else if (str.toLowerCase() == "false") {
+					return false;
+				}
+			}
 		});
 
 		Boolean.formats.$system = Boolean.formats.TrueFalse;

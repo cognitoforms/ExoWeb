@@ -452,9 +452,8 @@
 			///////////////////////////////////////////////////////////////////////
 			isType: function Adapter$isType(jstype) {
 
-				var propType = this._propertyChain.get_jstype();
-				for (var isEntity = propType.meta; propType !== null; propType = propType.getBaseType(), isEntity = isEntity || propType.meta) {
-					if (propType === jstype || (isEntity && jstype === ExoWeb.Model.Entity)) {
+				for (var propType = this._propertyChain.get_jstype(); propType !== null; propType = propType.getBaseType()) {
+					if (propType === jstype) {
 						return true;
 					}
 				}

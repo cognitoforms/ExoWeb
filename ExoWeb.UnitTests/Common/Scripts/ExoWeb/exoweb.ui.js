@@ -36,6 +36,21 @@ Type.registerNamespace("ExoWeb.UI");
 			get_when: function Toggle$get_when() {
 				return this._when;
 			},
+			get_visible: function Toggle$get_visible() {
+				return this._visible;
+			},
+			add_shown: function Toggle$add_shown(handler) {
+				this._addHandler("shown", handler);
+			},
+			remove_shown: function Toggle$remove_shown(handler) {
+				this._removeHandler("shown", handler);
+			},
+			add_hidden: function Toggle$add_hidden(handler) {
+				this._addHandler("hidden", handler);
+			},
+			remove_hidden: function Toggle$remove_hidden(handler) {
+				this._removeHandler("hidden", handler);
+			},
 			execute: function Toggle$execute() {
 				// Ensure that the control is initialized, has an element, and the "on" property has been set.
 				// Scenario 1:  The set_on or set_when methods may be called before the control has been initialized.
@@ -58,22 +73,32 @@ Type.registerNamespace("ExoWeb.UI");
 					equals = this._on === this._when;
 				}
 
-				if (equals) {
-					if (this._action == "hide") {
-						$(this.get_element()).hide();
+				// hide or show the element depending on the conditions
+				if ((equals && this._action != "hide") || (!equals && this._action == "hide")) {
+					// show the element
+					$(this.get_element()).show();
+
+					// visibility has changed so raise event
+					if (this._visible === undefined || this._visible === false) {
+						Sys.Observer.raiseEvent(this, "shown");
 					}
-					else {
-						$(this.get_element()).show();
-					}
+					
+					// update status
+					this._visible = true;
 				}
 				else {
-					if (this._action == "hide") {
-						$(this.get_element()).show();
+					// hide the element
+					$(this.get_element()).hide();
+
+					// visibility has changed so raise event
+					if (this._visible === undefined || this._visible === true) {
+						Sys.Observer.raiseEvent(this, "hidden");
 					}
-					else {
-						$(this.get_element()).hide();
-					}
+
+					// update status
+					this._visible = false;
 				}
+
 			},
 			initialize: function Toggle$initialize() {
 				Toggle.callBaseMethod(this, "initialize");
@@ -242,9 +267,6 @@ Type.registerNamespace("ExoWeb.UI");
 		ExoWeb.UI.Template = Template;
 		Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
 
-		// TODO: rename content
-
-
 		///////////////////////////////////////////////////////////////////////////////
 		/// <summary>
 		/// Finds its matching template and renders using the provided data as the 
@@ -283,22 +305,61 @@ Type.registerNamespace("ExoWeb.UI");
 				this._data = value;
 				this.render();
 			},
+			get_disabled: function Content$get_disabled() {
+				return this._disabled === undefined ? false : this._disabled;
+			},
+			set_disabled: function Content$set_disabled(value) {
+				var newValue;
+
+				if (value.constructor === Boolean) {
+					newValue = value;
+				}
+				else if (value.constructor === String) {
+					newValue = Boolean.formats.TrueFalse.convertBack(value);
+				}
+				else {
+					ExoWeb.trace.throwAndLog(["ui", "content"], "Invalid value for property \"disabled\": {0}.", [value]);
+				}
+
+				var oldValue = this._disabled;
+				this._disabled = newValue;
+
+				if (oldValue === true && newValue === false) {
+					this.render();
+				}
+			},
 			get_contexts: function Content$get_contexts() {
 				return this._contexts;
 			},
-			get_parentContext: function Content$get_parentContext() {
+			get_templateContext: function Content$get_templateContext() {
 				if (!this._parentContext) {
 					this._parentContext = Sys.UI.Template.findContext(this._element);
 				}
 				return this._parentContext;
 			},
-			render: function Content$render() {
+			_canRender: function Content$_canRender() {
 				// Ensure that the control is initialized, has an element, and the "data" property has been set.
 				// Scenario 1:  The set_data method may be called before the control has been initialized.
 				// Scenario 2:  If a lazy markup extension is used to set the "data" property then a callback could set the 
 				//				property value when the element is undefined, possibly because of template re-rendering.
 				// Scenario 3:  If a lazy markup extension is used to set the "data" property then it may not have a value when initialized.
-				if (this._data && this._initialized && this._element !== undefined && this._element !== null) {
+				// Also check that the control has not been disabled.
+				return !!(this._data && this._initialized && this._element !== undefined && this._element !== null && !this.get_disabled());
+			},
+			add_rendering: function Content$add_rendering(handler) {
+				this._addHandler("rendering", handler);
+			},
+			remove_rendering: function Content$remove_rendering(handler) {
+				this._removeHandler("rendering", handler);
+			},
+			add_rendered: function Content$add_rendered(handler) {
+				this._addHandler("rendered", handler);
+			},
+			remove_rendered: function Content$remove_rendered(handler) {
+				this._removeHandler("rendered", handler);
+			},
+			render: function Content$render() {
+				if (this._canRender()) {
 					log(['ui', "templates"], "render()");
 
 					var _this = this;
@@ -306,17 +367,15 @@ Type.registerNamespace("ExoWeb.UI");
 						if (_this._element !== undefined && _this._element !== null) {
 							log(['ui', "templates"], "render() proceeding after all templates are loaded");
 
-							// Failing to empty content before rending can result in invalid content since rendering 
+							// Failing to empty content before rendering can result in invalid content since rendering 
 							// content is not necessarily in order because of waiting on external templates.
 							$(_this._element).empty();
 
-							// Raise the rendering event
-							if (jQuery) {
-								jQuery(this._element).trigger("rendering", [this]);
-							}
+							var renderArgs = new Sys.Data.DataEventArgs(_this._data);
+							Sys.Observer.raiseEvent(_this, "rendering", renderArgs);
 
 							// ripped off from dataview
-							var pctx = _this.get_parentContext();
+							var pctx = _this.get_templateContext();
 							var container = _this.get_element();
 							var data = _this._data;
 							var list = data;
@@ -358,10 +417,7 @@ Type.registerNamespace("ExoWeb.UI");
 								}
 							}
 
-							// Raise the rendered event
-							if (jQuery) {
-								jQuery(_this._element).trigger("rendered", [_this]);
-							}
+							Sys.Observer.raiseEvent(_this, "rendered", renderArgs);
 						}
 					});
 				}
@@ -378,27 +434,6 @@ Type.registerNamespace("ExoWeb.UI");
 
 		ExoWeb.UI.Content = Content;
 		Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
-
-		// override refresh in order to raise rendering and rendered events
-		var dataviewRefreshBase = Sys.UI.DataView.prototype.refresh;
-		Sys.UI.DataView.prototype.refresh = function Sys$UI$DataView$refreshOverride() {
-			// Don't raise the event if the data has not been set.  The refresh method will also exit early if an 
-			// onRendering handler chooses to cancel rendering.  In this case the event will still be raised.
-			var raiseEvent = this._setData;
-
-			// Raise the rendering event.
-			if (raiseEvent && jQuery) {
-				jQuery(this._element).trigger("rendering", [this]);
-			}
-
-			// Invoke base function
-			dataviewRefreshBase.apply(this, arguments);
-
-			// Raise the rendered event
-			if (raiseEvent && jQuery) {
-				jQuery(this._element).trigger("rendered", [this]);
-			}
-		};
 
 		///////////////////////////////////////////////////////////////////////////////
 		/// <summary>
@@ -479,11 +514,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 			var data = null;
 
-			if (container.control instanceof ExoWeb.UI.Content) {
-				// content control doesn't currenlty support lists, so return the data object
-				data = container.control.get_data();
-			}
-			else if (container.control instanceof Sys.UI.DataView) {
+			if (container.control instanceof Sys.UI.DataView || container.control instanceof ExoWeb.UI.Content) {
 				var containerContexts = container.control.get_contexts();
 				var containerData = container.control.get_data();
 
@@ -537,13 +568,12 @@ Type.registerNamespace("ExoWeb.UI");
 
 			var effectiveLevel = level || 1;
 
-			var container;
-			var subcontainer;
+			var container, subcontainer;
 			for (var i = 0; i < effectiveLevel || (dataType && !(getDataForContainer(container, subcontainer, index) instanceof dataType)); i++) {
 				// if we are starting out with a dataview then look at the parent context rather than walking 
 				// up the dom (since the element will probably not be present in the dom)
 				if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
-					container = target._parentContext.containerElement;
+					container = target.get_templateContext().containerElement;
 				}
 				else {
 					subcontainer = getTemplateSubContainer(container || target);

@@ -60,32 +60,6 @@
 		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		// rendering events
-		jQuery.fn.rendering = function(f, onlyRaiseOnTarget) {
-			$(this).each(function() {
-				var target = this;
-				$(this).bind("rendering", function(evt) {
-					if (!onlyRaiseOnTarget || evt.target == target) {
-						f.apply(this, arguments);
-					}
-				});
-			});
-			return this;
-		};
-
-		jQuery.fn.rendered = function(f, onlyRaiseOnTarget) {
-			$(this).each(function() {
-				var target = this;
-				$(this).bind("rendered", function(evt) {
-					if (!onlyRaiseOnTarget || evt.target == target) {
-						f.apply(this, arguments);
-					}
-				});
-			});
-			return this;
-		};
-
-		//////////////////////////////////////////////////////////////////////////////////////
 		// selectors for rules
 		jQuery.expr[":"].rule = function(obj, index, meta, stack) {
 			if (!(window.ExoWeb && ExoWeb.Model)) {
@@ -113,7 +87,11 @@
 		// helpers for working with ms ajax controls
 
 		jQuery.expr[":"].dataview = function(obj, index, meta, stack) {
-			return obj.control instanceof Sys.UI.DataView;
+			return obj.control !== undefined && obj.control instanceof Sys.UI.DataView;
+		};
+
+		jQuery.expr[":"].content = function(obj, index, meta, stack) {
+			return ExoWeb.UI !== undefined && obj.control !== undefined && obj.control instanceof ExoWeb.UI.Content;
 		};
 
 		jQuery.expr[":"].control = function(obj, index, meta, stack) {
@@ -179,26 +157,46 @@
 
 		var interceptingTemplates = false;
 		var interceptingWebForms = false;
+		var partialPageLoadOccurred = false;
 
 		function ensureIntercepting() {
 			if (!interceptingTemplates && window.Sys && Sys.UI && Sys.UI.Template) {
 				var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
 				Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
-					var ret = instantiateInBase.apply(this, arguments);
+					var context = instantiateInBase.apply(this, arguments);
 
-					processElements(ret.nodes, "added");
-					return ret;
+					processElements(context.nodes, "added");
+					return context;
 				};
+
+				// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
+				// dispose is too late because the nodes will have been cleared out.
+				var clearContainersBase = Sys.UI.DataView.prototype._clearContainers;
+				Sys.UI.DataView.prototype._clearContainers = function() {
+					var contexts = this.get_contexts();
+
+					for (var i = 0; i < contexts.length; i++)
+						processElements(contexts[i].nodes, "deleted");
+
+					clearContainersBase.apply(this, arguments);
+				}
+
 				interceptingTemplates = true;
 			}
 
 			if (!interceptingWebForms && window.Sys && Sys.WebForms) {
 				Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function(sender, evt) {
+					partialPageLoadOccurred = true;
 					processElements(evt.get_panelsUpdating(), "deleted");
 				});
 
 				Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function(sender, evt) {
-					processElements(evt.get_panelsCreated(), "added");
+					// Only process elements for update panels that were added if we have actually done a partial update.
+					// This is needed so that the "ever" handler is not called twice when a panel is added to the page on first page load.
+					if (partialPageLoadOccurred) {
+						processElements(evt.get_panelsCreated(), "added");
+					}
+
 					processElements(evt.get_panelsUpdated(), "added");
 				});
 				interceptingWebForms = true;
@@ -237,7 +235,7 @@
 		jQuery.fn.liveBindings = function() {
 			var bindings = [];
 			this.each(function() {
-				if(this.__msajaxbindings)
+				if (this.__msajaxbindings)
 					Array.addRange(bindings, this.__msajaxbindings);
 			});
 
@@ -282,8 +280,10 @@
 			return rules;
 		};
 
-		jQuery.fn.issues = function() {
+		jQuery.fn.issues = function(options) {
 			var issues = [];
+
+			options = options || { refresh: false };
 
 			var bindings = $(this).liveBindings();
 
@@ -312,6 +312,9 @@
 				else {
 					continue;
 				}
+
+				if (options.refresh)
+					target.meta.executeRules(prop);
 
 				Array.addRange(issues, target.meta.issues(prop));
 			}

@@ -58,7 +58,7 @@ Type.registerNamespace("ExoWeb");
 		},
 		_formatMessage: function _formatMessage(category, message, args) {
 			if (!(category instanceof Array)) {
-				category = [category];	
+				category = [category];
 			}
 
 			var catStr = category.join(", ");
@@ -913,7 +913,7 @@ Type.registerNamespace("ExoWeb");
 
 		var list = path;
 		if (path instanceof Array) {
-			path = Array.join(path, ".");
+			path = path.join(".");
 		}
 		else {
 			list = path.split(".");
@@ -954,7 +954,7 @@ Type.registerNamespace("ExoWeb");
 
 	Sys.Observer.removePathChanged = function Sys$Observer$removePathChanged(target, path, handler) {
 		if (path instanceof Array) {
-			path = Array.join(path, ".");
+			path = path.join(".");
 		}
 
 		var pathChangeHandlers = target.__pathChangeHandlers ? target.__pathChangeHandlers[path] : null;
@@ -986,16 +986,6 @@ Type.registerNamespace("ExoWeb");
 			}
 		}
 	};
-
-	var _sr = Sys.Serialization.JavaScriptSerializer._serializeWithBuilder;
-	Sys.Serialization.JavaScriptSerializer._serializeWithBuilder = function() {
-		try {
-			_sr.apply(this, arguments);
-		}
-		catch (e) {
-			return "null";
-		}
-	}
 
 	// Supress raising of property changed when a generated setter is already raising the event
 	Sys.Observer._setValue = function Sys$Observer$_setValue(target, propertyName, value) {

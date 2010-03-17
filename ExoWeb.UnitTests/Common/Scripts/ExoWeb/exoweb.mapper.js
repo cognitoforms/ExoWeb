@@ -10,12 +10,16 @@
 		var log = ExoWeb.trace.log;
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
-		var objectProvider = ExoWeb.WebService.Load;
+		var objectProvider = function objectProvider(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure) {
+			ExoWeb.WebService.Load(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure);
+		};
 		ExoWeb.Mapper.setObjectProvider = function setObjectProvider(fn) {
 			objectProvider = fn;
 		};
 
-		var typeProvider = ExoWeb.WebService.GetType;
+		var typeProvider = function typeProvider(type, onSuccess, onFailure) {
+			ExoWeb.WebService.GetType(type, onSuccess, onFailure);
+		};
 		ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 			typeProvider = fn;
 		};
@@ -34,12 +38,16 @@
 			roundtripProvider = fn;
 		};
 
-		var saveProvider = ExoWeb.WebService.Save;
+		var saveProvider = function saveProvider(root, changes, onSuccess, onFailure) {
+			ExoWeb.WebService.Save(root, changes, onSuccess, onFailure);
+		};
 		ExoWeb.Mapper.setSaveProvider = function setSaveProvider(fn) {
 			saveProvider = fn;
 		};
 
-		var eventProvider = ExoWeb.WebService.RaiseEvent;
+		var eventProvider = function eventProvider(eventType, instance, event, changes, onSuccess, onFailure) {
+			ExoWeb.WebService.RaiseEvent(eventType, instance, event, changes, onSuccess, onFailure);
+		};
 		ExoWeb.Mapper.setEventProvider = function setEventProvider(fn) {
 			eventProvider = fn;
 		};
@@ -58,7 +66,7 @@
 				return json;
 			},
 			convertBack: function(val) {
-				var jstype = window[val.type];
+				var jstype = ExoWeb.Model.Model.getJsType(val.type);
 
 				var obj = jstype.meta.get(val.id);
 
@@ -89,7 +97,7 @@
 
 		function fromExoGraph(translator, val) {
 			if (val !== undefined && val !== null) {
-				var type = window[val.type];
+				var type = ExoWeb.Model.Model.getJsType(val.type);
 
 				// Entities only: translate back to the client's id.  This is necessary to handle the fact that ids are created on 
 				// both the client and server.  Also, in some cases a transaction references an entity that was created on the server 
@@ -327,13 +335,42 @@
 					return true;
 				}
 			},
-			canSave: function ServerSync$canSave(change) {
-				var obj = fromExoGraph(this._translator, change.instance);
-				if (obj && Array.contains(this._objectsExcludedFromSave, obj)) {
-					return false;
+			_canSaveObject: function ServerSync$_canSaveObject(obj) {
+				if (!obj) {
+					ExoWeb.trace.throwAndLog("server", "Unable to test whether object can be saved:  Object does not exist.");
 				}
 
-				return true;
+				return !Array.contains(this._objectsExcludedFromSave, obj);
+			},
+			canSave: function ServerSync$canSave(change) {
+				// For list changes additionally check added and removed objects.
+				if (change.__type == "ListChange:#ExoGraph") {
+					var ignore = true;
+
+					// Search added and removed for an object that can be saved.
+					Array.forEach(change.added, function(item) {
+						var addedObj = fromExoGraph(this._translator, item);
+						if (this._canSaveObject(addedObj)) {
+							ignore = false;
+						}
+					}, this);
+					Array.forEach(change.removed, function(item) {
+						var removedObj = fromExoGraph(this._translator, item);
+						if (this._canSaveObject(removedObj)) {
+							ignore = false;
+						}
+					}, this);
+
+					// If no "savable" object was found in added or 
+					// removed then this change cannot be saved.
+					if (ignore) {
+						return false;
+					}
+				}
+
+				// Ensure that the instance that the change pertains to can be saved.
+				var instanceObj = fromExoGraph(this._translator, change.instance);
+				return this._canSaveObject(instanceObj);
 			},
 
 			// Raise Server Event
@@ -361,7 +398,7 @@
 					name,
 					toExoGraph(this._translator, obj),
 					event,
-					{changes: changes },
+					{ changes: changes },
 					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic),
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
@@ -524,7 +561,7 @@
 
 				saveProvider(
 					{ type: root.meta.type.get_fullName(), id: root.meta.id },
-					{changes: this.get_Changes() },
+					{ changes: this.get_Changes() },
 					this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
 					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
@@ -791,7 +828,7 @@
 				}
 			},
 			applySaveChange: function ServerSync$applySaveChange(change, callback) {
-				log("server", "applySaveChange: {length} changes", change.idChanges);
+				log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
 
 				if (change.idChanges) {
 					// update each object with its new id
@@ -799,7 +836,9 @@
 						var idChange = change.idChanges[i];
 
 						var serverOldId = idChange.oldId;
-						var clientOldId = this._translator.reverse(idChange.type, serverOldId);
+						var clientOldId = !(idChange.oldId in this._model.type(idChange.type)._pool) ? 
+							this._translator.reverse(idChange.type, serverOldId) :
+							idChange.oldId;
 
 						// If the client recognizes the old id then this is an object we have seen before
 						if (clientOldId) {
@@ -1179,13 +1218,13 @@
 			// that may eventually be fetched
 			var family = typeName.split(">");
 
-			var type = window[family[0]];
+			var jstype = ExoWeb.Model.Model.getJsType(family[0], true);
 
-			if (type === undefined) {
-				type = getType(model, null, family, forLoading).get_jstype();
+			if (jstype === undefined) {
+				jstype = getType(model, null, family, forLoading).get_jstype();
 			}
 
-			return type;
+			return jstype;
 		}
 
 		function flattenTypes(types, flattened) {
@@ -1487,10 +1526,18 @@
 
 				var objectJson;
 
+				// Get the paths from the original query(ies) that apply to this object (based on type).
+				var paths = ObjectLazyLoader.getRelativePaths(obj);
+
+				// Add the property to load if specified.  Assumes an instance property.
+				if (propName && !Array.contains(paths, "this." + propName)) {
+					paths.push("this." + propName);
+				}
+
 				// fetch object json
 				log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 				// NOTE: should changes be included here?
-				objectProvider(mtype.get_fullName(), [id], true, false, ObjectLazyLoader.getRelativePaths(obj), null,
+				objectProvider(mtype.get_fullName(), [id], true, false, paths, null,
 					signal.pending(function(result) {
 						objectJson = result.instances;
 					}),
@@ -1537,7 +1584,7 @@
 				var relPaths = [];
 
 				for (var typeName in instance._typePaths) {
-					var jstype = window[typeName];
+					var jstype = ExoWeb.Model.Model.getJsType(typeName);
 
 					if (jstype && jstype.meta) {
 						var paths = instance._typePaths[typeName];
@@ -1692,7 +1739,7 @@
 						}
 					}
 
-					if (!searchJson(window[ownerType].meta, list._ownerId)) {
+					if (!searchJson(ExoWeb.Model.Model.getJsType(ownerType).meta, list._ownerId)) {
 						ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, list._ownerId]);
 					}
 
@@ -1798,7 +1845,7 @@
 						allSignals.orPending(function context$objects$callback(error) {
 							ExoWeb.trace.logError("objectInit",
 								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-								{ query: query, error: error });
+								{ query: typeQuery, error: error });
 						})
 					);
 				}
@@ -1926,7 +1973,7 @@
 		var pendingExtensions = {};
 
 		function extendOne(typeName, callback) {
-			var jstype = window[typeName];
+			var jstype = ExoWeb.Model.Model.getJsType(typeName, true);
 
 			if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
 				callback(jstype);
