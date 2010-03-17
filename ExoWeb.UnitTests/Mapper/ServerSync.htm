@@ -2,17 +2,20 @@
 <html>
 	<head>
 		<title>Client-Server Sync Tests</title>
-		<script src="../Scripts/JQuery/jquery-1.3.2.js" type="text/javascript"></script>
-		<link href="../Styles/QUnit/qunit.css" type="text/css" rel="stylesheet" />
-		<script src="../Scripts/QUnit/qunit.js" type="text/javascript"></script>
-		<script src="../Scripts/MsAjax/MicrosoftAjax.debug.js" type="text/javascript"></script>
-		<script src="../Scripts/ExoWeb/exoweb.js" type="text/javascript"></script>
-		<script src="Common/exoweb.qunit.js" type="text/javascript"></script>
-		<script src="../Scripts/ExoWeb/exoweb.model.js" type="text/javascript"></script>
-		<script src="../Scripts/ExoWeb/exoweb.mapper.js" type="text/javascript"></script>
-		<script src="../Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
-		<script src="../Scripts/mock-driver.js" type="text/javascript"></script>
-		<script src="../Scripts/changeset.js" type="text/javascript"></script>
+		
+		<link href="../Common/Styles/qunit.css" type="text/css" rel="stylesheet" />
+		
+		<script src="../Common/Scripts/JQuery/jquery-1.3.2.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/QUnit/qunit.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/Microsoft/MicrosoftAjax.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb.model.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb.mapper.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/mock-driver.js" type="text/javascript"></script>
+		<script src="ChangeSet.js" type="text/javascript"></script>
+		
 		<script type="text/javascript">
 			//ExoWeb.trace.flags.sync = true;
 			//ExoWeb.trace.flags.mocks = true;
@@ -20,6 +23,16 @@
 			ExoWeb.Mock.typeProviderDelay = 0;
 			ExoWeb.Mock.roundtripProviderDelay = 0;
 			ExoWeb.Mock.simulateLazyLoading = false;
+
+			// HACK: signal behavior that temporarily releases control conflicts with synchronous nature of tests
+			ExoWeb.Signal.prototype._doCallback = function Signal$_doCallback(name, thisPtr, callback, args) {
+				try {
+					callback.apply(thisPtr, args || []);
+				}
+				catch (e) {
+					logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
+				}
+			};
 
 			var context = ExoWeb.context({ model: { driver: { id: "1", from: "Driver" } } });
 
@@ -42,8 +55,8 @@
 				equals(changes.length, 1, "We should have 1 change in the log");
 				equals(changes[0].__type, "InitNew:#ExoGraph", "It should be an init change");
 				equals(changes[0].instance.id, "?1", "The id should be the server id, NOT the client id");
-				
-				newDealer.set_Name("Bill");
+
+				newDealer.set_Name("Cameron");
 				changes = context.server.get_Changes();
 				equals(changes.length, 2, "We should now have 2 change in the log");
 				equals(changes[1].__type, "ValueChange:#ExoGraph", "The most recent should be a value change");
@@ -107,46 +120,75 @@
 			});
 
 			setupTest("test6", { description: "Client-Server Commit (Changing Ids)", expect: 13 }, function() {
-				var matt = new Driver();
-				var mattLegacyId = matt.meta.id;
+				var sam = new Driver();
+				var samLegacyId = sam.meta.id;
 
-				// no changes on server
+				// Simulate no changes on server.
 				ExoWeb.Mock.roundtrip(null);
-				
+
 				context.server.roundtrip();
 
-				equals(matt.meta.id, mattLegacyId, "Matt's id should still be the temporary id");
+				equals(sam.meta.id, samLegacyId, "Sam's id should still be the temporary id");
 
-				var mattNewId = "1000";
+				var samNewId = "1000";
 
-				// simulate commit behavior
+				// Simulate commit behavior with id change.
 				ExoWeb.Mock.save(function(root, changes) {
-					return [
-						{
-							__type: "Save:#ExoGraph",
-							idChanges: [{ type: "Driver", oldId: mattLegacyId, newId: mattNewId}]
-						}
-					];
+					return new ChangeSet().save([{ type: "Driver", oldId: samLegacyId, newId: samNewId}]).build();
 				});
-				
+
 				context.server.save(context.model.driver);
 
 				var changes = context.server.get_Changes();
 				equals(changes.length, 0, "Queue should be empty after commit");
 
-				equals(matt.meta.id, mattNewId, "Matt's id should be a new permanent id");
-				equals(Driver.meta.get(mattLegacyId), matt, "Matt can still be retieved by the old id");
-				equals(Driver.meta.get(mattNewId), matt, "Matt can also be retieved by the new id");
+				equals(sam.meta.id, samNewId, "Sam's id should be a new permanent id");
+				equals(Driver.meta.get(samLegacyId), sam, "Sam can still be retieved by the old id");
+				equals(Driver.meta.get(samNewId), sam, "Sam can also be retieved by the new id");
 
-				ok(Driver.meta._pool[mattNewId], "Matt's new id is a key in the Driver pool");
-				ok(!Driver.meta._legacyPool[mattNewId], "Matt's new id is not a key in the Driver legacy pool");
-				ok(Driver.meta._legacyPool[mattLegacyId], "Matt's legacy id is a key in the Driver legacy pool");
-				ok(!Driver.meta._pool[mattLegacyId], "Matt's legacy id is not a key in the Driver pool");
+				ok(Driver.meta._pool[samNewId], "Sam's new id is a key in the Driver pool");
+				ok(!Driver.meta._legacyPool[samNewId], "Sam's new id is not a key in the Driver legacy pool");
+				ok(Driver.meta._legacyPool[samLegacyId], "Sam's legacy id is a key in the Driver legacy pool");
+				ok(!Driver.meta._pool[samLegacyId], "Sam's legacy id is not a key in the Driver pool");
 
-				ok(Person.meta._pool[mattNewId], "Matt's new id is a key in the Person pool");
-				ok(!Person.meta._legacyPool[mattNewId], "Matt's new id is not a key in the Person legacy pool");
-				ok(Person.meta._legacyPool[mattLegacyId], "Matt's legacy id is a key in the Person legacy pool");
-				ok(!Person.meta._pool[mattLegacyId], "Matt's legacy id is not a key in the Person pool");
+				ok(Person.meta._pool[samNewId], "Sam's new id is a key in the Person pool");
+				ok(!Person.meta._legacyPool[samNewId], "Sam's new id is not a key in the Person legacy pool");
+				ok(Person.meta._legacyPool[samLegacyId], "Sam's legacy id is a key in the Person legacy pool");
+				ok(!Person.meta._pool[samLegacyId], "Sam's legacy id is not a key in the Person pool");
+
+				// Account for transaction containing events with persisted ids prior to save event.
+
+			});
+
+			setupTest("test7", { description: "Client-Server Commit (Changing Ids With Prior Transactions)", expect: 3 }, function() {
+				// Simulate new object created on server.
+				ExoWeb.Mock.roundtrip(function() {
+					return new ChangeSet().init("Driver", "?2").val("Driver", "?2", "Name", null, "Casey").build();
+				});
+
+				context.server.roundtrip();
+
+				var caseyClientId = context.server._translator.reverse("Driver", "?2");
+				var casey = Driver.meta.get(caseyClientId);
+
+				var caseyLegacyId = "?2";
+				var caseyNewId = "2000";
+				var dateCreated = new Date();
+
+				// Simulate commit behavior with changes referencing persisted id before save event.
+				ExoWeb.Mock.save(function(root, changes) {
+					return new ChangeSet()
+						.val("Driver", caseyNewId, "DateCreated", null, dateCreated)
+						.save([{ type: "Driver", oldId: caseyLegacyId, newId: caseyNewId}]).build();
+				});
+
+				context.server.save(casey);
+
+				var changes = context.server.get_Changes();
+				equals(changes.length, 0, "Queue should be empty after commit");
+
+				equals(casey.meta.id, caseyNewId, "Casey's id should be a new permanent id");
+				equals(casey.get_DateCreated().valueOf(), dateCreated.valueOf(), "Date created should have been set properly.");
 			});
 
 			timeoutTests(5000);
@@ -158,6 +200,7 @@
 				executeTest("test4");
 				executeTest("test5");
 				executeTest("test6");
+				executeTest("test7");
 			});
 		</script>
 	</head>

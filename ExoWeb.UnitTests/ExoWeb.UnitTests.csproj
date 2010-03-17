@@ -75,6 +75,8 @@
     <Content Include="Common\Scripts\QUnit\qunit.js" />
     <Content Include="Core\Observers.htm" />
     <Content Include="Core\Transform.htm" />
+    <Content Include="Mapper\ChangeSet.js" />
+    <Content Include="Mapper\ServerSync.htm" />
     <Content Include="Model\CalculatedProperties.htm" />
     <Content Include="Model\Types.htm" />
     <Content Include="Web.config" />
@@ -85,7 +87,6 @@
   <ItemGroup>
     <Folder Include="App_Data\" />
     <Folder Include="JQuery\" />
-    <Folder Include="Mapper\" />
     <Folder Include="UI\" />
     <Folder Include="View\" />
   </ItemGroup>
