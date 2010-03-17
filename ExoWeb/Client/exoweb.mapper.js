@@ -836,7 +836,9 @@
 						var idChange = change.idChanges[i];
 
 						var serverOldId = idChange.oldId;
-						var clientOldId = this._translator.reverse(idChange.type, serverOldId);
+						var clientOldId = !(idChange.oldId in this._model.type(idChange.type)._pool) ? 
+							this._translator.reverse(idChange.type, serverOldId) :
+							idChange.oldId;
 
 						// If the client recognizes the old id then this is an object we have seen before
 						if (clientOldId) {
