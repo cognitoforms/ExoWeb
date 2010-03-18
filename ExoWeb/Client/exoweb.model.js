@@ -276,7 +276,7 @@
 			}
 
 			// create namespaces as needed
-			var nameTokens = name.split("."), 
+			var nameTokens = name.split("."),
 				token = Array.dequeue(nameTokens),
 				namespaceObj = window;
 			while (nameTokens.length > 0) {
@@ -2039,6 +2039,7 @@
 		Date.formats = {};
 		TimeSpan.formats = {};
 		Boolean.formats = {};
+		Object.formats = {};
 
 		//TODO: number formatting include commas
 		Number.formats.Integer = new Format({
