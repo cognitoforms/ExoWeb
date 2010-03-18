@@ -263,7 +263,7 @@
 				else if (srcObj instanceof ExoWeb.View.OptionAdapter) {
 					prop = srcObj.get_parent().get_propertyChain().lastProperty();
 				}
-				else if (srcObj instanceof ExoWeb.Model.ObjectBase) {
+				else if (srcObj instanceof ExoWeb.Model.Entity) {
 					var propName = Sys_Binding_getFinalPath(binding);
 					prop = srcObj.meta.property(propName);
 				}
@@ -304,7 +304,7 @@
 					prop = chain.lastProperty();
 					target = chain.lastTarget(srcObj.get_parent().get_target());
 				}
-				else if (srcObj instanceof ExoWeb.Model.ObjectBase) {
+				else if (srcObj instanceof ExoWeb.Model.Entity) {
 					var propName = Sys_Binding_getFinalPath(binding);
 					prop = srcObj.meta.property(propName);
 					target = srcObj;

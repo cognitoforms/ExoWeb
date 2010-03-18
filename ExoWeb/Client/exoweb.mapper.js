@@ -990,7 +990,7 @@
 
 		ServerSync.Save = function ServerSync$Save(root, success, failed) {
 			var model;
-			if (root instanceof ExoWeb.Model.ObjectBase) {
+			if (root instanceof ExoWeb.Model.Entity) {
 				model = root.meta.type.get_model();
 			}
 
