@@ -483,21 +483,19 @@
 			get_allowedValues: function Adapter$get_allowedValues() {
 				if (!this._allowedValues) {
 					// TODO: refactor to use property chain change events?
-					if (!this._propertyChain.get_isValueType()) {
-						var prop = this._propertyChain.lastProperty();
-						var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-						var targetObj = this._propertyChain.lastTarget(this._target);
-						if (rule) {
-							this._allowedValues = rule.values(targetObj);
+					var prop = this._propertyChain.lastProperty();
+					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
+					var targetObj = this._propertyChain.lastTarget(this._target);
+					if (rule) {
+						this._allowedValues = rule.values(targetObj);
 
-							if (this._allowedValues !== undefined) {
-								if (this._optionsTransform) {
-									this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(this._allowedValues).live();
-								}
-
-								// watch for changes to the allowed values list and update options
-								Sys.Observer.addCollectionChanged(this._allowedValues, this._reloadOptions.setScope(this));
+						if (this._allowedValues !== undefined) {
+							if (this._optionsTransform) {
+								this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(this._allowedValues).live();
 							}
+
+							// watch for changes to the allowed values list and update options
+							Sys.Observer.addCollectionChanged(this._allowedValues, this._reloadOptions.setScope(this));
 						}
 					}
 				}
