@@ -42,6 +42,7 @@ namespace ExoWeb
 				// Also send the error information to the client
 				context.Response.Clear();
 				context.Response.ContentType = "application/json";
+				context.Response.StatusCode = 500;
 				context.Response.Write(ServiceMethod.ToJson(typeof(LogErrorMethod), error));
 			}
 		}
