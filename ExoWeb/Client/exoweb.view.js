@@ -451,6 +451,9 @@
 			// Properties that are intended to be used by templates.
 			///////////////////////////////////////////////////////////////////////
 			isType: function Adapter$isType(jstype) {
+				if (this._jstype && this._jstype instanceof Function) {
+					return this._jstype === jstype;
+				}
 
 				for (var propType = this._propertyChain.get_jstype(); propType !== null; propType = propType.getBaseType()) {
 					if (propType === jstype) {
