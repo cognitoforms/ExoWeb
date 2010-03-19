@@ -2239,7 +2239,7 @@
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		function LazyLoader() {
 		}
-		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain/*, continueFn*/) {
+		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn*/) {
 			if (!path) {
 				path = [];
 			}
@@ -2252,13 +2252,13 @@
 
 			// Allow an invocation to specify continuing loading properties using a given function, by default this is LazyLoader.eval.
 			// This is used by evalAll to ensure that array properties can be force loaded at any point in the path.
-			var continueFn = arguments.length == 6 && arguments[5] instanceof Function ? arguments[5] : LazyLoader.eval;
+			var continueFn = arguments.length == 7 && arguments[6] instanceof Function ? arguments[6] : LazyLoader.eval;
 
 			while (path.length > 0) {
 				// If an array is encountered and this call originated from "evalAll" then delegate to "evalAll", otherwise 
 				// this will most likely be an error condition unless the remainder of the path are properties of Array.
 				if (continueFn == LazyLoader.evalAll && target instanceof Array) {
-					continueFn(target, path, successCallback, errorCallback, scopeChain, continueFn);
+					continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn);
 					return;
 				}
 
@@ -2272,20 +2272,20 @@
 							if (scopeChain.length > 0) {
 								Array.insert(path, 0, prop);
 
-								continueFn(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain, continueFn);
+								continueFn(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain, thisPtr, continueFn);
 							}
 							else if (errorCallback) {
-								errorCallback("Property is undefined: " + prop);
+								errorCallback.call(thisPtr, "Property is undefined: " + prop);
 							}
 							else {
 								throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [prop]);
 							}
 						}
 						else if (nextTarget !== null) {
-							continueFn(nextTarget, path, successCallback, errorCallback, [], continueFn);
+							continueFn(nextTarget, path, successCallback, errorCallback, [], thisPtr, continueFn);
 						}
 						else if (successCallback) {
-							successCallback(null);
+							successCallback.call(thisPtr, null);
 						}
 					});
 
@@ -2301,7 +2301,7 @@
 						}
 						else {
 							if (errorCallback) {
-								errorCallback("Property is undefined: " + prop);
+								errorCallback.call(thisPtr, "Property is undefined: " + prop);
 							}
 							else {
 								throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [prop]);
@@ -2312,7 +2312,7 @@
 					}
 					else if (propValue === null) {
 						if (successCallback) {
-							successCallback(null);
+							successCallback.call(thisPtr, null);
 						}
 						return;
 					}
@@ -2328,14 +2328,14 @@
 
 			// Load final object
 			if (target !== null && !LazyLoader.isLoaded(target)) {
-				LazyLoader.load(target, null, function() { successCallback(target); });
+				LazyLoader.load(target, null, function() { successCallback.call(thisPtr, target); });
 			}
 			else if (successCallback) {
-				successCallback(target);
+				successCallback.call(thisPtr, target);
 			}
 		};
 
-		LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain) {
+		LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr) {
 			var signal = new ExoWeb.Signal();
 			var results = [];
 			var errors = [];
@@ -2359,18 +2359,18 @@
 			});
 
 			Array.forEach(target, function(subTarget, i) {
-				LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, LazyLoader.evalAll);
+				LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll);
 			});
 
 			signal.waitForAll(function() {
 				if (allSucceeded) {
 					// call the success callback if one exists
 					if (successCallback) {
-						successCallback(results);
+						successCallback.call(thisPtr, results);
 					}
 				}
 				else if (errorCallback) {
-					errorCallback(errors);
+					errorCallback.call(thisPtr, errors);
 				}
 				else {
 					var numErrors = 0;
