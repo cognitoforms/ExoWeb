@@ -831,35 +831,52 @@
 				log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
 
 				if (change.idChanges) {
-					// update each object with its new id
-					for (var i = 0; i < change.idChanges.length; i++) {
-						var idChange = change.idChanges[i];
 
-						var serverOldId = idChange.oldId;
-						var clientOldId = !(idChange.oldId in this._model.type(idChange.type)._pool) ? 
-							this._translator.reverse(idChange.type, serverOldId) :
-							idChange.oldId;
+					var index = 0;
 
-						// If the client recognizes the old id then this is an object we have seen before
-						if (clientOldId) {
-							var type = this._model.type(idChange.type);
-							type.changeObjectId(clientOldId, idChange.newId);
-							Array.remove(change.idChanges, idChange);
-							i--;
+					var processNextIdChange = function processNextIdChange() {
+						if (index == change.idChanges.length) {
+							callback();
 						}
-						// Otherwise, make a note of the new object created on the server so that we can correct the ids later
 						else {
-							// The server knows the correct old id, but the client will see a new object created with a persisted id 
-							// since it was created and then committed.  Translate from the persisted id to the server's old id so that 
-							// we can reverse it when creating new objects from the server.  Also, a reverse record should not be added.
-							var unpersistedId = idChange.oldId;
-							var persistedId = idChange.newId;
-							this._translator.add(idChange.type, persistedId, unpersistedId, true);
+							var idChange = change.idChanges[index];
+
+							ensureJsType(this._model, idChange.type, function applySaveChange$typeLoaded(jstype) {
+								var serverOldId = idChange.oldId;
+								var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
+										this._translator.reverse(idChange.type, serverOldId) :
+										idChange.oldId;
+
+								// If the client recognizes the old id then this is an object we have seen before
+								if (clientOldId) {
+									var type = this._model.type(idChange.type);
+									type.changeObjectId(clientOldId, idChange.newId);
+									Array.remove(change.idChanges, idChange);
+									index = (index === 0) ? 0 : index - 1;
+								}
+								// Otherwise, make a note of the new object created on the server so that we can correct the ids later
+								else {
+									// The server knows the correct old id, but the client will see a new object created with a persisted id 
+									// since it was created and then committed.  Translate from the persisted id to the server's old id so that 
+									// we can reverse it when creating new objects from the server.  Also, a reverse record should not be added.
+									var unpersistedId = idChange.oldId;
+									var persistedId = idChange.newId;
+									this._translator.add(idChange.type, persistedId, unpersistedId, true);
+								}
+
+								processNextIdChange.call(this);
+							}, this);
 						}
+					};
+
+					// start processing id changes, use call so that "this" pointer refers to ServerSync object
+					if (index < change.idChanges.length) {
+						processNextIdChange.call(this);
 					}
 				}
-
-				callback();
+				else {
+					callback();
+				}
 			},
 			applyInitChange: function ServerSync$applyInitChange(change, callback) {
 				log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
@@ -885,37 +902,26 @@
 			applyRefChange: function ServerSync$applyRefChange(change, callback) {
 				log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
-				var obj = fromExoGraph(this._translator, change.instance);
+				// ensure that the type of the target instance is loaded
+				ensureJsType(this._model, change.instance.type, function() {
+					var obj = fromExoGraph(this._translator, change.instance);
 
-				var translator = this._translator;
-				var model = this._model;
-
-				function applyRefChange$execute() {
-					if (change.newValue) {
-						ensureJsType(model, change.newValue.type,
-							function applyRefChange$typeLoaded(mtype) {
-								var ref = fromExoGraph(translator, change.newValue);
-
-								Sys.Observer.setValue(obj, change.property, ref);
-
-								callback();
-							});
-					}
-					else {
-						Sys.Observer.setValue(obj, change.property, null);
-
-						callback();
-					}
-				}
-
-				if (!ExoWeb.Model.LazyLoader.isLoaded(obj, change.property)) {
+					// ensure that the target property is loaded
 					ExoWeb.Model.LazyLoader.eval(obj, change.property, function() {
-						applyRefChange$execute();
-					});
-				}
-				else {
-					applyRefChange$execute();
-				}
+						if (change.newValue) {
+							// ensure that the type of the new value is loaded
+							ensureJsType(this._model, change.newValue.type, function applyRefChange$typeLoaded(jstype) {
+								var ref = fromExoGraph(this._translator, change.newValue);
+								Sys.Observer.setValue(obj, change.property, ref);
+								callback();
+							}, this);
+						}
+						else {
+							Sys.Observer.setValue(obj, change.property, null);
+							callback();
+						}
+					}, null, null, this);
+				}, this);
 			},
 			applyValChange: function ServerSync$applyValChange(change, callback) {
 				log("server", "applyValChange", change.instance);
@@ -1029,21 +1035,21 @@
 		});
 
 		///////////////////////////////////////////////////////////////////////////	
-		function ensureJsType(model, typeName, callback) {
+		function ensureJsType(model, typeName, callback, thisPtr) {
 			var mtype = model.type(typeName);
 
 			if (!mtype) {
 				fetchType(model, typeName, function(jstype) {
-					callback.apply(this, [jstype]);
+					callback.apply(thisPtr || this, [jstype]);
 				});
 			}
 			else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 				ExoWeb.Model.LazyLoader.load(mtype, null, function(jstype) {
-					callback.apply(this, [jstype]);
+					callback.apply(thisPtr || this, [jstype]);
 				});
 			}
 			else {
-				callback.apply(this, [mtype.get_jstype()]);
+				callback.apply(thisPtr || this, [mtype.get_jstype()]);
 			}
 		}
 
