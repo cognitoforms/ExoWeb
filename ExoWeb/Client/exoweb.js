@@ -156,7 +156,7 @@ Type.registerNamespace("ExoWeb");
 		ExoWeb.trace.DEFAULT_ERROR_HANDLER = function DEFAULT_ERROR_HANDLER(message, e) {
 			var stackTrace = ExoWeb.trace.getCallStack();
 			var type = e ? parseFunctionName(e.constructor) : "Error";
-			ExoWeb.WebService.LogError(type, message, stackTrace.join("\n"), window.location.href);
+			ExoWeb.WebService.LogError(type, message, stackTrace.join("\n"), window.location.href, document.referrer);
 		};
 
 		var log = ExoWeb.trace.log;
