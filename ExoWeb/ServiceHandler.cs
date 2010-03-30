@@ -122,7 +122,7 @@ namespace ExoWeb
 						// Define the ExoWeb.GetType method
 						ExoWeb.WebService.GetType = function ExoWeb$WebService$GetType(type, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, { type: type, cachehash: " + cachehash + @" }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, { type: type" + (string.IsNullOrEmpty(cachehash) ? "" : @", cachehash: " + cachehash) + @" }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Load method
@@ -140,7 +140,7 @@ namespace ExoWeb
 						// Define the ExoWeb.RaiseEvent method
 						ExoWeb.WebService.RaiseEvent = function ExoWeb$WebService$RaiseEvent(eventType, instance, event, changes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType , false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.LogError method
