@@ -143,8 +143,8 @@
 			// Model event handlers
 			onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
 
-				// don't record changes to properties that didn't originate from the server
-				if (property.get_origin() !== "server") {
+				// don't record changes to types or properties that didn't originate from the server
+				if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server") {
 					return;
 				}
 
@@ -183,6 +183,12 @@
 				}
 			},
 			onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
+
+				// don't record changes to types that didn't originate from the server
+				if (obj.meta.type.get_origin() != "server") {
+					return;
+				}
+
 				if (obj.meta.isNew) {
 					log("server", "logging new: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
 
@@ -195,6 +201,12 @@
 				}
 			},
 			onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
+
+				// don't record changes to types that didn't originate from the server
+				if (obj.meta.type.get_origin() != "server") {
+					return;
+				}
+
 				log("server", "logging delete: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
 
 				// TODO: delete JSON format?
@@ -206,7 +218,9 @@
 				this._raiseEvent("changeCaptured", [change]);
 			},
 			onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
-				if (property.get_origin() !== "server") {
+
+				// don't record changes to types or properties that didn't originate from the server
+				if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server") {
 					return;
 				}
 
