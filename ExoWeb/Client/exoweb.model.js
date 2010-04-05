@@ -942,7 +942,7 @@
 
 				this._addEvent("changed", f);
 			},
-			addCalculatedRule: function Property$addCalculatedRule(calculateFn, inputs) {
+			addCalculatedRule: function Property$addCalculatedRule(calculateFn, isAsync, inputs) {
 				// calculated property should always be initialized when first accessed
 				var input = new RuleInput(this);
 				input.set_dependsOnGet(true);
@@ -951,51 +951,83 @@
 
 				var rule = {
 					prop: this,
-					execute: function Property$calculated$execute(obj) {
-						if (this.prop._isList) {
-							// re-calculate the list values
-							var newList = calculateFn.apply(obj);
+					execute: function Property$calculated$execute(obj, callback) {
+						var signal = new ExoWeb.Signal();
+						var prop = this.prop;
 
+						if (prop._isList) {
 							// Initialize list if needed.  A calculated list property cannot depend on initialization 
 							// of a server-based list property since initialization is done when the object is constructed 
 							// and before data is available.  If it depends only on the change of the server-based list 
 							// property then initialization will not happen until the property value is requested.
-							if (!this.prop.isInited(obj)) {
-								this.prop.init(obj, []);
+							if (!prop.isInited(obj)) {
+								prop.init(obj, []);
 							}
 
-							// compare the new list to the old one to see if changes were made
-							var curList = this.prop.value(obj);
+							// re-calculate the list values
+							var newList;
+							if (isAsync) {
+								calculateFn.call(obj, signal.pending(function(result) {
+									newList = result;
+								}));
+							}
+							else {
+								newList = calculateFn.apply(obj);
+							}
 
-							if (newList.length === curList.length) {
-								var noChanges = true;
+							signal.waitForAll(function() {
+								// compare the new list to the old one to see if changes were made
+								var curList = prop.value(obj);
 
-								for (var i = 0; i < newList.length; ++i) {
-									if (newList[i] !== curList[i]) {
-										noChanges = false;
-										break;
+								if (newList.length === curList.length) {
+									var noChanges = true;
+
+									for (var i = 0; i < newList.length; ++i) {
+										if (newList[i] !== curList[i]) {
+											noChanges = false;
+											break;
+										}
+									}
+
+									if (noChanges) {
+										return;
 									}
 								}
 
-								if (noChanges) {
-									return;
-								}
-							}
+								// update the current list so observers will receive the change events
+								curList.beginUpdate();
+								curList.clear();
+								curList.addRange(newList);
+								curList.endUpdate();
 
-							// update the current list so observers will receive the change events
-							curList.beginUpdate();
-							curList.clear();
-							curList.addRange(newList);
-							curList.endUpdate();
+								if (callback) {
+									callback(obj);
+								}
+							});
 						}
 						else {
-							this.prop.value(obj, calculateFn.apply(obj));
+							var newValue;
+							if (isAsync) {
+								calculateFn.call(obj, signal.pending(function(result) {
+									newValue = result;
+								}));
+							}
+							else {
+								newValue = calculateFn.apply(obj);
+							}
+
+							signal.waitForAll(function() {
+								prop.value(obj, newValue);
+								if (callback) {
+									callback(obj);
+								}
+							});
 						}
 					},
 					toString: function() { return "calculation of " + this.prop._name; }
 				};
 
-				Rule.register(rule, inputs);
+				Rule.register(rule, inputs, isAsync);
 			},
 			// Adds a rule to the property that will update its value
 			// based on a calculation.
@@ -1039,7 +1071,7 @@
 
 					// wait until all property information is available to initialize the calculation
 					this._readySignal.waitForAll(function() {
-						prop.addCalculatedRule(options.fn, inputs);
+						prop.addCalculatedRule(options.fn, options.isAsync, inputs);
 					});
 				}
 				else {
@@ -1047,7 +1079,7 @@
 					inferredInputs.forEach(function(input) {
 						input.set_dependsOnInit(true);
 					});
-					prop.addCalculatedRule(options.fn, inferredInputs);
+					prop.addCalculatedRule(options.fn, options.isAsync, inferredInputs);
 				}
 
 				return this;
