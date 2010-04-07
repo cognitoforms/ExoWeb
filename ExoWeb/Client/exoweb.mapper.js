@@ -619,31 +619,39 @@
 				}
 			},
 			startAutoSave: function ServerSync$startAutoSave(root, interval) {
-				log("server", "auto-save enabled - interval of {0} milliseconds", [interval]);
+				log("server", "auto-save enabled for future changes - ({0} milliseconds", [interval]);
 
 				// cancel any pending save schedule
 				this.stopAutoSave();
-
-				var _this = this;
-				function doSave() {
-					if (_this.get_Changes().length > 0) {
-						log("server", "auto-save starting ({0})", [new Date()]);
-						_this.save(root, function context$autoSaveCallback() {
-							log("server", "auto-save complete ({0})", [new Date()]);
-							_this._saveTimeout = window.setTimeout(doSave, interval);
-						}, null, true);
-					}
-					else {
-						_this._saveTimeout = window.setTimeout(doSave, interval);
-					}
-				}
-
-				this._saveTimeout = window.setTimeout(doSave, interval);
+				this._saveInterval = interval;
+				this._saveRoot = root;
 			},
 			stopAutoSave: function ServerSync$stopAutoSave() {
 				if (this._saveTimeout) {
 					window.clearTimeout(this._saveTimeout);
+
+					this._saveTimeout = null;
 				}
+
+				this._saveInterval = null;
+				this._saveRoot = null;
+			},
+			_queueAutoSave: function ServerSync$_queueAutoSave() {
+				if (this._saveTimeout)
+					return;
+
+				var _this = this;
+				function ServerSync$doAutoSave() {
+					log("server", "auto-save starting ({0})", [new Date()]);
+					_this.save(_this._saveRoot, function ServerSync$doAutoSave$callback() {
+						log("server", "auto-save complete ({0})", [new Date()]);
+
+						// wait for the next change before next auto save
+						_this._saveTimeout = null;
+					}, null, true);
+				}
+
+				this._saveTimeout = window.setTimeout(ServerSync$doAutoSave, this._saveInterval);
 			},
 			addSaveBegin: function ServerSync$addSaveBegin(handler, includeAutomatic) {
 				this._addEventHandler("saveBegin", handler, includeAutomatic);
@@ -664,6 +672,9 @@
 				if (!this.isApplyingChanges()) {
 					this._changes.push(change);
 					Sys.Observer.raisePropertyChanged(this, "Changes");
+
+					if (this._saveInterval)
+						this._queueAutoSave();
 				}
 			},
 			_truncateLog: function ServerSync$_truncateLog(func) {
