@@ -147,7 +147,7 @@ Type.registerNamespace("ExoWeb");
 			}
 		};
 
-		var funcRegex = /function\s*([\w-]*)/i;
+		var funcRegex = /function\s*([\w_\$]*)/i;
 		function parseFunctionName(f) {
 			var result = funcRegex.exec(f);
 			return result ? (result[1] || "{anonymous}") : "{anonymous}";
