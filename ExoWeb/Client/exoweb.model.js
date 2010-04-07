@@ -265,6 +265,8 @@
 			this._counter = 0;
 			this._properties = {};
 			this._model = model;
+			this._initNewProps = [];
+			this._initExistingProps = [];
 
 			// generate class and constructor
 			var type = this;
@@ -299,24 +301,11 @@
 						}
 
 						type.register(this, id);
+						type._initProperties(this, "_initExistingProps");
 					}
 					else {
 						type.register(this);
-
-						// init list properties
-						for (var t = type; t !== null; t = t.baseType) {
-							for (var propName in t._properties) {
-								var prop = t._properties[propName];
-								if (!prop.get_isStatic()) {
-									if (prop.get_isList()) {
-										prop.init(this, []);
-									}
-									else if (prop.get_origin() == "server") {
-										prop.init(this, undefined);
-									}
-								}
-							}
-						}
+						type._initProperties(this, "_initNewProps");
 
 						// set properties passed into constructor
 						if (idOrProps) {
@@ -485,6 +474,23 @@
 				}
 				genPropertyShortcut(this);
 
+				// does this property need to be inited during object construction?
+				// note: this is an optimization so that all properties defined for a type
+				// and its sub types don't need to be iterated over each time the constructor
+				// is called.
+				if (!prop.get_isStatic()) {
+					if (prop.get_isList()) {
+						this._initNewProps.push({ property: prop, value: [] });
+
+						if (prop.get_origin() != "server")
+							this._initExistingProps.push({ property: prop, value: [] });
+					}
+					else if (prop.get_origin() == "server") {
+						this._initNewProps.push({ property: prop, value: undefined });
+					}
+				}
+
+
 				if (prop.get_isStatic()) {
 					// for static properties add member to javascript type
 					this._jstype["get_" + def.name] = this._makeGetter(prop, prop.getter);
@@ -518,6 +524,16 @@
 				setter.__notifies = !!notifiesChanges;
 
 				return setter;
+			},
+			_initProperties: function Type$_initProperties(obj, initsArrayName) {
+				for (var t = this; t !== null; t = t.baseType) {
+					var inits = t[initsArrayName];
+
+					for (var i = 0; i < inits.length; ++i) {
+						var init = inits[i];
+						init.property.init(obj, init.value);
+					}
+				}
 			},
 			get_model: function Type$get_model() {
 				return this._model;
@@ -1710,7 +1726,7 @@
 					obj.meta.issueIf(this.err, val.length === 0);
 				}
 				else {
-					obj.meta.issueIf(this.err, val === null || ($.trim(val.toString()) == ""));
+					obj.meta.issueIf(this.err, val === null || val === undefined || ($.trim(val.toString()) == ""));
 				}
 			},
 			toString: function() {
