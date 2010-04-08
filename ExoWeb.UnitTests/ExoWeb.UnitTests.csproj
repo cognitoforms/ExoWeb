@@ -79,6 +79,7 @@
     <Content Include="Mapper\ServerSync.htm" />
     <Content Include="Model\CalculatedProperties.htm" />
     <Content Include="Model\Types.htm" />
+    <Content Include="UI\Helpers.htm" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -87,7 +88,6 @@
   <ItemGroup>
     <Folder Include="App_Data\" />
     <Folder Include="JQuery\" />
-    <Folder Include="UI\" />
     <Folder Include="View\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
