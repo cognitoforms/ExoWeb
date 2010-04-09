@@ -82,7 +82,7 @@ Type.registerNamespace("ExoWeb.UI");
 					if (this._visible === undefined || this._visible === false) {
 						Sys.Observer.raiseEvent(this, "shown");
 					}
-					
+
 					// update status
 					this._visible = true;
 				}
@@ -554,9 +554,32 @@ Type.registerNamespace("ExoWeb.UI");
 			return data;
 		}
 
-		function getParentContextData(target, index, level, dataType) {
+		function getParentContextData(options/*{ target, index, level, dataType, ifFn }*/) {
+			/// <summary>
+			/// 	Finds the template context data based on the given options.
+			/// </summary>
+			/// <param name="options" type="Object">
+			/// 	The object which contains the options to use.
+			/// 	target:  The target from which to start searching.  This can be an HTML
+			/// 					element, a control, or a template context.
+			/// 		index (optional):  The index of the desired context.  If the desired context
+			/// 					is one level up and is part of a list, this argument can be used
+			/// 					to specify which template context to return.
+			/// 		level (optional):  The number of levels to travel.  By default this is "1",
+			/// 					which means that the immediate parent context data will be returned.
+			/// 		dataType (optional):  If specified, this type is used as the type of data to search
+			/// 					for.  When context data of this type is encountered it is returned.
+			/// 					Note that arrays are not supported.  If the data is an array and the
+			/// 					type of items must be checked, use the "ifFn" argument.
+			/// 		ifFn (optional):  A function that determines whether the correct data has been
+			/// 					found.  The context data is returned as soon as the result of calling 
+			/// 					this function with the current data and container is true.
+			/// </param>
+			/// <returns type="Object" />
 
-			if (target.control instanceof Sys.UI.DataView) {
+			var target = options.target, effectiveLevel = options.level || 1, container, subcontainer, i = 0, searching = true, data;
+
+			if (target.control && (target.control instanceof Sys.UI.DataView || target.control instanceof ExoWeb.UI.Content)) {
 				target = target.control;
 			}
 			else if (target instanceof Sys.UI.Template) {
@@ -566,10 +589,7 @@ Type.registerNamespace("ExoWeb.UI");
 				target = target.containerElement;
 			}
 
-			var effectiveLevel = level || 1;
-
-			var container, subcontainer;
-			for (var i = 0; i < effectiveLevel || (dataType && !(getDataForContainer(container, subcontainer, index) instanceof dataType)); i++) {
+			while (searching === true) {
 				// if we are starting out with a dataview then look at the parent context rather than walking 
 				// up the dom (since the element will probably not be present in the dom)
 				if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
@@ -584,14 +604,78 @@ Type.registerNamespace("ExoWeb.UI");
 
 					container = subcontainer.parentNode;
 				}
+
+				// Increment the counter to check against the level parameter.
+				i++;
+
+				// Get the context data for the current level.
+				data = getDataForContainer(container, subcontainer, options.index);
+
+				if (options.dataType) {
+					// Verify that the current data is not the data type that we are looking for.
+					searching = !(data instanceof options.dataType || data.constructor === options.dataType);
+				}
+				else if (options.ifFn) {
+					// Verify that the stop function conditions are not met.
+					searching = !(options.ifFn.call(this, data, container));
+				}
+				else {
+					// Finally, check the level.  If no level was specified then we will only go up one level.
+					searching = i < effectiveLevel;
+				}
 			}
 
-			return getDataForContainer(container, subcontainer, index);
+			return data;
 		}
 
-		window.$parentContextData = getParentContextData;
+		ExoWeb.UI.getParentContextData = getParentContextData;
+
+		window.$parentContextData = function $parentContextData(target, index, level, dataType, ifFn) {
+			/// <summary>
+			/// 	Finds the template context data based on the given options.
+			/// </summary>
+			/// <param name="target" type="Object">
+			/// 	The target from which to start searching.  This can be an HTML element, a 
+			/// 	control, or a template context.
+			/// </param>
+			/// <param name="index" type="Number" integer="true" optional="true">
+			/// 	The index of the desired context.  If the desired context is one level
+			/// 	up and is part of a list, this argument can be used to specify which
+			/// 	template context to return.
+			/// </param>
+			/// <param name="level" type="Number" integer="true" optional="true">
+			/// 	The number of levels to travel.  By default this is "1", which means that
+			/// 	the immediate parent context data will be returned.
+			/// </param>
+			/// <param name="dataType" type="Function" optional="true">
+			/// 	If specified, this type is used as the type of data to search for.  When context
+			/// 	data of this type is encountered it is returned.  Note that arrays are not supported.
+			/// 	If the data is an array and the type of items must be checked, use the "ifFn" argument.
+			/// </param>
+			/// <param name="ifFn" type="Function" optional="true">
+			/// 	A function that determines whether the correct data has been found.  The context data
+			/// 	is returned as soon as the result of calling this function with the current data and 
+			/// 	container is true.
+			/// </param>
+			/// <returns type="Object" />
+			
+			return getParentContextData({
+				"target": target,
+				"index": index,
+				"level": level,
+				"dataType": dataType,
+				"ifFn": ifFn
+			});
+		};
 
 		function getIsLast(control, index) {
+			/// <summary>
+			/// 	Returns whether the data for the given control at the given index is 
+			/// 	the last object in the list.
+			/// </summary>
+			/// <param name="control" type="Sys.UI.Control">The control.</param>
+			/// <param name="index" type="Number" integer="true">The index.</param>
+			/// <returns type="Boolean" />
 			var len = control.get_element().control.get_contexts().length;
 			return index == len - 1;
 		}
