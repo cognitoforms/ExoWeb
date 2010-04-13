@@ -1690,7 +1690,7 @@
 
 		Rule.inferInputs = function Rule$inferInputs(rootType, func) {
 			var inputs = [];
-			var expr = /this\.([a-zA-Z0-9_.]+)/g;
+			var expr = /this\.get_([a-zA-Z0-9_.]+)/g;
 
 			var match = expr.exec(func.toString());
 			while (match) {
