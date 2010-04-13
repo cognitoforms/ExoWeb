@@ -774,6 +774,15 @@
 			},
 			getter: function(obj) {
 				this._raiseEvent("get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
+
+				if (this._name !== this._fieldName && this.hasOwnProperty(this._name)) {
+					ExoWeb.trace.logWarning("model",
+						"Possible incorrect property usage:  property \"{0}\" is defined on object but field name should be \"{1}\", make sure you are using getters and setters.",
+						this._name,
+						this._fieldName
+					);
+				}
+
 				return obj[this._fieldName];
 			},
 

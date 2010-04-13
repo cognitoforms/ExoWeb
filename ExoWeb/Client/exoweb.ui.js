@@ -162,7 +162,7 @@ Type.registerNamespace("ExoWeb.UI");
 							this._ifFn = new Function("$data", "$container", "return " + this._if + ";");
 						}
 						catch (compileError) {
-							throwAndLog(["ui", "templates"], "Statement \"" + this._if + "\" causes the following error: " + compileError);
+							throwAndLog(["ui", "templates"], "Compiling statement \"" + this._if + "\" causes the following error: " + compileError);
 						}
 					}
 
@@ -171,6 +171,7 @@ Type.registerNamespace("ExoWeb.UI");
 							result = this._ifFn.apply(this, [data, element]);
 						}
 						catch (executeError) {
+							ExoWeb.trace.logWarning(["ui", "templates"], "Executing statement \"" + this._if + "\" causes the following error: " + executeError);
 							result = false;
 						}
 					}

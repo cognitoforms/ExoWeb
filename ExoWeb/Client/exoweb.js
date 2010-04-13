@@ -80,6 +80,20 @@ Type.registerNamespace("ExoWeb");
 					console.log(ExoWeb.trace._formatMessage(category, message, args));
 				}
 			},
+			logWarning: function logWarning(category, message, args) {
+				// append the warning category
+				if (!(category instanceof Array)) {
+					category = [category, "warning"];
+				}
+				else {
+					category.push("warning");
+				}
+
+				// if the console is defined then log the message
+				if (typeof (console) !== "undefined") {
+					console.warn(ExoWeb.trace._formatMessage(category, message, args));
+				}
+			},
 			logError: function logError(category, message, args) {
 				// append the error category
 				if (!(category instanceof Array)) {
@@ -100,7 +114,6 @@ Type.registerNamespace("ExoWeb");
 					console.error(msg);
 				}
 			},
-
 			throwAndLog: function throwAndLog(category, message, args) {
 				ExoWeb.trace.logError(category, message, args);
 
