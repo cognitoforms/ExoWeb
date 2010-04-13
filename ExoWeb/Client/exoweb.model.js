@@ -778,8 +778,7 @@
 				if (this._name !== this._fieldName && this.hasOwnProperty(this._name)) {
 					ExoWeb.trace.logWarning("model",
 						"Possible incorrect property usage:  property \"{0}\" is defined on object but field name should be \"{1}\", make sure you are using getters and setters.",
-						this._name,
-						this._fieldName
+						[this._name, this._fieldName]
 					);
 				}
 
@@ -1518,12 +1517,25 @@
 			},
 			isInited: function PropertyChain$isInited(obj) {
 				var allInited = true;
+				var numProperties = 0;
 				this.each(obj, function(target, property) {
+					numProperties++;
 					if (!property.isInited(target)) {
 						allInited = false;
 						return false;
 					}
 				});
+
+				if (numProperties < this._properties.length) {
+					allInited = false;
+					log("model", "Path \"{0}\" is not inited since \"{1}\" is undefined.", [this.get_path(), this._properties[numProperties - 1].get_name()]);
+				}
+				else if (allInited) {
+					log("model", "Path \"{0}\" has been inited.", [this.get_path()]);
+				}
+				else {
+					log("model", "Path \"{0}\" has NOT been inited.", [this.get_path()]);
+				}
 
 				return allInited;
 			},
