@@ -198,11 +198,16 @@ Type.registerNamespace("ExoWeb");
 			orPending: function Signal$orPending(callback) {
 				return this._genCallback(callback);
 			},
-			_doCallback: function Signal$_doCallback(name, thisPtr, callback, args) {
+			_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
 				try {
-					window.setTimeout(function() {
+					if (executeImmediately) {
 						callback.apply(thisPtr, args || []);
-					}, 1);
+					}
+					else {
+						window.setTimeout(function() {
+							callback.apply(thisPtr, args || []);
+						}, 1);
+					}
 				}
 				catch (e) {
 					logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
@@ -219,13 +224,13 @@ Type.registerNamespace("ExoWeb");
 					return this._oneDoneFn;
 				}
 			},
-			waitForAll: function Signal$waitForAll(callback) {
+			waitForAll: function Signal$waitForAll(callback, executeImmediately) {
 				if (!callback) {
 					return;
 				}
 
 				if (this._pending === 0) {
-					this._doCallback("waitForAll", this, callback, []);
+					this._doCallback("waitForAll", this, callback, [], executeImmediately);
 				}
 				else {
 					this._waitForAll.push(callback);
