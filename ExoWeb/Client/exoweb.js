@@ -120,40 +120,47 @@ Type.registerNamespace("ExoWeb");
 				throw $format(message, args);
 			},
 			getCallStack: function getCallStack() {
-				// Use local function simply because Array makes it recursive.
-				function format(arg) {
-					if (arg === undefined) {
-						return "undefined";
-					}
-					else if (arg === null) {
-						return "null";
-					}
-					else if (arg instanceof Array) {
-						var str = "";
-						Array.forEach(arg, function(arg) {
-							str += (str == "" ? "" : ", ") + format(arg);
-						});
-						return "[" + str + "]";
-					}
-					else if (arg instanceof Function) {
-						return parseFunctionName(arg) + "()";
-					}
-					else if (arg.constructor === String) {
-						return "\"" + arg + "\"";
-					}
-					else {
-						var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
-						return fmt ? fmt.convert(arg) : arg;
-					}
-				}
-
 				var result = [];
-				for (var f = arguments.callee; f; f = f.arguments.callee.caller) {
-					for (var i = 0, args = ""; i < f.arguments.length; i++) {
-						args += (args == "" ? "" : ", ") + format(f.arguments[i]);
-					}
 
-					result.push(parseFunctionName(f) + "(" + args + ")");
+				// process the callees until the end of the stack or until the depth limit is reached
+				for (var f = arguments.callee, depth = 0, _f = null; f && depth < 25; _f = f, f = f.arguments.callee.caller, depth++) {
+
+					// format the function name and arguments
+					var name = parseFunctionName(f);
+					var args = Array.prototype.slice.call(f.arguments).map(function formatArg(arg) {
+						if (arg === undefined) {
+							return "undefined";
+						}
+						else if (arg === null) {
+							return "null";
+						}
+						else if (arg instanceof Array) {
+							return "[" + arg.map(arguments.callee).join(", ") + "]";
+						}
+						else if (arg instanceof Function) {
+							return parseFunctionName(arg) + "()";
+						}
+						else if (arg.constructor === String) {
+							return "\"" + arg + "\"";
+						}
+						else {
+							var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
+							return fmt ? fmt.convert(arg) : arg;
+						}
+					}).join(", ");
+
+					// append the new item
+					result.push(name + "(" + args + ")");
+
+					// Calling a function recursively will prevent this loop from terminating since arguments.callee.caller
+					// will always refer to the current function.  This is because the property path arguments.callee.caller
+					// is attached to the function definition rather than the function "activation object".  Allow the call
+					// line to be written again to suggest the reason that the call stack could not be inspected further.
+					// see http://bytes.com/topic/javascript/answers/470251-recursive-functions-arguments-callee-caller
+					if (_f !== null & _f === f) {
+						result.push("non-terminating loop detected...");
+						break;
+					}
 				}
 
 				return result;
