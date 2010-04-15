@@ -938,6 +938,13 @@
 							ensureJsType(this._model, change.newValue.type, function applyRefChange$typeLoaded(jstype) {
 								var ref = fromExoGraph(this._translator, change.newValue);
 								Sys.Observer.setValue(obj, change.property, ref);
+
+								// lazy load the referenced instance
+								if (!ExoWeb.Model.LazyLoader.isLoaded(ref)) {
+									ExoWeb.Model.LazyLoader.load(ref);
+								}
+
+								// assumption:  processing can continue whether or not the instance has been loaded
 								callback();
 							}, this);
 						}
@@ -978,17 +985,27 @@
 					var prop = obj.meta.property(change.property);
 					var list = prop.value(obj);
 
+					list.beginUpdate();
+
 					// apply added items
 					Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
 						var childObj = fromExoGraph(translator, item);
-						Sys.Observer.add(list, childObj);
+						list.add(childObj);
+
+						// lazy load the added instance
+						// assumption:  processing can continue whether or not the instance has been loaded
+						if (!ExoWeb.Model.LazyLoader.isLoaded(childObj)) {
+							ExoWeb.Model.LazyLoader.load(childObj);
+						}
 					});
 
 					// apply removed items
 					Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
 						var childObj = fromExoGraph(translator, item);
-						Sys.Observer.remove(list, childObj);
+						list.remove(childObj);
 					});
+
+					list.endUpdate();
 
 					callback();
 				}
