@@ -875,30 +875,19 @@
 				}
 			},
 			value: function Property$value(obj, val) {
-				if (arguments.length == 2) {
-					var setter = obj["set_" + this._name];
+				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 
-					// If a generated setter is found then use it instead of observer, since it will emulate observer 
-					// behavior in order to allow application code to call it directly rather than going through the 
-					// observer.  Calling the setter in place of observer eliminates unwanted duplicate events.
-					if (setter && setter.__notifies) {
-						setter.call(obj, val);
-					}
-					else {
-						Sys.Observer.setValue(obj, this._name, val);
-					}
+				if (target === undefined || target === null) {
+					ExoWeb.trace.throwAndLog(["model"],
+						"Cannot get or set value for {0}static property \"{1}\" on type \"{2}\": target is null or undefined.",
+						[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
+				}
+
+				if (arguments.length == 2) {
+					this.setter(target, val);
 				}
 				else {
-					var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-
-					if (target === undefined || target === null) {
-						ExoWeb.trace.throwAndLog(["model"],
-							"Cannot get value for {0}static property \"{1}\" on type \"{2}\": target is null or undefined.",
-							[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
-					}
-
-					// access directly since the caller might make a distinction between null and undefined
-					return target[this._fieldName];
+					return this.getter(target);
 				}
 			},
 			init: function Property$init(obj, val, force) {
