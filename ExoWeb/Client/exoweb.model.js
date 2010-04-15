@@ -608,20 +608,48 @@
 					}
 				}
 
+				// Store off javascript type to use for comparison
+				var jstype = this.get_jstype();
+
 				for (var i = 0; i < rule.inputs.length; ++i) {
 					var input = rule.inputs[i];
 					var prop = input.property;
 
+					// If the containing type of the input is the same as the type 
+					// that the rule is attached to, then we do not need to check types.
+					var isSameType = this === prop.get_containingType();
+
 					if (input.get_dependsOnChange()) {
-						prop.addChanged(Type$addRule$changed);
+						prop.addChanged(isSameType ?
+							Type$addRule$changed :
+							function(obj, prop, newValue, oldValue, wasInited) {
+								if (obj instanceof jstype) {
+									Type$addRule$changed.apply(this, arguments);
+								}
+							}
+						);
 					}
 
 					if (input.get_dependsOnInit()) {
-						prop.addChanged(Type$addRule$init);
+						prop.addChanged(isSameType ?
+							Type$addRule$init :
+							function(obj, prop, newValue, oldValue, wasInited) {
+								if (obj instanceof jstype) {
+									Type$addRule$init.apply(this, arguments);
+								}
+							}
+						);
 					}
 
 					if (input.get_dependsOnGet()) {
-						prop.addGet(Type$addRule$get);
+						prop.addGet(isSameType ?
+							Type$addRule$get :
+							function(obj, prop, value, isInited) {
+								if (obj instanceof jstype) {
+									Type$addRule$get.apply(this, arguments);
+								}
+							}
+						);
 					}
 
 					(prop instanceof PropertyChain ? prop.lastProperty() : prop)._addRule(rule);
@@ -1040,7 +1068,7 @@
 					toString: function() { return "calculation of " + this.prop._name; }
 				};
 
-				Rule.register(rule, inputs, isAsync);
+				Rule.register(rule, inputs, isAsync, this.get_containingType());
 			},
 			// Adds a rule to the property that will update its value
 			// based on a calculation.
@@ -1667,14 +1695,20 @@
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Rule() { }
 
-		Rule.register = function Rule$register(rule, inputs, isAsync) {
+		Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter) {
 			rule.isAsync = !!isAsync;
 
 			rule.inputs = inputs.map(function(item) {
 				return item instanceof RuleInput ? item : new RuleInput(item);
 			});
 
-			rule.inputs[0].property.get_containingType().addRule(rule);
+			// If the type filter was not specified then assume 
+			// the containing type of the first input property.
+			if (arguments.length < 4) {
+				typeFilter = rule.inputs[0].property.get_containingType();
+			}
+
+			typeFilter.addRule(rule);
 		};
 
 		Rule.inferInputs = function Rule$inferInputs(rootType, func) {
