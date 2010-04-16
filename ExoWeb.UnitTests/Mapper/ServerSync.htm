@@ -79,20 +79,36 @@
 				equals(context.model.driver.get_Owner().get_Location().get_Name(), "Play", "Driver's owner's location name should be Play");
 			});
 
-			setupTest("test4", { description: "Apply List Property Changes", expect: 7 }, function() {
+			setupTest("test4", { description: "Apply List Property Changes", expect: 13 }, function() {
 				equals(context.model.driver.get_Cars().length, 2, "Driver should have 2 cars");
 				equals(context.model.driver.get_Cars()[0].get_Name(), "Sentra", "First car is Sentra");
 				equals(context.model.driver.get_Cars()[1].get_Name(), "Bike", "Second car is Bike");
 
 				context.server.apply(new ChangeSet().delRef("Driver", "1", "Cars", "Car", "2").build());
-
 				equals(context.model.driver.get_Cars().length, 1, "Driver should now have 1 car");
 				equals(context.model.driver.get_Cars()[0].get_Name(), "Sentra", "First car is Sentra");
 
 				context.server.apply(new ChangeSet().addRef("Driver", "1", "Cars", "Car", "3").build());
-
 				equals(context.model.driver.get_Cars().length, 2, "Driver should now have 2 cars");
 				equals(context.model.driver.get_Cars()[1].get_Name(), "Tank", "Second car is Tank");
+
+				// Test batch operations.
+
+				var car1 = Car.meta.get("1");
+				var car3 = Car.meta.get("3");
+
+				var numUpdates = 0;
+				Driver.$Cars.addChanged(function() { numUpdates++; }, context.model.driver);
+				context.server.apply(new ChangeSet().delRef("Driver", "1", "Cars", "Car", "1").delRef("Driver", "1", "Cars", "Car", "3").build());
+				equals(context.model.driver.get_Cars().length, 0, "Driver should now have 0 car");
+				equals(numUpdates, 1, "A single update should have been recorded.");
+
+				numUpdates = 0;
+				context.server.apply(new ChangeSet().addRef("Driver", "1", "Cars", "Car", "1").addRef("Driver", "1", "Cars", "Car", "3").build());
+				equals(context.model.driver.get_Cars().length, 2, "Driver should now have 2 cars");
+				equals(context.model.driver.get_Cars()[0].get_Name(), "Sentra", "First car is Sentra");
+				equals(context.model.driver.get_Cars()[1].get_Name(), "Tank", "Second car is Tank");
+				equals(numUpdates, 1, "A single update should have been recorded.");
 			});
 
 			setupTest("test5", { description: "Client-Server Changes from Server", expect: 4 }, function() {
