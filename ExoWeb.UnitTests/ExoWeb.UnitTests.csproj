@@ -79,6 +79,7 @@
     <Content Include="Mapper\ServerSync.htm" />
     <Content Include="Model\CalculatedProperties.htm" />
     <Content Include="Model\Inheritance.htm" />
+    <Content Include="Model\PropertyChain.htm" />
     <Content Include="Model\Types.htm" />
     <Content Include="UI\Helpers.htm" />
     <Content Include="Web.config" />

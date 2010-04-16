@@ -70,7 +70,6 @@
     <Content Include="Scripts\sample-data.js" />
     <Content Include="Styles\QUnit\qunit.css" />
     <Content Include="UnitTests\Common\exoweb.qunit.js" />
-    <Content Include="UnitTests\PropertyChain.htm" />
     <Content Include="UnitTests\UIControls.htm" />
     <Content Include="Web.config" />
   </ItemGroup>
