@@ -82,6 +82,7 @@
     <Content Include="Model\PropertyChain.htm" />
     <Content Include="Model\Types.htm" />
     <Content Include="UI\Helpers.htm" />
+    <Content Include="UI\Controls.htm" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
