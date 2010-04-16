@@ -826,7 +826,8 @@
 								server.applyListChange(change, callback);
 							}
 							else if (change.__type == "Save:#ExoGraph") {
-								server.applySaveChange(change, function() {
+								var lookahead = (saveChanges && saveChanges.length > 0 && ignoreCount !== 0);
+								server.applySaveChange(change, lookahead, function() {
 									// changes have been applied so truncate the log to this point
 									server._truncateLog(server.canSave.setScope(server));
 
@@ -852,7 +853,7 @@
 					this.endApplyingChanges();
 				}
 			},
-			applySaveChange: function ServerSync$applySaveChange(change, callback) {
+			applySaveChange: function ServerSync$applySaveChange(change, isLookahead, callback) {
 				log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
 
 				if (change.idChanges) {
@@ -875,18 +876,49 @@
 								// If the client recognizes the old id then this is an object we have seen before
 								if (clientOldId) {
 									var type = this._model.type(idChange.type);
+
+									// Attempt to load the object.
+									var obj = type.get(clientOldId);
+
+									// Ensure that the object exists.
+									if (!obj) {
+										ExoWeb.trace.throwAndLog("server",
+											"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
+											[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
+										);
+									}
+									// Ensure that the object is a new object.
+									else if (!obj.meta.isNew) {
+										ExoWeb.trace.throwAndLog("server",
+											"Changing id for object of type \"{0}\" from \"{1}\" to \"{2}\", but the object is not new.",
+											[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
+										);
+									}
+
+									// Change the id and make non-new.
 									type.changeObjectId(clientOldId, idChange.newId);
+									obj.meta.isNew = false;
+
+									// Remove the id change from the list and move the index back.
 									Array.remove(change.idChanges, idChange);
 									index = (index === 0) ? 0 : index - 1;
 								}
-								// Otherwise, make a note of the new object created on the server so that we can correct the ids later
-								else {
+								// Otherwise, if this is a lookahead pass, make a note of the new object 
+								// that was created on the server so that we can correct the ids later
+								else if (isLookahead) {
 									// The server knows the correct old id, but the client will see a new object created with a persisted id 
 									// since it was created and then committed.  Translate from the persisted id to the server's old id so that 
 									// we can reverse it when creating new objects from the server.  Also, a reverse record should not be added.
 									var unpersistedId = idChange.oldId;
 									var persistedId = idChange.newId;
 									this._translator.add(idChange.type, persistedId, unpersistedId, true);
+								}
+								// Otherwise, log an error.
+								else {
+									ExoWeb.trace.logError("server",
+										"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
+										idChange
+									);
 								}
 
 								processNextIdChange.call(this);

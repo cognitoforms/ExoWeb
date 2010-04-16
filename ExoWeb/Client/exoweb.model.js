@@ -255,6 +255,26 @@
 		ExoWeb.Model.Entity = Entity;
 		Entity.registerClass("ExoWeb.Model.Entity");
 
+		var validateId = function Type$validateId(type, id) {
+			if (id === null || id === undefined) {
+				ExoWeb.trace.throwAndLog("model",
+					"Id cannot be {0} (entity = {1}).",
+					[id === null ? "null" : "undefined", type.get_fullName()]
+				);
+			}
+			else if (id.constructor !== String) {
+				ExoWeb.trace.throwAndLog("model",
+					"Id must be a string:  encountered id {0} of type \"{1}\" (entity = {2}).",
+					[id.toString(), ExoWeb.parseFunctionName(id.constructor), type.get_fullName()]
+				);
+			}
+			else if (id == "") {
+				ExoWeb.trace.throwAndLog("model",
+					"Id cannot be a blank string (entity = {0}).",
+					[type.get_fullName()]
+				);
+			}
+		}
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Type(model, name, baseType) {
@@ -372,6 +392,11 @@
 				return "+c" + this._counter++;
 			},
 			register: function Type$register(obj, id) {
+				// register is called with single argument from default constructor
+				if (arguments.length === 2) {
+					validateId(this, id);
+				}
+
 				obj.meta = new ObjectMeta(this, obj);
 
 				if (!id) {
@@ -394,12 +419,14 @@
 				this._model.notifyObjectRegistered(obj);
 			},
 			changeObjectId: function Type$changeObjectId(oldId, newId) {
+				validateId(this, oldId);
+				validateId(this, newId);
+
 				var oldKey = oldId.toLowerCase();
 				var newKey = newId.toLowerCase();
 
 				var obj = this._pool[oldKey];
 
-				// TODO: throw exceptions?
 				if (obj) {
 					for (var t = this; t; t = t.baseType) {
 						t._pool[newKey] = obj;
@@ -411,7 +438,13 @@
 
 					obj.meta.id = newId;
 
-					return true;
+					return obj;
+				}
+				else {
+					ExoWeb.trace.logWarning("model",
+						"Attempting to change id: Instance of type \"{0}\" with id = \"{1}\" could not be found.",
+						[this.get_fullName(), oldId]
+					);
 				}
 			},
 			unregister: function Type$unregister(obj) {
@@ -429,6 +462,8 @@
 				delete obj.meta;
 			},
 			get: function Type$get(id) {
+				validateId(this, id);
+
 				var key = id.toLowerCase();
 				return this._pool[key] || this._legacyPool[key];
 			},

@@ -172,6 +172,7 @@ Type.registerNamespace("ExoWeb");
 			var result = funcRegex.exec(f);
 			return result ? (result[1] || "{anonymous}") : "{anonymous}";
 		}
+		ExoWeb.parseFunctionName = parseFunctionName;
 
 		ExoWeb.trace.DEFAULT_ERROR_HANDLER = function DEFAULT_ERROR_HANDLER(message, e) {
 			var stackTrace = ExoWeb.trace.getCallStack();
