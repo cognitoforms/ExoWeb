@@ -16,43 +16,51 @@
 		<script src="../Common/Scripts/mock-driver.js" type="text/javascript"></script>
 		
 		<script type="text/javascript">
-			var ctx = ExoWeb.context({ model: { driver: { id: "1", from: "Driver" } } });
+			var context = ExoWeb.context({ model: { driver: { id: "1", from: "Driver" } } });
 			
 			function getAllowedSalesPersons() {
 				return $transform(Employee.meta.known()).where(function(obj) {return obj.get_HireDate() <= this.get_DateCreated();}, this);
 			}
 			
 			setupTest("list-property", { description: "list property", expect: 6 }, function() {
-				//Driver.$AllowedSalesPersons.init(ctx.model.driver, []);
-				var list = ctx.model.driver.get_AllowedSalesPersons();
+				//Driver.$AllowedSalesPersons.init(context.model.driver, []);
+				var list = context.model.driver.get_AllowedSalesPersons();
 				
 				// watch for changes
 				var listChanged = false;
 				Sys.Observer.addCollectionChanged(list, function() { listChanged = true; });
-				
-				ok(ctx.model.driver.get_AllowedSalesPersons() === list, "setting up a calculated property should not cause a new list to be created so observers will still work");
-				ok(listChanged, "setting up a calculated property should cause the list property to raise a collection change event (Is this valid?)");
-				same(getAllowedSalesPersons.apply(ctx.model.driver), list, "calculated property should have the correct values in it");
 
-				var curDate = ctx.model.driver.get_DateCreated();
+				ok(context.model.driver.get_AllowedSalesPersons() === list, "setting up a calculated property should not cause a new list to be created so observers will still work");
+				ok(listChanged, "setting up a calculated property should cause the list property to raise a collection change event (Is this valid?)");
+				same(getAllowedSalesPersons.apply(context.model.driver), list, "calculated property should have the correct values in it");
+
+				var curDate = context.model.driver.get_DateCreated();
 
 				// cause the list to recalculate but have NO changes
 				listChanged = false;
-				ctx.model.driver.set_DateCreated(new Date(curDate.getFullYear(), curDate.getMonth(), curDate.getDate()+1));
+				context.model.driver.set_DateCreated(new Date(curDate.getFullYear(), curDate.getMonth(), curDate.getDate() + 1));
 				ok(!listChanged, "if the calculated list has no changes, don't raise a collecton changed event");
 
 				// cause the list to recalculate and HAVE changes (via Driver)
 				listChanged = false;
-				ctx.model.driver.set_DateCreated(new Date("1/2/2009"));
-				ok(listChanged, "list should change b/c the driver's created date changed");					
-				same(getAllowedSalesPersons.apply(ctx.model.driver), list, "calculated property should have the correct values in it");
+				context.model.driver.set_DateCreated(new Date("1/2/2009"));
+				ok(listChanged, "list should change b/c the driver's created date changed");
+				same(getAllowedSalesPersons.apply(context.model.driver), list, "calculated property should have the correct values in it");
+			});
+
+			setupTest("list-property-default-values", { description: "list property default values should not be modified", expect: 1 }, function() {
+				var o1 = new CarOwner();
+				o1.get_InactiveDrivers().add(context.model.driver);
+
+				var o2 = new CarOwner();
+				equals(o2.get_InactiveDrivers().length, 0, "Inactive drivers for a new owner should be empty.");
 			});
 
 			setupTest("inheritance", { description: "inheritance", expect: 1 }, function() {
-				ok(ctx.model.driver.get_Age, "Driver should have age property via Person");
+				ok(context.model.driver.get_Age, "Driver should have age property via Person");
 			});
 
-			ctx.ready(function() {
+			context.ready(function() {
 				// define the calculated property					
 				Driver.$AllowedSalesPersons.calculated({
 					fn: getAllowedSalesPersons,
@@ -66,7 +74,11 @@
 				else {
 					executeTest("list-property");
 				}
-				
+
+				// define a calculated property based on a list
+				CarOwner.meta.addProperty({ name: "InactiveDrivers", type: Driver, isList: true });
+				executeTest("list-property-default-values");
+
 				// define a calculated property on a base type					
 				var ageProp = Person.meta.addProperty({ name: "Age", type: Number }).calculated({
 					fn: function calculateAge() {

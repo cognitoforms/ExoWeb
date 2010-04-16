@@ -475,18 +475,17 @@
 				genPropertyShortcut(this);
 
 				// does this property need to be inited during object construction?
-				// note: this is an optimization so that all properties defined for a type
-				// and its sub types don't need to be iterated over each time the constructor
-				// is called.
+				// note: this is an optimization so that all properties defined for a type and 
+				// its sub types don't need to be iterated over each time the constructor is called.
 				if (!prop.get_isStatic()) {
 					if (prop.get_isList()) {
-						this._initNewProps.push({ property: prop, value: [] });
+						this._initNewProps.push({ property: prop, valueFn: function() { return []; } });
 
 						if (prop.get_origin() != "server")
-							this._initExistingProps.push({ property: prop, value: [] });
+							this._initExistingProps.push({ property: prop, valueFn: function() { return []; } });
 					}
 					else if (prop.get_origin() == "server") {
-						this._initNewProps.push({ property: prop, value: undefined });
+						this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
 					}
 				}
 
@@ -531,7 +530,7 @@
 
 					for (var i = 0; i < inits.length; ++i) {
 						var init = inits[i];
-						init.property.init(obj, init.value);
+						init.property.init(obj, init.valueFn());
 					}
 				}
 			},
