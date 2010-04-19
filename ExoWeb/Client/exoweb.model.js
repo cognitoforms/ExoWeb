@@ -613,9 +613,6 @@
 						if (!isInited) {
 							Type$addRule$fn(obj, prop, rule.execute);
 						}
-						else {
-							log("model", "Property has already been initialized.");
-						}
 					}
 					catch (e) {
 						ExoWeb.trace.log("model", e);
@@ -967,9 +964,12 @@
 
 					Sys.Observer.makeObservable(val);
 					Sys.Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
-						// oldValue is not currently implemented for lists
-						prop._raiseEvent("changed", [target, prop, val, undefined, true]);
+						// NOTE: property change should be broadcast before rules are run so that if 
+						// any rule causes a roundtrip to the server these changes will be available
 						prop._containingType.get_model().notifyListChanged(target, prop, args.get_changes());
+
+						// NOTE: oldValue is not currently implemented for lists
+						prop._raiseEvent("changed", [target, prop, val, undefined, true]);
 					});
 				}
 
