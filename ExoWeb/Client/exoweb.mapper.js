@@ -865,7 +865,7 @@
 							callback();
 						}
 						else {
-							var idChange = change.idChanges[index];
+							var idChange = change.idChanges[index++];
 
 							ensureJsType(this._model, idChange.type, function applySaveChange$typeLoaded(jstype) {
 								var serverOldId = idChange.oldId;
@@ -887,13 +887,13 @@
 											[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
 										);
 									}
-									// Ensure that the object is a new object.
-									else if (!obj.meta.isNew) {
-										ExoWeb.trace.throwAndLog("server",
-											"Changing id for object of type \"{0}\" from \"{1}\" to \"{2}\", but the object is not new.",
-											[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
-										);
-									}
+									//// Ensure that the object is a new object.
+									//else if (!obj.meta.isNew) {
+									//	ExoWeb.trace.throwAndLog("server",
+									//		"Changing id for object of type \"{0}\" from \"{1}\" to \"{2}\", but the object is not new.",
+									//		[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
+									//	);
+									//}
 
 									// Change the id and make non-new.
 									type.changeObjectId(clientOldId, idChange.newId);
