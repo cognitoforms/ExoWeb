@@ -1209,19 +1209,25 @@
 					else {
 						if (!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
 
+							var doInit = undefined;
+							
 							// json has list members
 							if (list) {
 								ListLazyLoader.unregister(list);
+								doInit = false;
 							}
 							else {
 								list = [];
-								prop.init(obj, list);
+								doInit = true;
 							}
 
 							for (var i = 0; i < propData.length; i++) {
 								var ref = propData[i];
 								list.push(getObject(model, propType, ref.id, ref.type));
 							}
+
+							if (doInit)
+								prop.init(obj, list);
 
 						}
 					}
