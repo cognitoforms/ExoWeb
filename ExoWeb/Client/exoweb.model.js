@@ -620,10 +620,6 @@
 				}
 
 				function Type$addRule$fn(obj, prop, fn) {
-					if (rule._isExecuting) {
-						return;
-					}
-
 					try {
 						prop.get_containingType().get_model().beginValidation();
 						rule._isExecuting = true;
