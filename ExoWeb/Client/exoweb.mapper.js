@@ -289,7 +289,7 @@
 			var captureRegisteredObjects = false;
 			model.addObjectRegistered(function(obj) {
 				// if an existing object is registered then register for lazy loading
-				if (!obj.meta.isNew && captureRegisteredObjects && !applyingChanges) {
+				if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && captureRegisteredObjects && !applyingChanges) {
 					ObjectLazyLoader.register(obj);
 					log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
 				}
