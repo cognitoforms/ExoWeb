@@ -34,7 +34,7 @@
 				var scopeChain;
 
 				if (properties.source) {
-					var evalSource = new Function("$element", "$index", "$dataItem", "return " + properties.source + ";");
+					var evalSource = new Function("$element", "$index", "$dataItem", "$context", "return " + properties.source + ";");
 					var element = null;
 					if (Sys.Component.isInstanceOfType(component)) {
 						element = component.get_element();
@@ -42,7 +42,7 @@
 					else if (component instanceof Element) {
 						element = component;
 					}
-					source = evalSource(element, templateContext.index, templateContext.dataItem);
+					source = evalSource(element, templateContext.index, templateContext.dataItem, templateContext);
 
 					// don't try to eval the path against window
 					scopeChain = [];
@@ -445,7 +445,8 @@
 				this._readySignal.waitForAll(callback);
 			},
 			toString: function Adapter$toString() {
-				return this.get_systemValue();
+				var value = this.get_systemValue();
+				return (!value || value.constructor === String) ? value : value.toString();
 			},
 
 			// Properties that are intended to be used by templates.
