@@ -1,4 +1,4 @@
-﻿Function.prototype.mixin = function(methods, object) {
+﻿Function.prototype.mixin = function mixin(methods, object) {
 	if (!object) {
 		object = this.prototype;
 	}
@@ -145,7 +145,7 @@ Type.registerNamespace("ExoWeb");
 						}
 						else {
 							var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
-							return fmt ? fmt.convert(arg) : arg;
+							return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
 						}
 					}).join(", ");
 
@@ -188,7 +188,7 @@ Type.registerNamespace("ExoWeb");
 			this._waitForAll = [];
 			this._pending = 0;
 			var _this = this;
-			this._oneDoneFn = function() { ExoWeb.Signal.prototype.oneDone.apply(_this, arguments); };
+			this._oneDoneFn = function Signal$_oneDoneFn() { ExoWeb.Signal.prototype.oneDone.apply(_this, arguments); };
 
 			this._debugLabel = debugLabel;
 		}
@@ -212,7 +212,7 @@ Type.registerNamespace("ExoWeb");
 						callback.apply(thisPtr, args || []);
 					}
 					else {
-						window.setTimeout(function() {
+						window.setTimeout(function Signal$_doCallback$timeout() {
 							callback.apply(thisPtr, args || []);
 						}, 1);
 					}
@@ -224,8 +224,11 @@ Type.registerNamespace("ExoWeb");
 			_genCallback: function Signal$_genCallback(callback) {
 				if (callback) {
 					var signal = this;
-					return function() {
-						signal._doCallback("pending", this, function() { callback.apply(this, arguments); signal.oneDone(); }, arguments);
+					return function Signal$_genCallback$result() {
+						signal._doCallback("pending", this, function Signal$_genCallback$fn() {
+							callback.apply(this, arguments);
+							signal.oneDone();
+						}, arguments);
 					};
 				}
 				else {
@@ -265,7 +268,7 @@ Type.registerNamespace("ExoWeb");
 
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		Function.prototype.dontDoubleUp = function(options) {
+		Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 			var proceed = this;
 			var calls = [];
 
@@ -337,7 +340,7 @@ Type.registerNamespace("ExoWeb");
 			};
 		};
 
-		Function.prototype.cached = function(options) {
+		Function.prototype.cached = function Function$cached(options) {
 			var proceed = this;
 			var cache = {};
 
@@ -357,7 +360,7 @@ Type.registerNamespace("ExoWeb");
 
 		Function.prototype.setScope = function setScope(obj) {
 			var func = this;
-			return function setScope$function() {
+			return function setScope$fn() {
 				return func.apply(obj, arguments);
 			};
 		};
@@ -365,7 +368,7 @@ Type.registerNamespace("ExoWeb");
 		Function.prototype.prependArguments = function prependArguments(/* arg1, arg2, ... */) {
 			var func = this;
 			var additional = Array.prototype.slice.call(arguments);
-			return function prependArguments$function() {
+			return function prependArguments$fn() {
 				Array.addRange(additional, Array.prototype.slice.call(arguments));
 				return func.apply(this, additional);
 			};
@@ -374,7 +377,7 @@ Type.registerNamespace("ExoWeb");
 		Function.prototype.appendArguments = function appendArguments(/* arg1, arg2, ... */) {
 			var func = this;
 			var additional = Array.prototype.slice.call(arguments);
-			return function appendArguments$function() {
+			return function appendArguments$fn() {
 				var args = Array.prototype.slice.call(arguments);
 				Array.addRange(args, additional);
 				return func.apply(this, args);
@@ -384,7 +387,7 @@ Type.registerNamespace("ExoWeb");
 		Function.prototype.spliceArguments = function spliceArguments(/* start, howmany, item1, item2, ... */) {
 			var func = this;
 			var spliceArgs = arguments;
-			return function spliceArguments$function() {
+			return function spliceArguments$fn() {
 				var args = Array.prototype.slice.call(arguments);
 				args.splice.apply(args, spliceArgs);
 				return func.apply(this, args);
@@ -394,7 +397,7 @@ Type.registerNamespace("ExoWeb");
 		Function.prototype.sliceArguments = function sliceArguments(/* start, end */) {
 			var func = this;
 			var sliceArgs = arguments;
-			return function spliceArguments$function() {
+			return function spliceArguments$fn() {
 				var args = Array.prototype.slice.call(arguments);
 				args = args.slice.apply(args, sliceArgs);
 				return func.apply(this, args);
@@ -405,7 +408,7 @@ Type.registerNamespace("ExoWeb");
 		function Functor() {
 			var funcs = [];
 
-			var f = function() {
+			var f = function Functor$fn() {
 				for (var i = 0; i < funcs.length; ++i) {
 					funcs[i].apply(this, arguments);
 				}
@@ -474,7 +477,7 @@ Type.registerNamespace("ExoWeb");
 			this.value = value;
 		}
 		EvalWrapper.mixin({
-			get: function(member) {
+			get: function EvalWrapper$get(member) {
 				var propValue = getValue(this.value, member);
 
 				if (propValue === undefined) {
@@ -661,7 +664,7 @@ Type.registerNamespace("ExoWeb");
 				}
 
 				// watch for changes to root input and rerun transform chain as needed
-				Sys.Observer.addCollectionChanged(chain[0].input(), function() {
+				Sys.Observer.addCollectionChanged(chain[0].input(), function Transform$live$collectionChanged() {
 					// re-run the transform on the newly changed input
 					var newResult = $transform(chain[0].input());
 
@@ -804,7 +807,7 @@ Type.registerNamespace("ExoWeb");
 				return str;
 			}
 
-			return str.replace(/{([a-z0-9_.]+)}/ig, function(match, expr) {
+			return str.replace(/{([a-z0-9_.]+)}/ig, function $format$token(match, expr) {
 				return evalPath(values, expr, "", match).toString();
 			});
 		}
@@ -928,7 +931,7 @@ Type.registerNamespace("ExoWeb");
 						this._prev.removeEvent(this._callback);
 					}
 
-					this._callback = function(source) {
+					this._callback = function PropertyObserver$wait$_callback(source) {
 						if (source !== undefined && source !== null) {
 							_this.start(source, handler);
 							_this._callback = null;
@@ -1137,7 +1140,7 @@ Type.registerNamespace("ExoWeb");
 ///////////////////////////////////////////////////////////////////////////////
 // Simulate homogenous browsers
 if (!Array.prototype.map) {
-	Array.prototype.map = function(fun /*, thisp*/) {
+	Array.prototype.map = function Array$map(fun /*, thisp*/) {
 		var len = this.length >>> 0;
 		if (typeof fun != "function") {
 			throw new TypeError();
@@ -1190,7 +1193,7 @@ if (!Array.prototype.every) {
 }
 
 if (!Array.prototype.indexOf) {
-	Array.prototype.indexOf = function(elt /*, from*/) {
+	Array.prototype.indexOf = function Array$indexOf(elt /*, from*/) {
 		var len = this.length >>> 0;
 
 		var from = Number(arguments[1]) || 0;
@@ -1211,7 +1214,7 @@ if (!Array.prototype.indexOf) {
 }
 
 if (!Array.prototype.some) {
-	Array.prototype.some = function(fun /*, thisp*/) {
+	Array.prototype.some = function Array$some(fun /*, thisp*/) {
 		var i = 0,
 		len = this.length >>> 0;
 
