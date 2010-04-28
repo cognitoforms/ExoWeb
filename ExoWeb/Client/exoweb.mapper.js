@@ -1210,7 +1210,7 @@
 						if (!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
 
 							var doInit = undefined;
-							
+
 							// json has list members
 							if (list) {
 								ListLazyLoader.unregister(list);
@@ -1527,9 +1527,14 @@
 							}
 						}
 						else {
-							// this is a static property
+							// This is a static property.  Static property paths 
+							// are currently limited to a single property.
+							var step = null, typeName = "";
+							while (path.steps.length > 1) {
+								step = Array.dequeue(path.steps);
+								typeName += (typeName.length > 0 ? "." : "") + step.property;
+							}
 
-							var typeName = Array.dequeue(path.steps).property;
 							var mtype = model.type(typeName);
 
 							var fetchStaticPathTypes = function fetchStaticPathTypes() {

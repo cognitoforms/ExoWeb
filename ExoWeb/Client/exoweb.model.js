@@ -51,17 +51,30 @@
 			var type;
 
 			if (isGlobal) {
-				// locate first model type
-				for (var t = window[Array.dequeue(tokens.steps).property]; t && tokens.steps.length > 0; t = t[Array.dequeue(tokens.steps).property]) {
-					if (t.meta) {
-						type = t.meta;
-						break;
-					}
+				// Get all but the last step in the path.
+				var typePathSteps = $transform(tokens.steps).where(function(item, i) { return i != tokens.steps.length - 1; });
+
+				// Construct a string from these steps.
+				var typeName = typePathSteps.map(function(item) { return item.property; }).join(".");
+
+				// Empty type name is an error.  The type name must be included as a part of the path.
+				if (typeName.length === 0) {
+					throwAndLog(["model"], "Invalid static property path \"{0}\":  type name must be included.", [path]);
 				}
 
+				// Retrieve the javascript type by name.
+				type = Model.getJsType(typeName);
+
+				// If the type is not found then the path must be bad.
 				if (!type) {
-					throwAndLog(["model"], "Invalid property path: {0}", [path]);
+					throwAndLog(["model"], "Invalid static property path \"{0}\":  type \"{1}\" could not be found.", [path, typeName]);
 				}
+
+				// Get the corresponding meta type.
+				type = type.meta;
+
+				// Chop off type portion of property path.
+				tokens.steps.splice(0, tokens.steps.length - 1);
 			}
 			else {
 				if (firstStep.cast) {
