@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Web;
 using ExoGraph;
+using System.Collections;
 
 namespace ExoWeb
 {
@@ -60,8 +61,13 @@ namespace ExoWeb
 			// Otherwise, just get the root instances
 			else
 			{
-				for (int i = 0; i < roots.Length; i++)
-					roots[i] = rootType.Create(Ids[i]);
+				using (newChanges = GraphContext.Current.BeginTransaction())
+				{
+					for (int i = 0; i < roots.Length; i++)
+						roots[i] = rootType.Create(Ids[i]);
+
+					newChanges.Commit();
+				}
 			}
 
 			// Initialize lists used to track serialization information
@@ -75,9 +81,18 @@ namespace ExoWeb
 				foreach (string path in Paths)
 					ProcessPath(path);
 
-			// Recursively build up the list of instances to serialize
-			foreach (GraphInstance root in roots)
-				ProcessInstance(root, "this", IncludeAllowedValues);
+			GraphTransaction processChanges = null;
+
+			using (processChanges = GraphContext.Current.BeginTransaction())
+			{
+				// Recursively build up the list of instances to serialize
+				foreach (GraphInstance root in roots)
+					ProcessInstance(root, "this", IncludeAllowedValues);
+
+				processChanges.Commit();
+			}
+
+			newChanges += processChanges;
 
 			// Start the root element
 			response.Write("{\r\n");
@@ -145,20 +160,23 @@ namespace ExoWeb
 			// Static Path
 			else
 			{
-				// Split the static property reference
-				string[] steps = path.Split('.');
-				if (steps.Length != 2)
+				if (path.IndexOf('.') < 0)
 					throw new ArgumentException("'" + path + "' is not a valid static property path.");
 
+				// Split the static property reference
+				int propertyIndex = path.LastIndexOf('.');
+				string type = path.Substring(0, propertyIndex);
+				string property = path.Substring(propertyIndex + 1);
+
 				// Get the graph type
-				GraphType graphType = GraphContext.Current.GetGraphType(steps[0]);
+				GraphType graphType = GraphContext.Current.GetGraphType(type);
 				if (graphType == null)
-					throw new ArgumentException("'" + steps[0] + "' is not a valid graph type for the static property path of '" + path + "'.");
+					throw new ArgumentException("'" + type + "' is not a valid graph type for the static property path of '" + path + "'.");
 
 				// Get the graph property
-				GraphProperty graphProperty = graphType.Properties[steps[1]];
+				GraphProperty graphProperty = graphType.Properties[property];
 				if (graphProperty == null || !graphProperty.IsStatic)
-					throw new ArgumentException("'" + steps[1] + "' is not a valid property for the static property path of '" + path + "'.");
+					throw new ArgumentException("'" + property + "' is not a valid property for the static property path of '" + path + "'.");
 
 				// Add the property to the set of static properties to serialize
 				Dictionary<GraphProperty, GraphProperty> properties;
@@ -214,6 +232,11 @@ namespace ExoWeb
 			List<GraphReferenceProperty> properties = new List<GraphReferenceProperty>(instance.Type.Properties
 				.Where((property) => { return property is GraphReferenceProperty && paths.ContainsKey(path + "." + property.Name); })
 				.Cast<GraphReferenceProperty>());
+
+			// Get value properties
+			List<GraphValueProperty> valueProperties = new List<GraphValueProperty>(instance.Type.Properties
+				.Where((property) => { return property is GraphValueProperty && paths.ContainsKey(path + "." + property.Name); })
+				.Cast<GraphValueProperty>());
 
 			// Preprocess allow values, as this may add to the properties being processed
 			Dictionary<GraphProperty, AllowedValuesRule> allowedValuesRules = null;
@@ -294,6 +317,16 @@ namespace ExoWeb
 					if (childInstance != null)
 						ProcessInstance(childInstance, childPath, includeAllowedValues);
 				}
+			}
+
+			// Process Value property paths
+			foreach (GraphValueProperty value in valueProperties)
+			{
+				bool isList = typeof(ICollection).IsAssignableFrom(value.PropertyType);
+
+				// If this is a list, register for loading
+				if (isList)
+					instanceInfo.IncludeList(value);
 			}
 		}
 
@@ -406,7 +439,7 @@ namespace ExoWeb
 					foreach (GraphProperty property in graphType.Properties)
 					{
 						// Skip properties that cannot be serialized
-						if (property is GraphValueProperty && GetJsonValueType(((GraphValueProperty)property).PropertyType) == null)
+						if (property is GraphValueProperty && GetJsonValueType(((GraphValueProperty) property).PropertyType) == null)
 							continue;
 
 						// Skip static properties, as these must be explicitly serialized
@@ -440,7 +473,20 @@ namespace ExoWeb
 
 						// Serialize values
 						else
-							OutputValue(response, (GraphValueProperty)property, instance.Instance.GetValue((GraphValueProperty)property));
+						{
+							var actualProperty = instance.Instance.GetValue((GraphValueProperty) property);
+							bool isList = typeof(ICollection).IsAssignableFrom(((GraphValueProperty) property).PropertyType);
+
+							if (isList)
+							{
+								if (instance.HasList(property))
+									OutputValue(response, (GraphValueProperty) property, actualProperty);
+								else
+									response.Write("\"deferred\"");
+							}
+							else
+								OutputValue(response, (GraphValueProperty) property, actualProperty);
+						}
 					}
 					response.Write("\r\n         }");
 				}
@@ -505,7 +551,7 @@ namespace ExoWeb
 	/// </summary>
 	internal class GraphInstanceInfo
 	{
-		Dictionary<GraphReferenceProperty, GraphReferenceProperty> lists;
+		Dictionary<GraphProperty, GraphProperty> lists;
 
 		internal GraphInstance Instance { get; private set; }
 
@@ -514,14 +560,14 @@ namespace ExoWeb
 			this.Instance = instance;
 		}
 
-		internal void IncludeList(GraphReferenceProperty list)
+		internal void IncludeList(GraphProperty list)
 		{
 			if (lists == null)
-				lists = new Dictionary<GraphReferenceProperty, GraphReferenceProperty>();
+				lists = new Dictionary<GraphProperty, GraphProperty>();
 			lists[list] = list;
 		}
 
-		internal bool HasList(GraphReferenceProperty list)
+		internal bool HasList(GraphProperty list)
 		{
 			return lists != null && lists.ContainsKey(list);
 		}

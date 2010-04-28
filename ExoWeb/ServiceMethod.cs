@@ -50,7 +50,22 @@ namespace ExoWeb
 			if (jsonIntrinsicTypes.TryGetValue(type, out jsonType))
 				return jsonType;
 
+			// For unknown values types, return the object type
+			if (IsWcfSerializable(type))
+				return "Object";
+
 			return null;
+		}
+
+		private static bool IsWcfSerializable(Type type)
+		{
+			object[] attributes = type.GetCustomAttributes(false);
+
+			foreach (object attribute in attributes)
+				if (attribute is DataContractAttribute || attribute is CollectionDataContractAttribute)
+					return true;
+
+			return false;
 		}
 
 		protected static string GetJsonReferenceType(GraphType type)
