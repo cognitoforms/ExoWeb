@@ -78,6 +78,7 @@
     <Content Include="Mapper\ChangeSet.js" />
     <Content Include="Mapper\ServerSync.htm" />
     <Content Include="Model\CalculatedProperties.htm" />
+    <Content Include="Model\Namespaces.htm" />
     <Content Include="Model\Inheritance.htm" />
     <Content Include="Model\PropertyChain.htm" />
     <Content Include="Model\Types.htm" />

@@ -25,24 +25,6 @@
 				equals(personType.get_jstype(), ExoWeb.Model.Model.getJsType("Person"), "Type should be retrievable by name and \"getJsType\" method.");
 				ok(personType.get, "Type should have a get method for retrieving instances.");
 			});
-
-			test("Namespaces", function() {
-				var widgetType = model.addType("Foo.Bar.Widget");
-				
-				ok(widgetType === model.type("Foo.Bar.Widget"), "Type should be retrievable via \"type\" method.");
-				ok(widgetType === Foo.Bar.Widget.meta, "Type should be retrievable directly from namespace objects.")
-				equals(widgetType.get_jstype().getName(), "Foo.Bar.Widget", "Class should be registered and name should be the type name");
-				equals(widgetType.get_jstype(), ExoWeb.Model.Model.getJsType("Foo.Bar.Widget"), "Type should be retrievable by name and \"getJsType\" method.");
-				ok(widgetType.get, "Type should have a get method for retrieving instances.")
-
-				// test property chain and type cast
-				var personType = ExoWeb.Model.Model.getJsType("Person");
-				personType.meta.addProperty({ "name": "Widget", "type": Foo.Bar.Widget });
-				var subWidgetType = model.addType("Foo.Bar.SubWidget", Foo.Bar.Widget.meta);
-				Foo.Bar.SubWidget.meta.addProperty({ "name": "CustomText", "type": String });
-				var customTextChain = ExoWeb.Model.Model.property("this<Foo.Bar.SubWidget>.CustomText", personType);
-				ok(customTextChain, "Property Chain should be able to handle a cast expression involving a namespace.");
-			});
 		</script>
 	</head>
 	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" sys:activate="*">
