@@ -1234,10 +1234,26 @@ if (!Array.prototype.some) {
 }
 
 // original function grabbed from http://oranlooney.com/functional-javascript/
-Object.copy = function Object$Copy(obj) {
-	if (typeof obj !== 'object') {
+Object.copy = function Object$Copy(obj, options/*, level*/) {
+
+	var undefined;
+
+	if (!options) {
+		options = {};
+	}
+
+	// initialize max level to default value
+	if (!options.maxLevel) {
+		options.maxLevel = 25;
+	}
+
+	// initialize level to default value
+	var level = arguments.length > 2 ? arguments[2] : 0;
+
+	if (level >= options.maxLevel || typeof obj !== 'object' || obj === null || obj === undefined) {
 		return obj;  // non-object have value sematics, so obj is already a copy.
-	} else {
+	}
+	else {
 		if (obj instanceof Array) {
 			var result = [];
 			for (var i = 0; i < obj.length; i++) {
@@ -1260,7 +1276,14 @@ Object.copy = function Object$Copy(obj) {
 					// ok, we have a normal object. copy the whole thing, property-by-property.
 					var c = {};
 					for (var property in obj) {
-						c[property] = obj[property];
+						// Optionally copy property values as well
+						if (options.copyChildren) {
+							c[property] = Object.copy(obj[property], options, level + 1);
+						}
+						else {
+							c[property] = obj[property];
+						}
+
 					}
 					return c;
 				}

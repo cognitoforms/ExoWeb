@@ -73,6 +73,7 @@
     <Content Include="Common\Scripts\Microsoft\MicrosoftAjaxTemplates.js" />
     <Content Include="Common\Styles\qunit.css" />
     <Content Include="Common\Scripts\QUnit\qunit.js" />
+    <Content Include="Core\Copy.htm" />
     <Content Include="Core\Observers.htm" />
     <Content Include="Core\Transform.htm" />
     <Content Include="Mapper\ChangeSet.js" />
