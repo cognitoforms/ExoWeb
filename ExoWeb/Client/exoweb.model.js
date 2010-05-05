@@ -2471,53 +2471,63 @@
 		};
 
 		LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr) {
-			var signal = new ExoWeb.Signal();
-			var results = [];
-			var errors = [];
-			var successCallbacks = [];
-			var errorCallbacks = [];
+			if (target instanceof Array) {
+				if (LazyLoader.isLoaded(target)) {
+					var signal = new ExoWeb.Signal();
+					var results = [];
+					var errors = [];
+					var successCallbacks = [];
+					var errorCallbacks = [];
 
-			var allSucceeded = true;
+					var allSucceeded = true;
 
-			target = (target instanceof Array) ? target : [target];
+					Array.forEach(target, function(subTarget, i) {
+						results.push(null);
+						errors.push(null);
+						successCallbacks.push(signal.pending(function(result) {
+							results[i] = result;
+						}));
+						errorCallbacks.push(signal.orPending(function(err) {
+							allSucceeded = false;
+							errors[i] = err;
+						}));
+					});
 
-			Array.forEach(target, function(subTarget, i) {
-				results.push(null);
-				errors.push(null);
-				successCallbacks.push(signal.pending(function(result) {
-					results[i] = result;
-				}));
-				errorCallbacks.push(signal.orPending(function(err) {
-					allSucceeded = false;
-					errors[i] = err;
-				}));
-			});
+					Array.forEach(target, function(subTarget, i) {
+						LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll);
+					});
 
-			Array.forEach(target, function(subTarget, i) {
-				LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll);
-			});
-
-			signal.waitForAll(function() {
-				if (allSucceeded) {
-					// call the success callback if one exists
-					if (successCallback) {
-						successCallback.call(thisPtr, results);
-					}
-				}
-				else if (errorCallback) {
-					errorCallback.call(thisPtr, errors);
-				}
-				else {
-					var numErrors = 0;
-					Array.forEach(errors, function(e) {
-						if (e) {
-							ExoWeb.trace.logError(["lazyLoad"], e);
-							numErrors += 1;
+					signal.waitForAll(function() {
+						if (allSucceeded) {
+							// call the success callback if one exists
+							if (successCallback) {
+								successCallback.call(thisPtr, results);
+							}
 						}
-						throwAndLog(["lazyLoad"], "{0} errors encountered while attempting to eval paths for all items in the target array.", [numErrors]);
+						else if (errorCallback) {
+							errorCallback.call(thisPtr, errors);
+						}
+						else {
+							var numErrors = 0;
+							Array.forEach(errors, function(e) {
+								if (e) {
+									ExoWeb.trace.logError(["lazyLoad"], e);
+									numErrors += 1;
+								}
+								throwAndLog(["lazyLoad"], "{0} errors encountered while attempting to eval paths for all items in the target array.", [numErrors]);
+							});
+						}
 					});
 				}
-			});
+				else {
+					LazyLoader.load(target, null, function() {
+						LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr);
+					});
+				}
+			}
+			else {
+				LazyLoader.evalAll([target], path, successCallback, errorCallback, scopeChain, thisPtr);
+			}
 		};
 
 		LazyLoader.isLoaded = function LazyLoader$isLoaded(obj, propName) {
