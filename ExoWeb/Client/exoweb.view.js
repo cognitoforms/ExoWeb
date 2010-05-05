@@ -445,8 +445,36 @@
 				this._readySignal.waitForAll(callback);
 			},
 			toString: function Adapter$toString() {
-				var value = this.get_systemValue();
-				return (!value || value.constructor === String) ? value : value.toString();
+				var targetType;
+				if (this._target === null) {
+					targetType = "null";
+				}
+				else if (this._target === undefined) {
+					targetType = "undefined";
+				}
+				else {
+					targetType = ExoWeb.parseFunctionName(this._target.constructor);
+				}
+
+				var value;
+				try {
+					value = this.get_systemValue();
+
+					if (value === null) {
+						value = "null";
+					}
+					else if (value === undefined) {
+						value = "undefined";
+					}
+					else if (value.constructor !== String) {
+						value = value.toString();
+					}
+				}
+				catch (e) {
+					value = "[error]";
+				}
+
+				return $format("<{0}>.{1}:  {2}", [targetType, this._propertyPath, value]);
 			},
 
 			// Properties that are intended to be used by templates.

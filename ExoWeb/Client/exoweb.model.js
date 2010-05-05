@@ -823,24 +823,29 @@
 			get_rules: function Property$get_rules() {
 				return this._rules;
 			},
-			toString: function() {
-				return this.get_label();
+			toString: function Property$toString() {
+				if (this._isStatic) {
+					return this.get_path();
+				}
+				else {
+					return $format("this<{0}>.{1}", [this.get_containingType(), this.get_name()]);
+				}
 			},
-			get_containingType: function() {
+			get_containingType: function Property$get_containingType() {
 				return this._containingType;
 			},
 
-			get_jstype: function() {
+			get_jstype: function Property$get_jstype() {
 				return this._jstype;
 			},
 
-			get_format: function() {
+			get_format: function Property$get_format() {
 				return this._format;
 			},
-			get_origin: function() {
+			get_origin: function Property$get_origin() {
 				return this._origin ? this._origin : this._containingType.get_origin();
 			},
-			getter: function(obj) {
+			getter: function Property$getter(obj) {
 				this._raiseEvent("get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
 
 				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
@@ -853,7 +858,7 @@
 				return obj[this._fieldName];
 			},
 
-			setter: function(obj, val) {
+			setter: function Property$setter(obj, val) {
 				if (!this.canSetValue(obj, val)) {
 					throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
 				}
@@ -879,34 +884,34 @@
 				}
 			},
 
-			get_isEntityType: function() {
+			get_isEntityType: function Property$get_isEntityType() {
 				return !!this.get_jstype().meta && !this._isList;
 			},
 
-			get_isEntityListType: function() {
+			get_isEntityListType: function Property$get_isEntityListType() {
 				return !!this.get_jstype().meta && this._isList;
 			},
 
-			get_isValueType: function() {
+			get_isValueType: function Property$get_isValueType() {
 				return !this.get_jstype().meta;
 			},
 
-			get_isList: function() {
+			get_isList: function Property$get_isList() {
 				return this._isList;
 			},
 
-			get_isStatic: function() {
+			get_isStatic: function Property$get_isStatic() {
 				return this._isStatic;
 			},
 
-			get_label: function() {
+			get_label: function Property$get_label() {
 				return this._label;
 			},
 
-			get_name: function() {
+			get_name: function Property$get_name() {
 				return this._name;
 			},
-			get_path: function() {
+			get_path: function Property$get_path() {
 				return this._isStatic ? (this._containingType.get_fullName() + "." + this._name) : this._name;
 			},
 			canSetValue: function Property$canSetValue(obj, val) {
@@ -1434,12 +1439,12 @@
 			lastProperty: function PropertyChain$lastProperty() {
 				return this._properties[this._properties.length - 1];
 			},
-			lastTarget: function PropertyChain$lastTarget(obj) {
+			lastTarget: function PropertyChain$lastTarget(obj, exitEarly) {
 				for (var p = 0; p < this._properties.length - 1; p++) {
 					var prop = this._properties[p];
 
 					// exit early (and return undefined) on null or undefined
-					if (obj === undefined || obj === null) {
+					if (exitEarly === true && (obj === undefined || obj === null)) {
 						return;
 					}
 
@@ -1599,8 +1604,14 @@
 
 				return allInited;
 			},
-			toString: function() {
-				return this.get_label();
+			toString: function PropertyChain$toString() {
+				if (this._isStatic) {
+					return this.get_path();
+				}
+				else {
+					var path = this._properties.map(function(e) { return e.get_name(); }).join(".");
+					return $format("this<{0}>.{1}", [this.get_containingType(), path]);
+				}
 			}
 		};
 

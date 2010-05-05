@@ -128,24 +128,29 @@ Type.registerNamespace("ExoWeb");
 					// format the function name and arguments
 					var name = parseFunctionName(f);
 					var args = Array.prototype.slice.call(f.arguments).map(function formatArg(arg) {
-						if (arg === undefined) {
-							return "undefined";
+						try {
+							if (arg === undefined) {
+								return "undefined";
+							}
+							else if (arg === null) {
+								return "null";
+							}
+							else if (arg instanceof Array) {
+								return "[" + arg.map(arguments.callee).join(", ") + "]";
+							}
+							else if (arg instanceof Function) {
+								return parseFunctionName(arg) + "()";
+							}
+							else if (arg.constructor === String) {
+								return "\"" + arg + "\"";
+							}
+							else {
+								var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
+								return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
+							}
 						}
-						else if (arg === null) {
-							return "null";
-						}
-						else if (arg instanceof Array) {
-							return "[" + arg.map(arguments.callee).join(", ") + "]";
-						}
-						else if (arg instanceof Function) {
-							return parseFunctionName(arg) + "()";
-						}
-						else if (arg.constructor === String) {
-							return "\"" + arg + "\"";
-						}
-						else {
-							var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
-							return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
+						catch (e) {
+							return "ERROR (" + parseFunctionName(arg.constructor) + "): " + e.toString();
 						}
 					}).join(", ");
 
@@ -174,10 +179,19 @@ Type.registerNamespace("ExoWeb");
 		}
 		ExoWeb.parseFunctionName = parseFunctionName;
 
+		var loggingError = false;
 		ExoWeb.trace.DEFAULT_ERROR_HANDLER = function DEFAULT_ERROR_HANDLER(message, e) {
-			var stackTrace = ExoWeb.trace.getCallStack();
-			var type = e ? parseFunctionName(e.constructor) : "Error";
-			ExoWeb.WebService.LogError(type, message, stackTrace.join("\n"), window.location.href, document.referrer);
+			if (loggingError === false) {
+				try {
+					loggingError = true;
+					var stackTrace = ExoWeb.trace.getCallStack();
+					var type = e ? parseFunctionName(e.constructor) : "Error";
+					ExoWeb.WebService.LogError(type, message, stackTrace.join("\n"), window.location.href, document.referrer);
+				}
+				finally {
+					loggingError = false;
+				}
+			}
 		};
 
 		var log = ExoWeb.trace.log;
