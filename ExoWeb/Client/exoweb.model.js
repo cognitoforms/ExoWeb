@@ -1185,22 +1185,27 @@
 			// replace "." in type casts so that they do not interfere with splitting path
 			expression = expression.replace(/<[^>]*>/ig, function(e) { return e.replace(/\./ig, "$_$"); });
 
-			this.steps = expression.split(".").map(function(step) {
-				var parsed = step.match(/^([a-z0-9_]+)(<([a-z0-9_$]+)>)?$/i);
+			if (expression.length > 0) {
+				this.steps = expression.split(".").map(function(step) {
+					var parsed = step.match(/^([a-z0-9_]+)(<([a-z0-9_$]+)>)?$/i);
 
-				if (!parsed) {
-					return null;
-				}
+					if (!parsed) {
+						return null;
+					}
 
-				var result = { property: parsed[1] };
+					var result = { property: parsed[1] };
 
-				if (parsed[3]) {
-					// restore "." in type case expression
-					result.cast = parsed[3].replace(/\$_\$/ig, ".");
-				}
+					if (parsed[3]) {
+						// restore "." in type case expression
+						result.cast = parsed[3].replace(/\$_\$/ig, ".");
+					}
 
-				return result;
-			});
+					return result;
+				});
+			}
+			else {
+				this.steps = [];
+			}
 		}
 
 		PathTokens.normalizePaths = function PathTokens$normalizePaths(paths) {
@@ -2386,21 +2391,31 @@
 		function LazyLoader() {
 		}
 		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn*/) {
-			if (!path) {
-				path = [];
+			if (!ExoWeb.isDefined(path)) {
+				path = "";
 			}
-			else if (!(path instanceof Array)) {
-				path = path.split(".");
+
+			if (ExoWeb.isType(path, String)) {
+				path = new PathTokens(path);
+			}
+			else if (ExoWeb.isType(path, Array)) {
+				path = new PathTokens(path.join("."));
+			}
+			else if (!ExoWeb.isType(path, PathTokens)) {
+				ExoWeb.trace.throwAndLog("lazyLoad", "Unknown path \"{0}\" of type {1}.", [path, ExoWeb.parseFunctionName(path.constructor)]);
 			}
 
 			scopeChain = scopeChain || [window];
-			target = target || Array.dequeue(scopeChain);
+
+			if (!ExoWeb.isDefined(target)) {
+				target = Array.dequeue(scopeChain);
+			}
 
 			// Allow an invocation to specify continuing loading properties using a given function, by default this is LazyLoader.eval.
 			// This is used by evalAll to ensure that array properties can be force loaded at any point in the path.
 			var continueFn = arguments.length == 7 && arguments[6] instanceof Function ? arguments[6] : LazyLoader.eval;
 
-			while (path.length > 0) {
+			while (path.steps.length > 0) {
 				// If an array is encountered and this call originated from "evalAll" then delegate to "evalAll", otherwise 
 				// this will most likely be an error condition unless the remainder of the path are properties of Array.
 				if (continueFn == LazyLoader.evalAll && target instanceof Array) {
@@ -2408,28 +2423,33 @@
 					return;
 				}
 
-				var prop = Array.dequeue(path);
+				var step = Array.dequeue(path.steps);
 
-				if (!LazyLoader.isLoaded(target, prop)) {
-					LazyLoader.load(target, prop, function() {
-						var nextTarget = ExoWeb.getValue(target, prop);
+				if (!LazyLoader.isLoaded(target, step.property)) {
+					LazyLoader.load(target, step.property, function() {
+						var nextTarget = ExoWeb.getValue(target, step.property);
 
+						// If the next target is undefined then there is a problem since getValue returns null if a property exists but returns no value.
 						if (nextTarget === undefined) {
+							// Backtrack using the next item in the scope chain.
 							if (scopeChain.length > 0) {
-								Array.insert(path, 0, prop);
+								Array.insert(path.steps, 0, step);
 
 								continueFn(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain, thisPtr, continueFn);
 							}
+							// Nowhere to backtrack, so return or throw an error.
 							else if (errorCallback) {
-								errorCallback.call(thisPtr, "Property is undefined: " + prop);
+								errorCallback.call(thisPtr, "Property is undefined: " + step.property);
 							}
 							else {
-								throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [prop]);
+								throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [step.property]);
 							}
 						}
-						else if (nextTarget !== null) {
+						// Continue if there is a next target and either no cast of the current property or the value is of the cast type.
+						else if (nextTarget !== null && (!step.cast || ExoWeb.isType(nextTarget, step.cast))) {
 							continueFn(nextTarget, path, successCallback, errorCallback, [], thisPtr, continueFn);
 						}
+						// If the next target is defined & non-null or not of the cast type, then exit with success.
 						else if (successCallback) {
 							successCallback.call(thisPtr, null);
 						}
@@ -2438,30 +2458,34 @@
 					return;
 				}
 				else {
-					var propValue = ExoWeb.getValue(target, prop);
+					var propValue = ExoWeb.getValue(target, step.property);
 
+					// If the value is undefined then there is a problem since getValue returns null if a property exists but returns no value.
 					if (propValue === undefined) {
 						if (scopeChain.length > 0) {
-							Array.insert(path, 0, prop);
+							Array.insert(path.steps, 0, step);
 							target = Array.dequeue(scopeChain);
 						}
 						else {
 							if (errorCallback) {
-								errorCallback.call(thisPtr, "Property is undefined: " + prop);
+								errorCallback.call(thisPtr, "Property is undefined: " + step.property);
 							}
 							else {
-								throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [prop]);
+								throwAndLog(["lazyLoad"], "Cannot complete property evaluation because a property is undefined: {0}", [step.property]);
 							}
 
 							return;
 						}
 					}
-					else if (propValue === null) {
+					// The next target is null (nothing left to evaluate) or there is a cast of the current property and the value is 
+					// not of the cast type (no need to continue evaluating).
+					else if (propValue === null || (step.cast && !ExoWeb.isType(propValue, step.cast))) {
 						if (successCallback) {
 							successCallback.call(thisPtr, null);
 						}
 						return;
 					}
+					// Otherwise, continue to the next property.
 					else {
 						if (scopeChain.length > 0) {
 							scopeChain = [];
@@ -2473,7 +2497,7 @@
 			}
 
 			// Load final object
-			if (target !== null && !LazyLoader.isLoaded(target)) {
+			if (ExoWeb.isDefined(target) && !LazyLoader.isLoaded(target)) {
 				LazyLoader.load(target, null, function() { successCallback.call(thisPtr, target); });
 			}
 			else if (successCallback) {
@@ -2542,7 +2566,7 @@
 		};
 
 		LazyLoader.isLoaded = function LazyLoader$isLoaded(obj, propName) {
-			if (obj === undefined) {
+			if (!ExoWeb.isDefined(obj)) {
 				return false;
 			}
 

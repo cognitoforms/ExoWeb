@@ -815,6 +815,108 @@ Type.registerNamespace("ExoWeb");
 
 		ExoWeb.getValue = getValue;
 
+		// TODO: rename
+		function isDefined(val/*, val1, val2, ...*/) {
+			if (arguments.length === 1) {
+				return val !== undefined && val !== null;
+			}
+			else if (arguments.length > 0) {
+				return Array.prototype.every.call(arguments, function(item) {
+					return isDefined(item);
+				});
+			}
+		}
+
+		ExoWeb.isDefined = isDefined;
+
+		var ctorProviders = ExoWeb._ctorProviders = {};
+
+		function addCtorProvider(type, provider) {
+			var key;
+
+			// given type is a string, then use it as the dictionary key
+			if (isType(type, String)) {
+				key = type;
+			}
+			// given type is a function, then parse the name
+			else if (isType(type, Function)) {
+				key = parseFunctionName(type);
+			}
+			else {
+				// TODO
+			}
+
+			if (!isType(provider, Function)) {
+				// TODO
+			}
+
+			if (isDefined(key)) {
+				ctorProviders[key] = provider;
+			}
+		}
+
+		function getCtor(type) {
+
+			// Only return a value if the argument is defined
+			if (isDefined(type)) {
+
+				// If the argument is a function then return it immediately.
+				if (isType(type, Function)) {
+					return type;
+
+				}
+				else {
+					var ctor;
+
+					if (isType(type, String)) {
+						// remove "window." from the type name since it is implied
+						type = type.replace(/(window\.)?(.*)/, "$2");
+
+						// evaluate the path
+						ctor = evalPath(window, type);
+					}
+					else {
+						// Look for a registered provider for the argument's type.
+						// TODO:  account for inheritance when determining provider?
+						var providerKey = parseFunctionName(type.constructor);
+						var provider = ctorProviders[providerKey];
+
+						if (isDefined(provider)) {
+							// invoke the provider to obtain the constructor
+							ctor = provider(type);
+						}
+					}
+
+					// warn (and implicitly return undefined) if the result is not a javascript function
+					if (isDefined(ctor) && !isType(ctor, Function)) {
+						ExoWeb.trace.logWarning("", "The given type \"{0}\" is not a function.", [type]);
+					}
+					else {
+						return ctor;
+					}
+				}
+			}
+		}
+
+		ExoWeb.getCtor = getCtor;
+
+		function isType(val, type) {
+
+			// Exit early for checking function type
+			if (isDefined(val, type) && val === Function && type === Function) {
+				return true;
+			}
+
+			var ctor = getCtor(type);
+
+			// ensure a defined value and constructor
+			return isDefined(val, ctor) &&
+			// accomodate objects (instanceof) as well as intrinsic value types (String, Number, etc)
+					(val instanceof ctor || val.constructor === ctor);
+		}
+
+		ExoWeb.isType = isType;
+
 		///////////////////////////////////////////////////////////////////////////////
 		// Globals
 		function $format(str, values) {
