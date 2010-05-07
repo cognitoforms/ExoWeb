@@ -143,6 +143,33 @@ Type.registerNamespace("ExoWeb.UI");
 				return $(e).is(this._for);
 			},
 
+			get_dataType: function Template$get_dataType() {
+				return this._dataType;
+			},
+			set_dataType: function Template$set_dataType(value) {
+				if (ExoWeb.isType(value, Function)) {
+					this._dataType = ExoWeb.parseFunctionName(value);
+					this._dataTypeCtor = value;
+				}
+				else if (ExoWeb.isType(value, String)) {
+					this._dataType = value;
+				}
+			},
+			get_dataTypeCtor: function Template$set_dataType() {
+				// lazy evaluate the actual constructor
+				if (!this._dataTypeCtor && ExoWeb.isType(this._dataType, String)) {
+					this._dataTypeCtor = ExoWeb.getCtor(this._dataType);
+				}
+				return this._dataTypeCtor;
+			},
+			isType: function Template$isType(obj) {
+
+				// Only return a value if a data type has been specified
+				if (ExoWeb.isDefined(this._dataType)) {
+					return ExoWeb.isType(obj, this.get_dataTypeCtor());
+				}
+			},
+
 			// Arbitrary JavaScript
 			///////////////////////////////////////////////////////////////////////////
 			get_if: function() {
@@ -209,16 +236,21 @@ Type.registerNamespace("ExoWeb.UI");
 				"attempt to find match for element = {0}{1}, data = {2}",
 				[element.tagName, element.className ? "." + element.className : "", data]);
 
+			if (data === undefined || data === null) {
+				ExoWeb.trace.logWarning("templates", "Attempting to find template for {0} data.", [data === undefined ? "undefined" : "null"]);
+			}
+
 			for (var t = allTemplates.length - 1; t >= 0; t--) {
 				var tmpl = allTemplates[t];
 
 				if (tmpl.control instanceof Template) {
-					if (tmpl.control.test(element, data)) {
-						log(["templates"], "TEMPLATE MATCHES!: for = {_for}, if = {_if}", tmpl.control);
+					var isType = tmpl.control.isType(data);
+					if ((isType === undefined || isType === true) && tmpl.control.test(element, data)) {
+						log(["templates"], "TEMPLATE MATCHES!: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
 						return tmpl;
 					}
 					else {
-						log(["templates"], "template does not match: for = {_for}, if = {_if}", tmpl.control);
+						log(["templates"], "template does not match: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
 					}
 				}
 			}
@@ -363,22 +395,21 @@ Type.registerNamespace("ExoWeb.UI");
 				if (this._canRender()) {
 					log(['ui', "templates"], "render()");
 
-					var _this = this;
 					externalTemplatesSignal.waitForAll(function Content$externalTemplatesSignal() {
-						if (_this._element !== undefined && _this._element !== null) {
+						if (this._element !== undefined && this._element !== null) {
 							log(['ui', "templates"], "render() proceeding after all templates are loaded");
 
 							// Failing to empty content before rendering can result in invalid content since rendering 
 							// content is not necessarily in order because of waiting on external templates.
-							$(_this._element).empty();
+							$(this._element).empty();
 
-							var renderArgs = new Sys.Data.DataEventArgs(_this._data);
-							Sys.Observer.raiseEvent(_this, "rendering", renderArgs);
+							var renderArgs = new Sys.Data.DataEventArgs(this._data);
+							Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
 							// ripped off from dataview
-							var pctx = _this.get_templateContext();
-							var container = _this.get_element();
-							var data = _this._data;
+							var pctx = this.get_templateContext();
+							var container = this.get_element();
+							var data = this._data;
 							var list = data;
 							var len;
 							if ((data === null) || (typeof (data) === "undefined")) {
@@ -391,10 +422,10 @@ Type.registerNamespace("ExoWeb.UI");
 							else {
 								len = data.length;
 							}
-							_this._contexts = new Array(len);
+							this._contexts = new Array(len);
 							for (var i = 0; i < len; i++) {
 								var item = list[i];
-								var itemTemplate = _this.getTemplate(item);
+								var itemTemplate = this.getTemplate(item);
 
 								// get custom classes from template
 								var classes = $(itemTemplate.get_element()).attr("class");
@@ -402,7 +433,7 @@ Type.registerNamespace("ExoWeb.UI");
 									classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
 								}
 
-								_this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+								this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
 
 								// copy custom classes from template to content control
 								if (classes) {
@@ -411,16 +442,16 @@ Type.registerNamespace("ExoWeb.UI");
 							}
 
 							// necessary in order to render components found within the template (like a nested dataview)
-							for (var j = 0, l = _this._contexts.length; j < l; j++) {
-								var ctx = _this._contexts[j];
+							for (var j = 0, l = this._contexts.length; j < l; j++) {
+								var ctx = this._contexts[j];
 								if (ctx) {
 									ctx.initializeComponents();
 								}
 							}
 
-							Sys.Observer.raiseEvent(_this, "rendered", renderArgs);
+							Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 						}
-					});
+					}, this);
 				}
 			},
 			initialize: function Content$initialize() {
