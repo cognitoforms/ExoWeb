@@ -208,17 +208,17 @@ Type.registerNamespace("ExoWeb");
 		}
 
 		Signal.mixin({
-			pending: function Signal$pending(callback) {
+			pending: function Signal$pending(callback, thisPtr) {
 				if (this._pending === 0) {
 					Signal.allPending.push(this);
 				}
 
 				this._pending++;
 				log("signal", "(++{_pending}) {_debugLabel}", this);
-				return this._genCallback(callback);
+				return this._genCallback(callback, thisPtr);
 			},
-			orPending: function Signal$orPending(callback) {
-				return this._genCallback(callback);
+			orPending: function Signal$orPending(callback, thisPtr) {
+				return this._genCallback(callback, thisPtr);
 			},
 			_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
 				try {
@@ -235,11 +235,11 @@ Type.registerNamespace("ExoWeb");
 					logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
 				}
 			},
-			_genCallback: function Signal$_genCallback(callback) {
+			_genCallback: function Signal$_genCallback(callback, thisPtr) {
 				if (callback) {
 					var signal = this;
 					return function Signal$_genCallback$result() {
-						signal._doCallback("pending", this, function Signal$_genCallback$fn() {
+						signal._doCallback("pending", thisPtr || this, function Signal$_genCallback$fn() {
 							callback.apply(this, arguments);
 							signal.oneDone();
 						}, arguments);
@@ -249,16 +249,16 @@ Type.registerNamespace("ExoWeb");
 					return this._oneDoneFn;
 				}
 			},
-			waitForAll: function Signal$waitForAll(callback, executeImmediately) {
+			waitForAll: function Signal$waitForAll(callback, thisPtr, executeImmediately) {
 				if (!callback) {
 					return;
 				}
 
 				if (this._pending === 0) {
-					this._doCallback("waitForAll", this, callback, [], executeImmediately);
+					this._doCallback("waitForAll", thisPtr, callback, [], executeImmediately);
 				}
 				else {
-					this._waitForAll.push(callback);
+					this._waitForAll.push({ "callback": callback, "thisPtr": thisPtr, "executeImmediately": executeImmediately });
 				}
 			},
 			oneDone: function Signal$oneDone() {
@@ -271,7 +271,8 @@ Type.registerNamespace("ExoWeb");
 				}
 
 				while (this._pending === 0 && this._waitForAll.length > 0) {
-					this._doCallback("waitForAll", this, Array.dequeue(this._waitForAll), []);
+					var item = Array.dequeue(this._waitForAll);
+					this._doCallback("waitForAll", item.thisPtr, item.callback, [], item.executeImmediately);
 				}
 			}
 		});

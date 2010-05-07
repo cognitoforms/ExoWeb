@@ -1092,7 +1092,7 @@
 								if (callback) {
 									callback(obj);
 								}
-							}, !isAsync);
+							}, null, !isAsync);
 						}
 						else {
 							var newValue;
@@ -1110,7 +1110,7 @@
 								if (callback) {
 									callback(obj);
 								}
-							}, !isAsync);
+							}, null, !isAsync);
 						}
 					},
 					toString: function() { return "calculation of " + this.prop._name; }
