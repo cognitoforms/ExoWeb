@@ -739,7 +739,7 @@
 					if ($(target).is("input[type=radio]")) {
 						$("input[type=radio][name='" + target.name + "']").each(
 							function updateRadioLastTarget() {
-								if (this != target) {
+								if (this != target && this.__msajaxbindings !== undefined) {
 									var bindings = this.__msajaxbindings;
 									for (var i = 0; i < bindings.length; i++) {
 										bindings[i]._lastTarget = false;
