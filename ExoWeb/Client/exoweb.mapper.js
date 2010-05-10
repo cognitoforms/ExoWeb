@@ -926,9 +926,7 @@
 					};
 
 					// start processing id changes, use call so that "this" pointer refers to ServerSync object
-					if (index < change.idChanges.length) {
-						processNextIdChange.call(this);
-					}
+					processNextIdChange.call(this);
 				}
 				else {
 					callback();
