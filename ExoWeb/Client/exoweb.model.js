@@ -2228,6 +2228,13 @@
 			}
 		});
 
+		Number.formats.Currency = new Format({
+			description: "$#.##",
+			convert: function(val) {
+				return "$" + val.toFixed(2).toString();
+			}
+		});
+
 		Number.formats.$system = Number.formats.Float;
 
 		String.formats.Phone = new Format({
