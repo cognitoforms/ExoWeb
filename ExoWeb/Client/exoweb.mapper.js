@@ -155,7 +155,6 @@
 					log("server", "logging list change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 				}
 
-
 				for (var i = 0; i < listChanges.length; ++i) {
 					var listChange = listChanges[i];
 
@@ -849,14 +848,14 @@
 					});
 				}
 				catch (e) {
-					ExoWeb.trace.throwAndLog(["server"], e);
 					this.endApplyingChanges();
+					ExoWeb.trace.throwAndLog(["server"], e);
 				}
 			},
 			applySaveChange: function ServerSync$applySaveChange(change, isLookahead, callback) {
 				log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
 
-				if (change.idChanges) {
+				if (change.idChanges && change.idChanges.length > 0) {
 
 					var index = 0;
 
@@ -1226,9 +1225,9 @@
 								list.push(getObject(model, propType, ref.id, ref.type));
 							}
 
-							if (doInit)
+							if (doInit) {
 								prop.init(obj, list);
-
+							}
 						}
 					}
 				}
