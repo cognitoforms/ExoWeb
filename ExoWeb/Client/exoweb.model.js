@@ -402,7 +402,18 @@
 
 		Type.prototype = {
 			newId: function Type$newId() {
-				return "+c" + this._counter++;
+				// Get the next id for this type's heirarchy.
+				for (var nextId, type = this; type; type = type.baseType) {
+					nextId = Math.max(nextId || 0, type._counter);
+				}
+
+				// Update the counter for each type in the heirarchy.
+				for (var type = this; type; type = type.baseType) {
+					type._counter = nextId + 1;
+				}
+
+				// Return the new id.
+				return "+c" + nextId;
 			},
 			register: function Type$register(obj, id) {
 				// register is called with single argument from default constructor
