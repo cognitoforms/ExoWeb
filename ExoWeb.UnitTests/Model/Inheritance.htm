@@ -75,12 +75,26 @@
 				ok(context.model.usedCar.toString("longDesc").startsWith("<UsedCar>"), "toString() should use inherited formats");
 			});
 
+			setupTest("newId", { expect: 3 }, function() {
+				context.model.meta.addType("Foo");
+				context.model.meta.addType("Bar", Foo.meta);
+
+				var foo = new Foo();
+				var bar = new Bar();
+
+				ok(foo.meta.id != bar.meta.id, "New objects in inheritance heirarchy should not have the same id.");
+
+				equals(Foo.meta.get(foo.meta.id), foo, "Should be able to retrieve instance of base type by id.");
+				equals(Bar.meta.get(bar.meta.id), bar, "Should be able to retrieve instance of sub type by id.");
+			});
+
 			context.ready(function() {
 				executeTest("polymorphic loading");
 				executeTest("object pool and sub classes");
 				executeTest("instanceof operator");
 				executeTest("type members");
 				executeTest("formats");
+				executeTest("newId");
 			});
 		</script>
 	</head>
