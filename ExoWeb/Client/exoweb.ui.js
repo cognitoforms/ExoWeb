@@ -231,7 +231,7 @@ Type.registerNamespace("ExoWeb.UI");
 		/// Finds the first field template with a selector and filter that
 		/// match the given element and returns the template.
 		/// </summary>
-		Template.find = function(element, data) {
+		Template.find = function Template$find(element, data) {
 			log(["templates"],
 				"attempt to find match for element = {0}{1}, data = {2}",
 				[element.tagName, element.className ? "." + element.className : "", data]);
@@ -267,7 +267,7 @@ Type.registerNamespace("ExoWeb.UI");
 		/// <summary>
 		/// Loads external templates into the page
 		/// </summary>
-		Template.load = function(path) {
+		Template.load = function Template$load(path) {
 			var id = "exoweb-templates-" + (templateCount++);
 
 			var lastReq = lastTemplateRequestSignal;
@@ -277,7 +277,17 @@ Type.registerNamespace("ExoWeb.UI");
 			var signal = lastTemplateRequestSignal;
 			var callback = signal.pending(function(elem) {
 				log("ui", "Activating elements for templates \"{0}\"", [id]);
-				Sys.Application.activateElement(elem);  // activate controls
+
+				// Store the number of templates before activating this element.
+				var originalTemplateCount = allTemplates.length;
+
+				// Activate template controls within the response.
+				Sys.Application.activateElement(elem);
+
+				// No new templates were created.
+				if (originalTemplateCount === allTemplates.length) {
+					ExoWeb.trace.logWarning("ui", "Templates for request \"{0}\" from path \"{1}\" yields no templates.", [id, path]);
+				}
 			});
 
 			$("<div id='" + id + "'/>")
