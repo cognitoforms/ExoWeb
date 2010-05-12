@@ -98,7 +98,25 @@
 			var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
 			var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
 
-			return new PropertyChain(type, tokens, lazyLoadTypes, callback);
+			if (tokens.steps.length == 1) {
+				var name = tokens.steps[0].property;
+				if (lazyLoadTypes) {
+					if (!LazyLoader.isLoaded(type)) {
+						LazyLoader.load(type, function() {
+							callback(type.property(name, true));
+						});
+					}
+					else {
+						callback(type.property(name, true));
+					}
+				}
+				else {
+					return type.property(name, true);
+				}
+			}
+			else {
+				return new PropertyChain(type, tokens, lazyLoadTypes, callback);
+			}
 		};
 
 		Model.prototype = {
@@ -551,19 +569,19 @@
 
 				if (prop.get_isStatic()) {
 					// for static properties add member to javascript type
-					this._jstype["get_" + def.name] = this._makeGetter(prop, prop.getter);
+					this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter);
 				}
 				else {
 					// for instance properties add member to all instances of this javascript type
-					this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop.getter);
+					this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop._getter);
 				}
 
 				if (!prop.get_isList()) {
 					if (prop.get_isStatic()) {
-						this._jstype["set_" + def.name] = this._makeSetter(prop, prop.setter, true);
+						this._jstype["set_" + def.name] = this._makeSetter(prop, prop._setter, true);
 					}
 					else {
-						this._jstype.prototype["set_" + def.name] = this._makeSetter(prop, prop.setter, true);
+						this._jstype.prototype["set_" + def.name] = this._makeSetter(prop, prop._setter, true);
 					}
 				}
 
@@ -856,7 +874,7 @@
 			get_origin: function Property$get_origin() {
 				return this._origin ? this._origin : this._containingType.get_origin();
 			},
-			getter: function Property$getter(obj) {
+			_getter: function Property$_getter(obj) {
 				this._raiseEvent("get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
 
 				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
@@ -869,7 +887,7 @@
 				return obj[this._fieldName];
 			},
 
-			setter: function Property$setter(obj, val) {
+			_setter: function Property$_setter(obj, val) {
 				if (!this.canSetValue(obj, val)) {
 					throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
 				}
@@ -968,10 +986,10 @@
 				}
 
 				if (arguments.length == 2) {
-					this.setter(target, val);
+					this._setter(target, val);
 				}
 				else {
-					return this.getter(target);
+					return this._getter(target);
 				}
 			},
 			init: function Property$init(obj, val, force) {
@@ -1042,7 +1060,7 @@
 
 				this._addEvent("changed", f);
 			},
-			addCalculatedRule: function Property$addCalculatedRule(calculateFn, isAsync, inputs) {
+			_addCalculatedRule: function Property$_addCalculatedRule(calculateFn, isAsync, inputs) {
 				// calculated property should always be initialized when first accessed
 				var input = new RuleInput(this);
 				input.set_dependsOnGet(true);
@@ -1171,7 +1189,7 @@
 
 					// wait until all property information is available to initialize the calculation
 					this._readySignal.waitForAll(function() {
-						prop.addCalculatedRule(options.fn, options.isAsync, inputs);
+						prop._addCalculatedRule(options.fn, options.isAsync, inputs);
 					});
 				}
 				else {
@@ -1179,10 +1197,15 @@
 					inferredInputs.forEach(function(input) {
 						input.set_dependsOnInit(true);
 					});
-					prop.addCalculatedRule(options.fn, options.isAsync, inferredInputs);
+					prop._addCalculatedRule(options.fn, options.isAsync, inferredInputs);
 				}
 
 				return this;
+			},
+			rootedPath: function Property$rootedPath(type) {
+				if (this.isDefinedBy(type)) {
+					return (this._isStatic ? "" : "this.") + this._name;
+				}
 			}
 		});
 		Property.mixin(ExoWeb.Functor.eventing);
@@ -1434,12 +1457,12 @@
 			},
 			get_path: function PropertyChain$get_path() {
 				if (!this._path) {
-					this._path = this.getPathFromIndex(0);
+					this._path = this._getPathFromIndex(0);
 				}
 
 				return this._path;
 			},
-			getPathFromIndex: function PropertyChain$getPathFromIndex(startIndex) {
+			_getPathFromIndex: function PropertyChain$_getPathFromIndex(startIndex) {
 				var parts = [];
 				if (this._properties[startIndex].get_isStatic()) {
 					parts.push(this._properties[startIndex].get_containingType().get_fullName());
@@ -1498,7 +1521,7 @@
 			rootedPath: function PropertyChain$rootedPath(rootType) {
 				for (var i = 0; i < this._properties.length; i++) {
 					if (this._properties[i].isDefinedBy(rootType)) {
-						var path = this.getPathFromIndex(i);
+						var path = this._getPathFromIndex(i);
 						return (this._properties[i]._isStatic ? "" : "this.") + path;
 					}
 				}
@@ -1913,7 +1936,7 @@
 				if (this._needsInit) {
 					// type is undefined or not loaded
 					if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-						this._propertyChain = ExoWeb.Model.Model.property(this.path, this.prop.get_containingType());
+						this._property = ExoWeb.Model.Model.property(this.path, this.prop.get_containingType());
 					}
 
 					delete this._needsInit;
@@ -1939,13 +1962,13 @@
 					}
 				}
 			},
-			propertyChain: function AllowedValuesRule$propertyChain(obj) {
+			property: function AllowedValuesRule$property(obj) {
 				this._init();
-				return this._propertyChain;
+				return this._property;
 			},
 			values: function AllowedValuesRule$values(obj) {
 				this._init();
-				if (this._propertyChain && (this._propertyChain.lastProperty()._isStatic || this._propertyChain.lastTarget(obj))) {
+				if (this._propertyChain && (this._property.get_isStatic() || this._property instanceof Property || this._property.lastTarget(obj))) {
 
 					// get the allowed values from the property chain
 					var values = this._propertyChain.value(obj);
