@@ -30,7 +30,7 @@
 					callback.apply(thisPtr, args || []);
 				}
 				catch (e) {
-					logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
+					ExoWeb.trace.logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
 				}
 			};
 
