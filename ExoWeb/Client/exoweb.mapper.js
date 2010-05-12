@@ -95,7 +95,7 @@
 			}
 		}
 
-		function fromExoGraph(translator, val) {
+		function fromExoGraph(val, translator) {
 			if (val !== undefined && val !== null) {
 				var type = ExoWeb.Model.Model.getJsType(val.type);
 
@@ -103,7 +103,7 @@
 				// both the client and server.  Also, in some cases a transaction references an entity that was created on the server 
 				// and then committed, so that the id actually references an object that already exists on the client but with a different id.
 				//--------------------------------------------------------------------------------------------------------
-				if (type.meta && type.meta instanceof ExoWeb.Model.Type) {
+				if (type.meta && type.meta instanceof ExoWeb.Model.Type && translator) {
 					// don't alter the original object
 					val = Object.copy(val);
 
@@ -362,13 +362,13 @@
 
 					// Search added and removed for an object that can be saved.
 					Array.forEach(change.added, function(item) {
-						var addedObj = fromExoGraph(this._translator, item);
+						var addedObj = fromExoGraph(item, this._translator);
 						if (this._canSaveObject(addedObj)) {
 							ignore = false;
 						}
 					}, this);
 					Array.forEach(change.removed, function(item) {
-						var removedObj = fromExoGraph(this._translator, item);
+						var removedObj = fromExoGraph(item, this._translator);
 						if (this._canSaveObject(removedObj)) {
 							ignore = false;
 						}
@@ -382,7 +382,7 @@
 				}
 
 				// Ensure that the instance that the change pertains to can be saved.
-				var instanceObj = fromExoGraph(this._translator, change.instance);
+				var instanceObj = fromExoGraph(change.instance, this._translator);
 				return this._canSaveObject(instanceObj);
 			},
 
@@ -958,14 +958,14 @@
 
 				// ensure that the type of the target instance is loaded
 				ensureJsType(this._model, change.instance.type, function() {
-					var obj = fromExoGraph(this._translator, change.instance);
+					var obj = fromExoGraph(change.instance, this._translator);
 
 					// ensure that the target property is loaded
 					ExoWeb.Model.LazyLoader.eval(obj, change.property, function() {
 						if (change.newValue) {
 							// ensure that the type of the new value is loaded
 							ensureJsType(this._model, change.newValue.type, function applyRefChange$typeLoaded(jstype) {
-								var ref = fromExoGraph(this._translator, change.newValue);
+								var ref = fromExoGraph(change.newValue, this._translator);
 								Sys.Observer.setValue(obj, change.property, ref);
 
 								// lazy load the referenced instance
@@ -987,7 +987,7 @@
 			applyValChange: function ServerSync$applyValChange(change, callback) {
 				log("server", "applyValChange", change.instance);
 
-				var obj = fromExoGraph(this._translator, change.instance);
+				var obj = fromExoGraph(change.instance, this._translator);
 
 				function applyValChange$execute() {
 					Sys.Observer.setValue(obj, change.property, change.newValue);
@@ -1006,7 +1006,7 @@
 			applyListChange: function ServerSync$applyListChange(change, callback) {
 				log("server", "applyListChange", change.instance);
 
-				var obj = fromExoGraph(this._translator, change.instance);
+				var obj = fromExoGraph(change.instance, this._translator);
 
 				var translator = this._translator;
 
@@ -1018,7 +1018,7 @@
 
 					// apply added items
 					Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
-						var childObj = fromExoGraph(translator, item);
+						var childObj = fromExoGraph(item, translator);
 						list.add(childObj);
 
 						// lazy load the added instance
@@ -1030,7 +1030,7 @@
 
 					// apply removed items
 					Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
-						var childObj = fromExoGraph(translator, item);
+						var childObj = fromExoGraph(item, translator);
 						list.remove(childObj);
 					});
 
@@ -1296,13 +1296,14 @@
 		}
 
 		function getJsType(model, typeName, forLoading) {
-			// try to get the js type from the window object.
-			// if its not defined, assume the type is a model type
-			// that may eventually be fetched
+			// Get an array representing the type family.
 			var family = typeName.split(">");
 
+			// Try to get the js type from the window object.
 			var jstype = ExoWeb.Model.Model.getJsType(family[0], true);
 
+			// If its not defined, assume the type is a model type
+			// that may eventually be fetched.
 			if (jstype === undefined) {
 				jstype = getType(model, null, family, forLoading).get_jstype();
 			}
@@ -1404,7 +1405,7 @@
 			typeProvider(typeName,
 				signal.pending(function(result) {
 
-					// load type
+					// load type(s)
 					typesFromJson(model, result.types);
 
 					// ensure base classes are loaded too
@@ -1646,8 +1647,7 @@
 					}
 
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
-					objectsFromJson(mtype.get_model(), objectJson);
-					callback();
+					objectsFromJson(mtype.get_model(), objectJson, callback);
 				});
 			}).dontDoubleUp({ callbackArg: 2, groupBy: function(obj) { return [obj]; } })
 		});
