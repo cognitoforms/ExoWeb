@@ -22,7 +22,7 @@
 				return $transform(Employee.meta.known()).where(function(obj) {return obj.get_HireDate() <= this.get_DateCreated();}, this);
 			}
 			
-			setupTest("list-property", { description: "list property", expect: 6 }, function() {
+			setupTest("list-property", { description: "list property", expect: 5 }, function() {
 				//Driver.$AllowedSalesPersons.init(context.model.driver, []);
 				var list = context.model.driver.get_AllowedSalesPersons();
 				
@@ -31,7 +31,6 @@
 				Sys.Observer.addCollectionChanged(list, function() { listChanged = true; });
 
 				ok(context.model.driver.get_AllowedSalesPersons() === list, "setting up a calculated property should not cause a new list to be created so observers will still work");
-				ok(listChanged, "setting up a calculated property should cause the list property to raise a collection change event (Is this valid?)");
 				same(getAllowedSalesPersons.apply(context.model.driver), list, "calculated property should have the correct values in it");
 
 				var curDate = context.model.driver.get_DateCreated();
