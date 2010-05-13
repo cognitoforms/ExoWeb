@@ -110,19 +110,19 @@ Type.registerNamespace("ExoWeb.UI");
 		Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control);
 
 
-
 		///////////////////////////////////////////////////////////////////////////////
-		/// <summary>
-		/// In addition to defining template markup, also defines rules that are used
-		/// to determine if it should be chosen as the template for a given element
-		/// based on a CSS selector as well as a javascript filter that is evaluated 
-		/// against the element in question.
-		/// </summary>
-		///
-		/// <example>
-		///		<div sys:attach="template" template:for="table.inputform tr" template:if="<some condition>"></div>
-		/// </example>
 		function Template(element) {
+			/// <summary>
+			/// In addition to defining template markup, also defines rules that are used
+			/// to determine if it should be chosen as the template for a given element
+			/// based on a CSS selector as well as a javascript filter that is evaluated 
+			/// against the element in question.
+			/// </summary>
+			///
+			/// <example>
+			///		<div sys:attach="template" template:for="table.inputform tr" template:if="<some condition>"></div>
+			/// </example>
+
 			Template.initializeBase(this, [element]);
 		}
 
@@ -227,11 +227,12 @@ Type.registerNamespace("ExoWeb.UI");
 
 		var allTemplates = [];
 
-		/// <summary>
-		/// Finds the first field template with a selector and filter that
-		/// match the given element and returns the template.
-		/// </summary>
 		Template.find = function Template$find(element, data) {
+			/// <summary>
+			/// Finds the first field template with a selector and filter that
+			/// match the given element and returns the template.
+			/// </summary>
+
 			log(["templates"],
 				"attempt to find match for element = {0}{1}, data = {2}",
 				[element.tagName, element.className ? "." + element.className : "", data]);
@@ -264,10 +265,11 @@ Type.registerNamespace("ExoWeb.UI");
 		var externalTemplatesSignal = new ExoWeb.Signal("external templates");
 		var lastTemplateRequestSignal;
 
-		/// <summary>
-		/// Loads external templates into the page
-		/// </summary>
 		Template.load = function Template$load(path) {
+			/// <summary>
+			/// Loads external templates into the page.
+			/// </summary>
+
 			var id = "exoweb-templates-" + (templateCount++);
 
 			var lastReq = lastTemplateRequestSignal;
@@ -310,20 +312,21 @@ Type.registerNamespace("ExoWeb.UI");
 		ExoWeb.UI.Template = Template;
 		Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
 
+
 		///////////////////////////////////////////////////////////////////////////////
-		/// <summary>
-		/// Finds its matching template and renders using the provided data as the 
-		/// binding context.  It can be used as a "field control", using part of the 
-		/// context data to select the appropriate control template.  Another common 
-		/// usage would be to select the appropriate template for a portion of the UI,
-		/// as in the example where an objects meta type determines how it is 
-		/// displayed in the UI.
-		/// </summary>
-		///
-		/// <example>
-		///		<div sys:attach="content" content:data="{{ somedata }}"></div>
-		/// </example>
 		function Content(element) {
+			/// <summary>
+			/// Finds its matching template and renders using the provided data as the 
+			/// binding context.  It can be used as a "field control", using part of the 
+			/// context data to select the appropriate control template.  Another common 
+			/// usage would be to select the appropriate template for a portion of the UI,
+			/// as in the example where an objects meta type determines how it is 
+			/// displayed in the UI.
+			/// </summary>
+			/// <example>
+			///		<div sys:attach="content" content:data="{{ somedata }}"></div>
+			/// </example>
+
 			Content.initializeBase(this, [element]);
 		}
 
@@ -477,15 +480,15 @@ Type.registerNamespace("ExoWeb.UI");
 		ExoWeb.UI.Content = Content;
 		Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
 
+
 		///////////////////////////////////////////////////////////////////////////////
-		/// <summary>
-		/// 
-		/// </summary>
-		///
-		/// <example>
-		///		<div sys:attach="html" html:url="http://www.google.com"></div>
-		/// </example>
 		function Html(element) {
+			/// <summary>
+			/// </summary>
+			/// <example>
+			///		<div sys:attach="html" html:url="http://www.google.com"></div>
+			/// </example>
+
 			Html.initializeBase(this, [element]);
 		}
 
@@ -718,6 +721,7 @@ Type.registerNamespace("ExoWeb.UI");
 			/// <param name="control" type="Sys.UI.Control">The control.</param>
 			/// <param name="index" type="Number" integer="true">The index.</param>
 			/// <returns type="Boolean" />
+
 			var len = control.get_element().control.get_contexts().length;
 			return index == len - 1;
 		}

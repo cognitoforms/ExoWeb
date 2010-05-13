@@ -1300,14 +1300,15 @@
 		ExoWeb.Model.PathTokens = PathTokens;
 		PathTokens.registerClass("ExoWeb.Model.PathTokens");
 
-		///////////////////////////////////////////////////////////////////////////////
-		/// <summary>
-		/// Encapsulates the logic required to work with a chain of properties and
-		/// a root object, allowing interaction with the chain as if it were a 
-		/// single property of the root object.
-		/// </summary>
+
 		///////////////////////////////////////////////////////////////////////////
 		function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
+			/// <summary>
+			/// Encapsulates the logic required to work with a chain of properties and
+			/// a root object, allowing interaction with the chain as if it were a 
+			/// single property of the root object.
+			/// </summary>
+
 			this._rootType = rootType;
 			var type = rootType;
 			var chain = this;
