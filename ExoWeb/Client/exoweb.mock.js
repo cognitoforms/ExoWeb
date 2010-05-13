@@ -85,8 +85,8 @@
 							json = { types: {}, instances: {}, changes: {} };
 							paths = prepPaths(paths);
 							for (var i = 0; i < ids.length; i++) {
-								_this._query(type, ids[i], paths.instancePaths, json.instances);
-								_this._queryStatic(paths.staticPaths, json.instances);
+								_this._query(type, ids[i], paths.instanceProps, json.instances);
+								_this._queryStatic(paths.staticProps, json.instances);
 							}
 						}
 
@@ -158,8 +158,12 @@
 			},
 			_queryStatic: function _queryStatic(paths, result) {
 				for (var i = 0; i < paths.length; ++i) {
-					var type = Array.dequeue(paths[i]);
-
+					// Look for a defined type as a part of the path.
+					var type = "", step;
+					do {
+						step = Array.dequeue(paths[i]);
+						type += (type == "" ? "" : ".") + step;
+					} while (!this._objects[type] && step);
 					this._query(type, "static", paths[i], result);
 				}
 			},
