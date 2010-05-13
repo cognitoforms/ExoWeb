@@ -1969,10 +1969,10 @@
 			},
 			values: function AllowedValuesRule$values(obj) {
 				this._init();
-				if (this._propertyChain && (this._property.get_isStatic() || this._property instanceof Property || this._property.lastTarget(obj))) {
+				if (this._property && (this._property.get_isStatic() || this._property instanceof Property || this._property.lastTarget(obj))) {
 
 					// get the allowed values from the property chain
-					var values = this._propertyChain.value(obj);
+					var values = this._property.value(obj);
 
 					// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
 					if (values !== undefined && LazyLoader.isLoaded(values)) {
