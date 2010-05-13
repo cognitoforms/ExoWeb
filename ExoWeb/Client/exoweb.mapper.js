@@ -208,7 +208,6 @@
 
 				log("server", "logging delete: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
 
-				// TODO: delete JSON format?
 				var change = {
 					__type: "Delete:#ExoGraph",
 					instance: toExoGraph(this._translator, obj)
@@ -886,6 +885,7 @@
 											[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
 										);
 									}
+									// TODO
 									//// Ensure that the object is a new object.
 									//else if (!obj.meta.isNew) {
 									//	ExoWeb.trace.throwAndLog("server",
@@ -1105,7 +1105,7 @@
 			}
 		});
 
-		///////////////////////////////////////////////////////////////////////////	
+		///////////////////////////////////////////////////////////////////////////
 		function ensureJsType(model, typeName, callback, thisPtr) {
 			var mtype = model.type(typeName);
 
@@ -1281,6 +1281,7 @@
 					if (propJson.isList) {
 						prop.init(null, ListLazyLoader.register(null, prop));
 					}
+					//TODO
 					//else {
 					//	PropertyLazyLoader.register(mtype.get_jstype(), prop);
 					//}
