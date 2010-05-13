@@ -109,9 +109,8 @@
 				return this.get(0).control["get_" + propName]();
 			}
 			else {
-				this.each(function(element) {
-					element.control["set_" + propName](propValue);
-					return this;
+				this.each(function(index, element) {
+					this.control["set_" + propName](propValue);
 				});
 			}
 		};
