@@ -570,6 +570,11 @@ namespace ExoWeb
 			bool isFirstType = true;
 			foreach (ConditionType conditionType in targetsByType.Keys)
 			{
+				List<ConditionTarget> targets = targetsByType[conditionType];
+
+				if (targets.Count == 0)
+					continue;
+
 				// Handle trailing commas after each type
 				if (isFirstType)
 					isFirstType = false;
@@ -581,7 +586,7 @@ namespace ExoWeb
 
 				// Handle condition targets
 				bool isFirstTarget = true;
-				foreach (ConditionTarget conditionTarget in targetsByType[conditionType])
+				foreach (ConditionTarget conditionTarget in targets)
 				{
 					// Handle trailing commas after each target
 					if (isFirstTarget)
