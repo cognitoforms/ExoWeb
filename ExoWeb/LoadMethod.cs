@@ -6,6 +6,7 @@ using System.Runtime.Serialization;
 using System.Web;
 using ExoGraph;
 using System.Collections;
+using ExoRule;
 
 namespace ExoWeb
 {
@@ -31,6 +32,12 @@ namespace ExoWeb
 
 		[DataMember(Name = "includeTypes")]
 		bool IncludeTypes { get; set; }
+		
+		[DataMember(Name = "conditionsMode")]
+		bool UseConditionsMode { get; set; }
+
+		[DataMember(Name = "includeConditionTypes")]
+		bool IncludeConditionTypes { get; set; }
 
 		[DataMember(Name = "changes")]
 		GraphTransaction Changes { get; set; }
@@ -101,7 +108,7 @@ namespace ExoWeb
 			if (IncludeTypes)
 			{
 				response.Write("   \"types\": {\r\n");
-				OutputTypes(response);
+				OutputTypes(response, UseConditionsMode);
 				response.Write("\r\n   },\r\n");
 			}
 
@@ -109,6 +116,25 @@ namespace ExoWeb
 			response.Write("   \"instances\": {\r\n");
 			OutputInstances(response);
 			response.Write("\r\n   }");
+
+			if (UseConditionsMode)
+			{
+				response.Write(",\r\n");
+
+				// Serialize condition types
+				if (IncludeConditionTypes)
+				{
+					response.Write("   \"conditionTypes\": {\r\n");
+					OutputConditionTypes(response);
+					response.Write("\r\n   },\r\n");
+				}
+
+				// Serialize condition targets
+				response.Write("   \"conditionTargets\": {\r\n");
+				OutputConditionTargets(response);
+				response.Write("\r\n   }");
+			}
+
 
 			// Output the transaction log if changes occurred
 			if (newChanges != null && newChanges.FirstOrDefault() != null)
@@ -247,8 +273,11 @@ namespace ExoWeb
 				{
 					allowedValues[instance.Type] = allowedValuesRules = new Dictionary<GraphProperty, AllowedValuesRule>();
 					if (ServiceHandler.Adapter != null)
-						foreach (AllowedValuesRule rule in ServiceHandler.Adapter.GetRules(instance.Type).Where((rule) => { return rule is AllowedValuesRule && ((AllowedValuesRule)rule).AutoInclude; }))
-							allowedValuesRules[rule.Property] = rule;
+						foreach(var rule in ServiceHandler.Adapter.GetConditionTypes(instance.Type)
+							.Where(conditionType => conditionType.ConditionRule != null && conditionType.ConditionRule is AllowedValuesRule)
+							.Select(conditionType => conditionType.ConditionRule).Cast<AllowedValuesRule>()
+							.Where(rule => rule.AutoInclude))
+							allowedValuesRules[rule.GraphProperty] = rule;
 				}
 
 				// Process allowed values rules for each reference property
@@ -334,7 +363,7 @@ namespace ExoWeb
 		/// Output type information as JSON to the response stream.
 		/// </summary>
 		/// <param name="response"></param>
-		protected void OutputTypes(HttpResponse response)
+		protected void OutputTypes(HttpResponse response, bool useConditionsMode)
 		{
 			bool isFirstType = true;
 
@@ -345,9 +374,8 @@ namespace ExoWeb
 					isFirstType = false;
 				else
 					response.Write(",\r\n");
-				GetTypeMethod.OutputType(response, instanceType);
+				GetTypeMethod.OutputType(response, instanceType, useConditionsMode);
 			}
-			response.Write("\r\n   },\r\n");
 		}
 
 		/// <summary>
@@ -491,6 +519,80 @@ namespace ExoWeb
 					response.Write("\r\n         }");
 				}
 				response.Write("\r\n      }");
+			}
+		}
+
+		/// <summary>
+		/// Output condition information as JSON to the response stream.
+		/// </summary>
+		/// <param name="response"></param>
+		protected void OutputConditionTypes(HttpResponse response)
+		{
+			bool isFirstType = true;
+			foreach (ConditionType conditionType in instances.Keys
+				.SelectMany(graphType => ServiceHandler.Adapter.GetConditionTypes(graphType))
+				.Where(conditionType => conditionType.ConditionRule == null || conditionType.ConditionRule is PropertyRule)
+				.Distinct())
+			{
+				// Handle trailing commas after each instance
+				if (isFirstType)
+					isFirstType = false;
+				else
+					response.Write(",\r\n");
+
+				GetTypeMethod.OutputConditionType(response, conditionType);
+			}
+		}
+
+		/// <summary>
+		/// Output condition information as JSON to the response stream.
+		/// </summary>
+		/// <param name="response"></param>
+		protected void OutputConditionTargets(HttpResponse response)
+		{
+			// get all condition types and initialize
+			Dictionary<ConditionType, List<ConditionTarget>> targetsByType = new Dictionary<ConditionType, List<ConditionTarget>>();
+			foreach (ConditionType conditionType in instances.Keys
+						.SelectMany(graphType => ServiceHandler.Adapter.GetConditionTypes(graphType))
+						.Where(conditionType => conditionType.ConditionRule == null || conditionType.ConditionRule is PropertyRule)
+						.Distinct())
+				targetsByType[conditionType] = new List<ConditionTarget>();
+
+			// populate condition targets by condition type
+			foreach (var target in instances.Values.SelectMany(d => d.Keys)
+				.SelectMany(instance => Condition.GetConditions(instance))
+				.SelectMany(condition => condition.Targets))
+			{
+				if (!targetsByType[target.Condition.Type].Contains(target))
+					targetsByType[target.Condition.Type].Add(target);
+			}
+
+			bool isFirstType = true;
+			foreach (ConditionType conditionType in targetsByType.Keys)
+			{
+				// Handle trailing commas after each type
+				if (isFirstType)
+					isFirstType = false;
+				else
+					response.Write(",\r\n");
+
+				response.Write("      \"" + conditionType.Code + "\": {");
+				response.Write("\r\n         \"targets\": [");
+
+				// Handle condition targets
+				bool isFirstTarget = true;
+				foreach (ConditionTarget conditionTarget in targetsByType[conditionType])
+				{
+					// Handle trailing commas after each target
+					if (isFirstTarget)
+						isFirstTarget = false;
+					else
+						response.Write(",\r\n");
+
+					response.Write("{ \"instance\": {\"id\": \"" + conditionTarget.Target.Id + "\"" + ", \"type\": \"" + conditionTarget.Target.Type.Name + "\"}, \"properties\": [" + string.Join(",", conditionTarget.Properties.Select(p => "\"" + p + "\"").ToArray()) + "] }");
+				}
+
+				response.Write("]\r\n      }");
 			}
 		}
 

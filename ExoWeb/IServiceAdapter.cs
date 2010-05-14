@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using ExoGraph;
+using ExoRule;
 
 namespace ExoWeb
 {
@@ -10,7 +11,7 @@ namespace ExoWeb
 
 	public interface IServiceAdapter
 	{
-		IEnumerable<Rule> GetRules(GraphType type);
+		IEnumerable<ConditionType> GetConditionTypes(GraphType type);
 
 		string GetFormatName(GraphProperty property);
 

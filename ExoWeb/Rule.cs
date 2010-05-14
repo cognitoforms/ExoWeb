@@ -6,75 +6,223 @@ using System.Collections.Specialized;
 using System.Runtime.Serialization;
 using ExoGraph;
 using System.ComponentModel.DataAnnotations;
+using System.Collections;
+using ExoRule;
 
 namespace ExoWeb
 {
+	public enum ClientRuleType
+	{
+		unsupported,
+		required,
+		range,
+		stringLength,
+		allowedValues
+	}
+
 	#region Rule
 
 	[DataContract]
-	public abstract class Rule
+	public abstract class Rule : ExoRule.Rule
 	{
-		GraphType type;
-
-		protected Rule(GraphType type)
+		protected Rule(GraphType type, string name)
+			: base(name)
 		{
-			this.type = type;
+			this.Type = type;
 		}
 
-		public GraphType Type
+		[DataMember(Name = "rootType")]
+		public string RootType
 		{
-			get
-			{
-				return type;
-			}
+			get { return Type.Name; }
+			set{}
 		}
+
+		public GraphType Type { get; private set; }
 	}
 
 	#endregion
 
-	#region PropertyRule
-
+	/// <summary>
+	/// Abstract baseclass for <see cref="ExoRule.Rule"/> that is
+	/// understood by client ExoWeb libraries.  Since behavior is well known,
+	/// <see cref="Rule"/> and it's subclasses need not specify an <see cref="Action&lt;T&gt;"/>,
+	/// merely any information required to perform the action.
+	/// </summary>
 	[DataContract]
 	public abstract class PropertyRule : Rule
 	{
-		GraphProperty property;
-
-		protected PropertyRule(GraphProperty property)
-			: base(property.DeclaringType)
+		public PropertyRule(GraphProperty graphProperty, ConditionType conditionType, ClientRuleType clientRuleType)
+			: base(graphProperty.DeclaringType, string.Format("{0}.{1}.{2}", graphProperty.DeclaringType.Name, graphProperty.Name, clientRuleType.ToString()))
 		{
-			this.property = property;
+			this.ClientRuleType = clientRuleType;
+			this.GraphProperty = graphProperty;
+			this.ConditionType = conditionType;
+			ConditionType.ConditionRule = this;
 		}
 
-		public GraphProperty Property
+		[DataMember(Name = "properties")]
+		private string[] Properties 
 		{
 			get
 			{
-				return property;
+				return new string[] { GraphProperty.IsStatic ? GraphProperty.Name : "this." + GraphProperty.Name };
 			}
+			set { }
 		}
+
+		[DataMember(Name = "clientRuleType")]
+		private string _ClientRuleType
+		{
+			get
+			{
+				return this.ClientRuleType.ToString();
+			}
+			set { }
+		}
+
+		public ClientRuleType ClientRuleType { get; protected set; }
+
+		/// <summary>
+		/// A <see cref="ConditionType"/> that will associated with a graph when
+		/// CheckCondition returns true;
+		/// </summary>
+		public ConditionType ConditionType { get; set; }
+
+		/// <summary>
+		/// The <see cref="GraphProperty"/> representing the property that this rule
+		/// will depend on and that any <see cref="ConditionTarget"/>s will target.
+		/// </summary>
+		public GraphProperty GraphProperty { get; set; }
+
+		public override void Register()
+		{
+			Type.Init += (sender, e) =>
+			{
+				Invoke(e.Instance, e);
+			};
+		}
+
+		protected override void Invoke(GraphInstance root, GraphEvent graphEvent)
+		{
+			ConditionType.When(root.Instance, () => ConditionApplies(root), GraphProperty.Name);
+		}
+
+		/// <summary>
+		/// Overridden in subclasses to determine if the <see cref="ConditionType"/>
+		/// applies.
+		/// </summary>
+		/// <returns>true if <paramref name="root"/> should be associated with the <see cref="ConditionType"/></returns>
+		protected abstract bool ConditionApplies(GraphInstance root);
 	}
 
-	#endregion
-
-	#region RequiredRule
-
+	/// <summary>
+	/// Applies conditions when the value of a <see cref="GraphProperty"/> is
+	/// null or an empty list.
+	/// </summary>
 	[DataContract(Name = "required")]
 	public class RequiredRule : PropertyRule
 	{
-		public RequiredRule(GraphProperty property)
-			: base(property)
+		public RequiredRule(GraphProperty graphProperty, ConditionType conditionType)
+			: base(graphProperty, conditionType, ClientRuleType.required)
 		{ }
+
+		protected override bool ConditionApplies(GraphInstance root)
+		{
+			if (GraphProperty is GraphReferenceProperty && ((GraphReferenceProperty)GraphProperty).IsList)
+			{
+				foreach (object item in ((IEnumerable)root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null)))
+				{
+					return false;
+				}
+				return true;
+			}
+			else
+				return root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null) != null;
+		}
 	}
 
-	#endregion
+	/// <summary>
+	/// Applies conditions when the value of a <see cref="GraphProperty"/> is
+	/// not within a specified range.
+	/// </summary>
+	[DataContract(Name = "range")]
+	public class RangeRule : PropertyRule
+	{
+		public RangeRule(GraphProperty graphProperty, ConditionType conditionType, IComparable minimum, IComparable maximum)
+			: base(graphProperty, conditionType, ClientRuleType.range)
+		{
+			this.Minimum = minimum;
+			this.Maximum = maximum;
+		}
 
-	#region AllowedValuesRule
+		[DataMember(Name = "min")]
+		public IComparable Minimum { get; private set; }
 
+		[DataMember(Name = "max")]
+		public IComparable Maximum { get; private set; }
+
+		protected override bool ConditionApplies(GraphInstance root)
+		{
+			object value = root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null);
+
+			if (value == null)
+				return true;
+
+			// min <= value <= max
+			// CompareTo = 0: equal, >0: instance > value
+			if (Minimum != null && Maximum != null)
+				return Minimum.CompareTo(value) > 0 && Maximum.CompareTo(value) < 0;
+			else if (Minimum != null)
+				return Minimum.CompareTo(value) > 0;
+			else if (Maximum != null)
+				return Maximum.CompareTo(value) < 0;
+			else
+				return false;
+		}
+	}
+
+	/// <summary>
+	/// Applies conditions when the value of a <see cref="GraphProperty"/> is
+	/// too short or long.
+	/// </summary>
+	[DataContract(Name = "stringLength")]
+	public class StringLengthRule : PropertyRule
+	{
+		public StringLengthRule(GraphProperty graphProperty, ConditionType conditionType, int minimum, int maximum)
+			: base(graphProperty, conditionType, ClientRuleType.stringLength)
+		{
+			this.Minimum = minimum;
+			this.Maximum = maximum;
+		}
+
+		[DataMember(Name = "min", EmitDefaultValue = false)]
+		public int Minimum { get; private set; }
+
+		[DataMember(Name = "max", EmitDefaultValue = false)]
+		public int Maximum { get; private set; }
+
+		protected override bool ConditionApplies(GraphInstance root)
+		{
+			object value = root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null);
+
+			if (value == null)
+				return true;
+
+			int len = value.ToString().Length;
+			return len > Maximum || len < Minimum;
+		}
+	}
+
+	/// <summary>
+	/// Applies conditions when the value of a <see cref="GraphProperty"/> is
+	/// not an allowed value.
+	/// </summary>
 	[DataContract(Name = "allowedValues")]
 	public class AllowedValuesRule : PropertyRule
 	{
-		public AllowedValuesRule(GraphProperty property, string source, bool autoInclude)
-			: base(property)
+		public AllowedValuesRule(GraphProperty graphProperty, ConditionType conditionType, string source, bool autoInclude)
+			: base(graphProperty, conditionType, ClientRuleType.allowedValues)
 		{
 			this.Source = source;
 			this.AutoInclude = autoInclude;
@@ -84,52 +232,80 @@ namespace ExoWeb
 		public string Source { get; private set; }
 
 		public bool AutoInclude { get; private set; }
-	}
 
-	#endregion
-
-	#region RangeRule
-
-	[DataContract(Name = "range")]
-	public class RangeRule : PropertyRule
-	{
-		public RangeRule(GraphProperty property, object minimum, object maximum)
-			: base(property)
+		#region Source Evaluation Logic
+		GraphInstanceList EvaluateInstancePath(GraphInstance root, string path)
 		{
-			this.Minimum = minimum;
-			this.Maximum = maximum;
+			if (string.IsNullOrEmpty(path))
+				return null;
+
+			string[] steps = path.Split('.');
+
+			// property was found, procede to last step
+			GraphInstance instance = root;
+
+			for (int i = 0; i < steps.Length - 1; i++)
+			{
+				instance = instance.GetReference(steps[i]);
+
+				if (instance == null)
+					return null;
+			}
+			return instance.GetList(steps.Last());
+
 		}
 
-		[DataMember(Name = "min")]
-		public object Minimum { get; private set; }
-
-		[DataMember(Name = "max")]
-		public object Maximum { get; private set; }
-	}
-
-	#endregion
-
-	#region StringLengthRule
-
-	[DataContract(Name = "stringLength")]
-	public class StringLengthRule : PropertyRule
-	{
-		public StringLengthRule(GraphProperty property, int minimumLength, int maximumLength)
-			: base(property)
+		GraphInstanceList EvaluateStaticPath(string path)
 		{
-			this.MinimumLength = minimumLength;
-			this.MaximumLength = maximumLength;
+			if (string.IsNullOrEmpty(path))
+				return null;
+
+			string[] steps = path.Split('.');
+
+			if(steps.Length < 2)
+				return null;
+
+			GraphType type = GraphContext.Current.GetGraphType(steps[0]);
+			GraphReferenceProperty firstProp = type.Properties[steps[1]] as GraphReferenceProperty;
+
+			if (firstProp == null)
+				return null;
+			else if (steps.Length == 2)
+			{
+				return type.GetList(firstProp);
+			}
+			else
+			{
+				GraphInstance firstInstance = Type.GetReference(firstProp);
+				return firstInstance != null ? EvaluateInstancePath(firstInstance, string.Join(".", steps, 2, steps.Length - 2)) : null;
+			}
 		}
+		#endregion
 
-		[DataMember(Name = "min", EmitDefaultValue = false)]
-		public int MinimumLength { get; private set; }
+		protected override bool ConditionApplies(GraphInstance root)
+		{
+			object value = root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null);
 
-		[DataMember(Name = "max", EmitDefaultValue = false)]
-		public int MaximumLength { get; private set; }
+			GraphInstanceList allowedValues = null;
+
+			try
+			{
+				if (Source.StartsWith("this."))
+					allowedValues = EvaluateInstancePath(root, Source.Substring(5));
+				else
+					allowedValues = EvaluateStaticPath(Source);
+
+				return !(allowedValues == null || allowedValues.Select(graphInstance => graphInstance.Instance).Contains(value));
+			}
+			catch
+			{
+				return false;
+			}
+		}
 	}
 
-	#endregion
-
+	/*
+	 
 	#region DataAnnotationsAdapter
 
 	public class DataAnnotationsAdapter : IServiceAdapter
@@ -221,4 +397,6 @@ namespace ExoWeb
 	}
 
 	#endregion
+	
+	*/
 }

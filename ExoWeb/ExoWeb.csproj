@@ -95,6 +95,10 @@
       <Project>{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}</Project>
       <Name>ExoGraph</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\exorules\exorules\ExoRule.csproj">
+      <Project>{B67D2642-A41A-42B2-8454-78ABA257008F}</Project>
+      <Name>ExoRule</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Client\exoweb.jquery.js" />

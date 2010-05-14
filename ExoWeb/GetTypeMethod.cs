@@ -5,6 +5,7 @@ using System.Text;
 using System.Runtime.Serialization;
 using ExoGraph;
 using System.Web;
+using ExoRule;
 
 namespace ExoWeb
 {
@@ -17,6 +18,9 @@ namespace ExoWeb
 		[DataMember(Name = "type")]
 		string Type { get; set; }
 		
+		[DataMember(Name = "conditionsMode")]
+		bool UseConditionsMode { get; set; }
+		
 		/// <summary>
 		/// Outputs schema information for the specified type to the response stream.
 		/// </summary>
@@ -27,29 +31,74 @@ namespace ExoWeb
 			response.Cache.SetCacheability(HttpCacheability.Public);
 			response.Cache.SetExpires(DateTime.Now.AddDays(7));
 
+			GraphType graphType = GraphContext.Current.GetGraphType(Type);
+
 			// Output the requested graph type
 			response.Write("{\r\n   \"types\":\r\n   {\r\n");
-			OutputType(response, GraphContext.Current.GetGraphType(Type));
+			OutputType(response, graphType, UseConditionsMode);
+
+			if (UseConditionsMode)
+			{
+				// Serialize condition types
+				response.Write("\r\n   },\r\n");
+				response.Write("   \"conditionTypes\": {\r\n");
+				OutputConditionTypes(response, graphType);
+			}
+			
 			response.Write("\r\n   }\r\n}");
 		}
 
-		internal static void OutputType(HttpResponse response, GraphType type)
+		private void OutputConditionTypes(HttpResponse response, GraphType type)
 		{
-			// Get the rules defined for this type
-			Dictionary<string, IGrouping<string, Rule>> rules = ServiceHandler.Adapter == null ? null : 
-				ServiceHandler.Adapter.GetRules(type)
-				.GroupBy<Rule, string>((rule) => { return rule is PropertyRule ? ((PropertyRule)rule).Property.Name : ""; })
-				.ToDictionary<IGrouping<string, Rule>, string>((group) => { return group.Key; });
+			bool isFirstType = true;
+			foreach (ConditionType conditionType in ServiceHandler.Adapter.GetConditionTypes(type)
+				.Where(conditionType => conditionType.ConditionRule == null || conditionType.ConditionRule is PropertyRule))
+			{
+				// Handle trailing commas after each instance
+				if (isFirstType)
+					isFirstType = false;
+				else
+					response.Write(",\r\n");
 
+				GetTypeMethod.OutputConditionType(response, conditionType);
+			}
+		}
+
+		internal static void OutputConditionType(HttpResponse response, ConditionType conditionType)
+		{
+			response.Write("      \"" + conditionType.Code + "\": " +
+					ToJson(typeof(ConditionType), conditionType,
+						new Type[]{
+								typeof(StringLengthRule),
+								typeof(AllowedValuesRule),
+								typeof(RequiredRule)}.AsEnumerable<Type>())
+			);
+		}
+
+		internal static void OutputType(HttpResponse response, GraphType type, bool useConditionsMode)
+		{
 			// Output the type meta data
 			response.Write("      \"" + type.Name + "\": {");
 			if (type.BaseType != null)
 				response.Write("\r\n         \"baseType\": \"" + GetJsonReferenceType(type.BaseType) + "\",");
 
-			// Output type rules
-			IGrouping<string, Rule> typeRules;
-			if (rules != null && rules.TryGetValue("", out typeRules))
-				OutputRules(response, typeRules);
+
+			Dictionary<string, IGrouping<string, Rule>> rules = null;
+			if (!useConditionsMode)
+			{
+				// Get the rules defined for this type
+				rules = ServiceHandler.Adapter == null ? null :
+					ServiceHandler.Adapter.GetConditionTypes(type)
+					.Where(x => x.ConditionRule != null && x.ConditionRule is Rule)
+					.Select(x => x.ConditionRule).Cast<Rule>()
+					.GroupBy<Rule, string>((rule) => { return rule is PropertyRule ? ((PropertyRule)rule).GraphProperty.Name : ""; })
+					.ToDictionary<IGrouping<string, Rule>, string>((group) => { return group.Key; });
+
+				// Output type rules
+				IGrouping<string, Rule> typeRules;
+				if (rules != null && rules.TryGetValue("", out typeRules))
+					OutputRules(response, typeRules);
+			}
 
 			response.Write("\r\n         \"properties\": {\r\n");
 			bool isFirstProperty = true;
@@ -80,10 +129,13 @@ namespace ExoWeb
 				if (!string.IsNullOrEmpty(formatName))
 					response.Write(", \"format\": \"" + formatName + "\"");
 
-				// Output property rules
-				IGrouping<string, Rule> propertyRules;
-				if (rules != null && rules.TryGetValue(property.Name, out propertyRules))
-					OutputRules(response, propertyRules);
+				if (!useConditionsMode)
+				{
+					// Output property rules
+					IGrouping<string, Rule> propertyRules;
+					if (rules != null && rules.TryGetValue(property.Name, out propertyRules))
+						OutputRules(response, propertyRules);
+				}
 
 				// Close the property
 				response.Write(" }");

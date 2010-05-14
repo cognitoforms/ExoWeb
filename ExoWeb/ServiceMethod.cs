@@ -113,10 +113,24 @@ namespace ExoWeb
 		/// <returns></returns>
 		protected internal static string ToJson(Type type, object value)
 		{
+			return ToJson(type, value, null);
+		}
+
+		/// <summary>
+		/// Serializes a typed value into a JSON string.
+		/// 
+		/// Pass in known types if known type attributes were not practical.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="value"></param>
+		/// <param name="knownTypes">an <see cref="IEnumerable&lt;Type&gt;"/> to become known</param>
+		/// <returns></returns>
+		protected internal static string ToJson(Type type, object value, IEnumerable<Type> knownTypes)
+		{
 			MemoryStream stream = new MemoryStream();
 			XmlDictionaryWriter writer = JsonReaderWriterFactory.CreateJsonWriter(stream, Encoding.UTF8);
 			//DataContractJsonSerializer serializer = new DataContractJsonSerializer(type, Type.EmptyTypes, Int32.MaxValue, true, new ContractSurrogate(), false);
-			DataContractJsonSerializer serializer = new DataContractJsonSerializer(type);
+			DataContractJsonSerializer serializer = (knownTypes != null) ? new DataContractJsonSerializer(type, knownTypes) : new DataContractJsonSerializer(type);
 			serializer.WriteObject(writer, value);
 			writer.Flush();
 			stream.Seek(0L, SeekOrigin.Begin);
