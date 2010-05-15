@@ -43,7 +43,8 @@ Type.registerNamespace("ExoWeb");
 				//		ui: true,
 				//		templates: true,
 				//		rule: true,
-				//		model: true
+				//		model: true,
+				//		conditions: true
 			},
 			_isEnabled: function _isEnabled(category) {
 				if (ExoWeb.trace.flags.all) {

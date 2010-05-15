@@ -25,14 +25,14 @@
 		};
 
 		var listProvider = function listProvider(ownerType, ownerId, propName, success, failed) {
-			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, ["this." + propName], null, success, failed);
+			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, ["this." + propName], null, false, success, failed);
 		};
 		ExoWeb.Mapper.setListProvider = function setListProvider(fn) {
 			listProvider = fn;
 		};
 
 		var roundtripProvider = function roundtripProvider(changes, success, failed) {
-			ExoWeb.WebService.Load(null, null, false, false, null, changes, success, failed);
+			ExoWeb.WebService.Load(null, null, false, false, null, changes, false, success, failed);
 		};
 		ExoWeb.Mapper.setRoundtripProvider = function setRoundtripProvider(fn) {
 			roundtripProvider = fn;
@@ -1351,7 +1351,7 @@
 					conditionType = new ExoWeb.Model.ConditionType.Warning(code, json.message);
 				}
 				else if (json.category == "Permission") {
-					conditionType = new ExoWeb.Model.ConditionType.Permission(code, json.message, json.permissionType);
+					conditionType = new ExoWeb.Model.ConditionType.Permission(code, json.message, json.permissionType, json.isAllowed);
 				}
 				else {
 					conditionType = new ExoWeb.Model.ConditionType(code, json.category, json.message);

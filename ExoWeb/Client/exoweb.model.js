@@ -1777,6 +1777,42 @@
 				}
 			},
 
+			_isAllowedOne: function ObjectMeta$_isAllowedOne(code) {
+				var conditionType = ConditionType.get(code);
+
+				if (conditionType !== undefined) {
+					if (!(conditionType instanceof ConditionType.Permission)) {
+						ExoWeb.trace.throwAndLog(["conditions"], "Condition type \"{0}\" should be a Permission.", [code]);
+					}
+
+					for (var i = 0; i < this._conditions.length; i++) {
+						var condition = this._conditions[i];
+						if (condition.get_type() == conditionType) {
+							return conditionType.get_isAllowed();
+						}
+					}
+
+					return !conditionType.get_isAllowed();
+				}
+
+				return undefined;
+			},
+
+			isAllowed: function ObjectMeta$isAllowed(/*codes*/) {
+				if (arguments.length === 0) {
+					return undefined;
+				}
+
+				for (var i = 0; i < arguments.length; i++) {
+					var allowed = this._isAllowedOne(arguments[i]);
+					if (!allowed) {
+						return allowed;
+					}
+				}
+
+				return true;
+			},
+
 			conditions: function ObjectMeta$conditions(prop) {
 				if (!prop) {
 					return this._conditions;
@@ -2186,16 +2222,20 @@
 			Warning.registerClass("ExoWeb.Model.ConditionType.Warning", ConditionType);
 
 			//////////////////////////////////////////////////////////////////////////////////////
-			function Permission(code, message, permissionType) {
+			function Permission(code, message, permissionType, isAllowed) {
 				ConditionType.call(this, code, "Permission", message);
 				this._permissionType = permissionType;
+				this._isAllowed = isAllowed;
 			}
 
 			Permission.prototype = new ConditionType();
 
 			Permission.mixin({
-				get_message: function ConditionType$get_message() {
-					return this._message;
+				get_permissionType: function Permission$get_permissionType() {
+					return this._permissionType;
+				},
+				get_isAllowed: function Permission$get_isAllowed() {
+					return this._isAllowed;
 				}
 			});
 
@@ -2237,7 +2277,7 @@
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		var formatConditionType = new ConditionType("FormatError", "Error", "The value is not properly formatted.");
-		
+
 		function FormatError(message, invalidValue) {
 			this._message = message;
 			this._invalidValue = invalidValue;
