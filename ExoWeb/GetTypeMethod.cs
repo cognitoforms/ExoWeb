@@ -105,7 +105,7 @@ namespace ExoWeb
 			foreach (GraphProperty property in type.Properties)
 			{
 				// Skip properties on base types or properties that cannot be serialized
-				if (property.DeclaringType != type || (property is GraphValueProperty && GetJsonValueType(((GraphValueProperty)property).PropertyType) == null))
+				if (property.DeclaringType != type || !ServiceHandler.Adapter.InClientModel(property))
 					continue;
 
 				// Handle trailing commas after each property

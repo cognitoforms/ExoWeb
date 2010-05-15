@@ -44,7 +44,7 @@ namespace ExoWeb
 			jsonIntrinsicTypes[typeof(DateTime?)] = "Date";
 		}
 
-		protected static string GetJsonValueType(Type type)
+		protected internal static string GetJsonValueType(Type type)
 		{
 			string jsonType;
 			if (jsonIntrinsicTypes.TryGetValue(type, out jsonType))

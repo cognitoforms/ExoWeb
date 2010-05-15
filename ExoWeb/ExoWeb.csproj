@@ -77,7 +77,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="LogErrorMethod.cs" />
-    <Compile Include="IServiceAdapter.cs" />
     <Compile Include="SaveMethod.cs" />
     <Compile Include="RaiseEventMethod.cs" />
     <Compile Include="LoadMethod.cs" />
@@ -85,6 +84,7 @@
     <Compile Include="Rule.cs">
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ServiceAdapter.cs" />
     <Compile Include="ServiceHandler.cs">
       <SubType>Code</SubType>
     </Compile>
