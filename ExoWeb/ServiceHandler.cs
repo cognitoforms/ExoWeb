@@ -10,7 +10,7 @@ namespace ExoWeb
 	/// </summary>
 	public class ServiceHandler : IHttpHandler
 	{
-		static IServiceAdapter adapter;
+		static ServiceAdapter adapter;
 		static Dictionary<string, Type> customEvents = new Dictionary<string,Type>();
 
 		/// <summary>
@@ -59,7 +59,7 @@ namespace ExoWeb
 			}
 		}
 
-		public static IServiceAdapter Adapter
+		public static ServiceAdapter Adapter
 		{
 			get
 			{
@@ -120,15 +120,15 @@ namespace ExoWeb
 						Type.registerNamespace('ExoWeb.WebService');
 
 						// Define the ExoWeb.GetType method
-						ExoWeb.WebService.GetType = function ExoWeb$WebService$GetType(type, onSuccess, onFailure)
+						ExoWeb.WebService.GetType = function ExoWeb$WebService$GetType(type, conditionsMode, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, { type: type" + (string.IsNullOrEmpty(cachehash) ? "" : @", cachehash: " + cachehash) + @" }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, { type: type, conditionsMode: conditionsMode" + (string.IsNullOrEmpty(cachehash) ? "" : @", cachehash: " + cachehash) + @" }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Load method
-						ExoWeb.WebService.Load = function ExoWeb$WebService$Load(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure)
+						ExoWeb.WebService.Load = function ExoWeb$WebService$Load(type, ids, includeAllowedValues, includeTypes, paths, changes, conditionsMode, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes, conditionsMode: conditionsMode }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Save method

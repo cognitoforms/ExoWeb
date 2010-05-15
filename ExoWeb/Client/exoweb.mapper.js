@@ -11,14 +11,14 @@
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
 		var objectProvider = function objectProvider(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure) {
-			ExoWeb.WebService.Load(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure);
+			ExoWeb.WebService.Load(type, ids, includeAllowedValues, includeTypes, paths, changes, false, onSuccess, onFailure);
 		};
 		ExoWeb.Mapper.setObjectProvider = function setObjectProvider(fn) {
 			objectProvider = fn;
 		};
 
 		var typeProvider = function typeProvider(type, onSuccess, onFailure) {
-			ExoWeb.WebService.GetType(type, onSuccess, onFailure);
+			ExoWeb.WebService.GetType(type, false, onSuccess, onFailure);
 		};
 		ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 			typeProvider = fn;
