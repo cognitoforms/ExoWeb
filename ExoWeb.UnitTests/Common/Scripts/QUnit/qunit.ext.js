@@ -79,7 +79,7 @@
 
 	window.setupTest = setupTest;
 
-	function executeTest(name, arg) {
+	function executeTest(name) {
 		// register a pending test execution signal
 		var onComplete = executingTestsSignal.pending();
 
@@ -89,11 +89,13 @@
 		// look for the test in the cache
 		var pending = pendingTests[name];
 
+		var args = Array.prototype.slice.call(arguments, 1);
+
 		if (pending) {
 			log("tests", "{0}: calling test", [name]);
 
 			// invoke the test callback
-			pending.call(this, arg);
+			pending.apply(this, args);
 		}
 		else {
 			console.warn("(UT) test not found: " + name);
@@ -106,7 +108,7 @@
 		onComplete.call(this);
 
 		// pass the argument through
-		return arg;
+		return args;
 	}
 
 	window.executeTest = executeTest;

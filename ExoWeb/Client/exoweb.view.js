@@ -402,23 +402,20 @@
 				var prop = this._propertyChain;
 				var meta = prop.lastTarget(this._target).meta;
 
-				meta.clearIssues(this);
+				meta.clearConditions(this);
 
-				if (converted instanceof ExoWeb.Model.FormatIssue) {
+				if (converted instanceof ExoWeb.Model.FormatError) {
 					state.BadValue = value;
 
-					issue = new ExoWeb.Model.RuleIssue(
-								$format(converted.get_message(), { value: prop.get_label() }),
-								[prop.lastProperty()],
-								this);
+					condition = converted.createCondition(this, prop.lastProperty());
 
-					meta.issueIf(issue, true);
+					meta.conditionIf(condition, true);
 
 					// Update the model with the bad value if possible
 					if (prop.canSetValue(this._target, value)) {
 						prop.value(this._target, value);
 					}
-					// run the rules to preserve the order of issues
+					// run the rules to preserve the order of conditions
 					else {
 						meta.executeRules(prop);
 					}

@@ -7,22 +7,22 @@ if (ExoWeb.Mock) {
 	ExoWeb.Mock.types({
 		Person: {
 			properties: {
-				Name: { type: "String", rules: [{ required: {} }, { stringLength: { max: 40}}] },
+				Name: { type: "String" },
 				BirthDate: { type: "Date", format: "ShortDate" },
-				PhoneNumber: { type: "String", format: "Phone", rules: [{ required: {}}] }
+				PhoneNumber: { type: "String", format: "Phone" }
 			}
 		},
 		Driver: {
 			baseType: "Person",
 			properties: {
 				Owner: { type: "CarOwner" },
-				Cars: { type: "Car>Product", isList: true, rules: [{ required: {} }, { allowedValues: { source: "this.Dealer.AvailableCars"}}] },
-				Dealer: { type: "Dealer>Person", rules: [{ allowedValues: { source: "Dealer.All"}}] },
-				MilesDriven: { type: "Number", rules: [{ range: { min: 0}}] },
+				Cars: { type: "Car>Product", isList: true },
+				Dealer: { type: "Dealer>Person" },
+				MilesDriven: { type: "Number" },
 				DateCreated: { type: "Date" },
-				SalesPerson: { type: "Employee>Person", rules: [{ allowedValues: { source: "this.AllowedSalesPersons"}}] },
+				SalesPerson: { type: "Employee>Person" },
 				AllowedSalesPersons: { type: "Employee>Person", isList: "true" },
-				Notes: { type: "String", rules: [{ stringLength: { max: 100}}] }
+				Notes: { type: "String" }
 			}
 		},
 		Employee: {
@@ -67,7 +67,7 @@ if (ExoWeb.Mock) {
 		CarOwner: {
 			properties: {
 				Name: { type: "String" },
-				Location: { type: "OwnerLocation", rules: [{ allowedValues: { source: "this.AvailableLocations"}}] },
+				Location: { type: "OwnerLocation" },
 				AvailableLocations: { type: "OwnerLocation", isList: true },
 				Partner: { type: "CarOwner" },
 				Drivers: { type: "Driver>Person", isList: true }
@@ -92,34 +92,120 @@ if (ExoWeb.Mock) {
 		}
 	});
 
+	ExoWeb.Mock.conditionTypes({
+		"Person.NameRequired": {
+			__type: "Error:#ExoWeb",
+			code: "Person.NameRequired",
+			category: "Error",
+			message: "Name is required.",
+			rule: { clientRuleType: "required", rootType: "Person", properties: ["this.Name"] }
+		},
+		"Person.NameLength": {
+			__type: "Error:#ExoWeb",
+			code: "Person.NameLength",
+			category: "Error",
+			message: "Name must be no more than 40 characters.",
+			rule: { clientRuleType: "stringLength", rootType: "Person", max: 40, properties: ["this.Name"] }
+		},
+		"Person.PhoneNumberRequired": {
+			__type: "Error:#ExoWeb",
+			code: "Person.PhoneNumberRequired",
+			category: "Error",
+			message: "PhoneNumber is required.",
+			rule: { clientRuleType: "required", rootType: "Person", properties: ["this.PhoneNumber"] }
+		},
+		"Driver.DealerRequired": {
+			__type: "Error:#ExoWeb",
+			code: "Driver.DealerRequired",
+			category: "Error",
+			message: "Dealer is required.",
+			rule: { clientRuleType: "required", rootType: "Driver", properties: ["this.Dealer"] }
+		},
+		"Driver.DealerAllowedValues": {
+			__type: "Error:#ExoWeb",
+			code: "Driver.DealerAllowedValues",
+			category: "Error",
+			message: "Dealer has an invalid value.",
+			rule: { clientRuleType: "allowedValues", rootType: "Driver", source: "Dealer.All", properties: ["this.Dealer"] }
+		},
+		"Driver.CarsRequired": {
+			__type: "Error:#ExoWeb",
+			code: "Driver.CarsRequired",
+			category: "Error",
+			message: "Cars is required.",
+			rule: { clientRuleType: "required", rootType: "Driver", properties: ["this.Cars"] }
+		},
+		"Driver.CarsAllowedValues": {
+			__type: "Error:#ExoWeb",
+			code: "Driver.CarsAllowedValues",
+			category: "Error",
+			message: "Cars has an invalid value.",
+			rule: { clientRuleType: "allowedValues", rootType: "Driver", source: "this.Dealer.AvailableCars", properties: ["this.Cars"] }
+		},
+		"Driver.MilesDrivenRange": {
+			__type: "Error:#ExoWeb",
+			code: "Driver.MilesDrivenRange",
+			category: "Error",
+			message: "MilesDriven must be at least 0.",
+			rule: { clientRuleType: "range", rootType: "Driver", min: 0, properties: ["this.MilesDriven"] }
+		},
+		"Driver.AllowedSalesPerson": {
+			__type: "Error:#ExoWeb",
+			code: "Driver.AllowedSalesPerson",
+			category: "Error",
+			message: "SalesPerson has an invalid value.",
+			rule: { clientRuleType: "allowedValues", rootType: "Driver", source: "this.AllowedSalesPersons", properties: ["this.SalesPerson"] }
+		},
+		"Driver.NotesLength": {
+			__type: "Error:#ExoWeb",
+			code: "Driver.NotesLength",
+			category: "Error",
+			message: "Notes must be no more than 100 characters.",
+			rule: { clientRuleType: "stringLength", rootType: "Driver", max: 100, properties: ["this.Notes"] }
+		},
+		"CarOwner.LocationAllowedValues": {
+			__type: "Error:#ExoWeb",
+			code: "CarOwner.LocationAllowedValues",
+			category: "Error",
+			message: "Location has an invalid value.",
+			rule: { clientRuleType: "allowedValues", rootType: "CarOwner", source: "this.AvailableLocations", properties: ["this.Location"] }
+		}
+	});
+
 	ExoWeb.Mock.objects({
 		Employee: {
 			static: {
 				All: [{ id: "100" }, { id: "101" }, { id: "102"}]
 			},
-			100: {
+			"100": {
 				Name: "Joe Salesperson",
 				BirthDate: new Date("03/01/1987"),
 				PhoneNumber: "123-123-1234",
 				Title: "Salesperson",
 				HireDate: new Date("1/1/2005")
 			},
-			101: {
+			"101": {
 				Name: "New Salesperson",
 				BirthDate: new Date("12/22/1980"),
 				PhoneNumber: "123-123-1234",
 				Title: "Salesperson",
 				HireDate: new Date("1/1/2009")
 			},
-			102: {
+			"102": {
 				Name: "Jane Manager",
 				BirthDate: new Date("01/30/1956"),
 				PhoneNumber: "123-123-1234",
 				Title: "Manager"
+			},
+			"103": {
+				Name: null,
+				BirthDate: new Date("01/01/1912"),
+				PhoneNumber: "123-123-1234",
+				Title: "Unknown"
 			}
 		},
 		Driver: {
-			1: {
+			"1": {
 				Name: "Bryan Matthews",
 				Cars: [{ id: "1" }, { id: "2"}],
 				Owner: { id: "1" },
@@ -133,28 +219,28 @@ if (ExoWeb.Mock) {
 			}
 		},
 		Car: {
-			1: {
+			"1": {
 				Name: "Sentra",
 				Driver: { id: "1" }
 			},
-			2: {
+			"2": {
 				Name: "Bike",
 				Driver: { id: "1" }
 			},
-			3: {
+			"3": {
 				Name: "Tank",
 				Driver: null
 			}
 		},
 		NewCar: {
-			100: {
+			"100": {
 				Name: "Focus",
 				Driver: null,
 				PlantNumber: "AZ9"
 			}
 		},
 		UsedCar: {
-			200: {
+			"200": {
 				Name: "Taurus",
 				Driver: null,
 				BoughtFrom: { id: "1" },
@@ -165,24 +251,24 @@ if (ExoWeb.Mock) {
 			static: {
 				All: [{ id: "1" }, { id: "2"}]
 			},
-			1: {
+			"1": {
 				Name: "Dick Smith Nissan",
 				AvailableCars: [{ id: "1" }, { id: "2" }, { id: "3"}]
 			},
-			2: {
+			"2": {
 				Name: "Johnny's Suzuki",
 				AvailableCars: []
 			}
 		},
 		CarOwner: {
-			1: {
+			"1": {
 				Name: "Bob",
 				Location: { id: "1" },
 				AvailableLocations: [{ id: "1" }, { id: "2"}],
 				Partner: { id: "2" },
 				Drivers: [ { id: "1" } ]
 			},
-			2: {
+			"2": {
 				Name: "Joe",
 				Location: { id: "2" },
 				AvailableLocations: [{ id: "1" }, { id: "2"}],
@@ -191,28 +277,34 @@ if (ExoWeb.Mock) {
 			}
 		},
 		OwnerLocation: {
-			1: {
+			"1": {
 				Name: "Home",
 				Address: { id: "1" }
 			},
-			2: {
+			"2": {
 				Name: "Work",
 				Address: { id: "2" }
 			}
 		},
 		LocationAddress: {
-			1: {
+			"1": {
 				State: { id: "1" }
 			},
-			2: {
+			"2": {
 				State: { id: "1" }
 			}
 		},
 		AddressState: {
-			1: {
+			"1": {
 				Abbreviation: "NY",
 				Name: "New York"
 			}
+		}
+	});
+
+	ExoWeb.Mock.conditionTargets({
+		"Person.NameRequired": {
+			targets: [{ instance: { id: "103", type: "Person" }, properties: ["Name"]}]
 		}
 	});
 

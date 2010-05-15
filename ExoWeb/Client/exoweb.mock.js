@@ -24,13 +24,39 @@
 
 		Mock.mixin({
 			types: function types(def) {
+				/// <summary>
+				/// Allows mocking of the type JSON that is returned from a web service.
+				/// The JSON provided should include all types that may be requested.  When 
+				/// a specific type is needed it will be returned by a mocked web service call.
+				/// </summary>
+				/// <param name="def" type="Object" mayBeNull="false" />
+
 				this._initTypes();
 
 				for (var typeName in def) {
 					this._types[typeName] = def[typeName];
 				}
 			},
+			conditionTypes: function conditionTypes(def) {
+				/// <summary>
+				/// Allows mocking of the JSON for condition types that is returned from a web 
+				/// service along with type JSON.
+				/// </summary>
+				/// <param name="def" type="Object" mayBeNull="false" />
+
+				this._initTypes();
+
+				this._conditionTypes = def;
+			},
 			objects: function objects(def) {
+				/// <summary>
+				/// Allows mocking of the instance JSON that is returned from a web service.
+				/// The JSON provided should include all instances that may be requested.  When 
+				/// a specific instance is needed it will be returned by a mocked web service 
+				/// call based on simple querying simulation.
+				/// </summary>
+				/// <param name="def" type="Object" mayBeNull="false" />
+
 				this._initObjects();
 
 				for (var typeName in def) {
@@ -46,12 +72,36 @@
 					}
 				}
 			},
+			conditionTargets: function conditionTargets(def) {
+				/// <summary>
+				/// Allows mocking of the conditions JSON that is returned from a web service
+				/// along with instance data.
+				/// </summary>
+				/// <param name="def" type="Object" mayBeNull="false" />
+
+				this._initObjects();
+				this._conditionTargets = def;
+			},
 			roundtrip: function roundtrip(handler) {
+				/// <summary>
+				/// Allows mocking of the response from a web service for a roundtrip.  Note that
+				/// the handler is used for any roundtrip.  Since it is in most cases scoped to a 
+				/// single mocked request it should be removed after it is used.
+				/// </summary>
+				/// <param name="handler" type="Function" mayBeNull="false" />
+
 				this._initObjects();
 
 				this.roundtripHandler = handler;
 			},
 			save: function save(handler) {
+				/// <summary>
+				/// Allows mocking of the response from a web service for a save.  Note that
+				/// the handler is used for any roundtrip.  Since it is in most cases scoped to a 
+				/// single mocked request it should be removed after it is used.
+				/// </summary>
+				/// <param name="handler" type="Function" mayBeNull="false" />
+
 				this._initObjects();
 
 				this.saveHandler = handler;
@@ -63,8 +113,18 @@
 					var _this = this;
 
 					ExoWeb.Mapper.setTypeProvider(function(type, callback) {
-						var json = { types: {} };
+						var json = { types: {}, conditionTypes: {} };
 						json.types[type] = _this._types[type];
+
+						if (_this._conditionTypes) {
+							for (var code in _this._conditionTypes) {
+								var conditionType = _this._conditionTypes[code];
+								if (!conditionType.rule || conditionType.rule.rootType == type) {
+									json.conditionTypes[code] = conditionType;
+								}
+							}
+						}
+
 						return mockCallback(callback, [json], _this.typeProviderDelay, $format(">> fetch: {0}", arguments));
 					});
 				}
@@ -79,10 +139,10 @@
 						var json;
 
 						if (!_this.simulateLazyLoading) {
-							json = { types: {}, instances: _this._objects, changes: {} };
+							json = { types: {}, instances: _this._objects, changes: {}, conditionTargets: _this._conditionTargets };
 						}
 						else {
-							json = { types: {}, instances: {}, changes: {} };
+							json = { types: {}, instances: {}, changes: {}, conditionTargets: {} };
 							paths = prepPaths(paths);
 							for (var i = 0; i < ids.length; i++) {
 								_this._query(type, ids[i], paths.instanceProps, json.instances);

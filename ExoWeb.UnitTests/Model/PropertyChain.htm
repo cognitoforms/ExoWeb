@@ -48,6 +48,37 @@
 				equals(String, abbrev.constructor, "Abbreviation should return a string.");
 			});
 
+			setupTest("test5", { description: "Equality Tests" }, function(chain) {
+				var props = [
+					{ label: "Person.$Name", value: Person.$Name },
+					{ label: "Driver.$Name", value: Driver.$Name },
+					{ label: "Person.meta.property(\"Name\")", value: Person.meta.property("Name") },
+					{ label: "Person.meta.property(\"Name\", true)", value: Person.meta.property("Name", true) },
+					{ label: "Driver.meta.property(\"Name\")", value: Driver.meta.property("Name") },
+					{ label: "Driver.meta.property(\"Name\", true)", value: Driver.meta.property("Name", true) },
+					{ label: "ExoWeb.Model.Model.property(\"this.Name\", Person)", value: ExoWeb.Model.Model.property("this.Name", Person) },
+					{ label: "ExoWeb.Model.Model.property(\"this.Name\", Driver)", value: ExoWeb.Model.Model.property("this.Name", Driver) }
+				];
+
+				Array.forEach(props, function(prop1) {
+					Array.forEach(props, function(prop2) {
+						ok(prop1.value.equals(prop2.value), "Properties should be equal: " + prop1.label + ", " + prop2.label);
+					});
+
+					ok(!prop1.value.equals(Driver.$Owner), "Properties should not be equal: " + prop1.label + ", Driver.$Owner");
+					ok(!Driver.$Owner.equals(prop1.value), "Properties should not be equal: Driver.$Owner, " + prop1.label);
+
+					var dealerName = ExoWeb.Model.Model.property("this.Dealer.Name", Driver);
+					ok(!prop1.value.equals(dealerName), "Properties should not be equal: " + prop1.label + ", ExoWeb.Model.Model.property(\"this.Dealer.Name\", Driver)");
+					ok(!dealerName.equals(prop1.value), "Properties should not be equal: ExoWeb.Model.Model.property(\"this.Dealer.Name\", Driver), " + prop1.label);
+				});
+
+				var chain1 = ExoWeb.Model.Model.property("this.Driver.Name", Car);
+				var chain2 = ExoWeb.Model.Model.property("this.Driver.Name", NewCar);
+
+				ok(chain1.equals(chain2), "Properties should be equal: ExoWeb.Model.Model.property(\"this.Driver.Name\", Car), ExoWeb.Model.Model.property(\"this.Driver.Name\", NewCar)");
+			});
+
 			timeoutTests(2000);
 			
 			context.ready(function() {
@@ -57,6 +88,7 @@
 				executeTest("test2", chain);
 				executeTest("test3", chain);
 				executeTest("test4", chain);
+				executeTest("test5", chain);
 			});
 		</script>
 	</head>

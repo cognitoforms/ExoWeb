@@ -21,7 +21,7 @@
 			this._validatingQueue = new EventQueue(
 						function(e) {
 							var meta = e.sender;
-							var issues = meta._propertyIssues[e.propName];
+							var conditions = meta._propertyConditions[e.propName];
 							meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName]);
 						},
 						function(a, b) {
@@ -34,8 +34,8 @@
 							var meta = e.sender;
 							var propName = e.property;
 
-							var issues = meta._propertyIssues[propName];
-							meta._raiseEvent("propertyValidated:" + propName, [meta, issues ? issues : []]);
+							var conditions = meta._propertyConditions[propName];
+							meta._raiseEvent("propertyValidated:" + propName, [meta, conditions ? conditions : []]);
 						},
 						function(a, b) {
 							return a.sender == b.sender && a.property == b.property;
@@ -821,6 +821,17 @@
 		}
 
 		Property.mixin({
+			equals: function Property$equals(prop) {
+				if (prop !== undefined && prop !== null) {
+					if (prop instanceof Property) {
+						return this === prop;
+					}
+					else if (prop instanceof PropertyChain) {
+						var props = prop.all();
+						return props.length === 1 && this.equals(props[0]);
+					}
+				}
+			},
 			rule: function Property$rule(type) {
 				if (this._rules) {
 					for (var i = 0; i < this._rules.length; i++) {
@@ -1385,6 +1396,26 @@
 		}
 
 		PropertyChain.prototype = {
+			equals: function PropertyChain$equals(prop) {
+				if (prop !== undefined && prop !== null) {
+					if (prop instanceof Property) {
+						return prop.equals(this);
+					}
+					else if (prop instanceof PropertyChain) {
+						if (prop._properties.length !== this._properties.length) {
+							return false;
+						}
+
+						for (var i = 0; i < this._properties.length; i++) {
+							if (!this._properties[i].equals(prop._properties[i])) {
+								return false;
+							}
+						}
+
+						return true;
+					}
+				}
+			},
 			all: function PropertyChain$all() {
 				return this._properties;
 			},
@@ -1663,8 +1694,8 @@
 		function ObjectMeta(type, obj) {
 			this._obj = obj;
 			this.type = type;
-			this._issues = [];
-			this._propertyIssues = {};
+			this._conditions = [];
+			this._propertyConditions = {};
 		}
 
 		ObjectMeta.prototype = {
@@ -1677,83 +1708,89 @@
 			property: function ObjectMeta$property(propName) {
 				return this.type.property(propName);
 			},
-			clearIssues: function ObjectMeta$clearIssues(origin) {
-				var issues = this._issues;
+			clearConditions: function ObjectMeta$clearConditions(origin) {
+				var conditions = this._conditions;
 
-				for (var i = issues.length - 1; i >= 0; --i) {
-					var issue = issues[i];
+				for (var i = conditions.length - 1; i >= 0; --i) {
+					var condition = conditions[i];
 
-					if (issue.get_origin() == origin) {
-						this._removeIssue(i);
-						this._raisePropertiesValidated(issue.get_properties());
+					if (condition.get_origin() == origin) {
+						this._removeCondition(i);
+						this._raisePropertiesValidated(condition.get_properties());
 					}
 				}
 			},
 
-			issueIf: function ObjectMeta$issueIf(issue, condition) {
-				// always remove and re-add the issue to preserve order
-				var idx = $.inArray(issue, this._issues);
-
-				if (idx >= 0) {
-					this._removeIssue(idx);
+			conditionIf: function ObjectMeta$conditionIf(condition, when) {
+				// always remove and re-add the condition to preserve order
+				var idx = -1;
+				for (var i = 0; i < this._conditions.length; i++) {
+					if (this._conditions[i].get_type() === condition.get_type()) {
+						idx = i;
+						break;
+					}
 				}
 
-				if (condition) {
-					this._addIssue(issue);
+				if (idx >= 0) {
+					this._removeCondition(idx);
+				}
+
+				if (when) {
+					this._addCondition(condition);
 				}
 
 				if ((idx < 0 && condition) || (idx >= 0 && !condition)) {
-					this._raisePropertiesValidated(issue.get_properties());
+					this._raisePropertiesValidated(condition.get_properties());
 				}
 			},
 
-			_addIssue: function(issue) {
-				this._issues.push(issue);
+			_addCondition: function(condition) {
+				this._conditions.push(condition);
 
-				// update _propertyIssues
-				var props = issue.get_properties();
+				// update _propertyConditions
+				var props = condition.get_properties();
 				for (var i = 0; i < props.length; ++i) {
 					var propName = props[i].get_name();
-					var pi = this._propertyIssues[propName];
+					var pi = this._propertyConditions[propName];
 
 					if (!pi) {
 						pi = [];
-						this._propertyIssues[propName] = pi;
+						this._propertyConditions[propName] = pi;
 					}
 
-					pi.push(issue);
+					pi.push(condition);
 				}
 			},
 
-			_removeIssue: function(idx) {
-				var issue = this._issues[idx];
-				this._issues.splice(idx, 1);
+			_removeCondition: function(idx) {
+				var condition = this._conditions[idx];
+				this._conditions.splice(idx, 1);
 
-				// update _propertyIssues
-				var props = issue.get_properties();
+				// update _propertyConditions
+				var props = condition.get_properties();
 				for (var i = 0; i < props.length; ++i) {
 					var propName = props[i].get_name();
-					var pi = this._propertyIssues[propName];
+					var pi = this._propertyConditions[propName];
 
-					var piIdx = $.inArray(issue, pi);
+					var piIdx = $.inArray(condition, pi);
 					pi.splice(piIdx, 1);
 				}
 			},
 
-			issues: function ObjectMeta$issues(prop) {
+			conditions: function ObjectMeta$conditions(prop) {
 				if (!prop) {
-					return this._issues;
+					return this._conditions;
 				}
 
 				var ret = [];
 
-				for (var i = 0; i < this._issues.length; ++i) {
-					var issue = this._issues[i];
-					var props = issue.get_properties();
+				for (var i = 0; i < this._conditions.length; ++i) {
+					var condition = this._conditions[i];
+					var props = condition.get_properties();
 
 					for (var p = 0; p < props.length; ++p) {
-						if (props[p] == prop) {
-							ret.push(issue);
+						if (props[p].equals(prop)) {
+							ret.push(condition);
 							break;
 						}
 					}
@@ -1761,6 +1798,7 @@
 
 				return ret;
 			},
+
 			_raisePropertiesValidated: function(properties) {
 				var queue = this.type.get_model()._validatedQueue;
 				for (var i = 0; i < properties.length; ++i) {
@@ -1850,9 +1888,9 @@
 		RuleInput.registerClass("ExoWeb.Model.RuleInput");
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function RequiredRule(options, properties) {
+		function RequiredRule(type, options, properties) {
 			this.prop = properties[0];
-			this.err = new RuleIssue(this.prop.get_label() + " is required", properties, this);
+			this.err = new Condition(type, this.prop.get_label() + " is required", properties, this);
 
 			Rule.register(this, properties);
 		}
@@ -1861,10 +1899,10 @@
 				var val = this.prop.value(obj);
 
 				if (val instanceof Array) {
-					obj.meta.issueIf(this.err, val.length === 0);
+					obj.meta.conditionIf(this.err, val.length === 0);
 				}
 				else {
-					obj.meta.issueIf(this.err, val === null || val === undefined || ($.trim(val.toString()) == ""));
+					obj.meta.conditionIf(this.err, val === null || val === undefined || ($.trim(val.toString()) == ""));
 				}
 			},
 			toString: function() {
@@ -1875,7 +1913,7 @@
 		Rule.required = RequiredRule;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function RangeRule(options, properties) {
+		function RangeRule(type, options, properties) {
 			this.prop = properties[0];
 
 			this.min = options.min;
@@ -1885,15 +1923,15 @@
 			var hasMax = (this.max !== undefined && this.max !== null);
 
 			if (hasMin && hasMax) {
-				this.err = new RuleIssue($format("{prop} must be between {min} and {max}", this), properties, this);
+				this.err = new Condition(type, $format("{0} must be between {1} and {2}", [this.prop.get_label(), this.min, this.max]), properties, this);
 				this._test = this._testMinMax;
 			}
 			else if (hasMin) {
-				this.err = new RuleIssue($format("{prop} must be at least {min}", this), properties, this);
+				this.err = new Condition(type, $format("{0} must be at least {1}", [this.prop.get_label(), this.min]), properties, this);
 				this._test = this._testMin;
 			}
 			else if (hasMax) {
-				this.err = new RuleIssue($format("{prop} must no more than {max}", this), properties, this);
+				this.err = new Condition(type, $format("{0} must no more than {1}", [this.prop.get_label()], this.max), properties, this);
 				this._test = this._testMax;
 			}
 
@@ -1902,7 +1940,7 @@
 		RangeRule.prototype = {
 			execute: function(obj) {
 				var val = this.prop.value(obj);
-				obj.meta.issueIf(this.err, this._test(val));
+				obj.meta.conditionIf(this.err, this._test(val));
 			},
 			_testMinMax: function(val) {
 				return val < this.min || val > this.max;
@@ -1914,19 +1952,23 @@
 				return val > this.max;
 			},
 			toString: function() {
-				return $format("{0}.{1} in range, min: {2}, max: {3}", [this.prop.get_containingType().get_fullName(), this.prop.get_name(), this.min, this.max]);
+				return $format("{0}.{1} in range, min: {2}, max: {3}",
+					[this.prop.get_containingType().get_fullName(),
+					this.prop.get_name(),
+					this.min === undefined ? "" : this.min,
+					this.max === undefined ? "" : this.max]);
 			}
 		};
 
 		Rule.range = RangeRule;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function AllowedValuesRule(options, properties) {
+		function AllowedValuesRule(type, options, properties) {
 			var prop = this.prop = properties[0];
 
 			this.path = options.source;
 
-			this.err = new RuleIssue($format("{prop} has an invalid value", this), properties, this);
+			this.err = new Condition(type, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
 
 			Rule.register(this, properties);
 
@@ -1956,10 +1998,10 @@
 
 					// ensure that the value or list of values is in the allowed values list (single and multi-select)
 					if (val instanceof Array) {
-						obj.meta.issueIf(this.err, !val.every(function(item) { return Array.contains(allowed, item); }));
+						obj.meta.conditionIf(this.err, !val.every(function(item) { return Array.contains(allowed, item); }));
 					}
 					else {
-						obj.meta.issueIf(this.err, val && !Array.contains(allowed, val));
+						obj.meta.conditionIf(this.err, val && !Array.contains(allowed, val));
 					}
 				}
 			},
@@ -1988,7 +2030,7 @@
 		Rule.allowedValues = AllowedValuesRule;
 
 		///////////////////////////////////////////////////////////////////////////////////////
-		function StringLengthRule(options, properties) {
+		function StringLengthRule(type, options, properties) {
 			this.prop = properties[0];
 
 			this.min = options.min;
@@ -1998,15 +2040,15 @@
 			var hasMax = (this.max !== undefined && this.max !== null);
 
 			if (hasMin && hasMax) {
-				this.err = new RuleIssue($format("{prop} must be between {min} and {max} characters", this), properties, this);
+				this.err = new Condition(type, $format("{0} must be between {1} and {2} characters", [this.prop.get_label(), this.min, this.max]), properties, this);
 				this._test = this._testMinMax;
 			}
 			else if (hasMin) {
-				this.err = new RuleIssue($format("{prop} must be at least {min} characters", this), properties, this);
+				this.err = new Condition(type, $format("{0} must be at least {1} characters", [this.prop.get_label(), this.min]), properties, this);
 				this._test = this._testMin;
 			}
 			else if (hasMax) {
-				this.err = new RuleIssue($format("{prop} must be no more than {max} characters", this), properties, this);
+				this.err = new Condition(type, $format("{0} must be no more than {1} characters", [this.prop.get_label(), this.max]), properties, this);
 				this._test = this._testMax;
 			}
 
@@ -2015,7 +2057,7 @@
 		StringLengthRule.prototype = {
 			execute: function(obj) {
 				var val = this.prop.value(obj);
-				obj.meta.issueIf(this.err, this._test(val || ""));
+				obj.meta.conditionIf(this.err, this._test(val || ""));
 			},
 			_testMinMax: function(val) {
 				return val.length < this.min || val.length > this.max;
@@ -2027,7 +2069,11 @@
 				return val.length > this.max;
 			},
 			toString: function() {
-				return $format("{0}.{1} in range, min: {2}, max: {3}", [this.prop.get_containingType().get_fullName(), this.prop.get_name(), this.min, this.max]);
+				return $format("{0}.{1} in range, min: {2}, max: {3}",
+					[this.prop.get_containingType().get_fullName(),
+					this.prop.get_name(),
+					this.min == undefined ? "" : this.min,
+					this.max === undefined ? "" : this.max]);
 			}
 		};
 
@@ -2082,53 +2128,141 @@
 		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function RuleIssue(message, relatedProperties, origin) {
+		function ConditionType(code, category, message) {
+			// So that sub types can use it's prototype.
+			if (arguments.length === 0) {
+				return;
+			}
+
+			this._code = code;
+			this._category = category;
+			this._message = message;
+
+			ConditionType._all[code] = this;
+		}
+
+		ConditionType._all = {};
+
+		ConditionType.get = function ConditionType$get(code) {
+			return ConditionType._all[code];
+		};
+
+		ConditionType.prototype = {
+			get_code: function ConditionType$get_code() {
+				return this._code;
+			},
+			get_category: function ConditionType$get_category() {
+				return this._category;
+			},
+			get_message: function ConditionType$get_message() {
+				return this._message;
+			},
+			extend: function ConditionType$extend(data) {
+				// TODO
+			}
+		}
+		ExoWeb.Model.ConditionType = ConditionType;
+		ConditionType.registerClass("ExoWeb.Model.ConditionType");
+
+		(function() {
+			//////////////////////////////////////////////////////////////////////////////////////
+			function Error(code, message) {
+				ConditionType.call(this, code, "Error", message);
+			}
+
+			Error.prototype = new ConditionType();
+
+			ExoWeb.Model.ConditionType.Error = Error;
+			Error.registerClass("ExoWeb.Model.ConditionType.Error", ConditionType);
+
+			//////////////////////////////////////////////////////////////////////////////////////
+			function Warning(code, message) {
+				ConditionType.call(this, code, "Warning", message);
+			}
+
+			Warning.prototype = new ConditionType();
+
+			ExoWeb.Model.ConditionType.Warning = Warning;
+			Warning.registerClass("ExoWeb.Model.ConditionType.Warning", ConditionType);
+
+			//////////////////////////////////////////////////////////////////////////////////////
+			function Permission(code, message, permissionType) {
+				ConditionType.call(this, code, "Permission", message);
+				this._permissionType = permissionType;
+			}
+
+			Permission.prototype = new ConditionType();
+
+			Permission.mixin({
+				get_message: function ConditionType$get_message() {
+					return this._message;
+				}
+			});
+
+			ExoWeb.Model.ConditionType.Permission = Permission;
+			Permission.registerClass("ExoWeb.Model.ConditionType.Permission", ConditionType);
+		})();
+
+		//////////////////////////////////////////////////////////////////////////////////////
+		function Condition(type, message, relatedProperties, origin) {
+			this._type = type;
 			this._properties = relatedProperties || [];
 			this._message = message;
 			this._origin = origin;
 		}
 
-		RuleIssue.prototype = {
-			get_properties: function() {
+		Condition.prototype = {
+			get_type: function Condition$get_type() {
+				return this._type;
+			},
+			get_properties: function Condition$get_properties() {
 				return this._properties;
 			},
-			get_message: function() {
+			get_message: function Condition$get_message() {
 				return this._message;
 			},
-			get_origin: function() {
+			get_origin: function Condition$get_origin() {
 				return this._origin;
 			},
-			set_origin: function(origin) {
+			set_origin: function Condition$set_origin(origin) {
 				this._origin = origin;
 			},
-			equals: function(o) {
+			equals: function Condition$equals(o) {
 				return o.property.equals(this.property) && o._message.equals(this._message);
 			}
 		};
 
-		ExoWeb.Model.RuleIssue = RuleIssue;
-		RuleIssue.registerClass("ExoWeb.Model.RuleIssue");
+		ExoWeb.Model.Condition = Condition;
+		Condition.registerClass("ExoWeb.Model.Condition");
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function FormatIssue(message, invalidValue) {
+		var formatConditionType = new ConditionType("FormatError", "Error", "The value is not properly formatted.");
+		
+		function FormatError(message, invalidValue) {
 			this._message = message;
 			this._invalidValue = invalidValue;
 		}
 
-		FormatIssue.prototype = {
-			get_message: function() {
+		FormatError.mixin({
+			createCondition: function FormatError$createCondition(origin, prop) {
+				return new Condition(formatConditionType,
+					$format(this.get_message(), { value: prop.get_label() }),
+					[prop],
+					origin);
+			},
+			get_message: function FormateError$get_message() {
 				return this._message;
 			},
-			toString: function() {
+			get_invalidValue: function FormateError$get_invalidValue() {
 				return this._invalidValue;
 			},
-			get_invalidValue: function() {
+			toString: function FormateError$toString() {
 				return this._invalidValue;
 			}
-		};
+		});
 
-		ExoWeb.Model.FormatIssue = FormatIssue;
-		FormatIssue.registerClass("ExoWeb.Model.FormatIssue");
+		ExoWeb.Model.FormatError = FormatError;
+		FormatError.registerClass("ExoWeb.Model.FormatError");
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Format(options) {
@@ -2172,7 +2306,7 @@
 					return this._nullString;
 				}
 
-				if (val instanceof FormatIssue) {
+				if (val instanceof FormatError) {
 					return val.get_invalidValue();
 				}
 
@@ -2207,7 +2341,7 @@
 					return this._convertBack(val);
 				}
 				catch (err) {
-					return new FormatIssue(this._description ?
+					return new FormatError(this._description ?
 								"{value} must be formatted as " + this._description :
 								"{value} is not properly formatted",
 								val);

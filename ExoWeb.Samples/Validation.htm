@@ -1,7 +1,7 @@
 ﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" >
 <head>
-    <title>Adapter Sample</title>
+    <title>Validation Sample</title>
     <link type="text/css" rel="stylesheet" href="common/styles.css" />
     <style type="text/css">
     td { padding-right: 10px; }
@@ -32,9 +32,11 @@
     <script src="Scripts/mock-driver.js" type="text/javascript"></script>
     <script src="Scripts/changeset.js" type="text/javascript"></script>
     <script src="Scripts/ExoWeb/exoweb.jquery.js" type="text/javascript"></script>
-    <script src="Common/styles.js" type="text/javascript"></script>
 
     <script type="text/javascript">
+
+    	Sys.activateDom = false;
+    
     	ExoWeb.trace.flags = {
     		rule: true
     	}
@@ -55,12 +57,99 @@
     		type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}");
     	});
 
-    	var model = $model({
-	    	driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"] }
+    	var context = ExoWeb.context({
+    		model: {
+    			driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"] }
+    		}
     	});
 
-    	model.ready(function() {
+    	context.ready(function() {
+    		Sys.Application.activateElement(document.documentElement);
     	});
+
+
+
+    	(function() {
+
+    		function setState(el, prefix, current, all) {
+    			all.forEach(function(state) {
+    				if (current === state)
+    					el.addClass(prefix + "-" + state);
+    				else
+    					el.removeClass(prefix + "-" + state);
+    			});
+    		}
+    		
+    		function showValidation(sender, issues) {
+
+    			// locate validation area
+    			var $area = $(this).closest(".validated");
+    			var $validation = $area.find(".validation");
+
+    			if ($validation.size() == 0) {
+    				$validation = $(this).next();
+
+    				if (!$validation.is('.validation')) {
+    					// container not found so inject it
+    					$validation = $(this).after("<div class='validation'></div>").next();
+    				}
+    			}
+
+    			var states = ["some", "none"];
+
+    			if (issues.length == 0) {
+    				setState($(this), "validated", "none", states);
+    				setState($validation, "validation", "none", states);
+    				setState($area, "validated", "none", states);
+
+    				$validation.text("");
+    			} else {
+    				setState($(this), "validated", "some", states);
+    				setState($validation, "validation", "some", states);
+    				setState($area, "validated", "some", states);
+
+    				$validation.text(issues[0].get_message());
+    			}
+    		}
+
+    		$("input:rule(required), select:rule(required), textarea:rule(required)").ever(function() {
+    			$(this).addClass('required');
+    		});
+
+    		$("input:rule(stringLength)").ever(function() {
+    			var rules = $(this).rules(ExoWeb.Model.Rule.stringLength);
+    			rules.forEach(function(rule) {
+    				if (rule.max)
+    					$(this).attr('maxlength', rule.max);
+    			}, this);
+    		});
+
+    		$("textarea:rule(stringLength)").ever(function() {
+    			var rules = $(this).rules(ExoWeb.Model.Rule.stringLength);
+    			rules.forEach(function(rule) {
+    				if (rule.max)
+    					$(this).attr('maxlength', rule.max);
+    			}, this);
+    		});
+
+    		$("input, select, textarea").ever(function() {
+    			showValidation.call(this, this, $(this).issues());
+    			$(this).validated(showValidation);
+    		});
+
+    	})();
+
+		/*
+    	var qs = {};
+
+    	(function() {
+    		var query = window.location.search.substring(1);
+    		var vars = query.split("&");
+    		for (var i = 0; i < vars.length; i++) {
+    			var pair = vars[i].split("=");
+    			qs[pair[0]] = pair[1];
+    		}
+    	})();*/
 
     </script>
 </head>
@@ -74,7 +163,7 @@
 
 	<h1>Samples:</h1>
 	<table>
-		<tbody class="sys-template" sys:attach="dataview" dataview:data="{~ model.driver }">
+		<tbody class="sys-template" sys:attach="dataview" dataview:data="{~ context.model.driver }">
 			<tr sys:attach="content" content:data="{@ Name, prefix=Driver }" />
 			<tr sys:attach="content" content:data="{@ PhoneNumber, label=Phone Number }" />
 			<tr sys:attach="content" content:data="{@ BirthDate, label=Birthday }" />
@@ -110,9 +199,10 @@
 				<span>{ binding label }</span>:
 			</td>
 			<td>
-				<select class="sys-template" sys:value="{ binding value }"
+				<select class="sys-template" sys:value="{ binding systemValue }"
 					sys:attach="dataview" dataview:data="{ binding options }">
-					<option sys:value="{ binding value }">{ binding label }</option>
+					<option sys:if="{{ $index === 0 }}" value=""></option>
+					<option sys:value="{ binding systemValue }">{ binding displayValue }</option>
 				</select>
 			</td>
 		</tr>
@@ -127,7 +217,7 @@
 						<tr>
 							<td>
 								<input type="checkbox" id="option" sys:checked="{ binding selected }" />
-								<label for="option">{ binding label }</label>
+								<label for="option">{ binding displayValue }</label>
 							</td>
 						</tr>
 					</tbody>
@@ -149,7 +239,7 @@
 				<span>{ binding label }</span>:
 			</td>
 			<td>
-				<span>{ binding value }</span>
+				<span>{ binding displayValue }</span>
 				<span>{ binding helptext }</span>
 			</td>
 		</tr>
@@ -160,7 +250,7 @@
 				<div class='validation'></div>
 			</td>
 			<td>
-				<textarea sys:value="{ binding value }" rows='4' cols='60'></textarea>
+				<textarea sys:value="{ binding displayValue }" rows='4' cols='60'></textarea>
 				<span>{ binding helptext }</span>
 			</td>
 		</tr>
@@ -171,7 +261,7 @@
 				<span>{ binding label }</span>:
 			</td>
 			<td>
-				<input type="text" sys:value="{ binding value }" />
+				<input type="text" sys:value="{ binding displayValue }" />
 				<span>{ binding helptext }</span>
 			</td>
 		</tr>

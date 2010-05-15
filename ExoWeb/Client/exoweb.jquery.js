@@ -315,7 +315,7 @@
 				if (options.refresh)
 					target.meta.executeRules(prop);
 
-				Array.addRange(issues, target.meta.issues(prop));
+				Array.addRange(issues, target.meta.conditions(prop));
 			}
 			return issues;
 		};

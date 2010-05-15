@@ -419,7 +419,15 @@
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
 				if (result.instances) {
-					objectsFromJson(this._model, result.instances);
+					objectsFromJson(this._model, result.instances, function() {
+						// if there is instance data to load then wait before loading conditions (since they may reference these instances)
+						if (result.conditionTargets) {
+							conditionsFromJson(this._model, result.conditionTargets);
+						}
+					});
+				}
+				else if (result.conditionTargets) {
+					conditionsFromJson(this._model, result.conditionTargets);
 				}
 
 				if (result.changes) {
@@ -1124,6 +1132,31 @@
 			}
 		}
 
+		function conditionsFromJson(model, json, callback) {
+			for (var code in json) {
+				conditionFromJson(model, code, json[code]);
+			}
+
+			if (callback && callback instanceof Function) {
+				callback();
+			}
+		}
+
+		function conditionFromJson(model, code, json) {
+			var type = ExoWeb.Model.ConditionType.get(code);
+
+			if (!type) {
+				ExoWeb.trace.logError(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
+			}
+
+			Array.forEach(json.targets, function(target) {
+				var inst = fromExoGraph(target.instance);
+				var props = target.properties.map(function(p) { return inst.meta.type.property(p); });
+				var c = new ExoWeb.Model.Condition(type, type.get_message(), props);
+				inst.meta.conditionIf(c, true);
+			});
+		}
+
 		function objectsFromJson(model, json, callback) {
 			var signal = new ExoWeb.Signal("objectsFromJson");
 
@@ -1296,6 +1329,51 @@
 			mtype.set_originForNewProperties("client");
 		}
 
+		function conditionTypesFromJson(model, json) {
+			for (var code in json) {
+				conditionTypeFromJson(model, code, json[code]);
+			}
+		}
+
+		function conditionTypeFromJson(model, code, json) {
+
+			// Attempt to retrieve the condition type by code.
+			var conditionType = ExoWeb.Model.ConditionType.get(code);
+
+			// Create the condition type if it does not already exist.
+			if (!conditionType) {
+
+				// Create the appropriate condition type based on the category.
+				if (json.category == "Error") {
+					conditionType = new ExoWeb.Model.ConditionType.Error(code, json.message);
+				}
+				else if (json.category == "Warning") {
+					conditionType = new ExoWeb.Model.ConditionType.Warning(code, json.message);
+				}
+				else if (json.category == "Permission") {
+					conditionType = new ExoWeb.Model.ConditionType.Permission(code, json.message, json.permissionType);
+				}
+				else {
+					conditionType = new ExoWeb.Model.ConditionType(code, json.category, json.message);
+				}
+
+				// Account for the potential for subclasses to be serialized with additional properties.
+				conditionType.extend(json);
+			}
+
+			if (json.rule) {
+				var ruleType = ExoWeb.Model.Rule[json.rule.clientRuleType];
+				var mtype = model.type(json.rule.rootType);
+
+				// TODO: don't create the rule if it already exists
+				var props = json.rule.properties.map(function(p) {
+					return ExoWeb.Model.Model.property(p, mtype);
+				});
+
+				var rule = new ruleType(conditionType, json.rule, props);
+			}
+		}
+
 		function getJsType(model, typeName, forLoading) {
 			// Get an array representing the type family.
 			var family = typeName.split(">");
@@ -1408,6 +1486,11 @@
 
 					// load type(s)
 					typesFromJson(model, result.types);
+
+					if (result.conditionTypes) {
+						// load condition types
+						conditionTypesFromJson(model, result.conditionTypes);
+					}
 
 					// ensure base classes are loaded too
 					for (var b = model.type(typeName).baseType; b; b = b.baseType) {
@@ -1569,10 +1652,21 @@
 		}
 
 		// {ruleName: ruleConfig}
-		function ruleFromJson(json, prop) {
-			for (var name in json) {
-				var ruleType = ExoWeb.Model.Rule[name];
-				var rule = new ruleType(json[name], [prop]);
+		function ruleFromJson(rulesJson, prop) {
+			for (var name in rulesJson) {
+				var json = rulesJson[name];
+
+				// Get or create the condition type.
+				var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), name]);
+				var conditionType = ExoWeb.Model.ConditionType.get(generatedCode);
+				if (!conditionType) {
+					conditionType = new ExoWeb.Model.ConditionType.Error(generatedCode, $format("Generated condition type for {0} rule.", [name]));
+					conditionType.extend(json[name]);
+				}
+
+				// Create the rule.
+				var ruleType = ExoWeb.Model.Rule[json.clientRuleType];
+				var rule = new ruleType(conditionType, json, [prop]);
 			}
 		}
 
@@ -1614,7 +1708,7 @@
 				var id = obj.meta.id || STATIC_ID;
 				var mtype = obj.meta.type || obj.meta;
 
-				var objectJson;
+				var objectJson, conditionsJson;
 
 				// Get the paths from the original query(ies) that apply to this object (based on type).
 				var paths = ObjectLazyLoader.getRelativePaths(obj);
@@ -1630,6 +1724,7 @@
 				objectProvider(mtype.get_fullName(), [id], true, false, paths, null,
 					signal.pending(function(result) {
 						objectJson = result.instances;
+						conditionsJson = result.conditionTargets;
 					}),
 					signal.orPending(function(e) {
 						ExoWeb.trace.logError("lazyLoad", e);
@@ -1648,7 +1743,17 @@
 					}
 
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
-					objectsFromJson(mtype.get_model(), objectJson, callback);
+
+					// Load instance data
+					objectsFromJson(mtype.get_model(), objectJson, function() {
+						if (conditionsJson) {
+							// Load conditions data and then invoke callback
+							conditionsFromJson(mtype.get_model(), conditionsJson, callback);
+						}
+						else {
+							callback();
+						}
+					});
 				});
 			}).dontDoubleUp({ callbackArg: 2, groupBy: function(obj) { return [obj]; } })
 		});
@@ -1769,11 +1874,12 @@
 				// load the objects in the list
 				log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, list._ownerId, propName]);
 
-				var objectJson;
+				var objectJson, conditionsJson;
 
 				listProvider(ownerType, list._ownerId, propName,
 					signal.pending(function(result) {
 						objectJson = result.instances;
+						conditionsJson = result.conditionTargets;
 					}),
 					signal.orPending(function(e) {
 						ExoWeb.trace.logError("lazyLoad", e);
@@ -1857,7 +1963,14 @@
 					}
 
 					ListLazyLoader.unregister(list, this);
-					objectsFromJson(model, objectJson, callback);
+					objectsFromJson(model, objectJson, function() {
+						if (conditionsJson) {
+							conditionsFromJson(model, conditionsJson, callback);
+						}
+						else {
+							callback();
+						}
+					});
 				});
 			}).dontDoubleUp({ callbackArg: 2 /*, debug: true, debugLabel: "ListLazyLoader"*/ })
 		});
@@ -1929,7 +2042,11 @@
 					objectProvider(typeQuery.from, null, true, false, typeQuery.serverPaths, null,
 						allSignals.pending(function context$objects$callback(result) {
 							// load the json. this may happen asynchronously to increment the signal just in case
-							objectsFromJson(model, result.instances, allSignals.pending());
+							objectsFromJson(model, result.instances, allSignals.pending(function() {
+								if (result.conditionTargets) {
+									conditionsFromJson(model, result.conditionTargets);
+								}
+							}));
 						}),
 						allSignals.orPending(function context$objects$callback(error) {
 							ExoWeb.trace.logError("objectInit",
@@ -1974,6 +2091,7 @@
 							objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
 								state[varName].signal.pending(function context$objects$callback(result) {
 									state[varName].objectJson = result.instances;
+									state[varName].conditionsJson = result.conditionTargets;
 								}),
 								state[varName].signal.orPending(function context$objects$callback(error) {
 									ExoWeb.trace.logError("objectInit",
@@ -2020,8 +2138,16 @@
 
 									ret.model[varName] = obj;
 
-									// model object has been successfully loaded!
-									allSignals.oneDone();
+									if (state[varName].conditionsJson) {
+										conditionsFromJson(model, state[varName].conditionsJson, function() {
+											// model object has been successfully loaded!
+											allSignals.oneDone();
+										});
+									}
+									else {
+										// model object has been successfully loaded!
+										allSignals.oneDone();
+									}
 								}));
 							}
 
