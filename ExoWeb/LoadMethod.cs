@@ -550,19 +550,15 @@ namespace ExoWeb
 		/// <param name="response"></param>
 		protected void OutputConditionTargets(HttpResponse response)
 		{
-			// get all condition types and initialize
-			Dictionary<ConditionType, List<ConditionTarget>> targetsByType = new Dictionary<ConditionType, List<ConditionTarget>>();
-			foreach (ConditionType conditionType in instances.Keys
-						.SelectMany(graphType => ServiceHandler.Adapter.GetConditionTypes(graphType))
-						.Where(conditionType => conditionType.ConditionRule == null || conditionType.ConditionRule is PropertyRule)
-						.Distinct())
-				targetsByType[conditionType] = new List<ConditionTarget>();
-
 			// populate condition targets by condition type
+			Dictionary<ConditionType, List<ConditionTarget>> targetsByType = new Dictionary<ConditionType, List<ConditionTarget>>();			
 			foreach (var target in instances.Values.SelectMany(d => d.Keys)
 				.SelectMany(instance => Condition.GetConditions(instance))
 				.SelectMany(condition => condition.Targets))
 			{
+				if (!targetsByType.ContainsKey(target.Condition.Type))
+					targetsByType.Add(target.Condition.Type, new List<ConditionTarget>());
+
 				if (!targetsByType[target.Condition.Type].Contains(target))
 					targetsByType[target.Condition.Type].Add(target);
 			}
