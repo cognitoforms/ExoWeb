@@ -567,9 +567,8 @@ namespace ExoWeb
 			foreach (ConditionType conditionType in targetsByType.Keys)
 			{
 				List<ConditionTarget> targets = targetsByType[conditionType];
-				//targetsByType.TryGetValue(conditionType, out targets);
 
-				if (/*targets == null || */targets.Count == 0)
+				if (targets.Count == 0)
 					continue;
 
 				// Handle trailing commas after each type

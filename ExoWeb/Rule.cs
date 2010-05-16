@@ -97,15 +97,10 @@ namespace ExoWeb
 
 		public override void Register()
 		{
-			/*Type.Init += (sender, e) =>
+			Type.Init += (sender, e) =>
 			{
 				Invoke(e.Instance, e);
-			};*/
-
-			Type.GetPath(GraphProperty.Name).Change += (sender, e) =>
-				{
-					Invoke(e.Instance, e);
-				};
+			};
 		}
 
 		protected override void Invoke(GraphInstance root, GraphEvent graphEvent)
@@ -302,10 +297,9 @@ namespace ExoWeb
 
 				return !(allowedValues == null || allowedValues.Select(graphInstance => graphInstance.Instance).Contains(value));
 			}
-			catch (Exception e)
+			catch
 			{
-				throw e;
-				//return false;
+				return false;
 			}
 		}
 	}
