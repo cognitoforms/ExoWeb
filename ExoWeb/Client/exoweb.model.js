@@ -1879,6 +1879,22 @@
 			typeFilter.addRule(rule);
 		};
 
+		Rule.ensureError = function Rule$ensureError(ruleName, prop) {
+			var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), name]);
+			var conditionType = ConditionType.get(generatedCode);
+
+			if (!conditionType) {
+				conditionType = new ConditionType.Error(generatedCode, $format("Generated condition type for {0} rule.", [ruleName]));
+				return conditionType;
+			}
+			else if (conditionType instanceof ConditionType.Error) {
+				return conditionType;
+			}
+			else {
+				ExoWeb.trace.throwAndLog("conditions", "Condition type \"{0}\" already exists but is not an error.", [generatedCode]);
+			}
+		};
+
 		Rule.inferInputs = function Rule$inferInputs(rootType, func) {
 			var inputs = [];
 			var expr = /this\.get_([a-zA-Z0-9_.]+)/g;
@@ -1924,8 +1940,13 @@
 		RuleInput.registerClass("ExoWeb.Model.RuleInput");
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function RequiredRule(type, options, properties) {
+		function RequiredRule(options, properties, type) {
 			this.prop = properties[0];
+
+			if (!type) {
+				type = Rule.ensureError("required", this.prop);
+			}
+
 			this.err = new Condition(type, this.prop.get_label() + " is required", properties, this);
 
 			Rule.register(this, properties);
@@ -1949,8 +1970,12 @@
 		Rule.required = RequiredRule;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function RangeRule(type, options, properties) {
+		function RangeRule(options, properties, type) {
 			this.prop = properties[0];
+
+			if (!type) {
+				type = Rule.ensureError("range", this.prop);
+			}
 
 			this.min = options.min;
 			this.max = options.max;
@@ -1999,8 +2024,12 @@
 		Rule.range = RangeRule;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function AllowedValuesRule(type, options, properties) {
+		function AllowedValuesRule(options, properties, type) {
 			var prop = this.prop = properties[0];
+
+			if (!type) {
+				type = Rule.ensureError("allowedValues", this.prop);
+			}
 
 			this.path = options.source;
 
@@ -2066,8 +2095,12 @@
 		Rule.allowedValues = AllowedValuesRule;
 
 		///////////////////////////////////////////////////////////////////////////////////////
-		function StringLengthRule(type, options, properties) {
+		function StringLengthRule(options, properties, type) {
 			this.prop = properties[0];
+
+			if (!type) {
+				type = Rule.ensureError("stringLength", this.prop);
+			}
 
 			this.min = options.min;
 			this.max = options.max;
@@ -2194,7 +2227,15 @@
 				return this._message;
 			},
 			extend: function ConditionType$extend(data) {
-				// TODO
+				for (var prop in data) {
+					if (prop !== "__type" && !this["get_" + prop]) {
+						var fieldName = "_" + prop;
+						this[fieldName] = data[prop];
+						this["get" + fieldName] = function ConditionType$getter() {
+							return this[fieldName];
+						}
+					}
+				}
 			}
 		}
 		ExoWeb.Model.ConditionType = ConditionType;

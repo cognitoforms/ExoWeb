@@ -1370,7 +1370,7 @@
 					return ExoWeb.Model.Model.property(p, mtype);
 				});
 
-				var rule = new ruleType(conditionType, json.rule, props);
+				var rule = new ruleType(json.rule, props, conditionType);
 			}
 		}
 
@@ -1655,18 +1655,8 @@
 		function ruleFromJson(rulesJson, prop) {
 			for (var name in rulesJson) {
 				var json = rulesJson[name];
-
-				// Get or create the condition type.
-				var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), name]);
-				var conditionType = ExoWeb.Model.ConditionType.get(generatedCode);
-				if (!conditionType) {
-					conditionType = new ExoWeb.Model.ConditionType.Error(generatedCode, $format("Generated condition type for {0} rule.", [name]));
-					conditionType.extend(json[name]);
-				}
-
-				// Create the rule.
 				var ruleType = ExoWeb.Model.Rule[json.clientRuleType];
-				var rule = new ruleType(conditionType, json, [prop]);
+				var rule = new ruleType(json, [prop]);
 			}
 		}
 
