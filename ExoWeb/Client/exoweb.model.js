@@ -721,11 +721,11 @@
 						);
 					}
 
-					(prop instanceof PropertyChain ? prop.lastProperty() : prop)._addRule(rule);
+					(prop instanceof PropertyChain ? prop.lastProperty() : prop)._addRule(rule, input.get_isTarget());
 				}
 			},
 			// Executes all rules that have a particular property as input
-			executeRules: function Type$executeRules(obj, prop, start) {
+			executeRules: function Type$executeRules(obj, prop, callback, start) {
 
 				var processing;
 
@@ -750,7 +750,7 @@
 									log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
 									rule.execute(obj, function() {
 										rule._isExecuting = false;
-										_this.executeRules(obj, prop, i + 1);
+										_this.executeRules(obj, prop, callback, i + 1);
 									});
 									break;
 								}
@@ -775,6 +775,12 @@
 						this._model.endValidation();
 					}
 				}
+
+				if (!processing && callback && callback instanceof Function) {
+					callback();
+				}
+
+				return !processing;
 			},
 			set_originForNewProperties: function Type$set_originForNewProperties(value) {
 				this._originForNewProperties = value;
@@ -896,7 +902,43 @@
 			get_origin: function Property$get_origin() {
 				return this._origin ? this._origin : this._containingType.get_origin();
 			},
+
+			_assertType: function Property$_assertType(obj) {
+				if (obj === undefined || obj === null) {
+					throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
+				}
+
+				if (this._isStatic === true) {
+					if (!ExoWeb.isType(obj.meta, Type)) {
+						throwAndLog(["model", "entity"], "A model type was expected, found \"{0}\".", [ExoWeb.parseFunctionName(obj.constructor)]);
+					}
+
+					if (!this.isDefinedBy(obj.meta)) {
+						throwAndLog(["model", "entity"], "Type {0} does not define property {1}.{2}.", [
+							obj.get_fullName(),
+							this._containingType.get_fullName(),
+							this.get_label()
+						]);
+					}
+				}
+				else {
+					if (!ExoWeb.isType(obj, Entity)) {
+						throwAndLog(["model", "entity"], "An entity was expected, found \"{0}\".", [ExoWeb.parseFunctionName(obj.constructor)]);
+					}
+
+					if (!this.isDefinedBy(obj.meta.type)) {
+						throwAndLog(["model", "entity"], "Type {0} does not define property {1}.{2}.", [
+							obj.meta.type.get_fullName(),
+							this._containingType.get_fullName(),
+							this.get_label()
+						]);
+					}
+				}
+			},
+
 			_getter: function Property$_getter(obj) {
+				this._assertType(obj);
+
 				this._raiseEvent("get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
 
 				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
@@ -910,6 +952,8 @@
 			},
 
 			_setter: function Property$_setter(obj, val) {
+				this._assertType(obj);
+
 				if (!this.canSetValue(obj, val)) {
 					throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
 				}
@@ -1434,9 +1478,27 @@
 			append: function PropertyChain$append(prop) {
 				Array.addRange(this._properties, prop.all());
 			},
-			// Iterates over all objects along a property chain starting with the root object (obj).
-			// An optional propFilter can be specified to only iterate over objects that are RETURNED by the property filter.
 			each: function PropertyChain$each(obj, callback, propFilter /*, target, p, lastProp*/) {
+				/// <summary>
+				/// Iterates over all objects along a property chain starting with the root object (obj).  This
+				/// is analogous to the Array forEach function.  The callback may return a Boolean value to indicate 
+				/// whether or not to continue iterating.
+				/// </summary>
+				/// <param name="obj" type="ExoWeb.Model.Entity">
+				/// The root object to use in iterating over the chain.
+				/// </param>
+				/// <param name="callback" type="Function">
+				/// The function to invoke at each iteration step.  May return a Boolean value to indicate whether 
+				/// or not to continue iterating.
+				/// </param>
+				/// <param name="propFilter" type="ExoWeb.Model.Property" optional="true">
+				/// If specified, only iterates over objects that are RETURNED by the property filter.  In other
+				/// words, steps that correspond to a value or values of the chain at a specific property step).
+				/// For example, if the chain path is "this.PropA.ListPropB", then...
+				/// 	chain.each(target, callback, ListPropB);
+				/// ...will iterate of the values of the list property only.
+				/// </param>
+
 				if (!callback || typeof (callback) != "function") {
 					throwAndLog(["model"], "Invalid Parameter: callback function");
 				}
@@ -1472,12 +1534,15 @@
 						// subsequent properties already visited in preceding loop
 						return true;
 					}
-					else if (enableCallback) {
+					else {
+						// return early if the target is filtered and does not match
+						if (this._filters[p] && this._filters[p](target) === false) {
+							break;
+						}
+
 						// take into account any chain filters along the way
-						if (!this._filters[p] || this._filters[p](target)) {
-							if (callback(target, prop) === false) {
-								return false;
-							}
+						if (enableCallback && callback(target, prop) === false) {
+							return false;
 						}
 					}
 

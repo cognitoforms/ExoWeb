@@ -17,6 +17,7 @@ if (ExoWeb.Mock) {
 			properties: {
 				Owner: { type: "CarOwner" },
 				Cars: { type: "Car>Product", isList: true },
+				PrimaryCar: { type: "Car>Product" },
 				Dealer: { type: "Dealer>Person" },
 				MilesDriven: { type: "Number" },
 				DateCreated: { type: "Date" },
@@ -207,7 +208,8 @@ if (ExoWeb.Mock) {
 		Driver: {
 			"1": {
 				Name: "Bryan Matthews",
-				Cars: [{ id: "1" }, { id: "2"}],
+				Cars: [{ id: "1", type: "NewCar>Car" }, { id: "2", type: "UsedCar>Car"}],
+				PrimaryCar: { id: "1", type: "NewCar>Car" },
 				Owner: { id: "1" },
 				BirthDate: new Date("07/01/1980"),
 				PhoneNumber: "800-123-4567",
@@ -219,20 +221,17 @@ if (ExoWeb.Mock) {
 			}
 		},
 		Car: {
-			"1": {
-				Name: "Sentra",
-				Driver: { id: "1" }
-			},
-			"2": {
-				Name: "Bike",
-				Driver: { id: "1" }
-			},
 			"3": {
 				Name: "Tank",
 				Driver: null
 			}
 		},
 		NewCar: {
+			"1": {
+				Name: "Sentra",
+				Driver: { id: "1" },
+				PlantNumber: "AZ9"
+			},
 			"100": {
 				Name: "Focus",
 				Driver: null,
@@ -240,6 +239,12 @@ if (ExoWeb.Mock) {
 			}
 		},
 		UsedCar: {
+			"2": {
+				Name: "Bike",
+				Driver: { id: "1" },
+				BoughtFrom: { id: "1" },
+				Mileage: 100
+			},
 			"200": {
 				Name: "Taurus",
 				Driver: null,

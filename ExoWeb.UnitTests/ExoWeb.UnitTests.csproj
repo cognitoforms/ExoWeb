@@ -84,7 +84,7 @@
     <Content Include="Model\Rules.htm" />
     <Content Include="Model\Namespaces.htm" />
     <Content Include="Model\Inheritance.htm" />
-    <Content Include="Model\PropertyChain.htm" />
+    <Content Include="Model\Property.htm" />
     <Content Include="Model\Types.htm" />
     <Content Include="UI\Helpers.htm" />
     <Content Include="UI\Controls.htm" />
