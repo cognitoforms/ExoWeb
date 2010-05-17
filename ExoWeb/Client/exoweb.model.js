@@ -748,7 +748,7 @@
 									// run rule asynchronously, and then pickup running next rules afterwards
 									var _this = this;
 									log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-									rule.execute(obj, function(obj) {
+									rule.execute(obj, function() {
 										rule._isExecuting = false;
 										_this.executeRules(obj, prop, i + 1);
 									});
