@@ -736,7 +736,7 @@
 				try {
 					var i = (start ? start : 0);
 
-					var rules = prop.get_rules();
+					var rules = prop.get_rules(true);
 					if (rules) {
 						processing = (i < rules.length);
 						while (processing) {
@@ -832,12 +832,18 @@
 					}
 				}
 			},
-			rule: function Property$rule(type) {
+			rule: function Property$rule(type, onlyTargets) {
+				if (!type || !(type instanceof Function)) {
+					ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type]);
+				}
+
 				if (this._rules) {
 					for (var i = 0; i < this._rules.length; i++) {
 						var rule = this._rules[i];
-						if (rule instanceof type) {
-							return rule;
+						if (rule.value instanceof type) {
+							if (!onlyTargets || rule.isTarget === true) {
+								return rule.value;
+							}
 						}
 					}
 				}
@@ -852,16 +858,21 @@
 
 				return false;
 			},
-			_addRule: function Property$_addRule(type) {
+			_addRule: function Property$_addRule(rule, isTarget) {
 				if (!this._rules) {
-					this._rules = [type];
+					this._rules = [{ value: rule, isTarget: isTarget}];
 				}
 				else {
-					this._rules.push(type);
+					this._rules.push({ value: rule, isTarget: isTarget });
 				}
 			},
-			get_rules: function Property$get_rules() {
-				return this._rules;
+			get_rules: function Property$get_rules(onlyTargets) {
+				return $transform(this._rules)
+					.where(function(r) {
+						return !onlyTargets || r.isTarget === true;
+					}).map(function(r) {
+						return r.value;
+					});
 			},
 			toString: function Property$toString() {
 				if (this._isStatic) {
@@ -1076,6 +1087,7 @@
 				var input = new RuleInput(this);
 				input.set_dependsOnGet(true);
 				input.set_dependsOnChange(false);
+				input.set_isTarget(true);
 				inputs.push(input);
 
 				var rule = {
@@ -1637,8 +1649,8 @@
 			get_isEntityListType: function PropertyChain$get_isEntityListType() {
 				return this.lastProperty().get_isEntityListType();
 			},
-			get_rules: function PropertyChain$_get_rules() {
-				return this.lastProperty().get_rules();
+			get_rules: function PropertyChain$_get_rules(onlyTargets) {
+				return this.lastProperty().get_rules(onlyTargets);
 			},
 			value: function PropertyChain$value(obj, val) {
 				var target = this.lastTarget(obj);
@@ -1867,7 +1879,18 @@
 			rule.isAsync = !!isAsync;
 
 			rule.inputs = inputs.map(function(item) {
-				return item instanceof RuleInput ? item : new RuleInput(item);
+				if (item instanceof RuleInput) {
+					return item;
+				}
+				else {
+					var input = new RuleInput(item);
+
+					// If inputs are not setup up front then they are 
+					// assumed to be a target of the rule.
+
+					input.set_isTarget(true);
+					return input;
+				}
 			});
 
 			// If the type filter was not specified then assume 
@@ -1934,6 +1957,12 @@
 			},
 			get_dependsOnGet: function RuleInput$get_dependsOnGet() {
 				return this._get === undefined ? false : this._get;
+			},
+			get_isTarget: function RuleInput$get_isTarget() {
+				return this._isTarget === undefined ? false : this._isTarget;
+			},
+			set_isTarget: function RuleInput$set_isTarget(value) {
+				this._isTarget = value;
 			}
 		};
 		ExoWeb.Model.RuleInput = RuleInput;
