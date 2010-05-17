@@ -21,6 +21,10 @@ namespace ExoWeb
 			return !(property is GraphValueProperty) || 
 				ServiceMethod.GetJsonValueType(((GraphValueProperty)property).PropertyType) != null;
 		}
+
+		public virtual void BeforeSerializeInstance(GraphInstance instance)
+		{
+		}
 	}
 
 	#endregion

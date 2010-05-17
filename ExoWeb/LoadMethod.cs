@@ -101,6 +101,10 @@ namespace ExoWeb
 
 			newChanges += processChanges;
 
+			// Allow service adapter to change state of instances prior to serialization
+			foreach (GraphInstance instance in instances.Values.SelectMany(v => v.Keys))
+				ServiceHandler.Adapter.BeforeSerializeInstance(instance);
+
 			// Start the root element
 			response.Write("{\r\n");
 
@@ -112,7 +116,7 @@ namespace ExoWeb
 				response.Write("\r\n   },\r\n");
 			}
 
-			// Serialize the list of instances
+			// Serialize the list of instances			
 			response.Write("   \"instances\": {\r\n");
 			OutputInstances(response);
 			response.Write("\r\n   }");
