@@ -355,10 +355,8 @@ namespace ExoWeb
 			// Process Value property paths
 			foreach (GraphValueProperty value in valueProperties)
 			{
-				bool isList = typeof(ICollection).IsAssignableFrom(value.PropertyType);
-
 				// If this is a list, register for loading
-				if (isList)
+				if (value.IsList)
 					instanceInfo.IncludeList(value);
 			}
 		}
@@ -507,9 +505,9 @@ namespace ExoWeb
 						else
 						{
 							var actualProperty = instance.Instance.GetValue((GraphValueProperty) property);
-							bool isList = typeof(ICollection).IsAssignableFrom(((GraphValueProperty) property).PropertyType);
+							//bool isList = typeof(ICollection).IsAssignableFrom(((GraphValueProperty) property).PropertyType);
 
-							if (isList)
+							if (property.IsList)
 							{
 								if (instance.HasList(property))
 									OutputValue(response, (GraphValueProperty) property, actualProperty);
