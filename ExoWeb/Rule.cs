@@ -97,10 +97,22 @@ namespace ExoWeb
 
 		public override void Register()
 		{
-			Type.Init += (sender, e) =>
+			if (GraphProperty is GraphReferenceProperty)
 			{
-				Invoke(e.Instance, e);
-			};
+				Type.ReferenceChange += (sender, e) =>
+				{
+					if (e.Property == this.GraphProperty)
+						Invoke(e.Instance, e);
+				};
+			}
+			else if (GraphProperty is GraphValueProperty)
+			{
+				Type.ValueChange += (sender, e) =>
+				{
+					if (e.Property == this.GraphProperty)
+						Invoke(e.Instance, e);
+				};
+			}
 		}
 
 		protected override void Invoke(GraphInstance root, GraphEvent graphEvent)
