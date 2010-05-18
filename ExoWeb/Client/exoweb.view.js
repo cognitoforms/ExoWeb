@@ -726,7 +726,7 @@
 				// invoke the method implementation
 				impl.apply(this, [force]);
 
-				if (this._target instanceof Element) {
+				if (Sys.UI.DomElement.isDomElement(this._target)) {
 					var target = this._target;
 
 					// Set _lastTarget=false on other radio buttons in the group, since they only 
