@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb", "ExoWeb\ExoWeb.csproj", "{4B14422C-751C-42AE-832A-B474A4AD0D95}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoGraph", "..\ExoGraph\ExoGraph\ExoGraph.csproj", "{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}"
