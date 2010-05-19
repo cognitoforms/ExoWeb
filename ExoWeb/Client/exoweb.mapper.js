@@ -761,13 +761,13 @@
 				}
 
 				try {
+					this._model.startQueueingEvents();
+
 					log("server", "begin applying {length} changes", changes);
 
 					this.beginApplyingChanges();
 
-					var signal = new ExoWeb.Signal();
-
-					var server = this;
+					var signal = new ExoWeb.Signal("ServerSync.apply");
 
 					var totalChanges = changes.length;
 					var newChanges = 0;
@@ -821,29 +821,29 @@
 								newChanges++;
 
 								if (recordChange) {
-									server._changes.push(change);
+									this._changes.push(change);
 								}
 							}
 
-							var callback = signal.pending(processNextChange);
+							var callback = signal.pending(processNextChange, this);
 
 							if (change.__type == "InitNew:#ExoGraph") {
-								server.applyInitChange(change, callback);
+								this.applyInitChange(change, callback);
 							}
 							else if (change.__type == "ReferenceChange:#ExoGraph") {
-								server.applyRefChange(change, callback);
+								this.applyRefChange(change, callback);
 							}
 							else if (change.__type == "ValueChange:#ExoGraph") {
-								server.applyValChange(change, callback);
+								this.applyValChange(change, callback);
 							}
 							else if (change.__type == "ListChange:#ExoGraph") {
-								server.applyListChange(change, callback);
+								this.applyListChange(change, callback);
 							}
 							else if (change.__type == "Save:#ExoGraph") {
 								var lookahead = (saveChanges && saveChanges.length > 0 && ignoreCount !== 0);
-								server.applySaveChange(change, lookahead, function() {
+								this.applySaveChange(change, lookahead, function() {
 									// changes have been applied so truncate the log to this point
-									server._truncateLog(server.canSave.setScope(server));
+									this._truncateLog(this.canSave.setScope(this));
 
 									callback.apply(this, arguments);
 								});
@@ -851,19 +851,21 @@
 						}
 					}
 
-					processNextChange();
+					processNextChange.call(this);
 
 					signal.waitForAll(function() {
 						log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
-						server.endApplyingChanges();
+						this.endApplyingChanges();
+						this._model.stopQueueingEvents();
 						if (newChanges > 0) {
 							log("server", "raising \"Changes\" property change event");
-							Sys.Observer.raisePropertyChanged(server, "Changes");
+							Sys.Observer.raisePropertyChanged(this, "Changes");
 						}
-					});
+					}, this);
 				}
 				catch (e) {
 					this.endApplyingChanges();
+					this._model.stopQueueingEvents();
 					ExoWeb.trace.throwAndLog(["server"], e);
 				}
 			},
