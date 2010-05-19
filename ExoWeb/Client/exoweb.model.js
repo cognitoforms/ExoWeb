@@ -582,32 +582,32 @@
 
 				if (prop.get_isStatic()) {
 					// for static properties add member to javascript type
-					this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter);
+					this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
 				}
 				else {
 					// for instance properties add member to all instances of this javascript type
-					this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop._getter);
+					this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
 				}
 
 				if (!prop.get_isList()) {
 					if (prop.get_isStatic()) {
-						this._jstype["set_" + def.name] = this._makeSetter(prop, prop._setter, true);
+						this._jstype["set_" + def.name] = this._makeSetter(prop, prop._setter, true, true);
 					}
 					else {
-						this._jstype.prototype["set_" + def.name] = this._makeSetter(prop, prop._setter, true);
+						this._jstype.prototype["set_" + def.name] = this._makeSetter(prop, prop._setter, true, true);
 					}
 				}
 
 				return prop;
 			},
-			_makeGetter: function Type$_makeGetter(receiver, fn) {
+			_makeGetter: function Type$_makeGetter(receiver, fn, skipTypeCheck) {
 				return function() {
-					return fn.call(receiver, this);
+					return fn.call(receiver, this, skipTypeCheck);
 				};
 			},
-			_makeSetter: function Type$_makeSetter(receiver, fn, notifiesChanges) {
+			_makeSetter: function Type$_makeSetter(receiver, fn, notifiesChanges, skipTypeCheck) {
 				var setter = function(val) {
-					fn.call(receiver, this, val);
+					fn.call(receiver, this, val, skipTypeCheck);
 				};
 
 				setter.__notifies = !!notifiesChanges;
@@ -917,10 +917,6 @@
 			},
 
 			_assertType: function Property$_assertType(obj) {
-				if (obj === undefined || obj === null) {
-					throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
-				}
-
 				if (this._isStatic === true) {
 					if (!ExoWeb.isType(obj.meta, Type)) {
 						throwAndLog(["model", "entity"], "A model type was expected, found \"{0}\".", [ExoWeb.parseFunctionName(obj.constructor)]);
@@ -949,8 +945,16 @@
 				}
 			},
 
-			_getter: function Property$_getter(obj) {
-				this._assertType(obj);
+			_getter: function Property$_getter(obj, skipTypeCheck) {
+				if (obj === undefined || obj === null) {
+					throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
+				}
+
+				// Generated setter added to entities can skip type validation since it is 
+				// unlikely to be called on an invalid object.
+				if (!skipTypeCheck) {
+					this._assertType(obj);
+				}
 
 				this._containingType.get_model().raisePropertyEvent(this, "get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
 
@@ -964,8 +968,16 @@
 				return obj[this._fieldName];
 			},
 
-			_setter: function Property$_setter(obj, val) {
-				this._assertType(obj);
+			_setter: function Property$_setter(obj, val, skipTypeCheck) {
+				if (obj === undefined || obj === null) {
+					throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
+				}
+
+				// Generated setter added to entities can skip type validation since it is 
+				// unlikely to be called on an invalid object.
+				if (!skipTypeCheck) {
+					this._assertType(obj);
+				}
 
 				if (!this.canSetValue(obj, val)) {
 					throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
