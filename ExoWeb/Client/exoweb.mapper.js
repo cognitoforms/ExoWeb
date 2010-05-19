@@ -2112,6 +2112,23 @@
 								})
 							);
 						}
+						else {
+							objectProvider(null, null, true, false, query.serverPaths, null,
+								allSignals.pending(function context$objects$callback(result) {
+									// load the json. this may happen asynchronously to increment the signal just in case
+									objectsFromJson(model, result.instances, allSignals.pending(function() {
+										if (result.conditionTargets) {
+											conditionsFromJson(model, result.conditionTargets);
+										}
+									}));
+								}),
+								allSignals.orPending(function context$objects$callback(error) {
+									ExoWeb.trace.logError("objectInit",
+										"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+										{ query: query, error: error });
+								})
+							);
+						}
 					})(varNameLoad);
 				}
 
