@@ -96,6 +96,7 @@ if (ExoWeb.Mock) {
 	ExoWeb.Mock.conditionTypes({
 		"Person.NameRequired": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Person.NameRequired",
 			category: "Error",
 			message: "Name is required.",
@@ -103,6 +104,7 @@ if (ExoWeb.Mock) {
 		},
 		"Person.NameLength": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Person.NameLength",
 			category: "Error",
 			message: "Name must be no more than 40 characters.",
@@ -110,6 +112,7 @@ if (ExoWeb.Mock) {
 		},
 		"Person.PhoneNumberRequired": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Person.PhoneNumberRequired",
 			category: "Error",
 			message: "PhoneNumber is required.",
@@ -117,6 +120,7 @@ if (ExoWeb.Mock) {
 		},
 		"Driver.DealerRequired": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Driver.DealerRequired",
 			category: "Error",
 			message: "Dealer is required.",
@@ -124,6 +128,7 @@ if (ExoWeb.Mock) {
 		},
 		"Driver.DealerAllowedValues": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Driver.DealerAllowedValues",
 			category: "Error",
 			message: "Dealer has an invalid value.",
@@ -131,6 +136,7 @@ if (ExoWeb.Mock) {
 		},
 		"Driver.CarsRequired": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Driver.CarsRequired",
 			category: "Error",
 			message: "Cars is required.",
@@ -138,6 +144,7 @@ if (ExoWeb.Mock) {
 		},
 		"Driver.CarsAllowedValues": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Driver.CarsAllowedValues",
 			category: "Error",
 			message: "Cars has an invalid value.",
@@ -145,6 +152,7 @@ if (ExoWeb.Mock) {
 		},
 		"Driver.MilesDrivenRange": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Driver.MilesDrivenRange",
 			category: "Error",
 			message: "MilesDriven must be at least 0.",
@@ -152,6 +160,7 @@ if (ExoWeb.Mock) {
 		},
 		"Driver.AllowedSalesPerson": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Driver.AllowedSalesPerson",
 			category: "Error",
 			message: "SalesPerson has an invalid value.",
@@ -159,6 +168,7 @@ if (ExoWeb.Mock) {
 		},
 		"Driver.NotesLength": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "Driver.NotesLength",
 			category: "Error",
 			message: "Notes must be no more than 100 characters.",
@@ -166,6 +176,7 @@ if (ExoWeb.Mock) {
 		},
 		"CarOwner.LocationAllowedValues": {
 			__type: "Error:#ExoWeb",
+			sets: null,
 			code: "CarOwner.LocationAllowedValues",
 			category: "Error",
 			message: "Location has an invalid value.",

@@ -1356,19 +1356,27 @@
 
 			// Create the condition type if it does not already exist.
 			if (!conditionType) {
+				// Get a list of condition type sets for this type.
+				var sets = !json.sets ? [] : json.sets.map(function(name) {
+					var set = ExoWeb.Model.ConditionTypeSet.get(name);
+					if (!set) {
+						set = new ExoWeb.Model.ConditionTypeSet(name);
+					}
+					return set;
+				});
 
 				// Create the appropriate condition type based on the category.
 				if (json.category == "Error") {
-					conditionType = new ExoWeb.Model.ConditionType.Error(code, json.message);
+					conditionType = new ExoWeb.Model.ConditionType.Error(code, json.message, sets);
 				}
 				else if (json.category == "Warning") {
-					conditionType = new ExoWeb.Model.ConditionType.Warning(code, json.message);
+					conditionType = new ExoWeb.Model.ConditionType.Warning(code, json.message, sets);
 				}
 				else if (json.category == "Permission") {
-					conditionType = new ExoWeb.Model.ConditionType.Permission(code, json.message, json.permissionType, json.isAllowed);
+					conditionType = new ExoWeb.Model.ConditionType.Permission(code, json.message, sets, json.permissionType, json.isAllowed);
 				}
 				else {
-					conditionType = new ExoWeb.Model.ConditionType(code, json.category, json.message);
+					conditionType = new ExoWeb.Model.ConditionType(code, json.category, json.message, sets);
 				}
 
 				// Account for the potential for subclasses to be serialized with additional properties.

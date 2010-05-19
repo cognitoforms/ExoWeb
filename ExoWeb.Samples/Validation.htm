@@ -80,7 +80,17 @@
     			});
     		}
     		
+			var mode = false;
+
     		function showValidation(sender, issues) {
+				var relevantIssues = $transform(issues).where(function(e) {
+					var sets = e.get_type().get_sets();
+					return sets.length === 0 || (
+						mode && sets.some(function(s) {
+							return s.get_name() == "Driver.BeforeRetired";
+						})
+					);
+				});
 
     			// locate validation area
     			var $area = $(this).closest(".validated");
@@ -97,7 +107,7 @@
 
     			var states = ["some", "none"];
 
-    			if (issues.length == 0) {
+    			if (relevantIssues.length == 0) {
     				setState($(this), "validated", "none", states);
     				setState($validation, "validation", "none", states);
     				setState($area, "validated", "none", states);
@@ -108,7 +118,7 @@
     				setState($validation, "validation", "some", states);
     				setState($area, "validated", "some", states);
 
-    				$validation.text(issues[0].get_message());
+    				$validation.text(relevantIssues[0].get_message());
     			}
     		}
 
@@ -166,6 +176,7 @@
 		<tbody class="sys-template" sys:attach="dataview" dataview:data="{~ context.model.driver }">
 			<tr sys:attach="content" content:data="{@ Name, prefix=Driver }" />
 			<tr sys:attach="content" content:data="{@ PhoneNumber, label=Phone Number }" />
+			<tr sys:attach="content" content:data="{@ MilesDriven }" />
 			<tr sys:attach="content" content:data="{@ BirthDate, label=Birthday }" />
 			<tr sys:attach="content" content:data="{@ Cars }" class="checkboxlist" />
 			<tr sys:attach="content" content:data="{@ Dealer }" class="dropdown" />

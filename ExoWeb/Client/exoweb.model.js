@@ -2314,23 +2314,103 @@
 		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function ConditionType(code, category, message) {
+		function ConditionTypeSet(name) {
+			if (allConditionTypeSets[name]) {
+				ExoWeb.trace.throwAndLog("conditions", "A set with the name \"{0}\" has already been created.", [name]);
+			}
+
+			this._name = name;
+			this._types = [];
+
+			allConditionTypeSets[name] = this;
+		}
+
+		var allConditionTypeSets = {};
+
+		ConditionTypeSet.all = function ConditionTypeSet$all() {
+			/// <summary>
+			/// Returns an array of all condition type sets that have been created.
+			/// Not that the array is created each time the function is called.
+			/// </summary>
+			/// <returns type="Array" />
+
+			var all = [];
+			for (var name in allConditionTypeSets) {
+				all.push(allConditionTypeSets[name]);
+			}
+			return all;
+		};
+		
+		ConditionTypeSet.get = function ConditionTypeSet$get(name) {
+			/// <summary>
+			/// Returns the condition type set with the given name, if it exists.
+			/// </summary>
+			/// <param name="name" type="String" />
+			/// <returns type="ConditionTypeSet" />
+
+			return allConditionTypeSets[name];
+		};
+
+		ConditionTypeSet.prototype = {
+			get_name: function ConditionTypeSet$get_name() {
+				return this._name;
+			},
+			get_types: function ConditionTypeSet$get_types() {
+				return this._types;
+			}
+		};
+		ExoWeb.Model.ConditionTypeSet = ConditionTypeSet;
+		ConditionTypeSet.registerClass("ExoWeb.Model.ConditionTypeSet");
+
+		//////////////////////////////////////////////////////////////////////////////////////
+		function ConditionType(code, category, message, sets) {
 			// So that sub types can use it's prototype.
 			if (arguments.length === 0) {
 				return;
 			}
 
+			if (allConditionTypes[code]) {
+				ExoWeb.trace.throwAndLog("conditions", "A condition type with the code \"{0}\" has already been created.", [code]);
+			}
+
 			this._code = code;
 			this._category = category;
 			this._message = message;
+			this._sets = sets;
 
-			ConditionType._all[code] = this;
+			if (sets && sets.length > 0) {
+				Array.forEach(sets, function(s) {
+					s._types.push(this);
+				}, this);
+			}
+
+			allConditionTypes[code] = this;
 		}
 
-		ConditionType._all = {};
+		var allConditionTypes = {};
+
+		ConditionType.all = function ConditionType$all() {
+			/// <summary>
+			/// Returns an array of all condition types that have been created.
+			/// Not that the array is created each time the function is called.
+			/// </summary>
+			/// <returns type="Array" />
+			
+			var all = [];
+			for (var name in allConditionTypes) {
+				all.push(allConditionTypes[name]);
+			}
+			return all;
+		}
 
 		ConditionType.get = function ConditionType$get(code) {
-			return ConditionType._all[code];
+			/// <summary>
+			/// Returns the condition type with the given code, if it exists.
+			/// </summary>
+			/// <param name="code" type="String" />
+			/// <returns type="ConditionTypeSet" />
+
+			return allConditionTypes[code];
 		};
 
 		ConditionType.prototype = {
@@ -2342,6 +2422,9 @@
 			},
 			get_message: function ConditionType$get_message() {
 				return this._message;
+			},
+			get_sets: function ConditionType$get_sets() {
+				return this._sets;
 			},
 			extend: function ConditionType$extend(data) {
 				for (var prop in data) {
@@ -2360,8 +2443,8 @@
 
 		(function() {
 			//////////////////////////////////////////////////////////////////////////////////////
-			function Error(code, message) {
-				ConditionType.call(this, code, "Error", message);
+			function Error(code, message, sets) {
+				ConditionType.call(this, code, "Error", message, sets);
 			}
 
 			Error.prototype = new ConditionType();
@@ -2370,8 +2453,8 @@
 			Error.registerClass("ExoWeb.Model.ConditionType.Error", ConditionType);
 
 			//////////////////////////////////////////////////////////////////////////////////////
-			function Warning(code, message) {
-				ConditionType.call(this, code, "Warning", message);
+			function Warning(code, message, sets) {
+				ConditionType.call(this, code, "Warning", message, sets);
 			}
 
 			Warning.prototype = new ConditionType();
@@ -2380,8 +2463,8 @@
 			Warning.registerClass("ExoWeb.Model.ConditionType.Warning", ConditionType);
 
 			//////////////////////////////////////////////////////////////////////////////////////
-			function Permission(code, message, permissionType, isAllowed) {
-				ConditionType.call(this, code, "Permission", message);
+			function Permission(code, message, sets, permissionType, isAllowed) {
+				ConditionType.call(this, code, "Permission", message, sets);
 				this._permissionType = permissionType;
 				this._isAllowed = isAllowed;
 			}
