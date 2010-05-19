@@ -52,11 +52,17 @@ namespace ExoWeb
 	[DataContract]
 	public abstract class PropertyRule : Rule
 	{
+		string declaringType;
+		string property;
+
 		public PropertyRule(GraphProperty graphProperty, ConditionType conditionType, ClientRuleType clientRuleType)
 			: base(graphProperty.DeclaringType, string.Format("{0}.{1}.{2}", graphProperty.DeclaringType.Name, graphProperty.Name, clientRuleType.ToString()))
 		{
 			this.ClientRuleType = clientRuleType;
-			this.GraphProperty = graphProperty;
+
+			this.declaringType = graphProperty.DeclaringType.Name;
+			this.property = graphProperty.Name;
+			
 			this.ConditionType = conditionType;
 			ConditionType.ConditionRule = this;
 		}
@@ -93,7 +99,13 @@ namespace ExoWeb
 		/// The <see cref="GraphProperty"/> representing the property that this rule
 		/// will depend on and that any <see cref="ConditionTarget"/>s will target.
 		/// </summary>
-		public GraphProperty GraphProperty { get; set; }
+		public GraphProperty GraphProperty
+		{
+			get
+			{
+				return GraphContext.Current.GetGraphType(declaringType).Properties[property];
+			}
+		}
 
 		public override void Register()
 		{
