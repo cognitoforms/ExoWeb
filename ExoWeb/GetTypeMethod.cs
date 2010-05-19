@@ -51,8 +51,7 @@ namespace ExoWeb
 		private void OutputConditionTypes(HttpResponse response, GraphType type)
 		{
 			bool isFirstType = true;
-			foreach (ConditionType conditionType in ServiceHandler.Adapter.GetConditionTypes(type)
-				.Where(conditionType => conditionType.ConditionRule == null || conditionType.ConditionRule is PropertyRule))
+			foreach (ConditionType conditionType in ServiceHandler.Adapter.GetConditionTypes(type))
 			{
 				// Handle trailing commas after each instance
 				if (isFirstType)
@@ -66,12 +65,14 @@ namespace ExoWeb
 
 		internal static void OutputConditionType(HttpResponse response, ConditionType conditionType)
 		{
+			List<Type> knownTypes = new List<Type>();
+
+			knownTypes.Add(conditionType.GetType());
+			if (conditionType.ConditionRule != null)
+				knownTypes.Add(conditionType.ConditionRule.GetType());
+
 			response.Write("      \"" + conditionType.Code + "\": " +
-					ToJson(typeof(ConditionType), conditionType,
-						new Type[]{
-								typeof(StringLengthRule),
-								typeof(AllowedValuesRule),
-								typeof(RequiredRule)}.AsEnumerable<Type>())
+					ToJson(typeof(ConditionType), conditionType, knownTypes)
 			);
 		}
 
