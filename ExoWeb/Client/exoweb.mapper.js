@@ -1169,6 +1169,7 @@
 			var signal = new ExoWeb.Signal("objectsFromJson");
 
 			try {
+				model.startQueueingEvents();
 				for (var typeName in json) {
 					var poolJson = json[typeName];
 					for (var id in poolJson) {
@@ -1178,7 +1179,10 @@
 				}
 			}
 			finally {
-				signal.waitForAll(callback);
+				signal.waitForAll(function() {
+					model.stopQueueingEvents();
+					callback.apply(this, arguments);
+				});
 			}
 		}
 

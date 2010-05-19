@@ -1211,8 +1211,16 @@ Type.registerNamespace("ExoWeb");
 			}
 		};
 
+		// Add ability to pass this pointer to addCollectionChanged
+		var addCollectionChanged = Sys.Observer.addCollectionChanged;
+		Sys.Observer.addCollectionChanged = function Sys$Observer$addCollectionChanged$override(target, handler, thisPtr) {
+			addCollectionChanged.call(this, target, function() {
+				handler.apply(thisPtr || this, arguments);
+			});
+		};
+
 		// Supress raising of property changed when a generated setter is already raising the event
-		Sys.Observer._setValue = function Sys$Observer$_setValue(target, propertyName, value) {
+		Sys.Observer._setValue = function Sys$Observer$_setValue$override(target, propertyName, value) {
 			var getter, setter, mainTarget = target, path = propertyName.split('.');
 			for (var i = 0, l = (path.length - 1); i < l; i++) {
 				var name = path[i];

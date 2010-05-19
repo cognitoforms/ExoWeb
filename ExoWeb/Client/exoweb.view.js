@@ -101,7 +101,7 @@
 								Array.forEach(evt.get_changes(), function(change) {
 									ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function(requiredResult, performedLoading) {
 										if (performedLoading) {
-											log(["markupExt", "~", "eval"], "New items added to list \"{$default}\".  Eval caused loading to occur on required path \"{required}\".", properties);
+											log(["markupExt", "~"], "New items added to list \"{$default}\".  Eval caused loading to occur on required path \"{required}\".", properties);
 										}
 										setValue(result, msg);
 									});
@@ -138,7 +138,7 @@
 											// when a point in the required path changes then load the chain and refresh the value
 											ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
 												if (performedLoading) {
-													log(["markupExt", "~", "eval"], "Required path \"{required}\" change.  Eval caused loading to occur.", properties);
+													log(["markupExt", "~"], "Required path \"{required}\" change.  Eval caused loading to occur.", properties);
 												}
 												setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
 											});
@@ -173,7 +173,7 @@
 								if (properties.required) {
 									ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function(requiredResult, performedLoading) {
 										if (performedLoading) {
-											log(["markupExt", "~", "eval"], "Initial setup.  Eval caused loading to occur on required path \"{required}\".", properties);
+											log(["markupExt", "~"], "Initial setup.  Eval caused loading to occur on required path \"{required}\".", properties);
 										}
 										setValue(result, message || "required path loaded");
 									});

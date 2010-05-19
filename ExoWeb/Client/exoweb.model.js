@@ -41,6 +41,10 @@
 					return a.sender == b.sender && a.property == b.property;
 				}
 			);
+
+			this._propertyQueue = new EventQueue(function(e) {
+				e.sender._raiseEvent(e.eventName, e.eventArgs);
+			});
 		}
 
 		Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback*/) {
@@ -120,6 +124,15 @@
 		};
 
 		Model.prototype = {
+			raisePropertyEvent: function Model$raisePropertyEvent(sender, eventName, eventArgs) {
+				this._propertyQueue.push({ sender: sender, eventName: eventName, eventArgs: eventArgs });
+			},
+			startQueueingEvents: function Model$startQueueingEvents(def) {
+				this._propertyQueue.startQueueing();
+			},
+			stopQueueingEvents: function Model$stopQueueingEvents(def) {
+				this._propertyQueue.stopQueueing();
+			},
 			addType: function Model$addType(name, base) {
 				var type = new Type(this, name, base);
 				this._types[name] = type;
@@ -914,7 +927,7 @@
 					}
 
 					if (!this.isDefinedBy(obj.meta)) {
-						throwAndLog(["model", "entity"], "Type {0} does not define property {1}.{2}.", [
+						throwAndLog(["model", "entity"], "Type {0} does not define static property {1}.{2}.", [
 							obj.get_fullName(),
 							this._containingType.get_fullName(),
 							this.get_label()
@@ -927,7 +940,7 @@
 					}
 
 					if (!this.isDefinedBy(obj.meta.type)) {
-						throwAndLog(["model", "entity"], "Type {0} does not define property {1}.{2}.", [
+						throwAndLog(["model", "entity"], "Type {0} does not define non-static property {1}.{2}.", [
 							obj.meta.type.get_fullName(),
 							this._containingType.get_fullName(),
 							this.get_label()
@@ -939,7 +952,7 @@
 			_getter: function Property$_getter(obj) {
 				this._assertType(obj);
 
-				this._raiseEvent("get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
+				this._containingType.get_model().raisePropertyEvent(this, "get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
 
 				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
 					ExoWeb.trace.logWarning("model",
@@ -973,7 +986,7 @@
 					// any rule causes a roundtrip to the server these changes will be available
 					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old, wasInited);
 
-					this._raiseEvent("changed", [obj, this, val, old, wasInited]);
+					this._containingType.get_model().raisePropertyEvent(this, "changed", [obj, this, val, old, wasInited]);
 
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
@@ -1069,20 +1082,18 @@
 				target[this._fieldName] = val;
 
 				if (val instanceof Array) {
-					var prop = this;
-
 					Sys.Observer.makeObservable(val);
 					Sys.Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
 						// NOTE: property change should be broadcast before rules are run so that if 
 						// any rule causes a roundtrip to the server these changes will be available
-						prop._containingType.get_model().notifyListChanged(target, prop, args.get_changes());
+						this._containingType.get_model().notifyListChanged(target, this, args.get_changes());
 
 						// NOTE: oldValue is not currently implemented for lists
-						prop._raiseEvent("changed", [target, prop, val, undefined, true]);
-					});
+						this._containingType.get_model().raisePropertyEvent(this, "changed", [target, this, val, undefined, true]);
+					}, this);
 				}
 
-				this._raiseEvent("changed", [target, this, val, undefined, false]);
+				this._containingType.get_model().raisePropertyEvent(this, "changed", [target, this, val, undefined, false]);
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
