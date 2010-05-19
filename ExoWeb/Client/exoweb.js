@@ -26,25 +26,25 @@ Type.registerNamespace("ExoWeb");
 			// The following flags can be turned on to see debugging info.
 			// Rather than editing the code below, set them in your application's page
 			flags: {
-				//		all: true,
-				//		signal: true,
-				//		typeInit: true,
-				//		objectInit: true,
-				//		propInit: true
-				//		listInit: true,
-				//		lazyLoad: true,
-				//		markupExt: true,
-				//		"~": true,
-				//		"@": true,
-				//		context: true,
-				//		tests: true,
-				//		mocks: true,
-				//		server: true,
-				//		ui: true,
-				//		templates: true,
-				//		rule: true,
-				//		model: true,
-				//		conditions: true
+				all: false,
+				signal: false,
+				typeInit: false,
+				objectInit: false,
+				propInit: false,
+				listInit: false,
+				lazyLoad: false,
+				markupExt: false,
+				"~": false,
+				"@": false,
+				context: false,
+				tests: false,
+				mocks: false,
+				server: false,
+				ui: false,
+				templates: false,
+				rule: false,
+				model: false,
+				conditions: false
 			},
 			_isEnabled: function _isEnabled(category) {
 				if (ExoWeb.trace.flags.all) {
@@ -378,6 +378,19 @@ Type.registerNamespace("ExoWeb");
 			var func = this;
 			return function setScope$fn() {
 				return func.apply(obj, arguments);
+			};
+		};
+
+		Function.prototype.prepare = function prepare(thisPtr, args) {
+			/// <summary>
+			/// Returns a function that will invoke this function with the given
+			/// this value and arguments, regardless of how the returned 
+			/// function is invoked.
+			/// </summary>
+
+			var func = this;
+			return function prepare$fn() {
+				return func.apply(thisPtr, args);
 			};
 		};
 

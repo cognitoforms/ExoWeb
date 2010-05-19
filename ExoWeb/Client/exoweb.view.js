@@ -99,7 +99,10 @@
 							// if additional paths are required then load them before updating the value
 							if (properties.required) {
 								Array.forEach(evt.get_changes(), function(change) {
-									ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function() {
+									ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function(requiredResult, performedLoading) {
+										if (performedLoading) {
+											log(["markupExt", "~", "eval"], "New items added to list \"{$default}\".  Eval caused loading to occur on required path \"{required}\".", properties);
+										}
 										setValue(result, msg);
 									});
 								});
@@ -133,7 +136,10 @@
 									ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
 										chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited, triggerProperty) {
 											// when a point in the required path changes then load the chain and refresh the value
-											ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load() {
+											ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
+												if (performedLoading) {
+													log(["markupExt", "~", "eval"], "Required path \"{required}\" change.  Eval caused loading to occur.", properties);
+												}
 												setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
 											});
 										}, item);
@@ -165,7 +171,10 @@
 							try {
 								// Load additional required paths
 								if (properties.required) {
-									ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function() {
+									ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function(requiredResult, performedLoading) {
+										if (performedLoading) {
+											log(["markupExt", "~", "eval"], "Initial setup.  Eval caused loading to occur on required path \"{required}\".", properties);
+										}
 										setValue(result, message || "required path loaded");
 									});
 								}

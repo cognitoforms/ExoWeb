@@ -19,28 +19,28 @@
 			this._types = {};
 
 			this._validatingQueue = new EventQueue(
-						function(e) {
-							var meta = e.sender;
-							var conditions = meta._propertyConditions[e.propName];
-							meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName]);
-						},
-						function(a, b) {
-							return a.sender == b.sender && a.propName == b.propName;
-						}
-					);
+				function(e) {
+					var meta = e.sender;
+					var conditions = meta._propertyConditions[e.propName];
+					meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName]);
+				},
+				function(a, b) {
+					return a.sender == b.sender && a.propName == b.propName;
+				}
+			);
 
 			this._validatedQueue = new EventQueue(
-						function(e) {
-							var meta = e.sender;
-							var propName = e.property;
+				function(e) {
+					var meta = e.sender;
+					var propName = e.property;
 
-							var conditions = meta._propertyConditions[propName];
-							meta._raiseEvent("propertyValidated:" + propName, [meta, conditions ? conditions : []]);
-						},
-						function(a, b) {
-							return a.sender == b.sender && a.property == b.property;
-						}
-					);
+					var conditions = meta._propertyConditions[propName];
+					meta._raiseEvent("propertyValidated:" + propName, [meta, conditions ? conditions : []]);
+				},
+				function(a, b) {
+					return a.sender == b.sender && a.property == b.property;
+				}
+			);
 		}
 
 		Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback*/) {
@@ -1782,8 +1782,8 @@
 
 				this.type.executeRules(this._obj, prop);
 			},
-			property: function ObjectMeta$property(propName) {
-				return this.type.property(propName);
+			property: function ObjectMeta$property(propName, thisOnly) {
+				return this.type.property(propName, thisOnly);
 			},
 			clearConditions: function ObjectMeta$clearConditions(origin) {
 				var conditions = this._conditions;
@@ -2741,7 +2741,7 @@
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		function LazyLoader() {
 		}
-		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn*/) {
+		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading*/) {
 			if (!ExoWeb.isDefined(path)) {
 				path = "";
 			}
@@ -2762,21 +2762,31 @@
 				target = Array.dequeue(scopeChain);
 			}
 
-			// Allow an invocation to specify continuing loading properties using a given function, by default this is LazyLoader.eval.
-			// This is used by evalAll to ensure that array properties can be force loaded at any point in the path.
-			var continueFn = arguments.length == 7 && arguments[6] instanceof Function ? arguments[6] : LazyLoader.eval;
+			// Initialize to defaults.
+			var performedLoading = false;
+			var continueFn = LazyLoader.eval;
+
+			// If additional arguments were specified (internal), then use those.
+			if (arguments.length == 8) {
+				// Allow an invocation to specify continuing loading properties using a given function, by default this is LazyLoader.eval.
+				// This is used by evalAll to ensure that array properties can be force loaded at any point in the path.
+				continueFn = arguments[6] instanceof Function ? arguments[6] : continueFn;
+				// Allow recursive calling function (eval or evalAll) to specify that loading was performed.
+				performedLoading = arguments[7] instanceof Boolean ? arguments[7] : performedLoading;
+			}
 
 			while (path.steps.length > 0) {
 				// If an array is encountered and this call originated from "evalAll" then delegate to "evalAll", otherwise 
 				// this will most likely be an error condition unless the remainder of the path are properties of Array.
 				if (continueFn == LazyLoader.evalAll && target instanceof Array) {
-					continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn);
+					continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading);
 					return;
 				}
 
 				var step = Array.dequeue(path.steps);
 
 				if (!LazyLoader.isLoaded(target, step.property)) {
+					performedLoading = true;
 					LazyLoader.load(target, step.property, function() {
 						var nextTarget = ExoWeb.getValue(target, step.property);
 
@@ -2786,7 +2796,7 @@
 							if (scopeChain.length > 0) {
 								Array.insert(path.steps, 0, step);
 
-								continueFn(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain, thisPtr, continueFn);
+								continueFn(Array.dequeue(scopeChain), path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading);
 							}
 							// Nowhere to backtrack, so return or throw an error.
 							else if (errorCallback) {
@@ -2798,7 +2808,7 @@
 						}
 						// Continue if there is a next target and either no cast of the current property or the value is of the cast type.
 						else if (nextTarget !== null && (!step.cast || ExoWeb.isType(nextTarget, step.cast))) {
-							continueFn(nextTarget, path, successCallback, errorCallback, [], thisPtr, continueFn);
+							continueFn(nextTarget, path, successCallback, errorCallback, [], thisPtr, continueFn, performedLoading);
 						}
 						// If the next target is defined & non-null or not of the cast type, then exit with success.
 						else if (successCallback) {
@@ -2849,14 +2859,17 @@
 
 			// Load final object
 			if (ExoWeb.isDefined(target) && !LazyLoader.isLoaded(target)) {
-				LazyLoader.load(target, null, function() { successCallback.call(thisPtr, target); });
+				performedLoading = true;
+				LazyLoader.load(target, null, successCallback.prepare(thisPtr, [target, performedLoading]));
 			}
 			else if (successCallback) {
-				successCallback.call(thisPtr, target);
+				successCallback.call(thisPtr, target, performedLoading);
 			}
 		};
 
-		LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr) {
+		LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading*/) {
+			var performedLoading = arguments.length == 8 && arguments[7] instanceof Boolean ? arguments[7] : false;
+
 			if (target instanceof Array) {
 				if (LazyLoader.isLoaded(target)) {
 					var signal = new ExoWeb.Signal();
@@ -2870,7 +2883,8 @@
 					Array.forEach(target, function(subTarget, i) {
 						results.push(null);
 						errors.push(null);
-						successCallbacks.push(signal.pending(function(result) {
+						successCallbacks.push(signal.pending(function(result, performedLoadingOne) {
+							performedLoading = performedLoading || performedLoadingOne;
 							results[i] = result;
 						}));
 						errorCallbacks.push(signal.orPending(function(err) {
@@ -2880,14 +2894,14 @@
 					});
 
 					Array.forEach(target, function(subTarget, i) {
-						LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll);
+						LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll, performedLoading);
 					});
 
 					signal.waitForAll(function() {
 						if (allSucceeded) {
 							// call the success callback if one exists
 							if (successCallback) {
-								successCallback.call(thisPtr, results);
+								successCallback.call(thisPtr, results, performedLoading);
 							}
 						}
 						else if (errorCallback) {
@@ -2907,12 +2921,12 @@
 				}
 				else {
 					LazyLoader.load(target, null, function() {
-						LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr);
+						LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading);
 					});
 				}
 			}
 			else {
-				LazyLoader.evalAll([target], path, successCallback, errorCallback, scopeChain, thisPtr);
+				LazyLoader.evalAll([target], path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading);
 			}
 		};
 
