@@ -28,17 +28,19 @@ namespace ExoWeb
 		protected Rule(GraphType type, string name)
 			: base(name)
 		{
-			this.Type = type;
+			this.GraphTypeName = type.Name;
 		}
 
 		[DataMember(Name = "rootType")]
-		public string RootType
-		{
-			get { return Type.Name; }
-			set{}
-		}
+		public string GraphTypeName { get; private set; }
 
-		public GraphType Type { get; private set; }
+		public GraphType Type
+		{
+			get
+			{
+				return GraphContext.Current.GetGraphType(GraphTypeName);
+			}
+		}
 	}
 
 	#endregion
@@ -52,15 +54,12 @@ namespace ExoWeb
 	[DataContract]
 	public abstract class PropertyRule : Rule
 	{
-		string declaringType;
 		string property;
 
 		public PropertyRule(GraphProperty graphProperty, ConditionType conditionType, ClientRuleType clientRuleType)
 			: base(graphProperty.DeclaringType, string.Format("{0}.{1}.{2}", graphProperty.DeclaringType.Name, graphProperty.Name, clientRuleType.ToString()))
 		{
 			this.ClientRuleType = clientRuleType;
-
-			this.declaringType = graphProperty.DeclaringType.Name;
 			this.property = graphProperty.Name;
 			
 			this.ConditionType = conditionType;
@@ -103,7 +102,7 @@ namespace ExoWeb
 		{
 			get
 			{
-				return GraphContext.Current.GetGraphType(declaringType).Properties[property];
+				return Type.Properties[property];
 			}
 		}
 

@@ -878,7 +878,7 @@
 
 					var processNextIdChange = function processNextIdChange() {
 						if (index == change.idChanges.length) {
-							callback();
+							callback.call(this);
 						}
 						else {
 							var idChange = change.idChanges[index++];
@@ -947,7 +947,7 @@
 					processNextIdChange.call(this);
 				}
 				else {
-					callback();
+					callback.call(this);
 				}
 			},
 			applyInitChange: function ServerSync$applyInitChange(change, callback) {
