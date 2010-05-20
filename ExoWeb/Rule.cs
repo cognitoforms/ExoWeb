@@ -161,7 +161,7 @@ namespace ExoWeb
 				return true;
 			}
 			else
-				return root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null) != null;
+				return root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null) == null;
 		}
 	}
 
