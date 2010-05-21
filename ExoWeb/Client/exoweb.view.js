@@ -314,7 +314,7 @@
 					this._observable = true;
 				}
 			},
-			_onTargetChanged: function Adapter$_onTargetChanged() {
+			_onTargetChanged: function Adapter$_onTargetChanged(sender, prop, val, oldVal) {
 				if (this._ignoreTargetEvents) {
 					return;
 				}
@@ -362,6 +362,17 @@
 				displaySignal.waitForAll(function() {
 					Sys.Observer.raisePropertyChanged(_this, "displayValue");
 				});
+
+				// Raise change on options representing the old and new value in the event that the property 
+				// has be changed by non-UI code or another UI component.  This will result in double raising 
+				// events if the value was set by changing selected on one of the OptionAdapter objects.
+				if (this._options) {
+					Array.forEach(this._options, function(o) {
+						if (o.get_rawValue() == val || o.get_rawValue() == oldVal) {
+							Sys.Observer.raisePropertyChanged(o, "selected");
+						}
+					});
+				}
 			},
 			_reloadOptions: function Adapter$_reloadOptions() {
 				this._options = null;
