@@ -1881,12 +1881,14 @@
 				var signal = new ExoWeb.Signal();
 
 				var model = list._ownerProperty.get_containingType().get_model();
-				var propType = list._ownerProperty.get_jstype().meta;
-				var propName = list._ownerProperty.get_name();
+				var ownerId = list._ownerId;
 				var ownerType = list._ownerProperty.get_containingType().get_fullName();
+				var prop = list._ownerProperty;
+				var propName = list._ownerProperty.get_name();
+				var propType = list._ownerProperty.get_jstype().meta;
 
 				// load the objects in the list
-				log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, list._ownerId, propName]);
+				log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
 
 				var objectJson, conditionsJson;
 
@@ -1912,10 +1914,10 @@
 						return;
 					}
 
-					log("list", "{0}({1}).{2}", [ownerType, list._ownerId, propName]);
+					log("list", "{0}({1}).{2}", [ownerType, ownerId, propName]);
 
 					// The actual type name and id as found in the resulting json.
-					var jsonId = list._ownerId;
+					var jsonId = ownerId;
 					var jsonType = ownerType;
 
 					// Find the given type and id in the object json.  The type key may be a dervied type.
@@ -1948,8 +1950,8 @@
 						}
 					}
 
-					if (!searchJson(ExoWeb.Model.Model.getJsType(ownerType).meta, list._ownerId)) {
-						ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, list._ownerId]);
+					if (!searchJson(ExoWeb.Model.Model.getJsType(ownerType).meta, ownerId)) {
+						ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, ownerId]);
 					}
 
 					var listJson = objectJson[jsonType][jsonId][propName];
@@ -1967,22 +1969,34 @@
 						}
 					}
 
+					// get the list owner type (static) or entity (non-static)
+					var owner = ownerId === STATIC_ID ?
+						propType.get_jstype() :
+						getObject(model, ownerType, ownerId, null);
+
 					// remove list from json and process the json.  there may be
 					// instance data returned for the objects in the list
-					if (ExoWeb.Model.LazyLoader.isLoaded(list._ownerId === STATIC_ID ?
-						propType.get_jstype() :
-						getObject(model, ownerType, list._ownerId, null))) {
+					if (ExoWeb.Model.LazyLoader.isLoaded(owner)) {
 
 						delete objectJson[jsonType][jsonId];
+					}
+
+					var done = function() {
+						callback.apply(this, arguments);
+
+						// Collection change driven by user action or other behavior would result in the "change" event
+						// being raised for the list property.  Since we don't want to record this as a true observable
+						// change, raise the event manually so that rules will still run as needed.
+						prop._raiseEvent("changed", [owner, prop, list, undefined, true]);
 					}
 
 					ListLazyLoader.unregister(list, this);
 					objectsFromJson(model, objectJson, function() {
 						if (conditionsJson) {
-							conditionsFromJson(model, conditionsJson, callback);
+							conditionsFromJson(model, conditionsJson, done);
 						}
 						else {
-							callback();
+							done();
 						}
 					});
 				});
