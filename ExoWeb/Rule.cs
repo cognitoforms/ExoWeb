@@ -11,15 +11,6 @@ using ExoRule;
 
 namespace ExoWeb
 {
-	public enum ClientRuleType
-	{
-		unsupported,
-		required,
-		range,
-		stringLength,
-		allowedValues
-	}
-
 	#region Rule
 
 	[DataContract]
@@ -45,6 +36,24 @@ namespace ExoWeb
 
 	#endregion
 
+	#region ClientRuleType
+
+	/// <summary>
+	/// Correspond to rules that are implemented by ExoWeb client scripts.
+	/// </summary>
+	public enum ClientRuleType
+	{
+		unsupported,
+		required,
+		range,
+		stringLength,
+		allowedValues
+	}
+
+	#endregion
+
+	#region PropertyRule
+
 	/// <summary>
 	/// Abstract baseclass for <see cref="ExoRule.Rule"/> that is
 	/// understood by client ExoWeb libraries.  Since behavior is well known,
@@ -54,39 +63,84 @@ namespace ExoWeb
 	[DataContract]
 	public abstract class PropertyRule : Rule
 	{
-		string property;
+		#region Fields
+
+		private string propertyName;
+
+		// By default rules should register to run on property change.
+		private PropertyRuleRegistrationMode registrationMode = PropertyRuleRegistrationMode.PropertyChange;
+
+		private string[] propertyPaths;
+
+		#endregion
+
+		#region Constructors
 
 		public PropertyRule(GraphProperty graphProperty, ConditionType conditionType, ClientRuleType clientRuleType)
 			: base(graphProperty.DeclaringType, string.Format("{0}.{1}.{2}", graphProperty.DeclaringType.Name, graphProperty.Name, clientRuleType.ToString()))
 		{
 			this.ClientRuleType = clientRuleType;
-			this.property = graphProperty.Name;
-			
+
+			this.propertyName = graphProperty.Name;
+
 			this.ConditionType = conditionType;
 			ConditionType.ConditionRule = this;
 		}
 
+		#endregion
+
+		#region Properties
+
+		/// <summary>
+		/// Client-format property path(s) that the rule applies to.
+		/// </summary>
 		[DataMember(Name = "properties")]
-		private string[] Properties 
+		private string[] PropertyPaths 
 		{
 			get
 			{
-				return new string[] { GraphProperty.IsStatic ? GraphProperty.Name : "this." + GraphProperty.Name };
-			}
-			set { }
-		}
+				if (propertyPaths == null)
+				{
+					propertyPaths = new string[] { GraphProperty.IsStatic ? GraphProperty.Name : "this." + GraphProperty.Name };
+				}
 
-		[DataMember(Name = "clientRuleType")]
-		private string _ClientRuleType
-		{
-			get
+				return propertyPaths;
+			}
+			set
 			{
-				return this.ClientRuleType.ToString();
+				propertyPaths = value;
 			}
-			set { }
 		}
 
+		/// <summary>
+		/// The type of rule implementation in client script.
+		/// </summary>
 		public ClientRuleType ClientRuleType { get; protected set; }
+
+		/// <summary>
+		/// String name of a rule that is recognized by client scripts.
+		/// </summary>
+		[DataMember(Name = "clientRuleType")]
+		private string ClientRuleTypeName
+		{
+			get
+			{
+				return ClientRuleType.ToString();
+			}
+			set
+			{
+				ClientRuleType = (ClientRuleType)Enum.Parse(typeof(ClientRuleType), value);
+			}
+		}
+
+		/// <summary>
+		/// Indicates which event(s) a property rule should subscribe to.
+		/// </summary>
+		public PropertyRuleRegistrationMode RegistrationMode
+		{
+			get { return registrationMode; }
+			set { registrationMode = value; }
+		}
 
 		/// <summary>
 		/// A <see cref="ConditionType"/> that will associated with a graph when
@@ -102,27 +156,47 @@ namespace ExoWeb
 		{
 			get
 			{
-				return Type.Properties[property];
+				// Store the property name rather than property so that the property 
+				// can be retrieved off of the <see cref="GraphType"/> in the current <see cref="GraphContext"/>.
+				return Type.Properties[propertyName];
 			}
 		}
 
+		#endregion
+
+		#region Methods
+
+		/// <summary>
+		/// Registers the rule to run on type init, property change, or both.
+		/// </summary>
 		public override void Register()
 		{
-			if (GraphProperty is GraphReferenceProperty)
+			if ((RegistrationMode & PropertyRuleRegistrationMode.TypeInit) != 0)
 			{
-				Type.ReferenceChange += (sender, e) =>
+				Type.Init += (sender, e) =>
 				{
-					if (e.Property == this.GraphProperty)
-						Invoke(e.Instance, e);
+					Invoke(e.Instance, e);
 				};
 			}
-			else if (GraphProperty is GraphValueProperty)
+
+			if ((RegistrationMode & PropertyRuleRegistrationMode.PropertyChange) != 0)
 			{
-				Type.ValueChange += (sender, e) =>
+				if (GraphProperty is GraphReferenceProperty)
 				{
-					if (e.Property == this.GraphProperty)
-						Invoke(e.Instance, e);
-				};
+					Type.ReferenceChange += (sender, e) =>
+					{
+						if (e.Property == this.GraphProperty)
+							Invoke(e.Instance, e);
+					};
+				}
+				else if (GraphProperty is GraphValueProperty)
+				{
+					Type.ValueChange += (sender, e) =>
+					{
+						if (e.Property == this.GraphProperty)
+							Invoke(e.Instance, e);
+					};
+				}
 			}
 		}
 
@@ -132,12 +206,32 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Overridden in subclasses to determine if the <see cref="ConditionType"/>
-		/// applies.
+		/// Overridden in subclasses to determine if the <see cref="ConditionType"/> applies.
 		/// </summary>
 		/// <returns>true if <paramref name="root"/> should be associated with the <see cref="ConditionType"/></returns>
 		protected abstract bool ConditionApplies(GraphInstance root);
+
+		#endregion
 	}
+
+	#endregion
+
+	#region PropertyRuleRegistrationMode
+
+	/// <summary>
+	/// Events that a property rule can subscribe to.
+	/// </summary>
+	[Flags]
+	public enum PropertyRuleRegistrationMode
+	{
+		PropertyChange = 1,
+		TypeInit = 2,
+		Both = 3
+	}
+
+	#endregion
+
+	#region RequiredRule
 
 	/// <summary>
 	/// Applies conditions when the value of a <see cref="GraphProperty"/> is
@@ -150,20 +244,69 @@ namespace ExoWeb
 			: base(graphProperty, conditionType, ClientRuleType.required)
 		{ }
 
+		/// <summary>
+		/// Determines whether the rule should attach a condition for a property that is a reference list.
+		/// The default implemenation checks to see if the list is empty.
+		/// </summary>
+		/// <param name="instances">The value of the property that this rule is bound to.</param>
+		/// <returns>A boolean value indicating whether a condition should be attached.</returns>
+		protected virtual bool ConditionAppliesToReferenceList(GraphInstanceList instances)
+		{
+			return instances.Count == 0;
+		}
+
+		/// <summary>
+		/// Determines whether the rule should attach a condition for a property that is a reference.
+		/// The default implemenation checks to see if the reference is null.
+		/// </summary>
+		/// <param name="instances">The value of the property that this rule is bound to.</param>
+		/// <returns>A boolean value indicating whether a condition should be attached.</returns>
+		protected virtual bool ConditionAppliesToReference(GraphInstance instance)
+		{
+			return instance == null;
+		}
+
+		/// <summary>
+		/// Determines whether the rule should attach a condition for a property that is a value type.
+		/// The default implemenation checks to see if the value is null.
+		/// </summary>
+		/// <param name="instances">The value of the property that this rule is bound to.</param>
+		/// <returns>A boolean value indicating whether a condition should be attached.</returns>
+		protected virtual bool ConditionAppliesToValue(object value)
+		{
+			return value == null;
+		}
+
+		/// <summary>
+		/// Determines whether the rule should attach its condition to the given <see cref="GraphInstance"/>.
+		/// </summary>
+		/// <param name="root">The graph instance to evaluate the rule for.</param>
+		/// <returns>A boolean value indicating whether the state of the given <see cref="GraphInstance"/> violates the rule.</returns>
 		protected override bool ConditionApplies(GraphInstance root)
 		{
-			if (GraphProperty is GraphReferenceProperty && ((GraphReferenceProperty)GraphProperty).IsList)
+			if (GraphProperty is GraphReferenceProperty)
 			{
-				foreach (object item in ((IEnumerable)root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null)))
+				GraphReferenceProperty referenceProperty = (GraphReferenceProperty)GraphProperty;
+				if (referenceProperty.IsList)
 				{
-					return false;
+					return ConditionAppliesToReferenceList(root.GetList(GraphProperty as GraphReferenceProperty));
 				}
-				return true;
+				else
+				{
+					return ConditionAppliesToReference(root.GetReference(referenceProperty));
+				}
 			}
 			else
-				return root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null) == null;
+			{
+				GraphValueProperty valueProperty = (GraphValueProperty)GraphProperty;
+				return ConditionAppliesToValue(root.GetValue(valueProperty));
+			}
 		}
 	}
+
+	#endregion
+
+	#region RangeRule
 
 	/// <summary>
 	/// Applies conditions when the value of a <see cref="GraphProperty"/> is
@@ -205,6 +348,10 @@ namespace ExoWeb
 		}
 	}
 
+	#endregion
+
+	#region StringLengthRule
+
 	/// <summary>
 	/// Applies conditions when the value of a <see cref="GraphProperty"/> is
 	/// too short or long.
@@ -236,6 +383,10 @@ namespace ExoWeb
 			return len > Maximum || len < Minimum;
 		}
 	}
+
+	#endregion
+
+	#region AllowedValuesRule
 
 	/// <summary>
 	/// Applies conditions when the value of a <see cref="GraphProperty"/> is
@@ -327,10 +478,11 @@ namespace ExoWeb
 		}
 	}
 
-	/*
-	 
+	#endregion
+
 	#region DataAnnotationsAdapter
 
+	/*
 	public class DataAnnotationsAdapter : IServiceAdapter
 	{
 		IEnumerable<Rule> IServiceAdapter.GetRules(GraphType type)
@@ -375,11 +527,13 @@ namespace ExoWeb
 		void IServiceAdapter.OnError(IServiceError error)
 		{ }
 	}
+	*/
 
 	#endregion
 
 	#region AllowedValuesAttribute
 
+	/*
 	public class AllowedValuesAttribute : ValidationAttribute
 	{
 		public string From { get; set; }
@@ -418,8 +572,8 @@ namespace ExoWeb
 					  select p).FirstOrDefault();
 		}
 	}
-
-	#endregion
 	
 	*/
+
+	#endregion
 }
