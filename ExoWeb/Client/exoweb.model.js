@@ -1839,7 +1839,7 @@
 					this._addCondition(condition);
 				}
 
-				if ((idx < 0 && condition) || (idx >= 0 && !condition)) {
+				if ((idx < 0 && when) || (idx >= 0 && !when)) {
 					this._raisePropertiesValidated(condition.get_properties());
 				}
 			},
@@ -2340,7 +2340,7 @@
 			}
 			return all;
 		};
-		
+
 		ConditionTypeSet.get = function ConditionTypeSet$get(name) {
 			/// <summary>
 			/// Returns the condition type set with the given name, if it exists.
@@ -2377,6 +2377,7 @@
 			this._category = category;
 			this._message = message;
 			this._sets = sets;
+			this._rules = [];
 
 			if (sets && sets.length > 0) {
 				Array.forEach(sets, function(s) {
@@ -2395,7 +2396,7 @@
 			/// Not that the array is created each time the function is called.
 			/// </summary>
 			/// <returns type="Array" />
-			
+
 			var all = [];
 			for (var name in allConditionTypes) {
 				all.push(allConditionTypes[name]);
@@ -2426,9 +2427,12 @@
 			get_sets: function ConditionType$get_sets() {
 				return this._sets;
 			},
+			get_rules: function ConditionType$get_rules() {
+				return this._rules;
+			},
 			extend: function ConditionType$extend(data) {
 				for (var prop in data) {
-					if (prop !== "__type" && !this["get_" + prop]) {
+					if (prop !== "__type" && prop !== "rule" && !this["get_" + prop]) {
 						var fieldName = "_" + prop;
 						this[fieldName] = data[prop];
 						this["get" + fieldName] = function ConditionType$getter() {

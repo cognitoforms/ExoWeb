@@ -1383,7 +1383,7 @@
 				conditionType.extend(json);
 			}
 
-			if (json.rule) {
+			if (json.rule && json.rule.hasOwnProperty("clientRuleType")) {
 				var ruleType = ExoWeb.Model.Rule[json.rule.clientRuleType];
 				var mtype = model.type(json.rule.rootType);
 
@@ -1393,6 +1393,8 @@
 				});
 
 				var rule = new ruleType(json.rule, props, conditionType);
+
+				conditionType.get_rules().push(rule);
 			}
 		}
 
