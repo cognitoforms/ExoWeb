@@ -998,7 +998,7 @@
 					// any rule causes a roundtrip to the server these changes will be available
 					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old, wasInited);
 
-					this._containingType.get_model().raisePropertyEvent(this, "changed", [obj, this, val, old, wasInited]);
+					this._containingType.get_model().raisePropertyEvent(this, "changed", [obj, this, val, old, wasInited, this]);
 
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
@@ -1101,11 +1101,11 @@
 						this._containingType.get_model().notifyListChanged(target, this, args.get_changes());
 
 						// NOTE: oldValue is not currently implemented for lists
-						this._containingType.get_model().raisePropertyEvent(this, "changed", [target, this, val, undefined, true]);
+						this._containingType.get_model().raisePropertyEvent(this, "changed", [target, this, val, undefined, true, this]);
 					}, this);
 				}
 
-				this._containingType.get_model().raisePropertyEvent(this, "changed", [target, this, val, undefined, false]);
+				this._containingType.get_model().raisePropertyEvent(this, "changed", [target, this, val, undefined, false, this]);
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
