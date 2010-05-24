@@ -365,26 +365,28 @@
 			canSave: function ServerSync$canSave(change) {
 				// For list changes additionally check added and removed objects.
 				if (change.__type == "ListChange:#ExoGraph") {
-					var ignore = true;
+					if (change.added.length > 0 || change.removed.length > 0) {
+						var ignore = true;
 
-					// Search added and removed for an object that can be saved.
-					Array.forEach(change.added, function(item) {
-						var addedObj = fromExoGraph(item, this._translator);
-						if (this._canSaveObject(addedObj)) {
-							ignore = false;
-						}
-					}, this);
-					Array.forEach(change.removed, function(item) {
-						var removedObj = fromExoGraph(item, this._translator);
-						if (this._canSaveObject(removedObj)) {
-							ignore = false;
-						}
-					}, this);
+						// Search added and removed for an object that can be saved.
+						Array.forEach(change.added, function(item) {
+							var addedObj = fromExoGraph(item, this._translator);
+							if (this._canSaveObject(addedObj)) {
+								ignore = false;
+							}
+						}, this);
+						Array.forEach(change.removed, function(item) {
+							var removedObj = fromExoGraph(item, this._translator);
+							if (this._canSaveObject(removedObj)) {
+								ignore = false;
+							}
+						}, this);
 
-					// If no "savable" object was found in added or 
-					// removed then this change cannot be saved.
-					if (ignore) {
-						return false;
+						// If no "savable" object was found in added or 
+						// removed then this change cannot be saved.
+						if (ignore) {
+							return false;
+						}
 					}
 				}
 
