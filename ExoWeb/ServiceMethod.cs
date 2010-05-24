@@ -26,6 +26,7 @@ namespace ExoWeb
 		static ServiceMethod()
 		{
 			jsonIntrinsicTypes[typeof(string)] = "String";
+			jsonIntrinsicTypes[typeof(Guid)] = "String";
 			jsonIntrinsicTypes[typeof(bool)] = "Boolean";
 			jsonIntrinsicTypes[typeof(byte)] = "Number";
 			jsonIntrinsicTypes[typeof(int)] = "Number";
