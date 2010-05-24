@@ -1742,8 +1742,8 @@
 					}),
 					signal.orPending(function(e) {
 						var message = $format("Failed to load {0}({1}): ", [mtype.get_fullName(), id]);
-						if (e !== undefined && e !== null && 
-							e.get_message !== undefined && e.get_message !== null && 
+						if (e !== undefined && e !== null &&
+							e.get_message !== undefined && e.get_message !== null &&
 							e.get_message instanceof Function) {
 
 							message += e.get_message();
@@ -1809,9 +1809,13 @@
 						for (var i = 0; i < paths.length; i++) {
 							var path = paths[i].expression;
 							var chain = ExoWeb.Model.Model.property(path, jstype.meta);
-							var rootedPath = chain.rootedPath(obj.meta.type);
-							if (rootedPath) {
-								relPaths.push(rootedPath);
+							// No need to include static paths since if they were 
+							// cached then they were loaded previously.
+							if (!chain.get_isStatic()) {
+								var rootedPath = chain.rootedPath(obj.meta.type);
+								if (rootedPath) {
+									relPaths.push(rootedPath);
+								}
 							}
 						}
 					}

@@ -1294,7 +1294,7 @@
 			},
 			rootedPath: function Property$rootedPath(type) {
 				if (this.isDefinedBy(type)) {
-					return (this._isStatic ? "" : "this.") + this._name;
+					return (this._isStatic ? this._containingType.get_fullName() : "this") + "." + this._name;
 				}
 			}
 		});
@@ -1654,7 +1654,7 @@
 				for (var i = 0; i < this._properties.length; i++) {
 					if (this._properties[i].isDefinedBy(rootType)) {
 						var path = this._getPathFromIndex(i);
-						return (this._properties[i]._isStatic ? "" : "this.") + path;
+						return (this._properties[i]._isStatic ? this._properties[i].get_containingType().get_fullName() : "this") + "." + path;
 					}
 				}
 			},
