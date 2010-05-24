@@ -230,6 +230,9 @@
 			this._readySignal = new ExoWeb.Signal();
 
 			if (options.optionsTransform) {
+				if (options.optionsTransform.indexOf("groupBy(") >= 0) {
+					throwAndLog(["@", "markupExt"], "optionsTransform does not support grouping");
+				}
 				this._optionsTransform = options.optionsTransform;
 			}
 
