@@ -1741,7 +1741,17 @@
 						conditionsJson = result.conditionTargets;
 					}),
 					signal.orPending(function(e) {
-						ExoWeb.trace.logError("lazyLoad", e);
+						var message = $format("Failed to load {0}({1}): ", [mtype.get_fullName(), id]);
+						if (e !== undefined && e !== null && 
+							e.get_message !== undefined && e.get_message !== null && 
+							e.get_message instanceof Function) {
+
+							message += e.get_message();
+						}
+						else {
+							message += "unknown error";
+						}
+						ExoWeb.trace.logError("lazyLoad", message);
 					})
 				);
 
@@ -1898,7 +1908,17 @@
 						conditionsJson = result.conditionTargets;
 					}),
 					signal.orPending(function(e) {
-						ExoWeb.trace.logError("lazyLoad", e);
+						var message = $format("Failed to load {0}({1}).{2}: ", [ownerType, ownerId, propName]);
+						if (e !== undefined && e !== null &&
+								e.get_message !== undefined && e.get_message !== null &&
+								e.get_message instanceof Function) {
+
+							message += e.get_message();
+						}
+						else {
+							message += "unknown error";
+						}
+						ExoWeb.trace.logError("lazyLoad", message);
 					})
 				);
 
