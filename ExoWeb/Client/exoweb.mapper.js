@@ -950,7 +950,6 @@
 				}
 				catch (e) {
 					this.endApplyingChanges();
-					this._model.stopQueueingEvents();
 					ExoWeb.trace.throwAndLog(["server"], e);
 				}
 			},
@@ -1256,7 +1255,6 @@
 			var signal = new ExoWeb.Signal("objectsFromJson");
 
 			try {
-				model.startQueueingEvents();
 				for (var typeName in json) {
 					var poolJson = json[typeName];
 					for (var id in poolJson) {
@@ -1267,7 +1265,6 @@
 			}
 			finally {
 				signal.waitForAll(function() {
-					model.stopQueueingEvents();
 					callback.apply(this, arguments);
 				});
 			}
