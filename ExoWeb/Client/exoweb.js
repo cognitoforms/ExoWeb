@@ -973,20 +973,6 @@ Type.registerNamespace("ExoWeb");
 
 		ExoWeb.getValue = getValue;
 
-		// TODO: rename
-		function isDefined(val/*, val1, val2, ...*/) {
-			if (arguments.length === 1) {
-				return val !== undefined && val !== null;
-			}
-			else if (arguments.length > 0) {
-				return Array.prototype.every.call(arguments, function(item) {
-					return isDefined(item);
-				});
-			}
-		}
-
-		ExoWeb.isDefined = isDefined;
-
 		var ctorProviders = ExoWeb._ctorProviders = {};
 
 		function addCtorProvider(type, provider) {
@@ -1008,7 +994,7 @@ Type.registerNamespace("ExoWeb");
 				// TODO
 			}
 
-			if (isDefined(key)) {
+			if (key !== undefined && key !== null) {
 				ctorProviders[key] = provider;
 			}
 		}
@@ -1016,7 +1002,7 @@ Type.registerNamespace("ExoWeb");
 		function getCtor(type) {
 
 			// Only return a value if the argument is defined
-			if (isDefined(type)) {
+			if (type !== undefined && type !== null) {
 
 				// If the argument is a function then return it immediately.
 				if (isType(type, Function)) {
@@ -1039,14 +1025,14 @@ Type.registerNamespace("ExoWeb");
 						var providerKey = parseFunctionName(type.constructor);
 						var provider = ctorProviders[providerKey];
 
-						if (isDefined(provider)) {
+						if (provider !== undefined && provider !== null) {
 							// invoke the provider to obtain the constructor
 							ctor = provider(type);
 						}
 					}
 
 					// warn (and implicitly return undefined) if the result is not a javascript function
-					if (isDefined(ctor) && !isType(ctor, Function)) {
+					if (ctor !== undefined && ctor !== null && !isType(ctor, Function)) {
 						ExoWeb.trace.logWarning("", "The given type \"{0}\" is not a function.", [type]);
 					}
 					else {
@@ -1061,15 +1047,16 @@ Type.registerNamespace("ExoWeb");
 		function isType(val, type) {
 
 			// Exit early for checking function type
-			if (isDefined(val, type) && val === Function && type === Function) {
+			if (val !== undefined && val !== null && val === Function && type !== undefined && type !== null && type === Function) {
 				return true;
 			}
 
 			var ctor = getCtor(type);
 
 			// ensure a defined value and constructor
-			return isDefined(val, ctor) &&
-			// accomodate objects (instanceof) as well as intrinsic value types (String, Number, etc)
+			return val !== undefined && val !== null &&
+					ctor !== undefined && ctor !== null &&
+					// accomodate objects (instanceof) as well as intrinsic value types (String, Number, etc)
 					(val instanceof ctor || val.constructor === ctor);
 		}
 

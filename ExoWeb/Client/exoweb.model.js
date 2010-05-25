@@ -2856,7 +2856,7 @@
 		function LazyLoader() {
 		}
 		LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading*/) {
-			if (!ExoWeb.isDefined(path)) {
+			if (path === undefined || path === null) {
 				path = "";
 			}
 
@@ -2872,7 +2872,7 @@
 
 			scopeChain = scopeChain || [window];
 
-			if (!ExoWeb.isDefined(target)) {
+			if (target === undefined || target === null) {
 				target = Array.dequeue(scopeChain);
 			}
 
@@ -2972,7 +2972,7 @@
 			}
 
 			// Load final object
-			if (ExoWeb.isDefined(target) && !LazyLoader.isLoaded(target)) {
+			if (target !== undefined && target !== null && !LazyLoader.isLoaded(target)) {
 				performedLoading = true;
 				LazyLoader.load(target, null, successCallback.prepare(thisPtr, [target, performedLoading]));
 			}
@@ -3045,7 +3045,7 @@
 		};
 
 		LazyLoader.isLoaded = function LazyLoader$isLoaded(obj, propName) {
-			if (!ExoWeb.isDefined(obj)) {
+			if (obj === undefined || obj === null) {
 				return false;
 			}
 

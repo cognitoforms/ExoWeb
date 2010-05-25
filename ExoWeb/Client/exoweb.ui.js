@@ -163,11 +163,12 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._dataTypeCtor;
 			},
 			isType: function Template$isType(obj) {
-
-				// Only return a value if a data type has been specified
-				if (ExoWeb.isDefined(this._dataType)) {
-					return ExoWeb.isType(obj, this.get_dataTypeCtor());
+				// Don't return a value if a data type has not been specified.
+				if (this._dataType === undefined || this._dataType === null) {
+					return;
 				}
+
+				return ExoWeb.isType(obj, this.get_dataTypeCtor());
 			},
 
 			// Arbitrary JavaScript
