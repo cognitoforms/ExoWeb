@@ -18,46 +18,130 @@
 			useConditionsMode = false;
 		};
 
-		var objectProvider = function objectProvider(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure) {
+		// Object Provider
+		//----------------------------------------------------------
+		var objectProviderFn = function objectProviderFn(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure) {
 			ExoWeb.WebService.Load(type, ids, includeAllowedValues, includeTypes, paths, changes, useConditionsMode, onSuccess, onFailure);
 		};
+		function objectProvider(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure) {
+			var batch = ExoWeb.Batch.suspendCurrent();
+			objectProviderFn.call(this, type, ids, includeAllowedValues, includeTypes, paths, changes,
+				function objectProviderSuccess() {
+					if (batch) batch.resume();
+					if (onSuccess) onSuccess.apply(this, arguments);
+				},
+				function objectProviderFailure() {
+					if (batch) batch.resume();
+					if (onFailure) onFailure.apply(this, arguments);
+				});
+		}
 		ExoWeb.Mapper.setObjectProvider = function setObjectProvider(fn) {
-			objectProvider = fn;
+			objectProviderFn = fn;
 		};
 
-		var typeProvider = function typeProvider(type, onSuccess, onFailure) {
+		// Type Provider
+		//----------------------------------------------------------
+		var typeProviderFn = function typeProviderFn(type, onSuccess, onFailure) {
 			ExoWeb.WebService.GetType(type, useConditionsMode, onSuccess, onFailure);
 		};
+		function typeProvider(type, onSuccess, onFailure) {
+			var batch = ExoWeb.Batch.suspendCurrent();
+			typeProviderFn.call(this, type,
+				function typeProviderSuccess() {
+					if (batch) batch.resume();
+					if (onSuccess) onSuccess.apply(this, arguments);
+				},
+				function typeProviderFailure() {
+					if (batch) batch.resume();
+					if (onFailure) onFailure.apply(this, arguments);
+				});
+		}
 		ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
-			typeProvider = fn;
+			typeProviderFn = fn;
 		};
 
-		var listProvider = function listProvider(ownerType, ownerId, propName, success, failed) {
-			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, ["this." + propName], null, useConditionsMode, success, failed);
+		// List Provider
+		//----------------------------------------------------------
+		var listProviderFn = function listProvider(ownerType, ownerId, propName, onSuccess, onFailure) {
+			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, ["this." + propName], null, useConditionsMode, onSuccess, onFailure);
 		};
+		function listProvider(ownerType, ownerId, propName, onSuccess, onFailure) {
+			var batch = ExoWeb.Batch.suspendCurrent();
+			listProviderFn.call(this, ownerType, ownerId, propName,
+				function listProviderSuccess() {
+					if (batch) batch.resume();
+					if (onSuccess) onSuccess.apply(this, arguments);
+				},
+				function listProviderFailure() {
+					if (batch) batch.resume();
+					if (onFailure) onFailure.apply(this, arguments);
+				});
+		}
 		ExoWeb.Mapper.setListProvider = function setListProvider(fn) {
-			listProvider = fn;
+			listProviderFn = fn;
 		};
 
-		var roundtripProvider = function roundtripProvider(changes, success, failed) {
-			ExoWeb.WebService.Load(null, null, false, false, null, changes, useConditionsMode, success, failed);
+		// Roundtrip Provider
+		//----------------------------------------------------------
+		var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
+			ExoWeb.WebService.Load(null, null, false, false, null, changes, useConditionsMode, onSuccess, onFailure);
 		};
+		function roundtripProvider(changes, onSuccess, failed) {
+			var batch = ExoWeb.Batch.suspendCurrent();
+			roundtripProviderFn.call(this, changes,
+				function roundtripProviderSucess() {
+					if (batch) batch.resume();
+					if (onSuccess) onSuccess.apply(this, arguments);
+				},
+				function roundtripProviderFailure() {
+					if (batch) batch.resume();
+					if (onFailure) onFailure.apply(this, arguments);
+				});
+		}
 		ExoWeb.Mapper.setRoundtripProvider = function setRoundtripProvider(fn) {
-			roundtripProvider = fn;
+			roundtripProviderFn = fn;
 		};
 
-		var saveProvider = function saveProvider(root, changes, onSuccess, onFailure) {
+		// Save Provider
+		//----------------------------------------------------------
+		var saveProviderFn = function saveProviderFn(root, changes, onSuccess, onFailure) {
 			ExoWeb.WebService.Save(root, changes, onSuccess, onFailure);
 		};
+		function saveProvider(root, changes, onSuccess, onFailure) {
+			var batch = ExoWeb.Batch.suspendCurrent();
+			saveProviderFn.call(this, root, changes,
+				function saveProviderSuccess() {
+					if (batch) batch.resume();
+					if (onSuccess) onSuccess.apply(this, arguments);
+				},
+				function saveProviderFailure() {
+					if (batch) batch.resume();
+					if (onFailure) onFailure.apply(this, arguments);
+				});
+		}
 		ExoWeb.Mapper.setSaveProvider = function setSaveProvider(fn) {
-			saveProvider = fn;
+			saveProviderFn = fn;
 		};
 
-		var eventProvider = function eventProvider(eventType, instance, event, changes, onSuccess, onFailure) {
+		// Event Provider
+		//----------------------------------------------------------
+		var eventProviderFn = function eventProviderFn(eventType, instance, event, changes, onSuccess, onFailure) {
 			ExoWeb.WebService.RaiseEvent(eventType, instance, event, changes, onSuccess, onFailure);
 		};
+		function eventProvider(eventType, instance, event, changes, onSuccess, onFailure) {
+			var batch = ExoWeb.Batch.suspendCurrent();
+			eventProviderFn.call(this, eventType, instance, event, changes,
+				function eventProviderSuccess() {
+					if (batch) batch.resume();
+					if (onSuccess) onSuccess.apply(this, arguments);
+				},
+				function eventProviderFailure() {
+					if (batch) batch.resume();
+					if (onFailure) onFailure.apply(this, arguments);
+				});
+		}
 		ExoWeb.Mapper.setEventProvider = function setEventProvider(fn) {
-			eventProvider = fn;
+			eventProviderFn = fn;
 		};
 
 		ExoWeb.Model.Entity.formats.$exograph = new ExoWeb.Model.Format({
@@ -763,8 +847,7 @@
 				}
 
 				try {
-					this._model.startQueueingEvents();
-
+					var batch = ExoWeb.Batch.start("apply changes");
 					log("server", "begin applying {length} changes", changes);
 
 					this.beginApplyingChanges();
@@ -858,7 +941,7 @@
 					signal.waitForAll(function() {
 						log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
 						this.endApplyingChanges();
-						this._model.stopQueueingEvents();
+						batch.end();
 						if (newChanges > 0) {
 							log("server", "raising \"Changes\" property change event");
 							Sys.Observer.raisePropertyChanged(this, "Changes");
@@ -1770,13 +1853,19 @@
 
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 
+					var batch = ExoWeb.Batch.start($format("{0}({1})", [mtype.get_fullName(), id]));
+
 					// Load instance data
 					objectsFromJson(mtype.get_model(), objectJson, function() {
 						if (conditionsJson) {
 							// Load conditions data and then invoke callback
-							conditionsFromJson(mtype.get_model(), conditionsJson, callback);
+							conditionsFromJson(mtype.get_model(), conditionsJson, function() {
+								batch.end();
+								callback.apply(this, arguments);
+							});
 						}
 						else {
+							batch.end();
 							callback();
 						}
 					});

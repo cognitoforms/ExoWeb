@@ -33,6 +33,18 @@
 				var source;
 				var scopeChain;
 
+				var dirty = false;
+
+				function whenBatchDone(callback) {
+					if (!dirty) {
+						dirty = true;
+						ExoWeb.Batch.whenDone(function() {
+							dirty = false;
+							callback();
+						});
+					}
+				}
+
 				if (properties.source) {
 					var evalSource = new Function("$element", "$index", "$dataItem", "$context", "return " + properties.source + ";");
 					var element = null;
@@ -66,7 +78,9 @@
 						finalValue = prepareValue(value);
 					}
 
-					Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
+					whenBatchDone(function() {
+						Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
+					});
 				};
 
 				var setup = function lazy$setup(result, monitorChangesFromSource) {
@@ -135,12 +149,14 @@
 								try {
 									ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
 										chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited, triggerProperty) {
-											// when a point in the required path changes then load the chain and refresh the value
-											ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
-												if (performedLoading) {
-													log(["markupExt", "~"], "Required path \"{0}\" change.  Eval caused loading to occur.", [properties.required]);
-												}
-												setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
+											whenBatchDone(function() {
+												// when a point in the required path changes then load the chain and refresh the value
+												ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
+													if (performedLoading) {
+														log(["markupExt", "~"], "Required path \"{0}\" change.  Eval caused loading to occur.", [properties.required]);
+													}
+													setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
+												});
 											});
 										}, item);
 									});

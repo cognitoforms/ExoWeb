@@ -16,6 +16,141 @@ Type.registerNamespace("ExoWeb");
 
 		var undefined;
 
+		//////////////////////////////////////////////////////////////////////////////////////
+		function Batch(label) {
+			this._index = batchIndex++;
+			this._labels = [label];
+			this._rootLabel = label;
+			this._subscribers = [];
+
+			ExoWeb.trace.log("batch", "[{0}] {1} - created.", [this._index, this._rootLabel]);
+
+			allBatches.push(this);
+		}
+
+		var batchIndex = 0;
+		var allBatches = [];
+		var currentBatch = null;
+
+		Batch.all = function Batch_$all(includeEnded) {
+			return $transform(allBatches).where(function(e) {
+				!includeEnded || !e.isEnded();
+			});
+		};
+
+		Batch.suspendCurrent = function Batch_$suspendCurrent() {
+			if (currentBatch != null) {
+				return currentBatch.suspend();
+			}
+		};
+
+		Batch.start = function Batch_$start(label) {
+			if (currentBatch) {
+				currentBatch.begin(label);
+			}
+			else {
+				currentBatch = new Batch(label);
+			}
+
+			return currentBatch;
+		};
+
+		Batch.whenDone = function Batch_$whenDone(fn) {
+			if (currentBatch) {
+				currentBatch.whenDone(fn);
+			}
+			else {
+				fn();
+			}
+		};
+
+		Batch.prototype = {
+			begin: function Batch$begin(label) {
+				ExoWeb.trace.log("batch", "[{0}] {1} - beginning label {2}.", [this._index, this._rootLabel, label]);
+
+				this._labels.push(label);
+
+				return this;
+			},
+			end: function Batch$end() {
+				// Cannot end a batch that has already been ended.
+				if (this.isEnded()) {
+					ExoWeb.trace.logWarning("batch", "[{0}] {1} - already ended.", [this._index, this._rootLabel]);
+					return this;
+				}
+
+				// Remove the last label from the list.
+				var label = this._labels.pop();
+
+				ExoWeb.trace.log("batch", "[{0}] {1} - ending label {2}.", [this._index, this._rootLabel, label]);
+
+				if (this.isEnded()) {
+					ExoWeb.trace.log("batch", "[{0}] {1} - complete.", [this._index, this._rootLabel]);
+
+					// If we are ending the current batch, then null out the current batch 
+					// variable so that new batches can be created with a new root label.
+					if (currentBatch === this) {
+						currentBatch = null;
+					}
+
+					// Invoke the subscribers.
+					var subscriber = Array.dequeue(this._subscribers);
+					while (subscriber) {
+						subscriber.apply(this, arguments);
+						subscriber = Array.dequeue(this._subscribers);
+					}
+				}
+
+				return this;
+			},
+			transfer: function Batch$transfer(other) {
+				ExoWeb.trace.log("batch", "[{0}] {1} - transferring from [{2}] {3}.", [this._index, this._rootLabel, other._index, other._rootLabel]);
+
+				// Transfer labels from one batch to another.
+				Array.addRange(this._labels, other._labels);
+				Array.clear(other._labels);
+			},
+			suspend: function Batch$suspend() {
+				if (currentBatch === this) {
+					ExoWeb.trace.log("batch", "[{0}] {1} - suspending.", [this._index, this._rootLabel]);
+					currentBatch = null;
+					return this;
+				}
+			},
+			resume: function Batch$resume() {
+				// Ignore resume on a batch that has already been ended.
+				if (this.isEnded()) {
+					//debugger;
+					return;
+				}
+
+				if (currentBatch != null) {
+					// If there is a current batch then simple transfer the labels to it.
+					currentBatch.transfer(this);
+					return currentBatch;
+				}
+
+				ExoWeb.trace.log("batch", "[{0}] {1} - resuming.", [this._index, this._rootLabel]);
+				currentBatch = this;
+
+				return this;
+			},
+			isEnded: function Batch$isEnded() {
+				return this._labels.length === 0;
+			},
+			whenDone: function Batch$whenDone(fn) {
+				ExoWeb.trace.log("batch", "[{0}] {1} - subscribing to batch done.", [this._index, this._rootLabel]);
+
+				this._subscribers.push(fn);
+
+				return this;
+			}
+		};
+
+		ExoWeb.Batch = Batch;
+
+
+		//////////////////////////////////////////////////////////////////////////////////////
 		var errorHandler = function noOpErrorHandler(message, e) { };
 		function setErrorHandler(fn) {
 			errorHandler = fn;
@@ -27,6 +162,7 @@ Type.registerNamespace("ExoWeb");
 			// Rather than editing the code below, set them in your application's page
 			flags: {
 				all: false,
+				batch: false,
 				signal: false,
 				typeInit: false,
 				objectInit: false,
@@ -199,6 +335,8 @@ Type.registerNamespace("ExoWeb");
 		var logError = ExoWeb.trace.logError;
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
+
+		//////////////////////////////////////////////////////////////////////////////////////
 		function Signal(debugLabel) {
 			this._waitForAll = [];
 			this._pending = 0;
@@ -227,7 +365,9 @@ Type.registerNamespace("ExoWeb");
 						callback.apply(thisPtr, args || []);
 					}
 					else {
+						var batch = Batch.suspendCurrent();
 						window.setTimeout(function Signal$_doCallback$timeout() {
+							if (batch) batch.resume();
 							callback.apply(thisPtr, args || []);
 						}, 1);
 					}
@@ -351,7 +491,11 @@ Type.registerNamespace("ExoWeb");
 				}
 				else if (origCallback) {
 					// wait for the original call to complete
-					callInProgress.callback.add(origCallback);
+					var batch = Batch.suspendCurrent();
+					callInProgress.callback.add(function() {
+						if (batch) batch.resume();
+						origCallback.apply(this, arguments);
+					});
 				}
 			};
 		};

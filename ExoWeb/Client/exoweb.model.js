@@ -651,12 +651,12 @@
 			},
 			addRule: function Type$addRule(rule) {
 				function Type$addRule$init(obj, prop, newValue, oldValue, wasInited) {
-					if (!wasInited && rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+					if (!wasInited && rule.inputs.every(function(input) { return input.property == prop || !input.get_dependsOnInit() || input.property.isInited(obj); })) {
 						Type$addRule$fn(obj, prop, rule.execute);
 					}
 				}
 				function Type$addRule$changed(obj, prop, newValue, oldValue, wasInited) {
-					if (wasInited && rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+					if (wasInited && rule.inputs.every(function(input) { return input.property == prop || !input.get_dependsOnInit() || input.property.isInited(obj); })) {
 						Type$addRule$fn(obj, prop, rule.execute);
 					}
 				}
@@ -2284,6 +2284,10 @@
 				}
 			},
 			push: function EventQueue$push(item) {
+				// NOTE:  If a queued event triggers other events when raised, 
+				// the new events will be raised before the events that follow 
+				// after the triggering event.  This means that events will be 
+				// raised in the correct sequence, but they may occur out of order.
 				if (this._queueing) {
 					if (this._areEqual) {
 						for (var i = 0; i < this._queue.length; ++i) {
