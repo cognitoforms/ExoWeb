@@ -126,9 +126,9 @@ namespace ExoWeb
 						}
 
 						// Define the ExoWeb.Load method
-						ExoWeb.WebService.Load = function ExoWeb$WebService$Load(type, ids, includeAllowedValues, includeTypes, paths, changes, conditionsMode, onSuccess, onFailure)
+						ExoWeb.WebService.Load = function ExoWeb$WebService$Load(type, ids, includeAllowedValues, includeTypes, paths, changes, conditionsMode, includeConditionTypes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes, conditionsMode: conditionsMode }, onSuccess, onFailure, null, 1000000, false, null);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes, conditionsMode: conditionsMode, includeConditionTypes: includeConditionTypes }, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Save method
