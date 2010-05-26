@@ -44,7 +44,7 @@
 			releaseUrl: basePath + "exoweb.model.js",
 			debugUrl: basePath + "exoweb.model.js",
 			name: "ExoWebModel",
-			executionDependencies: ["Core", "ExoWeb"],
+			executionDependencies: ["Core", "Globalization", "ExoWeb"],
 			isLoaded: !!(ExoWeb && ExoWeb.Model)
 		},
 		{
