@@ -489,7 +489,7 @@
 				var automatic = arguments.length == 6 && arguments[5] === true;
 
 				this._raiseEvent("requestBegin", [automatic]);
-				this._raiseEvent("raiseServerEventBegin", [automatic]);
+				this._raiseEvent("raiseServerEventBegin", [name, automatic]);
 
 				// if no event object is provided then use an empty object
 				if (event === undefined || event === null) {
@@ -559,7 +559,7 @@
 				}
 			},
 			addRaiseServerEventBegin: function ServerSync$addRaiseServerEventBegin(handler, includeAutomatic) {
-				this._addEventHandler("raiseServerEventBegin", handler, includeAutomatic, 1);
+				this._addEventHandler("raiseServerEventBegin", handler, includeAutomatic, 2);
 			},
 			addRaiseServerEventEnd: function ServerSync$addRaiseServerEventEnd(handler, includeAutomatic) {
 				this._addEventHandler("raiseServerEventEnd", handler, includeAutomatic, 1);
