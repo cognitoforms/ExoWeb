@@ -651,12 +651,12 @@
 			},
 			addRule: function Type$addRule(rule) {
 				function Type$addRule$init(obj, prop, newValue, oldValue, wasInited) {
-					if (!wasInited && rule.inputs.every(function(input) { return input.property == prop || !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+					if (!wasInited && rule.inputs.every(function(input) { return input.property == prop || !input.get_dependsOnInit() || input.property.isInited(obj, true); })) {
 						Type$addRule$fn(obj, prop, rule.execute);
 					}
 				}
 				function Type$addRule$changed(obj, prop, newValue, oldValue, wasInited) {
-					if (wasInited && rule.inputs.every(function(input) { return input.property == prop || !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+					if (wasInited && rule.inputs.every(function(input) { return input.property == prop || !input.get_dependsOnInit() || input.property.isInited(obj, true); })) {
 						Type$addRule$fn(obj, prop, rule.execute);
 					}
 				}
@@ -1759,7 +1759,10 @@
 					return prop.value(target);
 				}
 			},
-			isInited: function PropertyChain$isInited(obj) {
+			// tolerateNull added to accomodate situation where calculated rules where not
+			// executing due to empty values before the end of the PropertyChain.  When tolerateNull
+			// is true, isInited will not return false if the entire chain isn't inited.
+			isInited: function PropertyChain$isInited(obj, tolerateNull) {
 				var allInited = true;
 				var numProperties = 0;
 				this.each(obj, function(target, property) {
@@ -1770,7 +1773,7 @@
 					}
 				});
 
-				if (numProperties < this._properties.length) {
+				if (numProperties < this._properties.length && !tolerateNull) {
 					allInited = false;
 					log("model", "Path \"{0}\" is not inited since \"{1}\" is undefined.", [this.get_path(), this._properties[numProperties - 1].get_name()]);
 				}
