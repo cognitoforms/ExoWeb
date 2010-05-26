@@ -38,9 +38,9 @@ Type.registerNamespace("ExoWeb");
 			});
 		};
 
-		Batch.suspendCurrent = function Batch_$suspendCurrent() {
+		Batch.suspendCurrent = function Batch_$suspendCurrent(message) {
 			if (currentBatch != null) {
-				return currentBatch.suspend();
+				return currentBatch.suspend(message);
 			}
 		};
 
@@ -110,9 +110,9 @@ Type.registerNamespace("ExoWeb");
 				Array.addRange(this._labels, other._labels);
 				Array.clear(other._labels);
 			},
-			suspend: function Batch$suspend() {
+			suspend: function Batch$suspend(message) {
 				if (currentBatch === this) {
-					ExoWeb.trace.log("batch", "[{0}] {1} - suspending.", [this._index, this._rootLabel]);
+					ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [this._index, this._rootLabel, message || ""]);
 					currentBatch = null;
 					return this;
 				}
@@ -365,7 +365,7 @@ Type.registerNamespace("ExoWeb");
 						callback.apply(thisPtr, args || []);
 					}
 					else {
-						var batch = Batch.suspendCurrent();
+						var batch = Batch.suspendCurrent("_doCallback");
 						window.setTimeout(function Signal$_doCallback$timeout() {
 							if (batch) batch.resume();
 							callback.apply(thisPtr, args || []);
@@ -491,7 +491,7 @@ Type.registerNamespace("ExoWeb");
 				}
 				else if (origCallback) {
 					// wait for the original call to complete
-					var batch = Batch.suspendCurrent();
+					var batch = Batch.suspendCurrent("dontDoubleUp");
 					callInProgress.callback.add(function() {
 						if (batch) batch.resume();
 						origCallback.apply(this, arguments);

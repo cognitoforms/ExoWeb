@@ -24,7 +24,7 @@
 			ExoWeb.WebService.Load(type, ids, includeAllowedValues, includeTypes, paths, changes, useConditionsMode, onSuccess, onFailure);
 		};
 		function objectProvider(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure) {
-			var batch = ExoWeb.Batch.suspendCurrent();
+			var batch = ExoWeb.Batch.suspendCurrent("objectProvider");
 			objectProviderFn.call(this, type, ids, includeAllowedValues, includeTypes, paths, changes,
 				function objectProviderSuccess() {
 					if (batch) batch.resume();
@@ -45,7 +45,7 @@
 			ExoWeb.WebService.GetType(type, useConditionsMode, onSuccess, onFailure);
 		};
 		function typeProvider(type, onSuccess, onFailure) {
-			var batch = ExoWeb.Batch.suspendCurrent();
+			var batch = ExoWeb.Batch.suspendCurrent("typeProvider");
 			typeProviderFn.call(this, type,
 				function typeProviderSuccess() {
 					if (batch) batch.resume();
@@ -66,7 +66,7 @@
 			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, ["this." + propName], null, useConditionsMode, onSuccess, onFailure);
 		};
 		function listProvider(ownerType, ownerId, propName, onSuccess, onFailure) {
-			var batch = ExoWeb.Batch.suspendCurrent();
+			var batch = ExoWeb.Batch.suspendCurrent("listProvider");
 			listProviderFn.call(this, ownerType, ownerId, propName,
 				function listProviderSuccess() {
 					if (batch) batch.resume();
@@ -87,7 +87,7 @@
 			ExoWeb.WebService.Load(null, null, false, false, null, changes, useConditionsMode, onSuccess, onFailure);
 		};
 		function roundtripProvider(changes, onSuccess, failed) {
-			var batch = ExoWeb.Batch.suspendCurrent();
+			var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
 			roundtripProviderFn.call(this, changes,
 				function roundtripProviderSucess() {
 					if (batch) batch.resume();
@@ -108,7 +108,7 @@
 			ExoWeb.WebService.Save(root, changes, onSuccess, onFailure);
 		};
 		function saveProvider(root, changes, onSuccess, onFailure) {
-			var batch = ExoWeb.Batch.suspendCurrent();
+			var batch = ExoWeb.Batch.suspendCurrent("saveProvider");
 			saveProviderFn.call(this, root, changes,
 				function saveProviderSuccess() {
 					if (batch) batch.resume();
@@ -129,7 +129,7 @@
 			ExoWeb.WebService.RaiseEvent(eventType, instance, event, changes, onSuccess, onFailure);
 		};
 		function eventProvider(eventType, instance, event, changes, onSuccess, onFailure) {
-			var batch = ExoWeb.Batch.suspendCurrent();
+			var batch = ExoWeb.Batch.suspendCurrent("eventProvider");
 			eventProviderFn.call(this, eventType, instance, event, changes,
 				function eventProviderSuccess() {
 					if (batch) batch.resume();
