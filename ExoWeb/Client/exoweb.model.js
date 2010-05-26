@@ -1096,6 +1096,14 @@
 				if (val instanceof Array) {
 					Sys.Observer.makeObservable(val);
 					Sys.Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
+						if (!LazyLoader.isLoaded(val)) {
+							ExoWeb.trace.logWarning("model", "{0} list {1}.{2} was modified but it has not been loaded.", [
+								this._isStatic ? "Static" : "Non-static",
+								this._isStatic ? this._containingType.get_fullName() : "this<" + this._containingType.get_fullName() + ">",
+								this._name
+							]);
+						}
+
 						// NOTE: property change should be broadcast before rules are run so that if 
 						// any rule causes a roundtrip to the server these changes will be available
 						this._containingType.get_model().notifyListChanged(target, this, args.get_changes());
