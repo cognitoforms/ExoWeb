@@ -2093,16 +2093,22 @@
 						delete objectJson[jsonType][jsonId];
 					}
 
+					ListLazyLoader.unregister(list, this);
+
+					var batch = ExoWeb.Batch.start($format("{0}({1}).{2}", [ownerType, ownerId, propName]));
+
 					var done = function() {
+						// Collection change driven by user action or other behavior would result in the "change" event
+						//	being raised for the list property.  Since we don't want to record this as a true observable
+						//	change, raise the event manually so that rules will still run as needed.
+						// This occurs before batch end so that it functions like normal object loading.						
+						prop._raiseEvent("changed", [owner, prop, list, undefined, true]);
+
+						batch.end();
 						callback.apply(this, arguments);
 
-						// Collection change driven by user action or other behavior would result in the "change" event
-						// being raised for the list property.  Since we don't want to record this as a true observable
-						// change, raise the event manually so that rules will still run as needed.
-						prop._raiseEvent("changed", [owner, prop, list, undefined, true]);
 					}
 
-					ListLazyLoader.unregister(list, this);
 					objectsFromJson(model, objectJson, function() {
 						if (conditionsJson) {
 							conditionsFromJson(model, conditionsJson, done);
