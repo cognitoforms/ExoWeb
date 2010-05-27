@@ -33,14 +33,31 @@
 				var source;
 				var scopeChain;
 
-				var dirty = false;
+				var updatePending = false;
 
-				function whenBatchDone(callback) {
-					if (!dirty) {
-						dirty = true;
+				function queueUpdate(callback) {
+					if (!updatePending) {
+						updatePending = true;
 						ExoWeb.Batch.whenDone(function() {
-							dirty = false;
-							callback();
+							callback(function(value, msg) {
+								updatePending = false;
+
+								log(["~", "markupExt"], "~ {path}, required=[{required}] (set) {message}- {value}", {
+									path: (properties.$default || "(no path)"),
+									required: properties.required || "",
+									message: msg ? msg + " " : "",
+									value: value
+								});
+
+								var finalValue = value;
+								if (prepareValue && prepareValue instanceof Function) {
+									finalValue = prepareValue(value);
+								}
+
+								Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
+
+							});
+
 						});
 					}
 				}
@@ -64,24 +81,6 @@
 				}
 
 				var prepareValue = null;
-
-				var setValue = function lazy$setValue(value, msg) {
-					log(["~", "markupExt"], "~ {path}, required=[{required}] (set) {message}- {value}", {
-						path: (properties.$default || "(no path)"),
-						required: properties.required || "",
-						message: msg ? msg + " " : "",
-						value: value
-					});
-
-					var finalValue = value;
-					if (prepareValue && prepareValue instanceof Function) {
-						finalValue = prepareValue(value);
-					}
-
-					whenBatchDone(function() {
-						Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
-					});
-				};
 
 				var setup = function lazy$setup(result, monitorChangesFromSource) {
 					if (properties.transform && result instanceof Array) {
@@ -113,17 +112,21 @@
 							// if additional paths are required then load them before updating the value
 							if (properties.required) {
 								Array.forEach(evt.get_changes(), function(change) {
-									ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function(requiredResult, performedLoading) {
-										if (performedLoading) {
-											log(["markupExt", "~"], "New items added to list \"{0}\".  Eval caused loading to occur on required path \"{1}\".", [properties.$default, properties.required]);
-										}
-										setValue(result, msg);
+									queueUpdate(function(setValue) {
+										ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function(requiredResult, performedLoading) {
+											if (performedLoading) {
+												log(["markupExt", "~"], "New items added to list \"{0}\".  Eval caused loading to occur on required path \"{1}\".", [properties.$default, properties.required]);
+											}
+											setValue(result, msg);
+										});
 									});
 								});
 							}
 							// otherwise, simply update the value
 							else {
-								setValue(result, msg);
+								queueUpdate(function(setValue) {
+									setValue(result, msg);
+								});
 							}
 						});
 					}
@@ -139,7 +142,9 @@
 
 						if (properties.$default && monitorChangesFromSource) {
 							Sys.Observer.addPathChanged(source, properties.$default, function(sender, args) {
-								setValue(ExoWeb.getValue(source, properties.$default), args.get_propertyName() + " property change");
+								queueUpdate(function(setValue) {
+									setValue(ExoWeb.getValue(source, properties.$default), args.get_propertyName() + " property change");
+								});
 							});
 						}
 					}
@@ -149,7 +154,7 @@
 								try {
 									ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
 										chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited, triggerProperty) {
-											whenBatchDone(function() {
+											queueUpdate(function(setValue) {
 												// when a point in the required path changes then load the chain and refresh the value
 												ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
 													if (performedLoading) {
@@ -187,15 +192,19 @@
 							try {
 								// Load additional required paths
 								if (properties.required) {
-									ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function(requiredResult, performedLoading) {
-										if (performedLoading) {
-											log(["markupExt", "~"], "Initial setup.  Eval caused loading to occur on required path \"{0}\".", [properties.required]);
-										}
-										setValue(result, message || "required path loaded");
+									queueUpdate(function(setValue) {
+										ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function(requiredResult, performedLoading) {
+											if (performedLoading) {
+												log(["markupExt", "~"], "Initial setup.  Eval caused loading to occur on required path \"{0}\".", [properties.required]);
+											}
+											setValue(result, message || "required path loaded");
+										});
 									});
 								}
 								else {
-									setValue(result, message || "no required path");
+									queueUpdate(function(setValue) {
+										setValue(result, message || "no required path");
+									});
 								}
 							}
 							catch (err) {
@@ -204,22 +213,26 @@
 						}
 
 						if (result === undefined || result === null) {
-							setValue(result, "no value");
+							queueUpdate(function(setValue) {
+								setValue(result, "no value");
+							});
 
 							var isSetup = false;
 
 							Sys.Observer.addPathChanged(source, properties.$default, function(target, args) {
-								ExoWeb.Model.LazyLoader.eval(source, properties.$default, function lazy$Loaded(result, message) {
-									// If we now have a value, ensure initialization and set the value.
-									if (result !== undefined && result !== null) {
-										if (!isSetup) {
-											setup(result, false);
-											init(result, args.get_propertyName() + " property change");
-											isSetup = true;
+								queueUpdate(function(setValue) {
+									ExoWeb.Model.LazyLoader.eval(source, properties.$default, function lazy$Loaded(result, message) {
+										// If we now have a value, ensure initialization and set the value.
+										if (result !== undefined && result !== null) {
+											if (!isSetup) {
+												setup(result, false);
+												init(result, args.get_propertyName() + " property change");
+												isSetup = true;
+											}
 										}
-									}
 
-									setValue(result, args.get_propertyName() + " property change");
+										setValue(result, args.get_propertyName() + " property change");
+									});
 								});
 							});
 						}
@@ -250,6 +263,10 @@
 					throwAndLog(["@", "markupExt"], "optionsTransform does not support grouping");
 				}
 				this._optionsTransform = options.optionsTransform;
+			}
+
+			if (options.allowedValuesMayBeNull) {
+				this._allowedValuesMayBeNull = options.allowedValuesMayBeNull;
 			}
 
 			// Track state for system and display formats, including the format and bad value.
@@ -555,7 +572,7 @@
 					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
 					var targetObj = this._propertyChain.lastTarget(this._target);
 					if (rule) {
-						this._allowedValues = rule.values(targetObj);
+						this._allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 						if (this._allowedValues !== undefined) {
 							if (this._optionsTransform) {

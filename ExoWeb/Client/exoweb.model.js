@@ -2202,9 +2202,9 @@
 				this._init();
 				return this._property;
 			},
-			values: function AllowedValuesRule$values(obj) {
+			values: function AllowedValuesRule$values(obj, exitEarly) {
 				this._init();
-				if (this._property && (this._property.get_isStatic() || this._property instanceof Property || this._property.lastTarget(obj))) {
+				if (this._property && (this._property.get_isStatic() || this._property instanceof Property || this._property.lastTarget(obj, exitEarly))) {
 
 					// get the allowed values from the property chain
 					var values = this._property.value(obj);
