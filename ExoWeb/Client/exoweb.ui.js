@@ -642,9 +642,17 @@ Type.registerNamespace("ExoWeb.UI");
 					container = target.get_templateContext().containerElement;
 				}
 				else {
-					subcontainer = getTemplateSubContainer(container || target);
+					var obj = container || target;
+					subcontainer = getTemplateSubContainer(obj);
 
 					if (!subcontainer) {
+						// Back up and attempt to go through the control.
+						if (obj.control && (obj.control instanceof Sys.UI.DataView || container.control instanceof ExoWeb.UI.Content)) {
+							container = null;
+							target = obj.control;
+							continue;
+						}
+
 						throw Error.invalidOperation("Not within a container template.");
 					}
 

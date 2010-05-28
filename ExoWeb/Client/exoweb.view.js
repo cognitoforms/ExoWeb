@@ -68,7 +68,7 @@
 					if (Sys.Component.isInstanceOfType(component)) {
 						element = component.get_element();
 					}
-					else if (component instanceof Element) {
+					else if (Sys.UI.DomElement.isDomElement(component)) {
 						element = component;
 					}
 					source = evalSource(element, templateContext.index, templateContext.dataItem, templateContext);
