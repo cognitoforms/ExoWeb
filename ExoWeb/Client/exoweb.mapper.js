@@ -86,7 +86,7 @@
 		var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
 			ExoWeb.WebService.Load(null, null, false, false, null, changes, useConditionsMode, false, onSuccess, onFailure);
 		};
-		function roundtripProvider(changes, onSuccess, failed) {
+		function roundtripProvider(changes, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
 			roundtripProviderFn.call(this, changes,
 				function roundtripProviderSucess() {
