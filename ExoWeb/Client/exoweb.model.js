@@ -1391,17 +1391,15 @@
 		};
 
 		PathTokens.mixin({
-			toString: function PathTokens$toString(rebuild) {
-				if (rebuild === true) {
-					var path = "";
-					Array.forEach(this.steps, function(step) {
-						path += (path ? "." : "") + step.property + (step.cast ? "<" + step.cast + ">" : "");
-					});
-					return path;
-				}
-				else {
-					return this.expression;
-				}
+			buildExpression: function PathTokens$buildExpression() {
+				var path = "";
+				Array.forEach(this.steps, function(step) {
+					path += (path ? "." : "") + step.property + (step.cast ? "<" + step.cast + ">" : "");
+				});
+				return path;
+			},
+			toString: function PathTokens$toString() {
+				return this.expression;
 			}
 		});
 		ExoWeb.Model.PathTokens = PathTokens;
@@ -3042,7 +3040,7 @@
 					Array.forEach(target, function(subTarget, i) {
 						// Make a copy of the original path tokens for arrays so that items' processing don't affect one another.
 						if (path instanceof PathTokens) {
-							path = path.toString(true);
+							path = path.buildExpression();
 						}
 
 						LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll, performedLoading);
