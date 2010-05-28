@@ -1391,8 +1391,17 @@
 		};
 
 		PathTokens.mixin({
-			toString: function PathTokens$toString() {
-				return this.expression;
+			toString: function PathTokens$toString(rebuild) {
+				if (rebuild === true) {
+					var path = "";
+					Array.forEach(this.steps, function(step) {
+						path += (path ? "." : "") + step.property + (step.cast ? "<" + step.cast + ">" : "");
+					});
+					return path;
+				}
+				else {
+					return this.expression;
+				}
 			}
 		});
 		ExoWeb.Model.PathTokens = PathTokens;
@@ -1424,7 +1433,7 @@
 				var step = Array.dequeue(pathTokens.steps);
 
 				if (!step) {
-					throwAndLog("model", "Syntax error in property path: {0}", [path]);
+					throwAndLog("model", "Syntax error in property path: {0}", [pathTokens.expression]);
 				}
 
 				var prop = type.property(step.property, true);
@@ -2728,7 +2737,7 @@
 				return str;
 			}
 		});
-		
+
 		String.formats.$system = new Format({
 			convertBack: function(val) {
 				return val ? $.trim(val) : val;
@@ -3031,6 +3040,11 @@
 					});
 
 					Array.forEach(target, function(subTarget, i) {
+						// Make a copy of the original path tokens for arrays so that items' processing don't affect one another.
+						if (path instanceof PathTokens) {
+							path = path.toString(true);
+						}
+
 						LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll, performedLoading);
 					});
 
