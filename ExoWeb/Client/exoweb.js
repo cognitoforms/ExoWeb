@@ -40,19 +40,32 @@ Type.registerNamespace("ExoWeb");
 
 		Batch.suspendCurrent = function Batch_$suspendCurrent(message) {
 			if (currentBatch != null) {
-				return currentBatch.suspend(message);
+				var batch = currentBatch;
+				ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [currentBatch._index, currentBatch._rootLabel, message || ""]);
+				currentBatch = null;
+				return batch;
 			}
 		};
 
 		Batch.start = function Batch_$start(label) {
 			if (currentBatch) {
-				currentBatch.begin(label);
+				currentBatch._begin(label);
 			}
 			else {
 				currentBatch = new Batch(label);
 			}
 
 			return currentBatch;
+		};
+
+		Batch.resume = function Batch_$resume(batch) {
+			if (batch) {
+				(batch._transferredTo || batch)._resume();
+			}
+		};
+
+		Batch.end = function Batch_$end(batch) {
+			(batch._transferredTo || batch)._end();
 		};
 
 		Batch.whenDone = function Batch_$whenDone(fn) {
@@ -64,15 +77,15 @@ Type.registerNamespace("ExoWeb");
 			}
 		};
 
-		Batch.prototype = {
-			begin: function Batch$begin(label) {
+		Batch.mixin({
+			_begin: function Batch$_begin(label) {
 				ExoWeb.trace.log("batch", "[{0}] {1} - beginning label {2}.", [this._index, this._rootLabel, label]);
 
 				this._labels.push(label);
 
 				return this;
 			},
-			end: function Batch$end() {
+			_end: function Batch$_end() {
 				// Cannot end a batch that has already been ended.
 				if (this.isEnded()) {
 					ExoWeb.trace.logWarning("batch", "[{0}] {1} - already ended.", [this._index, this._rootLabel]);
@@ -103,30 +116,29 @@ Type.registerNamespace("ExoWeb");
 
 				return this;
 			},
-			transfer: function Batch$transfer(other) {
-				ExoWeb.trace.log("batch", "[{0}] {1} - transferring from [{2}] {3}.", [this._index, this._rootLabel, other._index, other._rootLabel]);
+			_transferTo: function Batch$_transferTo(otherBatch) {
+				// Transfers this batch's labels and subscribers to the
+				// given batch.  From this point forward this batch defers
+				// its behavior to the given batch.
+
+				ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
 
 				// Transfer labels from one batch to another.
-				Array.addRange(this._labels, other._labels);
-				Array.clear(other._labels);
+				Array.addRange(otherBatch._labels, this._labels);
+				Array.clear(this._labels);
+				Array.addRange(otherBatch._subscribers, this._subscribers);
+				Array.clear(this._subscribers);
+				this._transferredTo = otherBatch;
 			},
-			suspend: function Batch$suspend(message) {
-				if (currentBatch === this) {
-					ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [this._index, this._rootLabel, message || ""]);
-					currentBatch = null;
-					return this;
-				}
-			},
-			resume: function Batch$resume() {
+			_resume: function Batch$_resume() {
 				// Ignore resume on a batch that has already been ended.
 				if (this.isEnded()) {
-					//debugger;
 					return;
 				}
 
 				if (currentBatch != null) {
 					// If there is a current batch then simple transfer the labels to it.
-					currentBatch.transfer(this);
+					this._transferTo(currentBatch);
 					return currentBatch;
 				}
 
@@ -145,7 +157,7 @@ Type.registerNamespace("ExoWeb");
 
 				return this;
 			}
-		};
+		});
 
 		ExoWeb.Batch = Batch;
 
@@ -367,7 +379,7 @@ Type.registerNamespace("ExoWeb");
 					else {
 						var batch = Batch.suspendCurrent("_doCallback");
 						window.setTimeout(function Signal$_doCallback$timeout() {
-							if (batch) batch.resume();
+							ExoWeb.Batch.resume(batch);
 							callback.apply(thisPtr, args || []);
 						}, 1);
 					}
@@ -493,7 +505,7 @@ Type.registerNamespace("ExoWeb");
 					// wait for the original call to complete
 					var batch = Batch.suspendCurrent("dontDoubleUp");
 					callInProgress.callback.add(function() {
-						if (batch) batch.resume();
+						ExoWeb.Batch.resume(batch);
 						origCallback.apply(this, arguments);
 					});
 				}

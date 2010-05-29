@@ -27,11 +27,11 @@
 			var batch = ExoWeb.Batch.suspendCurrent("objectProvider");
 			objectProviderFn.call(this, type, ids, includeAllowedValues, includeTypes, paths, changes,
 				function objectProviderSuccess() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
 				},
 				function objectProviderFailure() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onFailure) onFailure.apply(this, arguments);
 				});
 		}
@@ -48,11 +48,11 @@
 			var batch = ExoWeb.Batch.suspendCurrent("typeProvider");
 			typeProviderFn.call(this, type,
 				function typeProviderSuccess() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
 				},
 				function typeProviderFailure() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onFailure) onFailure.apply(this, arguments);
 				});
 		}
@@ -69,11 +69,11 @@
 			var batch = ExoWeb.Batch.suspendCurrent("listProvider");
 			listProviderFn.call(this, ownerType, ownerId, propName,
 				function listProviderSuccess() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
 				},
 				function listProviderFailure() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onFailure) onFailure.apply(this, arguments);
 				});
 		}
@@ -90,11 +90,11 @@
 			var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
 			roundtripProviderFn.call(this, changes,
 				function roundtripProviderSucess() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
 				},
 				function roundtripProviderFailure() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onFailure) onFailure.apply(this, arguments);
 				});
 		}
@@ -111,11 +111,11 @@
 			var batch = ExoWeb.Batch.suspendCurrent("saveProvider");
 			saveProviderFn.call(this, root, changes,
 				function saveProviderSuccess() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
 				},
 				function saveProviderFailure() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onFailure) onFailure.apply(this, arguments);
 				});
 		}
@@ -132,11 +132,11 @@
 			var batch = ExoWeb.Batch.suspendCurrent("eventProvider");
 			eventProviderFn.call(this, eventType, instance, event, changes,
 				function eventProviderSuccess() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
 				},
 				function eventProviderFailure() {
-					if (batch) batch.resume();
+					ExoWeb.Batch.resume(batch);
 					if (onFailure) onFailure.apply(this, arguments);
 				});
 		}
@@ -941,7 +941,7 @@
 					signal.waitForAll(function() {
 						log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
 						this.endApplyingChanges();
-						batch.end();
+						ExoWeb.Batch.end(batch);
 						if (newChanges > 0) {
 							log("server", "raising \"Changes\" property change event");
 							Sys.Observer.raisePropertyChanged(this, "Changes");
@@ -1857,12 +1857,12 @@
 						if (conditionsJson) {
 							// Load conditions data and then invoke callback
 							conditionsFromJson(mtype.get_model(), conditionsJson, function() {
-								batch.end();
+								ExoWeb.Batch.end(batch);
 								callback.apply(this, arguments);
 							});
 						}
 						else {
-							batch.end();
+							ExoWeb.Batch.end(batch);
 							callback();
 						}
 					});
@@ -2104,7 +2104,7 @@
 						// This occurs before batch end so that it functions like normal object loading.						
 						prop._raiseEvent("changed", [owner, prop, list, undefined, true]);
 
-						batch.end();
+						ExoWeb.Batch.end(batch);
 						callback.apply(this, arguments);
 
 					}
