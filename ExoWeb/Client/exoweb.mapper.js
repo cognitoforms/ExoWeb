@@ -766,6 +766,113 @@
 				this._addEventHandler("saveFailed", handler, includeAutomatic, 3);
 			},
 
+			// Rollback
+			///////////////////////////////////////////////////////////////////////
+			rollback: function ServerSync$rollback(steps) {
+				var changes = this._changes;
+				var depth = 0;
+
+				if (!changes || !(changes instanceof Array)) {
+					return;
+				}
+
+				try {
+					log("server", "ServerSync.rollback() >> {0}", steps);
+
+					this.beginApplyingChanges();
+
+					var signal = new ExoWeb.Signal("ServerSync.rollback");
+
+					function processNextChange() {
+						var change = null;
+
+						if (depth < steps) {
+							change = changes.pop();
+						}
+
+						if (change) {
+							var callback = signal.pending(processNextChange, this);
+
+							if (change.__type == "InitNew:#ExoGraph") {
+								this.rollbackInitChange(change, callback);
+							}
+							else if (change.__type == "ReferenceChange:#ExoGraph") {
+								this.rollbackRefChange(change, callback);
+							}
+							else if (change.__type == "ValueChange:#ExoGraph") {
+								this.rollbackValChange(change, callback);
+							}
+							else if (change.__type == "ListChange:#ExoGraph") {
+								this.rollbackListChange(change, callback);
+							}
+						}
+
+						depth++;
+					}
+
+					processNextChange.call(this);
+
+					signal.waitForAll(function() {
+						log("server", "done rolling back {0} changes", [steps]);
+						this.endApplyingChanges();
+					}, this);
+				}
+				catch(e) {
+					this.endApplyingChanges();
+					ExoWeb.trace.throwAndLog(["server"], e);
+				}
+			},
+			rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
+				log("server", "rollbackValChange", change.instance);
+
+				var obj = fromExoGraph(change.instance, this._translator);
+
+				Sys.Observer.setValue(obj, change.property, change.oldValue);
+				callback();
+			},
+			rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
+				log("server", "rollbackRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
+
+				var obj = fromExoGraph(change.instance, this._translator);
+				var ref = fromExoGraph(change.oldValue, this._translator);
+
+				Sys.Observer.setValue(obj, change.property, ref);
+				callback();
+			},
+			rollbackInitChange: function ServerSync$rollbackInitChange(change, callback) {
+				log("server", "rollbackInitChange: Type = {type}, Id = {id}", change.instance);
+
+				delete change.instance;
+
+				//TODO: need to remove from the translator
+
+				callback();
+			},
+			rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
+				var obj = fromExoGraph(change.instance, this._translator);
+				var prop = obj.meta.property(change.property);
+				var list = prop.value(obj);
+				var translator = this._translator;
+
+				list.beginUpdate();
+
+				// Rollback added items
+				Array.forEach(change.added, function ServerSync$rollbackListChanges$added(item) {
+					var childObj = fromExoGraph(item, translator);
+					list.remove(childObj);
+				});
+
+				// Rollback removed items
+				Array.forEach(change.removed, function ServerSync$rollbackListChanges$added(item) {
+					var childObj = fromExoGraph(item, translator);
+					list.add(childObj);
+				});
+
+				list.endUpdate();
+
+				callback();
+			},
+
 			// Various
 			///////////////////////////////////////////////////////////////////////
 			_captureChange: function ServerSync$_captureChange(change) {
