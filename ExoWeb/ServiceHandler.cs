@@ -43,7 +43,12 @@ namespace ExoWeb
 				context.Response.Clear();
 				context.Response.ContentType = "application/json";
 				context.Response.StatusCode = 500; // internal server error
-				//context.Response.AddHeader("jsonerror", "true"); // enables error information on client
+
+				if (ServiceHandler.Adapter.EnableExceptionInformation)
+				{
+					context.Response.AddHeader("jsonerror", "true"); // enables error information on client
+				}
+
 				context.Response.Write(ServiceMethod.ToJson(typeof(LogErrorMethod), error));
 			}
 		}
