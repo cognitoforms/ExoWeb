@@ -669,7 +669,7 @@ namespace ExoWeb
 				int comparison;
 				string reasonNotCompared;
 
-				if (compareValue == null || !HasValue(compareValue))
+				if (compareValue == null || !HasValue(compareValue) || sourceValue == null || !HasValue(sourceValue))
 				{
 					return false;
 				}

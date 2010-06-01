@@ -38,7 +38,7 @@
 				ok(!rule.satisfies(context.model.driver), "Comparison should not be valid: less than");
 			});
 
-			setupTest("compare-conditions", { description: "Compare Rule Attached Conditions", expect: 4 }, function () {
+			setupTest("compare-conditions", { description: "Compare Rule Attached Conditions", expect: 6 }, function () {
 				var rule = Driver.$DateCreated.rule(ExoWeb.Model.Rule.compare);
 				ok(rule, "Rule can be retrieved via Property.rule(type)");
 
@@ -49,6 +49,13 @@
 
 				context.model.driver.set_BirthDate(new Date(1949, 1, 1));
 				equals(context.model.driver.meta.conditions(Driver.$DateCreated).length, 0, "Condition attached for rule");
+
+				context.model.driver.set_BirthDate(null);
+				equals(context.model.driver.meta.conditions(Driver.$DateCreated).length, 0, "Condition should not be attached for null comparison value");
+
+				context.model.driver.set_BirthDate(new Date());
+				context.model.driver.set_DateCreated(null);
+				equals(context.model.driver.meta.conditions(Driver.$DateCreated).length, 0, "Condition should not be attached for null source value");
 			});
 
 			var hasRunDriverDescription = false;

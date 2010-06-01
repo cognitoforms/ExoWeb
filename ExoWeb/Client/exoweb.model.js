@@ -2284,7 +2284,7 @@
 				var srcValue = this.prop.value(obj);
 				var cmpValue = this._compareProperty.value(obj);
 
-				if (cmpValue !== undefined && cmpValue !== null) {
+				if (cmpValue !== undefined && cmpValue !== null && srcValue !== undefined && srcValue !== null) {
 					switch (this._compareOp) {
 						case "Equal": return srcValue == cmpValue;
 						case "NotEqual": return srcValue != cmpValue;
