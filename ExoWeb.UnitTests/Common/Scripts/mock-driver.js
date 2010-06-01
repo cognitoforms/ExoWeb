@@ -126,6 +126,14 @@ if (ExoWeb.Mock) {
 			message: "Dealer is required.",
 			rule: { clientRuleType: "required", rootType: "Driver", properties: ["this.Dealer"] }
 		},
+		"Driver.DateCreatedCompare": {
+			__type: "Error:#ExoWeb",
+			sets: null,
+			code: "Driver.DateCreatedCompare",
+			category: "Error",
+			message: "Driver.DateCreated must be greater than or equal to BirthDate",
+			rule: { clientRuleType: "compare", rootType: "Driver", comparePath: "this.BirthDate", compareOperator: "GreaterThanEqual", properties: ["this.DateCreated"] }
+		},
 		"Driver.DealerAllowedValues": {
 			__type: "Error:#ExoWeb",
 			sets: null,

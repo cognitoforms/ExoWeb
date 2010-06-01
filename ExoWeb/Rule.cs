@@ -47,7 +47,8 @@ namespace ExoWeb
 		required,
 		range,
 		stringLength,
-		allowedValues
+		allowedValues,
+		compare
 	}
 
 	#endregion
@@ -101,7 +102,7 @@ namespace ExoWeb
 			{
 				if (propertyPaths == null)
 				{
-					propertyPaths = new string[] { GraphProperty.IsStatic ? GraphProperty.Name : "this." + GraphProperty.Name };
+					propertyPaths = new string[] { (GraphProperty.IsStatic ? GraphProperty.DeclaringType.Name : "this") + "." + GraphProperty.Name };
 				}
 
 				return propertyPaths;
@@ -476,6 +477,242 @@ namespace ExoWeb
 				return false;
 			}
 		}
+	}
+
+	#endregion
+
+	#region CompareRule
+
+	[DataContract(Name = "compare")]
+	public class CompareRule : PropertyRule
+	{
+		#region Fields
+
+		string comparePath;
+		string compareOperatorText;
+
+		#endregion
+
+		#region Constructors
+
+		public CompareRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator)
+			: base(graphProperty, conditionType, ClientRuleType.compare)
+		{
+			this.CompareProperty = compareProperty;
+			this.CompareOperator = compareOperator;
+		}
+
+		#endregion
+
+		#region Properties
+
+		/// <summary>
+		/// The property to compare the source property to.
+		/// </summary>
+		public GraphProperty CompareProperty
+		{
+			get;
+			private set;
+		}
+
+		[DataMember(Name = "comparePath")]
+		public string ComparePath
+		{
+			get
+			{
+				if (comparePath == null)
+				{
+					comparePath = (CompareProperty.IsStatic ? CompareProperty.DeclaringType.Name : "this") + "." + CompareProperty.Name;
+				}
+
+				return comparePath;
+			}
+			private set
+			{
+				comparePath = value;
+			}
+		}
+
+		/// <summary>
+		/// The type of comparison to perform.
+		/// </summary>
+		public Operator CompareOperator
+		{
+			get;
+			private set;
+		}
+
+		[DataMember(Name = "compareOperator")]
+		public string CompareOperatorText
+		{
+			get
+			{
+				if (compareOperatorText == null)
+				{
+					compareOperatorText = CompareOperator.ToString();
+				}
+
+				return compareOperatorText;
+			}
+			set
+			{
+				compareOperatorText = value;
+			}
+		}
+
+		#endregion
+
+		#region Methods
+
+		/// <summary>
+		/// Gets a text description of the given comparison operator.
+		/// </summary>
+		/// <param name="op">The operator.</param>
+		/// <returns>A description of the given comparison operator.</returns>
+		public static string GetOperatorText(Operator op)
+		{
+			switch (op)
+			{
+				case Operator.Equal: return "equal to";
+				case Operator.NotEqual: return "not equal to";
+				case Operator.GreaterThan: return "greater than";
+				case Operator.GreaterThanEqual: return "greater than or equal to";
+				case Operator.LessThan: return "less than";
+				case Operator.LessThanEqual: return "less than or equal to";
+			}
+
+			return "";
+		}
+
+		/// <summary>
+		/// Get the source value from the given root <see cref="GraphInstance"/>.
+		/// </summary>
+		/// <param name="root">The root object from which to evaluate the source property.</param>
+		/// <returns>The source value.</returns>
+		protected virtual object GetSourceValue(GraphInstance root)
+		{
+			return root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(GraphProperty.IsStatic ? null : root.Instance, null);
+		}
+
+		/// <summary>
+		/// Get the comparison value from the given root <see cref="GraphInstance"/>.
+		/// </summary>
+		/// <param name="root">The root object from which to evaluate the compare property.</param>
+		/// <returns>The comparison value.</returns>
+		protected virtual object GetComparisonValue(GraphInstance root)
+		{
+			return root.Instance.GetType().GetProperty(CompareProperty.Name).GetValue(CompareProperty.IsStatic ? null : root.Instance, null);
+		}
+
+		/// <summary>
+		/// Determines whether the given value has a value.  This is used by the default 
+		/// comparison to decide that the condition does not apply if there is no compare value.
+		/// A null check is already performed, but a derived class may override this method in order
+		/// to include other conditions such as checks for value types.
+		/// </summary>
+		/// <param name="value">The value to check.</param>
+		/// <returns>Whether the given value is null.</returns>
+		protected virtual bool HasValue(object value)
+		{
+			return true;
+		}
+
+		private string GetReasonNotComparable(object sourceValue, object compareValue)
+		{
+			if (sourceValue == null)
+			{
+				return "source value is null";
+			}
+			else
+			{
+				Type sourceType = sourceValue.GetType();
+				Type compareType = compareValue.GetType();
+
+				if (!(sourceValue is IComparable) && !(compareValue is IComparable))
+					return string.Format("source value of type {0} and compare value of type {1} do not implement IComparable", sourceType.Name, compareType.Name);
+				else if (!(sourceValue is IComparable))
+					return string.Format("source value of type {0} does not implement IComparable", sourceType.Name);
+				else if (!(compareValue is IComparable))
+					return string.Format("compare value of type {0} does not implement IComparable", compareType.Name);
+				else
+					return "unknown reason";
+			}
+		}
+
+		/// <summary>
+		/// Compare the given source and compare values.
+		/// </summary>
+		/// <param name="sourceValue">The source value.</param>
+		/// <param name="compareValue">The compare value.</param>
+		/// <returns>A value indicating relative value.</returns>
+		protected virtual bool Compare(object sourceValue, object compareValue, out int comparison, out string reasonNotCompared)
+		{
+			if (sourceValue is IComparable && compareValue is IComparable)
+			{
+				comparison = ((IComparable)sourceValue).CompareTo((IComparable)compareValue);
+				reasonNotCompared = "";
+				return true;
+			}
+
+			comparison = 0;
+			reasonNotCompared = GetReasonNotComparable(sourceValue, compareValue);
+			return false;
+		}
+
+		protected override bool ConditionApplies(GraphInstance root)
+		{
+			object sourceValue = GetSourceValue(root);
+			object compareValue = GetComparisonValue(root);
+
+			try
+			{
+				int comparison;
+				string reasonNotCompared;
+
+				if (compareValue == null || !HasValue(compareValue))
+				{
+					return false;
+				}
+				else if (Compare(sourceValue, compareValue, out comparison, out reasonNotCompared))
+				{
+					switch (CompareOperator)
+					{
+						case Operator.Equal: return comparison == 0;
+						case Operator.NotEqual: return comparison != 0;
+						case Operator.GreaterThan: return comparison < 0;
+						case Operator.GreaterThanEqual: return comparison <= 0;
+						case Operator.LessThan: return comparison > 0;
+						case Operator.LessThanEqual: return comparison >= 0;
+					}
+				}
+				else
+				{
+					throw new ApplicationException(string.Format("Values could not be compared because:  {0}.", reasonNotCompared));
+				}
+
+				return false;
+			}
+			catch
+			{
+				return false;
+			}
+		}
+
+		#endregion
+
+		#region Operator
+
+		public enum Operator
+		{
+			LessThanEqual = 0,
+			LessThan = 1,
+			Equal = 2,
+			NotEqual = 3,
+			GreaterThanEqual = 4,
+			GreaterThan = 5
+		}
+
+		#endregion
 	}
 
 	#endregion

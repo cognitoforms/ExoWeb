@@ -853,7 +853,7 @@
 			},
 			rule: function Property$rule(type, onlyTargets) {
 				if (!type || !(type instanceof Function)) {
-					ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type]);
+					ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type ? type : (type === undefined ? "undefined" : "null")]);
 				}
 
 				if (this._rules) {
@@ -2228,6 +2228,86 @@
 		};
 
 		Rule.allowedValues = AllowedValuesRule;
+
+		//////////////////////////////////////////////////////////////////////////////////////
+		function CompareRule(options, properties, type) {
+			var prop = this.prop = properties[0];
+
+			if (!type) {
+				type = Rule.ensureError("compare", this.prop);
+			}
+
+			this._comparePath = options.comparePath;
+			this._compareOp = options.compareOperator;
+
+			this._inited = false;
+
+			this.err = new Condition(type, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
+
+			// Function to register this rule when its containing type is loaded.
+			var register = (function CompareRule$register(loadedType) {
+				if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
+					var inputs = [];
+
+					var targetInput = new RuleInput(prop);
+					targetInput.set_isTarget(true);
+					inputs.push(targetInput);
+
+					this._compareProperty = Model.property(this._comparePath, prop.get_containingType());
+					var compareInput = new RuleInput(this._compareProperty);
+					inputs.push(compareInput);
+
+					Rule.register(this, inputs);
+
+					this._inited = true;
+				}
+				else {
+					$extend(loadedType.meta.baseType.get_fullName(), register);
+				}
+			}).setScope(this);
+
+			// If the type is already loaded, then register immediately.
+			if (LazyLoader.isLoaded(prop.get_containingType())) {
+				register(prop.get_containingType().get_jstype());
+			}
+			// Otherwise, wait until the type is loaded.
+			else {
+				$extend(prop.get_containingType().get_fullName(), register);
+			}
+		}
+		CompareRule.prototype = {
+			satisfies: function Compare$satisfies(obj) {
+				if (!this._compareProperty) {
+					return false;
+				}
+
+				var srcValue = this.prop.value(obj);
+				var cmpValue = this._compareProperty.value(obj);
+
+				if (cmpValue !== undefined && cmpValue !== null) {
+					switch (this._compareOp) {
+						case "Equal": return srcValue == cmpValue;
+						case "NotEqual": return srcValue != cmpValue;
+						case "GreaterThan": return srcValue > cmpValue;
+						case "GreaterThanEqual": return srcValue >= cmpValue;
+						case "LessThan": return srcValue < cmpValue;
+						case "LessThanEqual": return srcValue <= cmpValue;
+					}
+				}
+
+				return true;
+			},
+			execute: function CompareRule$execute(obj) {
+				if (this._inited === true) {
+					obj.meta.conditionIf(this.err, !this.satisfies(obj));
+				}
+				else {
+					ExoWeb.trace.logWarning("rule", "Compare rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+				}
+			}
+		};
+
+		Rule.compare = CompareRule;
 
 		///////////////////////////////////////////////////////////////////////////////////////
 		function StringLengthRule(options, properties, type) {
