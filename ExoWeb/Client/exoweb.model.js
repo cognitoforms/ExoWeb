@@ -2423,6 +2423,7 @@
 
 			this._name = name;
 			this._types = [];
+			this._active = false;
 
 			allConditionTypeSets[name] = this;
 		}
@@ -2459,8 +2460,36 @@
 			},
 			get_types: function ConditionTypeSet$get_types() {
 				return this._types;
+			},
+			get_active: function ConditionTypeSet$get_active() {
+				return this._active;
+			},
+			set_active: function ConditionTypeSet$set_active(value) {
+				if (value === true && !this._active) {
+					this._raiseEvent("activated");
+				}
+				else if (value === false && this._active === true) {
+					this._raiseEvent("deactivated");
+				}
+
+				this._active = value;
+			},
+			addActivated: function ConditionTypeSet$addActivated(handler) {
+				this._addEvent("activated", handler);
+			},
+			removeActivated: function ConditionTypeSet$removeActivated(handler) {
+				this._removeEvent("activated", handler);
+			},
+			addDeactivated: function ConditionTypeSet$addDeactivated(handler) {
+				this._addEvent("deactivated", handler);
+			},
+			removeDeactivated: function ConditionTypeSet$removeDeactivated(handler) {
+				this._removeEvent("deactivated", handler);
 			}
 		};
+
+		ConditionTypeSet.mixin(ExoWeb.Functor.eventing);
+
 		ExoWeb.Model.ConditionTypeSet = ConditionTypeSet;
 		ConditionTypeSet.registerClass("ExoWeb.Model.ConditionTypeSet");
 
