@@ -546,7 +546,7 @@ Type.registerNamespace("ExoWeb");
 
 			var func = this;
 			return function prepare$fn() {
-				return func.apply(thisPtr, args);
+				return func.apply(thisPtr || this, args || []);
 			};
 		};
 
@@ -825,7 +825,7 @@ Type.registerNamespace("ExoWeb");
 					output.sort(ordering);
 				}
 				else {
-					output.sort(function() { return ordering.apply(this, arguments); });
+					output.sort(function() { return ordering.apply(thisPtr, arguments); });
 				}
 
 				return this._next(this.orderBy, arguments, output);
