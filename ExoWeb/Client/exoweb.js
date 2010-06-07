@@ -359,17 +359,17 @@ Type.registerNamespace("ExoWeb");
 		}
 
 		Signal.mixin({
-			pending: function Signal$pending(callback, thisPtr) {
+			pending: function Signal$pending(callback, thisPtr, executeImmediately) {
 				if (this._pending === 0) {
 					Signal.allPending.push(this);
 				}
 
 				this._pending++;
 				log("signal", "(++{_pending}) {_debugLabel}", this);
-				return this._genCallback(callback, thisPtr);
+				return this._genCallback(callback, thisPtr, executeImmediately);
 			},
-			orPending: function Signal$orPending(callback, thisPtr) {
-				return this._genCallback(callback, thisPtr);
+			orPending: function Signal$orPending(callback, thisPtr, executeImmediately) {
+				return this._genCallback(callback, thisPtr, executeImmediately);
 			},
 			_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
 				try {
@@ -388,14 +388,14 @@ Type.registerNamespace("ExoWeb");
 					logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
 				}
 			},
-			_genCallback: function Signal$_genCallback(callback, thisPtr) {
+			_genCallback: function Signal$_genCallback(callback, thisPtr, executeImmediately) {
 				if (callback) {
 					var signal = this;
 					return function Signal$_genCallback$result() {
 						signal._doCallback("pending", thisPtr || this, function Signal$_genCallback$fn() {
 							callback.apply(this, arguments);
 							signal.oneDone();
-						}, arguments);
+						}, arguments, executeImmediately);
 					};
 				}
 				else {

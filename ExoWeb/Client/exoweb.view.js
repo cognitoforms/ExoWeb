@@ -170,6 +170,13 @@
 									ExoWeb.trace.logError(["markupExt", "~"], e);
 								}
 							}
+							else {
+								Sys.Observer.addPathChanged(item, properties.required, function(sender, args) {
+									queueUpdate(function(setValue) {
+										setValue(result, "required path step change [" + args.get_propertyName() + "]");
+									});
+								});
+							}
 						};
 
 						// attempt to watch changes along the required path
