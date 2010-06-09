@@ -1437,7 +1437,7 @@
 				var prop = type.property(step.property, true);
 
 				if (!prop) {
-					throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}", [pathTokens, type.get_fullName(), step.property]);
+					throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}", [pathTokens.buildExpression(), type.get_fullName(), step.property]);
 				}
 
 				chain._properties.push(prop);
@@ -1446,7 +1446,7 @@
 					type = type.get_model().type(step.cast);
 
 					if (!type) {
-						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [pathTokens, step.cast]);
+						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [pathTokens.buildExpression(), step.cast]);
 					}
 
 					var jstype = type.get_jstype();
