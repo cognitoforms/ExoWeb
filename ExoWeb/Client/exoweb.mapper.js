@@ -955,6 +955,7 @@
 
 				try {
 					var batch = ExoWeb.Batch.start("apply changes");
+					this._model.startQueueingEvents();
 					log("server", "begin applying {length} changes", changes);
 
 					this.beginApplyingChanges();
@@ -1048,6 +1049,7 @@
 					signal.waitForAll(function() {
 						log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
 						this.endApplyingChanges();
+						this._model.stopQueueingEvents();
 						ExoWeb.Batch.end(batch);
 						if (newChanges > 0) {
 							log("server", "raising \"Changes\" property change event");
