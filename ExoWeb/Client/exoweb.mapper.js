@@ -144,6 +144,15 @@
 			eventProviderFn = fn;
 		};
 
+		Date.formats.$exograph = new ExoWeb.Model.Format({
+			convert: function convert(obj) {
+				// include offset in serialized date string
+				var offset = obj.getTimezoneOffset() * 100 / 60;
+				var offsetText = offset >= 1000 ? offset.toPrecision(4) : "0" + offset.toPrecision(3);
+				return "/Date(" + (+obj).toString() + "-" + offsetText + ")/";
+			}
+		});
+
 		ExoWeb.Model.Entity.formats.$exograph = new ExoWeb.Model.Format({
 			convert: function(val) {
 				var json = {
@@ -817,7 +826,7 @@
 						this.endApplyingChanges();
 					}, this);
 				}
-				catch(e) {
+				catch (e) {
 					this.endApplyingChanges();
 					ExoWeb.trace.throwAndLog(["server"], e);
 				}
