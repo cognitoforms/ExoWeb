@@ -45,6 +45,7 @@ namespace ExoWeb
 	{
 		unsupported,
 		required,
+		requiredIf,
 		range,
 		stringLength,
 		allowedValues,
@@ -212,6 +213,66 @@ namespace ExoWeb
 		/// <returns>true if <paramref name="root"/> should be associated with the <see cref="ConditionType"/></returns>
 		protected abstract bool ConditionApplies(GraphInstance root);
 
+		/// <summary>
+		/// Gets the value for the given <see cref="GraphInstance"/> for the given <see cref="GraphProperty"/>.
+		/// Performs arbitrary logic (depending on the type of property) and returns a value of type <typeparam name="T" />.
+		/// </summary>
+		/// <param name="root">The root object from which to evaluate the given property.</param>
+		/// <param name="property">The property to evaluate.</param>
+		/// <param name="ifInstance">Code to execute if the property is an instance reference.</param>
+		/// <param name="ifInstanceList">Code to execute if the property is an instance list.</param>
+		/// <param name="ifValue">Code to execute if the property is a value.</param>
+		/// <returns>The value resulting from calling the function for the given property type.</returns>
+		protected internal static T ForValue<T>(GraphInstance instance, GraphProperty property,
+			Func<GraphInstance, T> ifInstance, Func<GraphInstanceList, T> ifInstanceList, Func<object, T> ifValue)
+		{
+			if (property is GraphReferenceProperty)
+			{
+				GraphReferenceProperty referenceProperty = (GraphReferenceProperty)property;
+				if (referenceProperty.IsList)
+				{
+					return ifInstanceList(instance.GetList(property as GraphReferenceProperty));
+				}
+				else
+				{
+					return ifInstance(instance.GetReference(referenceProperty));
+				}
+			}
+			else
+			{
+				GraphValueProperty valueProperty = (GraphValueProperty)property;
+				return ifValue(instance.GetValue(valueProperty));
+			}
+		}
+
+		/// <summary>
+		/// Get the value from the given <see cref="GraphInstance"/> for the given <see cref="GraphProperty"/>.
+		/// </summary>
+		/// <param name="root">The root object from which to evaluate the given property.</param>
+		/// <param name="property">The property to evaluate.</param>
+		/// <returns>The value of the given instance for the given property.</returns>
+		protected internal static object GetValue(GraphInstance instance, GraphProperty property)
+		{
+			return ForValue<object>(instance, property, reference => reference, list => list, val => val);
+		}
+
+
+		/// <summary>
+		/// Get the value from the given <see cref="GraphInstance"/> for the given <see cref="GraphProperty"/>.
+		/// Returns a boolean value that is the result of executing the given code based on the property type.
+		/// </summary>
+		/// <param name="root">The root object from which to evaluate the given property.</param>
+		/// <param name="property">The property to evaluate.</param>
+		/// <param name="ifInstance">Code to execute if the property is an instance reference.</param>
+		/// <param name="ifInstanceList">Code to execute if the property is an instance list.</param>
+		/// <param name="ifValue">Code to execute if the property is a value.</param>
+		/// <returns>The value of the given instance for the given property.</returns>
+		protected internal static bool IfValue(GraphInstance instance, GraphProperty property,
+			Func<GraphInstance, bool> ifInstance, Func<GraphInstanceList, bool> ifInstanceList, Func<object, bool> ifValue)
+		{
+			return ForValue<bool>(instance, property, ifInstance, ifInstanceList, ifValue);
+		}
+
 		#endregion
 	}
 
@@ -241,9 +302,30 @@ namespace ExoWeb
 	[DataContract(Name = "required")]
 	public class RequiredRule : PropertyRule
 	{
+		#region Constructors
+
 		public RequiredRule(GraphProperty graphProperty, ConditionType conditionType)
 			: base(graphProperty, conditionType, ClientRuleType.required)
 		{ }
+
+		protected RequiredRule(GraphProperty graphProperty, ConditionType conditionType, ClientRuleType clientRuleType)
+			: base(graphProperty, conditionType, clientRuleType)
+		{ }
+
+		#endregion
+
+		#region Methods
+
+		/// <summary>
+		/// Determines whether the given object has a value.
+		/// The default implemenation checks to see if the object is null.
+		/// </summary>
+		/// <param name="value">The value to check.</param>
+		/// <returns>A boolean value indicating whether the object has a value.</returns>
+		protected virtual bool HasValue(object value)
+		{
+			return value != null;
+		}
 
 		/// <summary>
 		/// Determines whether the rule should attach a condition for a property that is a reference list.
@@ -251,7 +333,7 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="instances">The value of the property that this rule is bound to.</param>
 		/// <returns>A boolean value indicating whether a condition should be attached.</returns>
-		protected virtual bool ConditionAppliesToReferenceList(GraphInstanceList instances)
+		protected bool ConditionAppliesToReferenceList(GraphInstanceList instances)
 		{
 			return instances.Count == 0;
 		}
@@ -260,9 +342,9 @@ namespace ExoWeb
 		/// Determines whether the rule should attach a condition for a property that is a reference.
 		/// The default implemenation checks to see if the reference is null.
 		/// </summary>
-		/// <param name="instances">The value of the property that this rule is bound to.</param>
+		/// <param name="instance">The value of the property that this rule is bound to.</param>
 		/// <returns>A boolean value indicating whether a condition should be attached.</returns>
-		protected virtual bool ConditionAppliesToReference(GraphInstance instance)
+		protected bool ConditionAppliesToReference(GraphInstance instance)
 		{
 			return instance == null;
 		}
@@ -271,11 +353,11 @@ namespace ExoWeb
 		/// Determines whether the rule should attach a condition for a property that is a value type.
 		/// The default implemenation checks to see if the value is null.
 		/// </summary>
-		/// <param name="instances">The value of the property that this rule is bound to.</param>
+		/// <param name="value">The value of the property that this rule is bound to.</param>
 		/// <returns>A boolean value indicating whether a condition should be attached.</returns>
-		protected virtual bool ConditionAppliesToValue(object value)
+		protected bool ConditionAppliesToValue(object value)
 		{
-			return value == null;
+			return !HasValue(value);
 		}
 
 		/// <summary>
@@ -285,23 +367,278 @@ namespace ExoWeb
 		/// <returns>A boolean value indicating whether the state of the given <see cref="GraphInstance"/> violates the rule.</returns>
 		protected override bool ConditionApplies(GraphInstance root)
 		{
-			if (GraphProperty is GraphReferenceProperty)
+			return IfValue(root, GraphProperty, ConditionAppliesToReference, ConditionAppliesToReferenceList, ConditionAppliesToValue);
+		}
+
+		#endregion
+	}
+
+	#endregion
+
+	#region RequiredIfRule<TInput, TOutput>
+
+	[DataContract(Name = "requiredIf")]
+	public abstract class RequiredIfRule<TInput, TOutput> : RequiredRule
+	{
+		#region Fields
+
+		string comparePropertyText;
+		string compareOperatorText;
+
+		#endregion
+
+		#region Constructors
+
+		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty)
+			: base(graphProperty, conditionType, ClientRuleType.requiredIf)
+		{
+			Init(compareProperty, Operator.NotEqual, default(TInput));
+		}
+
+		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, TInput compareValue)
+			: base(graphProperty, conditionType, ClientRuleType.requiredIf)
+		{
+			Init(compareProperty, Operator.Equal, compareValue);
+		}
+
+		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator, TInput compareValue)
+			: base(graphProperty, conditionType, ClientRuleType.requiredIf)
+		{
+			Init(compareProperty, compareOperator, compareValue);
+		}
+
+		#endregion
+
+		#region Properties
+
+		/// <summary>
+		/// The property to compare the source property to.
+		/// </summary>
+		public GraphProperty CompareProperty
+		{
+			get;
+			private set;
+		}
+
+		[DataMember(Name = "comparePath")]
+		public string ComparePropertyText
+		{
+			get
 			{
-				GraphReferenceProperty referenceProperty = (GraphReferenceProperty)GraphProperty;
-				if (referenceProperty.IsList)
+				if (comparePropertyText == null)
 				{
-					return ConditionAppliesToReferenceList(root.GetList(GraphProperty as GraphReferenceProperty));
+					comparePropertyText = (CompareProperty.IsStatic ? CompareProperty.DeclaringType.Name : "this") + "." + CompareProperty.Name;
 				}
-				else
+
+				return comparePropertyText;
+			}
+			private set
+			{
+				comparePropertyText = value;
+			}
+		}
+
+		/// <summary>
+		/// The value to compare to.
+		/// </summary>
+		public TInput CompareValue
+		{
+			get;
+			protected set;
+		}
+
+		[DataMember(Name = "compareValue")]
+		public abstract TOutput CompareValueOutput { get; protected set; }
+
+		/// <summary>
+		/// The type of comparison to perform.
+		/// </summary>
+		public Operator CompareOperator
+		{
+			get;
+			protected set;
+		}
+
+		[DataMember(Name = "compareOp")]
+		public string CompareOperatorText
+		{
+			get
+			{
+				if (compareOperatorText == null)
 				{
-					return ConditionAppliesToReference(root.GetReference(referenceProperty));
+					compareOperatorText = CompareOperator.ToString();
 				}
+
+				return compareOperatorText;
+			}
+			set
+			{
+				compareOperatorText = value;
+			}
+		}
+
+		#endregion
+
+		#region Methods
+
+		protected virtual void Init(GraphProperty compareProperty, Operator compareOperator, TInput compareValue)
+		{
+			if (compareProperty == null)
+				throw new ComparePropertyRequiredException();
+
+			this.CompareProperty = compareProperty;
+			this.CompareOperator = compareOperator;
+			this.CompareValue = compareValue;
+		}
+
+		protected virtual TInput GetNull(Type type)
+		{
+			return default(TInput);
+		}
+
+		protected bool ShouldEnforce(GraphInstance root)
+		{
+			object compareValue = GetValue(root, CompareProperty);
+
+			// Trim the value is it is a string
+			if (compareValue is string)
+				compareValue = ((string)compareValue).Trim();
+
+			// If the value to compare is null, then return true if the other value is not null
+			if (!HasValue(CompareValue))
+				return HasValue(compareValue);
+
+			return CompareRule.Compare(root, compareValue, CompareOperator, CompareValue, HasValue);
+		}
+
+		protected override bool ConditionApplies(GraphInstance root)
+		{
+			if (ShouldEnforce(root))
+			{
+				return base.ConditionApplies(root);
 			}
 			else
 			{
-				GraphValueProperty valueProperty = (GraphValueProperty)GraphProperty;
-				return ConditionAppliesToValue(root.GetValue(valueProperty));
+				return false;
 			}
+		}
+
+		#endregion
+	}
+
+	#endregion
+
+	#region StructRequiredIfRule<T>
+
+	[DataContract(Name = "requiredIf")]
+	public class StructRequiredIfRule<T> : RequiredIfRule<T, T>
+		where T : struct
+	{
+		#region Constructors
+
+		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty)
+			: base(graphProperty, conditionType, compareProperty)
+		{
+		}
+
+		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, T compareValue)
+			: base(graphProperty, conditionType, compareProperty, compareValue)
+		{
+		}
+
+		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator, T compareValue)
+			: base(graphProperty, conditionType, compareProperty, compareOperator, compareValue)
+		{
+		}
+
+		#endregion
+
+		#region Properties
+
+		[DataMember(Name = "compareValue")]
+		public override T CompareValueOutput
+		{
+			get
+			{
+				return CompareValue;
+			}
+			protected set
+			{
+				CompareValue = value;
+			}
+		}
+
+		#endregion
+	}
+
+	#endregion
+
+	#region ClassRequiredIfRule
+
+	[DataContract(Name = "requiredIf")]
+	public class ClassRequiredIfRule : RequiredIfRule<object, string>
+	{
+		#region Fields
+
+		private string compareValueOutput;
+
+		#endregion
+
+		#region Constructors
+
+		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty)
+			: base(graphProperty, conditionType, compareProperty)
+		{
+		}
+
+		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, object compareValue)
+			: base(graphProperty, conditionType, compareProperty, compareValue)
+		{
+		}
+
+		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator, object compareValue)
+			: base(graphProperty, conditionType, compareProperty, compareOperator, compareValue)
+		{
+		}
+
+		#endregion
+
+		#region Properties
+
+		[DataMember(Name = "compareValue")]
+		public override string CompareValueOutput
+		{
+			get
+			{
+				if (compareValueOutput == null)
+				{
+					compareValueOutput = (this.CompareValue == null ? null : this.CompareValue.ToString());
+				}
+
+				return compareValueOutput;
+			}
+			protected set
+			{
+				compareValueOutput = value;
+			}
+		}
+
+		#endregion
+	}
+
+	#endregion
+
+	#region ComparePropertyRequiredException
+
+	/// <summary>
+	/// An exception that is thrown when the CompareProperty is not 
+	/// specified for a CompareRule or RequiredIfRule.
+	/// </summary>
+	public sealed class ComparePropertyRequiredException : Exception
+	{
+		internal ComparePropertyRequiredException()
+			: base("The CompareProperty for this rule is required.")
+		{
 		}
 	}
 
@@ -498,6 +835,9 @@ namespace ExoWeb
 		public CompareRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator)
 			: base(graphProperty, conditionType, ClientRuleType.compare)
 		{
+			if (compareProperty == null)
+				throw new ComparePropertyRequiredException();
+
 			this.CompareProperty = compareProperty;
 			this.CompareOperator = compareOperator;
 		}
@@ -542,7 +882,7 @@ namespace ExoWeb
 			private set;
 		}
 
-		[DataMember(Name = "compareOperator")]
+		[DataMember(Name = "compareOp")]
 		public string CompareOperatorText
 		{
 			get
@@ -562,7 +902,7 @@ namespace ExoWeb
 
 		#endregion
 
-		#region Methods
+		#region Static Methods
 
 		/// <summary>
 		/// Gets a text description of the given comparison operator.
@@ -585,58 +925,21 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Get the source value from the given root <see cref="GraphInstance"/>.
+		/// Returns a string message explaining why one or both of the given values cannot be compared.
 		/// </summary>
-		/// <param name="root">The root object from which to evaluate the source property.</param>
-		/// <returns>The source value.</returns>
-		protected virtual object GetSourceValue(GraphInstance root)
+		protected internal static string GetReasonNotComparable(object sourceValue, object compareValue)
 		{
-			return root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(GraphProperty.IsStatic ? null : root.Instance, null);
-		}
+			Type sourceType = sourceValue.GetType();
+			Type compareType = compareValue.GetType();
 
-		/// <summary>
-		/// Get the comparison value from the given root <see cref="GraphInstance"/>.
-		/// </summary>
-		/// <param name="root">The root object from which to evaluate the compare property.</param>
-		/// <returns>The comparison value.</returns>
-		protected virtual object GetComparisonValue(GraphInstance root)
-		{
-			return root.Instance.GetType().GetProperty(CompareProperty.Name).GetValue(CompareProperty.IsStatic ? null : root.Instance, null);
-		}
-
-		/// <summary>
-		/// Determines whether the given value has a value.  This is used by the default 
-		/// comparison to decide that the condition does not apply if there is no compare value.
-		/// A null check is already performed, but a derived class may override this method in order
-		/// to include other conditions such as checks for value types.
-		/// </summary>
-		/// <param name="value">The value to check.</param>
-		/// <returns>Whether the given value is null.</returns>
-		protected virtual bool HasValue(object value)
-		{
-			return true;
-		}
-
-		private string GetReasonNotComparable(object sourceValue, object compareValue)
-		{
-			if (sourceValue == null)
-			{
-				return "source value is null";
-			}
+			if (!(sourceValue is IComparable) && !(compareValue is IComparable))
+				return string.Format("source value of type {0} and compare value of type {1} do not implement IComparable", sourceType.Name, compareType.Name);
+			else if (!(sourceValue is IComparable))
+				return string.Format("source value of type {0} does not implement IComparable", sourceType.Name);
+			else if (!(compareValue is IComparable))
+				return string.Format("compare value of type {0} does not implement IComparable", compareType.Name);
 			else
-			{
-				Type sourceType = sourceValue.GetType();
-				Type compareType = compareValue.GetType();
-
-				if (!(sourceValue is IComparable) && !(compareValue is IComparable))
-					return string.Format("source value of type {0} and compare value of type {1} do not implement IComparable", sourceType.Name, compareType.Name);
-				else if (!(sourceValue is IComparable))
-					return string.Format("source value of type {0} does not implement IComparable", sourceType.Name);
-				else if (!(compareValue is IComparable))
-					return string.Format("compare value of type {0} does not implement IComparable", compareType.Name);
-				else
-					return "unknown reason";
-			}
+				return "unknown reason";
 		}
 
 		/// <summary>
@@ -645,7 +948,7 @@ namespace ExoWeb
 		/// <param name="sourceValue">The source value.</param>
 		/// <param name="compareValue">The compare value.</param>
 		/// <returns>A value indicating relative value.</returns>
-		protected virtual bool Compare(object sourceValue, object compareValue, out int comparison, out string reasonNotCompared)
+		protected internal static bool CompareValues(object sourceValue, object compareValue, out int comparison, out string reasonNotCompared)
 		{
 			if (sourceValue is IComparable && compareValue is IComparable)
 			{
@@ -659,30 +962,36 @@ namespace ExoWeb
 			return false;
 		}
 
-		protected override bool ConditionApplies(GraphInstance root)
+		/// <summary>
+		/// Determines whether the comparison conditions are met by the given source value and compare value.
+		/// </summary>
+		/// <param name="root">The root graph instance.</param>
+		/// <param name="sourceValue">The source value.</param>
+		/// <param name="compareOperator">The comparison operator.</param>
+		/// <param name="compareValue">The compare value.</param>
+		/// <param name="hasValue">A function that determines whether an object has a value.</param>
+		/// <returns>True if the comparison passes, false if the comparison fails.</returns>
+		protected internal static bool Compare(GraphInstance root, object sourceValue, Operator compareOperator, object compareValue, Func<object, bool> hasValue)
 		{
-			object sourceValue = GetSourceValue(root);
-			object compareValue = GetComparisonValue(root);
-
 			try
 			{
-				int comparison;
+				int compareResult;
 				string reasonNotCompared;
 
-				if (compareValue == null || !HasValue(compareValue) || sourceValue == null || !HasValue(sourceValue))
+				if (compareValue == null || !hasValue(compareValue) || sourceValue == null || !hasValue(sourceValue))
 				{
 					return false;
 				}
-				else if (Compare(sourceValue, compareValue, out comparison, out reasonNotCompared))
+				else if (CompareValues(sourceValue, compareValue, out compareResult, out reasonNotCompared))
 				{
-					switch (CompareOperator)
+					switch (compareOperator)
 					{
-						case Operator.Equal: return comparison == 0;
-						case Operator.NotEqual: return comparison != 0;
-						case Operator.GreaterThan: return comparison < 0;
-						case Operator.GreaterThanEqual: return comparison <= 0;
-						case Operator.LessThan: return comparison > 0;
-						case Operator.LessThanEqual: return comparison >= 0;
+						case Operator.Equal: return compareResult == 0;
+						case Operator.NotEqual: return compareResult != 0;
+						case Operator.GreaterThan: return compareResult < 0;
+						case Operator.GreaterThanEqual: return compareResult <= 0;
+						case Operator.LessThan: return compareResult > 0;
+						case Operator.LessThanEqual: return compareResult >= 0;
 					}
 				}
 				else
@@ -700,19 +1009,41 @@ namespace ExoWeb
 
 		#endregion
 
-		#region Operator
+		#region Methods
 
-		public enum Operator
+		/// <summary>
+		/// Determines whether the given value has a value.  This is used by the default 
+		/// comparison to decide that the condition does not apply if there is no compare value.
+		/// A null check is already performed, but a derived class may override this method in order
+		/// to include other conditions such as checks for value types.
+		/// </summary>
+		/// <param name="value">The value to check.</param>
+		/// <returns>Whether the given value is null.</returns>
+		protected virtual bool HasValue(object value)
 		{
-			LessThanEqual = 0,
-			LessThan = 1,
-			Equal = 2,
-			NotEqual = 3,
-			GreaterThanEqual = 4,
-			GreaterThan = 5
+			return true;
+		}
+
+		protected override bool ConditionApplies(GraphInstance root)
+		{
+			return Compare(root, GetValue(root, GraphProperty), CompareOperator, GetValue(root, CompareProperty), HasValue);
 		}
 
 		#endregion
+	}
+
+	#endregion
+
+	#region Operator
+
+	public enum Operator
+	{
+		LessThanEqual = 0,
+		LessThan = 1,
+		Equal = 2,
+		NotEqual = 3,
+		GreaterThanEqual = 4,
+		GreaterThan = 5
 	}
 
 	#endregion

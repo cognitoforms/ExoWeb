@@ -26,16 +26,16 @@
 			});
 
 			setupTest("compare-number-gte", { description: "Compare Rule (number greater than or equal to)", expect: 3 }, function () {
-				var rule = new ExoWeb.Model.Rule.compare({ compareOperator: "GreaterThanEqual", comparePath: "this.OtherMilesDriven" }, [Driver.$MilesDriven, Driver.$OtherMilesDriven], null);
+				var rule = Driver.$MilesDriven.rule(ExoWeb.Model.Rule.compare);
 
-				context.model.driver.set_OtherMilesDriven(100000);
+				context.model.driver.set_MilesDrivenQuota(100000);
 				ok(rule.satisfies(context.model.driver), "Comparison should be valid: equal");
 
-				context.model.driver.set_OtherMilesDriven(1000);
+				context.model.driver.set_MilesDrivenQuota(1000);
 				ok(rule.satisfies(context.model.driver), "Comparison should be valid: greater than");
 
-				context.model.driver.set_OtherMilesDriven(10000000);
-				ok(!rule.satisfies(context.model.driver), "Comparison should not be valid: less than");
+				context.model.driver.set_MilesDrivenQuota(10000000);
+				ok(!rule.satisfies(context.model.driver), "Comparison should NOT be valid: less than");
 			});
 
 			setupTest("compare-conditions", { description: "Compare Rule Attached Conditions", expect: 6 }, function () {
@@ -56,6 +56,45 @@
 				context.model.driver.set_BirthDate(new Date());
 				context.model.driver.set_DateCreated(null);
 				equals(context.model.driver.meta.conditions(Driver.$DateCreated).length, 0, "Condition should not be attached for null source value");
+			});
+
+			setupTest("requiredIf-list", { description: "RequiredIf Rule (list)", expect: 6 }, function () {
+				var rule = Driver.$PrimaryCar.rule(ExoWeb.Model.Rule.requiredIf);
+
+				context.model.driver.set_PrimaryCar(null);
+				ok(rule.required(context.model.driver), "Primary Car is required: Cars is non-empty");
+				ok(!rule.satisfies(context.model.driver), "Rule is NOT satisfied: Primary Car does not have a value");
+
+				// Make a copy of the driver's car array.
+				var cars = context.model.driver.get_Cars().map(function(c) { return c; });
+				Array.clear(context.model.driver.get_Cars());
+				ok(!rule.required(context.model.driver), "Primary Car is NOT required: Cars is empty");
+				ok(rule.satisfies(context.model.driver), "Rule is satisfied: not required");
+
+				Array.addRange(context.model.driver.get_Cars(), cars);
+				context.model.driver.set_PrimaryCar(cars[0]);
+				ok(rule.required(context.model.driver), "Primary Car is required: Cars is non-empty");
+				ok(rule.satisfies(context.model.driver), "Rule is satisfied: Primary Car has a value");
+			});
+
+			setupTest("requiredIf-number-gt", { description: "RequiredIf Rule (number greater than)", expect: 7 }, function () {
+				var rule = Driver.$RetirementGoalDate.rule(ExoWeb.Model.Rule.requiredIf);
+
+				ok(!rule.required(context.model.driver), "Retirement Goal Date is NOT required: Miles Driven is less than 200,000");
+				ok(rule.satisfies(context.model.driver), "Rule is satisfied: not required");
+
+				context.model.driver.set_MilesDriven(200000);
+				ok(!rule.required(context.model.driver), "Retirement Goal Date is NOT required: Miles Driven is equal to 200,000");
+
+				context.model.driver.set_MilesDriven(250000);
+				ok(rule.required(context.model.driver), "Retirement Goal Date is required: Miles Driven is greater than 200,000");
+				ok(!rule.satisfies(context.model.driver), "Rule is NOT satisfied: Retirement Goal Date does not have a value");
+
+				var goal = new Date();
+				goal.setFullYear(goal.getFullYear() + 5);
+				context.model.driver.set_RetirementGoalDate(goal);
+				ok(rule.required(context.model.driver), "Retirement Goal Date is required: Miles Driven is greater than 200,000");
+				ok(rule.satisfies(context.model.driver), "Rule is satisfied: Retirement Goal Date has a value");
 			});
 
 			var hasRunDriverDescription = false;
@@ -83,19 +122,14 @@
 			context.ready(function () {
 				executeTest("allowed-values-basic");
 
-				Driver.meta.addProperty({ name: "OtherMilesDriven", type: Number });
-
 				executeTest("compare-number-gte");
 				executeTest("compare-conditions");
+				executeTest("requiredIf-list");
+				executeTest("requiredIf-number-gt");
 
-				Driver.meta.addProperty({ name: "Description", type: String }).calculated({
-					fn: calculateDriverDescription,
-					basedOn: ["this.Owner.Name", "this.Name"]
-				});
-
-				Driver.$Description._readySignal.waitForAll(function () {
-					executeTest("rule-force-execution");
-				});
+				Driver.meta.addProperty({ name: "Description", type: String })
+					.calculated({ fn: calculateDriverDescription, basedOn: ["this.Owner.Name", "this.Name"] })
+					._readySignal.waitForAll(executeTest.prependArguments("rule-force-execution"));
 			});
 		</script>
 	</head>

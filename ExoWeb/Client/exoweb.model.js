@@ -1437,7 +1437,7 @@
 				var prop = type.property(step.property, true);
 
 				if (!prop) {
-					throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}", [pathTokens.buildExpression(), type.get_fullName(), step.property]);
+					throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}", [pathTokens.expression, type.get_fullName(), step.property]);
 				}
 
 				chain._properties.push(prop);
@@ -1446,7 +1446,7 @@
 					type = type.get_model().type(step.cast);
 
 					if (!type) {
-						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [pathTokens.buildExpression(), step.cast]);
+						throwAndLog("model", "Path '{0}' references an unknown type: {1}", [pathTokens.expression, step.cast]);
 					}
 
 					var jstype = type.get_jstype();
@@ -2086,16 +2086,27 @@
 
 			Rule.register(this, properties);
 		}
+
+		RequiredRule.hasValue = function RequiredRule$hasValue(obj, prop) {
+			var val = arguments.length === 1 ? obj : prop.value(obj);
+
+			if (val instanceof Array) {
+				return val.length > 0;
+			}
+			else if (val === undefined || val === null) {
+				return false;
+			}
+			else if (val.constructor === String) {
+				return $.trim(val) !== "";
+			}
+			else {
+				return true;
+			}
+		};
+
 		RequiredRule.prototype = {
 			execute: function(obj) {
-				var val = this.prop.value(obj);
-
-				if (val instanceof Array) {
-					obj.meta.conditionIf(this.err, val.length === 0);
-				}
-				else {
-					obj.meta.conditionIf(this.err, val === null || val === undefined || ($.trim(val.toString()) == ""));
-				}
+				obj.meta.conditionIf(this.err, !RequiredRule.hasValue(obj, this.prop));
 			},
 			toString: function() {
 				return $format("{0}.{1} is required", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
@@ -2238,33 +2249,14 @@
 			}
 
 			this._comparePath = options.comparePath;
-			this._compareOp = options.compareOperator;
+			this._compareOp = options.compareOp;
 
 			this._inited = false;
 
 			this.err = new Condition(type, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
 
 			// Function to register this rule when its containing type is loaded.
-			var register = (function CompareRule$register(loadedType) {
-				if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
-					var inputs = [];
-
-					var targetInput = new RuleInput(prop);
-					targetInput.set_isTarget(true);
-					inputs.push(targetInput);
-
-					this._compareProperty = Model.property(this._comparePath, prop.get_containingType());
-					var compareInput = new RuleInput(this._compareProperty);
-					inputs.push(compareInput);
-
-					Rule.register(this, inputs);
-
-					this._inited = true;
-				}
-				else {
-					$extend(loadedType.meta.baseType.get_fullName(), register);
-				}
-			}).setScope(this);
+			var register = (function CompareRule$register(type) { CompareRule.load(this, type); }).setScope(this);
 
 			// If the type is already loaded, then register immediately.
 			if (LazyLoader.isLoaded(prop.get_containingType())) {
@@ -2275,6 +2267,47 @@
 				$extend(prop.get_containingType().get_fullName(), register);
 			}
 		}
+
+		CompareRule.load = function CompareRule$load(rule, loadedType) {
+			if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
+				var inputs = [];
+
+				var targetInput = new RuleInput(rule.prop);
+				targetInput.set_isTarget(true);
+				inputs.push(targetInput);
+
+				rule._compareProperty = Model.property(rule._comparePath, rule.prop.get_containingType());
+				var compareInput = new RuleInput(rule._compareProperty);
+				inputs.push(compareInput);
+
+				Rule.register(rule, inputs);
+
+				rule._inited = true;
+			}
+			else {
+				$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
+					CompareRule.load(rule, baseType);
+				});
+			}
+		};
+
+		CompareRule.compare = function CompareRule$compare(obj, srcValue, cmpOp, cmpValue) {
+			if (cmpValue !== undefined && cmpValue !== null && srcValue !== undefined && srcValue !== null) {
+				switch (cmpOp) {
+					case "Equal": return srcValue == cmpValue;
+					case "NotEqual": return srcValue != cmpValue;
+					case "GreaterThan": return srcValue > cmpValue;
+					case "GreaterThanEqual": return srcValue >= cmpValue;
+					case "LessThan": return srcValue < cmpValue;
+					case "LessThanEqual": return srcValue <= cmpValue;
+				}
+				// Equality by default.
+				return srcValue == cmpValue;
+			}
+
+			return true;
+		};
+
 		CompareRule.prototype = {
 			satisfies: function Compare$satisfies(obj) {
 				if (!this._compareProperty) {
@@ -2283,19 +2316,7 @@
 
 				var srcValue = this.prop.value(obj);
 				var cmpValue = this._compareProperty.value(obj);
-
-				if (cmpValue !== undefined && cmpValue !== null && srcValue !== undefined && srcValue !== null) {
-					switch (this._compareOp) {
-						case "Equal": return srcValue == cmpValue;
-						case "NotEqual": return srcValue != cmpValue;
-						case "GreaterThan": return srcValue > cmpValue;
-						case "GreaterThanEqual": return srcValue >= cmpValue;
-						case "LessThan": return srcValue < cmpValue;
-						case "LessThanEqual": return srcValue <= cmpValue;
-					}
-				}
-
-				return true;
+				return CompareRule.compare(obj, srcValue, this._compareOp, cmpValue);
 			},
 			execute: function CompareRule$execute(obj) {
 				if (this._inited === true) {
@@ -2308,6 +2329,72 @@
 		};
 
 		Rule.compare = CompareRule;
+
+		//////////////////////////////////////////////////////////////////////////////////////
+		function RequiredIfRule(options, properties, type) {
+			var prop = this.prop = properties[0];
+
+			if (!type) {
+				type = Rule.ensureError("requiredIf", this.prop);
+			}
+
+			this._comparePath = options.comparePath;
+			this._compareOp = options.compareOp;
+			this._compareValue = options.compareValue;
+
+			if (this._compareValue !== undefined && this._compareValue !== null && (this._compareOp === undefined || this._compareOp === null)) {
+				ExoWeb.trace.logWarning("rule", 
+					"Possible rule configuration error - {0}:  if a compare value is specified, " +
+					"then an operator should be specified as well.  Falling back to equality check.",
+					[type.get_code()]);
+			}
+
+			this._inited = false;
+
+			this.err = new Condition(type, $format("{0} is required", [this.prop.get_label()]), properties, this);
+
+			// Function to register this rule when its containing type is loaded.
+			var register = (function RequiredIfRule$register(type) { CompareRule.load(this, type); }).setScope(this);
+
+			// If the type is already loaded, then register immediately.
+			if (LazyLoader.isLoaded(prop.get_containingType())) {
+				register(prop.get_containingType().get_jstype());
+			}
+			// Otherwise, wait until the type is loaded.
+			else {
+				$extend(prop.get_containingType().get_fullName(), register);
+			}
+		}
+
+		RequiredIfRule.prototype = {
+			required: function RequiredIfRule$required(obj) {
+				if (!this._compareProperty) {
+					return false;
+				}
+
+				var cmpValue = this._compareProperty.value(obj);
+
+				// If the value to compare is null, then return true if the other value is not null
+				if (this._compareValue === undefined || this._compareValue === null) {
+					return RequiredRule.hasValue(cmpValue);
+				}
+
+				return CompareRule.compare(obj, cmpValue, this._compareOp, this._compareValue);
+			},
+			satisfies: function RequiredIfRule$satisfies(obj) {
+				return !this.required(obj) || RequiredRule.hasValue(obj, this.prop);
+			},
+			execute: function RequiredIfRule$execute(obj) {
+				if (this._inited === true) {
+					obj.meta.conditionIf(this.err, !this.satisfies(obj));
+				}
+				else {
+					ExoWeb.trace.logWarning("rule", "RequiredIf rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+				}
+			}
+		};
+
+		Rule.requiredIf = RequiredIfRule;
 
 		///////////////////////////////////////////////////////////////////////////////////////
 		function StringLengthRule(options, properties, type) {

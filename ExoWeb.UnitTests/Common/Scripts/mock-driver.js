@@ -1,5 +1,4 @@
-﻿
-if (ExoWeb.Mock) {
+﻿if (ExoWeb.Mock) {
 	//ExoWeb.Mock.typeProviderDelay = 10;
 	//ExoWeb.Mock.objectProviderDelay = 200;
 	//ExoWeb.Mock.listProviderDelay = 500;
@@ -20,7 +19,9 @@ if (ExoWeb.Mock) {
 				PrimaryCar: { type: "Car>Product" },
 				Dealer: { type: "Dealer>Person" },
 				MilesDriven: { type: "Number" },
+				MilesDrivenQuota: { type: "Number" },
 				DateCreated: { type: "Date" },
+				RetirementGoalDate: { type: "Date" },
 				SalesPerson: { type: "Employee>Person" },
 				AllowedSalesPersons: { type: "Employee>Person", isList: "true" },
 				Notes: { type: "String" }
@@ -31,6 +32,7 @@ if (ExoWeb.Mock) {
 			properties: {
 				All: { type: "Employee>Person", isList: true, isStatic: true },
 				Title: { type: "String" },
+				Salary: { type: "Number" },
 				HireDate: { type: "Date" }
 			}
 		},
@@ -132,7 +134,7 @@ if (ExoWeb.Mock) {
 			code: "Driver.DateCreatedCompare",
 			category: "Error",
 			message: "Driver.DateCreated must be greater than or equal to BirthDate",
-			rule: { clientRuleType: "compare", rootType: "Driver", comparePath: "this.BirthDate", compareOperator: "GreaterThanEqual", properties: ["this.DateCreated"] }
+			rule: { clientRuleType: "compare", rootType: "Driver", comparePath: "this.BirthDate", compareOp: "GreaterThanEqual", properties: ["this.DateCreated"] }
 		},
 		"Driver.DealerAllowedValues": {
 			__type: "Error:#ExoWeb",
@@ -166,6 +168,14 @@ if (ExoWeb.Mock) {
 			message: "MilesDriven must be at least 0.",
 			rule: { clientRuleType: "range", rootType: "Driver", min: 0, properties: ["this.MilesDriven"] }
 		},
+		"Driver.MilesDrivenQuota": {
+			__type: "Error:#ExoWeb",
+			sets: null,
+			code: "Driver.MilesDrivenQuota",
+			category: "Error",
+			message: "MilesDriven must be at least {0}.",
+			rule: { clientRuleType: "compare", rootType: "Driver", comparePath: "this.MilesDrivenQuota", compareOp: "GreaterThanEqual", properties: ["this.MilesDriven", "this.MilesDrivenQuota"] }
+		},
 		"Driver.AllowedSalesPerson": {
 			__type: "Error:#ExoWeb",
 			sets: null,
@@ -189,6 +199,22 @@ if (ExoWeb.Mock) {
 			category: "Error",
 			message: "Location has an invalid value.",
 			rule: { clientRuleType: "allowedValues", rootType: "CarOwner", source: "this.AvailableLocations", properties: ["this.Location"] }
+		},
+		"Driver.PrimaryCarRequiredIf": {
+			__type: "Error:#ExoWeb",
+			sets: null,
+			code: "Driver.PrimaryCarRequiredIf",
+			category: "Error",
+			message: "Primary Car is required.",
+			rule: { clientRuleType: "requiredIf", rootType: "Driver", comparePath: "this.Cars", properties: ["this.PrimaryCar", "this.Cars"] }
+		},
+		"Driver.RetirementGoalDateRequiredIf": {
+			__type: "Error:#ExoWeb",
+			sets: null,
+			code: "Driver.RetirementGoalDateRequiredIf",
+			category: "Error",
+			message: "Retirement Goal Date is required.",
+			rule: { clientRuleType: "requiredIf", rootType: "Driver", comparePath: "this.MilesDriven", compareOp: "GreaterThan", compareValue: 200000, properties: ["this.RetirementGoalDate", "this.MilesDriven"] }
 		}
 	});
 
@@ -234,6 +260,7 @@ if (ExoWeb.Mock) {
 				PhoneNumber: "800-123-4567",
 				Dealer: { id: "1" },
 				MilesDriven: 100000,
+				RetirementGoalDate: null,
 				DateCreated: new Date("1/1/2007"),
 				SalesPerson: {id: "100"},
 				Notes: null
