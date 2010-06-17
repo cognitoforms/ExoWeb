@@ -2291,21 +2291,17 @@
 			}
 		};
 
-		CompareRule.compare = function CompareRule$compare(obj, srcValue, cmpOp, cmpValue) {
-			if (cmpValue !== undefined && cmpValue !== null && srcValue !== undefined && srcValue !== null) {
-				switch (cmpOp) {
-					case "Equal": return srcValue == cmpValue;
-					case "NotEqual": return srcValue != cmpValue;
-					case "GreaterThan": return srcValue > cmpValue;
-					case "GreaterThanEqual": return srcValue >= cmpValue;
-					case "LessThan": return srcValue < cmpValue;
-					case "LessThanEqual": return srcValue <= cmpValue;
-				}
-				// Equality by default.
-				return srcValue == cmpValue;
+		CompareRule.compare = function CompareRule$compare(obj, srcValue, cmpOp, cmpValue, defaultValue) {
+			switch (cmpOp) {
+				case "Equal": return srcValue == cmpValue;
+				case "NotEqual": return srcValue != cmpValue;
+				case "GreaterThan": return srcValue > cmpValue;
+				case "GreaterThanEqual": return srcValue >= cmpValue;
+				case "LessThan": return srcValue < cmpValue;
+				case "LessThanEqual": return srcValue <= cmpValue;
 			}
-
-			return true;
+			// Equality by default.
+			return srcValue == cmpValue;
 		};
 
 		CompareRule.prototype = {
@@ -2343,7 +2339,7 @@
 			this._compareValue = options.compareValue;
 
 			if (this._compareValue !== undefined && this._compareValue !== null && (this._compareOp === undefined || this._compareOp === null)) {
-				ExoWeb.trace.logWarning("rule", 
+				ExoWeb.trace.logWarning("rule",
 					"Possible rule configuration error - {0}:  if a compare value is specified, " +
 					"then an operator should be specified as well.  Falling back to equality check.",
 					[type.get_code()]);
@@ -2369,14 +2365,16 @@
 		RequiredIfRule.prototype = {
 			required: function RequiredIfRule$required(obj) {
 				if (!this._compareProperty) {
-					return false;
+					ExoWeb.trace.logWarning("rule",
+						"Cannot determine requiredness since the property for path \"{0}\" has not been loaded.",
+						[this._comparePath]);
+					return;
 				}
 
-				var cmpValue = this._compareProperty.value(obj);
-
-				// If the value to compare is null, then return true if the other value is not null
-				if (this._compareValue === undefined || this._compareValue === null) {
-					return RequiredRule.hasValue(cmpValue);
+				var cmpValue;
+				var target = this._compareProperty instanceof PropertyChain ? this._compareProperty.lastTarget(obj, true) : obj;
+				if (target !== undefined && target !== null) {
+					cmpValue = this._compareProperty.value(obj);
 				}
 
 				return CompareRule.compare(obj, cmpValue, this._compareOp, this._compareValue);
