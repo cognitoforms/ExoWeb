@@ -97,7 +97,7 @@ namespace ExoWeb
 		/// Client-format property path(s) that the rule applies to.
 		/// </summary>
 		[DataMember(Name = "properties")]
-		private string[] PropertyPaths 
+		private string[] PropertyPaths
 		{
 			get
 			{
@@ -214,6 +214,138 @@ namespace ExoWeb
 		protected abstract bool ConditionApplies(GraphInstance root);
 
 		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static GraphInstanceList GetInstanceReferenceList(GraphInstance instance, GraphReferenceProperty property)
+		{
+			return instance.GetList(property);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static GraphInstanceList GetInstanceReferenceList(GraphInstance instance, string property)
+		{
+			return GetInstanceReferenceList(instance, instance.Type.Properties[property] as GraphReferenceProperty);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static GraphInstance GetInstanceReference(GraphInstance instance, GraphReferenceProperty property)
+		{
+			return instance.GetReference(property);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static GraphInstance GetInstanceReference(GraphInstance instance, string property)
+		{
+			return GetInstanceReference(instance, instance.Type.Properties[property] as GraphReferenceProperty);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static object GetInstanceValue(GraphInstance instance, GraphValueProperty property)
+		{
+			return instance.GetValue(property);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static object GetInstanceValue(GraphInstance instance, string property)
+		{
+			return GetInstanceValue(instance, instance.Type.Properties[property] as GraphValueProperty);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static GraphInstanceList GetStaticReferenceList(GraphType type, GraphReferenceProperty property)
+		{
+			return type.GetList(property);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static GraphInstanceList GetStaticReferenceList(GraphType type, string property)
+		{
+			return GetStaticReferenceList(type, type.Properties[property] as GraphReferenceProperty);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static GraphInstance GetStaticReference(GraphType type, GraphReferenceProperty property)
+		{
+			return type.GetReference(property);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static GraphInstance GetStaticReference(GraphType type, string property)
+		{
+			return GetStaticReference(type, type.Properties[property] as GraphReferenceProperty);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static object GetStaticValue(GraphType type, GraphValueProperty property)
+		{
+			return type.GetValue(property);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		private static object GetStaticValue(GraphType type, string property)
+		{
+			return GetStaticValue(type, type.Properties[property] as GraphValueProperty);
+		}
+
+		/// <summary>
 		/// Gets the value for the given <see cref="GraphInstance"/> for the given <see cref="GraphProperty"/>.
 		/// Performs arbitrary logic (depending on the type of property) and returns a value of type <typeparam name="T" />.
 		/// </summary>
@@ -223,25 +355,57 @@ namespace ExoWeb
 		/// <param name="ifInstanceList">Code to execute if the property is an instance list.</param>
 		/// <param name="ifValue">Code to execute if the property is a value.</param>
 		/// <returns>The value resulting from calling the function for the given property type.</returns>
-		protected internal static T ForValue<T>(GraphInstance instance, GraphProperty property,
+		protected internal static T ForInstanceProperty<T>(GraphInstance instance, GraphProperty property,
 			Func<GraphInstance, T> ifInstance, Func<GraphInstanceList, T> ifInstanceList, Func<object, T> ifValue)
 		{
-			if (property is GraphReferenceProperty)
+			GraphReferenceProperty referenceProperty = property as GraphReferenceProperty;
+			if (referenceProperty != null)
 			{
-				GraphReferenceProperty referenceProperty = (GraphReferenceProperty)property;
 				if (referenceProperty.IsList)
 				{
-					return ifInstanceList(instance.GetList(property as GraphReferenceProperty));
+					return ifInstanceList(GetInstanceReferenceList(instance, referenceProperty));
 				}
 				else
 				{
-					return ifInstance(instance.GetReference(referenceProperty));
+					return ifInstance(GetInstanceReference(instance, referenceProperty));
 				}
 			}
 			else
 			{
 				GraphValueProperty valueProperty = (GraphValueProperty)property;
-				return ifValue(instance.GetValue(valueProperty));
+				return ifValue(GetInstanceValue(instance, valueProperty));
+			}
+		}
+		
+		/// <summary>
+		/// Gets the value for the given <see cref="GraphType"/> for the given <see cref="GraphProperty"/>.
+		/// Performs arbitrary logic (depending on the type of property) and returns a value of type <typeparam name="T" />.
+		/// </summary>
+		/// <param name="type">The graph type from which to evaluate the given property.</param>
+		/// <param name="property">The property to evaluate.</param>
+		/// <param name="ifInstance">Code to execute if the property is an instance reference.</param>
+		/// <param name="ifInstanceList">Code to execute if the property is an instance list.</param>
+		/// <param name="ifValue">Code to execute if the property is a value.</param>
+		/// <returns>The value resulting from calling the function for the given property type.</returns>
+		protected internal static T ForStaticProperty<T>(GraphType type, GraphProperty property,
+			Func<GraphInstance, T> ifInstance, Func<GraphInstanceList, T> ifInstanceList, Func<object, T> ifValue)
+		{
+			GraphReferenceProperty referenceProperty = property as GraphReferenceProperty;
+			if (referenceProperty != null)
+			{
+				if (referenceProperty.IsList)
+				{
+					return ifInstanceList(GetStaticReferenceList(type, referenceProperty));
+				}
+				else
+				{
+					return ifInstance(GetStaticReference(type, referenceProperty));
+				}
+			}
+			else
+			{
+				GraphValueProperty valueProperty = (GraphValueProperty)property;
+				return ifValue(GetStaticValue(type, valueProperty));
 			}
 		}
 
@@ -253,9 +417,18 @@ namespace ExoWeb
 		/// <returns>The value of the given instance for the given property.</returns>
 		protected internal static object GetValue(GraphInstance instance, GraphProperty property)
 		{
-			return ForValue<object>(instance, property, reference => reference, list => list, val => val);
+			return ForInstanceProperty<object>(instance, property, reference => reference, list => list, val => val);
 		}
 
+		private static object GetInstancePropertyValue(GraphInstance root, string property)
+		{
+			return ForInstanceProperty<object>(root, root.Type.Properties[property], instance => instance, list => list, value => value);
+		}
+
+		private static object GetStaticPropertyValue(GraphType type, string property)
+		{
+			return ForStaticProperty<object>(type, type.Properties[property], instance => instance, list => list, value => value);
+		}
 
 		/// <summary>
 		/// Get the value from the given <see cref="GraphInstance"/> for the given <see cref="GraphProperty"/>.
@@ -270,7 +443,89 @@ namespace ExoWeb
 		protected internal static bool IfValue(GraphInstance instance, GraphProperty property,
 			Func<GraphInstance, bool> ifInstance, Func<GraphInstanceList, bool> ifInstanceList, Func<object, bool> ifValue)
 		{
-			return ForValue<bool>(instance, property, ifInstance, ifInstanceList, ifValue);
+			return ForInstanceProperty<bool>(instance, property, ifInstance, ifInstanceList, ifValue);
+		}
+
+		private static T EvaluateInstancePath<T>(GraphInstance root, string path, Func<GraphInstance, string, T> resultFn)
+			where T : class
+		{
+			if (string.IsNullOrEmpty(path))
+				return null;
+
+			string[] steps = path.Split('.');
+
+			// Property was found, procede to last step.
+			GraphInstance instance = root;
+
+			for (int i = 0; i < steps.Length - 1; i++)
+			{
+				instance = GetInstanceReference(instance, steps[i]);
+
+				if (instance == null)
+					return null;
+			}
+
+			return resultFn(instance, steps.Last());
+		}
+
+		private static T EvaluateStaticPath<T>(string path, Func<GraphType, string, T> staticResultFn, Func<GraphInstance, string, T> instanceResultFn)
+		{
+			if (string.IsNullOrEmpty(path))
+				return default(T);
+
+			string[] steps = path.Split('.');
+
+			if (steps.Length < 2)
+				return default(T);
+
+			GraphType type = GraphContext.Current.GetGraphType(steps[0]);
+			GraphReferenceProperty firstProp = type.Properties[steps[1]] as GraphReferenceProperty;
+
+			if (firstProp == null)
+			{
+				return default(T);
+			}
+			else if (steps.Length == 2)
+			{
+				return staticResultFn(type, steps[1]);
+			}
+			else
+			{
+				GraphInstance firstInstance = type.GetReference(firstProp);
+				return firstInstance != null ? instanceResultFn(firstInstance, string.Join(".", steps, 2, steps.Length - 2)) : default(T);
+			}
+		}
+
+		protected internal static GraphInstanceList EvaluateInstanceList(GraphInstance root, string path)
+		{
+			if (path.StartsWith("this."))
+				return EvaluateInstancePath<GraphInstanceList>(root, path.Substring(5), GetInstanceReferenceList);
+			else
+				return EvaluateStaticPath<GraphInstanceList>(path, GetStaticReferenceList, GetInstanceReferenceList);
+		}
+
+		protected internal static GraphInstance EvaluateInstance(GraphInstance root, string path)
+		{
+			if (path.StartsWith("this."))
+				return EvaluateInstancePath<GraphInstance>(root, path.Substring(5), GetInstanceReference);
+			else
+				return EvaluateStaticPath<GraphInstance>(path, GetStaticReference, GetInstanceReference);
+		}
+
+		protected internal static object EvaluateValue(GraphInstance root, string path)
+		{
+			if (path.StartsWith("this."))
+				return EvaluateInstancePath<object>(root, path.Substring(5), GetInstanceValue);
+			else
+				return EvaluateStaticPath<object>(path, GetStaticValue, GetInstanceValue);
+		}
+
+		protected internal static object Evaluate(GraphInstance root, string path)
+		{
+			if (path.StartsWith("this."))
+				return EvaluateInstancePath<object>(root, path.Substring(5), GetInstancePropertyValue);
+			else
+				return EvaluateStaticPath<object>(path, GetStaticPropertyValue, GetInstancePropertyValue);
 		}
 
 		#endregion
@@ -389,22 +644,22 @@ namespace ExoWeb
 
 		#region Constructors
 
-		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty)
+		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath)
 			: base(graphProperty, conditionType, ClientRuleType.requiredIf)
 		{
-			Init(compareProperty, Operator.NotEqual, default(TInput));
+			Init(comparePath, Operator.NotEqual, default(TInput));
 		}
 
-		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, TInput compareValue)
+		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath, TInput compareValue)
 			: base(graphProperty, conditionType, ClientRuleType.requiredIf)
 		{
-			Init(compareProperty, Operator.Equal, compareValue);
+			Init(comparePath, Operator.Equal, compareValue);
 		}
 
-		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator, TInput compareValue)
+		public RequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath, Operator compareOperator, TInput compareValue)
 			: base(graphProperty, conditionType, ClientRuleType.requiredIf)
 		{
-			Init(compareProperty, compareOperator, compareValue);
+			Init(comparePath, compareOperator, compareValue);
 		}
 
 		#endregion
@@ -412,30 +667,13 @@ namespace ExoWeb
 		#region Properties
 
 		/// <summary>
-		/// The property to compare the source property to.
+		/// The path to compare the compare value to.
 		/// </summary>
-		public GraphProperty CompareProperty
+		[DataMember(Name = "comparePath")]
+		public string ComparePath
 		{
 			get;
 			private set;
-		}
-
-		[DataMember(Name = "comparePath")]
-		public string ComparePropertyText
-		{
-			get
-			{
-				if (comparePropertyText == null)
-				{
-					comparePropertyText = (CompareProperty.IsStatic ? CompareProperty.DeclaringType.Name : "this") + "." + CompareProperty.Name;
-				}
-
-				return comparePropertyText;
-			}
-			private set
-			{
-				comparePropertyText = value;
-			}
 		}
 
 		/// <summary>
@@ -481,12 +719,14 @@ namespace ExoWeb
 
 		#region Methods
 
-		protected virtual void Init(GraphProperty compareProperty, Operator compareOperator, TInput compareValue)
+		protected virtual void Init(string comparePath, Operator compareOperator, TInput compareValue)
 		{
-			if (compareProperty == null)
-				throw new ComparePropertyRequiredException();
+			if (string.IsNullOrEmpty(comparePath))
+				throw new ComparePathRequiredException();
 
-			this.CompareProperty = compareProperty;
+			// Only instance paths are allowed.
+			this.ComparePath = "this." + comparePath;
+
 			this.CompareOperator = compareOperator;
 			this.CompareValue = compareValue;
 		}
@@ -498,7 +738,7 @@ namespace ExoWeb
 
 		protected bool ShouldEnforce(GraphInstance root)
 		{
-			object compareValue = GetValue(root, CompareProperty);
+			object compareValue = Evaluate(root, ComparePath);
 
 			// Trim the value is it is a string
 			if (compareValue is string)
@@ -536,18 +776,18 @@ namespace ExoWeb
 	{
 		#region Constructors
 
-		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty)
-			: base(graphProperty, conditionType, compareProperty)
+		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath)
+			: base(graphProperty, conditionType, comparePath)
 		{
 		}
 
-		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, T compareValue)
-			: base(graphProperty, conditionType, compareProperty, compareValue)
+		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath, T compareValue)
+			: base(graphProperty, conditionType, comparePath, compareValue)
 		{
 		}
 
-		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator, T compareValue)
-			: base(graphProperty, conditionType, compareProperty, compareOperator, compareValue)
+		public StructRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath, Operator compareOperator, T compareValue)
+			: base(graphProperty, conditionType, comparePath, compareOperator, compareValue)
 		{
 		}
 
@@ -586,18 +826,18 @@ namespace ExoWeb
 
 		#region Constructors
 
-		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty)
-			: base(graphProperty, conditionType, compareProperty)
+		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath)
+			: base(graphProperty, conditionType, comparePath)
 		{
 		}
 
-		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, object compareValue)
-			: base(graphProperty, conditionType, compareProperty, compareValue)
+		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath, object compareValue)
+			: base(graphProperty, conditionType, comparePath, compareValue)
 		{
 		}
 
-		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator, object compareValue)
-			: base(graphProperty, conditionType, compareProperty, compareOperator, compareValue)
+		public ClassRequiredIfRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath, Operator compareOperator, object compareValue)
+			: base(graphProperty, conditionType, comparePath, compareOperator, compareValue)
 		{
 		}
 
@@ -634,9 +874,9 @@ namespace ExoWeb
 	/// An exception that is thrown when the CompareProperty is not 
 	/// specified for a CompareRule or RequiredIfRule.
 	/// </summary>
-	public sealed class ComparePropertyRequiredException : Exception
+	public sealed class ComparePathRequiredException : Exception
 	{
-		internal ComparePropertyRequiredException()
+		internal ComparePathRequiredException()
 			: base("The CompareProperty for this rule is required.")
 		{
 		}
@@ -733,6 +973,8 @@ namespace ExoWeb
 	[DataContract(Name = "allowedValues")]
 	public class AllowedValuesRule : PropertyRule
 	{
+		#region Constructors
+
 		public AllowedValuesRule(GraphProperty graphProperty, ConditionType conditionType, string source, bool autoInclude)
 			: base(graphProperty, conditionType, ClientRuleType.allowedValues)
 		{
@@ -740,59 +982,18 @@ namespace ExoWeb
 			this.AutoInclude = autoInclude;
 		}
 
+		#endregion
+
+		#region Properties
+
 		[DataMember(Name = "source")]
 		public string Source { get; private set; }
 
 		public bool AutoInclude { get; private set; }
 
-		#region Source Evaluation Logic
-		GraphInstanceList EvaluateInstancePath(GraphInstance root, string path)
-		{
-			if (string.IsNullOrEmpty(path))
-				return null;
-
-			string[] steps = path.Split('.');
-
-			// property was found, procede to last step
-			GraphInstance instance = root;
-
-			for (int i = 0; i < steps.Length - 1; i++)
-			{
-				instance = instance.GetReference(steps[i]);
-
-				if (instance == null)
-					return null;
-			}
-			return instance.GetList(steps.Last());
-
-		}
-
-		GraphInstanceList EvaluateStaticPath(string path)
-		{
-			if (string.IsNullOrEmpty(path))
-				return null;
-
-			string[] steps = path.Split('.');
-
-			if(steps.Length < 2)
-				return null;
-
-			GraphType type = GraphContext.Current.GetGraphType(steps[0]);
-			GraphReferenceProperty firstProp = type.Properties[steps[1]] as GraphReferenceProperty;
-
-			if (firstProp == null)
-				return null;
-			else if (steps.Length == 2)
-			{
-				return type.GetList(firstProp);
-			}
-			else
-			{
-				GraphInstance firstInstance = Type.GetReference(firstProp);
-				return firstInstance != null ? EvaluateInstancePath(firstInstance, string.Join(".", steps, 2, steps.Length - 2)) : null;
-			}
-		}
 		#endregion
+
+		#region Methods
 
 		protected override bool ConditionApplies(GraphInstance root)
 		{
@@ -802,10 +1003,7 @@ namespace ExoWeb
 
 			try
 			{
-				if (Source.StartsWith("this."))
-					allowedValues = EvaluateInstancePath(root, Source.Substring(5));
-				else
-					allowedValues = EvaluateStaticPath(Source);
+				allowedValues = EvaluateInstanceList(root, Source);
 
 				return !(allowedValues == null || allowedValues.Select(graphInstance => graphInstance.Instance).Contains(value));
 			}
@@ -814,6 +1012,8 @@ namespace ExoWeb
 				return false;
 			}
 		}
+
+		#endregion
 	}
 
 	#endregion
@@ -836,7 +1036,7 @@ namespace ExoWeb
 			: base(graphProperty, conditionType, ClientRuleType.compare)
 		{
 			if (compareProperty == null)
-				throw new ComparePropertyRequiredException();
+				throw new ComparePathRequiredException();
 
 			this.CompareProperty = compareProperty;
 			this.CompareOperator = compareOperator;
