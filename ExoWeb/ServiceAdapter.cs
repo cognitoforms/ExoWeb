@@ -56,6 +56,11 @@ namespace ExoWeb
 		public virtual void BeforeSerializeInstance(GraphInstance instance)
 		{
 		}
+
+		public virtual string GetLabel(GraphProperty property)
+		{
+			return null;
+		}
 	}
 
 	#endregion

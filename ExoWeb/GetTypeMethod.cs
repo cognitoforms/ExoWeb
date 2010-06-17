@@ -130,6 +130,10 @@ namespace ExoWeb
 				if (!string.IsNullOrEmpty(formatName))
 					response.Write(", \"format\": \"" + formatName + "\"");
 
+				string label = ServiceHandler.Adapter.GetLabel(property);
+				if (!string.IsNullOrEmpty(label))
+					response.Write(", \"label\": \"" + label + "\"");
+
 				if (!useConditionsMode)
 				{
 					// Output property rules
