@@ -74,9 +74,12 @@ Type.registerNamespace("ExoWeb.UI");
 				}
 
 				// hide or show the element depending on the conditions
-				if ((equals && this._action != "hide") || (!equals && this._action == "hide")) {
+				if ((equals && (this._action == "show" || this._action == "enable")) || (!equals && (this._action == "hide" || this._action == "disable"))) {
 					// show the element
-					$(this.get_element()).show();
+					if(this._action == "show" || this._action == "hide")
+						$(this.get_element()).show();
+					else
+						$('select,input,textarea,a', this.get_element()).andSelf().removeAttr('disabled');
 
 					// visibility has changed so raise event
 					if (this._visible === undefined || this._visible === false) {
@@ -86,10 +89,14 @@ Type.registerNamespace("ExoWeb.UI");
 					// update status
 					this._visible = true;
 				}
+
 				else {
 					// hide the element
-					$(this.get_element()).hide();
-
+					if(this._action == "show" || this._action == "hide")
+						$(this.get_element()).hide();
+					else
+						$('select,input,textarea,a', this.get_element()).andSelf().attr('disabled', 'disabled');
+						
 					// visibility has changed so raise event
 					if (this._visible === undefined || this._visible === true) {
 						Sys.Observer.raiseEvent(this, "hidden");
@@ -98,7 +105,7 @@ Type.registerNamespace("ExoWeb.UI");
 					// update status
 					this._visible = false;
 				}
-
+				
 			},
 			initialize: function Toggle$initialize() {
 				Toggle.callBaseMethod(this, "initialize");
