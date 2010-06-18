@@ -2901,7 +2901,8 @@
 		Number.formats.Currency = new Format({
 			description: "$#.##",
 			convert: function(val) {
-				return "$" + val.toFixed(2).toString();
+				var valString = val.toFixed(2).toString().replace(/\B(?=(?:\d{3})+(?!\d))/g, ",");
+				return "$" + valString;
 			}
 		});
 
