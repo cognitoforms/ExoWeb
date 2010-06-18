@@ -25,8 +25,10 @@
 					"Allowed values rule \"values\" function should return the referenced property value.");
 			});
 
-			setupTest("compare-number-gte", { description: "Compare Rule (number greater than or equal to)", expect: 3 }, function () {
+			setupTest("compare-number-gte", { description: "Compare Rule (number greater than or equal to)", expect: 4 }, function () {
 				var rule = Driver.$MilesDriven.rule(ExoWeb.Model.Rule.compare);
+
+				equals(rule.err.get_message(), "Miles Driven must be greater than equal to Miles Driven Quota", "Check message text");
 
 				context.model.driver.set_MilesDrivenQuota(100000);
 				ok(rule.satisfies(context.model.driver), "Comparison should be valid: equal");
@@ -97,6 +99,31 @@
 				ok(rule.satisfies(context.model.driver), "Rule is satisfied: Retirement Goal Date has a value");
 			});
 
+			setupTest("compare-logic", { description: "Compare Logic" }, function () {
+				var ops = ["Equal", "NotEqual", "GreaterThan", "GreaterThanEqual", "LessThan", "LessThanEqual" ];
+
+				function compare(val1, val2, expect) {
+					for (var i = 0; i < expect.length; i++) {
+						equals(ExoWeb.Model.Rule.compare.compare(val1, ops[i], val2),
+							expect[i], val1 + " " + ops[i] + " " + val2);
+					}
+				}
+
+				var undef;
+
+				//                        ==		!=		>		>=		<		<=
+				compare("abc", "abc",	[ true,		false,	false,	true,	false,	true ]);
+				compare("abc", "def",	[ false,	true,	false,	false,	true,	true ]);
+				compare("abc", "aaa",	[ false,	true,	true,	true,	false,	false ]);
+				compare(0, 0,			[ true,		false,	false,	true,	false,	true ]);
+				compare(0, 4,			[ false,	true,	false,	false,	true,	true ]);
+				compare(21, 4,			[ false,	true,	true,	true,	false,	false ]);
+				compare("abc", null,	[ false,	true,	undef,	undef,	undef,	undef ]);
+				compare("abc", undef,	[ false,	true,	undef,	undef,	undef,	undef ]);
+				compare([], null,		[ true,		false,	undef,	undef,	undef,	undef ]);
+				compare(["a"], null,	[ false,	true,	undef,	undef,	undef,	undef ]);
+			});
+
 			var hasRunDriverDescription = false;
 			function calculateDriverDescription() {
 				hasRunDriverDescription = true;
@@ -126,6 +153,7 @@
 				executeTest("compare-conditions");
 				executeTest("requiredIf-list");
 				executeTest("requiredIf-number-gt");
+				executeTest("compare-logic");
 
 				Driver.meta.addProperty({ name: "Description", type: String })
 					.calculated({ fn: calculateDriverDescription, basedOn: ["this.Owner.Name", "this.Name"] })

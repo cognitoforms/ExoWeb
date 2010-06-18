@@ -14,6 +14,10 @@
 
 		var disableConstruction = false;
 
+		function makeHumanReadable(text) {
+			return text.replace(/([^A-Z]+)([A-Z])/g, "$1 $2");
+		}
+
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Model() {
 			this._types = {};
@@ -829,7 +833,7 @@
 			this._name = name;
 			this._fieldName = "_" + name;
 			this._jstype = jstype;
-			this._label = label || name.replace(/([^A-Z]+)([A-Z])/g, "$1 $2");
+			this._label = label || makeHumanReadable(name);
 			this._format = format;
 			this._isList = !!isList;
 			this._isStatic = !!isStatic;
@@ -2253,7 +2257,13 @@
 
 			this._inited = false;
 
-			this.err = new Condition(type, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
+			var message = $format("{0} must be {1}{2} {3}", [
+				this.prop.get_label(),
+				makeHumanReadable(this._compareOp).toLowerCase(),
+				(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
+				makeHumanReadable(this._comparePath.indexOf(".") >= 0 ? this._comparePath.replace(/^(.*\.)?([^\.]+)$/, "$2") : this._comparePath)
+			]);
+			this.err = new Condition(type, message, properties, this);
 
 			// Function to register this rule when its containing type is loaded.
 			var register = (function CompareRule$register(type) { CompareRule.load(this, type); }).setScope(this);
@@ -2291,28 +2301,39 @@
 			}
 		};
 
-		CompareRule.compare = function CompareRule$compare(obj, srcValue, cmpOp, cmpValue, defaultValue) {
-			switch (cmpOp) {
-				case "Equal": return srcValue == cmpValue;
-				case "NotEqual": return srcValue != cmpValue;
-				case "GreaterThan": return srcValue > cmpValue;
-				case "GreaterThanEqual": return srcValue >= cmpValue;
-				case "LessThan": return srcValue < cmpValue;
-				case "LessThanEqual": return srcValue <= cmpValue;
+		CompareRule.compare = function CompareRule$compare(srcValue, cmpOp, cmpValue, defaultValue) {
+			if (cmpValue === undefined || cmpValue === null) {
+				switch (cmpOp) {
+					case "Equal": return !RequiredRule.hasValue(srcValue);
+					case "NotEqual": return RequiredRule.hasValue(srcValue);
+				}
 			}
-			// Equality by default.
-			return srcValue == cmpValue;
+			
+			if (srcValue !== undefined && srcValue !== null && cmpValue !== undefined && cmpValue !== null) {
+				switch (cmpOp) {
+					case "Equal": return srcValue == cmpValue;
+					case "NotEqual": return srcValue != cmpValue;
+					case "GreaterThan": return srcValue > cmpValue;
+					case "GreaterThanEqual": return srcValue >= cmpValue;
+					case "LessThan": return srcValue < cmpValue;
+					case "LessThanEqual": return srcValue <= cmpValue;
+				}
+				// Equality by default.
+				return srcValue == cmpValue;
+			}
+
+			return defaultValue;
 		};
 
 		CompareRule.prototype = {
 			satisfies: function Compare$satisfies(obj) {
 				if (!this._compareProperty) {
-					return false;
+					return true;
 				}
 
 				var srcValue = this.prop.value(obj);
 				var cmpValue = this._compareProperty.value(obj);
-				return CompareRule.compare(obj, srcValue, this._compareOp, cmpValue);
+				return CompareRule.compare(srcValue, this._compareOp, cmpValue, true);
 			},
 			execute: function CompareRule$execute(obj) {
 				if (this._inited === true) {
@@ -2338,11 +2359,16 @@
 			this._compareOp = options.compareOp;
 			this._compareValue = options.compareValue;
 
-			if (this._compareValue !== undefined && this._compareValue !== null && (this._compareOp === undefined || this._compareOp === null)) {
-				ExoWeb.trace.logWarning("rule",
-					"Possible rule configuration error - {0}:  if a compare value is specified, " +
-					"then an operator should be specified as well.  Falling back to equality check.",
-					[type.get_code()]);
+			if (this._compareOp === undefined || this._compareOp === null) {
+				if (this._compareValue !== undefined && this._compareValue !== null) {
+					ExoWeb.trace.logWarning("rule",
+						"Possible rule configuration error - {0}:  if a compare value is specified, " +
+						"then an operator should be specified as well.  Falling back to equality check.",
+						[type.get_code()]);
+				}
+				else {
+					this._compareOp = "NotEqual";
+				}
 			}
 
 			this._inited = false;
@@ -2377,7 +2403,11 @@
 					cmpValue = this._compareProperty.value(obj);
 				}
 
-				return CompareRule.compare(obj, cmpValue, this._compareOp, this._compareValue);
+				if (cmpValue && cmpValue instanceof String) {
+					cmpValue = $.trim(cmpValue);
+				}
+
+				return CompareRule.compare(cmpValue, this._compareOp, this._compareValue, false);
 			},
 			satisfies: function RequiredIfRule$satisfies(obj) {
 				return !this.required(obj) || RequiredRule.hasValue(obj, this.prop);

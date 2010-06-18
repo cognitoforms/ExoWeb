@@ -724,9 +724,7 @@ namespace ExoWeb
 			if (string.IsNullOrEmpty(comparePath))
 				throw new ComparePathRequiredException();
 
-			// Only instance paths are allowed.
-			this.ComparePath = "this." + comparePath;
-
+			this.ComparePath = comparePath;
 			this.CompareOperator = compareOperator;
 			this.CompareValue = compareValue;
 		}
@@ -1025,20 +1023,19 @@ namespace ExoWeb
 	{
 		#region Fields
 
-		string comparePath;
 		string compareOperatorText;
 
 		#endregion
 
 		#region Constructors
 
-		public CompareRule(GraphProperty graphProperty, ConditionType conditionType, GraphProperty compareProperty, Operator compareOperator)
+		public CompareRule(GraphProperty graphProperty, ConditionType conditionType, string comparePath, Operator compareOperator)
 			: base(graphProperty, conditionType, ClientRuleType.compare)
 		{
-			if (compareProperty == null)
+			if (string.IsNullOrEmpty(comparePath))
 				throw new ComparePathRequiredException();
 
-			this.CompareProperty = compareProperty;
+			this.ComparePath = comparePath;
 			this.CompareOperator = compareOperator;
 		}
 
@@ -1046,31 +1043,11 @@ namespace ExoWeb
 
 		#region Properties
 
-		/// <summary>
-		/// The property to compare the source property to.
-		/// </summary>
-		public GraphProperty CompareProperty
-		{
-			get;
-			private set;
-		}
-
 		[DataMember(Name = "comparePath")]
 		public string ComparePath
 		{
-			get
-			{
-				if (comparePath == null)
-				{
-					comparePath = (CompareProperty.IsStatic ? CompareProperty.DeclaringType.Name : "this") + "." + CompareProperty.Name;
-				}
-
-				return comparePath;
-			}
-			private set
-			{
-				comparePath = value;
-			}
+			get;
+			private set;
 		}
 
 		/// <summary>
@@ -1226,7 +1203,7 @@ namespace ExoWeb
 
 		protected override bool ConditionApplies(GraphInstance root)
 		{
-			return Compare(root, GetValue(root, GraphProperty), CompareOperator, GetValue(root, CompareProperty), HasValue);
+			return Compare(root, GetValue(root, GraphProperty), CompareOperator, Evaluate(root, ComparePath), HasValue);
 		}
 
 		#endregion
