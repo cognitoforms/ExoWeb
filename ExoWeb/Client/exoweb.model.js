@@ -2622,7 +2622,7 @@
 			this._code = code;
 			this._category = category;
 			this._message = message;
-			this._sets = sets;
+			this._sets = (sets === undefined || sets === null) ? [] : sets;
 			this._rules = [];
 
 			if (sets && sets.length > 0) {
@@ -2767,7 +2767,7 @@
 		Condition.registerClass("ExoWeb.Model.Condition");
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		var formatConditionType = new ConditionType("FormatError", "Error", "The value is not properly formatted.");
+		var formatConditionType = new ConditionType("FormatError", "Error", "The value is not properly formatted.", []);
 
 		function FormatError(message, invalidValue) {
 			this._message = message;
