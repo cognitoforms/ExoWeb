@@ -135,7 +135,7 @@
 
 					var _this = this;
 
-					ExoWeb.Mapper.setObjectProvider(function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback) {
+					var loader = function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback, delay) {
 						var json;
 
 						if (!_this.simulateLazyLoading) {
@@ -150,26 +150,14 @@
 							}
 						}
 
-						return mockCallback(callback, [json], _this.objectProviderDelay, $format(">> fetch: {0}({1})", arguments));
+						return mockCallback(callback, [json], delay, $format(">> fetch: {0}({1})", arguments));
+					};
+
+					ExoWeb.Mapper.setObjectProvider(function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback) {
+						return loader(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback, _this._objectProviderDelay);
 					});
-
-					ExoWeb.Mapper.setListProvider(function(ownerType, ownerId, ownerProperty, callback) {
-						var json = { instances: {} };
-						json.instances[ownerType] = {};
-						json.instances[ownerType][ownerId] = {};
-
-						// pass ids
-						var refs = _this._objects[ownerType][ownerId][ownerProperty];
-						json.instances[ownerType][ownerId][ownerProperty] = refs;
-
-						// include object data also
-						var propType = window[ownerType].meta.property(ownerProperty).get_jstype().meta.get_fullName();
-
-						for (var i = 0; i < refs.length; ++i) {
-							_this._appendObject(json.instances, propType, refs[i]);
-						}
-
-						return mockCallback(callback, [json], _this.listProviderDelay, $format(">> fetch: {0}({1}).{2}", arguments));
+					ExoWeb.Mapper.setListProvider(function(ownerType, ownerId, paths, callback) {
+						return loader(ownerType, [ownerId], true, false, paths, null, callback, _this._listProviderDelay);
 					});
 
 					ExoWeb.Mapper.setRoundtripProvider(function(changes, success, failed) {

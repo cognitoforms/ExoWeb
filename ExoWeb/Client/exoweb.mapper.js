@@ -62,12 +62,18 @@
 
 		// List Provider
 		//----------------------------------------------------------
-		var listProviderFn = function listProvider(ownerType, ownerId, propName, onSuccess, onFailure) {
-			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, ["this." + propName], null, useConditionsMode, false, onSuccess, onFailure);
+		var listProviderFn = function listProvider(ownerType, ownerId, paths, onSuccess, onFailure) {
+			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, paths, null, useConditionsMode, false, onSuccess, onFailure);
 		};
-		function listProvider(ownerType, ownerId, propName, onSuccess, onFailure) {
+		function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("listProvider");
-			listProviderFn.call(this, ownerType, ownerId, propName,
+
+			// prepend list prop to beginning of each other prop
+			var paths = otherProps.map(function(p) {
+				return (p.startsWith("this.")) ? "this." + listProp + "." + p.substring(5) : p;
+			});
+			
+			listProviderFn.call(this, ownerType, ownerId, paths,
 				function listProviderSuccess() {
 					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
@@ -2003,6 +2009,10 @@
 			};
 
 			ObjectLazyLoader.getRelativePaths = function getRelativePaths(obj) {
+				return ObjectLazyLoader.getRelativePathsForType(obj.meta.type);
+			};
+
+			ObjectLazyLoader.getRelativePathsForType = function getRelativePathsForType(type) {
 				var relPaths = [];
 
 				for (var typeName in instance._typePaths) {
@@ -2016,7 +2026,7 @@
 							// No need to include static paths since if they were 
 							// cached then they were loaded previously.
 							if (!chain.get_isStatic()) {
-								var rootedPath = chain.rootedPath(obj.meta.type);
+								var rootedPath = chain.rootedPath(type);
 								if (rootedPath) {
 									relPaths.push(rootedPath);
 								}
@@ -2110,7 +2120,7 @@
 
 				var objectJson, conditionsJson;
 
-				listProvider(ownerType, list._ownerId, propName,
+				listProvider(ownerType, list._ownerId, propName, ObjectLazyLoader.getRelativePathsForType(propType),
 					signal.pending(function(result) {
 						objectJson = result.instances;
 						conditionsJson = result.conditionTargets;
