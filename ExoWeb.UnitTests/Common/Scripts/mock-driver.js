@@ -44,7 +44,8 @@
 		Car: {
 			baseType: "Product",
 			properties: {
-				Driver: { type: "Driver>Person" }
+				Driver: { type: "Driver>Person" },
+				OriginalOwner: { type: "CarOwner" }
 			}
 		},
 		NewCar: {
@@ -262,26 +263,29 @@
 				MilesDriven: 100000,
 				RetirementGoalDate: null,
 				DateCreated: new Date("1/1/2007"),
-				SalesPerson: {id: "100"},
+				SalesPerson: { id: "100" },
 				Notes: null
 			}
 		},
 		Car: {
 			"3": {
 				Name: "Tank",
-				Driver: null
+				Driver: null,
+				OriginalOwner: { id: "2" }
 			}
 		},
 		NewCar: {
 			"1": {
 				Name: "Sentra",
 				Driver: { id: "1" },
-				PlantNumber: "AZ9"
+				PlantNumber: "AZ9",
+				OriginalOwner: { id: "1" }
 			},
 			"100": {
 				Name: "Focus",
 				Driver: null,
-				PlantNumber: "AZ9"
+				PlantNumber: "AZ9",
+				OriginalOwner: { id: "2" }
 			}
 		},
 		UsedCar: {
@@ -289,13 +293,15 @@
 				Name: "Bike",
 				Driver: { id: "1" },
 				BoughtFrom: { id: "1" },
-				Mileage: 100
+				Mileage: 100,
+				OriginalOwner: { id: "2" }
 			},
 			"200": {
 				Name: "Taurus",
 				Driver: null,
 				BoughtFrom: { id: "1" },
-				Mileage: 68100
+				Mileage: 68100,
+				OriginalOwner: { id: "2" }
 			}
 		},
 		Dealer: {
@@ -317,7 +323,7 @@
 				Location: { id: "1" },
 				AvailableLocations: [{ id: "1" }, { id: "2"}],
 				Partner: { id: "2" },
-				Drivers: [ { id: "1" } ]
+				Drivers: [{ id: "1"}]
 			},
 			"2": {
 				Name: "Joe",

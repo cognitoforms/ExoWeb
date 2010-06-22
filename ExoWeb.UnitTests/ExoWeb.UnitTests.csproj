@@ -83,6 +83,7 @@
     <Content Include="JQuery\Validation.htm" />
     <Content Include="Mapper\ChangeSet.js" />
     <Content Include="Mapper\Conditions.htm" />
+    <Content Include="Mapper\Loading.htm" />
     <Content Include="Mapper\ServerSync.htm" />
     <Content Include="Model\CalculatedProperties.htm" />
     <Content Include="Model\Rules.htm" />
