@@ -69,10 +69,12 @@
 			var batch = ExoWeb.Batch.suspendCurrent("listProvider");
 
 			// prepend list prop to beginning of each other prop
-			var paths = otherProps.map(function(p) {
-				return (p.startsWith("this.")) ? "this." + listProp + "." + p.substring(5) : p;
-			});
-			
+			var paths = otherProps.length === 0 ?
+				["this." + listProp] :
+				otherProps.map(function(p) {
+					return (p.startsWith("this.")) ? "this." + listProp + "." + p.substring(5) : p;
+				});
+
 			listProviderFn.call(this, ownerType, ownerId, paths,
 				function listProviderSuccess() {
 					ExoWeb.Batch.resume(batch);
