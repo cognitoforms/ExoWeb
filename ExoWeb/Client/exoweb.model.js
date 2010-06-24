@@ -45,10 +45,6 @@
 					return a.sender == b.sender && a.property == b.property;
 				}
 			);
-
-			this._propertyQueue = new EventQueue(function(e) {
-				e.sender._raiseEvent(e.eventName, e.eventArgs);
-			});
 		}
 
 		Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback*/) {
@@ -128,15 +124,6 @@
 		};
 
 		Model.prototype = {
-			raisePropertyEvent: function Model$raisePropertyEvent(sender, eventName, eventArgs) {
-				this._propertyQueue.push({ sender: sender, eventName: eventName, eventArgs: eventArgs });
-			},
-			startQueueingEvents: function Model$startQueueingEvents(def) {
-				this._propertyQueue.startQueueing();
-			},
-			stopQueueingEvents: function Model$stopQueueingEvents(def) {
-				this._propertyQueue.stopQueueing();
-			},
 			addType: function Model$addType(name, base) {
 				var type = new Type(this, name, base);
 				this._types[name] = type;
@@ -654,23 +641,23 @@
 				return null;
 			},
 			addRule: function Type$addRule(rule) {
-				function Type$addRule$init(obj, prop, newValue, oldValue, wasInited) {
-					if (!wasInited && rule.inputs.every(function(input) { return input.property == prop || !input.get_dependsOnInit() || input.property.isInited(obj, true); })) {
-						Type$addRule$fn(obj, prop, rule.execute);
+				function Type$addRule$init(sender, args) {
+					if (!args.wasInited && rule.inputs.every(function(input) { return input.property === args.property || !input.get_dependsOnInit() || input.property.isInited(sender, true); })) {
+						Type$addRule$fn(sender, args.property, rule.execute);
 					}
 				}
-				function Type$addRule$changed(obj, prop, newValue, oldValue, wasInited) {
-					if (wasInited && rule.inputs.every(function(input) { return input.property == prop || !input.get_dependsOnInit() || input.property.isInited(obj, true); })) {
-						Type$addRule$fn(obj, prop, rule.execute);
+				function Type$addRule$changed(sender, args) {
+					if (args.wasInited && rule.inputs.every(function(input) { return input.property == args.property || !input.get_dependsOnInit() || input.property.isInited(sender, true); })) {
+						Type$addRule$fn(sender, args.property, rule.execute);
 					}
 				}
-				function Type$addRule$get(obj, prop, value, isInited) {
+				function Type$addRule$get(sender, args) {
 					try {
 						// Only execute rule on property get if the property has not been initialized.
 						// This is based on the assumption that a rule should only fire on property
 						// get for the purpose of lazy initializing the property value.
-						if (!isInited) {
-							Type$addRule$fn(obj, prop, rule.execute);
+						if (!args.isInited) {
+							Type$addRule$fn(sender, args.property, rule.execute);
 						}
 					}
 					catch (e) {
@@ -708,8 +695,8 @@
 					if (input.get_dependsOnChange()) {
 						prop.addChanged(isSameType ?
 							Type$addRule$changed :
-							function(obj, prop, newValue, oldValue, wasInited) {
-								if (obj instanceof jstype) {
+							function(sender, args) {
+								if (sender instanceof jstype) {
 									Type$addRule$changed.apply(this, arguments);
 								}
 							}
@@ -719,8 +706,8 @@
 					if (input.get_dependsOnInit()) {
 						prop.addChanged(isSameType ?
 							Type$addRule$init :
-							function(obj, prop, newValue, oldValue, wasInited) {
-								if (obj instanceof jstype) {
+							function(sender, args) {
+								if (sender instanceof jstype) {
 									Type$addRule$init.apply(this, arguments);
 								}
 							}
@@ -960,7 +947,7 @@
 					this._assertType(obj);
 				}
 
-				this._containingType.get_model().raisePropertyEvent(this, "get", [obj, this, obj[this._fieldName], obj.hasOwnProperty(this._fieldName)]);
+				this._raiseEvent("get", [obj, { property: this, value: obj[this._fieldName], isInited: obj.hasOwnProperty(this._fieldName) }]);
 
 				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
 					ExoWeb.trace.logWarning("model",
@@ -972,7 +959,7 @@
 				return obj[this._fieldName];
 			},
 
-			_setter: function Property$_setter(obj, val, skipTypeCheck) {
+			_setter: function Property$_setter(obj, val, skipTypeCheck, args) {
 				if (obj === undefined || obj === null) {
 					throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
 				}
@@ -1002,7 +989,7 @@
 					// any rule causes a roundtrip to the server these changes will be available
 					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old, wasInited);
 
-					this._containingType.get_model().raisePropertyEvent(this, "changed", [obj, this, val, old, wasInited, this]);
+					this._raiseEvent("changed", [obj, $.extend({ property: this, newValue: val, oldValue: old, wasInited: wasInited }, args)]);
 
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
@@ -1071,7 +1058,7 @@
 					return valObjectType === this._jstype;
 				}
 			},
-			value: function Property$value(obj, val) {
+			value: function Property$value(obj, val, args) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 
 				if (target === undefined || target === null) {
@@ -1080,8 +1067,8 @@
 						[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
 				}
 
-				if (arguments.length == 2) {
-					this._setter(target, val);
+				if (arguments.length > 1) {
+					this._setter(target, val, false, args);
 				}
 				else {
 					return this._getter(target);
@@ -1113,11 +1100,11 @@
 						this._containingType.get_model().notifyListChanged(target, this, args.get_changes());
 
 						// NOTE: oldValue is not currently implemented for lists
-						this._containingType.get_model().raisePropertyEvent(this, "changed", [target, this, val, undefined, true, this]);
+						this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: true, collectionChanged: true }]);
 					}, this);
 				}
 
-				this._containingType.get_model().raisePropertyEvent(this, "changed", [target, this, val, undefined, false, this]);
+				this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: false }]);
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
@@ -1237,7 +1224,7 @@
 							}
 
 							signal.waitForAll(function() {
-								prop.value(obj, newValue);
+								prop.value(obj, newValue, { calculated: true });
 								if (callback) {
 									callback(obj);
 								}
@@ -1691,31 +1678,41 @@
 			addChanged: function PropertyChain$addChanged(handler, obj) {
 				var chain = this;
 
+				function raiseHandler(sender, args) {
+					// Copy the original arguments so that we don't affect other code
+					var newArgs = Object.copy(args);
+
+					// Reset property to be the chain, but store the original property as "triggeredBy"
+					newArgs.triggeredBy = newArgs.property;
+					newArgs.property = chain;
+
+					// Call the handler, passing through the arguments
+					handler(sender, newArgs);
+				}
+
 				if (this._properties.length == 1) {
 					// OPTIMIZATION: no need to search all known objects for single property chains
-					this._properties[0].addChanged(function PropertyChain$_raiseChanged$1Prop(sender, property, val, oldVal, wasInited) {
-						handler(sender, chain, val, oldVal, wasInited, property);
-					}, obj);
+					this._properties[0].addChanged(raiseHandler, obj);
 				}
 				else {
 					Array.forEach(this._properties, function(prop, index) {
 						var priorProp = (index === 0) ? undefined : chain._properties[index - 1];
 						if (obj) {
 							// CASE: using object filter
-							prop.addChanged(function PropertyChain$_raiseChanged$1Obj(sender, property, val, oldVal, wasInited) {
+							prop.addChanged(function PropertyChain$_raiseChanged$1Obj(sender, args) {
 								if (chain.connects(obj, sender, priorProp)) {
-									handler(obj, chain, val, oldVal, wasInited, property);
+									raiseHandler(obj, args);
 								}
 							});
 						}
 						else {
 							// CASE: no object filter
-							prop.addChanged(function PropertyChain$_raiseChanged$Multi(sender, property, val, oldVal, wasInited) {
+							prop.addChanged(function PropertyChain$_raiseChanged$Multi(sender, args) {
 								// scan all known objects of this type and raise event for any instance connected
 								// to the one that sent the event.
 								Array.forEach(chain._rootType.known(), function(known) {
 									if (chain.isInited(known) && chain.connects(known, sender, priorProp)) {
-										handler(known, chain, val, oldVal, wasInited, property);
+										raiseHandler(known, args);
 									}
 								});
 							});
@@ -1759,12 +1756,12 @@
 			get_rules: function PropertyChain$_get_rules(onlyTargets) {
 				return this.lastProperty().get_rules(onlyTargets);
 			},
-			value: function PropertyChain$value(obj, val) {
+			value: function PropertyChain$value(obj, val, customInfo) {
 				var target = this.lastTarget(obj);
 				var prop = this.lastProperty();
 
-				if (arguments.length == 2) {
-					prop.value(target, val);
+				if (arguments.length > 1) {
+					prop.value(target, val, customInfo);
 				}
 				else {
 					return prop.value(target);
@@ -2308,7 +2305,7 @@
 					case "NotEqual": return RequiredRule.hasValue(srcValue);
 				}
 			}
-			
+
 			if (srcValue !== undefined && srcValue !== null && cmpValue !== undefined && cmpValue !== null) {
 				switch (cmpOp) {
 					case "Equal": return srcValue == cmpValue;

@@ -153,14 +153,15 @@
 							if (item.meta) {
 								try {
 									ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
-										chain.addChanged(function lazy$requiredChanged(obj, chain, val, oldVal, wasInited, triggerProperty) {
+										chain.addChanged(function lazy$requiredChanged(sender, args) {
 											queueUpdate(function(setValue) {
 												// when a point in the required path changes then load the chain and refresh the value
-												ExoWeb.Model.LazyLoader.evalAll(obj, chain.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
+												ExoWeb.Model.LazyLoader.evalAll(sender, args.property.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
 													if (performedLoading) {
 														log(["markupExt", "~"], "Required path \"{0}\" change.  Eval caused loading to occur.", [properties.required]);
 													}
-													setValue(result, "required path property change [" + triggerProperty.get_name() + "]");
+													var triggeredBy = args.triggeredBy || args.property;
+													setValue(result, "required path property change [" + triggeredBy.get_name() + "]");
 												});
 											});
 										}, item);
@@ -357,7 +358,7 @@
 					this._observable = true;
 				}
 			},
-			_onTargetChanged: function Adapter$_onTargetChanged(sender, prop, val, oldVal) {
+			_onTargetChanged: function Adapter$_onTargetChanged(sender, args) {
 				if (this._ignoreTargetEvents) {
 					return;
 				}
@@ -411,7 +412,7 @@
 				// events if the value was set by changing selected on one of the OptionAdapter objects.
 				if (this._options) {
 					Array.forEach(this._options, function(o) {
-						if (o.get_rawValue() == val || o.get_rawValue() == oldVal) {
+						if (o.get_rawValue() == args.newValue || o.get_rawValue() == args.oldValue) {
 							Sys.Observer.raisePropertyChanged(o, "selected");
 						}
 					});
