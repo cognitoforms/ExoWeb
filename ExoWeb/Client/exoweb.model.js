@@ -947,7 +947,7 @@
 					this._assertType(obj);
 				}
 
-				this._raiseEvent("get", [obj, { property: this, value: obj[this._fieldName], isInited: obj.hasOwnProperty(this._fieldName) }]);
+				this._raiseEvent("get", [obj, { property: this, value: obj[this._fieldName], isInited: obj.hasOwnProperty(this._fieldName)}]);
 
 				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
 					ExoWeb.trace.logWarning("model",
@@ -1100,11 +1100,11 @@
 						this._containingType.get_model().notifyListChanged(target, this, args.get_changes());
 
 						// NOTE: oldValue is not currently implemented for lists
-						this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: true, collectionChanged: true }]);
+						this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: true, collectionChanged: true}]);
 					}, this);
 				}
 
-				this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: false }]);
+				this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: false}]);
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
@@ -2283,13 +2283,16 @@
 				targetInput.set_isTarget(true);
 				inputs.push(targetInput);
 
-				rule._compareProperty = Model.property(rule._comparePath, rule.prop.get_containingType());
-				var compareInput = new RuleInput(rule._compareProperty);
-				inputs.push(compareInput);
+				Model.property(rule._comparePath, rule.prop.get_containingType(), true, function(chain) {
+					rule._compareProperty = chain;
+					
+					var compareInput = new RuleInput(rule._compareProperty);
+					inputs.push(compareInput);
 
-				Rule.register(rule, inputs);
+					Rule.register(rule, inputs);
 
-				rule._inited = true;
+					rule._inited = true;
+				});
 			}
 			else {
 				$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
