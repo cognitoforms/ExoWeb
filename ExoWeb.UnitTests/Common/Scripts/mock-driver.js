@@ -264,6 +264,7 @@
 				RetirementGoalDate: null,
 				DateCreated: new Date("1/1/2007"),
 				SalesPerson: { id: "100" },
+				AllowedSalesPersons: [ { id: "100" }, { id: "101" } ],
 				Notes: null
 			}
 		},

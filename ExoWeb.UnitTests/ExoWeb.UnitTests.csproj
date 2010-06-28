@@ -60,15 +60,10 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Common\Scripts\ExoWeb\exoweb.jquery.js" />
-    <Content Include="Common\Scripts\ExoWeb\exoweb.js" />
-    <Content Include="Common\Scripts\ExoWeb\exoweb.mapper.js" />
-    <Content Include="Common\Scripts\ExoWeb\exoweb.mock.js" />
-    <Content Include="Common\Scripts\ExoWeb\exoweb.model.js" />
-    <Content Include="Common\Scripts\ExoWeb\exoweb.ui.js" />
-    <Content Include="Common\Scripts\ExoWeb\exoweb.view.js" />
-    <Content Include="Common\Scripts\ExoWeb\start.debug.js" />
+    <None Include="Common\Scripts\ExoWeb\README" />
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2-vsdoc.js" />
+    <Content Include="Common\Scripts\Microsoft\MicrosoftAjax.debug.js" />
+    <Content Include="Common\Scripts\Microsoft\MicrosoftAjaxTemplates.debug.js" />
     <Content Include="Common\Scripts\mock-driver.js" />
     <Content Include="Common\Scripts\QUnit\qunit.ext.js" />
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2.js" />
@@ -93,6 +88,7 @@
     <Content Include="Model\Types.htm" />
     <Content Include="UI\Helpers.htm" />
     <Content Include="UI\Controls.htm" />
+    <Content Include="View\Adapter.htm" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -100,7 +96,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
-    <Folder Include="View\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" />

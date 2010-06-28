@@ -1,0 +1,5 @@
+﻿The ExoWeb scripts are found in the ExoWeb project.  In order to make the scripts accessible to the unit test pages, do one of the following:
+
+* Add a virtual directory in ISS
+* Add a symlink or junction point
+* Copy the files (not recommended) 
