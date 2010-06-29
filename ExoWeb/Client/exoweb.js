@@ -1249,7 +1249,7 @@ Type.registerNamespace("ExoWeb");
 				}
 				else {
 					this._raiseEvent("valueReleased", [value]);
-				}		
+				}
 			},
 			capture: function PropertyObserver$capture(value) {
 				// Notify subscribers that a new value was captured
@@ -1297,7 +1297,7 @@ Type.registerNamespace("ExoWeb");
 
 				this._source = source;
 				this._handler = handler;
-				
+
 				var value = this.value();
 
 				this._propHandler = function propHandler(sender, args) {
@@ -1308,7 +1308,7 @@ Type.registerNamespace("ExoWeb");
 					if (value !== undefined && value !== null) {
 						_this.release(value);
 					}
-					
+
 					value = _this.value();
 
 					// Release the old value
@@ -1351,8 +1351,13 @@ Type.registerNamespace("ExoWeb");
 
 		Sys.Observer.addPathChanged = function Sys$Observer$addPathChanged(target, path, handler, allowNoTarget) {
 			// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok
-			if (allowNoTarget !== true && (target === undefined || target === null)) {
-				ExoWeb.trace.throwAndLog("observer", "Cannot watch for changes to \"{0}\" on a null or undefined target.", [path instanceof Array ? path.join(".") : path]);
+			if (target === undefined || target === null) {
+				if (allowNoTarget === true) {
+					ExoWeb.trace.throwAndLog("observer", "Cannot watch for changes to \"{0}\" on a null or undefined target.", [path instanceof Array ? path.join(".") : path]);
+				}
+				else {
+					return;
+				}
 			}
 
 			// Ensure a set of path change handlers
@@ -1385,7 +1390,7 @@ Type.registerNamespace("ExoWeb");
 
 					// Continue to next steps if there are any
 					if (index + 1 < list.length) {
-						 processStep(obs, list[index + 1], index + 1);
+						processStep(obs, list[index + 1], index + 1);
 					}
 				}
 
