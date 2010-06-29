@@ -25,6 +25,30 @@
 				equals(personType.get_jstype(), ExoWeb.Model.Model.getJsType("Person"), "Type should be retrievable by name and \"getJsType\" method.");
 				ok(personType.get, "Type should have a get method for retrieving instances.");
 			});
+
+			test("Construction", function () {
+				var undefined;
+
+				var carType = model.addType("Car");
+				carType.addProperty({ name: "Make", type: String });
+				carType.addProperty({ name: "Model", type: String });
+				carType.addProperty({ name: "Year", type: Number });
+
+				var c1 = new Car({ Make: "Ford" });
+				ok(c1.meta.isNew, "Car should be new");
+				equals(c1.get_Make(), "Ford", "Make should be ford");
+				equals(c1.get_Model(), undefined, "Model should be undefined");
+
+				var c2 = new Car(c1.meta.id, { Model: "F150" });
+				equals(c2, c1, "Cars should be equal");
+				equals(c2.get_Model(), "F150", "Model should be f150");
+
+				var c3 = new Car("1", { Make: "Chevy", Model: "Silverado", Year: 2005 });
+				ok(!c3.meta.isNew, "Car should not be new");
+				equals(c3.get_Make(), "Chevy", "Make should be chevy");
+				equals(c3.get_Model(), "Silverado", "Model should be silverado");
+				equals(c3.get_Year(), 2005, "Year should be 2005");
+			});
 		</script>
 	</head>
 	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" sys:activate="*">

@@ -1276,6 +1276,8 @@
 			}
 		});
 
+		ExoWeb.Mapper.ServerSync = ServerSync;
+
 		ServerSync.Roundtrip = function ServerSync$Roundtrip(root, success, failed) {
 			if (root instanceof ExoWeb.Model.Entity) {
 				root = root.meta.type.get_model();

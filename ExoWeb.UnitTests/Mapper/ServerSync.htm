@@ -207,9 +207,22 @@
 				equals(casey.get_DateCreated().valueOf(), dateCreated.valueOf(), "Date created should have been set properly.");
 			});
 
+			setupTest("test8", { description: "Initialized Objects", expect: 3 }, function () {
+				var undefined;
+
+				var newDriver2 = new Driver();
+				equals(ExoWeb.Model.LazyLoader.isLoaded(newDriver2), true, "Object should NOT be lazy-loadable since no id was supplied (new object)");
+
+				var numChanges = context.server._changes.length;
+
+				var newDriver1 = new Driver("5", { Name: "John Doe" });
+				equals(ExoWeb.Model.LazyLoader.isLoaded(newDriver1), false, "Object should be lazy-loadable since an id was supplied (existing object)");
+				equals(context.server._changes.length, numChanges, "Number of changes should be the same, since the object was existing and properties were initialized");
+			});
+
 			timeoutTests(5000);
 
-			context.ready(function() {
+			context.ready(function () {
 				executeTest("test1");
 				executeTest("test2");
 				executeTest("test3");
@@ -217,6 +230,7 @@
 				executeTest("test5");
 				executeTest("test6");
 				executeTest("test7");
+				executeTest("test8");
 			});
 		</script>
 	</head>

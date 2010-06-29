@@ -225,19 +225,40 @@
 		function Entity() {
 		}
 
+		function forEachProperty(obj, callback, thisPtr) {
+			for (var prop in obj) {
+				callback.call(thisPtr || this, prop, obj[prop]);
+			}
+		}
+
+		function getProperties(/*[properties] or [propName, propValue] */) {
+			if (arguments.length === 2) {
+				var properties = {};
+				properties[arguments[0]] = arguments[1];
+				return properties;
+			}
+			else {
+				return arguments[0];
+			}
+		}
+
 		Entity.mixin({
-			set: function Entity$set( /*[properties] or [propName, propValue] */) {
-				if (arguments.length == 2) {
-					var propName = arguments[0];
-					var propValue = arguments[1];
-					this._accessor("set", propName).call(this, propValue);
-				}
-				else {
-					var properties = arguments[0];
-					for (var prop in properties) {
-						this._accessor("set", prop).call(this, properties[prop]);
+			init: function Entity$init(/*[properties] or [propName, propValue] */) {
+				forEachProperty(getProperties.apply(this, arguments), function(name, value) {
+					var prop = this.meta.type.property(name, true);
+
+					if (!prop) {
+						ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
 					}
-				}
+					
+					// Initialization is not force.  If the propery already has a value it will be ignored.
+					prop.init(this, value);
+				}, this);
+			},
+			set: function Entity$set(/*[properties] or [propName, propValue] */) {
+				forEachProperty(getProperties.apply(this, arguments), function(name, value) {
+					this._accessor("set", name).call(this, value);
+				}, this);
 			},
 			get: function Entity$get(propName) {
 				return this._accessor("get", propName).call(this);
@@ -346,17 +367,24 @@
 			// the full name (used as the function label) must be a valid identifier
 			var fullName = name.replace(/\./ig, "$");
 
-			function construct(idOrProps) {
+			function construct(idOrProps, props) {
 				if (!disableConstruction) {
 					if (idOrProps && idOrProps.constructor === String) {
 						var id = idOrProps;
 						var obj = type.get(id);
 						if (obj) {
+							if (props) {
+								obj.init(props);
+							}
 							return obj;
 						}
 
 						type.register(this, id);
 						type._initProperties(this, "_initExistingProps");
+
+						if (props) {
+							this.init(props);
+						}
 					}
 					else {
 						type.register(this);
@@ -2285,7 +2313,7 @@
 
 				Model.property(rule._comparePath, rule.prop.get_containingType(), true, function(chain) {
 					rule._compareProperty = chain;
-					
+
 					var compareInput = new RuleInput(rule._compareProperty);
 					inputs.push(compareInput);
 
@@ -3306,7 +3334,7 @@
 
 		LazyLoader.isLoaded = function LazyLoader$isLoaded(obj, propName) {
 			if (obj === undefined || obj === null) {
-				return false;
+				return;
 			}
 
 			var reg = obj._lazyLoader;
@@ -3324,7 +3352,7 @@
 				loader = reg.allProps;
 			}
 
-			return !loader || (loader.isLoaded && obj._lazyLoader.isLoaded(obj, propName));
+			return !loader || (!!loader.isLoaded && obj._lazyLoader.isLoaded(obj, propName));
 		};
 
 		LazyLoader.load = function LazyLoader$load(obj, propName, callback) {
