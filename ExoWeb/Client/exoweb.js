@@ -1353,10 +1353,10 @@ Type.registerNamespace("ExoWeb");
 			// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok
 			if (target === undefined || target === null) {
 				if (allowNoTarget === true) {
-					ExoWeb.trace.throwAndLog("observer", "Cannot watch for changes to \"{0}\" on a null or undefined target.", [path instanceof Array ? path.join(".") : path]);
+					return;
 				}
 				else {
-					return;
+					ExoWeb.trace.throwAndLog("observer", "Cannot watch for changes to \"{0}\" on a null or undefined target.", [path instanceof Array ? path.join(".") : path]);
 				}
 			}
 
