@@ -1227,51 +1227,65 @@ Type.registerNamespace("ExoWeb");
 		};
 
 
-		function PropertyObserver(name) {
+		/////////////////////////////////////////////////////////////////////////////////////////
+		function PropertyObserver(prop) {
 			this._source = null;
-			this._name = name;
-			this._events = [];
+			this._prop = prop;
 			this._handler = null;
-			this._callback = null;
-			this._prev = null;
-			this._next = null;
 		}
 
-		PropertyObserver.prototype = {
-			addEvent: function PropertyObserver$addEvent(handler) {
-				this._events.push(handler);
+		PropertyObserver.mixin(Functor.eventing);
+
+		PropertyObserver.mixin({
+			value: function PropertyObserver$value() {
+				return ExoWeb.getValue(this._source, this._prop);
 			},
-			removeEvent: function PropertyObserver$removeObserver(handler) {
-				if (Array.contains(this._events, handler)) {
-					Array.remove(this._events, handler);
+			release: function PropertyObserver$release(value) {
+				// Notify subscribers that the old value should be released
+				if (value instanceof Array) {
+					Array.forEach(value, function(item) {
+						this._raiseEvent("valueReleased", [item]);
+					}, this);
+				}
+				else {
+					this._raiseEvent("valueReleased", [value]);
 				}
 			},
-			raiseEvents: function PropertyObserver$raiseEvents(result) {
-				var result = ExoWeb.getValue(this._source, this._name);
-				for (var i = 0; i < this._events.length; i++) {
-					var evt = this._events[i];
-					if (evt(result)) {
-						Array.removeAt(this._events, i--);
-					}
-				}
-			},
-			wait: function PropertyObserver$wait(handler) {
-				if (this._prev) {
+			capture: function PropertyObserver$capture(value) {
+				// Notify subscribers that a new value was captured
+				if (value instanceof Array) {
+					Array.forEach(value, function(item) {
+						this._raiseEvent("valueCaptured", [item]);
+					}, this);
+
 					var _this = this;
 
-					if (this._callback) {
-						this._prev.removeEvent(this._callback);
+					// Have to store the array since if the value changes we won't necessarily be able to retrieve the original array
+					if (this._collectionTarget !== undefined && this._collectionTarget !== null) {
+						Sys.Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
 					}
 
-					this._callback = function PropertyObserver$wait$_callback(source) {
-						if (source !== undefined && source !== null) {
-							_this.start(source, handler);
-							_this._callback = null;
-							return true;
-						}
+					this._collectionTarget = value;
+
+					this._collectionHandler = function collectionHandler(sender, args) {
+						var changes = args.get_changes();
+
+						// Call the actual handler
+						_this._handler.apply(this, arguments);
+
+						// remove old observers and add new observers
+						Array.forEach(changes.removed || [], function(removed) {
+							_this._raiseEvent("valueReleased", [removed]);
+						});
+						Array.forEach(changes.added || [], function(added) {
+							_this._raiseEvent("valueCaptured", [added]);
+						});
 					};
 
-					this._prev.addEvent(this._callback);
+					Sys.Observer.addCollectionChanged(this._collectionTarget, this._collectionHandler);
+				}
+				else {
+					this._raiseEvent("valueCaptured", [value]);
 				}
 			},
 			start: function PropertyObserver$start(source, handler) {
@@ -1282,59 +1296,74 @@ Type.registerNamespace("ExoWeb");
 				var _this = this;
 
 				this._source = source;
-				this._handler = function propHandler(sender, args) {
-					var observer = _this;
+				this._handler = handler;
 
-					// Notify following properties to stop watching the old source and wait for a new one.
-					if (_this._next) {
-						_this._next.stopAndWait(handler);
+				var value = this.value();
+
+				this._propHandler = function propHandler(sender, args) {
+					// Call the actual handler.
+					_this._handler.apply(this, arguments);
+
+					// Release the old value
+					if (value !== undefined && value !== null) {
+						_this.release(value);
 					}
 
-					// Call the actual handler.
-					handler.apply(this, arguments);
+					value = _this.value();
 
-					// Process events and remove those that are satisfied.
-					_this.raiseEvents();
+					// Release the old value
+					if (value !== undefined && value !== null) {
+						_this.capture(value);
+					}
 				};
 
-				// Process events and remove those that are satisfied.
-				_this.raiseEvents();
+				Sys.Observer.addSpecificPropertyChanged(this._source, this._prop, this._propHandler);
 
-				// Use Sys Observer to watch for changes.
-				Sys.Observer.addSpecificPropertyChanged(this._source, this._name, this._handler);
+				// If we currently have a value, then notify subscribers
+				if (value !== undefined && value !== null) {
+					this.capture(value);
+				}
 			},
 			stop: function PropertyObserver$stop() {
 				if (this._source) {
-					// Remove the event.
-					Sys.Observer.removeSpecificPropertyChanged(this._source, this._name, this._handler);
+					// Remove the registered event(s)
+					Sys.Observer.removeSpecificPropertyChanged(this._source, this._prop, this._propHandler);
 
-					// Null-out the source.
+					// Have to store the array since if the value changes we won't necessarily be able to retrieve the original array
+					if (this._collectionTarget !== undefined && this._collectionTarget !== null) {
+						Sys.Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
+						this.release(this._collectionTarget);
+					}
+					else {
+						var value = this.value();
+						if (value !== undefined && value !== null) {
+							this.release(value);
+						}
+					}
+
+					// Null out the source to indicate that it is no longer watching that object
 					this._source = null;
 				}
-			},
-			stopAndWait: function PropertyObserver$stopAndWait(handler) {
-				this.stop();
-				this.wait(handler);
+			}
+		});
 
-				// Stop following handlers as well.
-				if (this._next) {
-					this._next.stopAndWait(handler);
+		ExoWeb.PropertyObserver = PropertyObserver;
+
+		Sys.Observer.addPathChanged = function Sys$Observer$addPathChanged(target, path, handler, allowNoTarget) {
+			// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok
+			if (target === undefined || target === null) {
+				if (allowNoTarget === true) {
+					return;
+				}
+				else {
+					ExoWeb.trace.throwAndLog("observer", "Cannot watch for changes to \"{0}\" on a null or undefined target.", [path instanceof Array ? path.join(".") : path]);
 				}
 			}
-		}
 
-		Sys.Observer.addPathChanged = function Sys$Observer$addPathChanged(target, path, handler) {
-			if (target === undefined || target === null) {
-				return;
-			}
-
+			// Ensure a set of path change handlers
 			if (!target.__pathChangeHandlers) {
 				target.__pathChangeHandlers = {};
 			}
-
-			// Create a PropertyObserver for each step in the path.
-			var source = target;
-			var lastProp = null;
 
 			var list = path;
 			if (path instanceof Array) {
@@ -1344,43 +1373,84 @@ Type.registerNamespace("ExoWeb");
 				list = path.split(".");
 			}
 
-			var properties = list.map(function(item, index, list) {
-				var prop = new PropertyObserver(item);
+			var roots = [];
 
-				// Set up forward and reverse references.
-				if (lastProp !== null) {
-					prop._prev = lastProp;
-					lastProp._next = prop;
+			function processStep(parent, item, index) {
+				var observers = [];
+
+				function addObserver(value) {
+					var obs = new PropertyObserver(item);
+
+					observers.push(obs);
+					if (index === 0) {
+						roots.push(obs);
+					}
+
+					obs.start(value, handler);
+
+					// Continue to next steps if there are any
+					if (index + 1 < list.length) {
+						processStep(obs, list[index + 1], index + 1);
+					}
 				}
 
-				if (source === undefined || source === null) {
-					// The source is undefined, wait on changes to the prior step to check for a value.
-					prop.wait(handler);
+				function removeObserver(value) {
+					for (var i = 0; i < observers.length; i++) {
+						var obs = observers[i];
+						if (obs._source === value) {
+							Array.removeAt(observers, i--);
+							if (index === 0) {
+								Array.remove(roots, obs);
+							}
+
+							obs.stop();
+						}
+					}
 				}
-				else {
-					// Start watching for changes at this step.
-					prop.start(source, handler);
 
-					// Move the source to the next step in the path.
-					source = ExoWeb.getValue(source, prop._name);
+				// If there is a step before this one, then respond to 
+				// changes to the value(s) at that step.
+				if (parent) {
+					parent._addEvent("valueCaptured", addObserver);
+					parent._addEvent("valueReleased", removeObserver);
 				}
 
-				lastProp = prop;
+				var source = index === 0 ? target : parent.value();
+				if (source !== undefined && source !== null) {
+					if (source instanceof Array) {
+						Array.forEach(source, addObserver);
 
-				return prop;
-			});
+						// Watch for changes to the target if it is an array, so that we can
+						// add new observers, remove old ones, and call the handler.
+						if (index === 0) {
+							Sys.Observer.addCollectionChanged(source, function(sender, args) {
+								var changes = args.get_changes();
 
+								Array.forEach(changes.removed || [], removeObserver);
+								Array.forEach(changes.added || [], addObserver);
+								handler();
+							});
+						}
+					}
+					else {
+						addObserver(source);
+					}
+				}
+			}
+
+			// Start processing the path
+			processStep(null, list[0], 0);
+
+			// Store the observer on the object
 			var pathChangeHandlers = target.__pathChangeHandlers[path];
 			if (!pathChangeHandlers) {
 				target.__pathChangeHandlers[path] = pathChangeHandlers = [];
 			}
-			pathChangeHandlers.push({ properties: properties, handler: handler });
+			pathChangeHandlers.push({ roots: roots, handler: handler });
 		};
 
 		Sys.Observer.removePathChanged = function Sys$Observer$removePathChanged(target, path, handler) {
-			if (path instanceof Array) {
-				path = path.join(".");
-			}
+			path = (path instanceof Array) ? path.join(".") : path;
 
 			var pathChangeHandlers = target.__pathChangeHandlers ? target.__pathChangeHandlers[path] : null;
 
@@ -1389,22 +1459,25 @@ Type.registerNamespace("ExoWeb");
 				for (var i = 0; i < pathChangeHandlers.length; i++) {
 					var pathChangeHandler = pathChangeHandlers[i];
 					if (pathChangeHandler.handler === handler) {
-						Array.forEach(pathChangeHandler.properties, function(prop) {
-							prop.stop();
+						Array.forEach(pathChangeHandler.roots, function(observer) {
+							observer.stop();
 						});
 						Array.removeAt(pathChangeHandlers, i--);
 					}
 				}
 
-				// If the array is empty then remove the callbacks as an optimization
+				// If there are no more handlers for this path then remove it from the cache
 				if (pathChangeHandlers.length === 0) {
+					// delete the data specific to this path
 					delete target.__pathChangeHandlers[path];
 
+					// determine if there are any other paths being watched
 					var hasHandlers = false;
 					for (var handler in target.__pathChangeHandlers) {
 						hasHandlers = true;
 					}
 
+					// delete the property from the object if there are no longer any paths being watched
 					if (!hasHandlers) {
 						delete target.__pathChangeHandlers;
 					}

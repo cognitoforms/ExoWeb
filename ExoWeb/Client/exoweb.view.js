@@ -142,10 +142,12 @@
 
 						if (properties.$default && monitorChangesFromSource) {
 							Sys.Observer.addPathChanged(source, properties.$default, function(sender, args) {
-								queueUpdate(function(setValue) {
-									setValue(ExoWeb.getValue(source, properties.$default), args.get_propertyName() + " property change");
+							queueUpdate(function(setValue) {
+									var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection changed" :
+										((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() + " property change" : "unknown change");
+									setValue(ExoWeb.getValue(source, properties.$default), msg);
 								});
-							});
+							}, true);
 						}
 					}
 					if (properties.required) {
@@ -174,9 +176,11 @@
 							else {
 								Sys.Observer.addPathChanged(item, properties.required, function(sender, args) {
 									queueUpdate(function(setValue) {
-										setValue(result, "required path step change [" + args.get_propertyName() + "]");
+										var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection" :
+											((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() : "unknown");
+										setValue(result, "required path step change [" + msg + "]");
 									});
-								});
+								}, true);
 							}
 						};
 
@@ -230,19 +234,22 @@
 							Sys.Observer.addPathChanged(source, properties.$default, function(target, args) {
 								queueUpdate(function(setValue) {
 									ExoWeb.Model.LazyLoader.eval(source, properties.$default, function lazy$Loaded(result, message) {
+										var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection changed" :
+											((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() + " property change" : "unknown change");
+												
 										// If we now have a value, ensure initialization and set the value.
 										if (result !== undefined && result !== null) {
 											if (!isSetup) {
 												setup(result, false);
-												init(result, args.get_propertyName() + " property change");
+												init(result, msg);
 												isSetup = true;
 											}
 										}
 
-										setValue(result, args.get_propertyName() + " property change");
+										setValue(result, msg);
 									});
 								});
-							});
+							}, true);
 						}
 						else {
 							setup(result, true);
