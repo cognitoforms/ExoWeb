@@ -22,7 +22,7 @@
 		function Model() {
 			this._types = {};
 
-			this._validatingQueue = new EventQueue(
+			this._validatingQueue = new ExoWeb.EventQueue(
 				function(e) {
 					var meta = e.sender;
 					var conditions = meta._propertyConditions[e.propName];
@@ -33,7 +33,7 @@
 				}
 			);
 
-			this._validatedQueue = new EventQueue(
+			this._validatedQueue = new ExoWeb.EventQueue(
 				function(e) {
 					var meta = e.sender;
 					var propName = e.property;
@@ -1113,23 +1113,24 @@
 				target[this._fieldName] = val;
 
 				if (val instanceof Array) {
+					var _this = this;
 					Sys.Observer.makeObservable(val);
 					Sys.Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
 						if (!LazyLoader.isLoaded(val)) {
 							ExoWeb.trace.logWarning("model", "{0} list {1}.{2} was modified but it has not been loaded.", [
-								this._isStatic ? "Static" : "Non-static",
-								this._isStatic ? this._containingType.get_fullName() : "this<" + this._containingType.get_fullName() + ">",
-								this._name
+								_this._isStatic ? "Static" : "Non-static",
+								_this._isStatic ? _this._containingType.get_fullName() : "this<" + _this._containingType.get_fullName() + ">",
+								_this._name
 							]);
 						}
 
 						// NOTE: property change should be broadcast before rules are run so that if 
 						// any rule causes a roundtrip to the server these changes will be available
-						this._containingType.get_model().notifyListChanged(target, this, args.get_changes());
+						_this._containingType.get_model().notifyListChanged(target, _this, args.get_changes());
 
 						// NOTE: oldValue is not currently implemented for lists
-						this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: true, collectionChanged: true}]);
-					}, this);
+						_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, wasInited: true, collectionChanged: true}]);
+					});
 				}
 
 				this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: false}]);
@@ -2506,57 +2507,6 @@
 
 		Rule.stringLength = StringLengthRule;
 
-
-		//////////////////////////////////////////////////////////////////////////////////////
-		function EventQueue(raise, areEqual) {
-			this._queueing = 0;
-			this._queue = [];
-			this._raise = raise;
-			this._areEqual = areEqual;
-		}
-
-		EventQueue.prototype = {
-			startQueueing: function EventQueue$startQueueing() {
-				++this._queueing;
-			},
-			stopQueueing: function EventQueue$stopQueueing() {
-				if (--this._queueing === 0) {
-					this.raiseQueue();
-				}
-			},
-			push: function EventQueue$push(item) {
-				// NOTE:  If a queued event triggers other events when raised, 
-				// the new events will be raised before the events that follow 
-				// after the triggering event.  This means that events will be 
-				// raised in the correct sequence, but they may occur out of order.
-				if (this._queueing) {
-					if (this._areEqual) {
-						for (var i = 0; i < this._queue.length; ++i) {
-							if (this._areEqual(item, this._queue[i])) {
-								return;
-							}
-						}
-					}
-
-					this._queue.push(item);
-				}
-				else {
-					this._raise(item);
-				}
-			},
-			raiseQueue: function EventQueue$raiseQueue() {
-				try {
-					for (var i = 0; i < this._queue.length; ++i) {
-						this._raise(this._queue[i]);
-					}
-				}
-				finally {
-					if (this._queue.length > 0) {
-						this._queue = [];
-					}
-				}
-			}
-		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		function ConditionTypeSet(name) {
