@@ -145,7 +145,7 @@
 								queueUpdate(function(setValue) {
 									setValue(ExoWeb.getValue(source, properties.$default), args.get_propertyName() + " property change");
 								});
-							}, true);
+							});
 						}
 					}
 					if (properties.required) {
@@ -176,7 +176,7 @@
 									queueUpdate(function(setValue) {
 										setValue(result, "required path step change [" + args.get_propertyName() + "]");
 									});
-								}, true);
+								});
 							}
 						};
 
@@ -242,7 +242,7 @@
 										setValue(result, args.get_propertyName() + " property change");
 									});
 								});
-							}, true);
+							});
 						}
 						else {
 							setup(result, true);
