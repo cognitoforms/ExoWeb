@@ -529,37 +529,47 @@
 			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
+				var signal = new ExoWeb.Signal("RaiseServerEventSuccess");
+
 				if (result.instances) {
-					objectsFromJson(this._model, result.instances, function() {
+					objectsFromJson(this._model, result.instances, signal.pending(function() {
 						// if there is instance data to load then wait before loading conditions (since they may reference these instances)
 						if (result.conditionTargets) {
 							conditionsFromJson(this._model, result.conditionTargets);
 						}
-					});
-				}
-				else if (result.conditionTargets) {
-					conditionsFromJson(this._model, result.conditionTargets);
-				}
-
-				if (result.changes) {
-					log("server", "ServerSync._onRaiseServerEventSuccess() >> applying {0} changes", [result.changes.length]);
-
-					if (result.changes.length > 0) {
-						this.apply(result.changes);
-					}
+						applyChanges.call(this);
+					}));
 				}
 				else {
-					log("server", "._onRaiseServerEventSuccess() >> no changes");
+					if (result.conditionTargets) {
+						conditionsFromJson(this._model, result.conditionTargets);
+					}
+					applyChanges.call(this);
 				}
 
-				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("raiseServerEventEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
-				this._raiseEvent("raiseServerEventSuccess", [result, userContext, methodName, automatic]);
+				function applyChanges() {
+					if (result.changes) {
+						log("server", "ServerSync._onRaiseServerEventSuccess() >> applying {0} changes", [result.changes.length]);
 
-				if (callback && callback instanceof Function) {
-					callback.call(this, result, userContext, methodName);
+						if (result.changes.length > 0) {
+							this.applyChanges(result.changes, signal.pending());
+						}
+					}
+					else {
+						log("server", "._onRaiseServerEventSuccess() >> no changes");
+					}
 				}
+
+				signal.waitForAll(function() {
+					this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
+					this._raiseEvent("raiseServerEventEnd", [[result, userContext, methodName], automatic]);
+					this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
+					this._raiseEvent("raiseServerEventSuccess", [result, userContext, methodName, automatic]);
+
+					if (callback && callback instanceof Function) {
+						callback.call(this, result, userContext, methodName);
+					}
+				}, this);
 			},
 			_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
@@ -609,25 +619,29 @@
 			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
+				var signal = new ExoWeb.Signal("RoundtripSuccess");
+
 				if (result.changes) {
 					log("server", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [result.changes.length]);
 
 					if (result.changes.length > 0) {
-						this.apply(result.changes);
+						this.applyChanges(result.changes, signal.pending());
 					}
 				}
 				else {
 					log("server", "._onRoundtripSuccess() >> no changes");
 				}
 
-				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("roundtripEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
-				this._raiseEvent("roundtripSuccess", [result, userContext, methodName, automatic]);
+				signal.waitForAll(function() {
+					this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
+					this._raiseEvent("roundtripEnd", [[result, userContext, methodName], automatic]);
+					this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
+					this._raiseEvent("roundtripSuccess", [result, userContext, methodName, automatic]);
 
-				if (callback && callback instanceof Function) {
-					callback.call(this, result, userContext, methodName);
-				}
+					if (callback && callback instanceof Function) {
+						callback.call(this, result, userContext, methodName);
+					}
+				}, this);
 			},
 			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
@@ -700,26 +714,30 @@
 			_onSaveSuccess: function ServerSync$_onSaveSuccess(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
+				var signal = new ExoWeb.Signal("SaveSuccess");
+
 				if (result.changes) {
 					log("server", "._onSaveSuccess() >> applying {0} changes", [result.changes.length]);
 
 					// apply changes from server
 					if (result.changes.length > 0) {
-						this.apply(result.changes);
+						this.applyChanges(result.changes, signal.pending());
 					}
 				}
 				else {
 					log("server", "._onSaveSuccess() >> no changes");
 				}
 
-				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("saveEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
-				this._raiseEvent("saveSuccess", [result, userContext, methodName, automatic]);
+				signal.waitForAll(function() {
+					this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
+					this._raiseEvent("saveEnd", [[result, userContext, methodName], automatic]);
+					this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
+					this._raiseEvent("saveSuccess", [result, userContext, methodName, automatic]);
 
-				if (callback && callback instanceof Function) {
-					callback.call(this, result, userContext, methodName);
-				}
+					if (callback && callback instanceof Function) {
+						callback.call(this, result, userContext, methodName);
+					}
+				}, this);
 			},
 			_onSaveFailed: function ServerSync$_onSaveFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
@@ -965,7 +983,7 @@
 
 			// APPLY CHANGES
 			///////////////////////////////////////////////////////////////////////
-			apply: function ServerSync$apply(changes) {
+			applyChanges: function ServerSync$applyChanges(changes, callback) {
 				if (!changes || !(changes instanceof Array)) {
 					return;
 				}
@@ -1066,6 +1084,9 @@
 						log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
 						this.endApplyingChanges();
 						ExoWeb.Batch.end(batch);
+						if (callback && callback instanceof Function) {
+							callback();
+						}
 						if (newChanges > 0) {
 							log("server", "raising \"Changes\" property change event");
 							Sys.Observer.raisePropertyChanged(this, "Changes");
