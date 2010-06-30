@@ -46,8 +46,7 @@
 				callback();
 			});
 
-			setupTest("test3", { description: "Adapter formatted values (display, system) refresh based on changes to properties relevant to the format.", expect: 3 }, function ( flags, callback) {
-				ok(flags.rawValueChanged, "Raw value should broadcast change when the path changes");
+			setupTest("test3", { description: "Adapter formatted values (display, system) refresh based on changes to properties relevant to the format.", expect: 2 }, function ( flags, callback) {
 				ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
 				ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
 				callback();
@@ -126,7 +125,6 @@
 
 						var opt = adapter.get_options()[0];
 
-						Sys.Observer.addSpecificPropertyChanged(opt, "rawValue", function () { flags.rawValueChanged = true; });
 						Sys.Observer.addSpecificPropertyChanged(opt, "systemValue", function () { flags.systemValueChanged = true; });
 						Sys.Observer.addSpecificPropertyChanged(opt, "displayValue", function () { flags.displayValueChanged = true; });
 

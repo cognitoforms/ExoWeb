@@ -355,12 +355,67 @@
 					this._target = this._target.get_target();
 				}
 			},
+			_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val, fmtName) {
+				if (val === undefined || val === null) { 
+					return;
+				}
+
+				var signal = new ExoWeb.Signal("Adapter." + fmtName + "Value");
+				this._doForFormatPaths(val, fmtName, function(path) {
+					ExoWeb.Model.LazyLoader.eval(val, path, signal.pending());
+				});
+				signal.waitForAll(function() {
+					Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
+				}, this);
+			},
+			_doForFormatPaths: function Adapter$_doForFormatPaths(val, fmtName, callback, thisPtr) {
+				if (val === undefined || val === null) { 
+					return;
+				}
+
+				var fmtMethod = this["get_" + fmtName + "Format"];
+				var fmt = fmtMethod.call(this);
+
+				if (fmt) {
+					Array.forEach(fmt.getPaths(), callback, thisPtr || this);
+				}
+			},
+			_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val, fmtName) {
+				this._doForFormatPaths(val, fmtName, function(path) {
+					var fn = this._formatSubscribers[fmtName + "|" + path];
+					Sys.Observer.removePathChanged(val, path, fn);
+				});
+			},
+			_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val, fmtName) {
+				this._doForFormatPaths(val, fmtName, function(path) {
+					var fn = this._formatSubscribers[fmtName + "|" + path] = this._loadForFormatAndRaiseChange.setScope(this).prependArguments(val, fmtName);
+					Sys.Observer.addPathChanged(val, path, fn);
+				});
+			},
 			_ensureObservable: function Adapter$_ensureObservable() {
+				var _this = this;
+
 				if (!this._observable) {
 					Sys.Observer.makeObservable(this);
 
 					// subscribe to property changes at all points in the path
 					this._propertyChain.addChanged(this._onTargetChanged.setScope(this), this._target);
+
+					this._formatSubscribers = {};
+
+					// set up initial watching of format paths
+					var rawValue = this._propertyChain.value(this._target);
+					this._subscribeToFormatChanges(rawValue, "system");
+					this._subscribeToFormatChanges(rawValue, "display");
+
+					// when the value changes resubscribe
+					this._propertyChain.addChanged(function(sender, args) {
+						_this._unsubscribeFromFormatChanges(args.oldValue, "system");
+						_this._unsubscribeFromFormatChanges(args.oldValue, "display");
+
+						_this._subscribeToFormatChanges(args.newValue, "system");
+						_this._subscribeToFormatChanges(args.newValue, "display");
+					}, this._target);
 
 					this._observable = true;
 				}
@@ -379,40 +434,10 @@
 				});
 
 				// raise system value changed event
-				var systemSignal = new ExoWeb.Signal("Adapter.systemValue");
-				if (rawValue !== undefined && rawValue !== null) {
-					Array.forEach(this.get_systemFormat().getPaths(), function(path) {
-						if (rawValue instanceof Array) {
-							Array.forEach(rawValue, function(val) {
-								ExoWeb.Model.LazyLoader.eval(val, path, systemSignal.pending());
-							});
-						}
-						else {
-							ExoWeb.Model.LazyLoader.eval(rawValue, path, systemSignal.pending());
-						}
-					});
-				}
-				systemSignal.waitForAll(function() {
-					Sys.Observer.raisePropertyChanged(_this, "systemValue");
-				});
+				this._loadForFormatAndRaiseChange(rawValue, "system");
 
 				// raise display value changed event
-				var displaySignal = new ExoWeb.Signal("Adapter.displayValue");
-				if (rawValue !== undefined && rawValue !== null) {
-					Array.forEach(this.get_displayFormat().getPaths(), function(path) {
-						if (rawValue instanceof Array) {
-							Array.forEach(rawValue, function(val) {
-								ExoWeb.Model.LazyLoader.eval(val, path, displaySignal.pending());
-							});
-						}
-						else {
-							ExoWeb.Model.LazyLoader.eval(rawValue, path, displaySignal.pending());
-						}
-					});
-				}
-				displaySignal.waitForAll(function() {
-					Sys.Observer.raisePropertyChanged(_this, "displayValue");
-				});
+				this._loadForFormatAndRaiseChange(rawValue, "display");
 
 				// Raise change on options representing the old and new value in the event that the property 
 				// has be changed by non-UI code or another UI component.  This will result in double raising 
@@ -509,8 +534,8 @@
 
 			// Various methods.
 			///////////////////////////////////////////////////////////////////////
-			ready: function Adapter$ready(callback) {
-				this._readySignal.waitForAll(callback);
+			ready: function Adapter$ready(callback, thisPtr) {
+				this._readySignal.waitForAll(callback, thisPtr);
 			},
 			toString: function Adapter$toString() {
 				var targetType;
@@ -734,23 +759,34 @@
 		OptionAdapter.prototype = {
 			// Internal book-keeping and setup methods
 			///////////////////////////////////////////////////////////////////////
+			_loadForFormatAndRaiseChange: function OptionAdapter$_loadForFormatAndRaiseChange(val, fmtName) {
+				if (val === undefined || val === null) {
+					return;
+				}
+
+				var signal = new ExoWeb.Signal("OptionAdapter." + fmtName + "Value");
+				this._parent._doForFormatPaths(val, fmtName, function(path) {
+					ExoWeb.Model.LazyLoader.eval(val, path, signal.pending());
+				}, this);
+				signal.waitForAll(function() {
+					Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
+				}, this);
+			},
+			_subscribeToFormatChanges: function OptionAdapter$_subscribeToFormatChanges(val, fmtName) {
+				this._parent._doForFormatPaths(val, fmtName, function(path) {
+					Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.setScope(this).prependArguments(val, fmtName));
+				}, this);
+			},
 			_ensureObservable: function OptionAdapter$_ensureObservable() {
 				if (!this._observable) {
 					Sys.Observer.makeObservable(this);
 
-					// subscribe to property changes to the option's label (value shouldn't change)
-					// TODO: can we make this more specific?
-					Sys.Observer.addPropertyChanged(this._obj, this._onTargetChanged.setScope(this));
+					// set up initial watching of format paths
+					this._subscribeToFormatChanges(this._obj, "system");
+					this._subscribeToFormatChanges(this._obj, "display");
 
 					this._observable = true;
 				}
-			},
-			_onTargetChanged: function OptionAdapter$_onTargetChanged(sender, args) {
-				if (this._ignoreTargetEvents) {
-					return;
-				}
-
-				Sys.Observer.raisePropertyChanged(this, "label");
 			},
 
 			// Properties consumed by UI
