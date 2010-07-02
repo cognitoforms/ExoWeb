@@ -55,7 +55,6 @@
 								}
 
 								Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
-
 							});
 
 						});
@@ -142,10 +141,10 @@
 
 						if (properties.$default && monitorChangesFromSource) {
 							Sys.Observer.addPathChanged(source, properties.$default, function(sender, args) {
-							queueUpdate(function(setValue) {
+								queueUpdate(function(setValue) {
 									var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection changed" :
 										((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() + " property change" : "unknown change");
-									setValue(ExoWeb.getValue(source, properties.$default), msg);
+									setValue(ExoWeb.evalPath(source, properties.$default), msg);
 								});
 							}, true);
 						}
@@ -236,7 +235,7 @@
 									ExoWeb.Model.LazyLoader.eval(source, properties.$default, function lazy$Loaded(result, message) {
 										var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection changed" :
 											((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() + " property change" : "unknown change");
-												
+
 										// If we now have a value, ensure initialization and set the value.
 										if (result !== undefined && result !== null) {
 											if (!isSetup) {
@@ -356,7 +355,7 @@
 				}
 			},
 			_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val, fmtName) {
-				if (val === undefined || val === null) { 
+				if (val === undefined || val === null) {
 					return;
 				}
 
@@ -369,7 +368,7 @@
 				}, this);
 			},
 			_doForFormatPaths: function Adapter$_doForFormatPaths(val, fmtName, callback, thisPtr) {
-				if (val === undefined || val === null) { 
+				if (val === undefined || val === null) {
 					return;
 				}
 

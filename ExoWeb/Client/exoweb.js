@@ -1036,7 +1036,11 @@ Type.registerNamespace("ExoWeb");
 				return value === undefined ? null : value;
 			}
 			else {
-				return target[property];
+				var value = target[property];
+				if (value === undefined && /\./.test(property) && !(property in target)) {
+					ExoWeb.trace.logWarning("", "Possible incorrect usage of \"getValue()\", the path \"{0}\" does not exist on the target and appears to represent a multi-hop path.", [property]);
+				}
+				return value;
 			}
 		}
 
