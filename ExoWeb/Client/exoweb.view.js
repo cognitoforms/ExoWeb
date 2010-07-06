@@ -355,14 +355,12 @@
 				}
 			},
 			_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val, fmtName) {
-				if (val === undefined || val === null) {
-					return;
-				}
-
 				var signal = new ExoWeb.Signal("Adapter." + fmtName + "Value");
-				this._doForFormatPaths(val, fmtName, function(path) {
-					ExoWeb.Model.LazyLoader.eval(val, path, signal.pending());
-				});
+				if (val !== undefined && val !== null) {
+					this._doForFormatPaths(val, fmtName, function(path) {
+						ExoWeb.Model.LazyLoader.eval(val, path, signal.pending());
+					});
+				}
 				signal.waitForAll(function() {
 					Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
 				}, this);
