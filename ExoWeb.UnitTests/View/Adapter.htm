@@ -52,6 +52,13 @@
 				callback();
 			});
 
+			setupTest("test4", { description: "Adapter formatted values (display, system) refresh based on change to null.", expect: 3 }, function ( flags, callback) {
+				ok(flags.rawValueChanged, "Raw value should broadcast change when the path changes");
+				ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
+				ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
+				callback();
+			});
+
 			timeoutTests(2000);
 
 			function prepareTest(thisName, nextName, prepFn) { }
@@ -134,6 +141,34 @@
 						executeTest("test3", flags, function () {
 							Employee.formats.$system = oldSystemFormat;
 							opt.get_rawValue().set_Name(oldName);
+							callback.apply(this, arguments);
+						});
+					}, this);
+				};
+
+				setupList[3] = function (callback) {
+					var oldSystemFormat = Employee.formats.$system;
+					Employee.formats.$system = new ExoWeb.Model.Format.fromTemplate("{Name}");
+
+					var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson", null, null, {});
+					adapter.ready(function AdapterReady() {
+						var flags = { rawValueChanged: false, systemValueChanged: false, displayValueChanged: false };
+
+						// Getting a value from the adapter forces it to become observable
+						adapter.get_rawValue();
+
+						var opt = adapter.get_options()[0];
+
+						Sys.Observer.addSpecificPropertyChanged(adapter, "rawValue", function () { flags.rawValueChanged = true; });
+						Sys.Observer.addSpecificPropertyChanged(adapter, "systemValue", function () { flags.systemValueChanged = true; });
+						Sys.Observer.addSpecificPropertyChanged(adapter, "displayValue", function () { flags.displayValueChanged = true; });
+
+						var oldSalesPerson = opt.get_rawValue();
+						context.model.driver.set_SalesPerson(null);
+
+						executeTest("test4", flags, function () {
+							Employee.formats.$system = oldSystemFormat;
+							context.model.driver.set_SalesPerson(oldSalesPerson);
 							callback.apply(this, arguments);
 						});
 					}, this);
