@@ -28,7 +28,29 @@
 		// Lazy eval markup extension
 		Sys.Application.registerMarkupExtension("~",
 			function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
-				log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + " (evaluating)");
+				var isDisposed = false;
+
+				if (component.add_disposing) {
+					component.add_disposing(function() {
+						isDisposed = true;
+					});
+				}
+
+				var getMessage = function getMessage(msg, value) {
+					return $format("~ {path}, required=[{required}] ({operation}) {message}{value}", {
+						path: (properties.$default || "(no path)"),
+						required: properties.required || "",
+						message: msg ? msg + " " : "",
+						value: arguments.length === 1 ? "" : "- " + value,
+						operation: arguments.length === 1 ? "info" : "set"
+					});
+				};
+
+				var lazyLog = function lazyLog(msg, value) {
+					log(["~", "markupExt"], getMessage(msg, value));
+				};
+
+				lazyLog("initialized");
 
 				var source;
 				var scopeChain;
@@ -42,12 +64,12 @@
 							callback(function(value, msg) {
 								updatePending = false;
 
-								log(["~", "markupExt"], "~ {path}, required=[{required}] (set) {message}- {value}", {
-									path: (properties.$default || "(no path)"),
-									required: properties.required || "",
-									message: msg ? msg + " " : "",
-									value: value
-								});
+								if (isDisposed) {
+									ExoWeb.trace.logWarning(["~", "markupExt"], getMessage("Component is disposed - " + msg, value));
+									return;
+								}
+
+								lazyLog(msg, value);
 
 								var finalValue = value;
 								if (prepareValue && prepareValue instanceof Function) {
@@ -114,7 +136,7 @@
 									queueUpdate(function(setValue) {
 										ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function(requiredResult, performedLoading) {
 											if (performedLoading) {
-												log(["markupExt", "~"], "New items added to list \"{0}\".  Eval caused loading to occur on required path \"{1}\".", [properties.$default, properties.required]);
+												lazyLog("New items added to list:  eval caused loading to occur on required path");
 											}
 											setValue(result, msg);
 										});
@@ -159,7 +181,7 @@
 												// when a point in the required path changes then load the chain and refresh the value
 												ExoWeb.Model.LazyLoader.evalAll(sender, args.property.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
 													if (performedLoading) {
-														log(["markupExt", "~"], "Required path \"{0}\" change.  Eval caused loading to occur.", [properties.required]);
+														lazyLog("Required path change.  Eval caused loading to occur.");
 													}
 													var triggeredBy = args.triggeredBy || args.property;
 													setValue(result, "required path property change [" + triggeredBy.get_name() + "]");
@@ -197,7 +219,7 @@
 
 				ExoWeb.Model.LazyLoader.eval(source, properties.$default,
 					function lazy$Loaded(result, message) {
-						log(["~", "markupExt"], "~ " + (properties.$default || "(no path)") + "  <.>");
+						lazyLog("path loaded <.>");
 
 						var init = function lazy$init(result) {
 							try {
@@ -206,7 +228,7 @@
 									queueUpdate(function(setValue) {
 										ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function(requiredResult, performedLoading) {
 											if (performedLoading) {
-												log(["markupExt", "~"], "Initial setup.  Eval caused loading to occur on required path \"{0}\".", [properties.required]);
+												lazyLog("Initial setup.  Eval caused loading to occur on required path");
 											}
 											setValue(result, message || "required path loaded");
 										});
