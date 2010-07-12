@@ -2907,10 +2907,21 @@
 		});
 
 		Number.formats.Currency = new Format({
-			description: "$#.##",
+			description: "$#,###.##",
 			convert: function(val) {
 				var valString = val.toFixed(2).toString().replace(/\B(?=(?:\d{3})+(?!\d))/g, ",");
 				return "$" + valString;
+			},
+			convertBack: function(str) {
+				var valString = str.replace(/[\$,]/g, "");
+
+				var val = parseFloat(valString);
+
+				if (isNaN(val)) {
+					throw new Error("invalid format");
+				}
+
+				return val;
 			}
 		});
 
