@@ -81,6 +81,7 @@
     <Content Include="Mapper\Loading.htm" />
     <Content Include="Mapper\ServerSync.htm" />
     <Content Include="Model\CalculatedProperties.htm" />
+    <Content Include="Model\Formats.htm" />
     <Content Include="Model\Rules.htm" />
     <Content Include="Model\Namespaces.htm" />
     <Content Include="Model\Inheritance.htm" />
