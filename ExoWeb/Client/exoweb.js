@@ -10,6 +10,10 @@
 
 Type.registerNamespace("ExoWeb");
 
+if (!("config" in ExoWeb)) {
+	ExoWeb.config = {};
+}
+
 (function() {
 
 	function execute() {

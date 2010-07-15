@@ -15,9 +15,12 @@ namespace ExoWeb
 	/// Base class for web methods exposed by the service.
 	/// </summary>
 	[DataContract]
-	internal abstract class ServiceMethod
+	public abstract class ServiceMethod
 	{
 		internal abstract void Invoke(HttpResponse response);
+
+		[DataMember(Name = "config", Order = 1)]
+		public Dictionary<string, object> Config { get; set; }
 
 		#region JSON Serialization
 
@@ -161,28 +164,36 @@ namespace ExoWeb
 					request = reader.ReadToEnd();
 			}
 
-			Type method;
+			Type methodType;
 
 			// Get the type of the registered event
 			if (context.Request.PathInfo.StartsWith("/RaiseEvent"))
 			{
 				string eventTypeName = context.Request.PathInfo.Substring(context.Request.PathInfo.LastIndexOf("/") + 1);
 				Type eventType = ServiceHandler.GetEvent(eventTypeName);
-				method = typeof(RaiseEventMethod<>).MakeGenericType(eventType);
+				methodType = typeof(RaiseEventMethod<>).MakeGenericType(eventType);
 			}
 
 			// Determine the service method being called
 			else
-				method = Type.GetType("ExoWeb." + context.Request.PathInfo.Substring(1) + "Method");
+				methodType = Type.GetType("ExoWeb." + context.Request.PathInfo.Substring(1) + "Method");
 
 			// Set the content type to application/json
 			if (context.Request.QueryString["Debug"] == "true")
 				context.Response.ContentType = "text/plain";
 			else
 				context.Response.ContentType = "application/json";
-	
+
+			ServiceMethod method = (ServiceMethod)FromJson(methodType, request);
+
+			if (ServiceHandler.Adapter != null)
+				ServiceHandler.Adapter.OnBeforeMethod(method);
+
 			// Deserialize and invoke the service method
-			((ServiceMethod)FromJson(method, request)).Invoke(context.Response);
+			method.Invoke(context.Response);
+
+			if (ServiceHandler.Adapter != null)
+				ServiceHandler.Adapter.OnAfterMethod(method);
 		}
 	}
 }

@@ -1,6 +1,10 @@
 ; (function() {
 	Type.registerNamespace("ExoWeb");
 
+	if (!("config" in ExoWeb)) {
+		ExoWeb.config = {};
+	}
+
 	function addCacheHash(scripts) {
 		var scriptTag = document.getElementsByTagName("script");
 		var referrer = scriptTag[scriptTag.length - 1].src;

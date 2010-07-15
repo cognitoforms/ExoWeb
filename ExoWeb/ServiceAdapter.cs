@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using ExoGraph;
 using ExoRule;
 
@@ -9,6 +10,32 @@ namespace ExoWeb
 	public abstract class ServiceAdapter
 	{
 		public abstract IEnumerable<ConditionType> GetConditionTypes(GraphType type);
+
+		/// <summary>
+		/// 
+		/// </summary>
+		protected event Action<ServiceMethod> BeforeMethod;
+
+		internal void OnBeforeMethod(ServiceMethod method)
+		{
+			if (BeforeMethod != null)
+			{
+				BeforeMethod(method);
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		protected event Action<ServiceMethod> AfterMethod;
+
+		internal void OnAfterMethod(ServiceMethod method)
+		{
+			if (AfterMethod != null)
+			{
+				AfterMethod(method);
+			}
+		}
 
 		/// <summary>
 		/// Returns the default display format name for the given graph property.

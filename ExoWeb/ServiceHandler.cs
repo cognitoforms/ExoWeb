@@ -124,34 +124,56 @@ namespace ExoWeb
 						// Declare the ExoWeb namespace
 						Type.registerNamespace('ExoWeb.WebService');
 
+						function objToArray(obj, func) {
+							var result = [];
+							for (name in obj) {
+								if (obj.hasOwnProperty(name)) {
+									result.push(func(name, obj[name]));
+								}
+							}
+							return result;
+						}
+
+						function getData(data, config) {
+							data.config = objToArray(config, function(name, value) {
+								return { ""Key"": name, ""Value"": value };
+							});
+							return data;
+						}
+
 						// Define the ExoWeb.GetType method
 						ExoWeb.WebService.GetType = function ExoWeb$WebService$GetType(type, conditionsMode, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, { type: type, conditionsMode: conditionsMode" + (string.IsNullOrEmpty(cachehash) ? "" : @", cachehash: " + cachehash) + @" }, onSuccess, onFailure, null, 1000000, false, null);
+							var data = getData({ type: type, conditionsMode: conditionsMode" + (string.IsNullOrEmpty(cachehash) ? "" : @", cachehash: " + cachehash) + @" }, ExoWeb.config);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, data, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Load method
 						ExoWeb.WebService.Load = function ExoWeb$WebService$Load(type, ids, includeAllowedValues, includeTypes, paths, changes, conditionsMode, includeConditionTypes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, { type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes, conditionsMode: conditionsMode, includeConditionTypes: includeConditionTypes }, onSuccess, onFailure, null, 1000000, false, null);
+							var data = getData({ type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes, conditionsMode: conditionsMode, includeConditionTypes: includeConditionTypes }, ExoWeb.config);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, data, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.Save method
 						ExoWeb.WebService.Save = function ExoWeb$WebService$Save(root, changes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Save', false, { root: root, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							var data = getData({ root: root, changes: changes }, ExoWeb.config);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Save', false, data, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.RaiseEvent method
 						ExoWeb.WebService.RaiseEvent = function ExoWeb$WebService$RaiseEvent(eventType, instance, event, changes, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType, false, { instance: instance, event: event, changes: changes }, onSuccess, onFailure, null, 1000000, false, null);
+							var data = getData({ instance: instance, event: event, changes: changes }, ExoWeb.config);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType, false, data, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.LogError method
 						ExoWeb.WebService.LogError = function ExoWeb$WebService$LogError(type, message, stackTrace, url, refererUrl, onSuccess, onFailure)
 						{
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'LogError', false, { type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl }, onSuccess, onFailure, null, 1000000, false, null);
+							var data = getData({ type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl }, ExoWeb.config);
+							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'LogError', false, data, onSuccess, onFailure, null, 1000000, false, null);
 						}
 					}
 
