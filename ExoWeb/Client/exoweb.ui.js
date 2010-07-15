@@ -14,30 +14,29 @@ Type.registerNamespace("ExoWeb.UI");
 			Toggle.initializeBase(this, [element]);
 		}
 
-		Toggle.prototype = {
-			set_action: function Toggle$set_action(value) {
-				this._action = value;
-				this.execute();
+		var Toggle_allowedActions = ["show", "hide", "enable", "disable"];
+
+		// Actions
+		Toggle.mixin({
+			do_show: function Toggle$show() {
+				$(this.get_element()).show();
+
+				// visibility has changed so raise event
+				if (this._visible === undefined || this._visible === false) {
+					Sys.Observer.raiseEvent(this, "shown");
+				}
+
+				this._visible = true;
 			},
-			get_action: function Toggle$get_action() {
-				return this._action;
-			},
-			set_on: function Toggle$set_on(value) {
-				this._on = value;
-				this.execute();
-			},
-			get_on: function Toggle$get_on() {
-				return this._on;
-			},
-			set_when: function Toggle$set_when(value) {
-				this._when = value;
-				this.execute();
-			},
-			get_when: function Toggle$get_when() {
-				return this._when;
-			},
-			get_visible: function Toggle$get_visible() {
-				return this._visible;
+			do_hide: function Toggle$hide() {
+				$(this.get_element()).hide();
+
+				// visibility has changed so raise event
+				if (this._visible === undefined || this._visible === true) {
+					Sys.Observer.raiseEvent(this, "hidden");
+				}
+
+				this._visible = false;
 			},
 			add_shown: function Toggle$add_shown(handler) {
 				this._addHandler("shown", handler);
@@ -51,67 +50,106 @@ Type.registerNamespace("ExoWeb.UI");
 			remove_hidden: function Toggle$remove_hidden(handler) {
 				this._removeHandler("hidden", handler);
 			},
-			execute: function Toggle$execute() {
+			get_visible: function Toggle$get_visible() {
+				return this._visible;
+			},
+
+			do_enable: function Toggle$enable() {
+				$("select,input,textarea,a", this.get_element()).andSelf().removeAttr("disabled");
+			},
+			do_disable: function Toggle$disable() {
+				$("select,input,textarea,a", this.get_element()).andSelf().attr("disabled", "disabled");
+			}
+		});
+
+		// Inverse Actions
+		Toggle.mixin({
+			undo_hide: Toggle.prototype.do_show,
+			undo_show: Toggle.prototype.do_hide,
+			undo_disable: Toggle.prototype.do_enable,
+			undo_enable: Toggle.prototype.do_disable
+		});
+
+		Toggle.mixin({
+			get_action: function Toggle$get_action() {
+				/// <summary>
+				/// The value that determines what the control should
+				/// do when its state changes.
+				/// Options:  show/hide, enable/disable, render/dispose
+				/// </summary>
+
+				return this._action;
+			},
+			set_action: function Toggle$set_action(value) {
+				if (!Array.contains(Toggle_allowedActions, value)) {
+					ExoWeb.trace.throwAndLog("ui", "Invalid toggle action \"{0}\".  Possible values are \"{1}\".", [value, Toggle_allowedActions.join(", ")]);
+				}
+
+				this._action = value;
+				this.execute();
+			},
+
+			get_on: function Toggle$get_on() {
+				/// <summary>
+				/// The value that the control will watch to determine
+				/// when its state should change.
+				/// </summary>
+
+				return this._on;
+			},
+			set_on: function Toggle$set_on(value) {
+				var changed = value !== this._on;
+
+				this._on = value;
+
+				if (changed) {
+					this.execute();
+				}
+			},
+
+			get_when: function Toggle$get_when() {
+				/// <summary>
+				/// The value to compare "on" to, this will most likely 
+				/// be a static value, like true or false.
+				/// </summary>
+
+				return this._when;
+			},
+			set_when: function Toggle$set_when(value) {
+				this._when = value;
+				this.execute();
+			},
+
+			get_equals: function Toggle$get_equals() {
+				if (this._when instanceof Function) {
+					return !!this._when(this._on);
+				}
+				else if (typeof (this._on) === "boolean" && this._when === undefined) {
+					return this._on;
+				}
+				else {
+					return this._on === this._when;
+				}
+			},
+
+			canExecute: function Toggle$canExecute() {
 				// Ensure that the control is initialized, has an element, and the "on" property has been set.
 				// Scenario 1:  The set_on or set_when methods may be called before the control has been initialized.
 				// Scenario 2:  If a lazy markup extension is used to set the "on" or "when" properties then a callback could set the 
 				//				property value when the element is undefined, possibly because of template re-rendering.
 				// Scenario 3:  If a lazy markup extension is used to set the "on" property then it may not have a value when initialized.
-				if (!this.get_isInitialized() || this._element === undefined || this._element === null || !this.hasOwnProperty("_on")) {
-					return;
+				return this.get_isInitialized() && this._element !== undefined && this._element !== null && this.hasOwnProperty("_on");
+			},
+			execute: function Toggle$execute() {
+				if (this.canExecute()) {
+					this[(this.get_equals() === true ? "do_" : "undo_") + this._action].call(this);
 				}
-
-				var equals;
-
-				if (this._when instanceof Function) {
-					equals = !!this._when(this._on);
-				}
-				else if (typeof (this._on) === "boolean" && this._when === undefined) {
-					equals = this._on;
-				}
-				else {
-					equals = this._on === this._when;
-				}
-
-				// hide or show the element depending on the conditions
-				if ((equals && (this._action == "show" || this._action == "enable")) || (!equals && (this._action == "hide" || this._action == "disable"))) {
-					// show the element
-					if (this._action == "show" || this._action == "hide")
-						$(this.get_element()).show();
-					else
-						$('select,input,textarea,a', this.get_element()).andSelf().removeAttr('disabled');
-
-					// visibility has changed so raise event
-					if (this._visible === undefined || this._visible === false) {
-						Sys.Observer.raiseEvent(this, "shown");
-					}
-
-					// update status
-					this._visible = true;
-				}
-
-				else {
-					// hide the element
-					if (this._action == "show" || this._action == "hide")
-						$(this.get_element()).hide();
-					else
-						$('select,input,textarea,a', this.get_element()).andSelf().attr('disabled', 'disabled');
-
-					// visibility has changed so raise event
-					if (this._visible === undefined || this._visible === true) {
-						Sys.Observer.raiseEvent(this, "hidden");
-					}
-
-					// update status
-					this._visible = false;
-				}
-
 			},
 			initialize: function Toggle$initialize() {
 				Toggle.callBaseMethod(this, "initialize");
 				this.execute();
 			}
-		};
+		});
 
 		ExoWeb.UI.Toggle = Toggle;
 		Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control);
@@ -356,11 +394,14 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._data;
 			},
 			set_data: function Content$set_data(value) {
+				// Force rendering to occur if we previously had a value and now do not.
+				var force = ((value === undefined || value === null) && (this._data !== undefined && this._data !== null));
+
 				this._data = value;
-				this.render();
+				this.render(force);
 			},
 			get_disabled: function Content$get_disabled() {
-				return this._disabled === undefined ? false : this._disabled;
+				return this._disabled === undefined ? false : !!this._disabled;
 			},
 			set_disabled: function Content$set_disabled(value) {
 				var newValue;
@@ -391,14 +432,16 @@ Type.registerNamespace("ExoWeb.UI");
 				}
 				return this._parentContext;
 			},
-			_canRender: function Content$_canRender() {
+			_canRender: function Content$_canRender(force) {
 				// Ensure that the control is initialized, has an element, and the "data" property has been set.
 				// Scenario 1:  The set_data method may be called before the control has been initialized.
 				// Scenario 2:  If a lazy markup extension is used to set the "data" property then a callback could set the 
 				//				property value when the element is undefined, possibly because of template re-rendering.
 				// Scenario 3:  If a lazy markup extension is used to set the "data" property then it may not have a value when initialized.
 				// Also check that the control has not been disabled.
-				return !!(this._data && this._initialized && this._element !== undefined && this._element !== null && !this.get_disabled());
+
+				return ((this._data !== undefined && this._data !== null) || force === true) &&
+					!!this._initialized && this._element !== undefined && this._element !== null && !this.get_disabled();
 			},
 			add_rendering: function Content$add_rendering(handler) {
 				this._addHandler("rendering", handler);
@@ -412,20 +455,20 @@ Type.registerNamespace("ExoWeb.UI");
 			remove_rendered: function Content$remove_rendered(handler) {
 				this._removeHandler("rendered", handler);
 			},
-			render: function Content$render() {
-				if (this._canRender()) {
-					log(['ui', "templates"], "render()");
+			render: function Content$render(force) {
+				if (this._canRender(force)) {
+					log(['ui', "templates"], "render({0})", [force === true ? "force" : ""]);
 
 					externalTemplatesSignal.waitForAll(function Content$externalTemplatesSignal() {
 						if (this._element !== undefined && this._element !== null) {
 							log(['ui', "templates"], "render() proceeding after all templates are loaded");
 
+							var renderArgs = new Sys.Data.DataEventArgs(this._data);
+							Sys.Observer.raiseEvent(this, "rendering", renderArgs);
+
 							// Failing to empty content before rendering can result in invalid content since rendering 
 							// content is not necessarily in order because of waiting on external templates.
 							$(this._element).empty();
-
-							var renderArgs = new Sys.Data.DataEventArgs(this._data);
-							Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
 							// ripped off from dataview
 							var pctx = this.get_templateContext();
