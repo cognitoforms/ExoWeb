@@ -2891,7 +2891,11 @@
 				return val.toString();
 			},
 			convertBack: function(str) {
-				var val = parseFloat(str);
+				if(!/^\s*([-\+])?(\d+)?\,?(\d+)?\,?(\d+)?\,?(\d+)?(\.(\d\d*))?\s*$/.test(str)){
+					throw new Error("invalid format");
+				}
+				var valString = str.replace(/,/g, "");	
+				var val = parseFloat(valString);
 				if (isNaN(val)) {
 					throw new Error("invalid format");
 				}
