@@ -755,7 +755,7 @@
 				this._setFormattedValue("display", value);
 			},
 
-			// ???
+			// Used to register validating and validated events through the adapter as if binding directly to an Entity
 			addPropertyValidating: function Adapter$addPropertyValidating(propName, handler) {
 				this._propertyChain.lastTarget(this._target).meta.addPropertyValidating(this._propertyChain.get_name(), handler);
 			},
