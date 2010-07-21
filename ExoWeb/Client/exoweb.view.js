@@ -22,6 +22,11 @@
 				adapter.ready(function AdapterReady() {
 					log(["@", "markupExt"], "@ " + (adapter._propertyPath || "(no path)") + "  <.>");
 					Sys.Observer.setValue(component, targetProperty, adapter);
+					if (component.add_disposing) {
+						component.add_disposing(function() {
+							adapter.dispose();
+						});
+					}
 				});
 			}, false);
 
@@ -293,6 +298,7 @@
 			this._propertyPath = propertyPath;
 			this._ignoreTargetEvents = false;
 			this._readySignal = new ExoWeb.Signal();
+			this._isDisposed = false;
 
 			if (options.optionsTransform) {
 				if (options.optionsTransform.indexOf("groupBy(") >= 0) {
@@ -471,7 +477,9 @@
 			},
 			_reloadOptions: function Adapter$_reloadOptions() {
 				this._options = null;
+				this._allowedValues = null;
 
+				Sys.Observer.raisePropertyChanged(this, "allowedValues");
 				Sys.Observer.raisePropertyChanged(this, "options");
 			},
 			_getFormattedValue: function Adapter$_getFormattedValue(formatName) {
@@ -553,6 +561,9 @@
 
 			// Various methods.
 			///////////////////////////////////////////////////////////////////////
+			dispose: function Adapter$dispose() {
+				this._isDisposed = true;
+			},
 			ready: function Adapter$ready(callback, thisPtr) {
 				this._readySignal.waitForAll(callback, thisPtr);
 			},
@@ -624,11 +635,47 @@
 				// help text may also be included in the model?
 				return this._helptext || "";
 			},
+			get_allowedValuesRule: function Adapter$get_allowedValuesRule() {
+				if (this._allowedValuesRule === undefined) {
+					var prop = this._propertyChain.lastProperty();
+					this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
+					if (this._allowedValuesRule) {
+
+						var reloadOptions = function() {
+							this._reloadOptions();
+							
+							// clear values that are no longer allowed
+							var targetObj = this._propertyChain.lastTarget(this._target);
+							var rawValue = this.get_rawValue();
+							var _this = this;
+
+							if (rawValue instanceof Array) {
+								for (var i = rawValue.length; i >= 0; i--) {
+									this._allowedValuesRule.satisfiesAsync(targetObj, rawValue[i], function(answer) {
+										if (!answer && !_this._isDisposed) {
+											_this.set_selected(rawValue[i], false);
+										}
+									});
+								}
+							}
+							else {
+								this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, function(answer) {
+									if (!answer && !_this._isDisposed) {
+										_this.set_rawValue(null);
+									}
+								});
+							}
+
+						}
+
+						this._allowedValuesRule.addChanged(reloadOptions.setScope(this), this._target);
+					}
+				}
+				return this._allowedValuesRule;
+			},
 			get_allowedValues: function Adapter$get_allowedValues() {
 				if (!this._allowedValues) {
-					// TODO: refactor to use property chain change events?
-					var prop = this._propertyChain.lastProperty();
-					var rule = prop.rule(ExoWeb.Model.Rule.allowedValues);
+					var rule = this.get_allowedValuesRule();
 					var targetObj = this._propertyChain.lastTarget(this._target);
 					if (rule) {
 						this._allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
@@ -637,9 +684,6 @@
 							if (this._optionsTransform) {
 								this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(this._allowedValues).live();
 							}
-
-							// watch for changes to the allowed values list and update options
-							Sys.Observer.addCollectionChanged(this._allowedValues, this._reloadOptions.setScope(this));
 						}
 					}
 				}
