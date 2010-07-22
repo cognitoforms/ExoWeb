@@ -72,7 +72,7 @@
 				// If the type is not found then the path must be bad.
 				if (!type) {
 					throwAndLog(["model"], "Invalid static property path \"{0}\":  type \"{1}\" could not be found.", [path, typeName]);
-					
+
 				}
 
 				// Get the corresponding meta type.
@@ -107,7 +107,7 @@
 				var name = tokens.steps[0].property;
 				if (lazyLoadTypes) {
 					if (!LazyLoader.isLoaded(type)) {
-						LazyLoader.load(type, function() {
+						LazyLoader.load(type, null, function() {
 							callback(type.property(name, true));
 						});
 					}
@@ -1506,7 +1506,7 @@
 
 			// begin processing steps in the path
 			if (!LazyLoader.isLoaded(type)) {
-				LazyLoader.load(type, processStep);
+				LazyLoader.load(type, null, processStep);
 			}
 			else {
 				processStep();
@@ -2266,7 +2266,10 @@
 				if (this._enforceInited() === true) {
 					// get the current value of the property for the given object
 					var val = this.prop.value(obj);
-					obj.meta.conditionIf(this.err, !this.satisfies(obj, val));
+					var allowed = this.values(obj);
+					if (allowed !== undefined) {
+						obj.meta.conditionIf(this.err, !this.satisfies(obj, val));
+					}
 				}
 			},
 			satisfies: function AllowedValuesRule$satisfies(obj, value) {
