@@ -386,7 +386,7 @@
 				var signal = new ExoWeb.Signal("Adapter." + fmtName + "Value");
 				if (val !== undefined && val !== null) {
 					this._doForFormatPaths(val, fmtName, function(path) {
-						ExoWeb.Model.LazyLoader.eval(val, path, signal.pending());
+						ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 					});
 				}
 				signal.waitForAll(function() {
@@ -829,7 +829,7 @@
 
 				var signal = new ExoWeb.Signal("OptionAdapter." + fmtName + "Value");
 				this._parent._doForFormatPaths(val, fmtName, function(path) {
-					ExoWeb.Model.LazyLoader.eval(val, path, signal.pending());
+					ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 				}, this);
 				signal.waitForAll(function() {
 					Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
