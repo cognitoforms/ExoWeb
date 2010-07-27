@@ -87,11 +87,11 @@
 		// helpers for working with ms ajax controls
 
 		jQuery.expr[":"].dataview = function(obj, index, meta, stack) {
-			return window.Sys && Sys.UI && obj.control !== undefined && obj.control instanceof Sys.UI.DataView;
+			return window.Sys !== undefined && Sys.UI !== undefined && obj.control !== undefined && obj.control instanceof Sys.UI.DataView;
 		};
 
 		jQuery.expr[":"].content = function(obj, index, meta, stack) {
-			return window.ExoWeb && ExoWeb.UI !== undefined && obj.control !== undefined && obj.control instanceof ExoWeb.UI.Content;
+			return window.ExoWeb !== undefined && ExoWeb.UI !== undefined && obj.control !== undefined && obj.control instanceof ExoWeb.UI.Content;
 		};
 
 		jQuery.expr[":"].control = function(obj, index, meta, stack) {
