@@ -643,7 +643,7 @@
 
 						var reloadOptions = function() {
 							this._reloadOptions();
-							
+
 							// clear values that are no longer allowed
 							var targetObj = this._propertyChain.lastTarget(this._target);
 							var rawValue = this.get_rawValue();
@@ -681,6 +681,10 @@
 						this._allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 						if (this._allowedValues !== undefined) {
+							if (!ExoWeb.Model.LazyLoader.isLoaded(this._allowedValues)) {
+								ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
+								ExoWeb.Model.LazyLoader.load(this._allowedValues);
+							}
 							if (this._optionsTransform) {
 								this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(this._allowedValues).live();
 							}
