@@ -10,7 +10,7 @@ namespace ExoWeb
 	/// </summary>
 	public class ServiceHandler : IHttpHandler
 	{
-		static ServiceAdapter adapter;
+		static ServiceAdapter adapter = new ServiceAdapter();
 		static Dictionary<string, Type> customEvents = new Dictionary<string,Type>();
 
 		/// <summary>

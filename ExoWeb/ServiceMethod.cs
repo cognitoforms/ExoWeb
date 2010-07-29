@@ -15,12 +15,12 @@ namespace ExoWeb
 	/// Base class for web methods exposed by the service.
 	/// </summary>
 	[DataContract]
-	public abstract class ServiceMethod
+	internal abstract class ServiceMethod
 	{
 		internal abstract void Invoke(HttpResponse response);
 
 		[DataMember(Name = "config", Order = 1)]
-		public Dictionary<string, object> Config { get; set; }
+		Dictionary<string, object> Config { get; set; }
 
 		#region JSON Serialization
 
@@ -187,13 +187,13 @@ namespace ExoWeb
 			ServiceMethod method = (ServiceMethod)FromJson(methodType, request);
 
 			if (ServiceHandler.Adapter != null)
-				ServiceHandler.Adapter.OnBeforeMethod(method);
+				ServiceHandler.Adapter.OnBeforeMethod(method.Config);
 
 			// Deserialize and invoke the service method
 			method.Invoke(context.Response);
 
 			if (ServiceHandler.Adapter != null)
-				ServiceHandler.Adapter.OnAfterMethod(method);
+                ServiceHandler.Adapter.OnAfterMethod(method.Config);
 		}
 	}
 }

@@ -7,42 +7,36 @@ namespace ExoWeb
 {
 	#region ServiceAdapter
 
-	public abstract class ServiceAdapter
+	public class ServiceAdapter
 	{
-		public abstract IEnumerable<ConditionType> GetConditionTypes(GraphType type);
+        public virtual IEnumerable<ConditionType> GetConditionTypes(GraphType type)
+        {
+            return new ConditionType[] { };
+        }
 
 		/// <summary>
-		/// 
+		/// Called before service methods occur to allow custom adapters to perform setup work
+        /// based on the specified configuration values.
 		/// </summary>
-		protected event Action<ServiceMethod> BeforeMethod;
+		public virtual void OnBeforeMethod(Dictionary<string, object> config)
+        { }
 
-		internal void OnBeforeMethod(ServiceMethod method)
-		{
-			if (BeforeMethod != null)
-			{
-				BeforeMethod(method);
-			}
-		}
-
-		/// <summary>
-		/// 
+        /// <summary>
+		/// Called after service methods occur to allow custom adapters to perform setup work
+        /// based on the specified configuration values.
 		/// </summary>
-		protected event Action<ServiceMethod> AfterMethod;
-
-		internal void OnAfterMethod(ServiceMethod method)
-		{
-			if (AfterMethod != null)
-			{
-				AfterMethod(method);
-			}
-		}
+        public virtual void OnAfterMethod(Dictionary<string, object> config)
+        { }
 
 		/// <summary>
 		/// Returns the default display format name for the given graph property.
 		/// </summary>
 		/// <param name="property">The graph property</param>
 		/// <returns>The default display format name</returns>
-		public abstract string GetFormatName(GraphProperty property);
+        public virtual string GetFormatName(GraphProperty property)
+        {
+            return null;
+        }
 
 		/// <summary>
 		/// Allows the service adapter to perform custom logic when 
