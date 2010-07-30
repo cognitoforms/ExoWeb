@@ -863,6 +863,9 @@
 		}
 
 		Property.mixin({
+			defaultValue: function Property$defaultValue(value) {
+				this._containingType._initNewProps.push({ property: this, valueFn: function() { return value; } });
+			},
 			equals: function Property$equals(prop) {
 				if (prop !== undefined && prop !== null) {
 					if (prop instanceof Property) {
