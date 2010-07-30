@@ -1900,6 +1900,7 @@
 			},
 
 			_addCondition: function(condition) {
+				condition.get_targets().add(this);
 				this._conditions.push(condition);
 
 				// update _propertyConditions
@@ -1919,6 +1920,7 @@
 
 			_removeCondition: function(idx) {
 				var condition = this._conditions[idx];
+				condition.get_targets().remove(this);
 				this._conditions.splice(idx, 1);
 
 				// update _propertyConditions
@@ -2801,6 +2803,9 @@
 			this._properties = relatedProperties || [];
 			this._message = message;
 			this._origin = origin;
+			this._targets = [];
+
+			Sys.Observer.makeObservable(this._targets);
 		}
 
 		Condition.prototype = {
@@ -2818,6 +2823,9 @@
 			},
 			set_origin: function Condition$set_origin(origin) {
 				this._origin = origin;
+			},
+			get_targets: function Condition$get_targets() {
+				return this._targets;
 			},
 			equals: function Condition$equals(o) {
 				return o.property.equals(this.property) && o._message.equals(this._message);
