@@ -306,6 +306,20 @@
 						return jstype.meta.get(ids[1]);
 					}
 				}
+			}),
+			$display: new Format({
+				convert: function(obj) {
+					if (obj.get_Label)
+						return obj.get_Label();
+
+					if (obj.get_Name)
+						return obj.get_Name();
+
+					if (obj.get_Text)
+						return obj.get_Text();
+
+					return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
+				}
 			})
 		};
 
