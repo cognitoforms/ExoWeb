@@ -2931,11 +2931,11 @@
 				return this._convert(val);
 			},
 			convertBack: function(val) {
-				if (val == this._nullString) {
+				if (val === null || val == this._nullString) {
 					return null;
 				}
 
-				if (val == this._undefinedString) {
+				if (val === undefined || val == this._undefinedString) {
 					return;
 				}
 

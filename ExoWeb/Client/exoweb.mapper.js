@@ -189,6 +189,12 @@
 			}
 		});
 
+		ExoWeb.Model.Type.prototype.makeExoGraphId = function makeExoGraphId(id) {
+			if (id) {
+				return { type: this.get_fullName(), id: id };
+			}
+		};
+
 		function toExoGraph(translator, val) {
 			if (val !== undefined && val !== null) {
 				var type = val.constructor;
