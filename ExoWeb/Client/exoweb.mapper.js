@@ -68,14 +68,21 @@
 		function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("listProvider");
 
-			// prepend list prop to beginning of each other prop
-			var paths = otherProps.length === 0 ?
-				["this." + listProp] :
-				otherProps.map(function(p) {
-					return (p.startsWith("this.")) ? "this." + listProp + "." + p.substring(5) : p;
-				});
+			var listPath = (ownerId == "static" ? ownerType : "this") + "." + listProp;
+			var paths = [listPath];
 
-			listProviderFn.call(this, ownerType, ownerId, paths,
+			// prepend list prop to beginning of each other prop
+			if (otherProps.length > 0) {
+				Array.forEach(otherProps, function(p) {
+					//if (p.startsWith("this.") && ownerId == "static") {
+					//	// Can't load instance paths along with a static list
+					//	return;
+					//}
+					paths.push(p.startsWith("this.") ? listPath + "." + p.substring(5) : p);
+				});
+			}
+
+			listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths,
 				function listProviderSuccess() {
 					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
