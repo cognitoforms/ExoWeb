@@ -297,7 +297,7 @@
 			this._target = target;
 			this._propertyPath = propertyPath;
 			this._ignoreTargetEvents = false;
-			this._readySignal = new ExoWeb.Signal();
+			this._readySignal = new ExoWeb.Signal("Adapter Ready");
 			this._isDisposed = false;
 
 			if (options.optionsTransform) {
@@ -476,6 +476,8 @@
 				}
 			},
 			_reloadOptions: function Adapter$_reloadOptions() {
+				log(["@", "markupExt"], "Reloading adapter options.");
+
 				this._options = null;
 				this._allowedValues = null;
 
@@ -562,6 +564,7 @@
 			// Various methods.
 			///////////////////////////////////////////////////////////////////////
 			dispose: function Adapter$dispose() {
+				log(["@", "markupExt"], "Adapter disposed.");
 				this._isDisposed = true;
 			},
 			ready: function Adapter$ready(callback, thisPtr) {
@@ -642,6 +645,8 @@
 					if (this._allowedValuesRule) {
 
 						var reloadOptions = function() {
+							log(["@", "markupExt"], "Reloading adapter options due to change in allowed values path.");
+
 							this._reloadOptions();
 
 							// clear values that are no longer allowed
@@ -650,17 +655,19 @@
 							var _this = this;
 
 							if (rawValue instanceof Array) {
-								for (var i = rawValue.length; i >= 0; i--) {
-									this._allowedValuesRule.satisfiesAsync(targetObj, rawValue[i], function(answer) {
+								Array.forEach(rawValue, function(item, index) {
+									this._allowedValuesRule.satisfiesAsync(targetObj, item, function(answer) {
 										if (!answer && !_this._isDisposed) {
-											_this.set_selected(rawValue[i], false);
+											log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+											_this.set_selected(item, false);
 										}
 									});
-								}
+								}, this);
 							}
 							else {
 								this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, function(answer) {
 									if (!answer && !_this._isDisposed) {
+										log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 										_this.set_rawValue(null);
 									}
 								});
