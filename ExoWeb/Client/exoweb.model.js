@@ -3339,7 +3339,7 @@
 
 			if (target instanceof Array) {
 				if (LazyLoader.isLoaded(target)) {
-					var signal = new ExoWeb.Signal();
+					var signal = new ExoWeb.Signal("evalAll - " + path);
 					var results = [];
 					var errors = [];
 					var successCallbacks = [];
