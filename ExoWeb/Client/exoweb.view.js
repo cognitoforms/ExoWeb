@@ -835,6 +835,7 @@
 			///////////////////////////////////////////////////////////////////////
 			_loadForFormatAndRaiseChange: function OptionAdapter$_loadForFormatAndRaiseChange(val, fmtName) {
 				if (val === undefined || val === null) {
+					Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
 					return;
 				}
 
