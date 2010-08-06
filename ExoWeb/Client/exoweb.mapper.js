@@ -322,20 +322,12 @@
 				}
 			},
 			onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
-
-				// don't record changes to types that didn't originate from the server
+				// ignore types that didn't originate from the server
 				if (obj.meta.type.get_origin() != "server") {
 					return;
 				}
 
-				log("server", "logging delete: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
-
-				var change = {
-					__type: "Delete:#ExoGraph",
-					instance: toExoGraph(this._translator, obj)
-				};
-
-				this._raiseEvent("changeCaptured", [change]);
+				throwAndLog("server", "Unregistering server-type objects is not currently supported: {type.fullName}({id})", obj.meta);
 			},
 			onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 
@@ -1156,7 +1148,7 @@
 
 									// Change the id and make non-new.
 									type.changeObjectId(clientOldId, idChange.newId);
-									obj.meta.isNew = false;
+									Sys.Observer.setValue(obj.meta, "isNew", false);
 
 									// Remove the id change from the list and move the index back.
 									Array.remove(change.idChanges, idChange);
