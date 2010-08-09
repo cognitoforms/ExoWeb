@@ -1324,7 +1324,9 @@
 
 			if (root instanceof ExoWeb.Model.Model) {
 				if (root._server) {
-					root._server.roundtrip(success, failed);
+					if (!root._server.isApplyingChanges()) {
+						root._server.roundtrip(success, failed);
+					}
 				}
 				else {
 					// TODO
