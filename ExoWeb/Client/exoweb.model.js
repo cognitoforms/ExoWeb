@@ -296,7 +296,7 @@
 				undefinedString: "",
 				nullString: "",
 				convert: function(obj) {
-					return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
+					return obj.meta.type.toIdString(obj.meta.id);
 				},
 				convertBack: function(str) {
 					// indicates "no value", which is distinct from "no selection"
@@ -466,6 +466,11 @@
 		}
 
 		Type.prototype = {
+			toIdString: function Type$toIdString(id) {
+				if (id) {
+					return $format("{0}|{1}", [this.get_fullName(), id]);
+				}
+			},
 			newId: function Type$newId() {
 				// Get the next id for this type's heirarchy.
 				for (var nextId, type = this; type; type = type.baseType) {

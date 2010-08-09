@@ -634,7 +634,7 @@ Type.registerNamespace("ExoWeb.UI");
 				if (!this._properties) {
 					this._properties = {};
 					for (var prop in this) {
-						if (prop.startsWith("prop_")) {
+						if (prop.startsWith("prop_") && !prop.startsWith("prop_add_")) {
 							var name = Sys.Application._mapToPrototype(prop.substring(5), this.get_classObject());
 
 							if (!name) {
@@ -650,13 +650,33 @@ Type.registerNamespace("ExoWeb.UI");
 
 				return this._properties;
 			},
+			get_events: function Behavior$get_events() {
+				if (!this._events) {
+					this._events = {};
+					for (var prop in this) {
+						if (prop.startsWith("prop_add_")) {
+							var name = Sys.Application._mapToPrototype(prop.substring(9), this.get_classObject());
+
+							if (!name) {
+								ExoWeb.trace.throwAndLog("ui",
+									"Event '{0}' could not be found on type '{1}'.",
+									[prop.substring(9), this._class]);
+							}
+
+							this._events[name] = this[prop];
+						}
+					}
+				}
+
+				return this._events;
+			},
 			initialize: function Behavior$initialize() {
 				Behavior.callBaseMethod(this, "initialize");
 
 				var _this = this;
 
 				Sys.require([this.get_scriptObject()], function() {
-					_this._behavior = $create(_this.get_classObject(), _this.get_properties(), null, null, _this.get_element());
+					_this._behavior = $create(_this.get_classObject(), _this.get_properties(), _this.get_events(), null, _this.get_element());
 				});
 			}
 		};
