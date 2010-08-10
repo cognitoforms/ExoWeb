@@ -469,7 +469,8 @@
 				// events if the value was set by changing selected on one of the OptionAdapter objects.
 				if (this._options) {
 					Array.forEach(this._options, function(o) {
-						if (o.get_rawValue() == args.newValue || o.get_rawValue() == args.oldValue) {
+						// Always reload selected for options in an array since we don't know what the old values in the list were
+						if (args.newValue instanceof Array || o.get_rawValue() == args.newValue || o.get_rawValue() == args.oldValue) {
 							Sys.Observer.raisePropertyChanged(o, "selected");
 						}
 					});
