@@ -676,7 +676,7 @@
 
 						}
 
-						this._allowedValuesRule.addChanged(reloadOptions.setScope(this), this._target);
+						this._allowedValuesRule.addChanged(reloadOptions.setScope(this), this._propertyChain.lastTarget(this._target));
 					}
 				}
 				return this._allowedValuesRule;

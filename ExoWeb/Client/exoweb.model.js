@@ -25,7 +25,6 @@
 			this._validatingQueue = new ExoWeb.EventQueue(
 				function(e) {
 					var meta = e.sender;
-					var conditions = meta._propertyConditions[e.propName];
 					meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName]);
 				},
 				function(a, b) {
@@ -38,8 +37,10 @@
 					var meta = e.sender;
 					var propName = e.property;
 
-					var conditions = meta._propertyConditions[propName];
-					meta._raiseEvent("propertyValidated:" + propName, [meta, conditions ? conditions : []]);
+					var conditions = [];
+					Sys.Observer.makeObservable(conditions);
+					conditions.addRange(meta._propertyConditions[propName] || []);
+					meta._raiseEvent("propertyValidated:" + propName, [meta, conditions]);
 				},
 				function(a, b) {
 					return a.sender == b.sender && a.property == b.property;
