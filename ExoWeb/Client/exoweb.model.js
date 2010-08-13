@@ -1158,10 +1158,14 @@
 
 						// NOTE: oldValue is not currently implemented for lists
 						_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, wasInited: true, collectionChanged: true}]);
+
+						Sys.Observer.raisePropertyChanged(target, _this._name);
 					});
 				}
 
 				this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: false}]);
+
+				Sys.Observer.raisePropertyChanged(target, this._name);
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
