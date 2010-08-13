@@ -14,11 +14,13 @@ Type.registerNamespace("ExoWeb.UI");
 			Toggle.initializeBase(this, [element]);
 		}
 
-		var Toggle_allowedActions = ["show", "hide", "enable", "disable"];
+		var Toggle_allowedActions = ["show", "hide", "enable", "disable", "render", "dispose"];
 
 		// Actions
 		Toggle.mixin({
-			do_show: function Toggle$show() {
+			// Show/Hide
+			//////////////////////////////////////////////////////////
+			do_show: function Toggle$do_show() {
 				$(this.get_element()).show();
 
 				// visibility has changed so raise event
@@ -28,7 +30,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 				this._visible = true;
 			},
-			do_hide: function Toggle$hide() {
+			do_hide: function Toggle$do_hide() {
 				$(this.get_element()).hide();
 
 				// visibility has changed so raise event
@@ -54,20 +56,82 @@ Type.registerNamespace("ExoWeb.UI");
 				return this._visible;
 			},
 
-			do_enable: function Toggle$enable() {
-				$("select,input,textarea,a", this.get_element()).andSelf().removeAttr("disabled");
+			// Enable/Disable
+			//////////////////////////////////////////////////////////
+			do_enable: function Toggle$do_enable() {
+				$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().removeAttr("disabled");
 			},
-			do_disable: function Toggle$disable() {
-				$("select,input,textarea,a", this.get_element()).andSelf().attr("disabled", "disabled");
+			do_disable: function Toggle$do_disable() {
+				$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().attr("disabled", "disabled");
+			},
+
+			// Render/Destroy
+			//////////////////////////////////////////////////////////
+			init_render: function Toggle$init_render() {
+				if (!$(this._element).is(".sys-template")) {
+					throwAndLog(["ui", "toggle"], "When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
+				}
+
+				this._template = new Sys.UI.Template(this._element);
+				$(this._element).empty();
+				$(this._element).removeClass("sys-template");
+			},
+			do_render: function Toggle$do_render() {
+				var pctx = Sys.UI.Template.findContext(this._element);
+
+				var renderArgs = new Sys.Data.DataEventArgs(pctx.dataItem);
+				Sys.Observer.raiseEvent(this, "rendering", renderArgs);
+
+				$(this._element).empty();
+
+				if (pctx.dataItem) {
+					this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx);
+					this._context.initializeComponents();
+				}
+
+				Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+			},
+			do_dispose: function Toggle$do_dispose() {
+				var renderArgs = new Sys.Data.DataEventArgs();
+				Sys.Observer.raiseEvent(this, "rendering", renderArgs);
+
+				$(this._element).empty();
+
+				Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+			},
+			add_rendering: function Content$add_rendering(handler) {
+				this._addHandler("rendering", handler);
+			},
+			remove_rendering: function Content$remove_rendering(handler) {
+				this._removeHandler("rendering", handler);
+			},
+			add_rendered: function Content$add_rendered(handler) {
+				this._addHandler("rendered", handler);
+			},
+			remove_rendered: function Content$remove_rendered(handler) {
+				this._removeHandler("rendered", handler);
 			}
 		});
 
 		// Inverse Actions
 		Toggle.mixin({
+			// Hide/Show
+			//////////////////////////////////////////////////////////
+			init_hide: Toggle.prototype.init_show,
 			undo_hide: Toggle.prototype.do_show,
 			undo_show: Toggle.prototype.do_hide,
+
+			// Enable/Disable
+			//////////////////////////////////////////////////////////
+			init_disable: Toggle.prototype.init_enable,
 			undo_disable: Toggle.prototype.do_enable,
-			undo_enable: Toggle.prototype.do_disable
+			undo_enable: Toggle.prototype.do_disable,
+
+			// Render/Dispose
+			//////////////////////////////////////////////////////////
+			init_dispose: Toggle.prototype.init_render,
+			undo_render: Toggle.prototype.do_dispose,
+			undo_dispose: Toggle.prototype.do_render
 		});
 
 		Toggle.mixin({
@@ -147,6 +211,15 @@ Type.registerNamespace("ExoWeb.UI");
 			},
 			initialize: function Toggle$initialize() {
 				Toggle.callBaseMethod(this, "initialize");
+
+				this._element._exowebtoggle = this;
+
+				// Perform custom init logic for the action
+				var actionInit = this["init_" + this._action];
+				if (actionInit) {
+					actionInit.call(this);
+				}
+
 				this.execute();
 			}
 		});
@@ -522,7 +595,18 @@ Type.registerNamespace("ExoWeb.UI");
 				Content.callBaseMethod(this, "initialize");
 
 				// marker attribute used by helper methods to identify as a content control
-				this._element._exowebcontent = {};
+				this._element._exowebcontent = this;
+
+				if ($(this._element).is(".sys-template")) {
+					if ($(this._element).children().length > 0) {
+						ExoWeb.trace.logWarning(["ui", "content"],
+							"Content control is marked with the \"sys-template\" class, which means that its children will be ignored and discarded.");
+					}
+					else {
+						ExoWeb.trace.logWarning(["ui", "content"],
+							"No need to mark a content control with the \"sys-template\" class.");
+					}
+				}
 
 				this.render();
 			}
@@ -688,17 +772,20 @@ Type.registerNamespace("ExoWeb.UI");
 		function getTemplateSubContainer(childElement) {
 			var element = childElement;
 
-			// find the first parent that has an attached ASP.NET Ajax dataview or ExoWeb content control
-			while (element.parentNode && !element.parentNode._msajaxtemplate && !element.parentNode._exowebcontent) {
+			function isDataViewOrContent(el) {
+				return element.parentNode._exowebcontent ||
+					(element.parentNode._msajaxtemplate && !element.parentNode._exowebtoggle);
+			}
+
+			// find the first parent that has an attached ASP.NET Ajax dataview or ExoWeb content control (ignore toggle)
+			while (element.parentNode && !isDataViewOrContent(element.parentNode)) {
 				element = element.parentNode;
 			}
 
 			// containing template was not found
-			if (element.parentNode && (element.parentNode._msajaxtemplate || element.parentNode._exowebcontent)) {
+			if (element.parentNode && isDataViewOrContent(element.parentNode)) {
 				return element;
 			}
-
-			return null;
 		}
 
 		function getDataForContainer(container, subcontainer, index) {
