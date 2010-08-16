@@ -1296,6 +1296,23 @@
 				};
 
 				Rule.register(rule, inputs, isAsync, this.get_containingType());
+
+				// Execute for existing instances
+				Array.forEach(this._containingType.known(), function(obj) {
+					if (rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj, true); })) {
+						try {
+							rule._isExecuting = true;
+							log("rule", "executing rule '{0}' when initialized", [rule]);
+							rule.execute.call(rule, obj);
+						}
+						catch (err) {
+							throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
+						}
+						finally {
+							rule._isExecuting = false;
+						}
+					}
+				});
 			},
 			// Adds a rule to the property that will update its value
 			// based on a calculation.
