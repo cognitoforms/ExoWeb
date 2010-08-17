@@ -14,6 +14,10 @@
 			function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
 				log(["@", "markupExt"], "@ " + (properties.$default || "(no path)") + " (evaluating)");
 
+				if (properties.required) {
+					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter markup extension does not support the \"required\" property.");
+				}
+
 				var path = properties.path || properties.$default;
 				delete properties.$default;
 
