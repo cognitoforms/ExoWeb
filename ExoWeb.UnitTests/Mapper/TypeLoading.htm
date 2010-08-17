@@ -1,7 +1,7 @@
 ﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 	<head>
-		<title>Client-Server Sync Tests</title>
+		<title>Type Loading</title>
 		
 		<link href="../Common/Styles/qunit.css" type="text/css" rel="stylesheet" />
 		
@@ -17,40 +17,27 @@
 		<script src="ChangeSet.js" type="text/javascript"></script>
 		
 		<script type="text/javascript">
-			ExoWeb.Mock.objectProviderDelay = 0;
-			ExoWeb.Mock.typeProviderDelay = 0;
-			ExoWeb.Mock.roundtripProviderDelay = 0;
-			ExoWeb.Mock.simulateLazyLoading = true;
+			//ExoWeb.trace.flags.sync = true;
+			//ExoWeb.trace.flags.mocks = true;
+			ExoWeb.Mock.objectProviderDelay = 10;
+			ExoWeb.Mock.typeProviderDelay = 10;
+			ExoWeb.Mock.roundtripProviderDelay = 10;
 
 			// HACK: signal behavior that temporarily releases control conflicts with synchronous nature of tests
-			ExoWeb.Signal.prototype._doCallback = function Signal$_doCallback(name, thisPtr, callback, args) {
-				try {
-					callback.apply(thisPtr, args || []);
-				}
-				catch (e) {
-					ExoWeb.trace.logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
-				}
-			};
+			/*var impl = ExoWeb.Signal.prototype._doCallback;
+			ExoWeb.Signal.prototype._doCallback = function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
+				impl.call(this, name, thisPtr, callback, args, true);
+			};*/
 
-			var context = ExoWeb.context({ model: { driver: { id: "1", from: "Driver", and: ["this.PrimaryCar.OriginalOwner", "this.Dealer.AvailableCars" ] }} });
+			var context = ExoWeb.context({ types: [ { from: "Driver" } ] });
 
-			setupTest("test1", { description: "All relevant properties for items in a list should be loaded when list is lazy loaded." }, function () {
-				var undefined;
-
-				ok(ExoWeb.Model.LazyLoader.isLoaded(context.model.driver.get_PrimaryCar()), "Primary Car property should be loaded.");
-				ok(ExoWeb.Model.LazyLoader.isLoaded(context.model.driver.get_PrimaryCar().get_OriginalOwner()), "Original Owner property of Primary Car should be loaded.");
-				ok(!ExoWeb.Model.LazyLoader.isLoaded(context.model.driver.get_Cars()), "Cars property should NOT be loaded.");
-
-				ExoWeb.Model.LazyLoader.eval(context.model.driver, "Cars", function () {
-					Array.forEach(context.model.driver.get_Cars(), function (car) {
-						ok(ExoWeb.Model.LazyLoader.isLoaded(car.get_OriginalOwner()), "Original Owner property of each Car should be loaded.");
-					});
-				});
+			setupTest("test1", { description: "Load sub type with condition type that references base type.", expect: 1 }, function() {
+				
 			});
-
+	
 			timeoutTests(5000);
 
-			context.ready(function () {
+			context.ready(function() {
 				executeTest("test1");
 			});
 		</script>

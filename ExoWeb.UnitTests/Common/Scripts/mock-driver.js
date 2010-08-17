@@ -8,6 +8,7 @@
 			properties: {
 				Name: { type: "String" },
 				BirthDate: { type: "Date", format: "ShortDate" },
+				Age: { type: "Number" },
 				PhoneNumber: { type: "String", format: "Phone" }
 			}
 		},
@@ -121,6 +122,14 @@
 			message: "PhoneNumber is required.",
 			rule: { clientRuleType: "required", rootType: "Person", properties: ["this.PhoneNumber"] }
 		},
+		"Driver.AgeGreaterThanEqual16": {
+			__type: "Error:#ExoWeb",
+			sets: null,
+			code: "Driver.AgeGreaterThanEqual16",
+			category: "Error",
+			message: "Driver must be at least 16 years of age.",
+			rule: { clientRuleType: "range", min: 16, rootType: "Driver", properties: ["this<Person>.Age"] }
+		},
 		"Driver.DealerRequired": {
 			__type: "Error:#ExoWeb",
 			sets: null,
@@ -227,6 +236,7 @@
 			"100": {
 				Name: "Joe Salesperson",
 				BirthDate: new Date("03/01/1987"),
+				Age: 23,
 				PhoneNumber: "123-123-1234",
 				Title: "Salesperson",
 				HireDate: new Date("1/1/2005")
@@ -234,6 +244,7 @@
 			"101": {
 				Name: "New Salesperson",
 				BirthDate: new Date("12/22/1980"),
+				Age: 29,
 				PhoneNumber: "123-123-1234",
 				Title: "Salesperson",
 				HireDate: new Date("1/1/2009")
@@ -241,12 +252,14 @@
 			"102": {
 				Name: "Jane Manager",
 				BirthDate: new Date("01/30/1956"),
+				Age: 54,
 				PhoneNumber: "123-123-1234",
 				Title: "Manager"
 			},
 			"103": {
 				Name: null,
 				BirthDate: new Date("01/01/1912"),
+				Age: 98,
 				PhoneNumber: "123-123-1234",
 				Title: "Unknown"
 			}
@@ -258,6 +271,7 @@
 				PrimaryCar: { id: "1", type: "NewCar>Car" },
 				Owner: { id: "1" },
 				BirthDate: new Date("07/01/1980"),
+				Age: 30,
 				PhoneNumber: "800-123-4567",
 				Dealer: { id: "1" },
 				MilesDriven: 100000,

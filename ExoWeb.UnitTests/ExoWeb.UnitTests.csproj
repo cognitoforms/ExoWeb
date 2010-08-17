@@ -78,7 +78,8 @@
     <Content Include="JQuery\Validation.htm" />
     <Content Include="Mapper\ChangeSet.js" />
     <Content Include="Mapper\Conditions.htm" />
-    <Content Include="Mapper\Loading.htm" />
+    <Content Include="Mapper\TypeLoading.htm" />
+    <Content Include="Mapper\DataLoading.htm" />
     <Content Include="Mapper\ServerSync.htm" />
     <Content Include="Model\CalculatedProperties.htm" />
     <Content Include="Model\Formats.htm" />
@@ -90,7 +91,9 @@
     <Content Include="UI\Helpers.htm" />
     <Content Include="UI\Controls.htm" />
     <Content Include="View\Adapter.htm" />
-    <Content Include="Web.config" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />

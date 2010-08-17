@@ -1753,6 +1753,8 @@
 		var fetchType = (function fetchType(model, typeName, callback) {
 			var signal = new ExoWeb.Signal("fetchType(" + typeName + ")");
 
+			var conditionTypeJson;
+
 			// request the type
 			typeProvider(typeName,
 				signal.pending(function(result) {
@@ -1761,8 +1763,7 @@
 					typesFromJson(model, result.types);
 
 					if (result.conditionTypes) {
-						// load condition types
-						conditionTypesFromJson(model, result.conditionTypes);
+						conditionTypeJson = result.conditionTypes;
 					}
 
 					// ensure base classes are loaded too
@@ -1783,6 +1784,11 @@
 			signal.waitForAll(function() {
 				var mtype = model.type(typeName);
 				TypeLazyLoader.unregister(mtype);
+
+				if (conditionTypeJson) {
+					// load condition types
+					conditionTypesFromJson(model, conditionTypeJson);
+				}
 
 				// apply app-specific configuration
 				var exts = pendingExtensions[typeName];
