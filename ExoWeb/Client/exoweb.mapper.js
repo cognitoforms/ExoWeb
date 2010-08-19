@@ -1754,34 +1754,41 @@
 			var signal = new ExoWeb.Signal("fetchType(" + typeName + ")");
 
 			var conditionTypeJson;
+			var errorObj;
 
-			// request the type
-			typeProvider(typeName,
-				signal.pending(function(result) {
+			function success(result) {
+				// load type(s)
+				typesFromJson(model, result.types);
 
-					// load type(s)
-					typesFromJson(model, result.types);
+				if (result.conditionTypes) {
+					conditionTypeJson = result.conditionTypes;
+				}
 
-					if (result.conditionTypes) {
-						conditionTypeJson = result.conditionTypes;
+				// ensure base classes are loaded too
+				for (var b = model.type(typeName).baseType; b; b = b.baseType) {
+					if (!ExoWeb.Model.LazyLoader.isLoaded(b)) {
+						ExoWeb.Model.LazyLoader.load(b, null, signal.pending());
 					}
+				}
+			}
 
-					// ensure base classes are loaded too
-					for (var b = model.type(typeName).baseType; b; b = b.baseType) {
-						if (!ExoWeb.Model.LazyLoader.isLoaded(b)) {
-							ExoWeb.Model.LazyLoader.load(b, null, signal.pending());
-						}
-					}
-				}),
-				signal.orPending(function(error) {
-					ExoWeb.trace.logError("typeInit",
-						"Failed to load {typeName} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-						{ typeName: typeName, error: error });
-				})
-			);
+			// Handle an error response.  Loading should
+			// *NOT* continue as if the type is available.
+			function error(error) {
+				errorObj = error;
+			}
+
+			// request the type and handle the response
+			typeProvider(typeName, signal.pending(success), signal.orPending(error));
 
 			// after properties and base class are loaded, then return results
 			signal.waitForAll(function() {
+				if (errorObj !== undefined) {
+					ExoWeb.trace.logError("typeInit",
+						"Failed to load {typeName} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+						{ typeName: typeName, error: errorObj });
+				}
+
 				var mtype = model.type(typeName);
 				TypeLazyLoader.unregister(mtype);
 
