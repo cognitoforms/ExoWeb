@@ -902,7 +902,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 				if (options.dataType) {
 					// Verify that the current data is not the data type that we are looking for.
-					searching = !(data instanceof options.dataType || data.constructor === options.dataType);
+					searching = !data || !(data instanceof options.dataType || data.constructor === options.dataType);
 				}
 				else if (options.ifFn) {
 					// Verify that the stop function conditions are not met.

@@ -104,7 +104,7 @@
 			var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
 			var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
 
-			if (tokens.steps.length == 1) {
+			if (tokens.steps.length === 1) {
 				var name = tokens.steps[0].property;
 				if (lazyLoadTypes) {
 					if (!LazyLoader.isLoaded(type)) {
@@ -1157,7 +1157,7 @@
 						_this._containingType.get_model().notifyListChanged(target, _this, args.get_changes());
 
 						// NOTE: oldValue is not currently implemented for lists
-						_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, wasInited: true, collectionChanged: true}]);
+						_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: args.get_changes(), wasInited: true, collectionChanged: true}]);
 
 						Sys.Observer.raisePropertyChanged(target, _this._name);
 					});
@@ -1297,22 +1297,24 @@
 
 				Rule.register(rule, inputs, isAsync, this.get_containingType());
 
-				// Execute for existing instances
-				Array.forEach(this._containingType.known(), function(obj) {
-					if (rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj, true); })) {
-						try {
-							rule._isExecuting = true;
-							log("rule", "executing rule '{0}' when initialized", [rule]);
-							rule.execute.call(rule, obj);
+				if ($transform(rule.inputs).where(function(input) { return input.get_dependsOnInit(); }).length > 0) {
+					// Execute for existing instances
+					Array.forEach(this._containingType.known(), function(obj) {
+						if (rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj, true); })) {
+							try {
+								rule._isExecuting = true;
+								log("rule", "executing rule '{0}' when initialized", [rule]);
+								rule.execute.call(rule, obj);
+							}
+							catch (err) {
+								throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
+							}
+							finally {
+								rule._isExecuting = false;
+							}
 						}
-						catch (err) {
-							throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
-						}
-						finally {
-							rule._isExecuting = false;
-						}
-					}
-				});
+					});
+				}
 			},
 			// Adds a rule to the property that will update its value
 			// based on a calculation.
@@ -1779,6 +1781,7 @@
 							// CASE: using object filter
 							prop.addChanged(function PropertyChain$_raiseChanged$1Obj(sender, args) {
 								if (chain.connects(obj, sender, priorProp)) {
+									args.originalSender = sender;
 									raiseHandler(obj, args);
 								}
 							});
@@ -1790,6 +1793,7 @@
 								// to the one that sent the event.
 								Array.forEach(chain._rootType.known(), function(known) {
 									if (chain.isInited(known) && chain.connects(known, sender, priorProp)) {
+										args.originalSender = sender;
 										raiseHandler(known, args);
 									}
 								});
