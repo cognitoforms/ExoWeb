@@ -1329,7 +1329,7 @@
 					}
 				}
 				else {
-					// TODO
+					ExoWeb.trace.logWarning("server", "Unable to perform roundtrip:  root is not a model or entity.");
 				}
 			}
 		};
