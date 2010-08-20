@@ -614,8 +614,12 @@
 					if (prop.get_isList()) {
 						this._initNewProps.push({ property: prop, valueFn: function() { return []; } });
 
-						if (prop.get_origin() != "server")
+						if (prop.get_origin() != "server") {
 							this._initExistingProps.push({ property: prop, valueFn: function() { return []; } });
+							Array.forEach(this.known(), function(obj) {
+								prop.init(obj, []);
+							});
+						}
 					}
 					else if (prop.get_origin() == "server") {
 						this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
