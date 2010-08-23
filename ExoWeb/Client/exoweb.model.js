@@ -49,6 +49,13 @@
 		}
 
 		Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback*/) {
+			if (arguments.length === 0) {
+				ExoWeb.trace.throwAndLog("model", "No arguments passed to \"property\" method.");
+			}
+			else if (arguments.length === 1) {
+				ExoWeb.trace.throwAndLog("model", "Type is required for property path \"{0}\".", [path]);
+			}
+
 			var tokens = new PathTokens(path);
 			var firstStep = tokens.steps[0];
 			var isGlobal = firstStep.property !== "this";
