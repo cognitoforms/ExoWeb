@@ -895,7 +895,20 @@
 
 		Property.mixin({
 			defaultValue: function Property$defaultValue(value) {
-				this._containingType._initNewProps.push({ property: this, valueFn: function() { return value; } });
+				function getValue() {
+					return value;
+				}
+
+				this._containingType._initNewProps.push({ property: this, valueFn: getValue });
+				this._containingType._initExistingProps.push({ property: this, valueFn: getValue });
+
+				// Initialize existing instances
+				Array.forEach(this._containingType.known(), function(obj) {
+					if (!this.isInited(obj)) {
+						this.init(obj, value);
+					}
+				}, this);
+
 				return this;
 			},
 			equals: function Property$equals(prop) {
