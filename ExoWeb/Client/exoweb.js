@@ -558,8 +558,10 @@ if (!("config" in ExoWeb)) {
 			var func = this;
 			var additional = Array.prototype.slice.call(arguments);
 			return function prependArguments$fn() {
-				Array.addRange(additional, Array.prototype.slice.call(arguments));
-				return func.apply(this, additional);
+				var args = [];
+				Array.addRange(args, additional);
+				Array.addRange(args, Array.prototype.slice.call(arguments));
+				return func.apply(this, args);
 			};
 		};
 
