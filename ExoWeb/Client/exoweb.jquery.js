@@ -87,8 +87,7 @@
 				exoWebAndModel = true;
 			}
 
-			var b = this.__msajaxbindings;
-			return !!(b && b.length > 0);
+            return $(obj).liveBindings().length > 0;
 		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
