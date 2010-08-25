@@ -1,12 +1,12 @@
 ﻿
-(function() {
+(function () {
 	var undefined;
 
 	function execute() {
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		// validation events
-		var ensureInited = function($el) {
+		var ensureInited = function ($el) {
 			if (!window.ExoWeb) {
 				return;
 			}
@@ -24,13 +24,13 @@
 
 					if (meta && meta.addPropertyValidating) {
 						// wire up validating/validated events
-						meta.addPropertyValidating(propName, function(sender, issues) {
+						meta.addPropertyValidating(propName, function (sender, issues) {
 							$el.trigger('validating');
 						});
 					}
 
 					if (meta && meta.addPropertyValidated) {
-						meta.addPropertyValidated(propName, function(sender, issues) {
+						meta.addPropertyValidated(propName, function (sender, issues) {
 							$el.trigger("validated", [issues]);
 						});
 					}
@@ -41,8 +41,8 @@
 			}
 		};
 
-		jQuery.fn.validated = function(f) {
-			this.each(function() {
+		jQuery.fn.validated = function (f) {
+			this.each(function () {
 				$(this).bind('validated', f);
 				ensureInited($(this));
 			});
@@ -50,8 +50,8 @@
 			return this;
 		};
 
-		jQuery.fn.validating = function(f) {
-			this.each(function() {
+		jQuery.fn.validating = function (f) {
+			this.each(function () {
 				$(this).bind("validating", f);
 				ensureInited($(this));
 			});
@@ -61,9 +61,13 @@
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		// selectors for rules
-		jQuery.expr[":"].rule = function(obj, index, meta, stack) {
-			if (!(window.ExoWeb && ExoWeb.Model)) {
-				return false;
+		var exoWebAndModel = false;
+
+		jQuery.expr[":"].rule = function (obj, index, meta, stack) {
+			if (exoWebAndModel === false) {
+				if (!(window.ExoWeb && ExoWeb.Model))
+					return false;
+				exoWebAndModel = true;
 			}
 
 			var ruleName = meta[3];
@@ -76,34 +80,50 @@
 			return $(obj).rules(ruleType).length > 0;
 		};
 
-		jQuery.expr[":"].bound = function(obj, index, meta, stack) {
-			if (!(window.ExoWeb && ExoWeb.Model)) {
-				return false;
+		jQuery.expr[":"].bound = function (obj, index, meta, stack) {
+			if (exoWebAndModel === false) {
+				if (!(window.ExoWeb && ExoWeb.Model))
+					return false;
+				exoWebAndModel = true;
 			}
-			return $(obj).liveBindings().length > 0;
+
+			var b = this.__msajaxbindings;
+			return !!(b && b.length > 0);
 		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		// helpers for working with ms ajax controls
+		var dataviewPrereqs = false;
+		jQuery.expr[":"].dataview = function (obj, index, meta, stack) {
+			if (dataviewPrereqs === false) {
+				if (!(window.Sys !== undefined && Sys.UI !== undefined && obj.control !== undefined && Sys.UI.DataView !== undefined))
+					return false;
+				dataviewPrereqs = true;
+			}
 
-		jQuery.expr[":"].dataview = function(obj, index, meta, stack) {
-			return window.Sys !== undefined && Sys.UI !== undefined && obj.control !== undefined &&
-				Sys.UI.DataView !== undefined && obj.control instanceof Sys.UI.DataView;
+			return obj.control instanceof Sys.UI.DataView;
 		};
 
-		jQuery.expr[":"].content = function(obj, index, meta, stack) {
-			return window.ExoWeb !== undefined && ExoWeb.UI !== undefined && obj.control !== undefined &&
-				ExoWeb.UI.Content !== undefined && obj.control instanceof ExoWeb.UI.Content;
+		var contentPrereqs = false;
+		jQuery.expr[":"].content = function (obj, index, meta, stack) {
+			if (contentPrereqs === false) {
+				if (!(window.ExoWeb !== undefined && ExoWeb.UI !== undefined && obj.control !== undefined && ExoWeb.UI.Content !== undefined && obj.control))
+					return false;
+
+				contentPrereqs = true;
+			}
+
+			return obj.control instanceof ExoWeb.UI.Content;
 		};
 
-		jQuery.expr[":"].control = function(obj, index, meta, stack) {
+		jQuery.expr[":"].control = function (obj, index, meta, stack) {
 			var typeName = meta[3];
 			var jstype = new Function("{return " + typeName + ";}");
 
 			return obj.control instanceof jstype;
 		};
 
-		jQuery.fn.control = function(propName, propValue) {
+		jQuery.fn.control = function (propName, propValue) {
 			if (arguments.length === 0) {
 				return this.get(0).control;
 			}
@@ -111,15 +131,15 @@
 				return this.get(0).control["get_" + propName]();
 			}
 			else {
-				this.each(function(index, element) {
+				this.each(function (index, element) {
 					this.control["set_" + propName](propValue);
 				});
 			}
 		};
 
-		jQuery.fn.commands = function(commands) {
+		jQuery.fn.commands = function (commands) {
 			var control = this.control();
-			control.add_command(function(sender, args) {
+			control.add_command(function (sender, args) {
 				var handler = commands[args.get_commandName()];
 				if (handler) {
 					handler(sender, args);
@@ -129,28 +149,23 @@
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		// helpers for MS AJAX and model integration
-		var everRegs = [];
+		var everRegs = { added: [], deleted: [] };
 
 		function processElements(els, action) {
+			var regs = everRegs[action];
+
 			for (var e = 0; e < els.length; ++e) {
-				var el = els[e];
+				var $el = $(els[e]);
 
-				for (var i = 0; i < everRegs.length; ++i) {
-					var reg = everRegs[i];
-
-					var handler = reg[action];
-
-					if (!handler) {
-						continue;
-					}
+				for (var i = 0; i < regs.length; ++i) {
+					var reg = regs[i];
 
 					// test root
-					if ($(el).is(reg.selector)) {
-						handler.apply(el);
-					}
+					if ($el.is(reg.selector))
+						reg.action.apply(els[e]);
 
 					// test children
-					$(reg.selector, el).each(handler);
+					$(reg.selector, els[e]).each(reg.action);
 				}
 			}
 		}
@@ -163,7 +178,7 @@
 		function ensureIntercepting() {
 			if (!interceptingTemplates && window.Sys && Sys.UI && Sys.UI.Template) {
 				var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
-				Sys.UI.Template.prototype.instantiateIn = function(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
+				Sys.UI.Template.prototype.instantiateIn = function (containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
 					var context = instantiateInBase.apply(this, arguments);
 
 					processElements(context.nodes, "added");
@@ -173,7 +188,7 @@
 				// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
 				// dispose is too late because the nodes will have been cleared out.
 				var clearContainersBase = Sys.UI.DataView.prototype._clearContainers;
-				Sys.UI.DataView.prototype._clearContainers = function() {
+				Sys.UI.DataView.prototype._clearContainers = function () {
 					var contexts = this.get_contexts();
 
 					for (var i = 0; i < contexts.length; i++)
@@ -186,12 +201,12 @@
 			}
 
 			if (!interceptingWebForms && window.Sys && Sys.WebForms) {
-				Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function(sender, evt) {
+				Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function (sender, evt) {
 					partialPageLoadOccurred = true;
 					processElements(evt.get_panelsUpdating(), "deleted");
 				});
 
-				Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function(sender, evt) {
+				Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function (sender, evt) {
 					// Only process elements for update panels that were added if we have actually done a partial update.
 					// This is needed so that the "ever" handler is not called twice when a panel is added to the page on first page load.
 					if (partialPageLoadOccurred) {
@@ -205,7 +220,7 @@
 		}
 
 		// matches elements as they are dynamically added to the DOM
-		jQuery.fn.ever = function(added, deleted) {
+		jQuery.fn.ever = function (added, deleted) {
 
 			// If the function is called in any way other than as a method on the 
 			// jQuery object, then intercept and return early.
@@ -218,12 +233,19 @@
 			this.each(added);
 
 			// and then watch for dom changes
-			everRegs.push({
-				selector: this.selector,
-				context: this.context,
-				added: added,
-				deleted: deleted
-			});
+			if (added) {
+				everRegs.added.push({
+					selector: this.selector,
+					action: added
+				});
+			}
+
+			if (deleted) {
+				everRegs.deleted.push({
+					selector: this.selector,
+					action: deleted
+				});
+			}
 
 			ensureIntercepting();
 
@@ -233,9 +255,9 @@
 		};
 
 		// Gets all Sys.Bindings for an element
-		jQuery.fn.liveBindings = function() {
+		jQuery.fn.liveBindings = function () {
 			var bindings = [];
-			this.each(function() {
+			this.each(function () {
 				if (this.__msajaxbindings)
 					Array.addRange(bindings, this.__msajaxbindings);
 			});
@@ -244,7 +266,7 @@
 		};
 
 		// Gets all model rules associated with the property an element is bound to
-		jQuery.fn.rules = function(ruleType) {
+		jQuery.fn.rules = function (ruleType) {
 			if (!(window.ExoWeb && ExoWeb.Model)) {
 				return [];
 			}
@@ -281,7 +303,7 @@
 			return rules;
 		};
 
-		jQuery.fn.issues = function(options) {
+		jQuery.fn.issues = function (options) {
 			var issues = [];
 
 			options = options || { refresh: false };

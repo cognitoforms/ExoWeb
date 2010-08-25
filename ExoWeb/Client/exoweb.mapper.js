@@ -903,7 +903,7 @@
 			},
 			rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
 				var obj = fromExoGraph(change.instance, this._translator);
-				var prop = obj.meta.property(change.property);
+				var prop = obj.meta.property(change.property, true);
 				var list = prop.value(obj);
 				var translator = this._translator;
 
@@ -1276,7 +1276,7 @@
 				var translator = this._translator;
 
 				function applyListChange$execute() {
-					var prop = obj.meta.property(change.property);
+					var prop = obj.meta.property(change.property, true);
 					var list = prop.value(obj);
 
 					list.beginUpdate();
@@ -1472,16 +1472,13 @@
 
 			// Load object's properties
 			for (var propName in json) {
-				var prop = mtype.property(propName);
+				var prop = mtype.property(propName, true);
 				var propData = json[propName];
 
 				log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
 
 				if (!prop) {
 					throwAndLog(["objectInit"], "Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
-				}
-				else {
-					prop = prop.lastProperty();
 				}
 
 				var propType = prop.get_jstype();
@@ -1816,7 +1813,7 @@
 			var step = Array.dequeue(path.steps);
 			while (step) {
 				// locate property definition in model
-				var prop = jstype.meta.property(step.property);
+				var prop = jstype.meta.property(step.property, true);
 
 				// don't need to fetch type information for value types
 				if (prop.get_isValueType()) {
@@ -2343,50 +2340,6 @@
 				server: new ServerSync(model)
 			};
 
-			if (options.types) {
-				// allow specifying types and paths apart from instance data
-				for (var i = 0; i < options.types.length; i++) {
-					var typeQuery = options.types[i];
-
-					typeQuery.and = ExoWeb.Model.PathTokens.normalizePaths(typeQuery.and);
-
-					// store the paths for later use
-					ObjectLazyLoader.addPaths(typeQuery.from, typeQuery.and);
-
-					// only send properties to server
-					typeQuery.serverPaths = typeQuery.and.map(function(path) {
-						var strPath;
-						path.steps.forEach(function(step) {
-							if (!strPath) {
-								strPath = step.property;
-							}
-							else {
-								strPath += "." + step.property;
-							}
-						});
-						return strPath;
-					});
-
-					fetchTypes(model, typeQuery, allSignals.pending());
-
-					objectProvider(typeQuery.from, null, true, false, typeQuery.serverPaths, null,
-						allSignals.pending(function context$objects$callback(result) {
-							// load the json. this may happen asynchronously to increment the signal just in case
-							objectsFromJson(model, result.instances, allSignals.pending(function() {
-								if (result.conditionTargets) {
-									conditionsFromJson(model, result.conditionTargets);
-								}
-							}));
-						}),
-						allSignals.orPending(function context$objects$callback(error) {
-							ExoWeb.trace.logError("objectInit",
-								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-								{ query: typeQuery, error: error });
-						})
-					);
-				}
-			}
-
 			if (options.model) {
 				// start loading the instances first, then load type data concurrently.
 				// this assumes that instances are slower to load than types due to caching
@@ -2416,36 +2369,44 @@
 							return strPath;
 						});
 
-						// fetch object state if an id of a persisted object was specified
-						if (query.id !== newId && query.id !== null && query.id !== undefined && query.id !== "") {
-							objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
-								state[varName].signal.pending(function context$objects$callback(result) {
-									state[varName].objectJson = result.instances;
-									state[varName].conditionsJson = result.conditionTargets;
-								}),
-								state[varName].signal.orPending(function context$objects$callback(error) {
-									ExoWeb.trace.logError("objectInit",
-										"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-										{ query: query, error: error });
-								})
-							);
+						if(query.load) {
+							// bypass all server callbacks if data is embedded
+							state[varName].objectJson = query.load.instances;
+							state[varName].conditionsJson = query.load.conditionTargets;
 						}
 						else {
-							objectProvider(null, null, true, false, query.serverPaths, null,
-								allSignals.pending(function context$objects$callback(result) {
-									// load the json. this may happen asynchronously to increment the signal just in case
-									objectsFromJson(model, result.instances, allSignals.pending(function() {
-										if (result.conditionTargets) {
-											conditionsFromJson(model, result.conditionTargets);
-										}
-									}));
-								}),
-								allSignals.orPending(function context$objects$callback(error) {
-									ExoWeb.trace.logError("objectInit",
-										"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-										{ query: query, error: error });
-								})
-							);
+							// need to load data from server
+							// fetch object state if an id of a persisted object was specified
+							if (query.id !== newId && query.id !== null && query.id !== undefined && query.id !== "") {
+								objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
+									state[varName].signal.pending(function context$objects$callback(result) {
+										state[varName].objectJson = result.instances;
+										state[varName].conditionsJson = result.conditionTargets;
+									}),
+									state[varName].signal.orPending(function context$objects$callback(error) {
+										ExoWeb.trace.logError("objectInit",
+											"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+											{ query: query, error: error });
+									})
+								);
+							}
+							else {
+								objectProvider(null, null, true, false, query.serverPaths, null,
+									allSignals.pending(function context$objects$callback(result) {
+										// load the json. this may happen asynchronously to increment the signal just in case
+										objectsFromJson(model, result.instances, allSignals.pending(function() {
+											if (result.conditionTargets) {
+												conditionsFromJson(model, result.conditionTargets);
+											}
+										}));
+									}),
+									allSignals.orPending(function context$objects$callback(error) {
+										ExoWeb.trace.logError("objectInit",
+											"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+											{ query: query, error: error });
+									})
+								);
+							}
 						}
 					})(varNameLoad);
 				}
@@ -2507,6 +2468,50 @@
 				}
 			}
 
+			
+			if (options.types) {
+				// allow specifying types and paths apart from instance data
+				for (var i = 0; i < options.types.length; i++) {
+					var typeQuery = options.types[i];
+
+					typeQuery.and = ExoWeb.Model.PathTokens.normalizePaths(typeQuery.and);
+
+					// store the paths for later use
+					ObjectLazyLoader.addPaths(typeQuery.from, typeQuery.and);
+
+					// only send properties to server
+					typeQuery.serverPaths = typeQuery.and.map(function(path) {
+						var strPath;
+						path.steps.forEach(function(step) {
+							if (!strPath) {
+								strPath = step.property;
+							}
+							else {
+								strPath += "." + step.property;
+							}
+						});
+						return strPath;
+					});
+
+					fetchTypes(model, typeQuery, allSignals.pending());
+
+					objectProvider(typeQuery.from, null, true, false, typeQuery.serverPaths, null,
+						allSignals.pending(function context$objects$callback(result) {
+							// load the json. this may happen asynchronously to increment the signal just in case
+							objectsFromJson(model, result.instances, allSignals.pending(function() {
+								if (result.conditionTargets) {
+									conditionsFromJson(model, result.conditionTargets);
+								}
+							}));
+						}),
+						allSignals.orPending(function context$objects$callback(error) {
+							ExoWeb.trace.logError("objectInit",
+								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+								{ query: typeQuery, error: error });
+						})
+					);
+				}
+			}
 			// setup lazy loading on the container object to control
 			// lazy evaluation.  loading is considered complete at the same point
 			// model.ready() fires
@@ -2575,7 +2580,7 @@
 		};
 
 		// object constant to single to mapper to create a new instance rather than load one
-		var newId = new Object();
+		var newId = "$newId";
 		window.$newId = function $newId() {
 			return newId;
 		}
