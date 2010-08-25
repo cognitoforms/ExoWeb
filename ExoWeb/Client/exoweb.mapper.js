@@ -2495,21 +2495,23 @@
 
 					fetchTypes(model, typeQuery, allSignals.pending());
 
-					objectProvider(typeQuery.from, null, true, false, typeQuery.serverPaths, null,
-						allSignals.pending(function context$objects$callback(result) {
-							// load the json. this may happen asynchronously to increment the signal just in case
-							objectsFromJson(model, result.instances, allSignals.pending(function() {
-								if (result.conditionTargets) {
-									conditionsFromJson(model, result.conditionTargets);
-								}
-							}));
-						}),
-						allSignals.orPending(function context$objects$callback(error) {
-							ExoWeb.trace.logError("objectInit",
-								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-								{ query: typeQuery, error: error });
-						})
-					);
+					if (typeQuery.serverPaths.length > 0) {
+						objectProvider(typeQuery.from, null, true, false, typeQuery.serverPaths, null,
+							allSignals.pending(function context$objects$callback(result) {
+								// load the json. this may happen asynchronously to increment the signal just in case
+								objectsFromJson(model, result.instances, allSignals.pending(function() {
+									if (result.conditionTargets) {
+										conditionsFromJson(model, result.conditionTargets);
+									}
+								}));
+							}),
+							allSignals.orPending(function context$objects$callback(error) {
+								ExoWeb.trace.logError("objectInit",
+									"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+									{ query: typeQuery, error: error });
+							})
+						);
+					}
 				}
 			}
 			// setup lazy loading on the container object to control
