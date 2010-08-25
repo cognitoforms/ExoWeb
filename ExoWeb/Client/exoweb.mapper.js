@@ -2340,6 +2340,8 @@
 				server: new ServerSync(model)
 			};
 
+			var batch = ExoWeb.Batch.start("init context");
+
 			if (options.model) {
 				// start loading the instances first, then load type data concurrently.
 				// this assumes that instances are slower to load than types due to caching
@@ -2532,6 +2534,8 @@
 			});
 
 			allSignals.waitForAll(function() {
+				ExoWeb.Batch.end(batch);
+
 				// begin watching for existing objects that are created
 				ret.server.beginCapturingRegisteredObjects();
 			});

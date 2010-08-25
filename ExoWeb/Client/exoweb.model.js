@@ -1382,7 +1382,9 @@
 
 					// wait until all property information is available to initialize the calculation
 					this._readySignal.waitForAll(function() {
-						prop._addCalculatedRule(options.fn, options.isAsync, inputs);
+						ExoWeb.Batch.whenDone(function() {
+							prop._addCalculatedRule(options.fn, options.isAsync, inputs);
+						});
 					});
 				}
 				else {
@@ -1785,11 +1787,11 @@
 				function raiseHandler(sender, args) {
 					// Copy the original arguments so that we don't affect other code
 					var newArgs = Object.copy(args);
-
+				
 					// Reset property to be the chain, but store the original property as "triggeredBy"
 					newArgs.triggeredBy = newArgs.property;
 					newArgs.property = chain;
-
+				
 					// Call the handler, passing through the arguments
 					handler(sender, newArgs);
 				}
@@ -1820,7 +1822,7 @@
 										args.originalSender = sender;
 										raiseHandler(known, args);
 									}
-								});
+						});
 							});
 						}
 					});
