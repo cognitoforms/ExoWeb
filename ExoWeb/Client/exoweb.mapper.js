@@ -279,7 +279,7 @@
 			onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
 
 				// don't record changes to types or properties that didn't originate from the server
-				if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server") {
+				if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server" || property.get_isStatic()) {
 					return;
 				}
 
@@ -345,7 +345,7 @@
 			onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 
 				// don't record changes to types or properties that didn't originate from the server
-				if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server") {
+				if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server" || property.get_isStatic()) {
 					return;
 				}
 
