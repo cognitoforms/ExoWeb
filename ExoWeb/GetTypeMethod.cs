@@ -6,6 +6,7 @@ using System.Runtime.Serialization;
 using ExoGraph;
 using System.Web;
 using ExoRule;
+using System.IO;
 
 namespace ExoWeb
 {
@@ -31,6 +32,11 @@ namespace ExoWeb
 			response.Cache.SetCacheability(HttpCacheability.Public);
 			response.Cache.SetExpires(DateTime.Now.AddDays(7));
 
+			WriteJson(response.Output);
+		}
+
+		void WriteJson(TextWriter response)
+		{
 			GraphType graphType = GraphContext.Current.GetGraphType(Type);
 
 			// Output the requested graph type
@@ -44,11 +50,11 @@ namespace ExoWeb
 				response.Write("   \"conditionTypes\": {\r\n");
 				OutputConditionTypes(response, graphType);
 			}
-			
+
 			response.Write("\r\n   }\r\n}");
 		}
 
-		private void OutputConditionTypes(HttpResponse response, GraphType type)
+		private void OutputConditionTypes(TextWriter response, GraphType type)
 		{
 			bool isFirstType = true;
 			foreach (ConditionType conditionType in ServiceHandler.Adapter.GetConditionTypes(type))
@@ -63,7 +69,7 @@ namespace ExoWeb
 			}
 		}
 
-		internal static void OutputConditionType(HttpResponse response, ConditionType conditionType)
+		internal static void OutputConditionType(TextWriter response, ConditionType conditionType)
 		{
 			List<Type> knownTypes = new List<Type>();
 
@@ -76,13 +82,12 @@ namespace ExoWeb
 			);
 		}
 
-		internal static void OutputType(HttpResponse response, GraphType type, bool useConditionsMode)
+		internal static void OutputType(TextWriter response, GraphType type, bool useConditionsMode)
 		{
 			// Output the type meta data
 			response.Write("      \"" + type.Name + "\": {");
 			if (type.BaseType != null)
 				response.Write("\r\n         \"baseType\": \"" + GetJsonReferenceType(type.BaseType) + "\",");
-
 
 			Dictionary<string, IGrouping<string, Rule>> rules = null;
 			if (!useConditionsMode)
@@ -103,10 +108,17 @@ namespace ExoWeb
 
 			response.Write("\r\n         \"properties\": {\r\n");
 			bool isFirstProperty = true;
+			int index = -1;
 			foreach (GraphProperty property in type.Properties)
 			{
+				if(!ServiceHandler.Adapter.InClientModel(property))
+					continue;
+
+				if (!property.IsStatic)
+					++index;
+
 				// Skip properties on base types or properties that cannot be serialized
-				if (property.DeclaringType != type || !ServiceHandler.Adapter.InClientModel(property))
+				if (property.DeclaringType != type)
 					continue;
 
 				// Handle trailing commas after each property
@@ -124,6 +136,8 @@ namespace ExoWeb
 				// Indicate if the property is shared
 				if (property.IsStatic)
 					response.Write(", \"isStatic\": true");
+				else
+					response.Write(", \"index\":"+ index);
 
 				// Output format name if applicable
 				string formatName = ServiceHandler.Adapter.GetFormatName(property);
@@ -153,7 +167,7 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="response"></param>
 		/// <param name="rules"></param>
-		static void OutputRules(HttpResponse response, IEnumerable<Rule> rules)
+		static void OutputRules(TextWriter response, IEnumerable<Rule> rules)
 		{
 			bool isFirstRule = true;
 			response.Write(", \"rules\": [");

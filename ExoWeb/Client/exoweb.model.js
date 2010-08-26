@@ -363,6 +363,8 @@
 			this._legacyPool = {};
 			this._counter = 0;
 			this._properties = {};
+			this._instanceProperties = {};
+			this._staticProperties = {};
 			this._model = model;
 			this._initNewProps = [];
 			this._initExistingProps = [];
@@ -597,9 +599,10 @@
 					}
 				}
 
-				var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic);
+				var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic, def.index);
 
 				this._properties[def.name] = prop;
+				(def.isStatic ? this._staticProperties : this._instanceProperties)[def.name] = prop;
 
 				// modify jstype to include functionality based on the type definition
 				function genPropertyShortcut(mtype, overwrite) {
@@ -686,6 +689,15 @@
 			},
 			get_jstype: function Type$get_jstype() {
 				return this._jstype;
+			},
+			get_properties: function Type$get_properties() {
+				return this._properties;
+			},
+			get_staticProperties: function Type$get_staticProperties() {
+				return this._staticProperties;
+			},
+			get_instanceProperties: function Type$get_instanceProperties() {
+				return this._instanceProperties;
 			},
 			property: function Type$property(name, thisOnly) {
 				if (!thisOnly) {
@@ -878,7 +890,7 @@
 		/// that can be treated as a single property.
 		/// </remarks>
 		///////////////////////////////////////////////////////////////////////////////
-		function Property(containingType, name, jstype, isList, label, format, isStatic) {
+		function Property(containingType, name, jstype, isList, label, format, isStatic, index) {
 			this._containingType = containingType;
 			this._name = name;
 			this._fieldName = "_" + name;
@@ -887,6 +899,7 @@
 			this._format = format;
 			this._isList = !!isList;
 			this._isStatic = !!isStatic;
+			this._index = index;
 
 			if (containingType.get_originForNewProperties()) {
 				this._origin = containingType.get_originForNewProperties();
@@ -979,7 +992,9 @@
 			get_jstype: function Property$get_jstype() {
 				return this._jstype;
 			},
-
+			get_index: function Property$get_index() {
+				return this._index;
+			},
 			get_format: function Property$get_format() {
 				return this._format;
 			},

@@ -7,6 +7,7 @@ using System.Web;
 using ExoGraph;
 using System.Collections;
 using ExoRule;
+using System.IO;
 
 namespace ExoWeb
 {
@@ -19,25 +20,25 @@ namespace ExoWeb
 	internal class LoadMethod : InstanceMethodBase
 	{
 		[DataMember(Name = "type")]
-		string Type { get; set; }
+		internal string Type { get; set; }
 
 		[DataMember(Name = "ids")]
-		string[] Ids { get; set; }
+		internal string[] Ids { get; set; }
 
 		[DataMember(Name = "paths")]
-		string[] Paths { get; set; }
+		internal string[] Paths { get; set; }
 
 		[DataMember(Name = "includeAllowedValues")]
-		bool IncludeAllowedValues { get; set; }
+		internal bool IncludeAllowedValues { get; set; }
 
 		[DataMember(Name = "includeTypes")]
-		bool IncludeTypes { get; set; }
+		internal bool IncludeTypes { get; set; }
 		
 		[DataMember(Name = "conditionsMode")]
-		bool UseConditionsMode { get; set; }
+		internal bool UseConditionsMode { get; set; }
 
 		[DataMember(Name = "includeConditionTypes")]
-		bool IncludeConditionTypes { get; set; }
+		internal bool IncludeConditionTypes { get; set; }
 
 		[DataMember(Name = "changes")]
 		GraphTransaction Changes { get; set; }
@@ -47,6 +48,11 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="response"></param>
 		internal override void Invoke(HttpResponse response)
+		{
+			WriteJson(response.Output);
+		}
+
+		public void WriteJson(TextWriter response)
 		{
 			// Get the root type of instance being loaded
 			GraphType rootType = (Type != null) ? GraphContext.Current.GetGraphType(Type) : null;
@@ -365,7 +371,7 @@ namespace ExoWeb
 		/// Output type information as JSON to the response stream.
 		/// </summary>
 		/// <param name="response"></param>
-		protected void OutputTypes(HttpResponse response, bool useConditionsMode)
+		protected void OutputTypes(TextWriter response, bool useConditionsMode)
 		{
 			bool isFirstType = true;
 
@@ -384,7 +390,7 @@ namespace ExoWeb
 		/// Output instances as JSON to the response stream.
 		/// </summary>
 		/// <param name="response"></param>
-		protected void OutputInstances(HttpResponse response)
+		protected void OutputInstances(TextWriter response)
 		{
 			bool isFirstType = true;
 
@@ -464,12 +470,11 @@ namespace ExoWeb
 						response.Write(",\r\n");
 
 					// Serialize the current instance
-					response.Write("         \"" + instance.Instance.Id + "\" : {\r\n");
+					response.Write("         \"" + instance.Instance.Id + "\" : [");
 					bool isFirstProperty = true;
 					foreach (GraphProperty property in graphType.Properties)
 					{
-						// Skip properties that cannot be serialized
-						if (property is GraphValueProperty && GetJsonValueType(((GraphValueProperty) property).PropertyType) == null)
+						if (!ServiceHandler.Adapter.InClientModel(property))
 							continue;
 
 						// Skip static properties, as these must be explicitly serialized
@@ -480,10 +485,9 @@ namespace ExoWeb
 						if (isFirstProperty)
 							isFirstProperty = false;
 						else
-							response.Write(",\r\n");
+							response.Write(",");
 
 						// Write out the property name and value
-						response.Write("            \"" + property.Name + "\": ");
 						GraphReferenceProperty reference = property as GraphReferenceProperty;
 						if (reference != null)
 						{
@@ -493,7 +497,7 @@ namespace ExoWeb
 								if (instance.HasList(reference))
 									OutputList(response, reference, instance.Instance.GetList(reference));
 								else
-									response.Write("\"deferred\"");
+									response.Write("\"?\"");
 							}
 
 							// Serialize references
@@ -512,13 +516,13 @@ namespace ExoWeb
 								if (instance.HasList(property))
 									OutputValue(response, (GraphValueProperty) property, actualProperty);
 								else
-									response.Write("\"deferred\"");
+									response.Write("\"?\"");
 							}
 							else
 								OutputValue(response, (GraphValueProperty) property, actualProperty);
 						}
 					}
-					response.Write("\r\n         }");
+					response.Write("]");
 				}
 				response.Write("\r\n      }");
 			}
@@ -528,7 +532,7 @@ namespace ExoWeb
 		/// Output condition information as JSON to the response stream.
 		/// </summary>
 		/// <param name="response"></param>
-		protected void OutputConditionTypes(HttpResponse response)
+		protected void OutputConditionTypes(TextWriter response)
 		{
 			bool isFirstType = true;
 			foreach (ConditionType conditionType in instances.Keys
@@ -550,7 +554,7 @@ namespace ExoWeb
 		/// Output condition information as JSON to the response stream.
 		/// </summary>
 		/// <param name="response"></param>
-		protected void OutputConditionTargets(HttpResponse response)
+		protected void OutputConditionTargets(TextWriter response)
 		{
 			// populate condition targets by condition type
 			Dictionary<ConditionType, List<ConditionTarget>> targetsByType = new Dictionary<ConditionType, List<ConditionTarget>>();			
@@ -605,7 +609,7 @@ namespace ExoWeb
 		/// <param name="response"></param>
 		/// <param name="property"></param>
 		/// <param name="value"></param>
-		protected void OutputValue(HttpResponse response, GraphValueProperty property, object value)
+		protected void OutputValue(TextWriter response, GraphValueProperty property, object value)
 		{
 			response.Write(ToJson(property.PropertyType, value));
 		}
@@ -615,10 +619,15 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="response"></param>
 		/// <param name="instance"></param>
-		protected void OutputReference(HttpResponse response, GraphReferenceProperty property, GraphInstance instance)
+		protected void OutputReference(TextWriter response, GraphReferenceProperty property, GraphInstance instance)
 		{
 			if (instance != null)
-				response.Write("{ \"id\": \"" + instance.Id + "\"" + (property.PropertyType != instance.Type ? ", \"type\": \"" + GetJsonReferenceType(instance.Type) + "\"" : "") + " }");
+			{
+				if(property.PropertyType != instance.Type)
+					response.Write("{\"id\":\"" + instance.Id + "\",\"type\":\"" + GetJsonReferenceType(instance.Type) + "\"}");
+				else
+					response.Write("\"" + instance.Id + "\"");
+			}
 			else
 				response.Write("null");
 		}
@@ -628,7 +637,7 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="response"></param>
 		/// <param name="list"></param>
-		protected void OutputList(HttpResponse response, GraphReferenceProperty property, GraphInstanceList list)
+		protected void OutputList(TextWriter response, GraphReferenceProperty property, GraphInstanceList list)
 		{
 			response.Write("[ ");
 			bool isFirstItem = true;
