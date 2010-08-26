@@ -2189,6 +2189,7 @@
 				var ownerId = list._ownerId;
 				var ownerType = list._ownerProperty.get_containingType().get_fullName();
 				var prop = list._ownerProperty;
+				var propIndex = list._ownerProperty.get_index();
 				var propName = list._ownerProperty.get_name();
 				var propType = list._ownerProperty.get_jstype().meta;
 
@@ -2269,7 +2270,7 @@
 						ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, ownerId]);
 					}
 
-					var listJson = objectJson[jsonType][jsonId][propName];
+					var listJson = objectJson[jsonType][jsonId][propIndex];
 
 					// populate the list with objects
 					for (var i = 0; i < listJson.length; i++) {
