@@ -230,6 +230,15 @@
 			}
 		}
 
+		function translateId(translator, type, id) {
+			// get the server id, either translated or as the serialized entity id itself
+			var serverId = translator.forward(type, id) || id;
+			// get the client id, either a reverse translation of the server id or the server id itself
+			var clientId = translator.reverse(type, serverId) || serverId;
+
+			return clientId;
+		}
+
 		function fromExoGraph(val, translator) {
 			if (val !== undefined && val !== null) {
 				var type = ExoWeb.Model.Model.getJsType(val.type);
@@ -241,13 +250,7 @@
 				if (type.meta && type.meta instanceof ExoWeb.Model.Type && translator) {
 					// don't alter the original object
 					val = Object.copy(val);
-
-					// get the server id, either translated or as the serialized entity id itself
-					var serverId = translator.forward(val.type, val.id) || val.id;
-					// get the client id, either a reverse translation of the server id or the server id itself
-					var clientId = translator.reverse(val.type, serverId) || serverId;
-
-					val.id = clientId;
+					val.id = translateId(translator, val.type, val.id);
 				}
 
 				var fmt = type.formats && type.formats.$exograph;
@@ -435,6 +438,99 @@
 
 		ServerSync.mixin(ExoWeb.Functor.eventing);
 
+		function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
+			var jstype = ExoWeb.Model.Model.getJsType(name, true);
+
+			if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+				callback.call(thisPtr || this, jstype);
+			}
+			else if (jstype && forceLoad) {
+				log("server", "Forcing lazy loading of type \"{0}\".", [name]);
+				ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
+			}
+			else if (!jstype && forceLoad) {
+				log("server", "Force creating type \"{0}\".", [name]);
+				ensureJsType(model, name, callback, thisPtr);
+			}
+			else {
+				log("server", "Waiting for existance of type \"{0}\".", [name]);
+				$extend(name, function() {
+					log("server", "Type \"{0}\" was loaded, now continuing.", [name]);
+					callback.apply(this, arguments);
+				}, thisPtr);
+			}
+		}
+
+		var entitySignals = [];
+
+		function tryGetEntity(model, translator, type, id, property, forceLoad, callback, thisPtr) {
+			var obj = type.meta.get(translateId(translator, type.meta.get_fullName(), id));
+
+			if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
+				callback.call(thisPtr || this, obj);
+			}
+			else {
+				var objKey = type.meta.get_fullName() + "|" + id;
+				var signal = entitySignals[objKey];
+				if (!signal) {
+					signal = entitySignals[objKey] = new ExoWeb.Signal("Entity: " + objKey);
+				}
+
+				if (obj && forceLoad) {
+					log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+					ExoWeb.Model.LazyLoader.load(obj, property, signal.pending(callback, thisPtr), thisPtr);
+				}
+				else if (!obj && forceLoad) {
+					log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+					var obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+					ExoWeb.Model.LazyLoader.eval(obj, property, signal.pending(function() {
+						callback.call(thisPtr || this, obj);
+					}));
+				}
+				else {
+					log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+
+					var done = signal.pending();
+
+					var registeredHandler = function(obj) {
+						log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
+						if (obj.meta.type === type && obj.meta.id === id) {
+							// unregister the handler since it is no longer needed
+							model.removeObjectRegistered(registeredHandler);
+
+							if (property) {
+								// if the property is not initialized then wait
+								var prop = type.meta.property(property, true);
+								if (prop.isInited(obj)) {
+									done();
+									callback.call(thisPtr || this, obj);
+								}
+								else {
+									log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
+									var initHandler = function() {
+										prop.removeChanged(initHandler);
+										log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
+										done();
+										callback.call(thisPtr || this, obj);
+									};
+	
+									prop.addChanged(initHandler, obj);
+								}
+							}
+							else {
+								done();
+								callback.call(thisPtr || this, obj);
+							}
+						}
+					};
+
+					model.addObjectRegistered(registeredHandler);
+				}
+			}
+		}
+
+		var aggressiveLog = false;
+
 		ServerSync.mixin({
 			_addEventHandler: function ServerSync$_addEventHandler(name, handler, includeAutomatic, automaticArgIndex) {
 				automaticArgIndex = (automaticArgIndex === undefined) ? 0 : automaticArgIndex;
@@ -489,12 +585,22 @@
 
 						// Search added and removed for an object that can be saved.
 						Array.forEach(change.added, function(item) {
+							// if the type doesn't exist then obviously the instance doesn't either
+							var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
+							if (!jstype) {
+								return;
+							}
 							var addedObj = fromExoGraph(item, this._translator);
 							if (this._canSaveObject(addedObj)) {
 								ignore = false;
 							}
 						}, this);
 						Array.forEach(change.removed, function(item) {
+							// if the type doesn't exist then obviously the instance doesn't either
+							var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
+							if (!jstype) {
+								return;
+							}
 							var removedObj = fromExoGraph(item, this._translator);
 							if (this._canSaveObject(removedObj)) {
 								ignore = false;
@@ -507,6 +613,12 @@
 							return false;
 						}
 					}
+				}
+
+				// if the type doesn't exist then obviously the instance doesn't either
+				var jstype = ExoWeb.Model.Model.getJsType(change.instance.type, true);
+				if (!jstype) {
+					return true;
 				}
 
 				// Ensure that the instance that the change pertains to can be saved.
@@ -1221,96 +1333,113 @@
 			applyRefChange: function ServerSync$applyRefChange(change, callback) {
 				log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
-				// ensure that the type of the target instance is loaded
-				ensureJsType(this._model, change.instance.type, function() {
-					var obj = fromExoGraph(change.instance, this._translator);
-
-					// ensure that the target property is loaded
-					ExoWeb.Model.LazyLoader.eval(obj, change.property, function() {
+				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
+					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
 						if (change.newValue) {
-							// ensure that the type of the new value is loaded
-							ensureJsType(this._model, change.newValue.type, function applyRefChange$typeLoaded(jstype) {
-								var ref = fromExoGraph(change.newValue, this._translator);
-								Sys.Observer.setValue(obj, change.property, ref);
-
-								// lazy load the referenced instance
-								if (!ExoWeb.Model.LazyLoader.isLoaded(ref)) {
-									ExoWeb.Model.LazyLoader.load(ref);
-								}
-
-								// assumption:  processing can continue whether or not the instance has been loaded
-								callback();
+							tryGetJsType(this._model, change.newValue.type, null, true, function(refType) {
+								tryGetEntity(this._model, this._translator, refType, change.newValue.id, null, true, function(refObj) {
+									// wait for processing of pending changes that target the new value
+									var signal = change.newValue && entitySignals[change.newValue.type + "|" + change.newValue.id];
+									if (signal) {
+										signal.waitForAll(function() {
+											Sys.Observer.setValue(srcObj, change.property, refObj);
+											if (aggressiveLog) {
+												callback();
+											}
+										});
+									}
+									else {
+										Sys.Observer.setValue(srcObj, change.property, refObj);
+										if (aggressiveLog) {
+											callback();
+										}
+									}
+								}, this);
 							}, this);
 						}
 						else {
-							Sys.Observer.setValue(obj, change.property, null);
-							callback();
+							Sys.Observer.setValue(srcObj, change.property, null);
+							if (aggressiveLog) {
+								callback();
+							}
 						}
-					}, null, null, this);
+					}, this);
 				}, this);
+
+				if (!aggressiveLog) {
+					callback();
+				}
 			},
 			applyValChange: function ServerSync$applyValChange(change, callback) {
 				log("server", "applyValChange", change.instance);
 
-				var obj = fromExoGraph(change.instance, this._translator);
+				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
+					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
+						Sys.Observer.setValue(srcObj, change.property, change.newValue);
+						if (aggressiveLog) {
+							callback();
+						}
+					}, this);
+				}, this);
 
-				function applyValChange$execute() {
-					Sys.Observer.setValue(obj, change.property, change.newValue);
+				if (!aggressiveLog) {
 					callback();
-				}
-
-				if (!ExoWeb.Model.LazyLoader.isLoaded(obj, change.property)) {
-					ExoWeb.Model.LazyLoader.eval(obj, change.property, function() {
-						applyValChange$execute();
-					});
-				}
-				else {
-					applyValChange$execute();
 				}
 			},
 			applyListChange: function ServerSync$applyListChange(change, callback) {
 				log("server", "applyListChange", change.instance);
 
-				var obj = fromExoGraph(change.instance, this._translator);
+				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
+					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
+						var prop = srcObj.meta.property(change.property, true);
+						var list = prop.value(srcObj);
 
-				var translator = this._translator;
+						list.beginUpdate();
 
-				function applyListChange$execute() {
-					var prop = obj.meta.property(change.property, true);
-					var list = prop.value(obj);
+						var listSignal = new ExoWeb.Signal("applyListChange-items");
 
-					list.beginUpdate();
+						// apply added items
+						Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
+							var done = listSignal.pending();
+							tryGetJsType(this._model, item.type, null, true, function(itemType) {
+								tryGetEntity(this._model, this._translator, itemType, item.id, null, true, function(itemObj) {
+									list.add(itemObj);
+								}, this);
+							}, this);
+							
+							// wait for processing of pending changes that target the new value
+							var signal = entitySignals[item.type + "|" + item.id];
+							if (signal) {
+								signal.waitForAll(done);
+							}
+							else {
+								done();
+							}
+						}, this);
 
-					// apply added items
-					Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
-						var childObj = fromExoGraph(item, translator);
-						list.add(childObj);
+						// apply removed items
+						Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
+							// no need to load instance only to remove it from a list
+							tryGetJsType(this._model, item.type, null, false, function(itemType) {
+								tryGetEntity(this._model, this._translator, itemType, item.id, null, false, function(itemObj) {
+									list.add(itemObj);
+								}, this);
+							}, this);
+						});
 
-						// lazy load the added instance
-						// assumption:  processing can continue whether or not the instance has been loaded
-						if (!ExoWeb.Model.LazyLoader.isLoaded(childObj)) {
-							ExoWeb.Model.LazyLoader.load(childObj);
-						}
-					});
+						// don't end update until the items have been loaded
+						listSignal.waitForAll(function() {;
+							list.endUpdate();
+							if (aggressiveLog) {
+								callback();
+							}
+						})
 
-					// apply removed items
-					Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
-						var childObj = fromExoGraph(item, translator);
-						list.remove(childObj);
-					});
+					}, this);
+				}, this);
 
-					list.endUpdate();
-
+				if (!aggressiveLog) {
 					callback();
-				}
-
-				if (!ExoWeb.Model.LazyLoader.isLoaded(obj, change.property)) {
-					ExoWeb.Model.LazyLoader.eval(obj, change.property, function() {
-						applyListChange$execute();
-					});
-				}
-				else {
-					applyListChange$execute();
 				}
 			}
 		});
@@ -1769,7 +1898,7 @@
 		}
 
 		///////////////////////////////////////////////////////////////////////////////
-		var fetchType = (function fetchType(model, typeName, callback) {
+		var fetchType = (function fetchType(model, typeName, callback, thisPtr) {
 			var signal = new ExoWeb.Signal("fetchType(" + typeName + ")");
 
 			var conditionTypeJson;
@@ -1826,10 +1955,10 @@
 
 				// done
 				if (callback && callback instanceof Function) {
-					callback(mtype.get_jstype());
+					callback.call(thisPtr || this, mtype.get_jstype());
 				}
 			});
-		}).dontDoubleUp({ callbackArg: 2 });
+		}).dontDoubleUp({ callbackArg: 2, groupBy: function(model, typeName) { return [model, typeName]; } });
 
 		function fetchPathTypes(model, jstype, path, callback) {
 			var step = Array.dequeue(path.steps);
@@ -1971,10 +2100,10 @@
 		}
 
 		TypeLazyLoader.mixin({
-			load: function(mtype, propName, callback) {
+			load: (function(mtype, propName, callback, thisPtr) {
 				log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
-				fetchType(mtype.get_model(), mtype.get_fullName(), callback);
-			}
+				fetchType(mtype.get_model(), mtype.get_fullName(), callback, thisPtr);
+			}).dontDoubleUp({ callbackArg: 2, groupBy: function(mtype) { return [mtype]; } })
 		});
 
 		(function() {
@@ -1997,7 +2126,7 @@
 		}
 
 		ObjectLazyLoader.mixin({
-			load: (function load(obj, propName, callback) {
+			load: (function load(obj, propName, callback, thisPtr) {
 				var signal = new ExoWeb.Signal();
 
 				var id = obj.meta.id || STATIC_ID;
@@ -2057,12 +2186,12 @@
 							// Load conditions data and then invoke callback
 							conditionsFromJson(mtype.get_model(), conditionsJson, function() {
 								ExoWeb.Batch.end(batch);
-								callback.apply(this, arguments);
+								callback.apply(thisPtr || this, arguments);
 							});
 						}
 						else {
 							ExoWeb.Batch.end(batch);
-							callback();
+							callback.call(thisPtr || this);
 						}
 					});
 				});
@@ -2134,7 +2263,7 @@
 		}
 
 		PropertyLazyLoader.mixin({
-			load: (function load(obj, propName, callback) {
+			load: (function load(obj, propName, callback, thisPtr) {
 				var signal = new ExoWeb.Signal();
 
 				var id = obj.meta.id || STATIC_ID;
@@ -2157,7 +2286,7 @@
 				signal.waitForAll(function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					objectsFromJson(mtype.get_model(), objectJson);
-					callback();
+					callback.call(thisPtr || this);
 				});
 			}).dontDoubleUp({ callbackArg: 2, groupBy: function(obj) { return [obj]; } })
 		});
@@ -2182,7 +2311,7 @@
 		}
 
 		ListLazyLoader.mixin({
-			load: (function load(list, propName, callback) {
+			load: (function load(list, propName, callback, thisPtr) {
 				var signal = new ExoWeb.Signal();
 
 				var model = list._ownerProperty.get_containingType().get_model();
@@ -2309,7 +2438,7 @@
 						prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, wasInited: true, collectionChanged: true}]);
 
 						ExoWeb.Batch.end(batch);
-						callback.apply(this, arguments);
+						callback.apply(thisPtr || this, arguments);
 
 					}
 
@@ -2322,7 +2451,7 @@
 						}
 					});
 				});
-			}).dontDoubleUp({ callbackArg: 2 /*, debug: true, debugLabel: "ListLazyLoader"*/ })
+			}).dontDoubleUp({ callbackArg: 2, groupBy: function(list) { return [list]; } /*, debug: true, debugLabel: "ListLazyLoader"*/ })
 		});
 
 		(function() {
@@ -2568,11 +2697,11 @@
 
 		var pendingExtensions = {};
 
-		function extendOne(typeName, callback) {
+		function extendOne(typeName, callback, thisPtr) {
 			var jstype = ExoWeb.Model.Model.getJsType(typeName, true);
 
 			if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
-				callback(jstype);
+				callback.call(thisPtr || this, jstype);
 			}
 			else {
 				var pending = pendingExtensions[typeName];
@@ -2581,11 +2710,11 @@
 					pending = pendingExtensions[typeName] = ExoWeb.Functor();
 				}
 
-				pending.add(callback);
+				pending.add(thisPtr ? callback.setScope(thisPtr) : callback);
 			}
 		}
 
-		window.$extend = function $extend(typeInfo, callback) {
+		window.$extend = function $extend(typeInfo, callback, thisPtr) {
 			// If typeInfo is an arry of type names, then use a signal to wait until all types are loaded.
 			if (typeInfo instanceof Array) {
 				var signal = new ExoWeb.Signal("extend");
@@ -2594,17 +2723,17 @@
 				Array.forEach(typeInfo, function(item, index) {
 					extendOne(item, signal.pending(function(type) {
 						types[index] = type;
-					}));
+					}), thisPtr);
 				});
 
 				signal.waitForAll(function() {
 					// When all types are available, call the original callback.
-					callback.apply(window, types);
+					callback.apply(thisPtr || this, types);
 				});
 			}
 			// If typeInfo is a single type name, avoid the overhead of signal and just call extendOne directly.
 			else {
-				extendOne(typeInfo, callback);
+				extendOne(typeInfo, callback, thisPtr);
 			}
 		};
 

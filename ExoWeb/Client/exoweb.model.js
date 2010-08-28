@@ -1802,11 +1802,11 @@
 				function raiseHandler(sender, args) {
 					// Copy the original arguments so that we don't affect other code
 					var newArgs = Object.copy(args);
-				
+
 					// Reset property to be the chain, but store the original property as "triggeredBy"
 					newArgs.triggeredBy = newArgs.property;
 					newArgs.property = chain;
-				
+
 					// Call the handler, passing through the arguments
 					handler(sender, newArgs);
 				}
@@ -1837,7 +1837,7 @@
 										args.originalSender = sender;
 										raiseHandler(known, args);
 									}
-						});
+								});
 							});
 						}
 					});
@@ -3498,11 +3498,11 @@
 			return !loader || (!!loader.isLoaded && obj._lazyLoader.isLoaded(obj, propName));
 		};
 
-		LazyLoader.load = function LazyLoader$load(obj, propName, callback) {
+		LazyLoader.load = function LazyLoader$load(obj, propName, callback, thisPtr) {
 			var reg = obj._lazyLoader;
 			if (!reg) {
 				if (callback && callback instanceof Function) {
-					callback();
+					callback.call(thisPtr || this);
 				}
 			}
 			else {
@@ -3519,7 +3519,7 @@
 					throwAndLog(["lazyLoad"], "Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", [obj, propName]);
 				}
 
-				loader.load(obj, propName, callback);
+				loader.load(obj, propName, callback, thisPtr);
 			}
 		};
 
