@@ -1339,7 +1339,7 @@
 				if ($transform(rule.inputs).where(function(input) { return input.get_dependsOnInit(); }).length > 0) {
 					// Execute for existing instances
 					Array.forEach(this._containingType.known(), function(obj) {
-						if (rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj, true); })) {
+						if (rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
 							try {
 								rule._isExecuting = true;
 								log("rule", "executing rule '{0}' when initialized", [rule]);

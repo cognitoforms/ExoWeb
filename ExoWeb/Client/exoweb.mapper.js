@@ -473,7 +473,7 @@
 				var objKey = type.meta.get_fullName() + "|" + id;
 				var signal = entitySignals[objKey];
 				if (!signal) {
-					signal = entitySignals[objKey] = new ExoWeb.Signal("Entity: " + objKey);
+					signal = entitySignals[objKey] = new ExoWeb.Signal(objKey);
 				}
 
 				if (obj && forceLoad) {
@@ -1958,7 +1958,7 @@
 					callback.call(thisPtr || this, mtype.get_jstype());
 				}
 			});
-		}).dontDoubleUp({ callbackArg: 2, groupBy: function(model, typeName) { return [model, typeName]; } });
+		}).dontDoubleUp({ callbackArg: 2, thisPtrArg: 3 });
 
 		function fetchPathTypes(model, jstype, path, callback) {
 			var step = Array.dequeue(path.steps);
@@ -2103,7 +2103,7 @@
 			load: (function(mtype, propName, callback, thisPtr) {
 				log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
 				fetchType(mtype.get_model(), mtype.get_fullName(), callback, thisPtr);
-			}).dontDoubleUp({ callbackArg: 2, groupBy: function(mtype) { return [mtype]; } })
+			}).dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(mtype) { return [mtype]; } })
 		});
 
 		(function() {
@@ -2186,16 +2186,16 @@
 							// Load conditions data and then invoke callback
 							conditionsFromJson(mtype.get_model(), conditionsJson, function() {
 								ExoWeb.Batch.end(batch);
-								callback.apply(thisPtr || this, arguments);
+								callback.call(thisPtr || this, obj);
 							});
 						}
 						else {
 							ExoWeb.Batch.end(batch);
-							callback.call(thisPtr || this);
+							callback.call(thisPtr || this, obj);
 						}
 					});
 				});
-			}).dontDoubleUp({ callbackArg: 2, groupBy: function(obj) { return [obj]; } })
+			}).dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(obj) { return [obj]; } })
 		});
 
 		(function() {
@@ -2286,9 +2286,9 @@
 				signal.waitForAll(function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					objectsFromJson(mtype.get_model(), objectJson);
-					callback.call(thisPtr || this);
+					callback.call(thisPtr || this, obj);
 				});
-			}).dontDoubleUp({ callbackArg: 2, groupBy: function(obj) { return [obj]; } })
+			}).dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(obj) { return [obj]; } })
 		});
 
 		(function() {
@@ -2438,7 +2438,7 @@
 						prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, wasInited: true, collectionChanged: true}]);
 
 						ExoWeb.Batch.end(batch);
-						callback.apply(thisPtr || this, arguments);
+						callback.call(thisPtr || this, list);
 
 					}
 
@@ -2451,7 +2451,7 @@
 						}
 					});
 				});
-			}).dontDoubleUp({ callbackArg: 2, groupBy: function(list) { return [list]; } /*, debug: true, debugLabel: "ListLazyLoader"*/ })
+			}).dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(list) { return [list]; } /*, debug: true, debugLabel: "ListLazyLoader"*/ })
 		});
 
 		(function() {

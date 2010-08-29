@@ -448,9 +448,14 @@ if (!("config" in ExoWeb)) {
 				// is the function already being called with the same arguments?
 
 				var origCallback;
+				var origThisPtr;
 
 				if (options.callbackArg < arguments.length) {
 					origCallback = arguments[options.callbackArg];
+				}
+
+				if (options.thisPtrArg < arguments.length) {
+					origThisPtr = arguments[options.thisPtrArg];
 				}
 
 				// determine what values to use to group callers
@@ -462,7 +467,7 @@ if (!("config" in ExoWeb)) {
 				else {
 					groupBy = [this];
 					for (var i = 0; i < arguments.length; ++i) {
-						if (i != options.callbackArg) {
+						if (i !== options.callbackArg && i !== options.thisPtrArg) {
 							groupBy.push(arguments[i]);
 						}
 					}
@@ -497,7 +502,7 @@ if (!("config" in ExoWeb)) {
 					call.callback.add(function() {
 						Array.remove(calls, call);
 						if (origCallback) {
-							origCallback.apply(this, arguments);
+							origCallback.apply(origThisPtr || this, arguments);
 						}
 					});
 
@@ -510,7 +515,7 @@ if (!("config" in ExoWeb)) {
 					var batch = Batch.suspendCurrent("dontDoubleUp");
 					callInProgress.callback.add(function() {
 						ExoWeb.Batch.resume(batch);
-						origCallback.apply(this, arguments);
+						origCallback.apply(origThisPtr || this, arguments);
 					});
 				}
 			};

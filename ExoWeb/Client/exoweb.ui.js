@@ -760,6 +760,12 @@ Type.registerNamespace("ExoWeb.UI");
 				var _this = this;
 
 				Sys.require([this.get_scriptObject()], function() {
+					// if the element is not within the document body it 
+					// probably means that it is being removed - TODO: verify
+					if (!$.contains(document.body, _this._element)) {
+						return;
+					}
+
 					_this._behavior = $create(_this.get_classObject(), _this.get_properties(), _this.get_events(), null, _this.get_element());
 				});
 			}
