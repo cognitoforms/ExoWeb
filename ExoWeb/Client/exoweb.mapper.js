@@ -1425,7 +1425,7 @@
 									list.add(itemObj);
 								}, this);
 							}, this);
-						});
+						}, this);
 
 						// don't end update until the items have been loaded
 						listSignal.waitForAll(function() {;
