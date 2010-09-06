@@ -369,7 +369,7 @@ if (!("config" in ExoWeb)) {
 				}
 
 				this._pending++;
-				log("signal", "(++{_pending}) {_debugLabel}", this);
+//				log("signal", "(++{_pending}) {_debugLabel}", this);
 				return this._genCallback(callback, thisPtr, executeImmediately);
 			},
 			orPending: function Signal$orPending(callback, thisPtr, executeImmediately) {
@@ -419,7 +419,7 @@ if (!("config" in ExoWeb)) {
 				}
 			},
 			oneDone: function Signal$oneDone() {
-				log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
+//				log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
 
 				--this._pending;
 
@@ -662,6 +662,9 @@ if (!("config" in ExoWeb)) {
 				if (handler) {
 					handler.apply(this, argsArray || []);
 				}
+			},
+			_getEventHandler: function Functor$_getEventHandler(name) {
+				return this["_" + name];
 			}
 		};
 

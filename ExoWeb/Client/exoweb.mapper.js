@@ -189,7 +189,7 @@
 				if (!obj) {
 					obj = new jstype(val.id);
 					ObjectLazyLoader.register(obj);
-					log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), val.id]);
+//					log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), val.id]);
 				}
 
 				return obj;
@@ -208,7 +208,7 @@
 				if (!obj) {
 					obj = new jstype(ids[1]);
 					ObjectLazyLoader.register(obj);
-					log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), ids[1]]);
+//					log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), ids[1]]);
 				}
 
 				return obj;
@@ -287,10 +287,10 @@
 				}
 
 				if (obj instanceof Function) {
-					log("server", "logging list change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
+//					log("server", "logging list change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
 				}
 				else {
-					log("server", "logging list change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
+//					log("server", "logging list change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 				}
 
 				for (var i = 0; i < listChanges.length; ++i) {
@@ -327,7 +327,7 @@
 				}
 
 				if (obj.meta.isNew) {
-					log("server", "logging new: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
+//					log("server", "logging new: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
 
 					var change = {
 						__type: "InitNew:#ExoGraph",
@@ -354,10 +354,10 @@
 
 				if (property.get_isValueType()) {
 					if (obj instanceof Function) {
-						log("server", "logging value change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
+//						log("server", "logging value change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
 					}
 					else {
-						log("server", "logging value change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
+//						log("server", "logging value change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 					}
 
 					var valueChange = {
@@ -372,10 +372,10 @@
 				}
 				else {
 					if (obj instanceof Function) {
-						log("server", "logging reference change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
+//						log("server", "logging reference change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
 					}
 					else {
-						log("server", "logging reference change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
+//						log("server", "logging reference change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
 					}
 
 					var refChange = {
@@ -419,7 +419,7 @@
 				// if an existing object is registered then register for lazy loading
 				if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && captureRegisteredObjects && !applyingChanges) {
 					ObjectLazyLoader.register(obj);
-					log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
+//					log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
 				}
 			});
 			this.isCapturingRegisteredObjects = function ServerSync$isCapturingRegisteredObjects() {
@@ -445,17 +445,17 @@
 				callback.call(thisPtr || this, jstype);
 			}
 			else if (jstype && forceLoad) {
-				log("server", "Forcing lazy loading of type \"{0}\".", [name]);
+//				log("server", "Forcing lazy loading of type \"{0}\".", [name]);
 				ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
 			}
 			else if (!jstype && forceLoad) {
-				log("server", "Force creating type \"{0}\".", [name]);
+//				log("server", "Force creating type \"{0}\".", [name]);
 				ensureJsType(model, name, callback, thisPtr);
 			}
 			else {
-				log("server", "Waiting for existance of type \"{0}\".", [name]);
+//				log("server", "Waiting for existance of type \"{0}\".", [name]);
 				$extend(name, function() {
-					log("server", "Type \"{0}\" was loaded, now continuing.", [name]);
+//					log("server", "Type \"{0}\" was loaded, now continuing.", [name]);
 					callback.apply(this, arguments);
 				}, thisPtr);
 			}
@@ -477,23 +477,23 @@
 				}
 
 				if (obj && forceLoad) {
-					log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+//					log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 					ExoWeb.Model.LazyLoader.load(obj, property, signal.pending(callback, thisPtr), thisPtr);
 				}
 				else if (!obj && forceLoad) {
-					log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+//					log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 					var obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
 					ExoWeb.Model.LazyLoader.eval(obj, property, signal.pending(function() {
 						callback.call(thisPtr || this, obj);
 					}));
 				}
 				else {
-					log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+//					log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
 					var done = signal.pending();
 
 					var registeredHandler = function(obj) {
-						log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
+//						log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
 						if (obj.meta.type === type && obj.meta.id === id) {
 							// unregister the handler since it is no longer needed
 							model.removeObjectRegistered(registeredHandler);
@@ -506,10 +506,10 @@
 									callback.call(thisPtr || this, obj);
 								}
 								else {
-									log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
+//									log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
 									var initHandler = function() {
 										prop.removeChanged(initHandler);
-										log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
+//										log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
 										done();
 										callback.call(thisPtr || this, obj);
 									};
@@ -631,7 +631,7 @@
 			raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed/*, automatic */) {
 				Sys.Observer.setValue(this, "PendingServerEvent", true);
 
-				log("server", "ServerSync.raiseServerEvent() >> {0}", [name]);
+//				log("server", "ServerSync.raiseServerEvent() >> {0}", [name]);
 
 				var automatic = arguments.length == 6 && arguments[5] === true;
 
@@ -679,14 +679,14 @@
 
 				function applyChanges() {
 					if (result.changes) {
-						log("server", "ServerSync._onRaiseServerEventSuccess() >> applying {0} changes", [result.changes.length]);
+//						log("server", "ServerSync._onRaiseServerEventSuccess() >> applying {0} changes", [result.changes.length]);
 
 						if (result.changes.length > 0) {
 							this.applyChanges(result.changes, signal.pending());
 						}
 					}
 					else {
-						log("server", "._onRaiseServerEventSuccess() >> no changes");
+//						log("server", "._onRaiseServerEventSuccess() >> no changes");
 					}
 				}
 
@@ -704,7 +704,7 @@
 			_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-				log("error", "Raise Server Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
+//				log("error", "Raise Server Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
 
 				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
 				this._raiseEvent("raiseServerEventEnd", [[result, userContext, methodName], automatic]);
@@ -733,7 +733,7 @@
 			roundtrip: function ServerSync$roundtrip(success, failed/*, automatic */) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", true);
 
-				log("server", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
+//				log("server", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
 
 				var automatic = arguments.length == 3 && arguments[2] === true;
 
@@ -752,14 +752,14 @@
 				var signal = new ExoWeb.Signal("RoundtripSuccess");
 
 				if (result.changes) {
-					log("server", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [result.changes.length]);
+//					log("server", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [result.changes.length]);
 
 					if (result.changes.length > 0) {
 						this.applyChanges(result.changes, signal.pending());
 					}
 				}
 				else {
-					log("server", "._onRoundtripSuccess() >> no changes");
+//					log("server", "._onRoundtripSuccess() >> no changes");
 				}
 
 				signal.waitForAll(function() {
@@ -776,7 +776,7 @@
 			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-				log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
+//				log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
 
 				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
 				this._raiseEvent("roundtripEnd", [[result, userContext, methodName], automatic]);
@@ -788,16 +788,16 @@
 				}
 			},
 			startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
-				log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
+//				log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
 
 				// cancel any pending roundtrip schedule
 				this.stopAutoRoundtrip();
 
 				var _this = this;
 				function doRoundtrip() {
-					log("server", "auto-roundtrip starting ({0})", [new Date()]);
+//					log("server", "auto-roundtrip starting ({0})", [new Date()]);
 					_this.roundtrip(function context$autoRoundtripCallback() {
-						log("server", "auto-roundtrip complete ({0})", [new Date()]);
+//						log("server", "auto-roundtrip complete ({0})", [new Date()]);
 						_this._roundtripTimeout = window.setTimeout(doRoundtrip, interval);
 					}, null, true);
 				}
@@ -827,7 +827,7 @@
 			save: function ServerSync$save(root, success, failed/*, automatic*/) {
 				Sys.Observer.setValue(this, "PendingSave", true);
 
-				log("server", ".save() >> sending {0} changes", [this._changes.length]);
+//				log("server", ".save() >> sending {0} changes", [this._changes.length]);
 
 				var automatic = arguments.length == 4 && arguments[3] === true;
 
@@ -847,7 +847,7 @@
 				var signal = new ExoWeb.Signal("SaveSuccess");
 
 				if (result.changes) {
-					log("server", "._onSaveSuccess() >> applying {0} changes", [result.changes.length]);
+//					log("server", "._onSaveSuccess() >> applying {0} changes", [result.changes.length]);
 
 					// apply changes from server
 					if (result.changes.length > 0) {
@@ -855,7 +855,7 @@
 					}
 				}
 				else {
-					log("server", "._onSaveSuccess() >> no changes");
+//					log("server", "._onSaveSuccess() >> no changes");
 				}
 
 				signal.waitForAll(function() {
@@ -872,7 +872,7 @@
 			_onSaveFailed: function ServerSync$_onSaveFailed(result, userContext, methodName, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
-				log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
+//				log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
 
 				this._raiseEvent("requstEnd", [[result, userContext, methodName], automatic]);
 				this._raiseEvent("saveEnd", [[result, userContext, methodName], automatic]);
@@ -884,7 +884,7 @@
 				}
 			},
 			startAutoSave: function ServerSync$startAutoSave(root, interval) {
-				log("server", "auto-save enabled for future changes - ({0} milliseconds", [interval]);
+//				log("server", "auto-save enabled for future changes - ({0} milliseconds", [interval]);
 
 				// cancel any pending save schedule
 				this.stopAutoSave();
@@ -907,9 +907,9 @@
 
 				var _this = this;
 				function ServerSync$doAutoSave() {
-					log("server", "auto-save starting ({0})", [new Date()]);
+//					log("server", "auto-save starting ({0})", [new Date()]);
 					_this.save(_this._saveRoot, function ServerSync$doAutoSave$callback() {
-						log("server", "auto-save complete ({0})", [new Date()]);
+//						log("server", "auto-save complete ({0})", [new Date()]);
 
 						// wait for the next change before next auto save
 						_this._saveTimeout = null;
@@ -942,7 +942,7 @@
 				}
 
 				try {
-					log("server", "ServerSync.rollback() >> {0}", steps);
+//					log("server", "ServerSync.rollback() >> {0}", steps);
 
 					this.beginApplyingChanges();
 
@@ -978,7 +978,7 @@
 					processNextChange.call(this);
 
 					signal.waitForAll(function() {
-						log("server", "done rolling back {0} changes", [steps]);
+//						log("server", "done rolling back {0} changes", [steps]);
 						this.endApplyingChanges();
 					}, this);
 				}
@@ -988,7 +988,7 @@
 				}
 			},
 			rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-				log("server", "rollbackValChange", change.instance);
+//				log("server", "rollbackValChange", change.instance);
 
 				var obj = fromExoGraph(change.instance, this._translator);
 
@@ -996,7 +996,7 @@
 				callback();
 			},
 			rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-				log("server", "rollbackRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
+//				log("server", "rollbackRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
 				var obj = fromExoGraph(change.instance, this._translator);
 				var ref = fromExoGraph(change.oldValue, this._translator);
@@ -1005,7 +1005,7 @@
 				callback();
 			},
 			rollbackInitChange: function ServerSync$rollbackInitChange(change, callback) {
-				log("server", "rollbackInitChange: Type = {type}, Id = {id}", change.instance);
+//				log("server", "rollbackInitChange: Type = {type}, Id = {id}", change.instance);
 
 				delete change.instance;
 
@@ -1120,7 +1120,7 @@
 
 				try {
 					var batch = ExoWeb.Batch.start("apply changes");
-					log("server", "begin applying {length} changes", changes);
+//					log("server", "begin applying {length} changes", changes);
 
 					this.beginApplyingChanges();
 
@@ -1211,14 +1211,14 @@
 					processNextChange.call(this);
 
 					signal.waitForAll(function() {
-						log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
+//						log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
 						this.endApplyingChanges();
 						ExoWeb.Batch.end(batch);
 						if (callback && callback instanceof Function) {
 							callback();
 						}
 						if (newChanges > 0) {
-							log("server", "raising \"Changes\" property change event");
+//							log("server", "raising \"Changes\" property change event");
 							Sys.Observer.raisePropertyChanged(this, "Changes");
 						}
 					}, this);
@@ -1229,7 +1229,7 @@
 				}
 			},
 			applySaveChange: function ServerSync$applySaveChange(change, isLookahead, callback) {
-				log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
+//				log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
 
 				if (change.idChanges && change.idChanges.length > 0) {
 
@@ -1310,7 +1310,7 @@
 				}
 			},
 			applyInitChange: function ServerSync$applyInitChange(change, callback) {
-				log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
+//				log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
 
 				var translator = this._translator;
 
@@ -1331,7 +1331,7 @@
 					});
 			},
 			applyRefChange: function ServerSync$applyRefChange(change, callback) {
-				log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
+//				log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
 				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
 					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
@@ -1371,7 +1371,7 @@
 				}
 			},
 			applyValChange: function ServerSync$applyValChange(change, callback) {
-				log("server", "applyValChange", change.instance);
+//				log("server", "applyValChange", change.instance);
 
 				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
 					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
@@ -1387,7 +1387,7 @@
 				}
 			},
 			applyListChange: function ServerSync$applyListChange(change, callback) {
-				log("server", "applyListChange", change.instance);
+//				log("server", "applyListChange", change.instance);
 
 				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
 					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
@@ -1597,7 +1597,7 @@
 				obj = getObject(model, typeName, id, null, true);
 			}
 
-			log("objectInit", "{0}({1})   <.>", [typeName, id]);
+//			log("objectInit", "{0}({1})   <.>", [typeName, id]);
 
 			// Load object's properties
 			for (var t = mtype; t !== null; t = t.baseType) {
@@ -1606,7 +1606,7 @@
 				for(var propName in props) {
 					var prop = props[propName];
 				
-					log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
+//					log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
 
 					if (!prop) {
 						throwAndLog(["objectInit"], "Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
@@ -1705,7 +1705,7 @@
 		}
 
 		function typeFromJson(model, typeName, json) {
-			log("typeInit", "{1}   <.>", arguments);
+//			log("typeInit", "{1}   <.>", arguments);
 
 			// get model type. it may have already been created for lazy loading	
 			var mtype = getType(model, typeName, json.baseType, true);
@@ -1863,7 +1863,7 @@
 						mtype.set_origin("server");
 
 						if (!forLoading || family.length > 0) {
-							log("typeInit", "{0} (ghost)", [type]);
+//							log("typeInit", "{0} (ghost)", [type]);
 							TypeLazyLoader.register(mtype);
 						}
 					}
@@ -1890,7 +1890,7 @@
 
 				if (!forLoading) {
 					ObjectLazyLoader.register(obj);
-					log("entity", "{0}({1})  (ghost)", [mtype.get_fullName(), id]);
+//					log("entity", "{0}({1})  (ghost)", [mtype.get_fullName(), id]);
 				}
 			}
 
@@ -1945,13 +1945,16 @@
 					conditionTypesFromJson(model, conditionTypeJson);
 				}
 
-				// apply app-specific configuration
-				var exts = pendingExtensions[typeName];
+				//ExoWeb.Batch.whenDone(function() { 
+					// apply app-specific configuration
+					// defer until loading is completed to reduce init events
+					var exts = pendingExtensions[typeName];
 
-				if (exts) {
-					delete pendingExtensions[typeName];
-					exts(mtype.get_jstype());
-				}
+					if (exts) {
+						delete pendingExtensions[typeName];
+						exts(mtype.get_jstype());
+					}				
+				//});
 
 				// done
 				if (callback && callback instanceof Function) {
@@ -2101,7 +2104,7 @@
 
 		TypeLazyLoader.mixin({
 			load: (function(mtype, propName, callback, thisPtr) {
-				log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
+//				log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
 				fetchType(mtype.get_model(), mtype.get_fullName(), callback, thisPtr);
 			}).dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(mtype) { return [mtype]; } })
 		});
@@ -2143,7 +2146,7 @@
 				}
 
 				// fetch object json
-				log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
+//				log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 				// NOTE: should changes be included here?
 				objectProvider(mtype.get_fullName(), [id], true, false, paths, null,
 					signal.pending(function(result) {
@@ -2272,7 +2275,7 @@
 				var objectJson;
 
 				// fetch object json
-				log(["propInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [mtype.get_fullName(), id, propName]);
+//				log(["propInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [mtype.get_fullName(), id, propName]);
 				propertyProvider(mtype.get_fullName(), id, true, [], signal.pending(function(result) {
 					objectJson = result;
 				}));
@@ -2323,7 +2326,7 @@
 				var propType = list._ownerProperty.get_jstype().meta;
 
 				// load the objects in the list
-				log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
+//				log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
 
 				var objectJson, conditionsJson;
 
@@ -2359,7 +2362,7 @@
 						return;
 					}
 
-					log("list", "{0}({1}).{2}", [ownerType, ownerId, propName]);
+//					log("list", "{0}({1}).{2}", [ownerType, ownerId, propName]);
 
 					// The actual type name and id as found in the resulting json.
 					var jsonId = ownerId;
@@ -2673,11 +2676,11 @@
 			// model.ready() fires
 			ExoWeb.Model.LazyLoader.register(ret, {
 				load: function context$load(obj, propName, callback) {
-					log(["context", "lazyLoad"], "caller is waiting for ExoWeb.context.ready(), propName={1}", arguments);
+//					log(["context", "lazyLoad"], "caller is waiting for ExoWeb.context.ready(), propName={1}", arguments);
 
 					// objects are already loading so just queue up the calls
 					allSignals.waitForAll(function context$load$callback() {
-						log(["context", "lazyLoad"], "raising ExoWeb.context.ready()");
+//						log(["context", "lazyLoad"], "raising ExoWeb.context.ready()");
 
 						ExoWeb.Model.LazyLoader.unregister(obj, this);
 						callback();
@@ -2686,6 +2689,8 @@
 			});
 
 			allSignals.waitForAll(function() {
+				model.notifyBeforeContextReady();
+
 				ExoWeb.Batch.end(batch);
 
 				// begin watching for existing objects that are created

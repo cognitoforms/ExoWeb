@@ -12,7 +12,7 @@
 		// Metadata adapter markup extension
 		Sys.Application.registerMarkupExtension("@",
 			function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
-				log(["@", "markupExt"], "@ " + (properties.$default || "(no path)") + " (evaluating)");
+//				log(["@", "markupExt"], "@ " + (properties.$default || "(no path)") + " (evaluating)");
 
 				if (properties.required) {
 					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter markup extension does not support the \"required\" property.");
@@ -24,7 +24,7 @@
 				var adapter = new Adapter(properties.source || templateContext.dataItem, path, properties.systemFormat, properties.displayFormat, properties);
 
 				adapter.ready(function AdapterReady() {
-					log(["@", "markupExt"], "@ " + (adapter._propertyPath || "(no path)") + "  <.>");
+//					log(["@", "markupExt"], "@ " + (adapter._propertyPath || "(no path)") + "  <.>");
 					Sys.Observer.setValue(component, targetProperty, adapter);
 					if (component.add_disposing) {
 						component.add_disposing(function() {
@@ -56,7 +56,7 @@
 				};
 
 				var lazyLog = function lazyLog(msg, value) {
-					log(["~", "markupExt"], getMessage(msg, value));
+//					log(["~", "markupExt"], getMessage(msg, value));
 				};
 
 				lazyLog("initialized");
@@ -481,7 +481,7 @@
 				}
 			},
 			_reloadOptions: function Adapter$_reloadOptions() {
-				log(["@", "markupExt"], "Reloading adapter options.");
+//				log(["@", "markupExt"], "Reloading adapter options.");
 
 				this._options = null;
 				this._allowedValues = null;
@@ -569,7 +569,7 @@
 			// Various methods.
 			///////////////////////////////////////////////////////////////////////
 			dispose: function Adapter$dispose() {
-				log(["@", "markupExt"], "Adapter disposed.");
+//				log(["@", "markupExt"], "Adapter disposed.");
 				this._isDisposed = true;
 			},
 			ready: function Adapter$ready(callback, thisPtr) {
@@ -650,7 +650,7 @@
 					if (this._allowedValuesRule) {
 
 						var reloadOptions = function() {
-							log(["@", "markupExt"], "Reloading adapter options due to change in allowed values path.");
+//							log(["@", "markupExt"], "Reloading adapter options due to change in allowed values path.");
 
 							this._reloadOptions();
 
@@ -663,7 +663,7 @@
 								Array.forEach(rawValue, function(item, index) {
 									this._allowedValuesRule.satisfiesAsync(targetObj, item, function(answer) {
 										if (!answer && !_this._isDisposed) {
-											log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+//											log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 											_this.set_selected(item, false);
 										}
 									});
@@ -672,7 +672,7 @@
 							else {
 								this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, function(answer) {
 									if (!answer && !_this._isDisposed) {
-										log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+//										log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 										_this.set_rawValue(null);
 									}
 								});

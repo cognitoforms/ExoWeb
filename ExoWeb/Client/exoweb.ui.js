@@ -366,11 +366,11 @@ Type.registerNamespace("ExoWeb.UI");
 				if (tmpl.control instanceof Template) {
 					var isType = tmpl.control.isType(data);
 					if ((isType === undefined || isType === true) && tmpl.control.test(element, data)) {
-						log(["templates"], "TEMPLATE MATCHES!: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
+//						log(["templates"], "TEMPLATE MATCHES!: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
 						return tmpl;
 					}
 					else {
-						log(["templates"], "template does not match: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
+//						log(["templates"], "template does not match: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
 					}
 				}
 			}
@@ -397,7 +397,7 @@ Type.registerNamespace("ExoWeb.UI");
 			lastTemplateRequestSignal = new ExoWeb.Signal(id);
 			var signal = lastTemplateRequestSignal;
 			var callback = signal.pending(function(elem) {
-				log("ui", "Activating elements for templates \"{0}\"", [id]);
+//				log("ui", "Activating elements for templates \"{0}\"", [id]);
 
 				// Store the number of templates before activating this element.
 				var originalTemplateCount = allTemplates.length;
@@ -419,7 +419,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 					// if there is a pending request then wait for it to complete
 					if (lastReq) {
-						log("ui", "Templates \"{0}\" complete and waiting.", [id]);
+//						log("ui", "Templates \"{0}\" complete and waiting.", [id]);
 						lastReq.waitForAll(function() { callback(elem); });
 					}
 					else {
@@ -530,11 +530,11 @@ Type.registerNamespace("ExoWeb.UI");
 			},
 			render: function Content$render(force) {
 				if (this._canRender(force)) {
-					log(['ui', "templates"], "render({0})", [force === true ? "force" : ""]);
+//					log(['ui', "templates"], "render({0})", [force === true ? "force" : ""]);
 
 					externalTemplatesSignal.waitForAll(function Content$externalTemplatesSignal() {
 						if (this._element !== undefined && this._element !== null) {
-							log(['ui', "templates"], "render() proceeding after all templates are loaded");
+//							log(['ui', "templates"], "render() proceeding after all templates are loaded");
 
 							var renderArgs = new Sys.Data.DataEventArgs(this._data);
 							Sys.Observer.raiseEvent(this, "rendering", renderArgs);
@@ -818,7 +818,7 @@ Type.registerNamespace("ExoWeb.UI");
 
 					if (index !== undefined && index !== null && index.constructor === Number) {
 						if (index >= containerContexts.length) {
-							log("ui", "invalid index");
+//							log("ui", "invalid index");
 						}
 						else {
 							var indexedContext = containerContexts[index];

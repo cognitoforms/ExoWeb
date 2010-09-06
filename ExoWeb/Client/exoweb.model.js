@@ -149,6 +149,12 @@
 			type: function(name) {
 				return this._types[name];
 			},
+			addBeforeContextReady: function(handler) {
+				this._addEvent("beforeContextReady", handler);
+			},
+			notifyBeforeContextReady: function() {
+				this._raiseEvent("beforeContextReady", []);
+			},
 			addAfterPropertySet: function(handler) {
 				this._addEvent("afterPropertySet", handler);
 			},
@@ -743,7 +749,7 @@
 				function Type$addRule$fn(obj, prop, fn) {
 					try {
 						prop.get_containingType().get_model().beginValidation();
-						rule._isExecuting = true;
+						rule._isExecuting = true;						
 						log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
 						fn.call(rule, obj);
 					}
@@ -826,7 +832,7 @@
 								if (rule.isAsync) {
 									// run rule asynchronously, and then pickup running next rules afterwards
 									var _this = this;
-									log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+//									log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
 									rule.execute(obj, function() {
 										rule._isExecuting = false;
 										_this.executeRules(obj, prop, callback, i + 1);
@@ -835,7 +841,7 @@
 								}
 								else {
 									try {
-										log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+//										log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
 										rule.execute(obj);
 									}
 									finally {
@@ -1001,7 +1007,7 @@
 			get_origin: function Property$get_origin() {
 				return this._origin ? this._origin : this._containingType.get_origin();
 			},
-
+			// <DEBUG>
 			_assertType: function Property$_assertType(obj) {
 				if (this._isStatic === true) {
 					if (!ExoWeb.isType(obj.meta, Type)) {
@@ -1030,40 +1036,57 @@
 					}
 				}
 			},
+			// </DEBUG>
 
 			_getter: function Property$_getter(obj, skipTypeCheck) {
-				if (obj === undefined || obj === null) {
-					throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
-				}
+//				var key = this.get_containingType().get_fullName() + ":" + this._name + ":" + (obj ? obj.meta.id : "STATIC");
+//				if(!window.entities[key]){
+//					window.entities[key] = 1;
+//				}
+//				else {
+//					++window.entities[key];
+//				}
 
 				// Generated setter added to entities can skip type validation since it is 
 				// unlikely to be called on an invalid object.
-				if (!skipTypeCheck) {
-					this._assertType(obj);
-				}
 
-				this._raiseEvent("get", [obj, { property: this, value: obj[this._fieldName], isInited: obj.hasOwnProperty(this._fieldName)}]);
+				// <DEBUG>
+//				if (!skipTypeCheck) {
+//					if (obj === undefined || obj === null) {
+//						throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
+//					}
 
-				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
-					ExoWeb.trace.logWarning("model",
-						"Possible incorrect property usage:  property \"{0}\" is defined on object but field name should be \"{1}\", make sure you are using getters and setters.",
-						[this._name, this._fieldName]
-					);
-				}
+//					this._assertType(obj);
+				// </DEBUG>
+
+				var handler = this._getEventHandler("get");
+				if(handler)
+					handler(obj, { property: this, value: obj[this._fieldName], isInited: obj.hasOwnProperty(this._fieldName)});
+
+				// <DEBUG>
+//				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
+//					ExoWeb.trace.logWarning("model",
+//						"Possible incorrect property usage:  property \"{0}\" is defined on object but field name should be \"{1}\", make sure you are using getters and setters.",
+//						[this._name, this._fieldName]
+//					);
+//				}
+				// </DEBUG>
 
 				return obj[this._fieldName];
 			},
 
 			_setter: function Property$_setter(obj, val, skipTypeCheck, args) {
-				if (obj === undefined || obj === null) {
-					throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
-				}
-
 				// Generated setter added to entities can skip type validation since it is 
 				// unlikely to be called on an invalid object.
-				if (!skipTypeCheck) {
-					this._assertType(obj);
-				}
+				// <DEBUG>
+//				if (!skipTypeCheck) {
+//					if (obj === undefined || obj === null) {
+//						throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
+//					}
+
+//					this._assertType(obj);
+//				}
+				// </DEBUG>
 
 				if (!this.canSetValue(obj, val)) {
 					throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
@@ -1084,7 +1107,9 @@
 					// any rule causes a roundtrip to the server these changes will be available
 					this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old, wasInited);
 
-					this._raiseEvent("changed", [obj, $.extend({ property: this, newValue: val, oldValue: old, wasInited: wasInited }, args)]);
+					var handler = this._getEventHandler("changed");
+					if(handler)
+						handler(obj, $.extend({ property: this, newValue: val, oldValue: old, wasInited: wasInited }, args));
 
 					Sys.Observer.raisePropertyChanged(obj, this._name);
 				}
@@ -1177,6 +1202,14 @@
 					return;
 				}
 
+//				if(!window.entities)
+//					window.entities = {};
+
+//				var key = this.get_containingType().get_fullName() + ":" + this._name + ":" + (obj ? obj.meta.id : "STATIC");
+//				if(!window.entities[key]){
+//					window.entities[key] = 0;
+//				}
+
 				target[this._fieldName] = val;
 
 				if (val instanceof Array) {
@@ -1201,8 +1234,9 @@
 						Sys.Observer.raisePropertyChanged(target, _this._name);
 					});
 				}
-
-				this._raiseEvent("changed", [target, { property: this, newValue: val, oldValue: undefined, wasInited: false}]);
+				var handler = this._getEventHandler("changed");
+				if(handler)
+					handler(target, { property: this, newValue: val, oldValue: undefined, wasInited: false});
 
 				Sys.Observer.raisePropertyChanged(target, this._name);
 			},
@@ -1334,26 +1368,27 @@
 					toString: function() { return "calculation of " + this.prop._name; }
 				};
 
-				Rule.register(rule, inputs, isAsync, this.get_containingType());
+				Rule.register(rule, inputs, isAsync, this.get_containingType(), function() { 
 
-				if ($transform(rule.inputs).where(function(input) { return input.get_dependsOnInit(); }).length > 0) {
-					// Execute for existing instances
-					Array.forEach(this._containingType.known(), function(obj) {
-						if (rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
-							try {
-								rule._isExecuting = true;
-								log("rule", "executing rule '{0}' when initialized", [rule]);
-								rule.execute.call(rule, obj);
+					if ($transform(rule.inputs).where(function(input) { return input.get_dependsOnInit(); }).length > 0) {
+						// Execute for existing instances
+						Array.forEach(this._containingType.known(), function(obj) {
+							if (rule.inputs.every(function(input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+								try {
+									rule._isExecuting = true;
+//									log("rule", "executing rule '{0}' when initialized", [rule]);
+									rule.execute.call(rule, obj);
+								}
+								catch (err) {
+									throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
+								}
+								finally {
+									rule._isExecuting = false;
+								}
 							}
-							catch (err) {
-								throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
-							}
-							finally {
-								rule._isExecuting = false;
-							}
-						}
-					});
-				}
+						});
+					}
+				}, this);
 			},
 			// Adds a rule to the property that will update its value
 			// based on a calculation.
@@ -1676,7 +1711,7 @@
 								}
 
 								// continue along the chain for this list item
-								if (!canSkipRemainingProps && this.each(obj, callback, propFilter, prop.value(target[i]), p + 1, prop) === false) {
+								if (!canSkipRemainingProps && this.each(obj, callback, propFilter, target[i]["get_" + prop.get_name()](), p + 1, prop) === false) {
 									return false;
 								}
 							}
@@ -1702,7 +1737,7 @@
 					}
 
 					// move to next property in the chain
-					target = prop.value(target);
+					target = target["get_" + prop.get_name()]();
 
 					// break early if the target is undefined
 					if (target === undefined || target === null) {
@@ -1906,13 +1941,13 @@
 
 				if (numProperties < this._properties.length && !tolerateNull) {
 					allInited = false;
-					log("model", "Path \"{0}\" is not inited since \"{1}\" is undefined.", [this.get_path(), this._properties[numProperties - 1].get_name()]);
+//					log("model", "Path \"{0}\" is not inited since \"{1}\" is undefined.", [this.get_path(), this._properties[numProperties - 1].get_name()]);
 				}
 				else if (allInited) {
-					log("model", "Path \"{0}\" has been inited.", [this.get_path()]);
+//					log("model", "Path \"{0}\" has been inited.", [this.get_path()]);
 				}
 				else {
-					log("model", "Path \"{0}\" has NOT been inited.", [this.get_path()]);
+//					log("model", "Path \"{0}\" has NOT been inited.", [this.get_path()]);
 				}
 
 				return allInited;
@@ -2107,7 +2142,7 @@
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Rule() { }
 
-		Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter) {
+		Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter, callback, thisPtr) {
 			rule.isAsync = !!isAsync;
 
 			rule.inputs = inputs.map(function(item) {
