@@ -133,6 +133,11 @@
 		};
 
 		Model.prototype = {
+			dispose: function Model$dispose() {
+				for(var key in this._types) {
+					delete window[key];
+				}
+			},
 			addType: function Model$addType(name, base) {
 				var type = new Type(this, name, base);
 				this._types[name] = type;
@@ -376,8 +381,6 @@
 			this._initExistingProps = [];
 
 			// generate class and constructor
-			var type = this;
-
 			var jstype = Model.getJsType(name, true);
 
 			if (jstype) {
@@ -395,51 +398,7 @@
 
 			// the final name to use is the last token
 			var finalName = token;
-			// the full name (used as the function label) must be a valid identifier
-			var fullName = name.replace(/\./ig, "$");
-
-			function construct(idOrProps, props) {
-				if (!disableConstruction) {
-					if (idOrProps && idOrProps.constructor === String) {
-						var id = idOrProps;
-						var obj = type.get(id);
-						if (obj) {
-							if (props) {
-								obj.init(props);
-							}
-							return obj;
-						}
-
-						type.register(this, id);
-						type._initProperties(this, "_initExistingProps");
-
-						if (props) {
-							this.init(props);
-						}
-					}
-					else {
-						type.register(this);
-						type._initProperties(this, "_initNewProps");
-
-						// set properties passed into constructor
-						if (idOrProps) {
-							this.set(idOrProps);
-						}
-					}
-				}
-			}
-
-			if (evalAffectsScope) {
-				// use eval to generate the type so the function name appears in the debugger
-				var ctorScript = $format("function {type}(idOrProps) { var obj=construct.apply(this, arguments); if(obj) return obj; };" +
-					"jstype = {type};",
-					{ "type": fullName });
-
-				eval(ctorScript);
-			}
-			else {
-				jstype = construct;
-			}
+			jstype = generateClass(this);
 
 			this._jstype = namespaceObj[finalName] = jstype;
 
@@ -479,6 +438,60 @@
 
 			// done...
 			this._jstype.registerClass(name, baseJsType);
+		}
+
+		function generateClass(type)
+		{
+			function construct(idOrProps, props) {
+				if (!disableConstruction) {
+					if (idOrProps && idOrProps.constructor === String) {
+						var id = idOrProps;
+						var obj = type.get(id);
+						if (obj) {
+							if (props) {
+								obj.init(props);
+							}
+							return obj;
+						}
+
+						type.register(this, id);
+						type._initProperties(this, "_initExistingProps");
+
+						if (props) {
+							this.init(props);
+						}
+					}
+					else {
+						type.register(this);
+						type._initProperties(this, "_initNewProps");
+
+						// set properties passed into constructor
+						if (idOrProps) {
+							this.set(idOrProps);
+						}
+					}
+				}
+			}
+
+			var jstype;
+
+			// <DEBUG>
+			if (evalAffectsScope) {
+				// use eval to generate the type so the function name appears in the debugger
+				var ctorScript = $format("function {type}(idOrProps) { var obj=construct.apply(this, arguments); if(obj) return obj; };" +
+					"jstype = {type};",
+					{ "type": type._fullName.replace(/\./ig, "$") });
+
+				eval(ctorScript);
+			}
+			else {
+				// </DEBUG>
+				jstype = construct;
+				// <DEBUG>
+			}
+			// </DEBUG>
+
+			return jstype;
 		}
 
 		Type.prototype = {
@@ -2166,7 +2179,12 @@
 				typeFilter = rule.inputs[0].property.get_containingType();
 			}
 
-			typeFilter.addRule(rule);
+			// register the rule after loading has completed
+			typeFilter.get_model().addBeforeContextReady(function() {				
+				typeFilter.addRule(rule);
+				if(callback)
+					callback.apply(thisPtr || this);
+			});
 		};
 
 		Rule.ensureError = function Rule$ensureError(ruleName, prop) {
