@@ -618,16 +618,8 @@ if (!("config" in ExoWeb)) {
 			return f;
 		}
 
-		Functor.add = function Functor$add() {
-			for (var i = 0; i < arguments.length; ++i) {
-				var f = arguments[i];
-
-				if (f === null) {
-					continue;
-				}
-
-				this._funcs.push(f);
-			}
+		Functor.add = function Functor$add(f) {
+			this._funcs.push(f);
 		};
 
 		Functor.remove = function Functor$remove(old) {
