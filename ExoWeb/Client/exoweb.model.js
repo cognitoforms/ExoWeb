@@ -155,9 +155,15 @@
 				return this._types[name];
 			},
 			addBeforeContextReady: function(handler) {
-				this._addEvent("beforeContextReady", handler);
+				if (!this._contextReady) {
+					this._addEvent("beforeContextReady", handler);
+				}
+				else {
+					handler();
+				}
 			},
 			notifyBeforeContextReady: function() {
+				this._contextReady = true;
 				this._raiseEvent("beforeContextReady", []);
 			},
 			addAfterPropertySet: function(handler) {
