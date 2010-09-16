@@ -1,16 +1,19 @@
 ﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 	<head>
-		<title>Property Tests</title>
+		<title>UI Helper Method Tests</title>
 		<link href="../Common/Styles/qunit.css" type="text/css" rel="stylesheet" />
 
 		<script src="../Common/Scripts/JQuery/jquery-1.3.2.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/QUnit/qunit.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/Microsoft/MicrosoftAjax.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/Microsoft/MicrosoftAjax.debug.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/ExoWeb/exoweb.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/ExoWeb/exoweb.model.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/ExoWeb/exoweb.mapper.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb.view.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb.ui.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/mock-driver.js" type="text/javascript"></script>
 		<script type="text/javascript">
@@ -100,7 +103,7 @@
 				}
 				catch (e) { errorThrown = true; }
 				ok(errorThrown, "Should not be able to get value for CarOwner.$Name from a driver, even though it has a \"Name\" property");
-				
+
 				errorThrown = false;
 				try {
 					CarOwner.$Name.value(context.model.driver, "Test");
@@ -108,9 +111,17 @@
 				catch (e) { errorThrown = true; }
 				ok(errorThrown, "Should not be able to set value for CarOwner.$Name from a driver, even though it has a \"Name\" property");
 			});
-			
+
+			setupTest("test8", { description: "Testing toggles via list.length (check in function)", expect: 1 }, function() {
+				equals($("#toggleCardDivFunction1").css("display"), "none");
+			});
+
+			setupTest("test9", { description: "Testing toggles via list.length property", expect: 1 }, function() {
+				equals($("#toggleCardDivProperty1").css("display"), "none");
+			});
+
 			timeoutTests(2000);
-			
+
 			context.ready(function() {
 				var chain = context.model.driver.meta.type.property("Owner.Location.Address");
 
@@ -120,16 +131,40 @@
 				executeTest("test4", chain);
 				executeTest("test5", chain);
 				executeTest("test6");
-				executeTest("test7");
+			
 			});
+
+			function renderComplete() {
+				console.log("render complete");
+				executeTest("test8");
+				executeTest("test9");
+				executeTest("test7");
+			}
 		</script>
 	</head>
-	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" sys:activate="*">
+	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" sys:activate="*" xmlns:toggle="javascript:ExoWeb.UI.Toggle">
 		
 		<!-- QUnit Display -->
 		<h1 id="qunit-header">Test Results:</h1>
 		<h2 id="qunit-banner"></h2>
 		<h2 id="qunit-userAgent"></h2>
 		<ol id="qunit-tests"></ol>
+
+		<div id="driver" class="sys-template" sys:attach="dataview" dataview:data="{~ context.model.driver }" dataview:onrendered="{{ renderComplete }}">
+			<h3>{binding Name}</h3>
+			<div id="toggleCardDivFunction" sys:attach="toggle" toggle:on="{~ Cars }" toggle:when="{{ function(list) { return list.length === 2; } }}" toggle:action="hide">
+				Toggle Driver Cars Function Method:
+				<ul class="sys-template" sys:attach="dataview" dataview:data="{~ Cars }" >
+					<li>Car: <span>{ binding Name }</span></li>
+				</ul>
+			</div>
+
+			<div id="toggleCardDivProperty"  sys:attach="toggle" toggle:on="{~ Cars.length}" toggle:when="{{ 2 }}" toggle:action="hide">
+				Toggle Driver Cars Property Method:
+				<ul class="sys-template" sys:attach="dataview" dataview:data="{~ Cars }" >
+					<li>Car: <span>{ binding Name }</span></li>
+				</ul>
+			</div>
+		</div>
 	</body>
 </html>
