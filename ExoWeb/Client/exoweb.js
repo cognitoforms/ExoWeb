@@ -1042,11 +1042,13 @@ if (!("config" in ExoWeb)) {
 				return value === undefined ? null : value;
 			}
 			else {
-				var value = target[property];
-				if (value === undefined && /\./.test(property) && !(property in target)) {
+				if (property in target) {
+					var value = target[property];
+					return value === undefined ? null : value;
+				}
+				else if (/\./.test(property)) {
 					ExoWeb.trace.logWarning("", "Possible incorrect usage of \"getValue()\", the path \"{0}\" does not exist on the target and appears to represent a multi-hop path.", [property]);
 				}
-				return value;
 			}
 		}
 
