@@ -184,20 +184,34 @@
 						var watchItemRequiredPaths = function watchItemRequiredPaths(item) {
 							if (item.meta) {
 								try {
-									ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
-										chain.addChanged(function lazy$requiredChanged(sender, args) {
+									var props = properties.required.split(".");
+
+									// static property: more than one step, first step is not an instance property, first step IS a type
+									if (props.length > 1 && !item.meta.type.property(props[0], true) && ExoWeb.Model.Model.getJsType(props[0], true)) {
+										Sys.Observer.addPathChanged(window, properties.required, function(sender, args) {
 											queueUpdate(function(setValue) {
-												// when a point in the required path changes then load the chain and refresh the value
-												ExoWeb.Model.LazyLoader.evalAll(sender, args.property.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
-													if (performedLoading) {
-														lazyLog("Required path change.  Eval caused loading to occur.");
-													}
-													var triggeredBy = args.triggeredBy || args.property;
-													setValue(result, "required path property change [" + triggeredBy.get_name() + "]");
-												});
+												var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection" :
+													((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() : "unknown");
+												setValue(result, "required path step change [" + msg + "]");
 											});
-										}, item);
-									});
+										}, true);
+									}
+									else {
+										ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
+											chain.addChanged(function lazy$requiredChanged(sender, args) {
+												queueUpdate(function(setValue) {
+													// when a point in the required path changes then load the chain and refresh the value
+													ExoWeb.Model.LazyLoader.evalAll(sender, args.property.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
+														if (performedLoading) {
+															lazyLog("Required path change.  Eval caused loading to occur.");
+														}
+														var triggeredBy = args.triggeredBy || args.property;
+														setValue(result, "required path property change [" + triggeredBy.get_name() + "]");
+													});
+												});
+											}, item);
+										});
+									}
 								}
 								catch (e) {
 									ExoWeb.trace.logError(["markupExt", "~"], e);
