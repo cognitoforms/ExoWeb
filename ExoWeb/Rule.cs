@@ -971,13 +971,18 @@ namespace ExoWeb
 	[DataContract(Name = "allowedValues")]
 	public class AllowedValuesRule : PropertyRule
 	{
+		#region Fields
+		bool enforceOnSet;
+		#endregion
+
 		#region Constructors
 
-		public AllowedValuesRule(GraphProperty graphProperty, ConditionType conditionType, string source, bool autoInclude)
+		public AllowedValuesRule(GraphProperty graphProperty, ConditionType conditionType, string source, bool autoInclude, bool enforceOnSet)
 			: base(graphProperty, conditionType, ClientRuleType.allowedValues)
 		{
 			this.Source = source;
 			this.AutoInclude = autoInclude;
+			this.enforceOnSet = enforceOnSet;
 		}
 
 		#endregion
@@ -995,6 +1000,9 @@ namespace ExoWeb
 
 		protected override bool ConditionApplies(GraphInstance root)
 		{
+			if (!enforceOnSet)
+				return false;
+
 			object value = root.Instance.GetType().GetProperty(GraphProperty.Name).GetValue(root.Instance, null);
 
 			GraphInstanceList allowedValues = null;
