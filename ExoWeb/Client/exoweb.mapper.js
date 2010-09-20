@@ -2402,7 +2402,9 @@
 						ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, ownerId]);
 					}
 
-					var listJson = objectJson[jsonType][jsonId][propIndex];
+					var listJson = list._ownerProperty.get_isStatic() ?
+						objectJson[jsonType][jsonId][propName] :
+						objectJson[jsonType][jsonId][propIndex];
 
 					// populate the list with objects
 					for (var i = 0; i < listJson.length; i++) {
@@ -2425,7 +2427,6 @@
 					// remove list from json and process the json.  there may be
 					// instance data returned for the objects in the list
 					if (ExoWeb.Model.LazyLoader.isLoaded(owner)) {
-
 						delete objectJson[jsonType][jsonId];
 					}
 
