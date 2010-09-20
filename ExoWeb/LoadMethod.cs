@@ -665,7 +665,7 @@ namespace ExoWeb
 	/// </summary>
 	internal class GraphInstanceInfo
 	{
-		Dictionary<GraphProperty, GraphProperty> lists;
+		HashSet<string> lists;
 
 		internal GraphInstance Instance { get; private set; }
 
@@ -677,13 +677,13 @@ namespace ExoWeb
 		internal void IncludeList(GraphProperty list)
 		{
 			if (lists == null)
-				lists = new Dictionary<GraphProperty, GraphProperty>();
-			lists[list] = list;
+				lists = new HashSet<string>();
+			lists.Add(list.Name);
 		}
 
 		internal bool HasList(GraphProperty list)
 		{
-			return lists != null && lists.ContainsKey(list);
+			return lists != null && lists.Contains(list.Name);
 		}
 	}
 
