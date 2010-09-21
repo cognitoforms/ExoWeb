@@ -1342,14 +1342,32 @@
 									var signal = change.newValue && entitySignals[change.newValue.type + "|" + change.newValue.id];
 									if (signal) {
 										signal.waitForAll(function() {
+											var suppressChanges = !this.isApplyingChanges();
+
+											if (suppressChanges) {
+												this.beginApplyingChanges();
+											}
 											Sys.Observer.setValue(srcObj, change.property, refObj);
+											if (suppressChanges) {
+												this.endApplyingChanges();
+											}
+
 											if (aggressiveLog) {
 												callback();
 											}
-										});
+										}, this);
 									}
 									else {
+										var suppressChanges = !this.isApplyingChanges();
+
+										if (suppressChanges) {
+											this.beginApplyingChanges();
+										}
 										Sys.Observer.setValue(srcObj, change.property, refObj);
+										if (suppressChanges) {
+											this.endApplyingChanges();
+										}
+
 										if (aggressiveLog) {
 											callback();
 										}
@@ -1358,7 +1376,16 @@
 							}, this);
 						}
 						else {
+							var suppressChanges = !this.isApplyingChanges();
+
+							if (suppressChanges) {
+								this.beginApplyingChanges();
+							}
 							Sys.Observer.setValue(srcObj, change.property, null);
+							if (suppressChanges) {
+								this.endApplyingChanges();
+							}
+
 							if (aggressiveLog) {
 								callback();
 							}
@@ -1375,7 +1402,16 @@
 
 				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
 					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
+						var suppressChanges = !this.isApplyingChanges();
+
+						if (suppressChanges) {
+							this.beginApplyingChanges();
+						}
 						Sys.Observer.setValue(srcObj, change.property, change.newValue);
+						if (suppressChanges) {
+							this.endApplyingChanges();
+						}
+
 						if (aggressiveLog) {
 							callback();
 						}
@@ -1428,12 +1464,21 @@
 						}, this);
 
 						// don't end update until the items have been loaded
-						listSignal.waitForAll(function() {;
+						listSignal.waitForAll(function() {
+							var suppressChanges = !this.isApplyingChanges();
+
+							if (suppressChanges) {
+								this.beginApplyingChanges();
+							}
 							list.endUpdate();
+							if (suppressChanges) {
+								this.endApplyingChanges();
+							}
+
 							if (aggressiveLog) {
 								callback();
 							}
-						})
+						}, this);
 
 					}, this);
 				}, this);
