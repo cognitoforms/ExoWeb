@@ -1458,7 +1458,7 @@
 							// no need to load instance only to remove it from a list
 							tryGetJsType(this._model, item.type, null, false, function(itemType) {
 								tryGetEntity(this._model, this._translator, itemType, item.id, null, false, function(itemObj) {
-									list.add(itemObj);
+									list.remove(itemObj);
 								}, this);
 							}, this);
 						}, this);
