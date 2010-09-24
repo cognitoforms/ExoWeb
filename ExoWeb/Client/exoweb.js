@@ -224,7 +224,7 @@ if (!("config" in ExoWeb)) {
 
 				return "[" + catStr + "]: " + $format(message, args);
 			},
-			log: function log(category, message, args) {
+			log: function trace$log(category, message, args) {
 				if (typeof (console) === "undefined") {
 					return;
 				}
@@ -233,7 +233,7 @@ if (!("config" in ExoWeb)) {
 					console.log(ExoWeb.trace._formatMessage(category, message, args));
 				}
 			},
-			logWarning: function logWarning(category, message, args) {
+			logWarning: function trace$logWarning(category, message, args) {
 				// append the warning category
 				if (!(category instanceof Array)) {
 					category = [category, "warning"];
@@ -247,7 +247,7 @@ if (!("config" in ExoWeb)) {
 					console.warn(ExoWeb.trace._formatMessage(category, message, args));
 				}
 			},
-			logError: function logError(category, message, args) {
+			logError: function trace$logError(category, message, args) {
 				// append the error category
 				if (!(category instanceof Array)) {
 					category = [category, "error"];
@@ -267,7 +267,7 @@ if (!("config" in ExoWeb)) {
 					console.error(msg);
 				}
 			},
-			throwAndLog: function throwAndLog(category, message, args) {
+			throwAndLog: function trace$throwAndLog(category, message, args) {
 				ExoWeb.trace.logError(category, message, args);
 
 				throw $format(message, args);
@@ -746,7 +746,7 @@ if (!("config" in ExoWeb)) {
 			this.array = root;
 		}
 
-		var compileFilterFunction = (function compileFilterFunction(filter) {
+		var compileFilterFunction = (function Transform$compileFilterFunction(filter) {
 			var parser = /(([a-z_$][0-9a-z_$]*)([.]?))|(('([^']|\')*')|("([^"]|\")*"))/gi;
 			var skipWords = ["true", "false", "$index", "null"];
 
@@ -769,11 +769,11 @@ if (!("config" in ExoWeb)) {
 			return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
 		}).cached({ key: function(filter) { return filter; } });
 
-		var compileGroupsFunction = (function compileGroupsFunction(groups) {
+		var compileGroupsFunction = (function Transform$compileGroupsFunction(groups) {
 			return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
 		}).cached({ key: function(groups) { return groups; } });
 
-		var compileOrderingFunction = (function compileOrderingFunction(ordering) {
+		var compileOrderingFunction = (function Transform$compileOrderingFunction(ordering) {
 			var orderings = [];
 			var parser = / *([a-z0-9_.]+)( +null)?( +(asc|desc))?( +null)? *(,|$)/gi;
 
@@ -934,7 +934,7 @@ if (!("config" in ExoWeb)) {
 		});
 
 		ExoWeb.Transform = Transform;
-		window.$transform = function $transform(array) { return new Transform(array); };
+		window.$transform = function transform(array) { return new Transform(array); };
 
 		function evalPath(obj, path, nullValue, undefinedValue) {
 			var steps = path.split(".");

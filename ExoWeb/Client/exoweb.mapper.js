@@ -62,7 +62,7 @@
 
 		// List Provider
 		//----------------------------------------------------------
-		var listProviderFn = function listProvider(ownerType, ownerId, paths, onSuccess, onFailure) {
+		var listProviderFn = function listProviderFn(ownerType, ownerId, paths, onSuccess, onFailure) {
 			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, paths, null, useConditionsMode, false, onSuccess, onFailure);
 		};
 		function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure) {
@@ -1943,7 +1943,7 @@
 		}
 
 		///////////////////////////////////////////////////////////////////////////////
-		var fetchType = (function fetchType(model, typeName, callback, thisPtr) {
+		var fetchType = (function Mapper$fetchType(model, typeName, callback, thisPtr) {
 			var signal = new ExoWeb.Signal("fetchType(" + typeName + ")");
 
 			var conditionTypeJson;
@@ -2765,7 +2765,7 @@
 			}
 		}
 
-		window.$extend = function $extend(typeInfo, callback, thisPtr) {
+		window.$extend = function Mapper$extend(typeInfo, callback, thisPtr) {
 			// If typeInfo is an arry of type names, then use a signal to wait until all types are loaded.
 			if (typeInfo instanceof Array) {
 				var signal = new ExoWeb.Signal("extend");
