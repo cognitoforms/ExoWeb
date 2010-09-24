@@ -2014,6 +2014,10 @@
 				// locate property definition in model
 				var prop = jstype.meta.property(step.property, true);
 
+				if (!prop) {
+					ExoWeb.trace.throwAndLog("typeInit", "Could not find property \"{0}\" on type \"{1}\".", [step.property, jstype.meta.get_fullName()]);
+				}
+
 				// don't need to fetch type information for value types
 				if (prop.get_isValueType()) {
 					break;
