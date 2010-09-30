@@ -1850,7 +1850,7 @@
 			},
 			// starts listening for change events along the property chain on any known instances. Use obj argument to
 			// optionally filter the events to a specific object
-			addChanged: function PropertyChain$addChanged(handler, obj) {
+			addChanged: function PropertyChain$addChanged(handler, obj, tolerateNulls) {
 				var chain = this;
 
 				function raiseHandler(sender, args) {
@@ -1887,7 +1887,7 @@
 								// scan all known objects of this type and raise event for any instance connected
 								// to the one that sent the event.
 								Array.forEach(chain._rootType.known(), function(known) {
-									if (chain.isInited(known) && chain.connects(known, sender, priorProp)) {
+									if (chain.isInited(known, tolerateNulls) && chain.connects(known, sender, priorProp)) {
 										args.originalSender = sender;
 										raiseHandler(known, args);
 									}
@@ -2010,7 +2010,7 @@
 				for (var i = conditions.length - 1; i >= 0; --i) {
 					var condition = conditions[i];
 
-					if (condition.get_origin() == origin) {
+					if (!origin || condition.get_origin() == origin) {
 						this._removeCondition(i);
 						this._raisePropertiesValidated(condition.get_properties());
 					}

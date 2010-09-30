@@ -570,7 +570,7 @@
 					return true;
 				}
 			},
-			_canSaveObject: function ServerSync$_canSaveObject(obj) {
+			canSaveObject: function ServerSync$canSaveObject(obj) {
 				if (!obj) {
 					ExoWeb.trace.throwAndLog("server", "Unable to test whether object can be saved:  Object does not exist.");
 				}
@@ -591,7 +591,7 @@
 								return;
 							}
 							var addedObj = fromExoGraph(item, this._translator);
-							if (this._canSaveObject(addedObj)) {
+							if (this.canSaveObject(addedObj)) {
 								ignore = false;
 							}
 						}, this);
@@ -602,7 +602,7 @@
 								return;
 							}
 							var removedObj = fromExoGraph(item, this._translator);
-							if (this._canSaveObject(removedObj)) {
+							if (this.canSaveObject(removedObj)) {
 								ignore = false;
 							}
 						}, this);
@@ -623,7 +623,7 @@
 
 				// Ensure that the instance that the change pertains to can be saved.
 				var instanceObj = fromExoGraph(change.instance, this._translator);
-				return this._canSaveObject(instanceObj);
+				return this.canSaveObject(instanceObj);
 			},
 
 			// Raise Server Event
