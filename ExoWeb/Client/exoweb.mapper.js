@@ -668,7 +668,7 @@
 							conditionsFromJson(this._model, result.conditionTargets);
 						}
 						applyChanges.call(this);
-					}));
+					}), this);
 				}
 				else {
 					if (result.conditionTargets) {
@@ -1592,7 +1592,7 @@
 			});
 		}
 
-		function objectsFromJson(model, json, callback) {
+		function objectsFromJson(model, json, callback, thisPtr) {
 			var signal = new ExoWeb.Signal("objectsFromJson");
 
 			try {
@@ -1600,18 +1600,18 @@
 					var poolJson = json[typeName];
 					for (var id in poolJson) {
 						// locate the object's state in the json				
-						objectFromJson(model, typeName, id, poolJson[id], signal.pending());
+						objectFromJson(model, typeName, id, poolJson[id], signal.pending(), thisPtr);
 					}
 				}
 			}
 			finally {
 				signal.waitForAll(function() {
-					callback.apply(this, arguments);
+					callback.apply(thisPtr || this, arguments);
 				});
 			}
 		}
 
-		function objectFromJson(model, typeName, id, json, callback) {
+		function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 			// get the object to load
 			var obj;
 
@@ -1629,7 +1629,7 @@
 			// Load object's type if needed
 			if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 				ExoWeb.Model.LazyLoader.load(mtype, null, function() {
-					objectFromJson(model, typeName, id, json, callback);
+					objectFromJson(model, typeName, id, json, callback, thisPtr);
 				});
 				return;
 			}
@@ -1739,7 +1739,7 @@
 			}
 
 			if (callback && callback instanceof Function) {
-				callback();
+				callback.call(thisPtr || this);
 			}
 		}
 
