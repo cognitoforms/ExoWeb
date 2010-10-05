@@ -614,16 +614,6 @@
 						}
 					}
 				}
-				// For reference changes additionally check oldValue/newValue
-				else if(change.__type == "ReferenceChange:#ExoGraph"){
-					var oldValue = fromExoGraph(change.oldValue, this._translator);
-					if(oldValue && !this.canSaveObject(oldValue))
-						return false;
-					
-					var newValue = fromExoGraph(change.newValue, this._translator);
-					if(newValue && !this.canSaveObject(newValue))
-						return false;
-				}
 
 				// if the type doesn't exist then obviously the instance doesn't either
 				var jstype = ExoWeb.Model.Model.getJsType(change.instance.type, true);
