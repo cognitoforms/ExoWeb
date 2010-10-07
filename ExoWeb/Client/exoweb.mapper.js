@@ -616,13 +616,21 @@
 				}
 				// For reference changes additionally check oldValue/newValue
 				else if(change.__type == "ReferenceChange:#ExoGraph"){
-					var oldValue = fromExoGraph(change.oldValue, this._translator);
-					if(oldValue && !this.canSaveObject(oldValue))
-						return false;
-					
-					var newValue = fromExoGraph(change.newValue, this._translator);
-					if(newValue && !this.canSaveObject(newValue))
-						return false;
+					var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
+					if (oldJsType) {
+						var oldValue = fromExoGraph(change.oldValue, this._translator);
+						if(oldValue && !this.canSaveObject(oldValue)) {
+							return false;
+						}
+					}
+
+					var newJsType = change.newValue && ExoWeb.Model.Model.getJsType(change.newValue.type, true);
+					if (newJsType) {
+						var newValue = fromExoGraph(change.newValue, this._translator);
+						if(newValue && !this.canSaveObject(newValue)) {
+							return false;
+						}
+					}
 				}
 
 				// if the type doesn't exist then obviously the instance doesn't either
