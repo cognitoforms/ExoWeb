@@ -1186,13 +1186,13 @@
 						if (change) {
 							var callback = signal.pending(processNextChange, this);
 
-							var ifApplied = function(applied) {
+							var ifApplied = (function(applied) {
 								if (recordChange && applied) {
 									newChanges++;
 									this._changes.push(change);
 								}
 								callback();
-							};
+							}).setScope(this);
 
 							if (change.__type == "InitNew:#ExoGraph") {
 								this.applyInitChange(change, ifApplied);
