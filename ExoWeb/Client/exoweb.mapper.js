@@ -1184,27 +1184,27 @@
 						}
 
 						if (change) {
-							var callback = signal.pending(processNextChange, this);
+							if (change.__type != "Save:#ExoGraph") {
+								newChanges++;
 
-							var ifApplied = (function(applied) {
-								if (recordChange && applied) {
-									newChanges++;
+								if (recordChange) {
 									this._changes.push(change);
 								}
-								callback();
-							}).setScope(this);
+							}
+
+							var callback = signal.pending(processNextChange, this);
 
 							if (change.__type == "InitNew:#ExoGraph") {
-								this.applyInitChange(change, ifApplied);
+								this.applyInitChange(change, callback);
 							}
 							else if (change.__type == "ReferenceChange:#ExoGraph") {
-								this.applyRefChange(change, ifApplied);
+								this.applyRefChange(change, callback);
 							}
 							else if (change.__type == "ValueChange:#ExoGraph") {
-								this.applyValChange(change, ifApplied);
+								this.applyValChange(change, callback);
 							}
 							else if (change.__type == "ListChange:#ExoGraph") {
-								this.applyListChange(change, ifApplied);
+								this.applyListChange(change, callback);
 							}
 							else if (change.__type == "Save:#ExoGraph") {
 								var lookahead = (saveChanges && saveChanges.length > 0 && ignoreCount !== 0);
@@ -1212,7 +1212,7 @@
 									// changes have been applied so truncate the log to this point
 									this._truncateLog(this.canSave.setScope(this));
 
-									ifApplied.apply(this, arguments);
+									callback.apply(this, arguments);
 								});
 							}
 						}
@@ -1337,24 +1337,14 @@
 						// Remember the object's client-generated new id and the corresponding server-generated new id
 						translator.add(change.instance.type, newObj.meta.id, serverOldId);
 
-						callback(true);
+						callback();
 					});
 			},
 			applyRefChange: function ServerSync$applyRefChange(change, callback) {
 //				log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
-				var returnImmediately = !aggressiveLog;
-
 				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
 					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
-
-						// Call ballback here if type and instance were
-						// present immediately or aggressive mode is turned on
-						var doCallback = returnImmediately || aggressiveLog;
-
-						// Indicate that type and instance were present immediately
-						returnImmediately = false;
-
 						if (change.newValue) {
 							tryGetJsType(this._model, change.newValue.type, null, true, function(refType) {
 								tryGetEntity(this._model, this._translator, refType, change.newValue.id, null, true, function(refObj) {
@@ -1362,91 +1352,91 @@
 									var signal = change.newValue && entitySignals[change.newValue.type + "|" + change.newValue.id];
 									if (signal) {
 										signal.waitForAll(function() {
-											var changed = ExoWeb.getValue(srcObj, change.property) != refObj;
+											var suppressChanges = !this.isApplyingChanges();
 
+											if (suppressChanges) {
+												this.beginApplyingChanges();
+											}
 											Sys.Observer.setValue(srcObj, change.property, refObj);
+											if (suppressChanges) {
+												this.endApplyingChanges();
+											}
 
-											if (doCallback) {
-												callback(changed);
+											if (aggressiveLog) {
+												callback();
 											}
 										}, this);
 									}
 									else {
-										var changed = ExoWeb.getValue(srcObj, change.property) != refObj;
+										var suppressChanges = !this.isApplyingChanges();
 
+										if (suppressChanges) {
+											this.beginApplyingChanges();
+										}
 										Sys.Observer.setValue(srcObj, change.property, refObj);
+										if (suppressChanges) {
+											this.endApplyingChanges();
+										}
 
-										if (doCallback) {
-											callback(changed);
+										if (aggressiveLog) {
+											callback();
 										}
 									}
 								}, this);
 							}, this);
 						}
 						else {
-							var changed = ExoWeb.getValue(srcObj, change.property) != null;
+							var suppressChanges = !this.isApplyingChanges();
 
+							if (suppressChanges) {
+								this.beginApplyingChanges();
+							}
 							Sys.Observer.setValue(srcObj, change.property, null);
+							if (suppressChanges) {
+								this.endApplyingChanges();
+							}
 
-							if (doCallback) {
-								callback(changed);
+							if (aggressiveLog) {
+								callback();
 							}
 						}
 					}, this);
 				}, this);
 
-				// call callback here if target type or instance is not
-				// present and aggressive log behavior is not turned on
-				if (returnImmediately) {
+				if (!aggressiveLog) {
 					callback();
 				}
-
-				returnImmediately = false;
 			},
 			applyValChange: function ServerSync$applyValChange(change, callback) {
 //				log("server", "applyValChange", change.instance);
 
-				var returnImmediately = !aggressiveLog;
-
 				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
 					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
+						var suppressChanges = !this.isApplyingChanges();
 
-						// Call ballback here if type and instance were
-						// present immediately or aggressive mode is turned on
-						var doCallback = returnImmediately || aggressiveLog;
-
-						// Indicate that type and instance were present immediately
-						returnImmediately = false;
-
-						var changed = ExoWeb.getValue(srcObj, change.property) != change.newValue;
-
+						if (suppressChanges) {
+							this.beginApplyingChanges();
+						}
 						Sys.Observer.setValue(srcObj, change.property, change.newValue);
+						if (suppressChanges) {
+							this.endApplyingChanges();
+						}
 
 						if (aggressiveLog) {
-							callback(changed);
+							callback();
 						}
 					}, this);
 				}, this);
 
-				if (returnImmediately) {
+				if (!aggressiveLog) {
 					callback();
 				}
 			},
 			applyListChange: function ServerSync$applyListChange(change, callback) {
 //				log("server", "applyListChange", change.instance);
 
-				var returnImmediately = !aggressiveLog;
-
 				tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
 					tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
-
-						// Call ballback here if type and instance were
-						// present immediately or aggressive mode is turned on
-						var doCallback = returnImmediately || aggressiveLog;
-
-						// Indicate that type and instance were present immediately
-						returnImmediately = false;
-
 						var prop = srcObj.meta.property(change.property, true);
 						var list = prop.value(srcObj);
 
@@ -1485,16 +1475,25 @@
 
 						// don't end update until the items have been loaded
 						listSignal.waitForAll(function() {
+							var suppressChanges = !this.isApplyingChanges();
+
+							if (suppressChanges) {
+								this.beginApplyingChanges();
+							}
 							list.endUpdate();
-							if (doCallback) {
-								callback(true);
+							if (suppressChanges) {
+								this.endApplyingChanges();
+							}
+
+							if (aggressiveLog) {
+								callback();
 							}
 						}, this);
 
 					}, this);
 				}, this);
 
-				if (returnImmediately) {
+				if (!aggressiveLog) {
 					callback();
 				}
 			}
@@ -2779,7 +2778,7 @@
 				pending.add(thisPtr ? callback.setScope(thisPtr) : callback);
 			}
 		}
-
+		
 		window.$extend = function Mapper$extend(typeInfo, callback, thisPtr) {
 			// If typeInfo is an arry of type names, then use a signal to wait until all types are loaded.
 			if (typeInfo instanceof Array) {
