@@ -1,7 +1,15 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Web;
 using System.Text;
+using ExoGraph;
+using System.IO;
+using System.Web.Script.Serialization;
+using System.Reflection;
+using ExoRule;
+using System.Diagnostics;
+using ExoRule.Validation;
 
 namespace ExoWeb
 {
@@ -10,53 +18,12 @@ namespace ExoWeb
 	/// </summary>
 	public class ServiceHandler : IHttpHandler
 	{
-		static ServiceAdapter adapter = new ServiceAdapter();
-		static Dictionary<string, Type> customEvents = new Dictionary<string,Type>();
-
-		/// <summary>
-		/// Processes incoming requests and routes them to the appropriate JSON handler method.
-		/// </summary>
-		/// <param name="context"></param>
-		public void ProcessRequest(HttpContext context)
-		{
-			try
-			{
-				if (context.Request.PathInfo == "/Script")
-					OutputScript(context);
-				else
-					ServiceMethod.Invoke(context);
-			}
-			catch (Exception e)
-			{
-				// Create an error to log
-				var error = new LogErrorMethod();
-
-				error.Type = e.GetBaseException().GetType().FullName;
-				error.StackTrace = GetFullStackTrace(e);
-				error.Message = e.GetBaseException().Message;
-				error.Url = context.Request.RawUrl;
-
-				// Allow adapters to log the error
-				Adapter.OnError(error);
-
-				// Also send the error information to the client
-				context.Response.Clear();
-				context.Response.ContentType = "application/json";
-				context.Response.StatusCode = 500; // internal server error
-
-				if (ServiceHandler.Adapter.EnableExceptionInformation)
-				{
-					context.Response.AddHeader("jsonerror", "true"); // enables error information on client
-				}
-
-				context.Response.Write(ServiceMethod.ToJson(typeof(LogErrorMethod), error));
-			}
-		}
+		#region IHttpHandler
 
 		/// <summary>
 		/// Indicates that this is a stateless service and may be cached.
 		/// </summary>
-		public bool IsReusable
+		bool IHttpHandler.IsReusable
 		{
 			get
 			{
@@ -64,39 +31,91 @@ namespace ExoWeb
 			}
 		}
 
-		public static ServiceAdapter Adapter
+		/// <summary>
+		/// Processes incoming requests and routes them to the appropriate JSON handler method.
+		/// </summary>
+		/// <param name="context"></param>
+		void IHttpHandler.ProcessRequest(HttpContext context)
 		{
-			get
+			try
 			{
-				return adapter;
+				// Read the request JSON
+				string json;
+				using (StreamReader reader = new StreamReader(context.Request.InputStream))
+					json = reader.ReadToEnd();
+
+				// Perform the requested operation
+				switch (context.Request.PathInfo)
+				{
+					case "/Request":
+
+						// Deserialize the request
+						ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
+
+						// Invoke the request and output the response
+						context.Response.ContentType = "application/json";
+						context.Response.Write(ExoWeb.FixJsonDates(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke())));
+
+						break;
+
+					case "/GetType":
+
+						// Enable response caching
+						context.Response.Cache.SetCacheability(HttpCacheability.Public);
+						context.Response.Cache.SetExpires(DateTime.Now.AddDays(7));
+						context.Response.Cache.SetMaxAge(TimeSpan.FromDays(7));
+
+						// Output the type metadata
+						context.Response.ContentType = "application/json";
+						context.Response.Write(ExoWeb.ToJson(typeof(ServiceResponse), ExoWeb.FromJson<ServiceRequest>("{types:[" + context.Request.QueryString["type"] + "]}").Invoke()));
+
+						break;
+
+					case "/LogError":
+
+						// Raise the error event
+						context.Response.ContentType = "application/json";
+						ExoWeb.OnError(ExoWeb.FromJson<ServiceError>(json));
+
+						break;
+
+					case "/Script":
+
+						// Output the service handler client script
+						OutputScript(context);
+
+						break;
+				}
 			}
-			set
+			catch (Exception e)
 			{
-				adapter = value;
+				// Create an error to log
+				var error = new ServiceError();
+
+				error.Type = e.GetBaseException().GetType().FullName;
+				error.StackTrace = GetFullStackTrace(e);
+				error.Message = e.GetBaseException().Message;
+				error.Url = context.Request.RawUrl;
+
+				// Raise the error event
+				ExoWeb.OnError(error);
+
+				// Also send the error information to the client
+				context.Response.Clear();
+				context.Response.ContentType = "application/json";
+				context.Response.StatusCode = 500; // internal server error
+
+				// Enable error information on client
+				if (ExoWeb.EnableExceptionInformation)
+					context.Response.AddHeader("jsonerror", "true");
+
+				context.Response.Write(ExoWeb.ToJson(typeof(ServiceError), error));
 			}
 		}
 
-		/// <summary>
-		/// Registers a custom event that can be raised on the client.
-		/// </summary>
-		/// <param name="name"></param>
-		/// <param name="type"></param>
-		public static void RegisterEvent(string name, Type type)
-		{
-			customEvents[name] = type;
-		}
+		#endregion
 
-		/// <summary>
-		/// Gets the type of a registered custom event.
-		/// </summary>
-		/// <param name="name"></param>
-		/// <returns></returns>
-		internal static Type GetEvent(string name)
-		{
-			Type eventType;
-			customEvents.TryGetValue(name, out eventType);
-			return eventType;
-		}
+		#region Methods
 
 		/// <summary>
 		/// Outputs the javascript used to enable ExoWeb usage.
@@ -121,58 +140,44 @@ namespace ExoWeb
 
 					function execute() {
 
+						function ProcessRequest(method, data, success, failure)
+						{
+							$.ajax({ url: '" + path + @"/' + method, type: 'Post', data: JSON.stringify(data), processData: false, dataType: 'text', contentType: 'application/json',
+							success: function(result) {
+								success(JSON.parse(result));
+							},
+							error: function(result) { 
+								var error = { message: result.statusText };
+								try
+								{
+									error = JSON.parse(result.responseText);
+								}
+								catch(e) {}
+								failure(error);
+							}});
+						}
+
 						// Declare the ExoWeb namespace
 						Type.registerNamespace('ExoWeb.WebService');
 
-						function objToArray(obj, func) {
-							var result = [];
-							for (name in obj) {
-								if (obj.hasOwnProperty(name)) {
-									result.push(func(name, obj[name]));
-								}
-							}
-							return result;
-						}
-
-						function getData(data, config) {
-							data.config = objToArray(config, function(name, value) {
-								return { ""Key"": name, ""Value"": value };
-							});
-							return data;
+						// Define the ExoWeb.Request method
+						ExoWeb.WebService.Request = function ExoWeb$WebService$Request(args, onSuccess, onFailure)
+						{
+							args.config = ExoWeb.config;
+							ProcessRequest('Request', args, onSuccess, onFailure);
 						}
 
 						// Define the ExoWeb.GetType method
-						ExoWeb.WebService.GetType = function ExoWeb$WebService$GetType(type, conditionsMode, onSuccess, onFailure)
+						ExoWeb.WebService.GetType = function ExoWeb$WebService$GetType(type, onSuccess, onFailure)
 						{
-							var data = getData({ type: type, conditionsMode: conditionsMode" + (string.IsNullOrEmpty(cachehash) ? "" : @", cachehash: " + cachehash) + @" }, ExoWeb.config);
+							var data = { type: type" + (string.IsNullOrEmpty(cachehash) ? "" : @", cachehash: " + cachehash) + @", config: ExoWeb.config};
 							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, data, onSuccess, onFailure, null, 1000000, false, null);
-						}
-
-						// Define the ExoWeb.Load method
-						ExoWeb.WebService.Load = function ExoWeb$WebService$Load(type, ids, includeAllowedValues, includeTypes, paths, changes, conditionsMode, includeConditionTypes, onSuccess, onFailure)
-						{
-							var data = getData({ type: type, ids: ids, includeAllowedValues: includeAllowedValues, includeTypes: includeTypes, paths: paths, changes: changes, conditionsMode: conditionsMode, includeConditionTypes: includeConditionTypes }, ExoWeb.config);
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Load', false, data, onSuccess, onFailure, null, 1000000, false, null);
-						}
-
-						// Define the ExoWeb.Save method
-						ExoWeb.WebService.Save = function ExoWeb$WebService$Save(root, changes, onSuccess, onFailure)
-						{
-							var data = getData({ root: root, changes: changes }, ExoWeb.config);
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'Save', false, data, onSuccess, onFailure, null, 1000000, false, null);
-						}
-
-						// Define the ExoWeb.RaiseEvent method
-						ExoWeb.WebService.RaiseEvent = function ExoWeb$WebService$RaiseEvent(eventType, instance, event, changes, onSuccess, onFailure)
-						{
-							var data = getData({ instance: instance, event: event, changes: changes }, ExoWeb.config);
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'RaiseEvent/' + eventType, false, data, onSuccess, onFailure, null, 1000000, false, null);
 						}
 
 						// Define the ExoWeb.LogError method
 						ExoWeb.WebService.LogError = function ExoWeb$WebService$LogError(type, message, stackTrace, url, refererUrl, onSuccess, onFailure)
 						{
-							var data = getData({ type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl }, ExoWeb.config);
+							var data = { type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl, config: ExoWeb.config};
 							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'LogError', false, data, onSuccess, onFailure, null, 1000000, false, null);
 						}
 					}
@@ -209,5 +214,7 @@ namespace ExoWeb
 
 			return stackTrace.ToString();
 		}
+
+		#endregion
 	}
 }

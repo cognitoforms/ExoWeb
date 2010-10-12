@@ -135,7 +135,7 @@
 
 					var _this = this;
 
-					var loader = function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback, delay) {
+					var loader = function(type, ids, paths, changes, callback, delay) {
 						var json;
 
 						if (!_this.simulateLazyLoading) {
@@ -153,11 +153,11 @@
 						return mockCallback(callback, [json], delay, $format(">> fetch: {0}({1})", arguments));
 					};
 
-					ExoWeb.Mapper.setObjectProvider(function(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback) {
-						return loader(type, ids, includeAllowedValuesInPaths, includeTypes, paths, changes, callback, _this._objectProviderDelay);
+					ExoWeb.Mapper.setObjectProvider(function(type, ids, paths, changes, callback) {
+						return loader(type, ids, paths, changes, callback, _this._objectProviderDelay);
 					});
 					ExoWeb.Mapper.setListProvider(function(ownerType, ownerId, paths, callback) {
-						return loader(ownerType, [ownerId], true, false, paths, null, callback, _this._listProviderDelay);
+						return loader(ownerType, [ownerId], paths, null, callback, _this._listProviderDelay);
 					});
 
 					ExoWeb.Mapper.setRoundtripProvider(function(changes, success, failed) {

@@ -4,9 +4,6 @@
 
 	function execute() {
 
-		var evalAffectsScope = false;
-		eval("evalAffectsScope = true;");
-
 		var undefined;
 
 		var log = ExoWeb.trace.log;
@@ -479,25 +476,7 @@
 				}
 			}
 
-			var jstype;
-
-			// <DEBUG>
-			if (evalAffectsScope) {
-				// use eval to generate the type so the function name appears in the debugger
-				var ctorScript = $format("function {type}(idOrProps) { var obj=construct.apply(this, arguments); if(obj) return obj; };" +
-					"jstype = {type};",
-					{ "type": type._fullName.replace(/\./ig, "$") });
-
-				eval(ctorScript);
-			}
-			else {
-				// </DEBUG>
-				jstype = construct;
-				// <DEBUG>
-			}
-			// </DEBUG>
-
-			return jstype;
+			return construct;
 		}
 
 		Type.prototype = {
@@ -681,6 +660,53 @@
 				}
 
 				return prop;
+			},
+			addMethod: function Type$addMethod(def) {
+				this._jstype.prototype[def.name] = function () 
+				{
+					// Detect the optional success and failure callback delegates
+					var onSuccess;
+					var onFail;
+
+					if (arguments.length > 1)
+					{
+						onSuccess = arguments[arguments.length-2];
+						if (onSuccess instanceof Function) {
+							onFail = arguments[arguments.length-1];
+						}
+						else {
+							onSuccess = arguments[arguments.length-1];
+						}
+					}
+					else if (arguments.length > 0)
+						onSuccess = arguments[arguments.length-1];
+					if (!onSuccess instanceof Function)
+						onSuccess = undefined;
+
+					// First see if the arguments were passed as a singular object parameter
+					if (arguments.length == 1 + (onSuccess === undefined ? 0 : 1) + (onFail === undefined ? 0 : 1) &&
+						arguments[0] instanceof Object && !(def.parameters.length == 1 && arguments[0][def.parameters[0]] === undefined)) {
+
+						// Invoke the server event
+						context.server.raiseServerEvent(def.name, this, arguments[0], false, onSuccess, onFail);
+					}
+
+					// Otherwise, assume that the parameters were all passed in sequential order
+					else {
+
+						// Throw an error if the incorrect number of arguments were passed to the method
+						if (arguments.length != def.parameters.length + (onSuccess === undefined ? 0 : 1) + (onFail === undefined ? 0 : 1))
+							throwAndLog("type", "Invalid number of arguments passed to \"{0}.{1}\" method.", [this._fullName, def.name]);
+
+						// Construct the arguments to pass
+						var args = {};
+						for (var parameter in def.parameters)
+							args[def.parameters[parameter]] = arguments[parameter];
+
+						// Invoke the server event
+						context.server.raiseServerEvent(def.name, this, args, false, function(result) { onSuccess(result.event) }, onFail);
+					}
+				};
 			},
 			_makeGetter: function Type$_makeGetter(receiver, fn, skipTypeCheck) {
 				return function() {
@@ -1258,6 +1284,9 @@
 					handler(target, { property: this, newValue: val, oldValue: undefined, wasInited: false});
 
 				Sys.Observer.raisePropertyChanged(target, this._name);
+
+				// Return the property to support method chaining
+				return this;
 			},
 			isInited: function Property$isInited(obj) {
 				var target = (this._isStatic ? this._containingType.get_jstype() : obj);
@@ -1281,6 +1310,9 @@
 				}
 
 				this._addEvent("get", f);
+
+				// Return the property to support method chaining
+				return this;
 			},
 
 			// starts listening for change events on the property. Use obj argument to
@@ -1300,6 +1332,9 @@
 				}
 
 				this._addEvent("changed", f);
+
+				// Return the property to support method chaining
+				return this;
 			},
 			_addCalculatedRule: function Property$_addCalculatedRule(calculateFn, isAsync, inputs) {
 				// calculated property should always be initialized when first accessed
@@ -1384,7 +1419,9 @@
 							}, null, !isAsync);
 						}
 					},
-					toString: function() { return "calculation of " + this.prop._name; }
+					toString: function() {
+						return "calculation of " + this.prop._name;
+					}
 				};
 
 				Rule.register(rule, inputs, isAsync, this.get_containingType(), function() { 
@@ -1470,6 +1507,30 @@
 				if (this.isDefinedBy(type)) {
 					return (this._isStatic ? this._containingType.get_fullName() : "this") + "." + this._name;
 				}
+			},
+			required: function(conditionType) {
+				new ExoWeb.Model.Rule.required(this._containingType, { property: this._name }, conditionType);
+				return this;
+			},
+			allowedValues: function(source, conditionType) {
+				new ExoWeb.Model.Rule.allowedValues(this._containingType, {	property: this._name, source: source }, conditionType);
+				return this;
+			},
+			compare: function(operator, source, conditionType) {
+				new ExoWeb.Model.Rule.compare(this._containingType, { property: this._name, compareOperator: operator, compareSource: source }, conditionType);
+				return this;
+			},
+			range: function(min, max, conditionType) {
+				new ExoWeb.Model.Rule.range(this._containingType, {	property: this._name, min: min, max: max }, conditionType);
+				return this;
+			},
+			requiredIf: function(source, operator, value, conditionType) {
+				new ExoWeb.Model.Rule.requiredIf(this._containingType, { property: this._name, compareSource: source, compareOperator: operator, compareValue: value }, conditionType);
+				return this;
+			},
+			stringLength: function(min, max, conditionType) {
+				new ExoWeb.Model.Rule.stringLength(this._containingType, {	property: this._name, min: min, max: max }, conditionType);
+				return this;
 			}
 		});
 		Property.mixin(ExoWeb.Functor.eventing);
@@ -1847,6 +1908,9 @@
 				this.lastProperty().addGet(function PropertyChain$_raiseGet(sender, property, value, isInited) {
 					handler(sender, chain, value, isInited);
 				}, obj);
+
+				// Return the property to support method chaining
+				return this;
 			},
 			// starts listening for change events along the property chain on any known instances. Use obj argument to
 			// optionally filter the events to a specific object
@@ -1896,6 +1960,9 @@
 						}
 					});
 				}
+
+				// Return the property to support method chaining
+				return this;
 			},
 			// Property pass-through methods
 			///////////////////////////////////////////////////////////////////////
@@ -2260,16 +2327,16 @@
 		RuleInput.registerClass("ExoWeb.Model.RuleInput");
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function RequiredRule(options, properties, type) {
-			this.prop = properties[0];
+		function RequiredRule(mtype, options, ctype) {
+			this.prop = mtype.property(options.property, true);
 
-			if (!type) {
-				type = Rule.ensureError("required", this.prop);
+			if (!ctype) {
+				ctype = Rule.ensureError("required", this.prop);
 			}
 
-			this.err = new Condition(type, this.prop.get_label() + " is required", properties, this);
+			this.err = new Condition(ctype, this.prop.get_label() + " is required", [ this.prop ], this);
 
-			Rule.register(this, properties);
+			Rule.register(this, [ this.prop ]);
 		}
 
 		RequiredRule.hasValue = function RequiredRule$hasValue(obj, prop) {
@@ -2301,11 +2368,12 @@
 		Rule.required = RequiredRule;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function RangeRule(options, properties, type) {
-			this.prop = properties[0];
+		function RangeRule(mtype, options, ctype) {
+			this.prop = mtype.property(options.property, true);
+			var properties = [ this.prop ];
 
-			if (!type) {
-				type = Rule.ensureError("range", this.prop);
+			if (!ctype) {
+				ctype = Rule.ensureError("range", this.prop);
 			}
 
 			this.min = options.min;
@@ -2315,15 +2383,15 @@
 			var hasMax = (this.max !== undefined && this.max !== null);
 
 			if (hasMin && hasMax) {
-				this.err = new Condition(type, $format("{0} must be between {1} and {2}", [this.prop.get_label(), this.min, this.max]), properties, this);
+				this.err = new Condition(ctype, $format("{0} must be between {1} and {2}", [this.prop.get_label(), this.min, this.max]), properties, this);
 				this._test = this._testMinMax;
 			}
 			else if (hasMin) {
-				this.err = new Condition(type, $format("{0} must be at least {1}", [this.prop.get_label(), this.min]), properties, this);
+				this.err = new Condition(ctype, $format("{0} must be at least {1}", [this.prop.get_label(), this.min]), properties, this);
 				this._test = this._testMin;
 			}
 			else if (hasMax) {
-				this.err = new Condition(type, $format("{0} must no more than {1}", [this.prop.get_label()], this.max), properties, this);
+				this.err = new Condition(ctype, $format("{0} must no more than {1}", [this.prop.get_label()], this.max), properties, this);
 				this._test = this._testMax;
 			}
 
@@ -2355,27 +2423,28 @@
 		Rule.range = RangeRule;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function AllowedValuesRule(options, properties, type) {
-			var prop = this.prop = properties[0];
+		function AllowedValuesRule(mtype, options, ctype) {
+			this.prop = mtype.property(options.property, true);
+			var properties = [ this.prop ];
 
-			if (!type) {
-				type = Rule.ensureError("allowedValues", this.prop);
+			if (!ctype) {
+				ctype = Rule.ensureError("allowedValues", this.prop);
 			}
 
 			this._allowedValuesPath = options.source;
 			this._inited = false;
 
-			this.err = new Condition(type, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
+			this.err = new Condition(ctype, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
 
 			var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type); }).setScope(this);
 
 			// If the type is already loaded, then register immediately.
-			if (LazyLoader.isLoaded(prop.get_containingType())) {
-				register(prop.get_containingType().get_jstype());
+			if (LazyLoader.isLoaded(this.prop.get_containingType())) {
+				register(this.prop.get_containingType().get_jstype());
 			}
 			// Otherwise, wait until the type is loaded.
 			else {
-				$extend(prop.get_containingType().get_fullName(), register);
+				$extend(this.prop.get_containingType().get_fullName(), register);
 			}
 		}
 		AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType) {
@@ -2502,15 +2571,16 @@
 		Rule.allowedValues = AllowedValuesRule;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function CompareRule(options, properties, type) {
-			var prop = this.prop = properties[0];
+		function CompareRule(mtype, options, ctype) {
+			this.prop = mtype.property(options.property, true);
+			var properties = [ this.prop ];
 
-			if (!type) {
-				type = Rule.ensureError("compare", this.prop);
+			if (!ctype) {
+				ctype = Rule.ensureError("compare", this.prop);
 			}
 
-			this._comparePath = options.comparePath;
-			this._compareOp = options.compareOp;
+			this._comparePath = options.compareSource;
+			this._compareOp = options.compareOperator;
 
 			this._inited = false;
 
@@ -2520,18 +2590,18 @@
 				(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
 				makeHumanReadable(this._comparePath.indexOf(".") >= 0 ? this._comparePath.replace(/^(.*\.)?([^\.]+)$/, "$2") : this._comparePath)
 			]);
-			this.err = new Condition(type, message, properties, this);
+			this.err = new Condition(ctype, message, properties, this);
 
 			// Function to register this rule when its containing type is loaded.
-			var register = (function CompareRule$register(type) { CompareRule.load(this, type); }).setScope(this);
+			var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype); }).setScope(this);
 
 			// If the type is already loaded, then register immediately.
-			if (LazyLoader.isLoaded(prop.get_containingType())) {
-				CompareRule.load(this, prop.get_containingType().get_jstype());
+			if (LazyLoader.isLoaded(this.prop.get_containingType())) {
+				CompareRule.load(this, this.prop.get_containingType().get_jstype());
 			}
 			// Otherwise, wait until the type is loaded.
 			else {
-				$extend(prop.get_containingType().get_fullName(), register);
+				$extend(this.prop.get_containingType().get_fullName(), register);
 			}
 		}
 
@@ -2608,15 +2678,16 @@
 		Rule.compare = CompareRule;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function RequiredIfRule(options, properties, type) {
-			var prop = this.prop = properties[0];
+		function RequiredIfRule(mtype, options, ctype) {
+			this.prop = mtype.property(options.property, true);
+			var properties = [ this.prop ];
 
-			if (!type) {
-				type = Rule.ensureError("requiredIf", this.prop);
+			if (!ctype) {
+				ctype = Rule.ensureError("requiredIf", this.prop);
 			}
 
-			this._comparePath = options.comparePath;
-			this._compareOp = options.compareOp;
+			this._comparePath = options.compareSource;
+			this._compareOp = options.compareOperator;
 			this._compareValue = options.compareValue;
 
 			if (this._compareOp === undefined || this._compareOp === null) {
@@ -2633,18 +2704,18 @@
 
 			this._inited = false;
 
-			this.err = new Condition(type, $format("{0} is required", [this.prop.get_label()]), properties, this);
+			this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
 
 			// Function to register this rule when its containing type is loaded.
-			var register = (function RequiredIfRule$register(type) { CompareRule.load(this, type); }).setScope(this);
+			var register = (function RequiredIfRule$register(ctype) { CompareRule.load(this, ctype); }).setScope(this);
 
 			// If the type is already loaded, then register immediately.
-			if (LazyLoader.isLoaded(prop.get_containingType())) {
-				register(prop.get_containingType().get_jstype());
+			if (LazyLoader.isLoaded(this.prop.get_containingType())) {
+				register(this.prop.get_containingType().get_jstype());
 			}
 			// Otherwise, wait until the type is loaded.
 			else {
-				$extend(prop.get_containingType().get_fullName(), register);
+				$extend(this.prop.get_containingType().get_fullName(), register);
 			}
 		}
 
@@ -2685,11 +2756,12 @@
 		Rule.requiredIf = RequiredIfRule;
 
 		///////////////////////////////////////////////////////////////////////////////////////
-		function StringLengthRule(options, properties, type) {
-			this.prop = properties[0];
+		function StringLengthRule(mtype, options, ctype) {
+			this.prop = mtype.property(options.property, true);
+			var properties = [ this.prop ];
 
-			if (!type) {
-				type = Rule.ensureError("stringLength", this.prop);
+			if (!ctype) {
+				ctype = Rule.ensureError("stringLength", this.prop);
 			}
 
 			this.min = options.min;
@@ -2699,15 +2771,15 @@
 			var hasMax = (this.max !== undefined && this.max !== null);
 
 			if (hasMin && hasMax) {
-				this.err = new Condition(type, $format("{0} must be between {1} and {2} characters", [this.prop.get_label(), this.min, this.max]), properties, this);
+				this.err = new Condition(ctype, $format("{0} must be between {1} and {2} characters", [this.prop.get_label(), this.min, this.max]), properties, this);
 				this._test = this._testMinMax;
 			}
 			else if (hasMin) {
-				this.err = new Condition(type, $format("{0} must be at least {1} characters", [this.prop.get_label(), this.min]), properties, this);
+				this.err = new Condition(ctype, $format("{0} must be at least {1} characters", [this.prop.get_label(), this.min]), properties, this);
 				this._test = this._testMin;
 			}
 			else if (hasMax) {
-				this.err = new Condition(type, $format("{0} must be no more than {1} characters", [this.prop.get_label(), this.max]), properties, this);
+				this.err = new Condition(ctype, $format("{0} must be no more than {1} characters", [this.prop.get_label(), this.max]), properties, this);
 				this._test = this._testMax;
 			}
 
@@ -2887,7 +2959,7 @@
 			},
 			extend: function ConditionType$extend(data) {
 				for (var prop in data) {
-					if (prop !== "__type" && prop !== "rule" && !this["get_" + prop]) {
+					if (prop !== "type" && prop !== "rule" && !this["get_" + prop]) {
 						var fieldName = "_" + prop;
 						this[fieldName] = data[prop];
 						this["get" + fieldName] = function ConditionType$getter() {

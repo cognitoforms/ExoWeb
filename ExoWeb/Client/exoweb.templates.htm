@@ -1,0 +1,183 @@
+﻿<!-- readonly -->
+<span class="sys-template" sys:attach="template" template:for=".readonly.html span, span.readonly.html">
+	<span sys:innerHTML="{ binding displayValue }"></span>
+</span>
+
+<!-- readonly -->
+<span class="sys-template" sys:attach="template" template:for=".readonly span, span.readonly">
+	<span sys:innerText="{ binding displayValue }"></span>
+</span>
+
+<!-- field editors -->
+
+<!-- single entity references (radio)-->
+<span class="sys-template" sys:attach="template" template:for=".field.as-radio span" template:if="!$data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
+	<div class="sys-template" sys:attach="dataview" dataview:data="{ binding options }">
+		<input type="radio" id="option" sys:name="{{ $context.parentContext.getInstanceId('group') }}" sys:checked="{ binding selected }" /><label sys:for="{{ $id('option') }}">{ binding displayValue }</label>
+	</div>
+</span>
+<div class="sys-template" sys:attach="template" template:for=".field.as-radio div" template:if="!$data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
+	<div class="sys-template" sys:attach="dataview" dataview:data="{ binding options }">
+		<p class="list"><input type="radio" id="option" sys:name="{{ $context.parentContext.getInstanceId('group') }}" sys:checked="{ binding selected }" /><label sys:for="{{ $id('option') }}">{ binding displayValue }</label></p>
+	</div>
+</div>
+
+<!-- single entity references (dropdown)-->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:if="$data instanceof ExoWeb.View.Adapter && !$data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
+	<select class="sys-template" sys:value="{ binding systemValue }"
+		sys:attach="dataview" dataview:data="{ binding options }">
+		<option sys:if="{{ $index == 0 }}" value="">-- select --</option>
+		<option sys:value="{ binding systemValue }">{ binding displayValue }</option>
+	</select>
+</span>
+
+<!-- multiple entity references -->
+<script type="text/javascript">
+
+	function selectedOnlyDeselect(e, index) {
+		var adapt = $parentContextData(e, null, 2);
+		adapt.get_rawValue().removeAt(index);
+	}
+
+	function selectedOnlySelect(e) {
+		if (e.selectedIndex > 0) {
+			var adapt = $parentContextData(e, null, null);
+			var option = $parentContextData(e.options[e.selectedIndex], null, null);
+			if (!option.get_selected()) {
+				adapt.get_rawValue().add(option.get_rawValue())
+			}
+			e.selectedIndex = 0;
+		}
+	}
+		
+</script>
+<span class="sys-template" sys:attach="template" template:for=".field.selectedOnly span" template:if="$data instanceof ExoWeb.View.Adapter && $data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
+	<div class='validation'></div>
+	<ul class="sys-template deletable" sys:attach="dataview" dataview:data="{~ displayValue }">
+		<li>
+			<span>{{ $dataItem }}</span>
+			<span class="delete" sys:onclick="{{ 'selectedOnlyDeselect(this,'+ $index +')' }}"></span>
+		</li>
+	</ul>	
+	<select class="sys-template" sys:attach="dataview" dataview:data="{ binding options }" onchange="selectedOnlySelect(this)">
+		<option sys:if="{{ $index == 0 }}" value="">-- select --</option>
+		<option>{ binding displayValue }</option>		
+	</select>
+</span>
+
+<!-- multiple entity references -->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:datatype="ExoWeb.View.Adapter" template:if="$data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
+	<div class='validation'></div>
+	<div class="sys-template" sys:attach="dataview" dataview:data="{ binding options }">
+		<input type="checkbox" id="Checkbox1" sys:checked="{ binding selected }" />
+		<label sys:for="{{ $id('option') }}">{ binding displayValue }</label><br />
+	</div>
+</span>
+
+<!-- boolean, default-->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:datatype="ExoWeb.View.Adapter" template:if="$data.isType(Boolean)">
+	<input type='checkbox' sys:checked="{ binding rawValue }" />
+</span>
+
+<!-- date, time only -->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:datatype="ExoWeb.View.Adapter" template:if="$data.isType(Date) && $data.get_displayFormat() === Date.formats.Time">
+	<input type='text' sys:value="{ binding displayValue }" />
+</span>
+
+<!-- date, default -->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:datatype="ExoWeb.View.Adapter" template:if="$data.isType(Date)">
+	<input type='text' class='datepicker' sys:value="{ binding displayValue }" />
+</span>
+
+<!-- string, html editor -->
+<span class="sys-template" sys:attach="template" template:for=".text span, .html1 span, span.html1, .html2 span, span.html2" template:datatype="ExoWeb.View.Adapter" template:if="$data.isType(String)">
+	<textarea sys:id="html1" sys:value="{ binding displayValue }"
+		sys:cols="{{ !!$dataItem.get_htmlCols ? $dataItem.get_htmlCols() : 60 }}"
+		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : 4 }}"></textarea>
+</span>
+
+<!-- *, default -->
+<span class="sys-template" sys:attach="template" template:for=".field span" template:datatype="ExoWeb.View.Adapter">
+	<input type='text' sys:value="{ binding displayValue }" />
+</span>
+
+<!-- form layouts -->
+<div class="sys-template field" sys:attach="template" template:for=".normalform div" template:datatype="ExoWeb.View.Adapter">
+	<div class='label' style="width:150px;">{binding label}</div>    
+	<div class='field' style="float:right;"><span sys:attach="content" content:data="{~ }"></span></div>
+</div>
+<div class="sys-template field" sys:attach="template" template:for=".slimform div" template:datatype="ExoWeb.View.Adapter">
+	<div class='label' style="width:33%;">{binding label}</div>    
+	<div class='field' style="float:left; width:66%;"><span sys:attach="content" content:data="{~ }"></span></div>
+</div>
+
+
+<!-- tabular layout -->
+<table>
+<tr class="sys-template field" sys:attach="template" template:for="table.form tr" template:datatype="ExoWeb.View.Adapter">
+	<td class='label'>{binding label}</td>
+	<td><span sys:attach="content" content:data="{~ }"></span></td>
+</tr>
+</table>
+
+<!-- editable grid layout, explicit rows -->
+<table>
+<tr>
+	<td class="sys-template field" sys:attach="template" template:for="table.grid tr td.readonly.html" template:datatype="ExoWeb.View.Adapter">
+		<span sys:innerHTML="{ binding displayValue }"></span>
+	</td>
+	<td class="sys-template field" sys:attach="template" template:for="table.grid tr td.readonly" template:datatype="ExoWeb.View.Adapter">
+		<span sys:innerText="{ binding displayValue }"></span>
+	</td>
+	<td class="sys-template field" sys:attach="template" template:for="table.grid tr td" template:datatype="ExoWeb.View.Adapter">
+		<span sys:attach="content" content:data="{~ }"></span>
+	</td>
+</tr>
+</table>
+
+
+<!-- Add default validation display -->
+<script type="text/javascript">
+
+	function setState(el, prefix, current, all) {
+		all.forEach(function (state) {
+			if (current === state)
+				el.addClass(prefix + "-" + state);
+			else
+				el.removeClass(prefix + "-" + state);
+		});
+	}
+
+	$("input:bound, select:bound, textarea:bound").ever(function () {
+		$(this).validated(function (sender, issues) {
+
+			// locate validation area
+			var $area = $(this).closest(".field");
+			var $validation = $area.find(".validation");
+
+			if ($validation.size() == 0) {
+				$validation = $(this).next();
+
+				if (!$validation.is('.validation')) {
+					// container not found so inject it
+					$validation = $(this).after("<div class='validation'></div>").next();
+				}
+			}
+
+			var states = ["some", "none"];
+
+			if (issues.length == 0) {
+				setState($(this), "validated", "none", states);
+				setState($validation, "validation", "none", states);
+				setState($area, "validated", "none", states);
+			} else {
+				setState($(this), "validated", "some", states);
+				setState($validation, "validation", "some", states);
+				setState($area, "validated", "some", states);
+
+				$validation.text(issues[0].get_message());
+			}
+		});
+	});
+	
+</script>

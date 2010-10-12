@@ -8,7 +8,7 @@
 	}
 };
 
-Type.registerNamespace("ExoWeb");
+Type.registerNamespace("ExoWeb");	
 
 if (!("config" in ExoWeb)) {
 	ExoWeb.config = {};

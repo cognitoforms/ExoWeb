@@ -4,28 +4,51 @@
 
 	function execute() {
 
+		var dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}\:\d{2}\:\d{2}\.\d{3}Z$/g;
+
+		// Recursively searches throught the specified object and restores dates serialized as strings
+		function RestoreDates(value)
+		{
+			if (value instanceof Array) {
+				for (var i = 0; i < value.length; i++)
+				{
+					var element = value[i];
+					if (element && element.constructor == String && dateRegex.test(element)) {
+						dateRegex.lastIndex = 0;
+						value[i] = new Date(element);
+					}
+				}
+			}
+			else if (value instanceof Object) {
+				for (var field in value) {
+					if (value.hasOwnProperty(field)) {
+						var element = value[field];
+						if (element && element.constructor == String && dateRegex.test(element)) {
+							dateRegex.lastIndex = 0;
+							value[field] = new Date(element);
+						}
+					}
+				}
+			}
+		}
+
 		var undefined;
 		var STATIC_ID = "static";
 
 		var log = ExoWeb.trace.log;
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
-		var useConditionsMode = false;
-		ExoWeb.Mapper.enableConditionsMode = function enableConditionsMode() {
-			useConditionsMode = true;
-		};
-		ExoWeb.Mapper.disableConditionsMode = function disableConditionsMode() {
-			useConditionsMode = false;
-		};
-
 		// Object Provider
 		//----------------------------------------------------------
-		var objectProviderFn = function objectProviderFn(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure) {
-			ExoWeb.WebService.Load(type, ids, includeAllowedValues, includeTypes, paths, changes, useConditionsMode, false, onSuccess, onFailure);
+		var objectProviderFn = function objectProviderFn(type, ids, paths, changes, onSuccess, onFailure) {
+			ExoWeb.WebService.Request({
+				queries:[{type:type, ids:ids, paths:paths}],
+				changes:changes
+			}, onSuccess, onFailure);
 		};
-		function objectProvider(type, ids, includeAllowedValues, includeTypes, paths, changes, onSuccess, onFailure) {
+		function objectProvider(type, ids, paths, changes, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("objectProvider");
-			objectProviderFn.call(this, type, ids, includeAllowedValues, includeTypes, paths, changes,
+			objectProviderFn.call(this, type, ids, paths, changes,
 				function objectProviderSuccess() {
 					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
@@ -42,19 +65,24 @@
 		// Type Provider
 		//----------------------------------------------------------
 		var typeProviderFn = function typeProviderFn(type, onSuccess, onFailure) {
-			ExoWeb.WebService.GetType(type, useConditionsMode, onSuccess, onFailure);
+			ExoWeb.WebService.GetType(type, onSuccess, onFailure);
 		};
 		function typeProvider(type, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("typeProvider");
-			typeProviderFn.call(this, type,
-				function typeProviderSuccess() {
-					ExoWeb.Batch.resume(batch);
-					if (onSuccess) onSuccess.apply(this, arguments);
-				},
-				function typeProviderFailure() {
-					ExoWeb.Batch.resume(batch);
-					if (onFailure) onFailure.apply(this, arguments);
-				});
+			var cachedType = ExoWeb.cache(type);
+			if (cachedType)
+				onSuccess(cachedType);
+			else
+				typeProviderFn.call(this, type,
+					function typeProviderSuccess() {
+						ExoWeb.Batch.resume(batch);
+						ExoWeb.cache(type, arguments[0]);
+						if (onSuccess) onSuccess.apply(this, arguments);
+					},
+					function typeProviderFailure() {
+						ExoWeb.Batch.resume(batch);
+						if (onFailure) onFailure.apply(this, arguments);
+					});
 		}
 		ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 			typeProviderFn = fn;
@@ -62,8 +90,10 @@
 
 		// List Provider
 		//----------------------------------------------------------
-		var listProviderFn = function listProviderFn(ownerType, ownerId, paths, onSuccess, onFailure) {
-			ExoWeb.WebService.Load(ownerType, [ownerId], true, false, paths, null, useConditionsMode, false, onSuccess, onFailure);
+		var listProviderFn = function listProvider(ownerType, ownerId, paths, onSuccess, onFailure) {
+			ExoWeb.WebService.Request({
+				queries:[{type:ownerType, ids:[ownerId], paths:paths}]
+			}, onSuccess, onFailure);
 		};
 		function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("listProvider");
@@ -74,10 +104,6 @@
 			// prepend list prop to beginning of each other prop
 			if (otherProps.length > 0) {
 				Array.forEach(otherProps, function(p) {
-					//if (p.startsWith("this.") && ownerId == "static") {
-					//	// Can't load instance paths along with a static list
-					//	return;
-					//}
 					paths.push(p.startsWith("this.") ? listPath + "." + p.substring(5) : p);
 				});
 			}
@@ -99,7 +125,7 @@
 		// Roundtrip Provider
 		//----------------------------------------------------------
 		var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
-			ExoWeb.WebService.Load(null, null, false, false, null, changes, useConditionsMode, false, onSuccess, onFailure);
+			ExoWeb.WebService.Request({changes:changes}, onSuccess, onFailure);
 		};
 		function roundtripProvider(changes, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
@@ -120,7 +146,10 @@
 		// Save Provider
 		//----------------------------------------------------------
 		var saveProviderFn = function saveProviderFn(root, changes, onSuccess, onFailure) {
-			ExoWeb.WebService.Save(root, changes, onSuccess, onFailure);
+			ExoWeb.WebService.Request({
+				events:[{type: 'Save', instance: root}],
+				changes:changes
+			}, onSuccess, onFailure);
 		};
 		function saveProvider(root, changes, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("saveProvider");
@@ -141,7 +170,10 @@
 		// Event Provider
 		//----------------------------------------------------------
 		var eventProviderFn = function eventProviderFn(eventType, instance, event, changes, onSuccess, onFailure) {
-			ExoWeb.WebService.RaiseEvent(eventType, instance, event, changes, onSuccess, onFailure);
+			ExoWeb.WebService.Request({
+				events:[{type: eventType, instance: instance, event: event}],
+				changes:changes
+			}, onSuccess, onFailure);
 		};
 		function eventProvider(eventType, instance, event, changes, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("eventProvider");
@@ -159,75 +191,26 @@
 			eventProviderFn = fn;
 		};
 
-		Date.formats.$exograph = new ExoWeb.Model.Format({
-			convert: function convert(obj) {
-				// include offset in serialized date string
-				var offset = obj.getTimezoneOffset() * 100 / 60;
-				var offsetText = offset >= 1000 ? offset.toPrecision(4) : "0" + offset.toPrecision(3);
-				return "/Date(" + (+obj).toString() + "-" + offsetText + ")/";
-			}
-		});
+		function toExoGraph(translator, val) {
+			if (val === undefined || val === null)
+				return;
 
-		ExoWeb.Model.Entity.formats.$exograph = new ExoWeb.Model.Format({
-			convert: function(val) {
-				var json = {
+			// entities only: translate forward to the server's id
+			if (val instanceof ExoWeb.Model.Entity) {
+				var result = {
 					id: val.meta.id,
 					type: val.meta.type.get_fullName()
 				};
 
 				if (val.meta.isNew) {
-					json.isNew = true;
+					result.isNew = true;
 				}
 
-				return json;
-			},
-			convertBack: function(val) {
-				var jstype = ExoWeb.Model.Model.getJsType(val.type);
-
-				var obj = jstype.meta.get(val.id);
-
-				if (!obj) {
-					obj = new jstype(val.id);
-					ObjectLazyLoader.register(obj);
-//					log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), val.id]);
-				}
-
-				return obj;
-			}
-		});
-
-		ExoWeb.Model.Entity.formats.$load = new ExoWeb.Model.Format({
-			convert: function(obj) {
-				return obj.meta.type.toIdString(obj.meta.id);
-			},
-			convertBack: function(val) {
-				var ids = val.split("|");
-				var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
-				var obj = jstype.meta.get(ids[1]);
-
-				if (!obj) {
-					obj = new jstype(ids[1]);
-					ObjectLazyLoader.register(obj);
-//					log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), ids[1]]);
-				}
-
-				return obj;
-			}
-		});
-
-		function toExoGraph(translator, val) {
-			if (val !== undefined && val !== null) {
-				var type = val.constructor;
-				var fmt = type.formats && type.formats.$exograph;
-				var result = fmt ? fmt.convert(val) : val;
-
-				// entities only: translate forward to the server's id
-				if (val instanceof ExoWeb.Model.Entity) {
-					result.id = translator.forward(result.type, result.id) || result.id;
-				}
-
+				result.id = translator.forward(result.type, result.id) || result.id;
 				return result;
 			}
+
+			return val;
 		}
 
 		function translateId(translator, type, id) {
@@ -249,12 +232,21 @@
 				//--------------------------------------------------------------------------------------------------------
 				if (type.meta && type.meta instanceof ExoWeb.Model.Type && translator) {
 					// don't alter the original object
-					val = Object.copy(val);
-					val.id = translateId(translator, val.type, val.id);
+					var id = translateId(translator, val.type, val.id);
+
+					var obj = type.meta.get(id);
+
+					if (!obj) {
+						obj = new type(id);
+						ObjectLazyLoader.register(obj);
+						log(["entity", "server"], "{0}({1})  (ghost)", [type.meta.get_fullName(), id]);
+					}
+
+					return obj;
 				}
 
-				var fmt = type.formats && type.formats.$exograph;
-				return fmt ? fmt.convertBack(val) : val;
+				// is this needed? Can the if statement that checks type.meta be removed?
+				return val;
 			}
 		}
 
@@ -297,7 +289,7 @@
 					var listChange = listChanges[i];
 
 					var change = {
-						__type: "ListChange:#ExoGraph",
+						type: "ListChange",
 						instance: toExoGraph(this._translator, obj),
 						property: property.get_name(),
 						added: [],
@@ -330,7 +322,7 @@
 //					log("server", "logging new: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
 
 					var change = {
-						__type: "InitNew:#ExoGraph",
+						type: "InitNew",
 						instance: toExoGraph(this._translator, obj)
 					};
 
@@ -361,11 +353,11 @@
 					}
 
 					var valueChange = {
-						__type: "ValueChange:#ExoGraph",
+						type: "ValueChange",
 						instance: toExoGraph(this._translator, obj),
 						property: property.get_name(),
-						oldValue: toExoGraph(this._translator, oldValue),
-						newValue: toExoGraph(this._translator, newValue)
+						oldValue: oldValue,
+						newValue: newValue
 					};
 
 					this._raiseEvent("changeCaptured", [valueChange]);
@@ -379,7 +371,7 @@
 					}
 
 					var refChange = {
-						__type: "ReferenceChange:#ExoGraph",
+						type: "ReferenceChange",
 						instance: toExoGraph(this._translator, obj),
 						property: property.get_name(),
 						oldValue: toExoGraph(this._translator, oldValue),
@@ -544,6 +536,25 @@
 					}
 				});
 			},
+			_raiseBeginEvent: function ServerSync$raiseBeginEvent(method, includeAutomatic)
+			{
+				this._raiseEvent("requestBegin", [includeAutomatic]);
+				this._raiseEvent(method + "Begin", [includeAutomatic]);
+			},
+			_raiseSuccessEvent: function ServerSync$raiseSuccessEvent(method, result, includeAutomatic)
+			{
+				this._raiseEvent("requestEnd", [result, includeAutomatic]);
+				this._raiseEvent("requestSuccess", [result, includeAutomatic]);
+				this._raiseEvent(method + "End", [result, includeAutomatic]);
+				this._raiseEvent(method + "Success", [result, includeAutomatic]);						
+			},
+			_raiseFailedEvent: function ServerSync$raiseFailedEvent(method, result, includeAutomatic)
+			{
+				this._raiseEvent("requestEnd", [result, includeAutomatic]);
+				this._raiseEvent("requestFailed", [result, includeAutomatic]);
+				this._raiseEvent(method + "End", [result, includeAutomatic]);
+				this._raiseEvent(method + "Failed", [result, includeAutomatic]);				
+			},
 			addRequestBegin: function ServerSync$addRequestBegin(handler, includeAutomatic) {
 				this._addEventHandler("requestBegin", handler, includeAutomatic, 1);
 			},
@@ -579,7 +590,7 @@
 			},
 			canSave: function ServerSync$canSave(change) {
 				// For list changes additionally check added and removed objects.
-				if (change.__type == "ListChange:#ExoGraph") {
+				if (change.type == "ListChange") {
 					if (change.added.length > 0 || change.removed.length > 0) {
 						var ignore = true;
 
@@ -644,17 +655,48 @@
 				return this.canSaveObject(instanceObj);
 			},
 
+			_handleResult: function ServerSync$handleResult(result, automatic, callback)
+			{
+				var signal = new ExoWeb.Signal("Success");
+				
+				if (result.instances) {
+					var batch = ExoWeb.Batch.start();
+
+					objectsFromJson(this._model, result.instances, signal.pending(function() {
+						// if there is instance data to load then wait before loading conditions (since they may reference these instances)
+						if (result.conditions) {
+							conditionsFromJson(this._model, result.conditions);
+						}
+						ExoWeb.Batch.end(batch);
+						if (result.changes && result.changes.length > 0) {
+							this.applyChanges(result.changes, signal.pending());
+						}
+					}), this);
+				}
+				else {
+					if (result.conditions) {
+						conditionsFromJson(this._model, result.conditions);
+					}
+					if (result.changes && result.changes.length > 0) {
+						this.applyChanges(result.changes, signal.pending());
+					}
+				}
+
+				signal.waitForAll(function() {
+					if (callback && callback instanceof Function) {
+						callback.call(this);
+					}
+				}, this);
+			},
+
 			// Raise Server Event
 			///////////////////////////////////////////////////////////////////////
 			raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed/*, automatic */) {
 				Sys.Observer.setValue(this, "PendingServerEvent", true);
 
-//				log("server", "ServerSync.raiseServerEvent() >> {0}", [name]);
-
 				var automatic = arguments.length == 6 && arguments[5] === true;
-
-				this._raiseEvent("requestBegin", [automatic]);
-				this._raiseEvent("raiseServerEventBegin", [name, automatic]);
+				
+				this._raiseBeginEvent("raiseServerEvent", automatic);
 
 				// if no event object is provided then use an empty object
 				if (event === undefined || event === null) {
@@ -665,72 +707,49 @@
 				// that should not be saved, otherwise only use changes that can be saved.
 				var changes = includeAllChanges ? this._changes : this.get_Changes();
 
+				for(var key in event) {
+					var arg = event[key];
+					
+					if(arg instanceof Array) {
+						for(var i=0; i<arg.length; ++i) {
+							arg[i] = toExoGraph(this._translator, arg[i]);
+						}
+					}
+					else {
+						event[key] = toExoGraph(this._translator, arg);
+					}
+				}
+
 				eventProvider(
 					name,
 					toExoGraph(this._translator, obj),
 					event,
-					{ changes: changes },
+					changes,
 					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic),
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
 			},
-			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, userContext, methodName, callback, automatic) {
+			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-				var signal = new ExoWeb.Signal("RaiseServerEventSuccess");
+				this._raiseSuccessEvent("raiseServerEvent", result, automatic);
 
-				if (result.instances) {
-					objectsFromJson(this._model, result.instances, signal.pending(function() {
-						// if there is instance data to load then wait before loading conditions (since they may reference these instances)
-						if (result.conditionTargets) {
-							conditionsFromJson(this._model, result.conditionTargets);
-						}
-						applyChanges.call(this);
-					}), this);
-				}
-				else {
-					if (result.conditionTargets) {
-						conditionsFromJson(this._model, result.conditionTargets);
-					}
-					applyChanges.call(this);
-				}
-
-				function applyChanges() {
-					if (result.changes) {
-//						log("server", "ServerSync._onRaiseServerEventSuccess() >> applying {0} changes", [result.changes.length]);
-
-						if (result.changes.length > 0) {
-							this.applyChanges(result.changes, signal.pending());
-						}
-					}
-					else {
-//						log("server", "._onRaiseServerEventSuccess() >> no changes");
-					}
-				}
-
-				signal.waitForAll(function() {
-					this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
-					this._raiseEvent("raiseServerEventEnd", [[result, userContext, methodName], automatic]);
-					this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
-					this._raiseEvent("raiseServerEventSuccess", [result, userContext, methodName, automatic]);
-
+				this._handleResult(result, automatic, function() {
 					if (callback && callback instanceof Function) {
-						callback.call(this, result, userContext, methodName);
+						result.event = result.events[0];
+						RestoreDates(result.event);
+						callback.call(this, result);
 					}
-				}, this);
+					
+				});
 			},
-			_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(result, userContext, methodName, callback, automatic) {
+			_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-//				log("error", "Raise Server Event Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
-
-				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("raiseServerEventEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("requestFailed", [result, userContext, methodName, automatic]);
-				this._raiseEvent("raiseServerEventFailed", [result, userContext, methodName, automatic]);
+				this._raiseFailedEvent("raiseServerEvent", result, automatic);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this, result, userContext, methodName);
+					callback.call(this, result);
 				}
 			},
 			addRaiseServerEventBegin: function ServerSync$addRaiseServerEventBegin(handler, includeAutomatic) {
@@ -751,58 +770,35 @@
 			roundtrip: function ServerSync$roundtrip(success, failed/*, automatic */) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", true);
 
-//				log("server", "ServerSync.roundtrip() >> sending {0} changes", [this._changes.length]);
-
 				var automatic = arguments.length == 3 && arguments[2] === true;
 
-				this._raiseEvent("requestBegin", [automatic]);
-				this._raiseEvent("roundtripBegin", [automatic]);
+				this._raiseBeginEvent("roundtrip", automatic);
 
 				roundtripProvider(
-					{ changes: this._changes },
+					this._changes,
 					this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic),
 					this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
 			},
-			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, userContext, methodName, callback, automatic) {
+			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-				var signal = new ExoWeb.Signal("RoundtripSuccess");
+				this._raiseSuccessEvent("roundtrip", result, automatic);
 
-				if (result.changes) {
-//					log("server", "ServerSync._onRoundtripSuccess() >> applying {0} changes", [result.changes.length]);
-
-					if (result.changes.length > 0) {
-						this.applyChanges(result.changes, signal.pending());
-					}
-				}
-				else {
-//					log("server", "._onRoundtripSuccess() >> no changes");
-				}
-
-				signal.waitForAll(function() {
-					this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
-					this._raiseEvent("roundtripEnd", [[result, userContext, methodName], automatic]);
-					this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
-					this._raiseEvent("roundtripSuccess", [result, userContext, methodName, automatic]);
-
+				this._handleResult(result, automatic, function() {
 					if (callback && callback instanceof Function) {
-						callback.call(this, result, userContext, methodName);
+						callback.call(this, result);
 					}
-				}, this);
+				});
+
 			},
-			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(result, userContext, methodName, callback, automatic) {
+			_onRoundtripFailed: function ServerSync$_onRoundtripFailed(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-//				log("error", "Roundtrip Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
-
-				this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("roundtripEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("requestFailed", [result, userContext, methodName, automatic]);
-				this._raiseEvent("roundtripFailed", [result, userContext, methodName, automatic]);
+				this._raiseFailedEvent("roundtrip", result, automatic);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this, result, userContext, methodName);
+					callback.call(this, result);
 				}
 			},
 			startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
@@ -827,83 +823,45 @@
 					window.clearTimeout(this._roundtripTimeout);
 				}
 			},
-			addRoundtripBegin: function ServerSync$addRoundtripBegin(handler, includeAutomatic) {
-				this._addEventHandler("roundtripBegin", handler, includeAutomatic, 1);
-			},
-			addRoundtripEnd: function ServerSync$addRoundtripEnd(handler, includeAutomatic) {
-				this._addEventHandler("roundtripEnd", handler, includeAutomatic, 1);
-			},
-			addRoundtripSuccess: function ServerSync$addRoundtripSuccess(handler, includeAutomatic) {
-				this._addEventHandler("roundtripSuccess", handler, includeAutomatic, 3);
-			},
-			addRoundtripFailed: function ServerSync$addRoundtripFailed(handler, includeAutomatic) {
-				this._addEventHandler("roundtripFailed", handler, includeAutomatic, 3);
-			},
 
 			// Save
 			///////////////////////////////////////////////////////////////////////
 			save: function ServerSync$save(root, success, failed/*, automatic*/) {
 				Sys.Observer.setValue(this, "PendingSave", true);
 
-//				log("server", ".save() >> sending {0} changes", [this._changes.length]);
-
 				var automatic = arguments.length == 4 && arguments[3] === true;
 
-				this._raiseEvent("requestBegin", [automatic]);
-				this._raiseEvent("saveBegin", [automatic]);
+				this._raiseBeginEvent("save", automatic);
 
 				saveProvider(
 					{ type: root.meta.type.get_fullName(), id: root.meta.id },
-					{ changes: this.get_Changes() },
+					this.get_Changes(),
 					this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
 					this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
 				);
 			},
-			_onSaveSuccess: function ServerSync$_onSaveSuccess(result, userContext, methodName, callback, automatic) {
+			_onSaveSuccess: function ServerSync$_onSaveSuccess(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
-				var signal = new ExoWeb.Signal("SaveSuccess");
+				this._raiseSuccessEvent("save", result, automatic);
 
-				if (result.changes) {
-//					log("server", "._onSaveSuccess() >> applying {0} changes", [result.changes.length]);
-
-					// apply changes from server
-					if (result.changes.length > 0) {
-						this.applyChanges(result.changes, signal.pending());
-					}
-				}
-				else {
-//					log("server", "._onSaveSuccess() >> no changes");
-				}
-
-				signal.waitForAll(function() {
-					this._raiseEvent("requestEnd", [[result, userContext, methodName], automatic]);
-					this._raiseEvent("saveEnd", [[result, userContext, methodName], automatic]);
-					this._raiseEvent("requestSuccess", [result, userContext, methodName, automatic]);
-					this._raiseEvent("saveSuccess", [result, userContext, methodName, automatic]);
-
+				this._handleResult(result, automatic, function() {
 					if (callback && callback instanceof Function) {
-						callback.call(this, result, userContext, methodName);
+						callback.call(this, result);
 					}
-				}, this);
+				});
+				
 			},
-			_onSaveFailed: function ServerSync$_onSaveFailed(result, userContext, methodName, callback, automatic) {
+			_onSaveFailed: function ServerSync$_onSaveFailed(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
-//				log("error", "Save Failed (HTTP: {_statusCode}, Timeout: {_timedOut}) - {_message}", result);
-
-				this._raiseEvent("requstEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("saveEnd", [[result, userContext, methodName], automatic]);
-				this._raiseEvent("requestFailed", [result, userContext, methodName, automatic]);
-				this._raiseEvent("saveFailed", [result, userContext, methodName, automatic]);
+				this._raiseFailedEvent("save", result, automatic);
 
 				if (callback && callback instanceof Function) {
-					callback.call(this, result, userContext, methodName);
+					callback.call(this, result);
 				}
 			},
 			startAutoSave: function ServerSync$startAutoSave(root, interval) {
-//				log("server", "auto-save enabled for future changes - ({0} milliseconds", [interval]);
-
 				// cancel any pending save schedule
 				this.stopAutoSave();
 				this._saveInterval = interval;
@@ -976,16 +934,16 @@
 						if (change) {
 							var callback = signal.pending(processNextChange, this);
 
-							if (change.__type == "InitNew:#ExoGraph") {
+							if (change.type == "InitNew") {
 								this.rollbackInitChange(change, callback);
 							}
-							else if (change.__type == "ReferenceChange:#ExoGraph") {
+							else if (change.type == "ReferenceChange") {
 								this.rollbackRefChange(change, callback);
 							}
-							else if (change.__type == "ValueChange:#ExoGraph") {
+							else if (change.type == "ValueChange") {
 								this.rollbackValChange(change, callback);
 							}
-							else if (change.__type == "ListChange:#ExoGraph") {
+							else if (change.type == "ListChange") {
 								this.rollbackListChange(change, callback);
 							}
 						}
@@ -1166,11 +1124,11 @@
 						// look for remaining changes that are save changes, but only if 
 						// we are finished processing changes that occurred before a save
 						var saveChanges = null;
-						if (ignoreCount === 0) {
-							saveChanges = $transform(changes).where(function(c) {
-								return c.__type === "Save:#ExoGraph";
-							});
-						}
+//						if (ignoreCount === 0) {
+//							saveChanges = $transform(changes).where(function(c) {
+//								return c.type === "Save";
+//							});
+//						}
 
 						// process the next save change
 						if (saveChanges && saveChanges.length > 0) {
@@ -1202,19 +1160,19 @@
 								callback();
 							}).setScope(this);
 
-							if (change.__type == "InitNew:#ExoGraph") {
+							if (change.type == "InitNew") {
 								this.applyInitChange(change, ifApplied);
 							}
-							else if (change.__type == "ReferenceChange:#ExoGraph") {
+							else if (change.type == "ReferenceChange") {
 								this.applyRefChange(change, ifApplied);
 							}
-							else if (change.__type == "ValueChange:#ExoGraph") {
+							else if (change.type == "ValueChange") {
 								this.applyValChange(change, ifApplied);
 							}
-							else if (change.__type == "ListChange:#ExoGraph") {
+							else if (change.type == "ListChange") {
 								this.applyListChange(change, ifApplied);
 							}
-							else if (change.__type == "Save:#ExoGraph") {
+							else if (change.type == "Save") {
 								var lookahead = (saveChanges && saveChanges.length > 0 && ignoreCount !== 0);
 								this.applySaveChange(change, lookahead, function() {
 									// changes have been applied so truncate the log to this point
@@ -1428,6 +1386,8 @@
 
 						var changed = ExoWeb.getValue(srcObj, change.property) != change.newValue;
 
+						if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0)
+							change.newValue = new Date(change.newValue);
 						Sys.Observer.setValue(srcObj, change.property, change.newValue);
 
 						if (doCallback) {
@@ -1607,11 +1567,17 @@
 				ExoWeb.trace.logError(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
 			}
 
-			Array.forEach(json.targets, function(target) {
-				var inst = fromExoGraph(target.instance);
-				var props = target.properties.map(function(p) { return inst.meta.type.property(p); });
-				var c = new ExoWeb.Model.Condition(type, type.get_message(), props);
-				inst.meta.conditionIf(c, true);
+			Array.forEach(json, function(condition) {
+
+				Array.forEach(condition.targets, function(target) {
+					var inst = fromExoGraph(target.instance, model._server._translator);
+					if (inst)
+					{
+						var props = target.properties.map(function(p) { return inst.meta.type.property(p); });
+						var c = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
+						inst.meta.conditionIf(c, true);
+					}
+				});
 			});
 		}
 
@@ -1747,8 +1713,10 @@
 								prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
 							}
 							else {
-								var format = ctor.formats.$wire;
-								prop.init(obj, (format ? format.convertBack(propData) : propData));
+								// Coerce strings into dates
+								if (ctor == Date && propData && propData.constructor == String && propData.length > 0)
+									propData = new Date(propData);
+								prop.init(obj, propData);
 							}
 						}
 					}
@@ -1762,7 +1730,7 @@
 			}
 
 			if (callback && callback instanceof Function) {
-				callback.call(thisPtr || this);
+				callback(thisPtr || this);
 			}
 		}
 
@@ -1782,9 +1750,19 @@
 			for (var propName in json.properties) {
 				var propJson = json.properties[propName];
 
-				var propType = getJsType(model, propJson.type);
+				// Type
+				var propType = propJson.type;
+				if (propJson.type.endsWith("[]"))
+				{
+					propType = propType.toString().substring(0, propType.length - 2);
+					propJson.isList = true;
+				}
+				propType = getJsType(model, propType);
+
+				// Format
 				var format = propJson.format ? propType.formats[propJson.format] : null;
 
+				// Add the property
 				var prop = mtype.addProperty({ name: propName, type: propType, isList: propJson.isList, label: propJson.label, format: format, isStatic: propJson.isStatic, index: propJson.index });
 
 
@@ -1805,16 +1783,28 @@
 					}
 				}
 			}
+
+			// ensure all properties added from now on are considered client properties
 			mtype.set_originForNewProperties("client");
+
+			// define methods
+			for (var methodName in json.methods) {
+				var methodJson = json.methods[methodName];
+				mtype.addMethod({ name: methodName, parameters: methodJson.parameters, isStatic: methodJson.isStatic });
+			}
+
+			// define condition types
+			if (json.conditionTypes)
+				conditionTypesFromJson(model, mtype, json.conditionTypes)
 		}
 
-		function conditionTypesFromJson(model, json) {
+		function conditionTypesFromJson(model, mtype, json) {
 			for (var code in json) {
-				conditionTypeFromJson(model, code, json[code]);
+				conditionTypeFromJson(model, mtype, code, json[code]);
 			}
 		}
 
-		function conditionTypeFromJson(model, code, json) {
+		function conditionTypeFromJson(model, mtype, code, json) {
 
 			// Attempt to retrieve the condition type by code.
 			var conditionType = ExoWeb.Model.ConditionType.get(code);
@@ -1848,17 +1838,9 @@
 				conditionType.extend(json);
 			}
 
-			if (json.rule && json.rule.hasOwnProperty("clientRuleType")) {
-				var ruleType = ExoWeb.Model.Rule[json.rule.clientRuleType];
-				var mtype = model.type(json.rule.rootType);
-
-				// TODO: don't create the rule if it already exists
-				var props = json.rule.properties.map(function(p) {
-					return ExoWeb.Model.Model.property(p, mtype);
-				});
-
-				var rule = new ruleType(json.rule, props, conditionType);
-
+			if (json.rule && json.rule.hasOwnProperty("type")) {
+				var ruleType = ExoWeb.Model.Rule[json.rule.type];
+				var rule = new ruleType(mtype, json.rule, conditionType);
 				conditionType.get_rules().push(rule);
 			}
 		}
@@ -1899,7 +1881,7 @@
 
 		// Gets a reference to a type.  IMPORTANT: typeName must be the
 		// family-qualified type name (ex: Employee>Person).
-		function getType(model, finalType, propType, forLoading) {
+		function getType(model, finalType, propType) {
 			// ensure the entire type family is at least ghosted
 			// so that javascript OO mechanisms work properly		
 			var family = [];
@@ -1930,10 +1912,10 @@
 						mtype = model.addType(type, baseType);
 						mtype.set_origin("server");
 
-						if (!forLoading || family.length > 0) {
+						//if (!forLoading || family.length > 0) {
 //							log("typeInit", "{0} (ghost)", [type]);
 							TypeLazyLoader.register(mtype);
-						}
+						//}
 					}
 				}
 			}
@@ -1969,16 +1951,12 @@
 		var fetchType = (function Mapper$fetchType(model, typeName, callback, thisPtr) {
 			var signal = new ExoWeb.Signal("fetchType(" + typeName + ")");
 
-			var conditionTypeJson;
 			var errorObj;
 
 			function success(result) {
 				// load type(s)
 				typesFromJson(model, result.types);
 
-				if (result.conditionTypes) {
-					conditionTypeJson = result.conditionTypes;
-				}
 
 				// ensure base classes are loaded too
 				for (var b = model.type(typeName).baseType; b; b = b.baseType) {
@@ -2008,10 +1986,6 @@
 				var mtype = model.type(typeName);
 				TypeLazyLoader.unregister(mtype);
 
-				if (conditionTypeJson) {
-					// load condition types
-					conditionTypesFromJson(model, conditionTypeJson);
-				}
 
 				//ExoWeb.Batch.whenDone(function() { 
 					// apply app-specific configuration
@@ -2164,7 +2138,7 @@
 		function ruleFromJson(rulesJson, prop) {
 			for (var name in rulesJson) {
 				var json = rulesJson[name];
-				var ruleType = ExoWeb.Model.Rule[json.clientRuleType];
+				var ruleType = ExoWeb.Model.Rule[json.type];
 				var rule = new ruleType(json, [prop]);
 			}
 		}
@@ -2207,8 +2181,6 @@
 				var id = obj.meta.id || STATIC_ID;
 				var mtype = obj.meta.type || obj.meta;
 
-				var objectJson, conditionsJson;
-
 				// Get the paths from the original query(ies) that apply to this object (based on type).
 				var paths = ObjectLazyLoader.getRelativePaths(obj);
 
@@ -2220,12 +2192,14 @@
 				// fetch object json
 //				log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 				// NOTE: should changes be included here?
-				objectProvider(mtype.get_fullName(), [id], true, false, paths, null,
-					signal.pending(function(result) {
-						objectJson = result.instances;
-						conditionsJson = result.conditionTargets;
-					}),
-					signal.orPending(function(e) {
+				objectProvider(mtype.get_fullName(), [id], paths, null,
+					function(result) {
+						mtype.get_model()._server._handleResult(result, true, function() {
+							ExoWeb.Model.LazyLoader.unregister(obj, this);
+							callback.call(thisPtr || this, obj);
+						});
+					},
+					function(e) {
 						var message = $format("Failed to load {0}({1}): ", [mtype.get_fullName(), id]);
 						if (e !== undefined && e !== null &&
 							e.get_message !== undefined && e.get_message !== null &&
@@ -2237,39 +2211,12 @@
 							message += "unknown error";
 						}
 						ExoWeb.trace.logError("lazyLoad", message);
-					})
-				);
+					});
 
 				// does the object's type need to be loaded too?
-				if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+				if (! ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 					ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
 				}
-
-				// wait for type and instance json to load
-				signal.waitForAll(function() {
-					if (!objectJson) {
-						return;
-					}
-
-					ExoWeb.Model.LazyLoader.unregister(obj, this);
-
-					var batch = ExoWeb.Batch.start($format("{0}({1})", [mtype.get_fullName(), id]));
-
-					// Load instance data
-					objectsFromJson(mtype.get_model(), objectJson, function() {
-						if (conditionsJson) {
-							// Load conditions data and then invoke callback
-							conditionsFromJson(mtype.get_model(), conditionsJson, function() {
-								ExoWeb.Batch.end(batch);
-								callback.call(thisPtr || this, obj);
-							});
-						}
-						else {
-							ExoWeb.Batch.end(batch);
-							callback.call(thisPtr || this, obj);
-						}
-					});
-				});
 			}).dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(obj) { return [obj]; } })
 		});
 
@@ -2332,55 +2279,6 @@
 
 
 		///////////////////////////////////////////////////////////////////////////////
-		// Single Property Loader
-		function PropertyLazyLoader() {
-			this._requests = {};
-		}
-
-		PropertyLazyLoader.mixin({
-			load: (function load(obj, propName, callback, thisPtr) {
-				var signal = new ExoWeb.Signal();
-
-				var id = obj.meta.id || STATIC_ID;
-				var mtype = obj.meta.type || obj.meta;
-
-				var objectJson;
-
-				// fetch object json
-//				log(["propInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [mtype.get_fullName(), id, propName]);
-				propertyProvider(mtype.get_fullName(), id, true, [], signal.pending(function(result) {
-					objectJson = result;
-				}));
-
-				// does the object's type need to be loaded too?
-				if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-					ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
-				}
-
-				// wait for type and instance json to load
-				signal.waitForAll(function() {
-					ExoWeb.Model.LazyLoader.unregister(obj, this);
-					objectsFromJson(mtype.get_model(), objectJson);
-					callback.call(thisPtr || this, obj);
-				});
-			}).dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(obj) { return [obj]; } })
-		});
-
-		(function() {
-			var instance = new ObjectLazyLoader();
-
-			PropertyLazyLoader.register = function(obj, prop) {
-				if (!ExoWeb.Model.LazyLoader.isRegistered(obj, instance, prop.get_name())) {
-					ExoWeb.Model.LazyLoader.register(obj, instance, prop.get_name());
-				}
-			};
-
-			PropertyLazyLoader.unregister = function(obj, prop) {
-				ExoWeb.Model.LazyLoader.unregister(obj, instance, prop.get_name());
-			};
-		})();
-
-		///////////////////////////////////////////////////////////////////////////////
 		// List Loader
 		function ListLazyLoader() {
 		}
@@ -2405,7 +2303,7 @@
 				listProvider(ownerType, list._ownerId, propName, ObjectLazyLoader.getRelativePathsForType(propType),
 					signal.pending(function(result) {
 						objectJson = result.instances;
-						conditionsJson = result.conditionTargets;
+						conditionsJson = result.conditions;
 					}),
 					signal.orPending(function(e) {
 						var message = $format("Failed to load {0}({1}).{2}: ", [ownerType, ownerId, propName]);
@@ -2553,20 +2451,21 @@
 			};
 		})();
 
-		ExoWeb.context = function context(options) {
-			var model = new ExoWeb.Model.Model();
+		var allSignals = new ExoWeb.Signal("ExoWeb.context allSignals");
 
-			var allSignals = new ExoWeb.Signal("ExoWeb.context allSignals");
+		ExoWeb.context = function context(options, context) {
+			
+			var model = context ? context.model.meta : new ExoWeb.Model.Model();
 
-			var state = {};
-
-			var ret = {
+			var ret = context ? context :  {
 				model: {
 					meta: model
 				},
 				ready: function context$model$ready(callback) { allSignals.waitForAll(callback); },
 				server: new ServerSync(model)
 			};
+
+			var state = {};
 
 			var batch = ExoWeb.Batch.start("init context");
 
@@ -2602,16 +2501,16 @@
 						if(query.load) {
 							// bypass all server callbacks if data is embedded
 							state[varName].objectJson = query.load.instances;
-							state[varName].conditionsJson = query.load.conditionTargets;
+							state[varName].conditionsJson = query.load.conditions;
 						}
 						else {
 							// need to load data from server
 							// fetch object state if an id of a persisted object was specified
-							if (query.id !== newId && query.id !== null && query.id !== undefined && query.id !== "") {
-								objectProvider(query.from, [query.id], true, false, query.serverPaths, null,
+							if (query.id !== $newId() && query.id !== null && query.id !== undefined && query.id !== "") {
+								objectProvider(query.from, [query.id], query.serverPaths, null,
 									state[varName].signal.pending(function context$objects$callback(result) {
 										state[varName].objectJson = result.instances;
-										state[varName].conditionsJson = result.conditionTargets;
+										state[varName].conditionsJson = result.conditions;
 									}),
 									state[varName].signal.orPending(function context$objects$callback(error) {
 										ExoWeb.trace.logError("objectInit",
@@ -2621,21 +2520,35 @@
 								);
 							}
 							else {
-								objectProvider(null, null, true, false, query.serverPaths, null,
-									allSignals.pending(function context$objects$callback(result) {
-										// load the json. this may happen asynchronously to increment the signal just in case
-										objectsFromJson(model, result.instances, allSignals.pending(function() {
-											if (result.conditionTargets) {
-												conditionsFromJson(model, result.conditionTargets);
-											}
-										}));
-									}),
-									allSignals.orPending(function context$objects$callback(error) {
-										ExoWeb.trace.logError("objectInit",
-											"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-											{ query: query, error: error });
-									})
-								);
+								
+								if (query.serverPaths == null)
+									query.serverPaths = [];
+
+								// Remove instance paths when an id is not specified
+								for (var i = query.serverPaths.length-1; i >= 0; i--) {
+									if (query.serverPaths[i].startsWith("this."))
+										query.serverPaths.splice(i, 1);	
+								}
+
+								// Only call the server if paths were specified
+								if (query.serverPaths.length > 0)
+								{
+									objectProvider(null, null, query.serverPaths, null,
+										allSignals.pending(function context$objects$callback(result) {
+											// load the json. this may happen asynchronously to increment the signal just in case
+											objectsFromJson(model, result.instances, allSignals.pending(function() {
+												if (result.conditions) {
+													conditionsFromJson(model, result.conditions);
+												}
+											}));
+										}),
+										allSignals.orPending(function context$objects$callback(error) {
+											ExoWeb.trace.logError("objectInit",
+												"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+												{ query: query, error: error });
+										})
+									);
+								}
 							}
 						}
 					})(varNameLoad);
@@ -2654,7 +2567,7 @@
 							var query = options.model[varName];
 
 							// construct a new object if a "newId" was specified
-							if (query.id === newId) {
+							if (query.id === $newId()) {
 								ret.model[varName] = new (model.type(query.from).get_jstype())();
 
 								// model object has been successfully loaded!
@@ -2663,7 +2576,7 @@
 
 							// otherwise, load the object from json if an id was specified
 							else if (query.id !== null && query.id !== undefined && query.id !== "") {
-								// load the json. this may happen asynchronously to increment the signal just in case
+								// load the json. this may happen asynchronously so increment the signal just in case
 								objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
 									var query = options.model[varName];
 									var mtype = model.type(query.from);
@@ -2726,12 +2639,12 @@
 					fetchTypes(model, typeQuery, allSignals.pending());
 
 					if (typeQuery.serverPaths.length > 0) {
-						objectProvider(typeQuery.from, null, true, false, typeQuery.serverPaths, null,
+						objectProvider(typeQuery.from, null, typeQuery.serverPaths, null,
 							allSignals.pending(function context$objects$callback(result) {
 								// load the json. this may happen asynchronously to increment the signal just in case
 								objectsFromJson(model, result.instances, allSignals.pending(function() {
-									if (result.conditionTargets) {
-										conditionsFromJson(model, result.conditionTargets);
+									if (result.conditions) {
+										conditionsFromJson(model, result.conditions);
 									}
 								}));
 							}),
@@ -2814,12 +2727,6 @@
 				extendOne(typeInfo, callback, thisPtr);
 			}
 		};
-
-		// object constant to single to mapper to create a new instance rather than load one
-		var newId = "$newId";
-		window.$newId = function $newId() {
-			return newId;
-		}
 	}
 
 
@@ -2831,3 +2738,4 @@
 	}
 
 })();
+
