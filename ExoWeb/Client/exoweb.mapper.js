@@ -4,7 +4,8 @@
 
 	function execute() {
 
-		var dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}\:\d{2}\:\d{2}\.\d{3}Z$/g;
+		var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})\.\d{3}Z$/g;
+		var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
 
 		// Recursively searches throught the specified object and restores dates serialized as strings
 		function RestoreDates(value)
@@ -15,6 +16,7 @@
 					var element = value[i];
 					if (element && element.constructor == String && dateRegex.test(element)) {
 						dateRegex.lastIndex = 0;
+						element = element.replace(dateRegex, dateRegexReplace);
 						value[i] = new Date(element);
 					}
 				}
@@ -25,6 +27,7 @@
 						var element = value[field];
 						if (element && element.constructor == String && dateRegex.test(element)) {
 							dateRegex.lastIndex = 0;
+							element = element.replace(dateRegex, dateRegexReplace);
 							value[field] = new Date(element);
 						}
 					}
@@ -1386,8 +1389,11 @@
 
 						var changed = ExoWeb.getValue(srcObj, change.property) != change.newValue;
 
-						if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0)
+						if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0) {
+							change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
 							change.newValue = new Date(change.newValue);
+						}
+
 						Sys.Observer.setValue(srcObj, change.property, change.newValue);
 
 						if (doCallback) {
@@ -1714,8 +1720,10 @@
 							}
 							else {
 								// Coerce strings into dates
-								if (ctor == Date && propData && propData.constructor == String && propData.length > 0)
+								if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
+									propData = propData.replace(dateRegex, dateRegexReplace);
 									propData = new Date(propData);
+								}
 								prop.init(obj, propData);
 							}
 						}
