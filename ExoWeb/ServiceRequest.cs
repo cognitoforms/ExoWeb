@@ -488,7 +488,7 @@ namespace ExoWeb
 			{
 				string typeName = json.Get<string>("type");
 				if (typeName != null)
-					Type = GraphContext.Current.GetGraphType(json.Get<string>("type"));
+					Type = GraphContext.Current.GetGraphType(typeName);
 
 				Ids = json.Get<string[]>("ids");
 				Paths = json.Get<string[]>("paths");
