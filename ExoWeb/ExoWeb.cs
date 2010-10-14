@@ -158,8 +158,15 @@ namespace ExoWeb
 			return Load(GraphContext.Current.GetGraphType<T>(), id, paths);
 		}
 
+		//TODO: augment to automatically load property paths as needed when init'ing a new entity
 		static string Load(GraphType type, string id, string[] paths)
 		{
+			if (string.IsNullOrEmpty(id))
+			{
+				string path = "\"" + string.Join("\",\"", paths) + "\"";
+				return "{ id: $newId(), from: \"" + type.Name + "\", and: [" + path + "] }";
+			} 
+
 			var request = new ServiceRequest(type, new string[] { id }, paths);
 			return "{ id : \"" + id + "\", from: \"" + type.Name + "\", load: " + FixJsonDates(ToJson(typeof(ServiceResponse), request.Invoke())) + "}";
 		}
