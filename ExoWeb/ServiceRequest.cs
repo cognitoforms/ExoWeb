@@ -5,11 +5,14 @@ using System.Text;
 using ExoGraph;
 using ExoRule;
 using System.Reflection;
+using System.Collections;
 
 namespace ExoWeb
 {
 	public class ServiceRequest : IJsonSerializable
 	{
+		private GraphContext context = GraphContext.Current;
+
 		#region Constructors
 
 		ServiceRequest()
@@ -83,7 +86,7 @@ namespace ExoWeb
 			// Otherwise, just get the root instances
 			else
 			{
-				using (response.Changes = GraphContext.Current.BeginTransaction())
+				using (response.Changes = context.BeginTransaction())
 				{
 					LoadAndRaise(response);
 					response.Changes.Commit();
@@ -180,10 +183,41 @@ namespace ExoWeb
 					.Select((domainEvent) =>
 					{
 						domainEvent.Instance = Changes.GetInstance(domainEvent.Instance.Type, domainEvent.Instance.Id);
-						return domainEvent.Raise(Changes);
+						var result = domainEvent.Raise(Changes);
+
+						if (result == null)
+							return null;
+
+						IList<Query> queries = new List<Query>();
+						GraphInstance[] roots = null;
+							
+						var type = context.GetGraphType(result);
+						if (type != null)
+						{
+							roots = new GraphInstance[] { type.GetGraphInstance(result) };
+						}
+						else if (result is IEnumerable)
+						{
+							roots =
+							(
+								from element in ((IEnumerable) result).Cast<object>()
+								let elementType = context.GetGraphType(element)
+								where elementType != null
+								select elementType.GetGraphInstance(element)
+							).ToArray();
+						}
+
+						if (roots != null)
+						{
+							Query[] newQueries = new Query[] { new Query(roots, domainEvent.Paths) };
+							Queries = Queries == null ? newQueries : Queries.Union(newQueries).ToArray();
+
+							return type == null ? (object) roots : (object) roots[0];
+						}
+						else
+							return result;
 					})
 					.ToArray();
-
 			}
 		}
 
@@ -324,6 +358,8 @@ namespace ExoWeb
 		{
 			public GraphInstance Instance { get; internal set; }
 
+			public string[] Paths { get; private set; }			
+
 			internal virtual object Raise(GraphTransaction transaction)
 			{
 				throw new NotImplementedException();
@@ -340,6 +376,9 @@ namespace ExoWeb
 			{
 				// Get the event target
 				var instance = json.Get<GraphInstance>("instance");
+
+				// Get the property paths
+				Paths = json.Get<string[]>("paths");
 
 				// Get the type of event
 				string eventName = json.Get<string>("type");
@@ -465,6 +504,13 @@ namespace ExoWeb
 				this.Type = type;
 				this.Ids = ids;
 				this.Paths = paths;
+			}
+
+			// Being used specifically for streaming event results
+			internal Query(GraphInstance[] roots, string[] paths)
+			{
+				this.Paths = paths ?? new string[] { };
+				this.Roots = roots;
 			}
 
 			public GraphType Type { get; private set; }

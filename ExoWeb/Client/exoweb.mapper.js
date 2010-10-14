@@ -172,15 +172,16 @@
 
 		// Event Provider
 		//----------------------------------------------------------
-		var eventProviderFn = function eventProviderFn(eventType, instance, event, changes, onSuccess, onFailure) {
+		var eventProviderFn = function eventProviderFn(eventType, instance, event, paths, changes, onSuccess, onFailure) {
 			ExoWeb.WebService.Request({
 				events:[{type: eventType, instance: instance, event: event}],
+				paths:paths,
 				changes:changes
 			}, onSuccess, onFailure);
 		};
-		function eventProvider(eventType, instance, event, changes, onSuccess, onFailure) {
+		function eventProvider(eventType, instance, event, paths, changes, onSuccess, onFailure) {
 			var batch = ExoWeb.Batch.suspendCurrent("eventProvider");
-			eventProviderFn.call(this, eventType, instance, event, changes,
+			eventProviderFn.call(this, eventType, instance, event, paths, changes,
 				function eventProviderSuccess() {
 					ExoWeb.Batch.resume(batch);
 					if (onSuccess) onSuccess.apply(this, arguments);
@@ -226,7 +227,7 @@
 		}
 
 		function fromExoGraph(val, translator) {
-			if (val !== undefined && val !== null) {
+			if (val !== undefined && val !== null && val.type && val.id ) {
 				var type = ExoWeb.Model.Model.getJsType(val.type);
 
 				// Entities only: translate back to the client's id.  This is necessary to handle the fact that ids are created on 
@@ -251,6 +252,8 @@
 				// is this needed? Can the if statement that checks type.meta be removed?
 				return val;
 			}
+
+			return val;
 		}
 
 
@@ -694,10 +697,11 @@
 
 			// Raise Server Event
 			///////////////////////////////////////////////////////////////////////
-			raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed/*, automatic */) {
+			raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed/*, automatic, paths */) {
 				Sys.Observer.setValue(this, "PendingServerEvent", true);
 
-				var automatic = arguments.length == 6 && arguments[5] === true;
+				var automatic = arguments.length > 6 && arguments[6] === true;
+				var paths = arguments.length > 7 && arguments[7];
 				
 				this._raiseBeginEvent("raiseServerEvent", automatic);
 
@@ -727,6 +731,7 @@
 					name,
 					toExoGraph(this._translator, obj),
 					event,
+					paths,
 					changes,
 					this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic),
 					this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
@@ -739,7 +744,17 @@
 
 				this._handleResult(result, automatic, function() {
 					if (callback && callback instanceof Function) {
-						result.event = result.events[0];
+						var event = result.events[0];
+						if(event instanceof Array) {
+							for(var i=0; i<event.length; ++i) {
+								event[i] = fromExoGraph(event[i], this._translator);
+							}
+						}
+						else {
+							event = fromExoGraph(event, this._translator);
+						}							
+
+						result.event = event;
 						RestoreDates(result.event);
 						callback.call(this, result);
 					}
