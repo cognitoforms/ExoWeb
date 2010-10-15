@@ -945,7 +945,7 @@
 					function processNextChange() {
 						var change = null;
 
-						if (depth < steps) {
+						if (steps === undefined || depth < steps) {
 							change = changes.pop();
 						}
 
