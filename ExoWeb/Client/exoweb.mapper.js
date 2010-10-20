@@ -492,7 +492,7 @@
 
 					var registeredHandler = function(obj) {
 //						log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
-						if (obj.meta.type === type && obj.meta.id === id) {
+						if (obj.meta.type === type.meta && obj.meta.id === id) {
 							// unregister the handler since it is no longer needed
 							model.removeObjectRegistered(registeredHandler);
 
@@ -1671,7 +1671,7 @@
 						continue;
 
 					var propData;
-				
+
 					// instance fields have indexes, static fields use names
 					if(obj) {
 						propData = json[prop.get_index()]; 

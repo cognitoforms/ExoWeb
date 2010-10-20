@@ -148,6 +148,9 @@
 				this._validatingQueue.stopQueueing();
 				this._validatedQueue.stopQueueing();
 			},
+			get_types: function() {
+				return Array.prototype.slice.call(this._types);
+			},
 			type: function(name) {
 				return this._types[name];
 			},
@@ -171,6 +174,9 @@
 			},
 			addObjectRegistered: function(func) {
 				this._addEvent("objectRegistered", func);
+			},
+			removeObjectRegistered: function(func) {
+				this._removeEvent("objectRegistered", func);
 			},
 			notifyObjectRegistered: function(obj) {
 				this._raiseEvent("objectRegistered", [obj]);
@@ -749,7 +755,7 @@
 				return this._jstype;
 			},
 			get_properties: function Type$get_properties() {
-				return this._properties;
+				return ExoWeb.objectToArray(this._properties);
 			},
 			get_staticProperties: function Type$get_staticProperties() {
 				return this._staticProperties;
@@ -1325,23 +1331,22 @@
 			// starts listening for change events on the property. Use obj argument to
 			// optionally filter the events to a specific object
 			addChanged: function Property$addChanged(handler, obj) {
-				var f;
-
+				var filter;
 				if (obj) {
-					f = function(target) {
+					filter = function(target) {
 						if (obj === target) {
 							handler.apply(this, arguments);
 						}
 					};
 				}
-				else {
-					f = handler;
-				}
 
-				this._addEvent("changed", f);
+				this._addEvent("changed", handler, filter);
 
 				// Return the property to support method chaining
 				return this;
+			},
+			removeChanged: function Property$removeChanged(handler) {
+				this._removeEvent("changed", handler);
 			},
 			_addCalculatedRule: function Property$_addCalculatedRule(calculateFn, isAsync, inputs) {
 				// calculated property should always be initialized when first accessed

@@ -606,7 +606,9 @@ if (!("config" in ExoWeb)) {
 
 			var f = function Functor$fn() {
 				for (var i = 0; i < funcs.length; ++i) {
-					funcs[i].apply(this, arguments);
+					if (!funcs[i].filter || funcs[i].filter.apply(this, arguments) === true) {
+						funcs[i].fn.apply(this, arguments);
+					}
 				}
 			};
 
@@ -618,13 +620,19 @@ if (!("config" in ExoWeb)) {
 			return f;
 		}
 
-		Functor.add = function Functor$add(f) {
-			this._funcs.push(f);
+		Functor.add = function Functor$add(fn, filter) {
+			var item = { fn: fn };
+
+			if (filter) {
+				item.filter = filter;
+			}
+
+			this._funcs.push(item);
 		};
 
 		Functor.remove = function Functor$remove(old) {
 			for (var i = this._funcs.length - 1; i >= 0; --i) {
-				if (this._funcs[i] === old) {
+				if (this._funcs[i].fn === old) {
 					this._funcs.splice(i, 1);
 					break;
 				}
@@ -636,12 +644,12 @@ if (!("config" in ExoWeb)) {
 		};
 
 		Functor.eventing = {
-			_addEvent: function Functor$_addEvent(name, func) {
+			_addEvent: function Functor$_addEvent(name, func, filter) {
 				if (!this["_" + name]) {
 					this["_" + name] = new Functor();
 				}
 
-				this["_" + name].add(func);
+				this["_" + name].add(func, filter);
 			},
 			_removeEvent: function Functor$_removeEvent(name, func) {
 				var handler = this["_" + name];
@@ -1142,6 +1150,18 @@ if (!("config" in ExoWeb)) {
 		}
 
 		ExoWeb.isType = isType;
+
+		function objectToArray(obj) {
+			var list = [];
+			for (var key in obj) {
+				if (obj.hasOwnProperty(key)) {
+					list.push(obj[key]);
+				}
+			}
+			return list;
+		}
+
+		ExoWeb.objectToArray = objectToArray;
 
 		///////////////////////////////////////////////////////////////////////////////
 		// Globals
