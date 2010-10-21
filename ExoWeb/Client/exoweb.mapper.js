@@ -472,57 +472,63 @@
 				var signal = entitySignals[objKey];
 				if (!signal) {
 					signal = entitySignals[objKey] = new ExoWeb.Signal(objKey);
+
+					// When the signal is created increment its counter once, since
+					// we are only keeping track of whether the object is loaded.
+					signal.pending();
+				}
+
+				// wait until the object is loaded to invoke the callback
+				signal.waitForAll(function() {
+					callback.call(thisPtr || this, type.meta.get(translateId(translator, type.meta.get_fullName(), id)));
+				});
+
+				function done() {
+					if (signal.isActive()) {
+						signal.oneDone();
+					}
 				}
 
 				if (obj && forceLoad) {
 //					log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-					ExoWeb.Model.LazyLoader.load(obj, property, signal.pending(callback, thisPtr), thisPtr);
+					ExoWeb.Model.LazyLoader.load(obj, property, done, thisPtr);
 				}
 				else if (!obj && forceLoad) {
 //					log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 					var obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
-					ExoWeb.Model.LazyLoader.eval(obj, property, signal.pending(function() {
-						callback.call(thisPtr || this, obj);
-					}));
+					ExoWeb.Model.LazyLoader.eval(obj, property, done);
 				}
 				else {
 //					log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
-					var done = signal.pending();
-
 					var registeredHandler = function(obj) {
 //						log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
 						if (obj.meta.type === type.meta && obj.meta.id === id) {
-							// unregister the handler since it is no longer needed
-							model.removeObjectRegistered(registeredHandler);
-
 							if (property) {
 								// if the property is not initialized then wait
 								var prop = type.meta.property(property, true);
 								if (prop.isInited(obj)) {
 									done();
-									callback.call(thisPtr || this, obj);
 								}
 								else {
 //									log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
 									var initHandler = function() {
-										prop.removeChanged(initHandler);
 //										log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
 										done();
-										callback.call(thisPtr || this, obj);
 									};
 	
-									prop.addChanged(initHandler, obj);
+									// Register the handler once.
+									prop.addChanged(initHandler, obj, true);
 								}
 							}
 							else {
 								done();
-								callback.call(thisPtr || this, obj);
 							}
 						}
 					};
 
-					model.addObjectRegistered(registeredHandler);
+					// Register the handler once.
+					model.addObjectRegistered(registeredHandler, true);
 				}
 			}
 		}
@@ -2199,7 +2205,7 @@
 
 		ObjectLazyLoader.mixin({
 			load: (function load(obj, propName, callback, thisPtr) {
-				var signal = new ExoWeb.Signal();
+				var signal = new ExoWeb.Signal("object lazy loader");
 
 				var id = obj.meta.id || STATIC_ID;
 				var mtype = obj.meta.type || obj.meta;
@@ -2308,7 +2314,7 @@
 
 		ListLazyLoader.mixin({
 			load: (function load(list, propName, callback, thisPtr) {
-				var signal = new ExoWeb.Signal();
+				var signal = new ExoWeb.Signal("list lazy loader");
 
 				var model = list._ownerProperty.get_containingType().get_model();
 				var ownerId = list._ownerId;

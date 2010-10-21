@@ -172,8 +172,8 @@
 			notifyAfterPropertySet: function(obj, property, newVal, oldVal) {
 				this._raiseEvent("afterPropertySet", [obj, property, newVal, oldVal]);
 			},
-			addObjectRegistered: function(func) {
-				this._addEvent("objectRegistered", func);
+			addObjectRegistered: function(func, once) {
+				this._addEvent("objectRegistered", func, null, once);
 			},
 			removeObjectRegistered: function(func) {
 				this._removeEvent("objectRegistered", func);
@@ -1330,7 +1330,7 @@
 
 			// starts listening for change events on the property. Use obj argument to
 			// optionally filter the events to a specific object
-			addChanged: function Property$addChanged(handler, obj) {
+			addChanged: function Property$addChanged(handler, obj, once) {
 				var filter;
 				if (obj) {
 					filter = function(target) {
@@ -1340,7 +1340,7 @@
 					};
 				}
 
-				this._addEvent("changed", handler, filter);
+				this._addEvent("changed", handler, filter, once);
 
 				// Return the property to support method chaining
 				return this;
@@ -1359,7 +1359,7 @@
 				var rule = {
 					prop: this,
 					execute: function Property$calculated$execute(obj, callback) {
-						var signal = new ExoWeb.Signal();
+						var signal = new ExoWeb.Signal("calculated rule");
 						var prop = this.prop;
 
 						if (prop._isList) {

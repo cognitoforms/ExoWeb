@@ -431,6 +431,9 @@ if (!("config" in ExoWeb)) {
 					var item = Array.dequeue(this._waitForAll);
 					this._doCallback("waitForAll", item.thisPtr, item.callback, [], item.executeImmediately);
 				}
+			},
+			isActive: function Signal$isActive() {
+				return this._pending > 0;
 			}
 		});
 
@@ -606,8 +609,18 @@ if (!("config" in ExoWeb)) {
 
 			var f = function Functor$fn() {
 				for (var i = 0; i < funcs.length; ++i) {
-					if (!funcs[i].filter || funcs[i].filter.apply(this, arguments) === true) {
-						funcs[i].fn.apply(this, arguments);
+					var item = funcs[i];
+
+					// Ensure that there is either no filter or the filter passes.
+					if (!item.filter || item.filter.apply(this, arguments) === true) {
+						// Call the handler function.
+						item.fn.apply(this, arguments);
+
+						// If handler is set to execute once,
+						// remove the handler after calling.
+						if (item.once === true) {
+							funcs.splice(i--, 1);
+						}
 					}
 				}
 			};
@@ -620,11 +633,15 @@ if (!("config" in ExoWeb)) {
 			return f;
 		}
 
-		Functor.add = function Functor$add(fn, filter) {
+		Functor.add = function Functor$add(fn, filter, once) {
 			var item = { fn: fn };
 
-			if (filter) {
+			if (filter !== undefined) {
 				item.filter = filter;
+			}
+
+			if (once !== undefined) {
+				item.once = once;
 			}
 
 			this._funcs.push(item);
@@ -644,12 +661,12 @@ if (!("config" in ExoWeb)) {
 		};
 
 		Functor.eventing = {
-			_addEvent: function Functor$_addEvent(name, func, filter) {
+			_addEvent: function Functor$_addEvent(name, func, filter, once) {
 				if (!this["_" + name]) {
 					this["_" + name] = new Functor();
 				}
 
-				this["_" + name].add(func, filter);
+				this["_" + name].add(func, filter, once);
 			},
 			_removeEvent: function Functor$_removeEvent(name, func) {
 				var handler = this["_" + name];
