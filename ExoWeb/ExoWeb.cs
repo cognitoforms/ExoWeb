@@ -163,9 +163,9 @@ namespace ExoWeb
 		{
 			if (string.IsNullOrEmpty(id))
 			{
-				string path = "\"" + string.Join("\",\"", paths) + "\"";
+				string path = paths.Length > 0 ? "\"" + string.Join("\",\"", paths) + "\"" : "";
 				return "{ id: $newId(), from: \"" + type.Name + "\", and: [" + path + "] }";
-			} 
+			}
 
 			var request = new ServiceRequest(type, new string[] { id }, paths);
 			return "{ id : \"" + id + "\", from: \"" + type.Name + "\", load: " + FixJsonDates(ToJson(typeof(ServiceResponse), request.Invoke())) + "}";
