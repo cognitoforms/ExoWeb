@@ -87,13 +87,15 @@
 				exoWebAndModel = true;
 			}
 
-            return $(obj).liveBindings().length > 0;
+			return $(obj).liveBindings().length > 0;
 		};
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		// helpers for working with ms ajax controls
+		// helpers for working with controls
 		var dataviewPrereqs = false;
 		jQuery.expr[":"].dataview = function (obj, index, meta, stack) {
+			initBusy();
+
 			if (dataviewPrereqs === false) {
 				if (!(window.Sys !== undefined && Sys.UI !== undefined && obj.control !== undefined && Sys.UI.DataView !== undefined))
 					return false;
@@ -105,6 +107,8 @@
 
 		var contentPrereqs = false;
 		jQuery.expr[":"].content = function (obj, index, meta, stack) {
+			initBusy();
+
 			if (contentPrereqs === false) {
 				if (!(window.ExoWeb !== undefined && ExoWeb.UI !== undefined && obj.control !== undefined && ExoWeb.UI.Content !== undefined && obj.control))
 					return false;
@@ -220,6 +224,8 @@
 
 		// matches elements as they are dynamically added to the DOM
 		jQuery.fn.ever = function (added, deleted) {
+
+			initBusy();
 
 			// If the function is called in any way other than as a method on the 
 			// jQuery object, then intercept and return early.
@@ -357,6 +363,35 @@
 		function Sys_Binding_getFinalPath(binding) {
 			return binding._pathArray[binding._pathArray.length - 1];
 		}
+
+		var controlsPending;
+
+		function initBusy() {
+			if (controlsPending === undefined) {
+				controlsPending = 0;
+				$(":content, :dataview").ever(function () {
+					if ($(this).is(".sys-template")) {
+						return;
+					}
+
+					this.control.add_rendering(function () {
+						controlsPending++;
+					});
+					this.control.add_rendered(function () {
+						controlsPending--;
+					});
+				});
+			}
+		}
+
+		jQuery.busy = function () {
+			if (!window.ExoWeb) {
+				return;
+			}
+
+			return (!!ExoWeb.Batch && ExoWeb.Batch.all().length > 0) ||
+				(controlsPending !== undefined && controlsPending > 0);
+		};
 	}
 
 	if (window.Sys && Sys.loader) {
