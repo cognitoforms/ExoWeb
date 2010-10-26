@@ -8,8 +8,7 @@
 		var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
 
 		// Recursively searches throught the specified object and restores dates serialized as strings
-		function RestoreDates(value)
-		{
+		function RestoreDates(value) {
 			if (value instanceof Array) {
 				for (var i = 0; i < value.length; i++)
 				{
@@ -535,6 +534,12 @@
 
 		var aggressiveLog = false;
 
+		var pendingRequests = 0;
+
+		ExoWeb.registerActivity(function() {
+			return pendingRequests > 0;
+		});
+
 		ServerSync.mixin({
 			_addEventHandler: function ServerSync$_addEventHandler(name, handler, includeAutomatic, automaticArgIndex) {
 				automaticArgIndex = (automaticArgIndex === undefined) ? 0 : automaticArgIndex;
@@ -704,6 +709,8 @@
 			// Raise Server Event
 			///////////////////////////////////////////////////////////////////////
 			raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed/*, automatic, paths */) {
+				pendingRequests++;
+
 				Sys.Observer.setValue(this, "PendingServerEvent", true);
 
 				var automatic = arguments.length > 6 && arguments[6] === true;
@@ -764,7 +771,8 @@
 						RestoreDates(result.event);
 						callback.call(this, result);
 					}
-					
+
+					pendingRequests--;
 				});
 			},
 			_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(result, callback, automatic) {
@@ -775,6 +783,8 @@
 				if (callback && callback instanceof Function) {
 					callback.call(this, result);
 				}
+
+				pendingRequests--;
 			},
 			addRaiseServerEventBegin: function ServerSync$addRaiseServerEventBegin(handler, includeAutomatic) {
 				this._addEventHandler("raiseServerEventBegin", handler, includeAutomatic, 2);
@@ -792,6 +802,8 @@
 			// Roundtrip
 			///////////////////////////////////////////////////////////////////////
 			roundtrip: function ServerSync$roundtrip(success, failed/*, automatic */) {
+				pendingRequests++;
+
 				Sys.Observer.setValue(this, "PendingRoundtrip", true);
 
 				var automatic = arguments.length == 3 && arguments[2] === true;
@@ -813,6 +825,8 @@
 					if (callback && callback instanceof Function) {
 						callback.call(this, result);
 					}
+
+					pendingRequests--;
 				});
 
 			},
@@ -824,6 +838,8 @@
 				if (callback && callback instanceof Function) {
 					callback.call(this, result);
 				}
+
+				pendingRequests--;
 			},
 			startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
 //				log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
@@ -851,6 +867,8 @@
 			// Save
 			///////////////////////////////////////////////////////////////////////
 			save: function ServerSync$save(root, success, failed/*, automatic*/) {
+				pendingRequests++;
+
 				Sys.Observer.setValue(this, "PendingSave", true);
 
 				var automatic = arguments.length == 4 && arguments[3] === true;
@@ -873,6 +891,8 @@
 					if (callback && callback instanceof Function) {
 						callback.call(this, result);
 					}
+
+					pendingRequests--;
 				});
 				
 			},
@@ -884,6 +904,8 @@
 				if (callback && callback instanceof Function) {
 					callback.call(this, result);
 				}
+
+				pendingRequests--;
 			},
 			startAutoSave: function ServerSync$startAutoSave(root, interval) {
 				// cancel any pending save schedule
@@ -2481,6 +2503,10 @@
 		})();
 
 		var allSignals = new ExoWeb.Signal("ExoWeb.context allSignals");
+
+		ExoWeb.registerActivity(function() {
+			return allSignals.isActive();
+		});
 
 		ExoWeb.context = function context(options, context) {
 			

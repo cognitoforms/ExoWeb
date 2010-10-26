@@ -20,153 +20,9 @@ if (!("config" in ExoWeb)) {
 
 		var undefined;
 
+		// #region Logging/Errors
 		//////////////////////////////////////////////////////////////////////////////////////
-		function Batch(label) {
-			this._index = batchIndex++;
-			this._labels = [label];
-			this._rootLabel = label;
-			this._subscribers = [];
 
-			ExoWeb.trace.log("batch", "[{0}] {1} - created.", [this._index, this._rootLabel]);
-
-			allBatches.push(this);
-		}
-
-		var batchIndex = 0;
-		var allBatches = [];
-		var currentBatch = null;
-
-		Batch.all = function Batch_$all(includeEnded) {
-			return $transform(allBatches).where(function(e) {
-				return includeEnded || !e.isEnded();
-			});
-		};
-
-		Batch.suspendCurrent = function Batch_$suspendCurrent(message) {
-			if (currentBatch !== null) {
-				var batch = currentBatch;
-				ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [currentBatch._index, currentBatch._rootLabel, message || ""]);
-				currentBatch = null;
-				return batch;
-			}
-		};
-
-		Batch.start = function Batch_$start(label) {
-			if (currentBatch) {
-				currentBatch._begin(label);
-			}
-			else {
-				currentBatch = new Batch(label);
-			}
-
-			return currentBatch;
-		};
-
-		Batch.resume = function Batch_$resume(batch) {
-			if (batch) {
-				(batch._transferredTo || batch)._resume();
-			}
-		};
-
-		Batch.end = function Batch_$end(batch) {
-			(batch._transferredTo || batch)._end();
-		};
-
-		Batch.whenDone = function Batch_$whenDone(fn) {
-			if (currentBatch) {
-				currentBatch.whenDone(fn);
-			}
-			else {
-				fn();
-			}
-		};
-
-		Batch.mixin({
-			_begin: function Batch$_begin(label) {
-				ExoWeb.trace.log("batch", "[{0}] {1} - beginning label {2}.", [this._index, this._rootLabel, label]);
-
-				this._labels.push(label);
-
-				return this;
-			},
-			_end: function Batch$_end() {
-				// Cannot end a batch that has already been ended.
-				if (this.isEnded()) {
-					ExoWeb.trace.logWarning("batch", "[{0}] {1} - already ended.", [this._index, this._rootLabel]);
-					return this;
-				}
-
-				// Remove the last label from the list.
-				var label = this._labels.pop();
-
-				ExoWeb.trace.log("batch", "[{0}] {1} - ending label {2}.", [this._index, this._rootLabel, label]);
-
-				if (this.isEnded()) {
-					ExoWeb.trace.log("batch", "[{0}] {1} - complete.", [this._index, this._rootLabel]);
-
-					// If we are ending the current batch, then null out the current batch 
-					// variable so that new batches can be created with a new root label.
-					if (currentBatch === this) {
-						currentBatch = null;
-					}
-
-					// Invoke the subscribers.
-					var subscriber = Array.dequeue(this._subscribers);
-					while (subscriber) {
-						subscriber.apply(this, arguments);
-						subscriber = Array.dequeue(this._subscribers);
-					}
-				}
-
-				return this;
-			},
-			_transferTo: function Batch$_transferTo(otherBatch) {
-				// Transfers this batch's labels and subscribers to the
-				// given batch.  From this point forward this batch defers
-				// its behavior to the given batch.
-
-				ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
-
-				// Transfer labels from one batch to another.
-				Array.addRange(otherBatch._labels, this._labels);
-				Array.clear(this._labels);
-				Array.addRange(otherBatch._subscribers, this._subscribers);
-				Array.clear(this._subscribers);
-				this._transferredTo = otherBatch;
-			},
-			_resume: function Batch$_resume() {
-				// Ignore resume on a batch that has already been ended.
-				if (this.isEnded()) {
-					return;
-				}
-
-				if (currentBatch !== null) {
-					// If there is a current batch then simple transfer the labels to it.
-					this._transferTo(currentBatch);
-					return currentBatch;
-				}
-
-				ExoWeb.trace.log("batch", "[{0}] {1} - resuming.", [this._index, this._rootLabel]);
-				currentBatch = this;
-
-				return this;
-			},
-			isEnded: function Batch$isEnded() {
-				return this._labels.length === 0;
-			},
-			whenDone: function Batch$whenDone(fn) {
-				ExoWeb.trace.log("batch", "[{0}] {1} - subscribing to batch done.", [this._index, this._rootLabel]);
-
-				this._subscribers.push(fn);
-
-				return this;
-			}
-		});
-
-		ExoWeb.Batch = Batch;
-
-
-		//////////////////////////////////////////////////////////////////////////////////////
 		var errorHandler = function noOpErrorHandler(message, e) { };
 		function setErrorHandler(fn) {
 			errorHandler = fn;
@@ -351,8 +207,205 @@ if (!("config" in ExoWeb)) {
 		var logError = ExoWeb.trace.logError;
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
+		// #endregion
 
+		// #region Activity
+		///////////////////////////////////////////////////////////////////////
+
+		var activityCallbacks = [];
+
+		function registerActivity(callback, thisPtr) {
+			if (callback === undefined || callback === null) {
+				ExoWeb.trace.throwAndLog("activity", "Activity callback cannot be null or undefined.");
+			}
+
+			if (!(callback instanceof Function)) {
+				ExoWeb.trace.throwAndLog("activity", "Activity callback must be a function.");
+			}
+
+			var item = { callback: callback };
+
+			if (thisPtr) {
+				callback.thisPtr = thisPtr;
+			}
+
+			activityCallbacks.push(item);
+		}
+
+		ExoWeb.registerActivity = registerActivity;
+
+		function isBusy() {
+			for (var i = 0, len = activityCallbacks.length; i < len; i++) {
+				var item = activityCallbacks[i];
+
+				if (item.callback.call(item.thisPtr || this) === true) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		ExoWeb.isBusy = isBusy;
+
+		// #endregion
+
+		// #region Batch
 		//////////////////////////////////////////////////////////////////////////////////////
+
+		function Batch(label) {
+			this._index = batchIndex++;
+			this._labels = [label];
+			this._rootLabel = label;
+			this._subscribers = [];
+
+			ExoWeb.trace.log("batch", "[{0}] {1} - created.", [this._index, this._rootLabel]);
+
+			allBatches.push(this);
+		}
+
+		var batchIndex = 0;
+		var allBatches = [];
+		var currentBatch = null;
+
+		registerActivity(function() {
+			return Batch.all().length > 0;
+		});
+
+		Batch.all = function Batch_$all(includeEnded) {
+			return $transform(allBatches).where(function(e) {
+				return includeEnded || !e.isEnded();
+			});
+		};
+
+		Batch.suspendCurrent = function Batch_$suspendCurrent(message) {
+			if (currentBatch !== null) {
+				var batch = currentBatch;
+				ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [currentBatch._index, currentBatch._rootLabel, message || ""]);
+				currentBatch = null;
+				return batch;
+			}
+		};
+
+		Batch.start = function Batch_$start(label) {
+			if (currentBatch) {
+				currentBatch._begin(label);
+			}
+			else {
+				currentBatch = new Batch(label);
+			}
+
+			return currentBatch;
+		};
+
+		Batch.resume = function Batch_$resume(batch) {
+			if (batch) {
+				(batch._transferredTo || batch)._resume();
+			}
+		};
+
+		Batch.end = function Batch_$end(batch) {
+			(batch._transferredTo || batch)._end();
+		};
+
+		Batch.whenDone = function Batch_$whenDone(fn) {
+			if (currentBatch) {
+				currentBatch.whenDone(fn);
+			}
+			else {
+				fn();
+			}
+		};
+
+		Batch.mixin({
+			_begin: function Batch$_begin(label) {
+				ExoWeb.trace.log("batch", "[{0}] {1} - beginning label {2}.", [this._index, this._rootLabel, label]);
+
+				this._labels.push(label);
+
+				return this;
+			},
+			_end: function Batch$_end() {
+				// Cannot end a batch that has already been ended.
+				if (this.isEnded()) {
+					ExoWeb.trace.logWarning("batch", "[{0}] {1} - already ended.", [this._index, this._rootLabel]);
+					return this;
+				}
+
+				// Remove the last label from the list.
+				var label = this._labels.pop();
+
+				ExoWeb.trace.log("batch", "[{0}] {1} - ending label {2}.", [this._index, this._rootLabel, label]);
+
+				if (this.isEnded()) {
+					ExoWeb.trace.log("batch", "[{0}] {1} - complete.", [this._index, this._rootLabel]);
+
+					// If we are ending the current batch, then null out the current batch 
+					// variable so that new batches can be created with a new root label.
+					if (currentBatch === this) {
+						currentBatch = null;
+					}
+
+					// Invoke the subscribers.
+					var subscriber = Array.dequeue(this._subscribers);
+					while (subscriber) {
+						subscriber.apply(this, arguments);
+						subscriber = Array.dequeue(this._subscribers);
+					}
+				}
+
+				return this;
+			},
+			_transferTo: function Batch$_transferTo(otherBatch) {
+				// Transfers this batch's labels and subscribers to the
+				// given batch.  From this point forward this batch defers
+				// its behavior to the given batch.
+
+				ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
+
+				// Transfer labels from one batch to another.
+				Array.addRange(otherBatch._labels, this._labels);
+				Array.clear(this._labels);
+				Array.addRange(otherBatch._subscribers, this._subscribers);
+				Array.clear(this._subscribers);
+				this._transferredTo = otherBatch;
+			},
+			_resume: function Batch$_resume() {
+				// Ignore resume on a batch that has already been ended.
+				if (this.isEnded()) {
+					return;
+				}
+
+				if (currentBatch !== null) {
+					// If there is a current batch then simple transfer the labels to it.
+					this._transferTo(currentBatch);
+					return currentBatch;
+				}
+
+				ExoWeb.trace.log("batch", "[{0}] {1} - resuming.", [this._index, this._rootLabel]);
+				currentBatch = this;
+
+				return this;
+			},
+			isEnded: function Batch$isEnded() {
+				return this._labels.length === 0;
+			},
+			whenDone: function Batch$whenDone(fn) {
+				ExoWeb.trace.log("batch", "[{0}] {1} - subscribing to batch done.", [this._index, this._rootLabel]);
+
+				this._subscribers.push(fn);
+
+				return this;
+			}
+		});
+
+		ExoWeb.Batch = Batch;
+
+		// #endregion
+
+		// #region Signal
+		//////////////////////////////////////////////////////////////////////////////////////
+
 		function Signal(debugLabel) {
 			this._waitForAll = [];
 			this._pending = 0;
@@ -441,8 +494,11 @@ if (!("config" in ExoWeb)) {
 
 		ExoWeb.Signal = Signal;
 
+		// #endregion
 
+		// #region Function Extensions
 		//////////////////////////////////////////////////////////////////////////////////////
+
 		Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 			var proceed = this;
 			var calls = [];
@@ -603,7 +659,11 @@ if (!("config" in ExoWeb)) {
 			};
 		};
 
+		// #endregion
+
+		// #region Functor
 		//////////////////////////////////////////////////////////////////////////////////////
+
 		function Functor() {
 			var funcs = [];
 
@@ -687,8 +747,11 @@ if (!("config" in ExoWeb)) {
 
 		ExoWeb.Functor = Functor;
 
+		// #endregion
 
+		// #region EventQueue
 		//////////////////////////////////////////////////////////////////////////////////////
+
 		function EventQueue(raise, areEqual) {
 			this._queueing = 0;
 			this._queue = [];
@@ -744,7 +807,11 @@ if (!("config" in ExoWeb)) {
 
 		ExoWeb.EventQueue = EventQueue;
 
+		// #endregion
+
+		// #region EvalWrapper
 		///////////////////////////////////////////////////////////////////////////////
+
 		// Helper class for interpreting expressions
 		function EvalWrapper(value) {
 			this.value = value;
@@ -766,12 +833,16 @@ if (!("config" in ExoWeb)) {
 		});
 		ExoWeb.EvalWrapper = EvalWrapper;
 
+		// #endregion
+
+		// #region Transform
 		///////////////////////////////////////////////////////////////////////////////
+
 		function Transform(root) {
 			this.array = root;
 		}
 
-		var compileFilterFunction = (function Transform$compileFilterFunction(filter) {
+		function Transform$compileFilterFunction(filter) {
 			var parser = /(([a-z_$][0-9a-z_$]*)([.]?))|(('([^']|\')*')|("([^"]|\")*"))/gi;
 			var skipWords = ["true", "false", "$index", "null"];
 
@@ -792,13 +863,17 @@ if (!("config" in ExoWeb)) {
 			});
 
 			return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
-		}).cached({ key: function(filter) { return filter; } });
+		}
 
-		var compileGroupsFunction = (function Transform$compileGroupsFunction(groups) {
+		var compileFilterFunction = Transform$compileFilterFunction.cached({ key: function(filter) { return filter; } });
+
+		function Transform$compileGroupsFunction(groups) {
 			return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
-		}).cached({ key: function(groups) { return groups; } });
+		}
 
-		var compileOrderingFunction = (function Transform$compileOrderingFunction(ordering) {
+		var compileGroupsFunction = Transform$compileGroupsFunction.cached({ key: function(groups) { return groups; } });
+
+		function Transform$compileOrderingFunction(ordering) {
 			var orderings = [];
 			var parser = / *([a-z0-9_.]+)( +null)?( +(asc|desc))?( +null)? *(,|$)/gi;
 
@@ -833,8 +908,9 @@ if (!("config" in ExoWeb)) {
 
 				return 0;
 			};
-		}).cached({ key: function(ordering) { return ordering; } });
+		}
 
+		var compileOrderingFunction = Transform$compileOrderingFunction.cached({ key: function(ordering) { return ordering; } });
 
 		Transform.mixin({
 			_next: function Transform$_next(fn, args, output) {
@@ -961,44 +1037,16 @@ if (!("config" in ExoWeb)) {
 		ExoWeb.Transform = Transform;
 		window.$transform = function transform(array) { return new Transform(array); };
 
-		function evalPath(obj, path, nullValue, undefinedValue) {
-			var steps = path.split(".");
-
-			if (obj === null) {
-				return arguments.length >= 3 ? nullValue : null;
-			}
-			if (obj === undefined) {
-				return arguments.length >= 4 ? undefinedValue : undefined;
-			}
-
-			for (var i = 0; i < steps.length; ++i) {
-				var name = steps[i];
-				obj = ExoWeb.getValue(obj, name);
-
-				if (obj === null) {
-					return arguments.length >= 3 ? nullValue : null;
-				}
-				if (obj === undefined) {
-					return arguments.length >= 4 ? undefinedValue : undefined;
-				}
-			}
-
-			if (obj === null) {
-				return arguments.length >= 3 ? nullValue : null;
-			}
-			if (obj === undefined) {
-				return arguments.length >= 4 ? undefinedValue : undefined;
-			}
-
-			return obj;
-		}
-		ExoWeb.evalPath = evalPath;
-
+		// #endregion
+		
+		// #region Translator
 		///////////////////////////////////////////////////////////////////////////
+
 		function Translator() {
 			this._forwardDictionary = {};
 			this._reverseDictionary = {};
 		}
+
 		Translator.prototype = {
 			lookup: function Translator$lookup(source, category, key) {
 				if (source[category]) {
@@ -1031,7 +1079,46 @@ if (!("config" in ExoWeb)) {
 				}
 			}
 		};
+
 		ExoWeb.Translator = Translator;
+
+		// #endregion
+
+		// #region Helper Functions
+		///////////////////////////////////////////////////////////////////////////
+
+		function evalPath(obj, path, nullValue, undefinedValue) {
+			var steps = path.split(".");
+
+			if (obj === null) {
+				return arguments.length >= 3 ? nullValue : null;
+			}
+			if (obj === undefined) {
+				return arguments.length >= 4 ? undefinedValue : undefined;
+			}
+
+			for (var i = 0; i < steps.length; ++i) {
+				var name = steps[i];
+				obj = ExoWeb.getValue(obj, name);
+
+				if (obj === null) {
+					return arguments.length >= 3 ? nullValue : null;
+				}
+				if (obj === undefined) {
+					return arguments.length >= 4 ? undefinedValue : undefined;
+				}
+			}
+
+			if (obj === null) {
+				return arguments.length >= 3 ? nullValue : null;
+			}
+			if (obj === undefined) {
+				return arguments.length >= 4 ? undefinedValue : undefined;
+			}
+
+			return obj;
+		}
+		ExoWeb.evalPath = evalPath;
 
 		function getLastTarget(target, propertyPath) {
 			var path = propertyPath;
@@ -1180,8 +1267,6 @@ if (!("config" in ExoWeb)) {
 
 		ExoWeb.objectToArray = objectToArray;
 
-		///////////////////////////////////////////////////////////////////////////////
-		// Globals
 		function $format(str, values) {
 			if (!values) {
 				return str;
@@ -1191,10 +1276,14 @@ if (!("config" in ExoWeb)) {
 				return evalPath(values, expr, "", match).toString();
 			});
 		}
+
 		window.$format = $format;
 
-		//////////////////////////////////////////////////////////////////////////////////////
-		// Date extensions			
+		// #endregion
+
+		// #region Date Extensions
+		///////////////////////////////////////////////////////////////////////
+
 		Date.mixin({
 			subtract: function Date$subtract(d) {
 				return new TimeSpan(this - d);
@@ -1203,6 +1292,11 @@ if (!("config" in ExoWeb)) {
 				return new Date(this.getTime() + timeSpan.totalMilliseconds);
 			}
 		});
+
+		// #endregion
+
+		// #region TimeSpan
+		///////////////////////////////////////////////////////////////////////
 
 		function TimeSpan(ms) {
 			this.totalMilliseconds = ms;
@@ -1221,62 +1315,14 @@ if (!("config" in ExoWeb)) {
 			ms = ms / 24;
 			this.days = Math.floor(ms);
 		}
+
 		window.TimeSpan = TimeSpan;
 
-		//////////////////////////////////////////////////////////////////////////////////////
-		// MS Ajax extensions
+		// #endregion
+		
+		// #region PropertyObserver
+		///////////////////////////////////////////////////////////////////////
 
-		function _raiseSpecificPropertyChanged(target, args) {
-			var func = target.__propertyChangeHandlers[args.get_propertyName()];
-			if (func && func instanceof Function) {
-				func.apply(this, arguments);
-			}
-		}
-
-		// Converts observer events from being for ALL properties to a specific one.
-		// This is an optimization that prevents handlers interested only in a single
-		// property from being run when other, unrelated properties change.
-		Sys.Observer.addSpecificPropertyChanged = function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
-			if (!target.__propertyChangeHandlers) {
-				target.__propertyChangeHandlers = {};
-
-				Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
-			}
-
-			var func = target.__propertyChangeHandlers[property];
-
-			if (!func) {
-				target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
-			}
-
-			func.add(handler);
-		};
-
-		Sys.Observer.removeSpecificPropertyChanged = function Sys$Observer$removeSpecificPropertyChanged(target, property, handler) {
-			var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
-
-			if (func) {
-				func.remove(handler);
-
-				// if the functor is empty then remove the callback as an optimization
-				if (func.isEmpty()) {
-					delete target.__propertyChangeHandlers[property];
-
-					var hasHandlers = false;
-					for (var handler in target.__propertyChangeHandlers) {
-						hasHandlers = true;
-					}
-
-					if (!hasHandlers) {
-						delete target.__propertyChangeHandlers;
-						Sys.Observer.removePropertyChanged(target, _raiseSpecificPropertyChanged);
-					}
-				}
-			}
-		};
-
-
-		/////////////////////////////////////////////////////////////////////////////////////////
 		function PropertyObserver(prop) {
 			this._source = null;
 			this._prop = prop;
@@ -1397,6 +1443,61 @@ if (!("config" in ExoWeb)) {
 		});
 
 		ExoWeb.PropertyObserver = PropertyObserver;
+
+		// #endregion
+
+		// #region MS Ajax Extensions/Overrides
+		///////////////////////////////////////////////////////////////////////
+
+		function _raiseSpecificPropertyChanged(target, args) {
+			var func = target.__propertyChangeHandlers[args.get_propertyName()];
+			if (func && func instanceof Function) {
+				func.apply(this, arguments);
+			}
+		}
+
+		// Converts observer events from being for ALL properties to a specific one.
+		// This is an optimization that prevents handlers interested only in a single
+		// property from being run when other, unrelated properties change.
+		Sys.Observer.addSpecificPropertyChanged = function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
+			if (!target.__propertyChangeHandlers) {
+				target.__propertyChangeHandlers = {};
+
+				Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
+			}
+
+			var func = target.__propertyChangeHandlers[property];
+
+			if (!func) {
+				target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
+			}
+
+			func.add(handler);
+		};
+
+		Sys.Observer.removeSpecificPropertyChanged = function Sys$Observer$removeSpecificPropertyChanged(target, property, handler) {
+			var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
+
+			if (func) {
+				func.remove(handler);
+
+				// if the functor is empty then remove the callback as an optimization
+				if (func.isEmpty()) {
+					delete target.__propertyChangeHandlers[property];
+
+					var hasHandlers = false;
+					for (var handler in target.__propertyChangeHandlers) {
+						hasHandlers = true;
+					}
+
+					if (!hasHandlers) {
+						delete target.__propertyChangeHandlers;
+						Sys.Observer.removePropertyChanged(target, _raiseSpecificPropertyChanged);
+					}
+				}
+			}
+		};
+
 
 		Sys.Observer.addPathChanged = function Sys$Observer$addPathChanged(target, path, handler, allowNoTarget) {
 			// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok
@@ -1580,6 +1681,9 @@ if (!("config" in ExoWeb)) {
 				}
 			}
 		};
+
+		// #endregion
+
 	}
 
 	if (window.Sys && Sys.loader) {

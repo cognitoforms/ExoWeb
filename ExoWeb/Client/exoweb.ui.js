@@ -9,7 +9,9 @@ Type.registerNamespace("ExoWeb.UI");
 		var log = ExoWeb.trace.log;
 		var throwAndLog = ExoWeb.trace.throwAndLog;
 
+		// #region Toggle
 		///////////////////////////////////////////////////////////////////////////////
+
 		function Toggle(element) {
 			Toggle.initializeBase(this, [element]);
 		}
@@ -227,8 +229,11 @@ Type.registerNamespace("ExoWeb.UI");
 		ExoWeb.UI.Toggle = Toggle;
 		Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control);
 
+		// #endregion
 
+		// #region Template
 		///////////////////////////////////////////////////////////////////////////////
+
 		function Template(element) {
 			/// <summary>
 			/// In addition to defining template markup, also defines rules that are used
@@ -431,8 +436,11 @@ Type.registerNamespace("ExoWeb.UI");
 		ExoWeb.UI.Template = Template;
 		Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
 
+		// #endregion
 
+		// #region Content
 		///////////////////////////////////////////////////////////////////////////////
+
 		function Content(element) {
 			/// <summary>
 			/// Finds its matching template and renders using the provided data as the 
@@ -448,6 +456,16 @@ Type.registerNamespace("ExoWeb.UI");
 
 			Content.initializeBase(this, [element]);
 		}
+
+		var contentControlsRendering = 0;
+
+		ExoWeb.registerActivity(function() {
+			if (contentControlsRendering < 0) {
+				ExoWeb.trace.logWarning("ui", "Number of content controls rendering should never dip below zero.");
+			}
+
+			return contentControlsRendering > 0;
+		});
 
 		Content.prototype = {
 			getTemplate: function Content$getTemplate(data) {
@@ -532,62 +550,68 @@ Type.registerNamespace("ExoWeb.UI");
 				if (this._canRender(force)) {
 //					log(['ui', "templates"], "render({0})", [force === true ? "force" : ""]);
 
+					contentControlsRendering++;
+
 					externalTemplatesSignal.waitForAll(function Content$externalTemplatesSignal() {
-						if (this._element !== undefined && this._element !== null) {
-//							log(['ui', "templates"], "render() proceeding after all templates are loaded");
-
-							var renderArgs = new Sys.Data.DataEventArgs(this._data);
-							Sys.Observer.raiseEvent(this, "rendering", renderArgs);
-
-							// Failing to empty content before rendering can result in invalid content since rendering 
-							// content is not necessarily in order because of waiting on external templates.
-							$(this._element).empty();
-
-							// ripped off from dataview
-							var pctx = this.get_templateContext();
-							var container = this.get_element();
-							var data = this._data;
-							var list = data;
-							var len;
-							if ((data === null) || (typeof (data) === "undefined")) {
-								len = 0;
-							}
-							else if (!(data instanceof Array)) {
-								list = [data];
-								len = 1;
-							}
-							else {
-								len = data.length;
-							}
-							this._contexts = new Array(len);
-							for (var i = 0; i < len; i++) {
-								var item = list[i];
-								var itemTemplate = this.getTemplate(item);
-
-								// get custom classes from template
-								var classes = $(itemTemplate.get_element()).attr("class");
-								if (classes) {
-									classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
-								}
-
-								this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
-
-								// copy custom classes from template to content control
-								if (classes) {
-									$(container).addClass(classes);
-								}
-							}
-
-							// necessary in order to render components found within the template (like a nested dataview)
-							for (var j = 0, l = this._contexts.length; j < l; j++) {
-								var ctx = this._contexts[j];
-								if (ctx) {
-									ctx.initializeComponents();
-								}
-							}
-
-							Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+						if (this._element === undefined || this._element === null) {
+							contentControlsRendering--;
+							return;
 						}
+
+//						log(['ui', "templates"], "render() proceeding after all templates are loaded");
+
+						var renderArgs = new Sys.Data.DataEventArgs(this._data);
+						Sys.Observer.raiseEvent(this, "rendering", renderArgs);
+
+						// Failing to empty content before rendering can result in invalid content since rendering 
+						// content is not necessarily in order because of waiting on external templates.
+						$(this._element).empty();
+
+						// ripped off from dataview
+						var pctx = this.get_templateContext();
+						var container = this.get_element();
+						var data = this._data;
+						var list = data;
+						var len;
+						if ((data === null) || (typeof (data) === "undefined")) {
+							len = 0;
+						}
+						else if (!(data instanceof Array)) {
+							list = [data];
+							len = 1;
+						}
+						else {
+							len = data.length;
+						}
+						this._contexts = new Array(len);
+						for (var i = 0; i < len; i++) {
+							var item = list[i];
+							var itemTemplate = this.getTemplate(item);
+
+							// get custom classes from template
+							var classes = $(itemTemplate.get_element()).attr("class");
+							if (classes) {
+								classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
+							}
+
+							this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+
+							// copy custom classes from template to content control
+							if (classes) {
+								$(container).addClass(classes);
+							}
+						}
+
+						// necessary in order to render components found within the template (like a nested dataview)
+						for (var j = 0, l = this._contexts.length; j < l; j++) {
+							var ctx = this._contexts[j];
+							if (ctx) {
+								ctx.initializeComponents();
+							}
+						}
+
+						Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+						contentControlsRendering--;
 					}, this);
 				}
 			},
@@ -616,7 +640,35 @@ Type.registerNamespace("ExoWeb.UI");
 		Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
 
 
+		// #endregion
+
+		// #region DataView
 		///////////////////////////////////////////////////////////////////////////////
+
+		var dataViewsRendering = 0;
+
+		ExoWeb.registerActivity(function() {
+			if (dataViewsRendering < 0) {
+				ExoWeb.trace.logWarning("ui", "Number of dataview controls rendering should never dip below zero.");
+			}
+
+			return dataViewsRendering > 0;
+		});
+
+		var dataViewRefresh = Sys.UI.DataView.prototype.refresh;
+		Sys.UI.DataView.prototype.refresh = function refresh() {
+			dataViewsRendering++;
+
+			dataViewRefresh.apply(this, arguments);
+
+			dataViewsRendering--;
+		};
+
+		// #endregion
+
+		// #region Html
+		///////////////////////////////////////////////////////////////////////////////
+
 		function Html(element) {
 			/// <summary>
 			/// </summary>
@@ -671,8 +723,11 @@ Type.registerNamespace("ExoWeb.UI");
 		ExoWeb.UI.Html = Html;
 		Html.registerClass("ExoWeb.UI.Html", Sys.UI.Control);
 
+		// #endregion
 
+		// #region Behavior
 		///////////////////////////////////////////////////////////////////////////////
+
 		function Behavior(element) {
 			/// <summary>
 			/// </summary>
@@ -774,6 +829,10 @@ Type.registerNamespace("ExoWeb.UI");
 		ExoWeb.UI.Behavior = Behavior;
 		Behavior.registerClass("ExoWeb.UI.Behavior", Sys.UI.Control);
 
+		// #endregion
+
+		// #region Helper Functions
+		///////////////////////////////////////////////////////////////////////////////
 
 		function getTemplateSubContainer(childElement) {
 			var element = childElement;
@@ -978,8 +1037,10 @@ Type.registerNamespace("ExoWeb.UI");
 
 		window.$isLast = getIsLast;
 
+		// #endregion
+
+		// #region MS AJAX Overrides
 		//////////////////////////////////////////////////////////////////////////////////////
-		// MS AJAX overrides
 
 		/// replaced implementation to use _tcindex instead of _index
 		/// http://msmvps.com/blogs/luisabreu/archive/2009/10/19/the-dataview-control-going-imperative-take-iii.aspx
@@ -1004,6 +1065,9 @@ Type.registerNamespace("ExoWeb.UI");
 		if (jQuery.fn.ever) {
 			jQuery.fn.ever.call();
 		}
+
+		// #endregion
+
 	}
 
 	if (window.Sys && Sys.loader) {
