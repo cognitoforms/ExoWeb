@@ -166,9 +166,18 @@ Type.registerNamespace("ExoWeb.UI");
 			set_on: function Toggle$set_on(value) {
 				var changed = value !== this._on;
 
-				this._on = value;
-
 				if (changed) {
+					if (this._on && this._on instanceof Array) {
+						Sys.Observer.removeCollectionChanged(this._on, this._collectionChangedHandler);
+					}
+
+					this._on = value;
+
+					if (this._on && this._on instanceof Array) {
+						this._collectionChangedHandler = this.execute.setScope(this);
+						Sys.Observer.addCollectionChanged(this._on, this._collectionChangedHandler);
+					}
+
 					this.execute();
 				}
 			},
