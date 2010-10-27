@@ -2029,15 +2029,25 @@
 			isInited: function PropertyChain$isInited(obj, tolerateNull) {
 				var allInited = true;
 				var numProperties = 0;
+				var emptyList = false;
+
 				this.each(obj, function(target, property) {
 					numProperties++;
 					if (!property.isInited(target)) {
 						allInited = false;
 						return false;
 					}
+					else if (property.get_isList() === true) {
+						// Break early on empty list that has been loaded.
+						var value = property.value(target);
+						if (value.length === 0 && LazyLoader.isLoaded(value)) {
+							emptyList = true;
+							return false;
+						}
+					}
 				});
 
-				if (numProperties < this._properties.length && !tolerateNull) {
+				if (numProperties < this._properties.length && !tolerateNull && !emptyList) {
 					allInited = false;
 //					log("model", "Path \"{0}\" is not inited since \"{1}\" is undefined.", [this.get_path(), this._properties[numProperties - 1].get_name()]);
 				}
