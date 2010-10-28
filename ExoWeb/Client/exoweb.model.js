@@ -2644,6 +2644,11 @@
 					Rule.register(rule, inputs);
 
 					rule._inited = true;
+
+					if (chain.get_jstype() === Boolean && rule._compareOp == "NotEqual" && (rule._compareValue === undefined || rule._compareValue === null)) {
+						rule._compareOp = "Equal";
+						rule._compareValue = true;
+					}
 				});
 			}
 			else {
