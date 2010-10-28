@@ -2283,7 +2283,7 @@
 		};
 
 		Rule.ensureError = function Rule$ensureError(ruleName, prop) {
-			var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), name]);
+			var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), ruleName]);
 			var conditionType = ConditionType.get(generatedCode);
 
 			if (!conditionType) {
