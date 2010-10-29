@@ -720,6 +720,13 @@ if (!("config" in ExoWeb)) {
 			return this._funcs.length === 0;
 		};
 
+		var eventsInProgress = 0;
+
+		// busy if there are any events in progress
+		registerActivity(function() {
+			return eventsInProgress > 0;
+		});
+
 		Functor.eventing = {
 			_addEvent: function Functor$_addEvent(name, func, filter, once) {
 				if (!this["_" + name]) {
@@ -737,7 +744,13 @@ if (!("config" in ExoWeb)) {
 			_raiseEvent: function Functor$_raiseEvent(name, argsArray) {
 				var handler = this["_" + name];
 				if (handler) {
-					handler.apply(this, argsArray || []);
+					try {
+						eventsInProgress++;
+						handler.apply(this, argsArray || []);
+					}
+					finally {
+						eventsInProgress--;
+					}
 				}
 			},
 			_getEventHandler: function Functor$_getEventHandler(name) {
