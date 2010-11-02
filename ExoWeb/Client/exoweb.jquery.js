@@ -119,7 +119,7 @@
 			var typeName = meta[3];
 			var jstype = new Function("{return " + typeName + ";}");
 
-			return obj.control instanceof jstype;
+			return obj.control instanceof jstype();
 		};
 
 		jQuery.fn.control = function (propName, propValue) {
