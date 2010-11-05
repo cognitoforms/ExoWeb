@@ -1369,30 +1369,14 @@
 
 						if (change.newValue) {
 							tryGetJsType(this._model, change.newValue.type, null, true, function(refType) {
-								tryGetEntity(this._model, this._translator, refType, change.newValue.id, null, true, function(refObj) {
-									// wait for processing of pending changes that target the new value
-									var signal = change.newValue && entitySignals[change.newValue.type + "|" + change.newValue.id];
-									if (signal) {
-										signal.waitForAll(function() {
-											var changed = ExoWeb.getValue(srcObj, change.property) != refObj;
+								var refObj = fromExoGraph(change.newValue, this._translator);
+								var changed = ExoWeb.getValue(srcObj, change.property) != refObj;
 
-											Sys.Observer.setValue(srcObj, change.property, refObj);
+								Sys.Observer.setValue(srcObj, change.property, refObj);
 
-											if (doCallback) {
-												callback(changed);
-											}
-										}, this);
-									}
-									else {
-										var changed = ExoWeb.getValue(srcObj, change.property) != refObj;
-
-										Sys.Observer.setValue(srcObj, change.property, refObj);
-
-										if (doCallback) {
-											callback(changed);
-										}
-									}
-								}, this);
+								if (doCallback) {
+									callback(changed);
+								}
 							}, this);
 						}
 						else {
