@@ -641,6 +641,8 @@
 							});
 						}
 					}
+					// Presumably the reason for this is that property calculation could be based on init of
+					// this property, though it seems unlikely that this would solve more problems that it causes.
 					else if (prop.get_origin() == "server") {
 						this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
 					}
