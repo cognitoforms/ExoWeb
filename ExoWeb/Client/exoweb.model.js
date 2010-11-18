@@ -939,6 +939,25 @@
 			get_origin: function Type$get_origin() {
 				return this._origin;
 			},
+			eachBaseType: function Type$eachBaseType(callback, thisPtr) {
+				for (var baseType = this.baseType; !!baseType; baseType = baseType.baseType) {
+					if (callback.call(thisPtr || this, baseType) === false) {
+						return;
+					}
+				}
+			},
+			isSubclassOf: function Type$isSubclassOf(mtype) {
+				var result = false;
+
+				this.eachBaseType(function(baseType) {
+					if (baseType === mtype) {
+						result = true;
+						return false;
+					}
+				});
+
+				return result;
+			},
 			toString: function Type$toString() {
 				return this.get_fullName();
 			}
@@ -1019,13 +1038,7 @@
 				return null;
 			},
 			isDefinedBy: function Property$isDefinedBy(mtype) {
-				for (var type = mtype; type; type = type.baseType) {
-					if (this._containingType === type) {
-						return true;
-					}
-				}
-
-				return false;
+				return this._containingType === mtype || mtype.isSubclassOf(this._containingType);
 			},
 			_addRule: function Property$_addRule(rule, isTarget) {
 				if (!this._rules) {
