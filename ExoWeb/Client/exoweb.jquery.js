@@ -115,6 +115,18 @@
 			return obj.control instanceof ExoWeb.UI.Content;
 		};
 
+		var togglePrereqs = false;
+		jQuery.expr[":"].toggle = function (obj, index, meta, stack) {
+			if (togglePrereqs === false) {
+				if (!(window.ExoWeb !== undefined && ExoWeb.UI !== undefined && obj.control !== undefined && ExoWeb.UI.Toggle !== undefined && obj.control))
+					return false;
+
+				togglePrereqs = true;
+			}
+
+			return obj.control instanceof ExoWeb.UI.Toggle;
+		};
+
 		jQuery.expr[":"].control = function (obj, index, meta, stack) {
 			var typeName = meta[3];
 			var jstype = new Function("{return " + typeName + ";}");
@@ -161,10 +173,10 @@
 
 					// test root
 					if ($el.is(reg.selector))
-						reg.action.apply(els[e]);
+						reg.action.apply(reg.thisPtr || els[e], [0, els[e]]);
 
 					// test children
-					$(reg.selector, els[e]).each(reg.action);
+					$(reg.selector, els[e]).each(reg.thisPtr ? reg.action.setScope(reg.thisPtr) : reg.action);
 				}
 			}
 		}
@@ -219,7 +231,7 @@
 		}
 
 		// matches elements as they are dynamically added to the DOM
-		jQuery.fn.ever = function (added, deleted) {
+		jQuery.fn.ever = function (added, deleted, thisPtr) {
 			// If the function is called in any way other than as a method on the 
 			// jQuery object, then intercept and return early.
 			if (!(this instanceof jQuery)) {
@@ -228,20 +240,22 @@
 			}
 
 			// apply now
-			this.each(added);
+			this.each(thisPtr ? added.setScope(thisPtr) : added);
 
 			// and then watch for dom changes
 			if (added) {
 				everRegs.added.push({
 					selector: this.selector,
-					action: added
+					action: added,
+					thisPtr: thisPtr
 				});
 			}
 
 			if (deleted) {
 				everRegs.deleted.push({
 					selector: this.selector,
-					action: deleted
+					action: deleted,
+					thisPtr: thisPtr
 				});
 			}
 
