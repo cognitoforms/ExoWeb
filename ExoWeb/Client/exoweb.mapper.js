@@ -974,7 +974,7 @@
 
 			// Rollback
 			///////////////////////////////////////////////////////////////////////
-			rollback: function ServerSync$rollback(steps) {
+			rollback: function ServerSync$rollback(steps, callback) {
 				var changes = this._changes;
 				var depth = 0;
 
@@ -1021,6 +1021,10 @@
 					signal.waitForAll(function() {
 //						log("server", "done rolling back {0} changes", [steps]);
 						this.endApplyingChanges();
+
+						if (callback && callback instanceof Function) {
+							callback();
+						}
 					}, this);
 				}
 				catch (e) {
