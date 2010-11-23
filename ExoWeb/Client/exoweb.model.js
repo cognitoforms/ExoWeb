@@ -3312,8 +3312,8 @@
 		});
 
 		Boolean.formats.YesNo = new Format({
-			convert: function(val) { return val ? "yes" : "no"; },
-			convertBack: function(str) { return str == "yes"; }
+			convert: function(val) { return val ? "Yes" : "No"; },
+			convertBack: function(str) { return str.toLowerCase() == "yes"; }
 		});
 
 		Boolean.formats.TrueFalse = new Format({
