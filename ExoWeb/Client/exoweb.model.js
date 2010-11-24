@@ -3283,9 +3283,9 @@
 		Number.formats.$system = Number.formats.Float;
 
 		String.formats.Phone = new Format({
-			description: "###-###-####",
+			description: "###-###-#### x####",
 			convertBack: function(str) {
-				if (!/^[0-9]{3}-[0-9]{3}-[0-9]{4}$/.test(str)) {
+				if (!/^\s*\(?([1-9][0-9][0-9])\)?[ -]?([0-9]{3})-?([0-9]{4})( ?x[0-9]{1,8})?\s*$/.test(str)) {
 					throw new Error("invalid format");
 				}
 
@@ -3293,6 +3293,17 @@
 			}
 		});
 
+		String.formats.PhoneAreaCodeOptional = new Format({
+			description: "###-###-#### x#### or ###-#### x####",
+			convertBack: function(str) {
+				if (!/^\s*\(?([1-9][0-9][0-9])\)?[ -]?([0-9]{3})-?([0-9]{4})( ?x[0-9]{1,8})?\s*$/.test(str) &&
+					!/^\s*([0-9]{3})-?([0-9]{4})( ?x[0-9]{1,8})?\s*$/.test(str)) {
+					throw new Error("invalid format");
+				}
+
+				return str;
+			}
+		});
 		String.formats.Email = new Format({
 			description: "name@address.com",
 			convertBack: function(str) {
