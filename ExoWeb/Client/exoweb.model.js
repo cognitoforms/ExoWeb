@@ -3316,6 +3316,17 @@
 			}
 		});
 
+		String.formats.ZipCode = new Format({
+			description: "##### or #####-####",
+			convertBack: function(str){
+				if(!/^\s*(\d{5})(-\d{4})?\s*$/.test(str)){
+					throw new Error("invalid format");
+				}
+
+				return str;
+			}
+		});
+
 		String.formats.$system = new Format({
 			convertBack: function(val) {
 				return val ? $.trim(val) : val;
