@@ -716,6 +716,9 @@
 							}
 						}
 					}
+					else if (this.isType(Boolean)) {
+						this._allowedValues = [true, false];
+					}
 				}
 
 				return this._allowedValues;
