@@ -524,6 +524,10 @@
 				Sys.Observer.makeObservable(obj);
 
 				for (var t = this; t; t = t.baseType) {
+					if (t._pool.hasOwnProperty(key)){
+						ExoWeb.trace.throwAndLog("model", "Object \"{0}|{1}\" has already been registered.", [this.get_fullName(), id]);
+					}
+
 					t._pool[key] = obj;
 					if (t._known) {
 						t._known.add(obj);

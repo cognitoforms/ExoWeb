@@ -582,7 +582,7 @@
 				this._raiseEvent("requestEnd", [result, includeAutomatic]);
 				this._raiseEvent("requestSuccess", [result, includeAutomatic]);
 				this._raiseEvent(method + "End", [result, includeAutomatic]);
-				this._raiseEvent(method + "Success", [result, includeAutomatic]);						
+				this._raiseEvent(method + "Success", [result, includeAutomatic]);
 			},
 			_raiseFailedEvent: function ServerSync$raiseFailedEvent(method, result, includeAutomatic)
 			{
@@ -772,9 +772,9 @@
 			_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-				this._raiseSuccessEvent("raiseServerEvent", result, automatic);
-
 				this._handleResult(result, automatic, function() {
+					this._raiseSuccessEvent("raiseServerEvent", result, automatic);
+
 					if (callback && callback instanceof Function) {
 						var event = result.events[0];
 						if(event instanceof Array) {
@@ -838,9 +838,9 @@
 			_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-				this._raiseSuccessEvent("roundtrip", result, automatic);
-
 				this._handleResult(result, automatic, function() {
+					this._raiseSuccessEvent("roundtrip", result, automatic);
+
 					if (callback && callback instanceof Function) {
 						callback.call(this, result);
 					}
@@ -904,9 +904,9 @@
 			_onSaveSuccess: function ServerSync$_onSaveSuccess(result, callback, automatic) {
 				Sys.Observer.setValue(this, "PendingSave", false);
 
-				this._raiseSuccessEvent("save", result, automatic);
-
 				this._handleResult(result, automatic, function() {
+					this._raiseSuccessEvent("save", result, automatic);
+
 					if (callback && callback instanceof Function) {
 						callback.call(this, result);
 					}
