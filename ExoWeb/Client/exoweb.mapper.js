@@ -2824,7 +2824,7 @@
 				Array.forEach(jstype.meta.derivedTypes || [], function(mtype) {
 					if (mtype && ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 						callback.call(thisPtr || this, mtype.get_jstype());
-						Array.forEach(mtype.derivedTypes || [], arguments.callee.spliceArguments(1, 2, arr));
+						Array.forEach(mtype.derivedTypes || [], arguments.callee.spliceArguments(1, 2));
 					}
 				});
 			}
