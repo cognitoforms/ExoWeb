@@ -194,7 +194,20 @@ Type.registerNamespace("ExoWeb.UI");
 				this._when = value;
 				this.execute();
 			},
-			
+
+			set_strictMode: function Toggle$set_strictMode(value) {
+				/// <summary>
+				/// If true, the "on" value will be strictly compared
+				/// to the "when" value.  Otherwise, if "when" is undefined
+				/// the "on" value will be checked for truthiness.
+				/// </summary>
+
+				this._strictMode = value;
+			},
+			get_strictMode: function Toggle$get_strictMode() {
+				return this._strictMode;
+			},
+
 			get_groupName: function Toggle$get_groupName() {
 				return this._groupName;
 			},
@@ -203,11 +216,11 @@ Type.registerNamespace("ExoWeb.UI");
 			},
 
 			get_equals: function Toggle$get_equals() {
-				if (this._when instanceof Function) {
-					return !!this._when(this._on);
+				if (this._when === undefined) {
+					return (typeof (this._on) === "boolean" || this.get_strictMode() === true) ? this._on : !!this._on;
 				}
-				else if (typeof (this._on) === "boolean" && this._when === undefined) {
-					return this._on;
+				else if (this._when instanceof Function) {
+					return !!this._when(this._on);
 				}
 				else {
 					return this._on === this._when;
