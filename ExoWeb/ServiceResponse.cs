@@ -55,7 +55,7 @@ namespace ExoWeb
 				json.Set("events", Events);
 
 			if (Changes != null && Changes.Any())
-				json.Set("changes", (IEnumerable<GraphEvent>)Changes.Where(graphEvent => graphEvent.IsSerializable));
+				json.Set("changes", (IEnumerable<GraphEvent>)Changes.Where(graphEvent => !(graphEvent is GraphValueChangeEvent) || ExoWeb.IncludeInClientModel(((GraphValueChangeEvent)graphEvent).Property)));
 		}
 
 		object IJsonSerializable.Deserialize(Json json)
