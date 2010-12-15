@@ -488,7 +488,20 @@
 		Type.prototype = {
 			toIdString: function Type$toIdString(id) {
 				if (id) {
-					return $format("{0}|{1}", [this.get_fullName(), id]);
+					var type;
+
+					if(this._typeIds)
+					{
+						var idParts = id.split('*');
+						if(idParts.length == 2)
+						{
+							type = this._typeIds[idParts[1]];
+							if(!type)
+								ExoWeb.trace.throwAndLog("model", "No type found for type id '{0}' and base type '{1}'", [idParts[1], this.get_fullName()]);
+						}
+					}
+
+					return $format("{0}|{1}", [(type || this).get_fullName(), id]);
 				}
 			},
 			newId: function Type$newId() {
