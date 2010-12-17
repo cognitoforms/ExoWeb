@@ -16,7 +16,7 @@ Type.registerNamespace("ExoWeb.UI");
 			Toggle.initializeBase(this, [element]);
 		}
 
-		var Toggle_allowedActions = ["show", "hide", "enable", "disable", "render", "dispose"];
+		var Toggle_allowedActions = ["show", "hide", "enable", "disable", "render", "dispose", "addClass", "removeClass"];
 
 		// Actions
 		Toggle.mixin({
@@ -112,6 +112,37 @@ Type.registerNamespace("ExoWeb.UI");
 			},
 			remove_rendered: function Content$remove_rendered(handler) {
 				this._removeHandler("rendered", handler);
+			},
+
+			// addClass / removeClass
+			//////////////////////////////////////////////////////////
+			do_addClass: function Toggle$do_addClass() {
+				var $el = $(this.get_element());
+				
+				if(!$el.is("."+this._class)) {
+					$el.addClass(this._class);
+					Sys.Observer.raiseEvent(this, "classAdded");
+				}
+			},
+			do_removeClass: function Toggle$do_removeClass() {
+				var $el = $(this.get_element());
+				
+				if($el.is("."+this._class)) {
+					$el.removeClass(this._class);
+					Sys.Observer.raiseEvent(this, "classRemoved");
+				}
+			},
+			add_classAdded: function Toggle$add_classAdded(handler) {
+				this._addHandler("classAdded", handler);
+			},
+			remove_classAdded: function Toggle$remove_classAdded(handler) {
+				this._removeHandler("classAdded", handler);
+			},
+			add_classRemoved: function Toggle$add_classRemoved(handler) {
+				this._addHandler("classRemoved", handler);
+			},
+			remove_classRemoved: function Toggle$remove_classRemoved(handler) {
+				this._removeHandler("classRemoved", handler);
 			}
 		});
 
@@ -133,15 +164,21 @@ Type.registerNamespace("ExoWeb.UI");
 			//////////////////////////////////////////////////////////
 			init_dispose: Toggle.prototype.init_render,
 			undo_render: Toggle.prototype.do_dispose,
-			undo_dispose: Toggle.prototype.do_render
+			undo_dispose: Toggle.prototype.do_render,
+
+			
+			// addClass/removeClass
+			//////////////////////////////////////////////////////////
+			undo_addClass: Toggle.prototype.do_removeClass,
+			undo_removeClass: Toggle.prototype.do_addClass
 		});
 
 		Toggle.mixin({
 			get_action: function Toggle$get_action() {
 				/// <summary>
 				/// The value that determines what the control should
-				/// do when its state changes.
-				/// Options:  show/hide, enable/disable, render/dispose
+				/// do when its state changes. Ignored if the class property is set
+				/// Options:  show/hide, enable/disable, render/dispose, addClass, removeClass
 				/// </summary>
 
 				return this._action;
@@ -154,7 +191,19 @@ Type.registerNamespace("ExoWeb.UI");
 				this._action = value;
 				this.execute();
 			},
+			get_class: function Toggle$get_class() {
+				/// <summary>
+				/// Class to add or remove
+				/// </summary>
 
+				return this._class;
+			},
+			set_class: function Toggle$set_class(value) {
+				this._class = value;
+				if(!this._action)
+					this._action = "addClass";
+				this.execute();
+			},
 			get_on: function Toggle$get_on() {
 				/// <summary>
 				/// The value that the control will watch to determine
