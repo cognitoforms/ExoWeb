@@ -207,7 +207,7 @@ namespace ExoWeb
 							).ToArray();
 						}
 
-						if (roots != null)
+						if (roots != null && roots.Length > 0)
 						{
 							Query[] newQueries = new Query[] { new Query(roots, domainEvent.Paths) };
 							Queries = Queries == null ? newQueries : Queries.Union(newQueries).ToArray();
