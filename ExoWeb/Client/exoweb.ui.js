@@ -24,6 +24,7 @@ Type.registerNamespace("ExoWeb.UI");
 			//////////////////////////////////////////////////////////
 			do_show: function Toggle$do_show() {
 				$(this.get_element()).show();
+				this._stateClass("on");
 
 				// visibility has changed so raise event
 				if (this._visible === undefined || this._visible === false) {
@@ -34,6 +35,7 @@ Type.registerNamespace("ExoWeb.UI");
 			},
 			do_hide: function Toggle$do_hide() {
 				$(this.get_element()).hide();
+				this._stateClass("off");
 
 				// visibility has changed so raise event
 				if (this._visible === undefined || this._visible === true) {
@@ -62,9 +64,11 @@ Type.registerNamespace("ExoWeb.UI");
 			//////////////////////////////////////////////////////////
 			do_enable: function Toggle$do_enable() {
 				$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().removeAttr("disabled");
+				this._stateClass("on");
 			},
 			do_disable: function Toggle$do_disable() {
 				$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().attr("disabled", "disabled");
+				this._stateClass("off");
 			},
 
 			// Render/Destroy
@@ -84,6 +88,7 @@ Type.registerNamespace("ExoWeb.UI");
 				var renderArgs = new Sys.Data.DataEventArgs(pctx.dataItem);
 				Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
+				this._stateClass("on");
 				$(this._element).empty();
 
 				if (pctx.dataItem) {
@@ -97,6 +102,7 @@ Type.registerNamespace("ExoWeb.UI");
 				var renderArgs = new Sys.Data.DataEventArgs();
 				Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
+				this._stateClass("off");
 				$(this._element).empty();
 
 				Sys.Observer.raiseEvent(this, "rendered", renderArgs);
@@ -121,6 +127,7 @@ Type.registerNamespace("ExoWeb.UI");
 				
 				if(!$el.is("."+this._class)) {
 					$el.addClass(this._class);
+					this._stateClass("on");
 					Sys.Observer.raiseEvent(this, "classAdded");
 				}
 			},
@@ -129,6 +136,7 @@ Type.registerNamespace("ExoWeb.UI");
 				
 				if($el.is("."+this._class)) {
 					$el.removeClass(this._class);
+					this._stateClass("off");
 					Sys.Observer.raiseEvent(this, "classRemoved");
 				}
 			},
@@ -301,6 +309,13 @@ Type.registerNamespace("ExoWeb.UI");
 				}
 
 				this.execute();
+			},
+			_stateClass: function(state)
+			{
+				if(state == "on")
+					$(this.get_element()).addClass("toggle-on").removeClass("toggle-off");
+				else
+					$(this.get_element()).removeClass("toggle-on").addClass("toggle-off");
 			}
 		});
 
