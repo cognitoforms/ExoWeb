@@ -1573,7 +1573,7 @@
 			this.expression = expression;
 
 			// replace "." in type casts so that they do not interfere with splitting path
-			expression = expression.replace(/<[^>]*>/ig, function(e) { return e.replace(/\./ig, "$_$"); });
+			expression = expression.replace(/<[^>]*>/ig, function(e) { return e.replace(/\./ig, function() { return "$_$"; }); });
 
 			if (expression.length > 0) {
 				this.steps = expression.split(".").map(function(step) {
@@ -1587,7 +1587,7 @@
 
 					if (parsed[3]) {
 						// restore "." in type case expression
-						result.cast = parsed[3].replace(/\$_\$/ig, ".");
+						result.cast = parsed[3].replace(/\$_\$/ig, function() { return "."; });
 					}
 
 					return result;
