@@ -661,6 +661,16 @@ if (!("config" in ExoWeb)) {
 
 		// #endregion
 
+		// #region String Extensions
+
+		if (!String.prototype.endsWith) {
+			String.prototype.endsWith = function endsWith(text) {
+				return this.length === (this.indexOf(text) + text.length);
+			};
+		}
+
+		// #endregion
+
 		// #region Functor
 		//////////////////////////////////////////////////////////////////////////////////////
 
