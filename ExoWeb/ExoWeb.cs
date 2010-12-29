@@ -75,7 +75,10 @@ namespace ExoWeb
 
 		public static event EventHandler<ServiceErrorEventArgs> Error;
 
-		public static event EventHandler<SerializeEventArgs> Serialize;
+		/// <summary>
+		/// Raised before conditions related to a graph instance are included in the service response
+		/// </summary>
+		public static event EventHandler<EnsureConditionsEventArgs> EnsureConditions;
 
 		/// <summary>
 		/// Raises the <see cref="BeginRequest"/> event for the specified <see cref="ServiceRequest"/>.
@@ -108,19 +111,18 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Raises the <see cref="Serialize"/> event for the specified <see cref="GraphInstance"/>.
+		/// Raises the <see cref="EnsureConditions"/> event
 		/// </summary>
-		/// <param name="error"></param>
-		internal static void OnSerialize(GraphInstance instance)
+		/// <param name="dictionary"></param>
+		internal static void OnEnsureConditions(ServiceResponse response, IEnumerable<GraphInstance> instances)
 		{
-			if (Serialize != null)
-				Serialize(instance, new SerializeEventArgs(instance));
+			if (EnsureConditions != null)
+				EnsureConditions(response, new EnsureConditionsEventArgs(instances));
 		}
-
 		#endregion
 
 		#region Methods
-
+		
 		/// <summary>
 		/// Determines whether a given property should be included in the
 		/// model on the client.  

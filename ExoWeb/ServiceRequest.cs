@@ -130,11 +130,9 @@ namespace ExoWeb
 				var instances = response.Instances != null ? 
 					response.Instances.Values.SelectMany(d => d.Instances.Values).Select(instance => instance.Instance) : 
 					new GraphInstance[0];
-				
-				// Add instances changed during the request
-				//instances = response.Changes != null ?
-				//    instances.Union(response.Changes.Select(graphEvent => graphEvent.Instance)) :
-				//    instances;
+
+				// Ensure conditions are evaluated before extracting them
+				ExoWeb.OnEnsureConditions(response, instances);
 
 				// Extract conditions for all instances involved in the request
 				Dictionary<string, List<Condition>> conditionsByType = new Dictionary<string, List<Condition>>();

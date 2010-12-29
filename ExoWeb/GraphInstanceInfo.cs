@@ -39,9 +39,6 @@ namespace ExoWeb
 		/// <returns></returns>
 		IEnumerator<object> IEnumerable<object>.GetEnumerator()
 		{
-			// Prepare the instance for serialization
-			ExoWeb.OnSerialize(Instance);
-
 			return Instance.Type.Properties
 				.Where(property => ExoWeb.IncludeInClientModel(property) && !property.IsStatic)
 				.Select(property => property.IsList && !HasList(property) ? "?" : JsonConverter.GetPropertyValue(property, Instance))
