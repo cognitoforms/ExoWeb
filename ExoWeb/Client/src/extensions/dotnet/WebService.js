@@ -1,3 +1,5 @@
+ExoWeb.DotNet.config = {};
+
 var path = window.location.pathname;
 var idx = path.lastIndexOf("/");
 
@@ -6,10 +8,14 @@ if (idx >= 0 && idx < path.length - 1) {
 }
 
 var fmt = window.location.port ? "{protocol}//{hostname}:{port}" : "{protocol}//{hostname}";
-path = $format(fmt, window.location) + path + "ExoWeb.axd";
+var host = $format(fmt, window.location);
+
+function getPath() {
+	return host + (ExoWeb.DotNet.config.appRoot || path) + "ExoWeb.axd";
+}
 
 function processRequest(method, data, success, failure) {
-	$.ajax({ url: path + "/" + method, type: "Post", data: JSON.stringify(data), processData: false, dataType: "text", contentType: "application/json",
+	$.ajax({ url: getPath() + "/" + method, type: "Post", data: JSON.stringify(data), processData: false, dataType: "text", contentType: "application/json",
 		success: function(result) {
 			success(JSON.parse(result));
 		},
@@ -24,8 +30,6 @@ function processRequest(method, data, success, failure) {
 		}
 	});
 }
-
-ExoWeb.DotNet.config = {};
 
 // Define the ExoWeb.Request method
 function request(args, onSuccess, onFailure) {
@@ -72,8 +76,8 @@ function getType(type, onSuccess, onFailure) {
 	if (ExoWeb.cacheHash) {
 		data.cachehash = ExoWeb.cacheHash;
 	}
-	
-	Sys.Net.WebServiceProxy.invoke(path, "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
+
+	Sys.Net.WebServiceProxy.invoke(getPath(), "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
 }
 
 ExoWeb.Mapper.setTypeProvider(getType);
@@ -81,7 +85,7 @@ ExoWeb.Mapper.setTypeProvider(getType);
 // Define the ExoWeb.LogError method
 function logError(type, message, stackTrace, url, refererUrl, onSuccess, onFailure) {
 	var data = { type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl, config: ExoWeb.DotNet.config};
-	Sys.Net.WebServiceProxy.invoke(path, "LogError", false, data, onSuccess, onFailure, null, 1000000, false, null);
+	Sys.Net.WebServiceProxy.invoke(getPath(), "LogError", false, data, onSuccess, onFailure, null, 1000000, false, null);
 }
 
 var loggingError = false;

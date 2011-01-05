@@ -180,21 +180,34 @@ Template.load = function Template$load(path) {
 		}
 	});
 
-	$("<div id='" + id + "'/>")
-		.hide()
-		.appendTo("body")
-		.load(path, externalTemplatesSignal.pending(function() {
-			var elem = this;
+	$(function ($) {
 
-			// if there is a pending request then wait for it to complete
-			if (lastReq) {
-//						ExoWeb.trace.log("ui", "Templates \"{0}\" complete and waiting.", [id]);
-				lastReq.waitForAll(function() { callback(elem); });
-			}
-			else {
-				callback(elem);
-			}
-		}));
+		var tmpl = $("<div id='" + id + "'/>")
+				.hide()
+				.appendTo("body");
+
+		var html = ExoWeb.cache(path);
+
+		if (html) {
+			tmpl.append(html);
+			callback(tmpl.get(0));
+		}
+		else
+			tmpl.load(path, externalTemplatesSignal.pending(function () {
+				var elem = this;
+
+				// Cache the template
+				ExoWeb.cache(path, elem.innerHTML);
+
+				// if there is a pending request then wait for it to complete
+				if (lastReq) {
+					lastReq.waitForAll(function () { callback(elem); });
+				}
+				else {
+					callback(elem);
+				}
+			}));
+	});
 };
 
 ExoWeb.UI.Template = Template;

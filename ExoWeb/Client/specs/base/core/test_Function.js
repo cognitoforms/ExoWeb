@@ -1,9 +1,9 @@
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../jasmine");
-var jasmineConsole = require("../jasmine.console");
-var arrays = require("../../lib/core/Array");
-var functions = require("../../lib/core/Function");
+var jasmine = require("../../jasmine");
+var jasmineConsole = require("../../jasmine.console");
+var arrays = require("../../../src/base/core/Array");
+var functions = require("../../../src/base/core/Function");
 
 // References
 ///////////////////////////////////////

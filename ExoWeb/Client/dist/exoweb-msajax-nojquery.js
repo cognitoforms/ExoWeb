@@ -8726,15 +8726,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (currentOptions.contextReady)
 				currentOptions.contextReady(window.context);
 
-			// Activate the document if this is the first context to load
-			if (!activated) {
-				activated = true;
-				Sys.Application.activateElement(document.documentElement);
-			}
+			$(function ($) {
+				// Activate the document if this is the first context to load
+				if (!activated) {
+					activated = true;
+					Sys.Application.activateElement(document.documentElement);
+				}
 
-			// Invoke dom ready notifications
-			if (currentOptions.domReady)
-				currentOptions.domReady(window.context);
+				// Invoke dom ready notifications
+				if (currentOptions.domReady)
+					currentOptions.domReady(window.context);
+			});
 		});
 	};
 	// #endregion
@@ -9428,21 +9430,34 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		});
 
-		$("<div id='" + id + "'/>")
-			.hide()
-			.appendTo("body")
-			.load(path, externalTemplatesSignal.pending(function() {
-				var elem = this;
+		$(function ($) {
 
-				// if there is a pending request then wait for it to complete
-				if (lastReq) {
-//						ExoWeb.trace.log("ui", "Templates \"{0}\" complete and waiting.", [id]);
-					lastReq.waitForAll(function() { callback(elem); });
-				}
-				else {
-					callback(elem);
-				}
-			}));
+			var tmpl = $("<div id='" + id + "'/>")
+					.hide()
+					.appendTo("body");
+
+			var html = ExoWeb.cache(path);
+
+			if (html) {
+				tmpl.append(html);
+				callback(tmpl.get(0));
+			}
+			else
+				tmpl.load(path, externalTemplatesSignal.pending(function () {
+					var elem = this;
+
+					// Cache the template
+					ExoWeb.cache(path, elem.innerHTML);
+
+					// if there is a pending request then wait for it to complete
+					if (lastReq) {
+						lastReq.waitForAll(function () { callback(elem); });
+					}
+					else {
+						callback(elem);
+					}
+				}));
+		});
 	};
 
 	ExoWeb.UI.Template = Template;
@@ -11100,6 +11115,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region WebService
 	//////////////////////////////////////////////////
 
+	ExoWeb.DotNet.config = {};
+
 	var path = window.location.pathname;
 	var idx = path.lastIndexOf("/");
 
@@ -11108,10 +11125,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	var fmt = window.location.port ? "{protocol}//{hostname}:{port}" : "{protocol}//{hostname}";
-	path = $format(fmt, window.location) + path + "ExoWeb.axd";
+	var host = $format(fmt, window.location);
+
+	function getPath() {
+		return host + (ExoWeb.DotNet.config.appRoot || path) + "ExoWeb.axd";
+	}
 
 	function processRequest(method, data, success, failure) {
-		$.ajax({ url: path + "/" + method, type: "Post", data: JSON.stringify(data), processData: false, dataType: "text", contentType: "application/json",
+		$.ajax({ url: getPath() + "/" + method, type: "Post", data: JSON.stringify(data), processData: false, dataType: "text", contentType: "application/json",
 			success: function(result) {
 				success(JSON.parse(result));
 			},
@@ -11126,8 +11147,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		});
 	}
-
-	ExoWeb.DotNet.config = {};
 
 	// Define the ExoWeb.Request method
 	function request(args, onSuccess, onFailure) {
@@ -11174,8 +11193,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		if (ExoWeb.cacheHash) {
 			data.cachehash = ExoWeb.cacheHash;
 		}
-	
-		Sys.Net.WebServiceProxy.invoke(path, "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
+
+		Sys.Net.WebServiceProxy.invoke(getPath(), "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
 	}
 
 	ExoWeb.Mapper.setTypeProvider(getType);
@@ -11183,7 +11202,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// Define the ExoWeb.LogError method
 	function logError(type, message, stackTrace, url, refererUrl, onSuccess, onFailure) {
 		var data = { type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl, config: ExoWeb.DotNet.config};
-		Sys.Net.WebServiceProxy.invoke(path, "LogError", false, data, onSuccess, onFailure, null, 1000000, false, null);
+		Sys.Net.WebServiceProxy.invoke(getPath(), "LogError", false, data, onSuccess, onFailure, null, 1000000, false, null);
 	}
 
 	var loggingError = false;

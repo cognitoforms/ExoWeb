@@ -1,14 +1,14 @@
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../jasmine");
-var jasmineConsole = require("../jasmine.console");
+var jasmine = require("../../jasmine");
+var jasmineConsole = require("../../jasmine.console");
 
 window = {};
 ExoWeb = window.ExoWeb = {};
 
-var functions = require("../../lib/core/Function");
-var arrays = require("../../lib/core/Array");
-var signal = require("../../lib/core/Signal");
+var functions = require("../../../src/base/core/Function");
+var arrays = require("../../../src/base/core/Array");
+var signal = require("../../../src/base/core/Signal");
 
 // References
 ///////////////////////////////////////

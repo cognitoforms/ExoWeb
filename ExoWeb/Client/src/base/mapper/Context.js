@@ -334,14 +334,16 @@ window.$exoweb = function (options) {
 		if (currentOptions.contextReady)
 			currentOptions.contextReady(window.context);
 
-		// Activate the document if this is the first context to load
-		if (!activated) {
-			activated = true;
-			Sys.Application.activateElement(document.documentElement);
-		}
+		$(function ($) {
+			// Activate the document if this is the first context to load
+			if (!activated) {
+				activated = true;
+				Sys.Application.activateElement(document.documentElement);
+			}
 
-		// Invoke dom ready notifications
-		if (currentOptions.domReady)
-			currentOptions.domReady(window.context);
+			// Invoke dom ready notifications
+			if (currentOptions.domReady)
+				currentOptions.domReady(window.context);
+		});
 	});
 };
