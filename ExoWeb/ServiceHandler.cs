@@ -78,13 +78,6 @@ namespace ExoWeb
 						ExoWeb.OnError(ExoWeb.FromJson<ServiceError>(json));
 
 						break;
-
-					case "/Script":
-
-						// Output the service handler client script
-						OutputScript(context);
-
-						break;
 				}
 			}
 			catch (Exception e)
@@ -116,81 +109,6 @@ namespace ExoWeb
 		#endregion
 
 		#region Methods
-
-		/// <summary>
-		/// Outputs the javascript used to enable ExoWeb usage.
-		/// </summary>
-		/// <param name="response"></param>
-		void OutputScript(HttpContext context)
-		{
-			// Enable caching
-			context.Response.Cache.SetCacheability(HttpCacheability.Public);
-			context.Response.Cache.SetExpires(DateTime.Now.AddDays(7));
-
-			context.Response.ContentType = "application/javascript";
-
-			string path = context.Request.ApplicationPath;
-			path += path.EndsWith("/") ? "ExoWeb.axd" : "/ExoWeb.axd";
-
-			string cachehash = context.Request.QueryString["cachehash"];
-
-			context.Response.Write(
-			@"
-				(function() {
-
-					function execute() {
-
-						function ProcessRequest(method, data, success, failure)
-						{
-							$.ajax({ url: '" + path + @"/' + method, type: 'Post', data: JSON.stringify(data), processData: false, dataType: 'text', contentType: 'application/json',
-							success: function(result) {
-								success(JSON.parse(result));
-							},
-							error: function(result) { 
-								var error = { message: result.statusText };
-								try
-								{
-									error = JSON.parse(result.responseText);
-								}
-								catch(e) {}
-								failure(error);
-							}});
-						}
-
-						// Declare the ExoWeb namespace
-						Type.registerNamespace('ExoWeb.WebService');
-
-						// Define the ExoWeb.Request method
-						ExoWeb.WebService.Request = function ExoWeb$WebService$Request(args, onSuccess, onFailure)
-						{
-							args.config = ExoWeb.config;
-							ProcessRequest('Request', args, onSuccess, onFailure);
-						}
-
-						// Define the ExoWeb.GetType method
-						ExoWeb.WebService.GetType = function ExoWeb$WebService$GetType(type, onSuccess, onFailure)
-						{
-							var data = { type: type" + (string.IsNullOrEmpty(cachehash) ? "" : @", cachehash: " + cachehash) + @", config: ExoWeb.config};
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'GetType', true, data, onSuccess, onFailure, null, 1000000, false, null);
-						}
-
-						// Define the ExoWeb.LogError method
-						ExoWeb.WebService.LogError = function ExoWeb$WebService$LogError(type, message, stackTrace, url, refererUrl, onSuccess, onFailure)
-						{
-							var data = { type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl, config: ExoWeb.config};
-							Sys.Net.WebServiceProxy.invoke('" + path + @"', 'LogError', false, data, onSuccess, onFailure, null, 1000000, false, null);
-						}
-					}
-
-					if (window.Sys && Sys.loader) {
-							Sys.loader.registerScript('ExoWebHandler', null, execute);
-					}
-					else {
-							execute();
-					}
-				})();
-			");
-		}
 
 		/// <summary>
 		/// Utility method for getting the full stack trace for a list

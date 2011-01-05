@@ -1,0 +1,175 @@
+prefix = File.dirname(__FILE__)
+
+@src_dir = ENV["SRC_DIR"] || File.join(prefix, "src")
+@dist_dir = ENV["DIST_DIR"] || File.join(prefix, "dist")
+
+@header = "\n// %s\n" + ("/" * 50) + "\n(function() {\n\n\tvar undefined;\n"
+@footer = "\t\n})();\n"
+
+# returns the contents of the given file, with each line
+# indented with the given number of tabs
+def read file, indent=0
+	result = ""
+	File.open(file, "r") do |f|
+		last_line = nil
+		while (line = f.gets)
+			# indent all non-empty lines
+			if indent > 0 and (line =~ /\A\s*\Z/) == nil and (line =~ /\A\/\/\t+/) == nil
+				result += ("\t" * indent)
+			end
+			result += line
+		end
+	end
+	return result
+end
+
+# define the files in each module
+@src_files = {
+	"base/core" => %w{
+		Function
+		Array
+		String
+		Trace
+		Cache
+		Activity
+		Batch
+		Signal
+		Functor
+		EventQueue 
+		EvalWrapper
+		Transform
+		Translator
+		Utilities
+		TimeSpan
+		Object
+		PropertyObserver
+		MsAjax},
+
+	"base/model" => %w{
+		Model
+		Entity
+		Type
+		Property
+		PathTokens
+		PropertyChain
+		ObjectMeta
+		Rule
+		RuleInput
+		RequiredRule
+		RangeRule
+		AllowedValuesRule
+		CompareRule
+		RequiredIfRule
+		StringLengthRule
+		ConditionTypeSet
+		ConditionType
+		Condition
+		FormatError
+		Format
+		Formats
+		LazyLoader},
+
+	"base/mapper" => %w{
+		ObjectProvider
+		TypeProvider
+		ListProvider
+		RoundtripProvider
+		SaveProvider
+		EventProvider
+		Translation
+		ExoGraphEventListener
+		ServerSync
+		TriggersRoundtripRule
+		Internals
+		TypeLazyLoader
+		ObjectLazyLoader
+		ListLazyLoader
+		Context
+		Extend},
+
+	"base/ui" => %w{
+		Toggle
+		ToggleGroup
+		Template
+		Content
+		DataView
+		Html
+		Behavior
+		Utilities
+		MsAjax},
+
+	"base/view" => %w{
+		AdapterMarkupExtension
+		MetaMarkupExtension
+		LazyMarkupExtension
+		Adapter
+		OptionAdapter
+		MsAjax},
+
+	"extensions/jquery-msajax" => %w{
+		Validation
+		Selectors
+		MsAjax},
+
+	"base/mock" => %w{Mock},
+	
+	"extensions/dotnet" => %w{WebService}
+}
+
+def build_content(header_args, dir, files, indent)
+	return (@header % header_args) +
+		files.map do |file|
+			str = "\n" + ("\t" * indent) + "// #region " + file
+			str += "\n" + ("\t" * indent) + ("/" * 50) + "\n\n"
+			str += read(File.join(dir, file + ".js"), indent)
+			str += "\n" + ("\t" * indent) + "// #endregion\n"
+			str
+		end.join("") +
+		@footer
+end
+
+task :build_jquery_msajax_plugin do
+	File.open(File.join(@dist_dir, "jquery.exoweb-msajax.js"), "w") do |f|
+		src_dir = File.join(File.join(@src_dir, "extensions"), "jquery-msajax")
+		header = "jquery plugin for msajax helper"
+		f.write(build_content([header], src_dir, @src_files["extensions/jquery-msajax"], 1))
+	end
+	puts("completed build_jquery_msajax_plugin task")
+end
+
+task :build_msajax_nojquery do
+	File.open(File.join(@dist_dir, "exoweb-msajax-nojquery.js"), "w") do |f|
+		f.write("Type.registerNamespace(\"ExoWeb\");\n")
+		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
+		
+		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet"].each do |name|
+			src_dir = @src_dir
+			names = name.split("/")
+			names.each { |step| src_dir = File.join(src_dir, step) }
+			
+			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1))
+		end
+	end
+	puts("completed build_msajax_nojquery task")
+end
+
+task :build_msajax do
+	File.open(File.join(@dist_dir, "exoweb-msajax.js"), "w") do |f|
+		f.write("Type.registerNamespace(\"ExoWeb\");\n")
+		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
+		
+		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/jquery-msajax", "extensions/dotnet"].each do |name|
+			src_dir = @src_dir
+			names = name.split("/")
+			names.each { |step| src_dir = File.join(src_dir, step) }
+			
+			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1))
+		end
+	end
+	puts("completed build_msajax task")
+end
+
+task :default => [:build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin] do
+	puts("completed default task")
+end
+
