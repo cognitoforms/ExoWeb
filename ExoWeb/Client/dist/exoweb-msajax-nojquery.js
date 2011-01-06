@@ -9685,7 +9685,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 	Sys.UI.DataView.prototype.refresh = function refresh() {
 		dataViewsRendering++;
 
-		dataViewRefresh.apply(this, arguments);
+		if (this.get_element()) {
+			dataViewRefresh.apply(this, arguments);
+		}
+		else {
+			// TODO: log warning
+		}
 
 		dataViewsRendering--;
 	};
