@@ -65,9 +65,9 @@ ExoWeb.Mapper.setSaveProvider(function saveProviderFn(root, changes, onSuccess, 
 
 ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, onSuccess, onFailure) {
 	request({
-		queries:[{type:ownerType, ids:[ownerId], paths:paths}]
+		queries: [{ type: ownerType, ids: [ownerId], paths: paths}]
 	}, onSuccess, onFailure);
-})
+});
 
 // Define the ExoWeb.GetType method
 function getType(type, onSuccess, onFailure) {
