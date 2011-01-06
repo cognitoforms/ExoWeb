@@ -4616,7 +4616,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		toString: function AllowedValuesRule$toString() {
-			return $format("{0}.{1} allowed values", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
+			return $format("{0}.{1} allowed values = {2}", [this.prop.get_containingType().get_fullName(), this.prop.get_name(), this._allowedValuesPath]);
 		}
 	};
 
@@ -9692,7 +9692,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			dataViewRefresh.apply(this, arguments);
 		}
 		else {
-			// TODO: log warning
+			ExoWeb.trace.logWarning("ui", "DataView was being disposed.");
 		}
 
 		dataViewsRendering--;
@@ -10593,9 +10593,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._formatSubscribers = {};
 
 				// set up initial watching of format paths
-				var rawValue = this._propertyChain.value(this._target);
-				this._subscribeToFormatChanges(rawValue, "system");
-				this._subscribeToFormatChanges(rawValue, "display");
+				if (this._propertyChain.lastTarget(this._target)) {
+					var rawValue = this._propertyChain.value(this._target);
+					this._subscribeToFormatChanges(rawValue, "system");
+					this._subscribeToFormatChanges(rawValue, "display");
+				}
 
 				// when the value changes resubscribe
 				this._propertyChain.addChanged(function(sender, args) {

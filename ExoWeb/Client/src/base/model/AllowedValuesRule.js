@@ -139,7 +139,7 @@ AllowedValuesRule.prototype = {
 		}
 	},
 	toString: function AllowedValuesRule$toString() {
-		return $format("{0}.{1} allowed values", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
+		return $format("{0}.{1} allowed values = {2}", [this.prop.get_containingType().get_fullName(), this.prop.get_name(), this._allowedValuesPath]);
 	}
 };
 

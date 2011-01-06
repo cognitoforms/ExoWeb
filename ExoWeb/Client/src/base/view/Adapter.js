@@ -134,9 +134,11 @@ Adapter.prototype = {
 			this._formatSubscribers = {};
 
 			// set up initial watching of format paths
-			var rawValue = this._propertyChain.value(this._target);
-			this._subscribeToFormatChanges(rawValue, "system");
-			this._subscribeToFormatChanges(rawValue, "display");
+			if (this._propertyChain.lastTarget(this._target)) {
+				var rawValue = this._propertyChain.value(this._target);
+				this._subscribeToFormatChanges(rawValue, "system");
+				this._subscribeToFormatChanges(rawValue, "display");
+			}
 
 			// when the value changes resubscribe
 			this._propertyChain.addChanged(function(sender, args) {

@@ -16,7 +16,7 @@ Sys.UI.DataView.prototype.refresh = function refresh() {
 		dataViewRefresh.apply(this, arguments);
 	}
 	else {
-		// TODO: log warning
+		ExoWeb.trace.logWarning("ui", "DataView was being disposed.");
 	}
 
 	dataViewsRendering--;
