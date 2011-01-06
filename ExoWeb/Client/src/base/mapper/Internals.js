@@ -588,6 +588,9 @@ function fetchTypes(model, query, callback) {
 	if (!rootType) {
 		fetchType(model, query.from, signal.pending(rootTypeLoaded));
 	}
+	else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
+		$extend(rootType.get_fullName(), rootTypeLoaded);
+	}
 	else {
 		rootTypeLoaded(rootType.get_jstype());
 	}
