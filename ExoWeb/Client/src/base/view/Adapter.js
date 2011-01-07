@@ -460,7 +460,9 @@ Adapter.prototype = {
 	get_rawValue: function Adapter$get_rawValue() {
 		this._ensureObservable();
 
-		return this._propertyChain.value(this._target);
+		return (this._propertyChain.lastTarget(this._target)) ?
+			this._propertyChain.value(this._target) :
+			null;
 	},
 	set_rawValue: function Adapter$set_rawValue(value, changed) {
 		var prop = this._propertyChain;

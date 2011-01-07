@@ -3241,8 +3241,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (target === undefined || target === null) {
 				ExoWeb.trace.throwAndLog(["model"],
-					"Cannot get or set value for {0}static property \"{1}\" on type \"{2}\": target is null or undefined.",
-					[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
+					"Cannot {0} value for {1}static property \"{2}\" on type \"{3}\": target is null or undefined.",
+					[(arguments.length > 1 ? "set" : "get"), (this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
 			}
 
 			if (arguments.length > 1) {
@@ -10919,7 +10919,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		get_rawValue: function Adapter$get_rawValue() {
 			this._ensureObservable();
 
-			return this._propertyChain.value(this._target);
+			return (this._propertyChain.lastTarget(this._target)) ?
+				this._propertyChain.value(this._target) :
+				null;
 		},
 		set_rawValue: function Adapter$set_rawValue(value, changed) {
 			var prop = this._propertyChain;

@@ -286,8 +286,8 @@ Property.mixin({
 
 		if (target === undefined || target === null) {
 			ExoWeb.trace.throwAndLog(["model"],
-				"Cannot get or set value for {0}static property \"{1}\" on type \"{2}\": target is null or undefined.",
-				[(this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
+				"Cannot {0} value for {1}static property \"{2}\" on type \"{3}\": target is null or undefined.",
+				[(arguments.length > 1 ? "set" : "get"), (this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
 		}
 
 		if (arguments.length > 1) {
