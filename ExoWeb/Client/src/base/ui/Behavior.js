@@ -32,6 +32,12 @@ Behavior.prototype = {
 	set_class: function Behavior$set_class(value) {
 		this._class = value;
 	},
+	get_dontForceLoad: function Behavior$get_dontForceLoad() {
+		return this._dontForceLoad;
+	},
+	set_dontForceLoad: function Behavior$set_dontForceLoad(value) {
+		this._dontForceLoad = value;
+	},
 	get_classObject: function Behavior$get_classObject() {
 		if (!this._classObject) {
 			this._classObject = ExoWeb.getCtor(this._class);
@@ -79,20 +85,24 @@ Behavior.prototype = {
 
 		return this._events;
 	},
+	_create: function Behavior$create() {
+		// if the element is not within the document body it 
+		// probably means that it is being removed - TODO: verify
+		if (!$.contains(document.body, this._element)) {
+			return;
+		}
+
+		this._behavior = $create(this.get_classObject(), this.get_properties(), this.get_events(), null, this._element);
+	},
 	initialize: function Behavior$initialize() {
 		Behavior.callBaseMethod(this, "initialize");
 
-		var _this = this;
-
-		Sys.require([this.get_scriptObject()], function() {
-			// if the element is not within the document body it 
-			// probably means that it is being removed - TODO: verify
-			if (!$.contains(document.body, _this._element)) {
-				return;
-			}
-
-			_this._behavior = $create(_this.get_classObject(), _this.get_properties(), _this.get_events(), null, _this.get_element());
-		});
+		if (!this._dontForceLoad) {
+			Sys.require([this.get_scriptObject()], this._create.setScope(this));
+		}
+		else {
+			this._create();
+		}
 	}
 };
 
