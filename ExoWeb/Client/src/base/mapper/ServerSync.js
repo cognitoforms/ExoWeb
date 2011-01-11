@@ -1074,7 +1074,10 @@ ServerSync.mixin({
 					var done = listSignal.pending();
 					tryGetJsType(this._model, item.type, null, true, function(itemType) {
 						tryGetEntity(this._model, this._translator, itemType, item.id, null, true, function(itemObj) {
-							list.add(itemObj);
+							// Only add item to list if it isn't already present.
+							if (list.indexOf(itemObj) < 0) {
+								list.add(itemObj);
+							}
 						}, this);
 					}, this);
 					
