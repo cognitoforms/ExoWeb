@@ -261,7 +261,19 @@ Toggle.mixin({
 
 	get_equals: function Toggle$get_equals() {
 		if (this._when === undefined) {
-			return (typeof (this._on) === "boolean" || this.get_strictMode() === true) ? this._on : !!this._on;
+			// When is not defined, so condition depends entirely on "on" property
+			var onType = Object.prototype.toString.call(this._on);
+
+			if (this.get_strictMode() === true) {
+				return this._on;
+			}
+			else if (onType === "[object Array]") {
+				return this._on.length > 0;
+			}
+			else {
+				// Default case when not in strict mode is truthiness.
+				return !!this._on;
+			}
 		}
 		else if (this._when instanceof Function) {
 			return !!this._when(this._on);
