@@ -273,6 +273,23 @@ window.$exoweb = function (options) {
 		else {
 			pendingOptions.init = options.init;
 		}
+		
+		// Merge extendContext functions
+		if (pendingOptions.extendContext) {
+			if (options.extendContext) {
+				var extendContext1 = pendingOptions.extendContext;
+				var extendContext2 = options.extendContext;
+				pendingOptions.extendContext = function (context, callback) {
+					var signal = new ExoWeb.Signal("combined extendContext");
+					extendContext1.call(this, context, signal.pending());
+					extendContext2.call(this, context, signal.pending());
+					signal.waitForAll(callback);
+				};
+			}
+		}
+		else {
+			pendingOptions.extendContext = options.extendContext;
+		}
 
 		// Merge contextReady functions
 		if (pendingOptions.contextReady) {
@@ -331,19 +348,29 @@ window.$exoweb = function (options) {
 	// Perform initialization once the context is ready
 	window.context.ready(function () {
 
-		if (currentOptions.contextReady)
-			currentOptions.contextReady(window.context);
+		function contextReady() {
+			if (currentOptions.contextReady)
+				currentOptions.contextReady(window.context);
 
-		$(function ($) {
-			// Activate the document if this is the first context to load
-			if (!activated) {
-				activated = true;
-				Sys.Application.activateElement(document.documentElement);
-			}
+			$(function ($) {
+				// Activate the document if this is the first context to load
+				if (!activated) {
+					activated = true;
+					Sys.Application.activateElement(document.documentElement);
+				}
 
-			// Invoke dom ready notifications
-			if (currentOptions.domReady)
-				currentOptions.domReady(window.context);
-		});
+				// Invoke dom ready notifications
+				if (currentOptions.domReady)
+					currentOptions.domReady(window.context);
+			});
+		}
+
+		if (currentOptions.extendContext) {
+			currentOptions.extendContext(window.context, contextReady);
+		}
+		else {
+			contextReady();
+		}
+
 	});
 };
