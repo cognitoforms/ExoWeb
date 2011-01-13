@@ -3,7 +3,15 @@ function ObjectLazyLoader() {
 	this._typePaths = {};
 }
 
+var pendingObjects = 0;
+
+ExoWeb.registerActivity(function() {
+	return pendingObjects > 0;
+});
+
 function objLoad(obj, propName, callback, thisPtr) {
+	pendingObjects++;
+
 	var signal = new ExoWeb.Signal("object lazy loader");
 
 	var id = obj.meta.id || STATIC_ID;
@@ -24,10 +32,12 @@ function objLoad(obj, propName, callback, thisPtr) {
 		function(result) {
 			mtype.get_model()._server._handleResult(result, true, function() {
 				ExoWeb.Model.LazyLoader.unregister(obj, this);
+				pendingObjects--;
 				callback.call(thisPtr || this, obj);
 			});
 		},
 		function(e) {
+			pendingObjects--;
 			var message = $format("Failed to load {0}({1}): ", [mtype.get_fullName(), id]);
 			if (e !== undefined && e !== null &&
 				e.get_message !== undefined && e.get_message !== null &&

@@ -338,6 +338,48 @@ Type.registerNamespace("ExoWeb.DotNet");
 		};
 	}
 
+	// https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Array/lastIndexOf
+	if (!Array.prototype.lastIndexOf) {
+		Array.prototype.lastIndexOf = function(searchElement /*, fromIndex*/) {
+			"use strict";
+
+			if (this === void 0 || this === null) {
+				throw new TypeError();
+			}
+
+			var t = Object(this);
+			var len = t.length >>> 0;
+
+			if (len === 0) {
+				return -1;
+			}
+
+			var n = len;
+			if (arguments.length > 0) {
+				n = Number(arguments[1]);
+				if (n !== n) {
+					n = 0;
+				}
+				else if (n !== 0 && n !== (1 / 0) && n !== -(1 / 0)) {
+					n = (n > 0 || -1) * Math.floor(Math.abs(n));
+				}
+			}
+
+			var k = n >= 0
+				? Math.min(n, len - 1)
+				: len - Math.abs(n);
+
+			while (k >= 0)
+			{
+				if (k in t && t[k] === searchElement) {
+					return k;
+				}
+			}
+
+			return -1;
+		};
+	}
+
 	// #endregion
 
 	// #region String
@@ -8108,7 +8150,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._typePaths = {};
 	}
 
+	var pendingObjects = 0;
+
+	ExoWeb.registerActivity(function() {
+		return pendingObjects > 0;
+	});
+
 	function objLoad(obj, propName, callback, thisPtr) {
+		pendingObjects++;
+
 		var signal = new ExoWeb.Signal("object lazy loader");
 
 		var id = obj.meta.id || STATIC_ID;
@@ -8129,10 +8179,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			function(result) {
 				mtype.get_model()._server._handleResult(result, true, function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
+					pendingObjects--;
 					callback.call(thisPtr || this, obj);
 				});
 			},
 			function(e) {
+				pendingObjects--;
 				var message = $format("Failed to load {0}({1}): ", [mtype.get_fullName(), id]);
 				if (e !== undefined && e !== null &&
 					e.get_message !== undefined && e.get_message !== null &&
