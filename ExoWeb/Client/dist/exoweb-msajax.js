@@ -6352,7 +6352,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var entitySignals = [];
 
-	function tryGetEntity(model, translator, type, id, property, forceLoad, callback, thisPtr) {
+	var LazyLoadEnum = {
+		None: 0,
+		Force: 1,
+		ForceAndWait: 2
+	};
+
+	function tryGetEntity(model, translator, type, id, property, lazyLoad, callback, thisPtr) {
 		var obj = type.meta.get(translateId(translator, type.meta.get_fullName(), id));
 
 		if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
@@ -6379,47 +6385,65 @@ Type.registerNamespace("ExoWeb.DotNet");
 					signal.oneDone();
 				}
 			}
-
-			if (obj && forceLoad) {
-//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				ExoWeb.Model.LazyLoader.load(obj, property, done, thisPtr);
-			}
-			else if (!obj && forceLoad) {
+		
+			if (lazyLoad == LazyLoadEnum.Force) {
+				if (!obj) {
 //					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				var obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+					obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+				}
+				done();
+//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				ExoWeb.Model.LazyLoader.eval(obj, property, function() {});
+			}
+			else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
+				if (!obj) {
+//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+					obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+				}
+//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 				ExoWeb.Model.LazyLoader.eval(obj, property, done);
 			}
 			else {
 //					ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
-				var registeredHandler = function(obj) {
-//						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
-					if (obj.meta.type === type.meta && obj.meta.id === id) {
-						if (property) {
-							// if the property is not initialized then wait
-							var prop = type.meta.property(property, true);
-							if (prop.isInited(obj)) {
-								done();
-							}
-							else {
-//									ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
-								var initHandler = function() {
-//										ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
-									done();
-								};
-
-								// Register the handler once.
-								prop.addChanged(initHandler, obj, true);
-							}
-						}
-						else {
+				function waitForProperty() {
+					if (property) {
+						// if the property is not initialized then wait
+						var prop = type.meta.property(property, true);
+						if (prop.isInited(obj)) {
 							done();
 						}
-					}
-				};
+						else {
+//									ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
+							var initHandler = function() {
+//										ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
+								done();
+							};
 
-				// Register the handler once.
-				model.addObjectRegistered(registeredHandler, true);
+							// Register the handler once.
+							prop.addChanged(initHandler, obj, true);
+						}
+					}
+					else {
+						done();
+					}
+				}
+
+				// Object is already created but not loaded.
+				if (obj) {
+					waitForProperty();
+				}
+				else {
+					var registeredHandler = function(obj) {
+		//						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
+						if (obj.meta.type === type.meta && obj.meta.id === id) {
+							waitForProperty();
+						}
+					};
+
+					// Register the handler once.
+					model.addObjectRegistered(registeredHandler, true);
+				}
 			}
 		}
 	}
@@ -7254,7 +7278,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var returnImmediately = !aggressiveLog;
 
 			tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
 
 					// Call ballback here if type and instance were
 					// present immediately or aggressive mode is turned on
@@ -7301,7 +7325,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var returnImmediately = !aggressiveLog;
 
 			tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
 
 					// Call ballback here if type and instance were
 					// present immediately or aggressive mode is turned on
@@ -7337,9 +7361,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var returnImmediately = !aggressiveLog;
 
 			tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog, function(srcObj) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
 
-					// Call ballback here if type and instance were
+					// Call callback here if type and instance were
 					// present immediately or aggressive mode is turned on
 					var doCallback = returnImmediately || aggressiveLog;
 
@@ -7357,7 +7381,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
 						var done = listSignal.pending();
 						tryGetJsType(this._model, item.type, null, true, function(itemType) {
-							tryGetEntity(this._model, this._translator, itemType, item.id, null, true, function(itemObj) {
+							tryGetEntity(this._model, this._translator, itemType, item.id, null, LazyLoadEnum.Force, function(itemObj) {
 								// Only add item to list if it isn't already present.
 								if (list.indexOf(itemObj) < 0) {
 									list.add(itemObj);
@@ -7379,7 +7403,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
 						// no need to load instance only to remove it from a list
 						tryGetJsType(this._model, item.type, null, false, function(itemType) {
-							tryGetEntity(this._model, this._translator, itemType, item.id, null, false, function(itemObj) {
+							tryGetEntity(this._model, this._translator, itemType, item.id, null, LazyLoadEnum.None, function(itemObj) {
 								list.remove(itemObj);
 							}, this);
 						}, this);
