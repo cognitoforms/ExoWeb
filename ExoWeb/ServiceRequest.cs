@@ -131,6 +131,11 @@ namespace ExoWeb
 					response.Instances.Values.SelectMany(d => d.Instances.Values).Select(instance => instance.Instance) : 
 					new GraphInstance[0];
 
+				// Add instances created during the request
+				instances = response.Changes != null ?
+					instances.Union(response.Changes.OfType<GraphInitEvent.InitNew>().Select(graphEvent => graphEvent.Instance)) :
+					instances;
+
 				// Ensure conditions are evaluated before extracting them
 				ExoWeb.OnEnsureConditions(response, instances);
 

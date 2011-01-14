@@ -322,13 +322,15 @@ ServerSync.mixin({
 				}
 			}), this);
 		}
-		else {
-			if (result.conditions) {
-				conditionsFromJson(this._model, result.conditions);
-			}
-			if (result.changes && result.changes.length > 0) {
-				this.applyChanges(result.changes, signal.pending());
-			}
+		else if (result.changes && result.changes.length > 0) {
+			this.applyChanges(result.changes, signal.pending(function () {
+				if (result.conditions) {
+					conditionsFromJson(this._model, result.conditions);
+				}
+			}, this));
+		}
+		else if (result.conditions) {
+			conditionsFromJson(this._model, result.conditions);
 		}
 
 		signal.waitForAll(function() {
