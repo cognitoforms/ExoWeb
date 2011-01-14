@@ -11022,7 +11022,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return Array.contains(rawValue, obj);
 			}
 			else {
-				return rawValue == obj;
+				return rawValue === obj;
 			}
 		},
 		set_selected: function Adapter$set_selected(obj, selected) {
