@@ -199,6 +199,7 @@
     <Content Include="Client\src\extensions\jquery-msajax\Validation.js" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
     <None Include="Client\README" />
   </ItemGroup>
