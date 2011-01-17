@@ -4,6 +4,7 @@ Date.formats = {};
 TimeSpan.formats = {};
 Boolean.formats = {};
 Object.formats = {};
+Array.formats = {};
 
 //TODO: number formatting include commas
 Number.formats.Integer = new Format({
@@ -256,3 +257,16 @@ TimeSpan.formats.Meeting = new ExoWeb.Model.Format({
 
 TimeSpan.formats.$display = TimeSpan.formats.Meeting;
 TimeSpan.formats.$system = TimeSpan.formats.Meeting;  // TODO: implement Exact format
+
+Array.formats.$display = new ExoWeb.Model.Format({
+	convert: function (val) {
+		if (!val)
+			return "";
+
+		var builder = [];
+		for (var i = 0; i < val.length; ++i)
+			builder.push(val[i].toString());
+
+		return builder.join(", ");
+	}
+});

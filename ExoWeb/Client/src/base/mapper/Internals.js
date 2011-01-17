@@ -230,7 +230,7 @@ function typeFromJson(model, typeName, json) {
 		propType = getJsType(model, propType);
 
 		// Format
-		var format = propJson.format ? propType.formats[propJson.format] : null;
+		var format = (propJson.format && propType.formats) ? propType.formats[propJson.format] : null;
 
 		// Add the property
 		var prop = mtype.addProperty({ name: propName, type: propType, isList: propJson.isList, label: propJson.label, format: format, isStatic: propJson.isStatic, index: propJson.index });

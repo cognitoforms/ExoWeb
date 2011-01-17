@@ -11,22 +11,21 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var undefined;
 
-	
 	// #region Function
 	//////////////////////////////////////////////////
-	
+
+
 	var overridableNonEnumeratedMethods;
-	
-	for(var m in {}) {
-		if(m == "toString") {
+
+	for (var m in {}) {
+		if (m == "toString") {
 			areNativeMethodsEnumerated = [];
 			break;
 		}
 	}
 
-	if(!overridableNonEnumeratedMethods)
+	if (!overridableNonEnumeratedMethods)
 		overridableNonEnumeratedMethods = ["toString", "toLocaleString", "valueOf"];
-
 
 	Function.prototype.mixin = function mixin(methods, object) {
 		if (!object) {
@@ -34,15 +33,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		for (var m in methods) {
-			if(methods.hasOwnProperty(m))
+			if (methods.hasOwnProperty(m))
 				object[m] = methods[m];
 		}
 
 		// IE's "in" operator doesn't return keys for native properties on the Object prototype
-		overridableNonEnumeratedMethods.forEach(function(m) {
-			if(methods.hasOwnProperty(m))
+		overridableNonEnumeratedMethods.forEach(function (m) {
+			if (methods.hasOwnProperty(m))
 				object[m] = methods[m];
-			
+
 		});
 	};
 
@@ -5589,18 +5588,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 	TimeSpan.formats.$system = TimeSpan.formats.Meeting;  // TODO: implement Exact format
 
 	Array.formats.$display = new ExoWeb.Model.Format({
-		convert: function(val) {
-			if(!val)
+		convert: function (val) {
+			if (!val)
 				return "";
 
 			var builder = [];
-			for(var i=0; i<val.length; ++i)
+			for (var i = 0; i < val.length; ++i)
 				builder.push(val[i].toString());
 
 			return builder.join(", ");
 		}
 	});
-
 	// #endregion
 
 	// #region LazyLoader

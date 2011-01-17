@@ -14,14 +14,35 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region Function
 	//////////////////////////////////////////////////
 
+
+	var overridableNonEnumeratedMethods;
+
+	for (var m in {}) {
+		if (m == "toString") {
+			areNativeMethodsEnumerated = [];
+			break;
+		}
+	}
+
+	if (!overridableNonEnumeratedMethods)
+		overridableNonEnumeratedMethods = ["toString", "toLocaleString", "valueOf"];
+
 	Function.prototype.mixin = function mixin(methods, object) {
 		if (!object) {
 			object = this.prototype;
 		}
 
 		for (var m in methods) {
-			object[m] = methods[m];
+			if (methods.hasOwnProperty(m))
+				object[m] = methods[m];
 		}
+
+		// IE's "in" operator doesn't return keys for native properties on the Object prototype
+		overridableNonEnumeratedMethods.forEach(function (m) {
+			if (methods.hasOwnProperty(m))
+				object[m] = methods[m];
+
+		});
 	};
 
 	Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
@@ -5312,6 +5333,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	TimeSpan.formats = {};
 	Boolean.formats = {};
 	Object.formats = {};
+	Array.formats = {};
 
 	//TODO: number formatting include commas
 	Number.formats.Integer = new Format({
@@ -5565,6 +5587,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 	TimeSpan.formats.$display = TimeSpan.formats.Meeting;
 	TimeSpan.formats.$system = TimeSpan.formats.Meeting;  // TODO: implement Exact format
 
+	Array.formats.$display = new ExoWeb.Model.Format({
+		convert: function (val) {
+			if (!val)
+				return "";
+
+			var builder = [];
+			for (var i = 0; i < val.length; ++i)
+				builder.push(val[i].toString());
+
+			return builder.join(", ");
+		}
+	});
 	// #endregion
 
 	// #region LazyLoader
@@ -7729,7 +7763,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			propType = getJsType(model, propType);
 
 			// Format
-			var format = propJson.format ? propType.formats[propJson.format] : null;
+			var format = (propJson.format && propType.formats) ? propType.formats[propJson.format] : null;
 
 			// Add the property
 			var prop = mtype.addProperty({ name: propName, type: propType, isList: propJson.isList, label: propJson.label, format: format, isStatic: propJson.isStatic, index: propJson.index });

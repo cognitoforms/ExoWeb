@@ -1,11 +1,32 @@
+
+var overridableNonEnumeratedMethods;
+
+for (var m in {}) {
+	if (m == "toString") {
+		areNativeMethodsEnumerated = [];
+		break;
+	}
+}
+
+if (!overridableNonEnumeratedMethods)
+	overridableNonEnumeratedMethods = ["toString", "toLocaleString", "valueOf"];
+
 Function.prototype.mixin = function mixin(methods, object) {
 	if (!object) {
 		object = this.prototype;
 	}
 
 	for (var m in methods) {
-		object[m] = methods[m];
+		if (methods.hasOwnProperty(m))
+			object[m] = methods[m];
 	}
+
+	// IE's "in" operator doesn't return keys for native properties on the Object prototype
+	overridableNonEnumeratedMethods.forEach(function (m) {
+		if (methods.hasOwnProperty(m))
+			object[m] = methods[m];
+
+	});
 };
 
 Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
