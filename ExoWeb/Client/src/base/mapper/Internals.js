@@ -447,7 +447,7 @@ function fetchTypeImpl(model, typeName, callback, thisPtr) {
 	// after properties and base class are loaded, then return results
 	signal.waitForAll(function() {
 		if (errorObj !== undefined) {
-			ExoWeb.trace.logError("typeInit",
+			ExoWeb.trace.throwAndLog("typeInit",
 				"Failed to load {typeName} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 				{ typeName: typeName, error: errorObj });
 		}

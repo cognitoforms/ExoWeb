@@ -5358,12 +5358,11 @@ Type.registerNamespace("ExoWeb.Mapper");
 		},
 		convertBack: function(str) {
 			var valString = str.replace(/[\$,]/g, "");
+			if (!/^\s*([-\+])?(\d+)?\,?(\d+)?\,?(\d+)?\,?(\d+)?(\.(\d){0,2})?\s*$/.test(valString)) {
+				 throw new Error("invalid format");
+			}
 
 			var val = parseFloat(valString);
-
-			if (isNaN(val)) {
-				throw new Error("invalid format");
-			}
 
 			return val;
 		}
