@@ -108,6 +108,7 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
+    <Content Include="Client\dist\exoweb-base.js" />
     <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
     <Content Include="Client\dist\exoweb-msajax.js" />
     <Content Include="Client\dist\exoweb.templates.htm" />
