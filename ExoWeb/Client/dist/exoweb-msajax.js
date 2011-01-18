@@ -19,7 +19,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	for (var m in {}) {
 		if (m == "toString") {
-			areNativeMethodsEnumerated = [];
+			overridableNonEnumeratedMethods = [];
 			break;
 		}
 	}

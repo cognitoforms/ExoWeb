@@ -16,7 +16,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	for (var m in {}) {
 		if (m == "toString") {
-			areNativeMethodsEnumerated = [];
+			overridableNonEnumeratedMethods = [];
 			break;
 		}
 	}

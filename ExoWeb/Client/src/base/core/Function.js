@@ -3,7 +3,7 @@ var overridableNonEnumeratedMethods;
 
 for (var m in {}) {
 	if (m == "toString") {
-		areNativeMethodsEnumerated = [];
+		overridableNonEnumeratedMethods = [];
 		break;
 	}
 }
