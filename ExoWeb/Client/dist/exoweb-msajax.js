@@ -10804,6 +10804,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 				});
 			}
+
+			// re-evaluate property event handlers
+			if (this._propertyValidatedHandler) {
+				this.addPropertyValidated(null, this._propertyValidatedHandler);
+			}
+			if (this._propertyValidatingHandler) {
+				this.addPropertyValidating(null, this._propertyValidatingHandler);
+			}
 		},
 		_reloadOptions: function Adapter$_reloadOptions() {
 //				ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
@@ -11147,10 +11155,24 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Used to register validating and validated events through the adapter as if binding directly to an Entity
 		addPropertyValidating: function Adapter$addPropertyValidating(propName, handler) {
-			this._propertyChain.lastTarget(this._target).meta.addPropertyValidating(this._propertyChain.get_name(), handler);
+			var lastTarget = this._propertyChain.lastTarget(this._target);
+
+			this._propertyValidatingHandler = handler;
+
+			if (lastTarget) {
+				lastTarget.meta.addPropertyValidating(this._propertyChain.get_name(), handler);
+				this._propertyValidatingHandler = null;
+			}
 		},
 		addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
-			this._propertyChain.lastTarget(this._target).meta.addPropertyValidated(this._propertyChain.get_name(), handler);
+			var lastTarget = this._propertyChain.lastTarget(this._target);
+
+			this._propertyValidatedHandler = handler;
+
+			if (lastTarget) {
+				lastTarget.meta.addPropertyValidated(this._propertyChain.get_name(), handler);
+				this._propertyValidatedHandler = null;
+			}
 		}
 	};
 
@@ -11410,15 +11432,21 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var target;
 			var prop;
 
+			// Option adapter defers to parent adapter
+			if (srcObj instanceof ExoWeb.View.OptionAdapter) {
+				srcObj = srcObj.get_parent();
+			}
+
 			if (srcObj instanceof ExoWeb.View.Adapter) {
 				var chain = srcObj.get_propertyChain();
 				prop = chain.lastProperty();
 				target = chain.lastTarget(srcObj.get_target());
-			}
-			else if (srcObj instanceof ExoWeb.View.OptionAdapter) {
-				var chain = srcObj.get_parent().get_propertyChain();
-				prop = chain.lastProperty();
-				target = chain.lastTarget(srcObj.get_parent().get_target());
+
+				// Guard against null/undefined target.  This could happen if the target is 
+				// undefined, or if the path is multi-hop, and the full path is not defined.
+				if (target === null || target === undefined) {
+					continue;
+				}
 			}
 			else if (srcObj instanceof ExoWeb.Model.Entity) {
 				var propName = getFinalPathStep(binding);

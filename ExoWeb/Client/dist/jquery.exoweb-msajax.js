@@ -128,15 +128,21 @@
 			var target;
 			var prop;
 
+			// Option adapter defers to parent adapter
+			if (srcObj instanceof ExoWeb.View.OptionAdapter) {
+				srcObj = srcObj.get_parent();
+			}
+
 			if (srcObj instanceof ExoWeb.View.Adapter) {
 				var chain = srcObj.get_propertyChain();
 				prop = chain.lastProperty();
 				target = chain.lastTarget(srcObj.get_target());
-			}
-			else if (srcObj instanceof ExoWeb.View.OptionAdapter) {
-				var chain = srcObj.get_parent().get_propertyChain();
-				prop = chain.lastProperty();
-				target = chain.lastTarget(srcObj.get_parent().get_target());
+
+				// Guard against null/undefined target.  This could happen if the target is 
+				// undefined, or if the path is multi-hop, and the full path is not defined.
+				if (target === null || target === undefined) {
+					continue;
+				}
 			}
 			else if (srcObj instanceof ExoWeb.Model.Entity) {
 				var propName = getFinalPathStep(binding);
