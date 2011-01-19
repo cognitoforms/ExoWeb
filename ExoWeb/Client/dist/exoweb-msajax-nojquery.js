@@ -6547,9 +6547,24 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return true;
 			}
 		},
-		canSaveObject: function ServerSync$canSaveObject(obj) {
-			if (!obj) {
-				ExoWeb.trace.throwAndLog("server", "Unable to test whether object can be saved:  Object does not exist.");
+		canSaveObject: function ServerSync$canSaveObject(objOrMeta) {
+			var obj;
+			var errorFmt = "Unable to test whether object can be saved:  {0}.";
+
+			if (arguments.length === 0) {
+				ExoWeb.trace.throwAndLog("server", errorFmt, ["argument not given"]);
+			}
+			else if (objOrMeta === undefined || objOrMeta === null) {
+				ExoWeb.trace.throwAndLog("server", errorFmt, ["argument is null or undefined"]);
+			}
+			else if (objOrMeta instanceof ExoWeb.Model.ObjectMeta) {
+				obj = objOrMeta._obj;
+			}
+			else if (objOrMeta instanceof ExoWeb.Model.Entity) {
+				obj = objOrMeta;
+			}
+			else {
+				ExoWeb.trace.throwAndLog("server", errorFmt, ["argument is not of correct type"]);
 			}
 
 			return !Array.contains(this._objectsExcludedFromSave, obj);
