@@ -11,9 +11,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests", "ExoWeb.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.DataAnnotations", "ExoWeb.DataAnnotations\ExoWeb.DataAnnotations.csproj", "{662948BC-59DA-4771-949F-C5327BF35518}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests.Server", "ExoWeb.UnitTests.Server\ExoWeb.UnitTests.Server.csproj", "{390E2A10-D560-4DF0-8342-B1B686F74189}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{90A77934-FEB7-4A62-8E47-58C1A973D26B}"
+	ProjectSection(SolutionItems) = preProject
+		ExoWeb.vsmdi = ExoWeb.vsmdi
+		Local.testsettings = Local.testsettings
+		TraceAndTestImpact.testsettings = TraceAndTestImpact.testsettings
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 6
+		SccNumberOfProjects = 7
 		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 		SccTeamFoundationServer = http://vc3-cae-tfs-01.vc3.com:8080/tfs/defaultcollection
 		SccLocalPath0 = .
@@ -32,6 +41,12 @@ Global
 		SccProjectUniqueName5 = ExoWeb.DataAnnotations\\ExoWeb.DataAnnotations.csproj
 		SccProjectName5 = ExoWeb.DataAnnotations
 		SccLocalPath5 = ExoWeb.DataAnnotations
+		SccProjectUniqueName6 = ExoWeb.UnitTests.Server\\ExoWeb.UnitTests.Server.csproj
+		SccProjectName6 = ExoWeb.UnitTests.Server
+		SccLocalPath6 = ExoWeb.UnitTests.Server
+	EndGlobalSection
+	GlobalSection(TestCaseManagementSettings) = postSolution
+		CategoryFile = ExoWeb.vsmdi
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -58,6 +73,10 @@ Global
 		{662948BC-59DA-4771-949F-C5327BF35518}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{662948BC-59DA-4771-949F-C5327BF35518}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{662948BC-59DA-4771-949F-C5327BF35518}.Release|Any CPU.Build.0 = Release|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

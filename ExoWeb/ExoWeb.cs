@@ -189,6 +189,62 @@ namespace ExoWeb
 			return json.Substring(1, json.Length - 2);
 		}
 
+		/// <summary>
+		/// Expands paths.  Ex: ["a{b, c}"] -> ["a.b", "a.c"] 
+		/// </summary>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		static string[] NormalizePaths(string[] collapsed)
+		{
+			var normalized = new List<string>();
+
+			if (collapsed != null)
+			{
+				foreach(string p in collapsed)
+				{
+					Stack<string> stack = new Stack<string>();
+					string parent = null;
+					int start = 0;
+
+					for (var i = 0; i < p.Length; ++i)
+					{
+						var c = p[i];
+
+						if (c == '{' || c == ',' || c == '}')
+						{
+							var seg = p.Substring(start, i-start).Trim();
+							start = i + 1;
+
+							if (c == '{') {
+								if (parent != null) {
+									stack.Push(parent);
+									parent += "." + seg;
+								}
+								else {
+									parent = seg;
+								}
+							}
+							else
+							{   // ',' or '}'
+								if (seg.Length > 0)
+									normalized.Add(parent != null ? parent + "." + seg : seg);
+
+								if (c == '}')
+									parent = (stack.Count == 0) ? null : stack.Pop();
+							}
+						}
+					}
+
+					if (stack.Count > 0)
+						throw new ArgumentException("Unclosed '{' in path: " + p, "collapsed");
+
+					if (start == 0)
+						normalized.Add(p.Trim());
+				}
+			}
+			return normalized.ToArray();
+		}
+
 		#endregion
 
 		#region JSON Serialization
