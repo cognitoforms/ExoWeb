@@ -14,7 +14,7 @@ Signal.mixin({
 		}
 
 		this._pending++;
-//				ExoWeb.trace.log("signal", "(++{_pending}) {_debugLabel}", this);
+		//ExoWeb.trace.log("signal", "(++{_pending}) {_debugLabel}", this);
 		return this._genCallback(callback, thisPtr, executeImmediately);
 	},
 	orPending: function Signal$orPending(callback, thisPtr, executeImmediately) {
@@ -22,15 +22,15 @@ Signal.mixin({
 	},
 	_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
 		try {
-			if (executeImmediately) {
-				callback.apply(thisPtr, args || []);
-			}
-			else {
+			if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
 				var batch = Batch.suspendCurrent("_doCallback");
 				window.setTimeout(function Signal$_doCallback$timeout() {
 					ExoWeb.Batch.resume(batch);
 					callback.apply(thisPtr, args || []);
 				}, 1);
+			}
+			else {
+				callback.apply(thisPtr, args || []);
 			}
 		}
 		catch (e) {
@@ -64,7 +64,7 @@ Signal.mixin({
 		}
 	},
 	oneDone: function Signal$oneDone() {
-//				ExoWeb.trace.log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
+		//ExoWeb.trace.log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
 
 		--this._pending;
 

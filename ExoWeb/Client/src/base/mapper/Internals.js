@@ -56,7 +56,7 @@ function objectsFromJson(model, json, callback, thisPtr) {
 		for (var typeName in json) {
 			var poolJson = json[typeName];
 			for (var id in poolJson) {
-				// locate the object's state in the json				
+				// locate the object's state in the json
 				objectFromJson(model, typeName, id, poolJson[id], signal.pending(), thisPtr);
 			}
 		}

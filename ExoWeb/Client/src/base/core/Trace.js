@@ -4,6 +4,10 @@ function setErrorHandler(fn) {
 }
 ExoWeb.setErrorHandler = setErrorHandler;
 
+ExoWeb.config = {
+	 signalTimeout: false
+}
+
 ExoWeb.trace = {
 	// The following flags can be turned on to see debugging info.
 	// Rather than editing the code below, set them in your application's page
