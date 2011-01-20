@@ -423,6 +423,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 	ExoWeb.setErrorHandler = setErrorHandler;
 
+	ExoWeb.config = {
+		 signalTimeout: false
+	}
+
 	ExoWeb.trace = {
 		// The following flags can be turned on to see debugging info.
 		// Rather than editing the code below, set them in your application's page
@@ -857,7 +861,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			this._pending++;
-//				ExoWeb.trace.log("signal", "(++{_pending}) {_debugLabel}", this);
+			//ExoWeb.trace.log("signal", "(++{_pending}) {_debugLabel}", this);
 			return this._genCallback(callback, thisPtr, executeImmediately);
 		},
 		orPending: function Signal$orPending(callback, thisPtr, executeImmediately) {
@@ -865,15 +869,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
 			try {
-				if (executeImmediately) {
-					callback.apply(thisPtr, args || []);
-				}
-				else {
+				if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
 					var batch = Batch.suspendCurrent("_doCallback");
 					window.setTimeout(function Signal$_doCallback$timeout() {
 						ExoWeb.Batch.resume(batch);
 						callback.apply(thisPtr, args || []);
 					}, 1);
+				}
+				else {
+					callback.apply(thisPtr, args || []);
 				}
 			}
 			catch (e) {
@@ -907,7 +911,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		oneDone: function Signal$oneDone() {
-//				ExoWeb.trace.log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
+			//ExoWeb.trace.log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
 
 			--this._pending;
 
@@ -7604,7 +7608,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			for (var typeName in json) {
 				var poolJson = json[typeName];
 				for (var id in poolJson) {
-					// locate the object's state in the json				
+					// locate the object's state in the json
 					objectFromJson(model, typeName, id, poolJson[id], signal.pending(), thisPtr);
 				}
 			}
