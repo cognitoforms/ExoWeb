@@ -4,6 +4,7 @@ var jasmine = require("../../jasmine");
 var jasmineConsole = require("../../jasmine.console");
 var arrays = require("../../../src/base/core/Array");
 var functions = require("../../../src/base/core/Function");
+var trace = require("../../../src/base/core/Trace");
 
 // References
 ///////////////////////////////////////

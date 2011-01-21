@@ -956,10 +956,15 @@ jasmine.Block = function(env, func, spec) {
 };
 
 jasmine.Block.prototype.execute = function(onComplete) {  
-  try {
+  if (jasmine.debug) {
     this.func.apply(this.spec);
-  } catch (e) {
-    this.spec.fail(e);
+  }
+  else {
+    try {
+      this.func.apply(this.spec);
+    } catch (e) {
+      this.spec.fail(e);
+    }
   }
   onComplete();
 };
@@ -2334,6 +2339,7 @@ jasmine.getGlobal().clearInterval = function(timeoutKey) {
   }
 };
 
+jasmine.debug = false;
 
 jasmine.version_= {
   "major": 0,

@@ -9,6 +9,7 @@ ExoWeb = window.ExoWeb = {};
 var functions = require("../../../src/base/core/Function");
 var arrays = require("../../../src/base/core/Array");
 var translator = require("../../../src/base/core/Translator");
+var trace = require("../../../src/base/core/Trace");
 
 // References
 ///////////////////////////////////////
