@@ -5,7 +5,7 @@ function ObjectMeta(type, obj) {
 	this._propertyConditions = {};
 }
 
-ObjectMeta.prototype = {
+ObjectMeta.mixin({
 	executeRules: function ObjectMeta$executeRules(prop) {
 		this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
 		this._raisePropertyValidating(prop.get_name());
@@ -51,7 +51,7 @@ ObjectMeta.prototype = {
 		}
 	},
 
-	_addCondition: function(condition) {
+	_addCondition: function (condition) {
 		condition.get_targets().add(this);
 		this._conditions.push(condition);
 
@@ -68,9 +68,11 @@ ObjectMeta.prototype = {
 
 			pi.push(condition);
 		}
+
+		this._raiseEvent("conditionsChanged", [this, { condition: condition}]);
 	},
 
-	_removeCondition: function(idx) {
+	_removeCondition: function (idx) {
 		var condition = this._conditions[idx];
 		condition.get_targets().remove(this);
 		this._conditions.splice(idx, 1);
@@ -84,6 +86,8 @@ ObjectMeta.prototype = {
 			var piIdx = $.inArray(condition, pi);
 			pi.splice(piIdx, 1);
 		}
+
+		this._raiseEvent("conditionsChanged", [this, { condition: condition}]);
 	},
 
 	_isAllowedOne: function ObjectMeta$_isAllowedOne(code) {
@@ -144,26 +148,54 @@ ObjectMeta.prototype = {
 		return ret;
 	},
 
-	_raisePropertiesValidated: function(properties) {
+	_raisePropertiesValidated: function (properties) {
 		var queue = this.type.get_model()._validatedQueue;
 		for (var i = 0; i < properties.length; ++i) {
 			queue.push({ sender: this, property: properties[i].get_name() });
 		}
 	},
-	addPropertyValidated: function(propName, handler) {
+	addPropertyValidated: function (propName, handler) {
 		this._addEvent("propertyValidated:" + propName, handler);
 	},
-	_raisePropertyValidating: function(propName) {
+	_raisePropertyValidating: function (propName) {
 		var queue = this.type.get_model()._validatingQueue;
 		queue.push({ sender: this, propName: propName });
 	},
-	addPropertyValidating: function(propName, handler) {
+	addPropertyValidating: function (propName, handler) {
 		this._addEvent("propertyValidating:" + propName, handler);
 	},
-	destroy: function() {
+	destroy: function () {
 		this.type.unregister(this.obj);
+	},
+	// starts listening for change events on the conditions array. Use obj argument to
+	// optionally filter the events to a specific condition type by passing either
+	// the condition type code or type itself.
+	addConditionsChanged: function ObjectMeta$addConditionsChanged(handler, obj) {
+		var filter;
+		if (obj) {
+			//check for condition type code.
+			if (obj.constructor === String)
+				obj = ConditionType.get(obj);
+
+			if (!obj)
+				throw obj + " not found";
+
+			filter = function (target, args) {
+				if (args.condition._type === obj) {
+					handler.apply(this, arguments);
+				}
+			};
+		}
+
+		this._addEvent("conditionsChanged", handler, filter); ;
+
+		// Return the object meta to support method chaining
+		return this;
+	},
+	removeConditionsChanged: function ObjectMeta$removeConditionsChanged(handler) {
+		this._removeEvent("conditionsChanged", handler);
 	}
-};
+});
 
 ObjectMeta.mixin(ExoWeb.Functor.eventing);
 ExoWeb.Model.ObjectMeta = ObjectMeta;
