@@ -230,4 +230,3 @@ Model.getJsType = function Model$getJsType(name, allowUndefined) {
 };
 
 ExoWeb.Model.Model = Model;
-Model.registerClass("ExoWeb.Model.Model");

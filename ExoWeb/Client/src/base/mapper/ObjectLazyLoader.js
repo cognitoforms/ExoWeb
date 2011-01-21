@@ -21,7 +21,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 	var paths = ObjectLazyLoader.getRelativePaths(obj);
 
 	// Add the property to load if specified.  Assumes an instance property.
-	if (propName && !Array.contains(paths, "this." + propName)) {
+	if (propName && paths.indexOf("this." + propName) < 0) {
 		paths.push("this." + propName);
 	}
 
@@ -71,7 +71,7 @@ ObjectLazyLoader.mixin({
 		}
 		for (var i = 0; i < paths.length; i++) {
 			var path = paths[i];
-			if (!Array.contains(typePaths, path)) {
+			if (typePaths.indexOf(path) < 0) {
 				typePaths.push(path);
 			}
 		}

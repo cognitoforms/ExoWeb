@@ -117,9 +117,9 @@ Batch.mixin({
 		ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
 
 		// Transfer labels from one batch to another.
-		Array.addRange(otherBatch._labels, this._labels);
+		otherBatch._labels.addRange(this._labels);
 		this._labels.clear();
-		Array.addRange(otherBatch._subscribers, this._subscribers);
+		otherBatch._subscribers.addRange(this._subscribers);
 		this._subscribers.clear();
 		this._transferredTo = otherBatch;
 	},

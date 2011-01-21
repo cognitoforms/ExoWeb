@@ -166,8 +166,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 		var additional = Array.prototype.slice.call(arguments);
 		return function prependArguments$fn() {
 			var args = [];
-			Array.addRange(args, additional);
-			Array.addRange(args, Array.prototype.slice.call(arguments));
+			args.addRange(additional);
+			args.addRange(Array.prototype.slice.call(arguments));
 			return func.apply(this, args);
 		};
 	};
@@ -177,7 +177,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		var additional = Array.prototype.slice.call(arguments);
 		return function appendArguments$fn() {
 			var args = Array.prototype.slice.call(arguments);
-			Array.addRange(args, additional);
+			args.addRange(additional);
 			return func.apply(this, args);
 		};
 	};
@@ -800,9 +800,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 			ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
 
 			// Transfer labels from one batch to another.
-			Array.addRange(otherBatch._labels, this._labels);
+			otherBatch._labels.addRange(this._labels);
 			this._labels.clear();
-			Array.addRange(otherBatch._subscribers, this._subscribers);
+			otherBatch._subscribers.addRange(this._subscribers);
 			this._subscribers.clear();
 			this._transferredTo = otherBatch;
 		},
@@ -913,7 +913,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			--this._pending;
 
 			if (this._pending === 0) {
-				Array.remove(Signal.allPending, this);
+				Signal.allPending.remove(this);
 			}
 
 			while (this._pending === 0 && this._waitForAll.length > 0) {
@@ -2279,7 +2279,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	ExoWeb.Model.Model = Model;
-	Model.registerClass("ExoWeb.Model.Model");
 
 	// #endregion
 
@@ -8243,7 +8242,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		var paths = ObjectLazyLoader.getRelativePaths(obj);
 
 		// Add the property to load if specified.  Assumes an instance property.
-		if (propName && !Array.contains(paths, "this." + propName)) {
+		if (propName && paths.indexOf("this." + propName) < 0) {
 			paths.push("this." + propName);
 		}
 
@@ -8293,7 +8292,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 			for (var i = 0; i < paths.length; i++) {
 				var path = paths[i];
-				if (!Array.contains(typePaths, path)) {
+				if (typePaths.indexOf(path) < 0) {
 					typePaths.push(path);
 				}
 			}

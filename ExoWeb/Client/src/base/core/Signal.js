@@ -69,7 +69,7 @@ Signal.mixin({
 		--this._pending;
 
 		if (this._pending === 0) {
-			Array.remove(Signal.allPending, this);
+			Signal.allPending.remove(this);
 		}
 
 		while (this._pending === 0 && this._waitForAll.length > 0) {
