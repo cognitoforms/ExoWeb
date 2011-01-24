@@ -21,7 +21,7 @@ namespace ExoWeb
 
 		public object[] Events { get; internal set; }
 
-		public GraphTransaction Changes { get; internal set; }
+		public GraphTransaction Changes { get; set; }
 
 
 
