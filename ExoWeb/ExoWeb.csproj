@@ -82,6 +82,7 @@
     <Compile Include="GraphInstanceInfo.cs" />
     <Compile Include="GraphTypeInfo.cs" />
     <Compile Include="IJsonSerializable.cs" />
+    <Compile Include="IModelBuilder.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="JsonConverter.cs" />
     <Compile Include="ServiceError.cs" />

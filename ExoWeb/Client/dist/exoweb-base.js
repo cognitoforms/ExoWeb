@@ -8576,10 +8576,38 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 		var batch = ExoWeb.Batch.start("init context");
 
-		if (options.model) {
-			// start loading the instances first, then load type data concurrently.
-			// this assumes that instances are slower to load than types due to caching
-			for (var varNameLoad in options.model) {
+		var preloadSignal = new ExoWeb.Signal("processing preload");
+
+		if (options.preload) {
+			var processConditions = function () {
+				if (options.preload.conditions) {
+					conditionsFromJson(model, options.preload.conditions);
+				}
+			};
+
+			var processChanges = function () {
+				if (options.preload.changes) {
+					ret.server.applyChanges(options.preload.changes, preloadSignal.pending(processConditions, this, true));
+				}
+				else {
+					processConditions();
+				}
+			};
+
+			if (options.preload.instances) {
+				objectsFromJson(model, options.preload.instances, preloadSignal.pending(processChanges, this, true));
+			}
+			else {
+				processChanges();
+			}
+		}
+
+		preloadSignal.waitForAll(allSignals.pending(function () {
+
+			if (options.model) {
+				// start loading the instances first, then load type data concurrently.
+				// this assumes that instances are slower to load than types due to caching
+																																																																													for (var varNameLoad in options.model) {
 				(function(varName) {
 					state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
 					allSignals.pending();
@@ -8614,17 +8642,28 @@ Type.registerNamespace("ExoWeb.Mapper");
 						// need to load data from server
 						// fetch object state if an id of a persisted object was specified
 						if (query.id !== $newId() && query.id !== null && query.id !== undefined && query.id !== "") {
-							objectProvider(query.from, [query.id], query.serverPaths, null,
-								state[varName].signal.pending(function context$objects$callback(result) {
-									state[varName].objectJson = result.instances;
-									state[varName].conditionsJson = result.conditions;
-								}),
-								state[varName].signal.orPending(function context$objects$callback(error) {
-									ExoWeb.trace.logError("objectInit",
-										"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-										{ query: query, error: error });
-								})
-							);
+
+							tryGetJsType(model, query.from, null, true, function(type) {
+								var id = translateId(ret.server._translator, query.from, query.id);
+								var obj = type.meta.get(id);
+
+								if (obj !== undefined) {
+									ret.model[varName] = obj;
+								}
+								else {
+									objectProvider(query.from, [query.id], query.serverPaths, null,
+										state[varName].signal.pending(function context$objects$callback(result) {
+											state[varName].objectJson = result.instances;
+											state[varName].conditionsJson = result.conditions;
+										}),
+										state[varName].signal.orPending(function context$objects$callback(error) {
+											ExoWeb.trace.logError("objectInit",
+												"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+												{ query: query, error: error });
+										})
+									);
+								}
+							});
 						}
 						else {
 						
@@ -8661,13 +8700,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 				})(varNameLoad);
 			}
 
-			// load types
-			for (var varNameTypes in options.model) {
+				// load types
+						for (var varNameTypes in options.model) {
 				fetchTypes(model, options.model[varNameTypes], state[varNameTypes].signal.pending());
 			}
 
-			// process instances as they finish loading
-			for (var varNameFinish in options.model) {
+				// process instances as they finish loading
+																																											for (var varNameFinish in options.model) {
 				(function(varName) {
 					state[varName].signal.waitForAll(function context$model() {
 
@@ -8688,7 +8727,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 								var query = options.model[varName];
 								var mtype = model.type(query.from);
 
-								var obj = mtype.get(query.id);
+								var id = translateId(ret.server._translator, query.from, query.id);
+								var obj = mtype.get(id);
 
 								if (obj === undefined) {
 									throw new ReferenceError($format("Could not get {0} with id = {1}.", [mtype.get_fullName(), query.id]));
@@ -8716,8 +8756,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 					});
 				})(varNameFinish);
 			}
-		}
+			}
 
+		}, this, true));
 	
 		if (options.types) {
 			// allow specifying types and paths apart from instance data
@@ -8882,6 +8923,19 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			// Merge model
 			pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, options.model) : options.model;
+
+			// Merge preload
+			if (options.preload) {
+				if (!pendingOptions.preload) {
+					pendingOptions.preload = options.preload;
+				}
+				else {
+					pendingOptions.preload.instances = pendingOptions.preload.instances ? $.extend(pendingOptions.preload.instances, options.preload.instances) : options.preload.instances;
+					pendingOptions.preload.changes.addRange(options.preload.changes);
+					// TODO: condition merging not supported / thought out
+					pendingOptions.preload.conditions = pendingOptions.preload.conditions ? $.extend(pendingOptions.preload.conditions, options.preload.conditions) : options.preload.conditions;
+				}
+			}
 		}
 		else {
 			pendingOptions = options;
@@ -8899,7 +8953,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			currentOptions.init();
 
 		// Initialize the context
-		window.context = createContext({ model: currentOptions.model, types: currentOptions.types }, window.context);
+		window.context = createContext({ model: currentOptions.model, types: currentOptions.types, preload: currentOptions.preload }, window.context);
 
 		// Perform initialization once the context is ready
 		window.context.ready(function () {
