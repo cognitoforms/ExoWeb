@@ -3999,7 +3999,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		// starts listening for change events along the property chain on any known instances. Use obj argument to
 		// optionally filter the events to a specific object
-		addChanged: function PropertyChain$addChanged(handler, obj, tolerateNulls) {
+		addChanged: function PropertyChain$addChanged(handler, obj, once, tolerateNulls) {
 			var chain = this;
 
 			function raiseHandler(sender, args) {
@@ -4016,7 +4016,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (this._properties.length == 1) {
 				// OPTIMIZATION: no need to search all known objects for single property chains
-				this._properties[0].addChanged(raiseHandler, obj);
+				this._properties[0].addChanged(raiseHandler, obj, once);
 			}
 			else {
 				Array.forEach(this._properties, function(prop, index) {
@@ -4028,7 +4028,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 								args.originalSender = sender;
 								raiseHandler(obj, args);
 							}
-						});
+						}, null, once);
 					}
 					else {
 						// CASE: no object filter
@@ -4041,7 +4041,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 									raiseHandler(known, args);
 								}
 							});
-						});
+						}, null, once);
 					}
 				});
 			}
@@ -8610,157 +8610,156 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (options.model) {
 				// start loading the instances first, then load type data concurrently.
 				// this assumes that instances are slower to load than types due to caching
-																																																																													for (var varNameLoad in options.model) {
-				(function(varName) {
-					state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
-					allSignals.pending();
+				for (var varNameLoad in options.model) {
+					(function(varName) {
+						state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
+						allSignals.pending();
 
-					var query = options.model[varName];
+						var query = options.model[varName];
 
-					query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
+						query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
 
-					// store the paths for later use
-					ObjectLazyLoader.addPaths(query.from, query.and);
+						// store the paths for later use
+						ObjectLazyLoader.addPaths(query.from, query.and);
 
-					// only send properties to server
-					query.serverPaths = query.and.map(function(path) {
-						var strPath;
-						path.steps.forEach(function(step) {
-							if (!strPath) {
-								strPath = step.property;
-							}
-							else {
-								strPath += "." + step.property;
-							}
-						});
-						return strPath;
-					});
-
-					if(query.load) {
-						// bypass all server callbacks if data is embedded
-						state[varName].objectJson = query.load.instances;
-						state[varName].conditionsJson = query.load.conditions;
-					}
-					else {
-						// need to load data from server
-						// fetch object state if an id of a persisted object was specified
-						if (query.id !== $newId() && query.id !== null && query.id !== undefined && query.id !== "") {
-
-							tryGetJsType(model, query.from, null, true, function(type) {
-								var id = translateId(ret.server._translator, query.from, query.id);
-								var obj = type.meta.get(id);
-
-								if (obj !== undefined) {
-									ret.model[varName] = obj;
+						// only send properties to server
+						query.serverPaths = query.and.map(function(path) {
+							var strPath;
+							path.steps.forEach(function(step) {
+								if (!strPath) {
+									strPath = step.property;
 								}
 								else {
-									objectProvider(query.from, [query.id], query.serverPaths, null,
-										state[varName].signal.pending(function context$objects$callback(result) {
-											state[varName].objectJson = result.instances;
-											state[varName].conditionsJson = result.conditions;
+									strPath += "." + step.property;
+								}
+							});
+							return strPath;
+						});
+
+						if(query.load) {
+							// bypass all server callbacks if data is embedded
+							state[varName].objectJson = query.load.instances;
+							state[varName].conditionsJson = query.load.conditions;
+						}
+						else {
+							// need to load data from server
+							// fetch object state if an id of a persisted object was specified
+							if (query.id !== $newId() && query.id !== null && query.id !== undefined && query.id !== "") {
+
+								tryGetJsType(model, query.from, null, true, function(type) {
+									var id = translateId(ret.server._translator, query.from, query.id);
+									var obj = type.meta.get(id);
+
+									if (obj !== undefined) {
+										ret.model[varName] = obj;
+									}
+									else {
+										objectProvider(query.from, [query.id], query.serverPaths, null,
+											state[varName].signal.pending(function context$objects$callback(result) {
+												state[varName].objectJson = result.instances;
+												state[varName].conditionsJson = result.conditions;
+											}),
+											state[varName].signal.orPending(function context$objects$callback(error) {
+												ExoWeb.trace.logError("objectInit",
+													"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+													{ query: query, error: error });
+											})
+										);
+									}
+								});
+							}
+							else {
+						
+								if (query.serverPaths == null)
+									query.serverPaths = [];
+
+								// Remove instance paths when an id is not specified
+								for (var i = query.serverPaths.length-1; i >= 0; i--) {
+									if (query.serverPaths[i].startsWith("this."))
+										query.serverPaths.splice(i, 1);	
+								}
+
+								// Only call the server if paths were specified
+								if (query.serverPaths.length > 0)
+								{
+									objectProvider(null, null, query.serverPaths, null,
+										allSignals.pending(function context$objects$callback(result) {
+											// load the json. this may happen asynchronously to increment the signal just in case
+											objectsFromJson(model, result.instances, allSignals.pending(function() {
+												if (result.conditions) {
+													conditionsFromJson(model, result.conditions);
+												}
+											}));
 										}),
-										state[varName].signal.orPending(function context$objects$callback(error) {
+										allSignals.orPending(function context$objects$callback(error) {
 											ExoWeb.trace.logError("objectInit",
 												"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 												{ query: query, error: error });
 										})
 									);
 								}
-							});
-						}
-						else {
-						
-							if (query.serverPaths == null)
-								query.serverPaths = [];
-
-							// Remove instance paths when an id is not specified
-							for (var i = query.serverPaths.length-1; i >= 0; i--) {
-								if (query.serverPaths[i].startsWith("this."))
-									query.serverPaths.splice(i, 1);	
-							}
-
-							// Only call the server if paths were specified
-							if (query.serverPaths.length > 0)
-							{
-								objectProvider(null, null, query.serverPaths, null,
-									allSignals.pending(function context$objects$callback(result) {
-										// load the json. this may happen asynchronously to increment the signal just in case
-										objectsFromJson(model, result.instances, allSignals.pending(function() {
-											if (result.conditions) {
-												conditionsFromJson(model, result.conditions);
-											}
-										}));
-									}),
-									allSignals.orPending(function context$objects$callback(error) {
-										ExoWeb.trace.logError("objectInit",
-											"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-											{ query: query, error: error });
-									})
-								);
 							}
 						}
-					}
-				})(varNameLoad);
-			}
+					})(varNameLoad);
+				}
 
 				// load types
-						for (var varNameTypes in options.model) {
-				fetchTypes(model, options.model[varNameTypes], state[varNameTypes].signal.pending());
-			}
+				for (var varNameTypes in options.model) {
+					fetchTypes(model, options.model[varNameTypes], state[varNameTypes].signal.pending());
+				}
 
 				// process instances as they finish loading
-																																											for (var varNameFinish in options.model) {
-				(function(varName) {
-					state[varName].signal.waitForAll(function context$model() {
+				for (var varNameFinish in options.model) {
+					(function(varName) {
+						state[varName].signal.waitForAll(function context$model() {
 
-						var query = options.model[varName];
+							var query = options.model[varName];
 
-						// construct a new object if a "newId" was specified
-						if (query.id === $newId()) {
-							ret.model[varName] = new (model.type(query.from).get_jstype())();
+							// construct a new object if a "newId" was specified
+							if (query.id === $newId()) {
+								ret.model[varName] = new (model.type(query.from).get_jstype())();
 
-							// model object has been successfully loaded!
-							allSignals.oneDone();
-						}
+								// model object has been successfully loaded!
+								allSignals.oneDone();
+							}
 
-						// otherwise, load the object from json if an id was specified
-						else if (query.id !== null && query.id !== undefined && query.id !== "") {
-							// load the json. this may happen asynchronously so increment the signal just in case
-							objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
-								var query = options.model[varName];
-								var mtype = model.type(query.from);
+							// otherwise, load the object from json if an id was specified
+							else if (query.id !== null && query.id !== undefined && query.id !== "") {
+								// load the json. this may happen asynchronously so increment the signal just in case
+								objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
+									var query = options.model[varName];
+									var mtype = model.type(query.from);
 
-								var id = translateId(ret.server._translator, query.from, query.id);
-								var obj = mtype.get(id);
+									var id = translateId(ret.server._translator, query.from, query.id);
+									var obj = mtype.get(id);
 
-								if (obj === undefined) {
-									throw new ReferenceError($format("Could not get {0} with id = {1}.", [mtype.get_fullName(), query.id]));
-								}
+									if (obj === undefined) {
+										throw new ReferenceError($format("Could not get {0} with id = {1}.", [mtype.get_fullName(), query.id]));
+									}
 
-								ret.model[varName] = obj;
+									ret.model[varName] = obj;
 
-								if (state[varName].conditionsJson) {
-									conditionsFromJson(model, state[varName].conditionsJson, function() {
+									if (state[varName].conditionsJson) {
+										conditionsFromJson(model, state[varName].conditionsJson, function() {
+											// model object has been successfully loaded!
+											allSignals.oneDone();
+										});
+									}
+									else {
 										// model object has been successfully loaded!
 										allSignals.oneDone();
-									});
-								}
-								else {
-									// model object has been successfully loaded!
-									allSignals.oneDone();
-								}
-							}));
-						}
+									}
+								}));
+							}
 
-						else {
-							// model object has been successfully loaded!
-							allSignals.oneDone();
-						}
-					});
-				})(varNameFinish);
+							else {
+								// model object has been successfully loaded!
+								allSignals.oneDone();
+							}
+						});
+					})(varNameFinish);
+				}
 			}
-			}
-
 		}, this, true));
 	
 		if (options.types) {

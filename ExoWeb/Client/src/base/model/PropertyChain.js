@@ -278,7 +278,7 @@ PropertyChain.prototype = {
 	},
 	// starts listening for change events along the property chain on any known instances. Use obj argument to
 	// optionally filter the events to a specific object
-	addChanged: function PropertyChain$addChanged(handler, obj, tolerateNulls) {
+	addChanged: function PropertyChain$addChanged(handler, obj, once, tolerateNulls) {
 		var chain = this;
 
 		function raiseHandler(sender, args) {
@@ -295,7 +295,7 @@ PropertyChain.prototype = {
 
 		if (this._properties.length == 1) {
 			// OPTIMIZATION: no need to search all known objects for single property chains
-			this._properties[0].addChanged(raiseHandler, obj);
+			this._properties[0].addChanged(raiseHandler, obj, once);
 		}
 		else {
 			Array.forEach(this._properties, function(prop, index) {
@@ -307,7 +307,7 @@ PropertyChain.prototype = {
 							args.originalSender = sender;
 							raiseHandler(obj, args);
 						}
-					});
+					}, null, once);
 				}
 				else {
 					// CASE: no object filter
@@ -320,7 +320,7 @@ PropertyChain.prototype = {
 								raiseHandler(known, args);
 							}
 						});
-					});
+					}, null, once);
 				}
 			});
 		}
