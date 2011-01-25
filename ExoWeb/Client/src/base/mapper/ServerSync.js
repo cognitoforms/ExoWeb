@@ -525,7 +525,7 @@ ServerSync.mixin({
 		this._raiseBeginEvent("save", automatic);
 
 		saveProvider(
-			{ type: root.meta.type.get_fullName(), id: root.meta.id },
+			toExoGraph(this._translator, root),
 			this.get_Changes(),
 			this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
 			this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
