@@ -145,6 +145,12 @@ namespace ExoWeb
 				});
 		}
 
+        public static string ProcessRequest(string json)
+        {
+            ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
+            return ExoWeb.FixJsonDates(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke()));
+        }
+
 		public static void RegisterForSerialization(Assembly assembly)
 		{
 			serializer.RegisterConverters(JsonConverter.Infer(assembly.GetTypes()).Cast<JavaScriptConverter>());
