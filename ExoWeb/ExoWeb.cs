@@ -114,10 +114,10 @@ namespace ExoWeb
 		/// Raises the <see cref="EnsureConditions"/> event
 		/// </summary>
 		/// <param name="dictionary"></param>
-		internal static void OnEnsureConditions(IModelInfo modelInfo, IEnumerable<GraphInstance> instances)
+		internal static void OnEnsureConditions(ServiceResponse response, IEnumerable<GraphInstance> instances)
 		{
 			if (EnsureConditions != null)
-				EnsureConditions(modelInfo, new EnsureConditionsEventArgs(instances));
+				EnsureConditions(response, new EnsureConditionsEventArgs(instances));
 		}
 		#endregion
 
@@ -195,193 +195,12 @@ namespace ExoWeb
 			return json.Substring(1, json.Length - 2);
 		}
 
-
-		public static string Model(Action<IModelBuilder> manipulator)
-		{
-			ModelBuilder model = new ModelBuilder();
-			ModelInfo modelInfo = new ModelInfo();
-
-			using (modelInfo.Changes = GraphContext.Current.BeginTransaction())
-			{
-				manipulator(model);
-				modelInfo.Changes.Commit();
-			}
-
-			foreach (ModelMember item in model.Members.Values)
-			{
-				item.InstancePaths = new HashSet<string>();
-				foreach (string path in ExoWeb.NormalizePaths(item.Paths))
-					ExoWeb.ProcessPath(path, item.InstancePaths, modelInfo);
-			}
-
-			// Track changes while loading the instances to serialize
-			GraphTransaction processChanges = null;
-			using (processChanges = GraphContext.Current.BeginTransaction())
-			{
-				// Recursively build up the list of instances to serialize
-				foreach (ModelMember item in model.Members.Values)
-					ExoWeb.ProcessInstance(item.Instance, "this", item.InstancePaths, modelInfo);
-
-				processChanges.Commit();
-			}
-			modelInfo.Changes += processChanges;
-
-			modelInfo.BuildConditions();
-
-			return "preload: " + FixJsonDates(ToJson(typeof(ModelInfo), modelInfo)) + ", " +
-				"model: " + FixJsonDates(ToJson(typeof(ModelBuilder), model));
-		}
-
-		#region static helpers
-
-		static GraphTypeInfo GetGraphTypeInfo(IModelInfo info, GraphType type)
-		{
-			// Create the set of type instance information if not initialized
-			if (info.Instances == null)
-				info.Instances = new Dictionary<string, GraphTypeInfo>();
-			
-			// Get or initialize the graph type instance information store
-			GraphTypeInfo typeInfo;
-			if (!info.Instances.TryGetValue(type.Name, out typeInfo))
-				info.Instances[type.Name] = typeInfo = new GraphTypeInfo();
-
-			// Return the requested value
-			return typeInfo;
-		}
-
-		/// <summary>
-		/// Processes static and instance property paths in order to determine the information to serialize.
-		/// </summary>
-		/// <param name="path"></param>
-		internal static void ProcessPath(string path, HashSet<string> instancePaths, IModelInfo modelInfo)
-		{
-			// Instance Path
-			if (path.StartsWith("this."))
-			{
-				string p = "this";
-				foreach (string step in path.Substring(5).Split('.'))
-				{
-					p += "." + step;
-					if (!instancePaths.Contains(p))
-						instancePaths.Add(p);
-				}
-			}
-
-			// Static Path
-			else
-			{
-				if (path.IndexOf('.') < 0)
-					throw new ArgumentException("'" + path + "' is not a valid static property path.");
-
-				// Split the static property reference
-				int propertyIndex = path.LastIndexOf('.');
-				string type = path.Substring(0, propertyIndex);
-				string property = path.Substring(propertyIndex + 1);
-
-				// Get the graph type
-				GraphType graphType = GraphContext.Current.GetGraphType(type);
-				if (graphType == null)
-					throw new ArgumentException("'" + type + "' is not a valid graph type for the static property path of '" + path + "'.");
-
-				// Get the graph property
-				GraphProperty graphProperty = graphType.Properties[property];
-				if (graphProperty == null || !graphProperty.IsStatic)
-					throw new ArgumentException("'" + property + "' is not a valid property for the static property path of '" + path + "'.");
-
-				// Add the property to the set of static properties to serialize
-				GetGraphTypeInfo(modelInfo, graphType).StaticProperties.Add(graphProperty);
-
-				// Register instances for static reference properties to be serialized
-				GraphReferenceProperty reference = graphProperty as GraphReferenceProperty;
-				if (reference != null)
-				{
-					// Get the cached set of instances to be serialized for the property type
-					GraphTypeInfo typeInfo = GetGraphTypeInfo(modelInfo, reference.PropertyType);
-
-					// Static lists
-					if (reference.IsList)
-					{
-						foreach (GraphInstance instance in graphType.GetList(reference))
-						{
-							if (!typeInfo.Instances.ContainsKey(instance.Id))
-								typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
-						}
-					}
-
-					// Static references
-					else
-					{
-						GraphInstance instance = graphType.GetReference(reference);
-						if (instance != null && !typeInfo.Instances.ContainsKey(instance.Id))
-							typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
-					}
-				}
-			}
-		}
-
-		/// <summary>
-		/// Recursively builds up a list of instances to serialize.
-		/// </summary>
-		/// <param name="instance"></param>
-		/// <param name="instances"></param>
-		/// <param name="paths"></param>
-		/// <param name="path"></param>
-		internal static void ProcessInstance(GraphInstance instance, string path, HashSet<string> instancePaths, IModelInfo modelInfo)
-		{
-			// Fetch or initialize the dictionary of instances for the type of the current instance
-			GraphTypeInfo typeInfo = GetGraphTypeInfo(modelInfo, instance.Type);
-
-			// Add the current instance to the dictionary if it is not already there
-			GraphInstanceInfo instanceInfo;
-			if (!typeInfo.Instances.TryGetValue(instance.Id, out instanceInfo))
-				typeInfo.Instances[instance.Id] = instanceInfo = new GraphInstanceInfo(instance);
-
-			// Process all reference property paths on the current instance
-			foreach (var reference in instance.Type.Properties
-				.Where(property => property is GraphReferenceProperty && instancePaths.Contains(path + "." + property.Name))
-				.Cast<GraphReferenceProperty>())
-			{
-				// Get the full path to the property
-				string childPath = path + "." + reference.Name;
-
-				// Throw an exception if a static property is referenced
-				if (reference.IsStatic)
-					throw new ArgumentException("Static properties cannot be referenced by instance property paths.  Specify 'TypeName.PropertyName' as the path to load static properties for a type.");
-
-				// Process all items in a child list and register the list to be serialized
-				if (reference.IsList)
-				{
-					// Process each child instance
-					foreach (GraphInstance childInstance in instance.GetList(reference))
-						ProcessInstance(childInstance, childPath, instancePaths, modelInfo);
-
-					// Mark the list to be included during serialization
-					instanceInfo.IncludeList(reference);
-				}
-
-				// Process child references
-				else
-				{
-					GraphInstance childInstance = instance.GetReference(reference);
-					if (childInstance != null)
-						ProcessInstance(childInstance, childPath, instancePaths, modelInfo);
-				}
-			}
-
-			// Register all value list properties for loading
-			foreach (var list in instance.Type.Properties
-				.Where(property => property is GraphValueProperty && property.IsList && instancePaths.Contains(path + "." + property.Name))
-				.Cast<GraphValueProperty>())
-				instanceInfo.IncludeList(list);
-		}
-
-
 		/// <summary>
 		/// Expands paths.  Ex: ["a{b, c}"] -> ["a.b", "a.c"] 
 		/// </summary>
 		/// <param name="paths"></param>
 		/// <returns></returns>
-		internal static string[] NormalizePaths(string[] collapsed)
+		static string[] NormalizePaths(string[] collapsed)
 		{
 			var normalized = new List<string>();
 
@@ -431,7 +250,7 @@ namespace ExoWeb
 			}
 			return normalized.ToArray();
 		}
-		#endregion
+
 		#endregion
 
 		#region JSON Serialization
@@ -758,34 +577,6 @@ namespace ExoWeb
 							json.Set("compareValue", rule.CompareValue);
 						},
 						json => { throw new NotSupportedException("RequiredIfRule cannot be deserialized."); }),
-
-					new JsonConverter<ModelInfo>(
-						(modelInfo, json) =>
-						{
-							json.Set("instances", modelInfo.Instances);
-							json.Set("changes", modelInfo.Changes);
-							json.Set("conditions", modelInfo.Conditions);
-						},
-						json => { throw new NotSupportedException("ModelInfo cannot be deserialized."); }),
-
-					new JsonConverter<ModelBuilder>(
-						(model, json) =>
-						{
-							foreach (var member in model.Members)
-							{
-								json.Set(member.Key, member.Value);
-							}
-						},
-						json => { throw new NotSupportedException("Model cannot be deserialized."); }),
-
-					new JsonConverter<ModelMember>(
-						(modelMember, json) =>
-						{
-							json.Set("from", modelMember.Instance.Type.Name);
-							json.Set("and", modelMember.Paths);
-							json.Set("id", modelMember.Instance.Id);
-						},
-						json => { throw new NotSupportedException("ModelMember cannot be deserialized."); }),
 			});
 
 			// Cache the method info of the deserialize method
