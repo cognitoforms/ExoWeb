@@ -5,7 +5,8 @@ function setErrorHandler(fn) {
 ExoWeb.setErrorHandler = setErrorHandler;
 
 ExoWeb.config = {
-	 signalTimeout: false
+	 signalTimeout: false,
+	 signalDebug: false
 }
 
 ExoWeb.trace = {

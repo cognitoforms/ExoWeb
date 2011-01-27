@@ -736,7 +736,7 @@ ServerSync.mixin({
 					i--;
 				}
 			}
-		}
+		}	
 		else {
 			changed = true;
 			Array.clear(this._changes);
@@ -788,7 +788,7 @@ ServerSync.mixin({
 
 	// APPLY CHANGES
 	///////////////////////////////////////////////////////////////////////
-	applyChanges: function ServerSync$applyChanges(changes, callback) {
+	applyChanges: function ServerSync$applyChanges(changes, callback, thisPtr) {
 		if (!changes || !(changes instanceof Array)) {
 			return;
 		}
@@ -890,7 +890,7 @@ ServerSync.mixin({
 				this.endApplyingChanges();
 				ExoWeb.Batch.end(batch);
 				if (callback && callback instanceof Function) {
-					callback();
+					callback.call(thisPtr || this);
 				}
 				if (newChanges > 0) {
 //							ExoWeb.trace.log("server", "raising \"Changes\" property change event");

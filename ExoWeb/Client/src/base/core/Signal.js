@@ -7,6 +7,19 @@ function Signal(debugLabel) {
 	this._debugLabel = debugLabel;
 }
 
+function doCallback(name, thisPtr, callback, args, executeImmediately) {
+	if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
+		var batch = Batch.suspendCurrent("_doCallback");
+		window.setTimeout(function Signal$_doCallback$timeout() {
+			ExoWeb.Batch.resume(batch);
+			callback.apply(thisPtr, args || []);
+		}, 1);
+	}
+	else {
+		callback.apply(thisPtr, args || []);
+	}
+}
+
 Signal.mixin({
 	pending: function Signal$pending(callback, thisPtr, executeImmediately) {
 		if (this._pending === 0) {
@@ -21,20 +34,16 @@ Signal.mixin({
 		return this._genCallback(callback, thisPtr, executeImmediately);
 	},
 	_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
-		try {
-			if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
-				var batch = Batch.suspendCurrent("_doCallback");
-				window.setTimeout(function Signal$_doCallback$timeout() {
-					ExoWeb.Batch.resume(batch);
-					callback.apply(thisPtr, args || []);
-				}, 1);
+		if (ExoWeb.config.signalDebug) {
+			try {
+				doCallback.apply(this, arguments);
 			}
-			else {
-				callback.apply(thisPtr, args || []);
+			catch (e) {
+				logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
 			}
 		}
-		catch (e) {
-			logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
+		else {
+			doCallback.apply(this, arguments);
 		}
 	},
 	_genCallback: function Signal$_genCallback(callback, thisPtr, executeImmediately) {
