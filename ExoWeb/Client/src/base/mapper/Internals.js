@@ -263,9 +263,11 @@ function typeFromJson(model, typeName, json) {
 		mtype.addMethod({ name: methodName, parameters: methodJson.parameters, isStatic: methodJson.isStatic });
 	}
 
-	// define condition types
-	if (json.conditionTypes)
-		conditionTypesFromJson(model, mtype, json.conditionTypes)
+    // define condition types
+    if (json.conditionTypes)
+        conditionTypesFromJson(model, mtype, json.conditionTypes);
+
+    TypeLazyLoader.unregister(mtype);
 }
 
 function conditionTypesFromJson(model, mtype, json) {

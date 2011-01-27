@@ -20,6 +20,15 @@ function createContext(options, context) {
 
 	var batch = ExoWeb.Batch.start("init context");
 
+	//first determine if the types are embedded
+	//load up the embedded types first to avoiding timing issues with loading instance data and types at the same time
+	//this is for the client only implementation of ExoWeb.  The normal paradigm of passing types as an array
+	//will load the types and instance data asyc.
+	if (options.types && options.types instanceof Object) {
+	    //instead of fetching the types from the server use the embedded json.
+	    typesFromJson(model, options.types)
+	}
+
 	if (options.model) {
 		// start loading the instances first, then load type data concurrently.
 		// this assumes that instances are slower to load than types due to caching
@@ -105,10 +114,14 @@ function createContext(options, context) {
 			})(varNameLoad);
 		}
 
-		// load types
-		for (var varNameTypes in options.model) {
-			fetchTypes(model, options.model[varNameTypes], state[varNameTypes].signal.pending());
-		}
+        //only fetch the types if they are not embedded
+        //if the types are embedded then fetching the types from server will
+        //cause a signal to be created that will never be processed.
+        if (options.types && options.types instanceof Array) {
+            for (var varNameTypes in options.model) {
+                fetchTypes(model, options.model[varNameTypes], state[varNameTypes].signal.pending());
+            }
+        }
 
 		// process instances as they finish loading
 		for (var varNameFinish in options.model) {
@@ -162,8 +175,10 @@ function createContext(options, context) {
 		}
 	}
 
-	
-	if (options.types) {
+
+    // load types if they are in array format.  This is for the full server/client model of ExoWeb
+    //to load the types and isntance data async
+    if (options.types && options.types instanceof Array) {
 		// allow specifying types and paths apart from instance data
 		for (var i = 0; i < options.types.length; i++) {
 			var typeQuery = options.types[i];
