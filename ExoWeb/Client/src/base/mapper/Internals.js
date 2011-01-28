@@ -638,3 +638,124 @@ function restoreDates(value) {
 		}
 	}
 }
+
+function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
+	var jstype = ExoWeb.Model.Model.getJsType(name, true);
+
+	if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+		callback.call(thisPtr || this, jstype);
+	}
+	else if (jstype && forceLoad) {
+//				ExoWeb.trace.log("server", "Forcing lazy loading of type \"{0}\".", [name]);
+		ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
+	}
+	else if (!jstype && forceLoad) {
+//				ExoWeb.trace.log("server", "Force creating type \"{0}\".", [name]);
+		ensureJsType(model, name, callback, thisPtr);
+	}
+	else {
+//				ExoWeb.trace.log("server", "Waiting for existance of type \"{0}\".", [name]);
+		$extend(name, function() {
+//					ExoWeb.trace.log("server", "Type \"{0}\" was loaded, now continuing.", [name]);
+			callback.apply(this, arguments);
+		}, thisPtr);
+	}
+}
+
+var entitySignals = [];
+
+var LazyLoadEnum = {
+	None: 0,
+	Force: 1,
+	ForceAndWait: 2
+};
+
+function tryGetEntity(model, translator, type, id, property, lazyLoad, callback, thisPtr) {
+	var obj = type.meta.get(translateId(translator, type.meta.get_fullName(), id));
+
+	if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
+		callback.call(thisPtr || this, obj);
+	}
+	else {
+		var objKey = type.meta.get_fullName() + "|" + id;
+		var signal = entitySignals[objKey];
+		if (!signal) {
+			signal = entitySignals[objKey] = new ExoWeb.Signal(objKey);
+
+			// When the signal is created increment its counter once, since
+			// we are only keeping track of whether the object is loaded.
+			signal.pending();
+		}
+
+		// wait until the object is loaded to invoke the callback
+		signal.waitForAll(function() {
+			callback.call(thisPtr || this, type.meta.get(translateId(translator, type.meta.get_fullName(), id)));
+		});
+
+		function done() {
+			if (signal.isActive()) {
+				signal.oneDone();
+			}
+		}
+		
+		if (lazyLoad == LazyLoadEnum.Force) {
+			if (!obj) {
+//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+			}
+			done();
+//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+			ExoWeb.Model.LazyLoader.eval(obj, property, function() {});
+		}
+		else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
+			if (!obj) {
+//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+			}
+//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+			ExoWeb.Model.LazyLoader.eval(obj, property, done);
+		}
+		else {
+//					ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+
+			function waitForProperty(obj) {
+				if (property) {
+					// if the property is not initialized then wait
+					var prop = type.meta.property(property, true);
+					if (prop.isInited(obj)) {
+						done();
+					}
+					else {
+//									ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
+						var initHandler = function() {
+//										ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
+							done();
+						};
+
+						// Register the handler once.
+						prop.addChanged(initHandler, obj, true);
+					}
+				}
+				else {
+					done();
+				}
+			}
+
+			// Object is already created but not loaded.
+			if (obj) {
+				waitForProperty(obj);
+			}
+			else {
+				var registeredHandler = function(obj) {
+	//						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
+					if (obj.meta.type === type.meta && obj.meta.id === id) {
+						waitForProperty(obj);
+					}
+				};
+
+				// Register the handler once.
+				model.addObjectRegistered(registeredHandler, true);
+			}
+		}
+	}
+}

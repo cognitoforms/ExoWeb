@@ -6,7 +6,9 @@ ExoWeb.setErrorHandler = setErrorHandler;
 
 ExoWeb.config = {
 	 signalTimeout: false,
-	 signalDebug: false
+	 signalDebug: false,
+	 aggressiveLog: false,
+	 useChangeSets: false
 }
 
 ExoWeb.trace = {

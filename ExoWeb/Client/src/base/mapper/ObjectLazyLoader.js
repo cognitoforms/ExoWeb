@@ -30,7 +30,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 	// NOTE: should changes be included here?
 	objectProvider(mtype.get_fullName(), [id], paths, null,
 		function(result) {
-			mtype.get_model()._server._handleResult(result, true, function() {
+			mtype.get_model()._server._handleResult(result, null, true, function() {
 				ExoWeb.Model.LazyLoader.unregister(obj, this);
 				pendingObjects--;
 				callback.call(thisPtr || this, obj);

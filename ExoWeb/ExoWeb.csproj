@@ -118,6 +118,8 @@
     <Content Include="Client\specs\base\core\test_Function.js" />
     <Content Include="Client\specs\base\core\test_Signal.js" />
     <Content Include="Client\specs\base\core\test_Translator.js" />
+    <Content Include="Client\specs\base\mapper\test_ChangeSet.js" />
+    <Content Include="Client\specs\base\mapper\test_ChangeLog.js" />
     <Content Include="Client\specs\base\model\test_PathTokens.js" />
     <Content Include="Client\specs\jasmine.console.js" />
     <Content Include="Client\specs\jasmine.js" />
@@ -139,6 +141,8 @@
     <Content Include="Client\src\base\core\Transform.js" />
     <Content Include="Client\src\base\core\Translator.js" />
     <Content Include="Client\src\base\core\Utilities.js" />
+    <Content Include="Client\src\base\mapper\ChangeLog.js" />
+    <Content Include="Client\src\base\mapper\ChangeSet.js" />
     <Content Include="Client\src\base\mapper\Context.js" />
     <Content Include="Client\src\base\mapper\EventProvider.js" />
     <Content Include="Client\src\base\mapper\ExoGraphEventListener.js" />

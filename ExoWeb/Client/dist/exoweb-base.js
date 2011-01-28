@@ -422,7 +422,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	ExoWeb.config = {
 		 signalTimeout: false,
-		 signalDebug: false
+		 signalDebug: false,
+		 aggressiveLog: false,
+		 useChangeSets: false
 	}
 
 	ExoWeb.trace = {
@@ -6354,18 +6356,133 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	// #endregion
 
+	// #region ChangeSet
+	//////////////////////////////////////////////////
+
+	function ChangeSet(source) {
+		if (!source || source.constructor !== String) {
+			ExoWeb.trace.throwAndLog("changeLog", "Creating a change set requires a string source argument.");
+		}
+
+		this._changes = [];
+		this._source = source;
+	}
+
+	ChangeSet.mixin({
+		add: function(change) {
+			this._changes.push(change);
+		},
+		changes: function() {
+			return this._changes;
+		},
+		serialize: function(filter, thisPtr) {
+			return {
+				source: this._source,
+				changes: filter ? 
+					this._changes.where(filter, thisPtr) :
+					this._changes
+			};
+		},
+		source: function() {
+			return this._source;
+		},
+		truncate: function(filter, thisPtr) {
+			// Discard all changes that match the given filter
+
+			for(var i = 0; i < this._changes.length; i++) {
+				if (!filter || filter.call(thisPtr || this, this._changes[i]) === true) {
+					this._changes.splice(i--, 1);
+				}
+			}
+		}
+	});
+
+	// #endregion
+
+	// #region ChangeLog
+	//////////////////////////////////////////////////
+
+	function ChangeLog() {
+		this._activeSet = null;
+		this._sets = [];
+	}
+
+	ChangeLog.mixin({
+		activeSet: function() {
+			// Returns the active change set.
+
+			return this._activeSet;
+		},
+		add: function(change) {
+			// Adds a new change to the log.
+
+			if (this._activeSet === null) {
+				ExoWeb.trace.throwAndLog("server", "The change log is not currently active.");
+			}
+
+			this._activeSet.add(change);
+		},
+		serialize: function(filter, thisPtr) {
+			// Serializes the log and it's sets, including
+			// those changes that pass the given filter.
+
+			return this._sets.map(function(set) {
+				return set.serialize(filter, thisPtr);
+			});
+		},
+		sets: function() {
+			// Returns the current list of sets.
+
+			return this._sets;
+		},
+		start: function(source) {
+			// Starts a new change set, which means that new changes will
+			// be added to the new set from this point forward.
+
+			if (!source || source.constructor !== String) {
+				ExoWeb.trace.throwAndLog("changeLog", "ChangeLog.start requires a string source argument.");
+			}
+
+			var set = new ChangeSet(source);
+			this._sets.push(set);
+			this._activeSet = set;
+			return set;
+		},
+		truncate: function(filter, thisPtr) {
+			// Removes all change sets where all changes match the given
+			// filter.  If a set contains one or more changes that do NOT
+			// match, the set is left intact with those changes.
+
+			for (var i = 0; i < this._sets.length; i++) {
+				this._sets[i].truncate(filter, thisPtr);
+
+				// If all changes have been removed then discard the set
+				if (this._sets[i].changes().length === 0) {
+					this._sets.splice(i--, 1);
+				}
+			}
+
+			// Start a new change set
+			this.start("client");
+		}
+	});
+
+	// #endregion
+
 	// #region ServerSync
 	//////////////////////////////////////////////////
 
 	function ServerSync(model) {
 		this._model = model;
-		this._changes = [];
+		this._changeLog = new ChangeLog();
 		this._pendingServerEvent = false;
 		this._pendingRoundtrip = false;
 		this._pendingSave = false;
 		this._objectsExcludedFromSave = [];
 		this._translator = new ExoWeb.Translator();
 		this._listener = new ExoGraphEventListener(this._model, this._translator);
+
+		this._changeLog.start("client");
 
 		var applyingChanges = false;
 		this.isApplyingChanges = function ServerSync$isApplyingChanges() {
@@ -6402,134 +6519,36 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	ServerSync.mixin(ExoWeb.Functor.eventing);
 
-	function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
-		var jstype = ExoWeb.Model.Model.getJsType(name, true);
-
-		if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
-			callback.call(thisPtr || this, jstype);
-		}
-		else if (jstype && forceLoad) {
-//				ExoWeb.trace.log("server", "Forcing lazy loading of type \"{0}\".", [name]);
-			ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
-		}
-		else if (!jstype && forceLoad) {
-//				ExoWeb.trace.log("server", "Force creating type \"{0}\".", [name]);
-			ensureJsType(model, name, callback, thisPtr);
-		}
-		else {
-//				ExoWeb.trace.log("server", "Waiting for existance of type \"{0}\".", [name]);
-			$extend(name, function() {
-//					ExoWeb.trace.log("server", "Type \"{0}\" was loaded, now continuing.", [name]);
-				callback.apply(this, arguments);
-			}, thisPtr);
-		}
-	}
-
-	var entitySignals = [];
-
-	var LazyLoadEnum = {
-		None: 0,
-		Force: 1,
-		ForceAndWait: 2
-	};
-
-	function tryGetEntity(model, translator, type, id, property, lazyLoad, callback, thisPtr) {
-		var obj = type.meta.get(translateId(translator, type.meta.get_fullName(), id));
-
-		if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
-			callback.call(thisPtr || this, obj);
-		}
-		else {
-			var objKey = type.meta.get_fullName() + "|" + id;
-			var signal = entitySignals[objKey];
-			if (!signal) {
-				signal = entitySignals[objKey] = new ExoWeb.Signal(objKey);
-
-				// When the signal is created increment its counter once, since
-				// we are only keeping track of whether the object is loaded.
-				signal.pending();
-			}
-
-			// wait until the object is loaded to invoke the callback
-			signal.waitForAll(function() {
-				callback.call(thisPtr || this, type.meta.get(translateId(translator, type.meta.get_fullName(), id)));
-			});
-
-			function done() {
-				if (signal.isActive()) {
-					signal.oneDone();
-				}
-			}
-		
-			if (lazyLoad == LazyLoadEnum.Force) {
-				if (!obj) {
-//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-					obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
-				}
-				done();
-//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				ExoWeb.Model.LazyLoader.eval(obj, property, function() {});
-			}
-			else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
-				if (!obj) {
-//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-					obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
-				}
-//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				ExoWeb.Model.LazyLoader.eval(obj, property, done);
-			}
-			else {
-//					ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-
-				function waitForProperty(obj) {
-					if (property) {
-						// if the property is not initialized then wait
-						var prop = type.meta.property(property, true);
-						if (prop.isInited(obj)) {
-							done();
-						}
-						else {
-//									ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
-							var initHandler = function() {
-//										ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
-								done();
-							};
-
-							// Register the handler once.
-							prop.addChanged(initHandler, obj, true);
-						}
-					}
-					else {
-						done();
-					}
-				}
-
-				// Object is already created but not loaded.
-				if (obj) {
-					waitForProperty(obj);
-				}
-				else {
-					var registeredHandler = function(obj) {
-		//						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
-						if (obj.meta.type === type.meta && obj.meta.id === id) {
-							waitForProperty(obj);
-						}
-					};
-
-					// Register the handler once.
-					model.addObjectRegistered(registeredHandler, true);
-				}
-			}
-		}
-	}
-
-	var aggressiveLog = false;
-
 	var pendingRequests = 0;
 
 	ExoWeb.registerActivity(function() {
 		return pendingRequests > 0;
 	});
+
+	function serializeChanges(includeAllChanges) {
+		var changes = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
+
+		if (ExoWeb.config.useChangeSets) {
+			return changes;
+		}
+		else {
+			var list = [];
+			changes.forEach(function(set) {
+				list.addRange(set.changes);
+			});
+			return list;
+		}
+	}
+
+	function startChangeSet(source) {
+		if (source) {
+			this._changeLog.start(source);
+		}
+		else {
+			this._changeLog.start("unknown");
+			ExoWeb.trace.logWarning("server", "Changes to apply but no source is specified.");
+		}
+	}
 
 	ServerSync.mixin({
 		_addEventHandler: function ServerSync$_addEventHandler(name, handler, includeAutomatic, automaticArgIndex) {
@@ -6578,14 +6597,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 		enableSave: function ServerSync$enableSave(obj) {
 			if (Array.contains(this._objectsExcludedFromSave, obj)) {
 				Array.remove(this._objectsExcludedFromSave, obj);
-				Sys.Observer.raisePropertyChanged(this, "Changes");
+				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 				return true;
 			}
 		},
 		disableSave: function ServerSync$disableSave(obj) {
 			if (!Array.contains(this._objectsExcludedFromSave, obj)) {
 				this._objectsExcludedFromSave.push(obj);
-				Sys.Observer.raisePropertyChanged(this, "Changes");
+				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 				return true;
 			}
 		},
@@ -6649,7 +6668,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				}
 			}
 			// For reference changes additionally check oldValue/newValue
-			else if(change.__type == "ReferenceChange:#ExoGraph"){
+			else if(change.type == "ReferenceChange:#ExoGraph"){
 				var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 				if (oldJsType) {
 					var oldValue = fromExoGraph(change.oldValue, this._translator);
@@ -6678,7 +6697,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			return this.canSaveObject(instanceObj);
 		},
 
-		_handleResult: function ServerSync$handleResult(result, automatic, callback)
+		_handleResult: function ServerSync$handleResult(result, source, automatic, callback)
 		{
 			var signal = new ExoWeb.Signal("Success");
 
@@ -6691,20 +6710,34 @@ Type.registerNamespace("ExoWeb.Mapper");
 						conditionsFromJson(this._model, result.conditions);
 					}
 					ExoWeb.Batch.end(batch);
+				
 					if (result.changes && result.changes.length > 0) {
-						this.applyChanges(result.changes, signal.pending());
+						this.applyChanges(result.changes, source, signal.pending());
+					}
+					else if (source) {
+						// no changes, so record empty set
+						startChangeSet.call(this, source);
+						startChangeSet.call(this, "client");
 					}
 				}), this);
 			}
 			else if (result.changes && result.changes.length > 0) {
-				this.applyChanges(result.changes, signal.pending(function () {
+				this.applyChanges(result.changes, source, signal.pending(function () {
 					if (result.conditions) {
 						conditionsFromJson(this._model, result.conditions);
 					}
 				}, this));
 			}
-			else if (result.conditions) {
-				conditionsFromJson(this._model, result.conditions);
+			else {
+				if (source) {
+					// no changes, so record empty set
+					startChangeSet.call(this, source);
+					startChangeSet.call(this, "client");
+				}
+
+				if (result.conditions) {
+					conditionsFromJson(this._model, result.conditions);
+				}
 			}
 
 			signal.waitForAll(function() {
@@ -6731,10 +6764,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 				event = {};
 			}
 
-			// If includeAllChanges is true, then use all changes including those 
-			// that should not be saved, otherwise only use changes that can be saved.
-			var changes = includeAllChanges ? this._changes : this.get_Changes();
-
 			for(var key in event) {
 				var arg = event[key];
 
@@ -6753,15 +6782,17 @@ Type.registerNamespace("ExoWeb.Mapper");
 				toExoGraph(this._translator, obj),
 				event,
 				paths,
-				changes,
-				this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic),
+				// If includeAllChanges is true, then use all changes including those 
+				// that should not be saved, otherwise only use changes that can be saved.
+				serializeChanges.call(this, includeAllChanges),
+				this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
 				this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
 			);
 		},
-		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, callback, automatic) {
+		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, eventName, callback, automatic) {
 			Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-			this._handleResult(result, automatic, function() {
+			this._handleResult(result, eventName, automatic, function() {
 				this._raiseSuccessEvent("raiseServerEvent", result, automatic);
 
 				if (callback && callback instanceof Function) {
@@ -6819,7 +6850,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			this._raiseBeginEvent("roundtrip", automatic);
 
 			roundtripProvider(
-				this._changes,
+				serializeChanges.call(this),
 				this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic),
 				this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic)
 			);
@@ -6827,7 +6858,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, callback, automatic) {
 			Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-			this._handleResult(result, automatic, function() {
+			this._handleResult(result, "roundtrip", automatic, function() {
 				this._raiseSuccessEvent("roundtrip", result, automatic);
 
 				if (callback && callback instanceof Function) {
@@ -6885,7 +6916,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			saveProvider(
 				toExoGraph(this._translator, root),
-				this.get_Changes(),
+				serializeChanges.call(this, true),
 				this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
 				this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
 			);
@@ -6893,7 +6924,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, callback, automatic) {
 			Sys.Observer.setValue(this, "PendingSave", false);
 
-			this._handleResult(result, automatic, function() {
+			this._handleResult(result, "save", automatic, function() {
 				this._raiseSuccessEvent("save", result, automatic);
 
 				if (callback && callback instanceof Function) {
@@ -7076,37 +7107,20 @@ Type.registerNamespace("ExoWeb.Mapper");
 		///////////////////////////////////////////////////////////////////////
 		_captureChange: function ServerSync$_captureChange(change) {
 			if (!this.isApplyingChanges()) {
-				this._changes.push(change);
-				Sys.Observer.raisePropertyChanged(this, "Changes");
+				this._changeLog.add(change);
+
+				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 
 				if (this._saveInterval)
 					this._queueAutoSave();
 			}
 		},
-		_truncateLog: function ServerSync$_truncateLog(func) {
-			var changed = false;
-
-			if (func && func instanceof Function) {
-				for (var i = 0; i < this._changes.length; i++) {
-					var change = this._changes[i];
-					if (func.call(this, change)) {
-						changed = true;
-						Array.removeAt(this._changes, i);
-						i--;
-					}
-				}
-			}	
-			else {
-				changed = true;
-				Array.clear(this._changes);
-			}
-
-			if (changed) {
-				Sys.Observer.raisePropertyChanged(this, "Changes");
-			}
-		},
-		get_Changes: function ServerSync$get_Changes() {
-			return $transform(this._changes).where(this.canSave, this);
+		get_HasPendingChanges: function ServerSync$get_HasPendingChanges() {
+			return this._changeLog.sets().some(function(set) {
+				return set.changes().some(function(change) {
+					return this.canSave(change);
+				}, this);
+			}, this);
 		},
 		get_PendingAction: function ServerSync$get_PendingAction() {
 			return this._pendingServerEvent || this._pendingRoundtrip || this._pendingSave;
@@ -7147,7 +7161,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 		// APPLY CHANGES
 		///////////////////////////////////////////////////////////////////////
-		applyChanges: function ServerSync$applyChanges(changes, callback, thisPtr) {
+		applyChanges: function ServerSync$applyChanges(changes, source, callback, thisPtr) {
 			if (!changes || !(changes instanceof Array)) {
 				return;
 			}
@@ -7157,6 +7171,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 //					ExoWeb.trace.log("server", "begin applying {length} changes", changes);
 
 				this.beginApplyingChanges();
+
+				startChangeSet.call(this, source);
 
 				var signal = new ExoWeb.Signal("ServerSync.apply");
 
@@ -7213,7 +7229,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 						var ifApplied = (function(applied) {
 							if (recordChange && applied) {
 								newChanges++;
-								this._changes.push(change);
+								this._changeLog.add(change);
 							}
 							callback();
 						}).setScope(this);
@@ -7234,8 +7250,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 							var lookahead = (saveChanges && saveChanges.length > 0 && ignoreCount !== 0);
 							this.applySaveChange(change, lookahead, function() {
 								// changes have been applied so truncate the log to this point
-								this._truncateLog(this.canSave.setScope(this));
-
+								this._changeLog.truncate(this.canSave, this);
+								Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 								ifApplied.apply(this, arguments);
 							});
 						}
@@ -7246,14 +7262,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				signal.waitForAll(function() {
 //						ExoWeb.trace.log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
+					startChangeSet.call(this, "client");
 					this.endApplyingChanges();
 					ExoWeb.Batch.end(batch);
 					if (callback && callback instanceof Function) {
 						callback.call(thisPtr || this);
 					}
 					if (newChanges > 0) {
-//							ExoWeb.trace.log("server", "raising \"Changes\" property change event");
-						Sys.Observer.raisePropertyChanged(this, "Changes");
+						Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 					}
 				}, this);
 			}
@@ -7367,14 +7383,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 		applyRefChange: function ServerSync$applyRefChange(change, callback) {
 //				ExoWeb.trace.log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
-			var returnImmediately = !aggressiveLog;
+			var returnImmediately = !ExoWeb.config.aggressiveLog;
 
-			tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
+			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function(srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
 
 					// Call ballback here if type and instance were
 					// present immediately or aggressive mode is turned on
-					var doCallback = returnImmediately || aggressiveLog;
+					var doCallback = returnImmediately || ExoWeb.config.aggressiveLog;
 
 					// Indicate that type and instance were present immediately
 					returnImmediately = false;
@@ -7414,14 +7430,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 		applyValChange: function ServerSync$applyValChange(change, callback) {
 //				ExoWeb.trace.log("server", "applyValChange", change.instance);
 
-			var returnImmediately = !aggressiveLog;
+			var returnImmediately = !ExoWeb.config.aggressiveLog;
 
-			tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
+			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function(srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
 
 					// Call ballback here if type and instance were
 					// present immediately or aggressive mode is turned on
-					var doCallback = returnImmediately || aggressiveLog;
+					var doCallback = returnImmediately || ExoWeb.config.aggressiveLog;
 
 					// Indicate that type and instance were present immediately
 					returnImmediately = false;
@@ -7450,14 +7466,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 		applyListChange: function ServerSync$applyListChange(change, callback) {
 //				ExoWeb.trace.log("server", "applyListChange", change.instance);
 
-			var returnImmediately = !aggressiveLog;
+			var returnImmediately = !ExoWeb.config.aggressiveLog;
 
-			tryGetJsType(this._model, change.instance.type, change.property, aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
+			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function(srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
 
 					// Call callback here if type and instance were
 					// present immediately or aggressive mode is turned on
-					var doCallback = returnImmediately || aggressiveLog;
+					var doCallback = returnImmediately || ExoWeb.config.aggressiveLog;
 
 					// Indicate that type and instance were present immediately
 					returnImmediately = false;
@@ -8229,6 +8245,127 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 	}
 
+	function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
+		var jstype = ExoWeb.Model.Model.getJsType(name, true);
+
+		if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+			callback.call(thisPtr || this, jstype);
+		}
+		else if (jstype && forceLoad) {
+//				ExoWeb.trace.log("server", "Forcing lazy loading of type \"{0}\".", [name]);
+			ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
+		}
+		else if (!jstype && forceLoad) {
+//				ExoWeb.trace.log("server", "Force creating type \"{0}\".", [name]);
+			ensureJsType(model, name, callback, thisPtr);
+		}
+		else {
+//				ExoWeb.trace.log("server", "Waiting for existance of type \"{0}\".", [name]);
+			$extend(name, function() {
+//					ExoWeb.trace.log("server", "Type \"{0}\" was loaded, now continuing.", [name]);
+				callback.apply(this, arguments);
+			}, thisPtr);
+		}
+	}
+
+	var entitySignals = [];
+
+	var LazyLoadEnum = {
+		None: 0,
+		Force: 1,
+		ForceAndWait: 2
+	};
+
+	function tryGetEntity(model, translator, type, id, property, lazyLoad, callback, thisPtr) {
+		var obj = type.meta.get(translateId(translator, type.meta.get_fullName(), id));
+
+		if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
+			callback.call(thisPtr || this, obj);
+		}
+		else {
+			var objKey = type.meta.get_fullName() + "|" + id;
+			var signal = entitySignals[objKey];
+			if (!signal) {
+				signal = entitySignals[objKey] = new ExoWeb.Signal(objKey);
+
+				// When the signal is created increment its counter once, since
+				// we are only keeping track of whether the object is loaded.
+				signal.pending();
+			}
+
+			// wait until the object is loaded to invoke the callback
+			signal.waitForAll(function() {
+				callback.call(thisPtr || this, type.meta.get(translateId(translator, type.meta.get_fullName(), id)));
+			});
+
+			function done() {
+				if (signal.isActive()) {
+					signal.oneDone();
+				}
+			}
+		
+			if (lazyLoad == LazyLoadEnum.Force) {
+				if (!obj) {
+//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+					obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+				}
+				done();
+//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				ExoWeb.Model.LazyLoader.eval(obj, property, function() {});
+			}
+			else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
+				if (!obj) {
+//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+					obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+				}
+//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				ExoWeb.Model.LazyLoader.eval(obj, property, done);
+			}
+			else {
+//					ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+
+				function waitForProperty(obj) {
+					if (property) {
+						// if the property is not initialized then wait
+						var prop = type.meta.property(property, true);
+						if (prop.isInited(obj)) {
+							done();
+						}
+						else {
+//									ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
+							var initHandler = function() {
+//										ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
+								done();
+							};
+
+							// Register the handler once.
+							prop.addChanged(initHandler, obj, true);
+						}
+					}
+					else {
+						done();
+					}
+				}
+
+				// Object is already created but not loaded.
+				if (obj) {
+					waitForProperty(obj);
+				}
+				else {
+					var registeredHandler = function(obj) {
+		//						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
+						if (obj.meta.type === type.meta && obj.meta.id === id) {
+							waitForProperty(obj);
+						}
+					};
+
+					// Register the handler once.
+					model.addObjectRegistered(registeredHandler, true);
+				}
+			}
+		}
+	}
+
 	// #endregion
 
 	// #region TypeLazyLoader
@@ -8295,7 +8432,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		// NOTE: should changes be included here?
 		objectProvider(mtype.get_fullName(), [id], paths, null,
 			function(result) {
-				mtype.get_model()._server._handleResult(result, true, function() {
+				mtype.get_model()._server._handleResult(result, null, true, function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					pendingObjects--;
 					callback.call(thisPtr || this, obj);

@@ -8,11 +8,19 @@ prefix = File.dirname(__FILE__)
 
 # returns the contents of the given file, with each line
 # indented with the given number of tabs
-def read file, indent=0
+def read file, indent=0, exports=nil
 	result = ""
 	File.open(file, "r") do |f|
 		last_line = nil
 		while (line = f.gets)
+			# ignore export statements
+			if (line =~ /^\s*exports\.(.*\s*=\s*.*;)\s*\/\/\s*IGNORE$/) == 0 then next end
+			# translate export statements
+			if (line =~ /^\s*exports\.(.*\s*=\s*.*;)$/) == 0
+				line = line.sub(/^\s*exports\.(.*\s*=\s*.*;)$/, exports + ".\\1")
+			end
+			# ignore require statements
+			if (line =~ /(var [A-Za-z_$][A-Za-z_$0-9]* = )?require\(/) == 0 then next end
 			# indent all non-empty lines
 			if indent > 0 and (line =~ /\A\s*\Z/) == nil and (line =~ /\A\/\/\t+/) == nil
 				result += ("\t" * indent)
@@ -78,6 +86,8 @@ end
 		EventProvider
 		Translation
 		ExoGraphEventListener
+		ChangeSet
+		ChangeLog
 		ServerSync
 		TriggersRoundtripRule
 		Internals
@@ -116,12 +126,22 @@ end
 	"extensions/dotnet" => %w{WebService}
 }
 
-def build_content(header_args, dir, files, indent)
+@exports = {
+	"base/core" => "ExoWeb",
+	"base/mapper" => "ExoWeb.Mapper",
+	"base/model" => "ExoWeb.Model",
+	"base/view" => "ExoWeb.View",
+	"base/ui" => "ExoWeb.UI",
+	"extensions/jquery-msajax" => nil,
+	"extensions/dotnet" => "ExoWeb.DotNet"
+}
+
+def build_content(header_args, dir, files, indent, exports)
 	return (@header % header_args) +
 		files.map do |file|
 			str = "\n" + ("\t" * indent) + "// #region " + file
 			str += "\n" + ("\t" * indent) + ("/" * 50) + "\n\n"
-			str += read(File.join(dir, file + ".js"), indent)
+			str += read(File.join(dir, file + ".js"), indent, exports)
 			str += "\n" + ("\t" * indent) + "// #endregion\n"
 			str
 		end.join("") +
@@ -132,7 +152,7 @@ task :build_jquery_msajax_plugin do
 	File.open(File.join(@dist_dir, "jquery.exoweb-msajax.js"), "w") do |f|
 		src_dir = File.join(File.join(@src_dir, "extensions"), "jquery-msajax")
 		header = "jquery plugin for msajax helper"
-		f.write(build_content([header], src_dir, @src_files["extensions/jquery-msajax"], 1))
+		f.write(build_content([header], src_dir, @src_files["extensions/jquery-msajax"], 1, @exports["extensions/jquery-msajax"]))
 	end
 	puts("completed build_jquery_msajax_plugin task")
 end
@@ -141,13 +161,13 @@ task :build_msajax_nojquery do
 	File.open(File.join(@dist_dir, "exoweb-msajax-nojquery.js"), "w") do |f|
 		f.write("Type.registerNamespace(\"ExoWeb\");\n")
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
-		
+
 		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet"].each do |name|
 			src_dir = @src_dir
 			names = name.split("/")
 			names.each { |step| src_dir = File.join(src_dir, step) }
 			
-			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1))
+			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1, @exports[name]))
 		end
 	end
 	puts("completed build_msajax_nojquery task")
@@ -163,7 +183,7 @@ task :build_msajax do
 			names = name.split("/")
 			names.each { |step| src_dir = File.join(src_dir, step) }
 			
-			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1))
+			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1, @exports[name]))
 		end
 	end
 	puts("completed build_msajax task")
@@ -179,7 +199,7 @@ task :build_base do
 			names = name.split("/")
 			names.each { |step| src_dir = File.join(src_dir, step) }
 			
-			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1))
+			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1, @exports[name]))
 		end
 	end
 	puts("completed build_base task")
