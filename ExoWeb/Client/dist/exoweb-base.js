@@ -8181,7 +8181,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			fetchType(model, query.from, signal.pending(rootTypeLoaded));
 		}
 		else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
-			$extend(rootType.get_fullName(), rootTypeLoaded);
+			ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
 		}
 		else {
 			rootTypeLoaded(rootType.get_jstype());
@@ -8593,8 +8593,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 		//this is for the client only implementation of ExoWeb.  The normal paradigm of passing types as an array
 		//will load the types and instance data asyc.
 		if (options.types && options.types instanceof Object) {
-		    //instead of fetching the types from the server use the embedded json.
-		    typesFromJson(model, options.types)
+			//instead of fetching the types from the server use the embedded json.
+			typesFromJson(model, options.types)
 		}
 
 		if (options.model) {
@@ -8682,14 +8682,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 				})(varNameLoad);
 			}
 
-	        //only fetch the types if they are not embedded
-	        //if the types are embedded then fetching the types from server will
-	        //cause a signal to be created that will never be processed.
-	        if (options.types && options.types instanceof Array) {
-	            for (var varNameTypes in options.model) {
-	                fetchTypes(model, options.model[varNameTypes], state[varNameTypes].signal.pending());
-	            }
-	        }
+			//only fetch the types if they are not embedded
+			//if the types are embedded then fetching the types from server will
+			//cause a signal to be created that will never be processed.
+			if (options.types && options.types instanceof Array) {
+				for (var varNameTypes in options.model) {
+					fetchTypes(model, options.model[varNameTypes], state[varNameTypes].signal.pending());
+				}
+			}
 
 			// process instances as they finish loading
 			for (var varNameFinish in options.model) {
@@ -8744,9 +8744,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 
 
-	    // load types if they are in array format.  This is for the full server/client model of ExoWeb
-	    //to load the types and isntance data async
-	    if (options.types && options.types instanceof Array) {
+		// load types if they are in array format.  This is for the full server/client model of ExoWeb
+		//to load the types and isntance data async
+		if (options.types && options.types instanceof Array) {
 			// allow specifying types and paths apart from instance data
 			for (var i = 0; i < options.types.length; i++) {
 				var typeQuery = options.types[i];
