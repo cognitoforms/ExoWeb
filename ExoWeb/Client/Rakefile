@@ -79,6 +79,7 @@ end
 
 	"base/mapper" => %w{
 		ObjectProvider
+		QueryProvider
 		TypeProvider
 		ListProvider
 		RoundtripProvider

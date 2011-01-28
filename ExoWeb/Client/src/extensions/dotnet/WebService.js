@@ -56,6 +56,15 @@ ExoWeb.Mapper.setObjectProvider(function objectProviderFn(type, ids, paths, chan
 	}, onSuccess, onFailure);
 });
 
+ExoWeb.Mapper.setQueryProvider(function queryProviderFn(queries, changes, onSuccess, onFailure) {
+	request({
+		changes: changes,
+		queries: queries.map(function(q) {
+			return { type: q.from, ids: [q.id], paths: q.and || [] };
+		})
+	}, onSuccess, onFailure);
+});
+
 ExoWeb.Mapper.setSaveProvider(function saveProviderFn(root, changes, onSuccess, onFailure) {
 	request({
 		events:[{type: "Save", instance: root}],

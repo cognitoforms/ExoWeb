@@ -5,10 +5,24 @@ function setErrorHandler(fn) {
 ExoWeb.setErrorHandler = setErrorHandler;
 
 ExoWeb.config = {
-	 signalTimeout: false,
-	 signalDebug: false,
-	 aggressiveLog: false,
-	 useChangeSets: false
+	// Indicates that signal should use window.setTimeout when invoking callbacks. This is
+	// done in order to get around problems with browser complaining about long-running script.
+	signalTimeout: false,
+
+	// "Debugging" signal means that signal will not attempt to handle errors that occur
+	// as a result of invoking callbacks, which can aid in troubleshooting errors.
+	signalDebug: false,
+
+	// Causes change log processing to behave more aggressively, meaning that types and
+	// instances will be aggressively loaded as they are encountered.
+	aggressiveLog: false,
+
+	// Changes are tracked as sets corresponding to periods of alternating client changes and server
+	// changes due to events, save, etc. This setting enables sending changes in this form to the server.
+	useChangeSets: false,
+
+	// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
+	individualQueryLoading: false
 }
 
 ExoWeb.trace = {

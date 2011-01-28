@@ -152,6 +152,7 @@
     <Content Include="Client\src\base\mapper\ListProvider.js" />
     <Content Include="Client\src\base\mapper\ObjectLazyLoader.js" />
     <Content Include="Client\src\base\mapper\ObjectProvider.js" />
+    <Content Include="Client\src\base\mapper\QueryProvider.js" />
     <Content Include="Client\src\base\mapper\RoundtripProvider.js" />
     <Content Include="Client\src\base\mapper\SaveProvider.js" />
     <Content Include="Client\src\base\mapper\ServerSync.js" />
