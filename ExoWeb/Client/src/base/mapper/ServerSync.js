@@ -122,7 +122,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		else {
 //					ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
-			function waitForProperty() {
+			function waitForProperty(obj) {
 				if (property) {
 					// if the property is not initialized then wait
 					var prop = type.meta.property(property, true);
@@ -147,13 +147,13 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 
 			// Object is already created but not loaded.
 			if (obj) {
-				waitForProperty();
+				waitForProperty(obj);
 			}
 			else {
 				var registeredHandler = function(obj) {
 	//						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
 					if (obj.meta.type === type.meta && obj.meta.id === id) {
-						waitForProperty();
+						waitForProperty(obj);
 					}
 				};
 
