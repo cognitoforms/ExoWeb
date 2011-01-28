@@ -24,7 +24,7 @@ function createContext(options, context) {
 	//load up the embedded types first to avoiding timing issues with loading instance data and types at the same time
 	//this is for the client only implementation of ExoWeb.  The normal paradigm of passing types as an array
 	//will load the types and instance data asyc.
-	if (options.types && options.types instanceof Object) {
+	if (options.types && !(options.types instanceof Array)) {
 		//instead of fetching the types from the server use the embedded json.
 		typesFromJson(model, options.types)
 	}
