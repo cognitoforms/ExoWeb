@@ -201,7 +201,7 @@ namespace ExoWeb
 				return jsonType;
 
 			// For unknown values types, return the object type
-			if (IsWcfSerializable(type))
+			if (ExoWeb.IsSerializable(type))
 				return "Object";
 
 			return null;
@@ -218,22 +218,6 @@ namespace ExoWeb
 			for (GraphType t = type; t != null; t = t.BaseType)
 				jsonType += (string.IsNullOrEmpty(jsonType) ? "" : ">") + t.Name;
 			return jsonType;
-		}
-
-		/// <summary>
-		/// Indicates whether the specified type can be serialized using WCF.
-		/// </summary>
-		/// <param name="type"></param>
-		/// <returns></returns>
-		internal static bool IsWcfSerializable(Type type)
-		{
-			object[] attributes = type.GetCustomAttributes(false);
-
-			foreach (object attribute in attributes)
-				if (attribute is DataContractAttribute || attribute is CollectionDataContractAttribute)
-					return true;
-
-			return false;
 		}
 
 		#endregion
@@ -273,7 +257,7 @@ namespace ExoWeb
 	/// Supports conversion to JSON of types implementing <see cref="IJsonConverter"/> or having
 	/// <see cref="DataContractAttribute"/> used for enabling WCF serialization.
 	/// </summary>
-	internal class JsonConverter<TType> : JsonConverter
+	public class JsonConverter<TType> : JsonConverter
 		where TType : class
 	{
 		public JsonConverter(Action<TType, Json> serialize, Func<Json, TType> deserialize)

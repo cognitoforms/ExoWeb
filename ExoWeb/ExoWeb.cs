@@ -8,6 +8,8 @@ using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
 using ExoRule.Validation;
 using ExoRule;
+using System.Collections;
+using System.Runtime.Serialization;
 
 namespace ExoWeb
 {
@@ -18,6 +20,7 @@ namespace ExoWeb
 		static readonly Regex dateRegex = new Regex("\"\\\\/Date\\((?<ticks>-?[0-9]+)(?:[a-zA-Z]|(?:\\+|-)[0-9]{4})?\\)\\\\/\"", RegexOptions.Compiled);
 		static string cacheHash;
 		static JavaScriptSerializer serializer;
+		static HashSet<Type> serializableTypes;
 		static MethodInfo deserialize;
 		static long minJsonTicks = new DateTime(0x7b2, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
 
@@ -131,10 +134,19 @@ namespace ExoWeb
 		/// <returns>A boolean value indicating whether to include the property.</returns>
 		internal static bool IncludeInClientModel(GraphProperty property)
 		{
-			return !(property is GraphValueProperty) ||
+			return !(property is GraphValueProperty) ||				
 				JsonConverter.GetJsonValueType(((GraphValueProperty)property).PropertyType) != null;
 		}
 
+		/// <summary>
+		/// Manually registers a type to be included in list of allowable serializable type.  Use this method to use default serialization
+		/// </summary>
+		/// <param name="type"></param>
+		public static void RegisterSerializableValueType(Type type)
+		{
+			serializableTypes.Add(type);
+		}
+		 
 		internal static string FixJsonDates(string json)
 		{
 			return dateRegex.Replace(json,
@@ -145,6 +157,12 @@ namespace ExoWeb
 				});
 		}
 
+		public static void RegisterConverters(IEnumerable<JavaScriptConverter> converters)
+		{
+			serializer.RegisterConverters(converters);
+			serializableTypes.UnionWith(converters.SelectMany(c => c.SupportedTypes));
+		}
+
         public static string ProcessRequest(string json)
         {
             ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
@@ -153,8 +171,19 @@ namespace ExoWeb
 
 		public static void RegisterForSerialization(Assembly assembly)
 		{
-			serializer.RegisterConverters(JsonConverter.Infer(assembly.GetTypes()).Cast<JavaScriptConverter>());
+			RegisterConverters(JsonConverter.Infer(assembly.GetTypes()).Cast<JavaScriptConverter>());
 		}
+
+		/// <summary>
+		/// Indicates whether the specified type can be serialized.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <returns></returns>
+		internal static bool IsSerializable(Type type)
+		{
+			return serializableTypes.Contains(type);
+		}
+
 
 		public static string Load(string type, string id, params string[] paths)
 		{
@@ -250,18 +279,18 @@ namespace ExoWeb
 			}
 			return normalized.ToArray();
 		}
-
 		#endregion
-
+		
 		#region JSON Serialization
 
 		static void InitializeSerialization()
 		{
 			serializer = new JavaScriptSerializer();
+			serializableTypes = new HashSet<Type>();
 
 			// Register converters for types implementing IJsonSerializable or that have DataContract attributes
 			// Include all types in ExoWeb and ExoRule automatically
-			serializer.RegisterConverters(JsonConverter.Infer(
+			RegisterConverters(JsonConverter.Infer(
 				typeof(ServiceHandler).Assembly.GetTypes().Union(
 				typeof(Rule).Assembly.GetTypes().Where(type => typeof(Rule).IsAssignableFrom(type))))
 				.Cast<JavaScriptConverter>());
@@ -309,7 +338,7 @@ namespace ExoWeb
 				null);
 
 			// Register custom converters for GraphType, GraphProperty, GraphMethod, GraphInstance, GraphEvent
-			serializer.RegisterConverters(
+			RegisterConverters(
 				new JavaScriptConverter[] 
 			{
 				// Graph Type
@@ -342,7 +371,7 @@ namespace ExoWeb
 					{
 						// Type
 						json.Set("type", (property is GraphValueProperty ?
-							JsonConverter.GetJsonValueType(((GraphValueProperty)property).PropertyType) :
+							JsonConverter.GetJsonValueType(((GraphValueProperty)property).PropertyType) ?? "Object" :
 							JsonConverter.GetJsonReferenceType(((GraphReferenceProperty)property).PropertyType)) +
 							(property.IsList ? "[]" : ""));
 
