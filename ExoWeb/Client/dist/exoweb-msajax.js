@@ -7717,13 +7717,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	}
 
-	function conditionsFromJson(model, json, callback) {
+	function conditionsFromJson(model, json, callback, thisPtr) {
 		for (var code in json) {
 			conditionFromJson(model, code, json[code]);
 		}
 
 		if (callback && callback instanceof Function) {
-			callback();
+			callback.call(thisPtr || this);
 		}
 	}
 
@@ -7735,7 +7735,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		Array.forEach(json, function(condition) {
-
 			Array.forEach(condition.targets, function(target) {
 				var inst = fromExoGraph(target.instance, model._server._translator);
 				if (inst)
