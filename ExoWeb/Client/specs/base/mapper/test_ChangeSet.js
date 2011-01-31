@@ -94,6 +94,22 @@ describe("ChangeSet", function() {
 		});
 	});
 	
+	it("returns the last change added", function() {
+		expect(this.set.lastChange()).toBe(3);
+	});
+	
+	it("returns null if undo is called and there are no changes", function() {
+		var set = new ChangeSet("test");
+		expect(set.undo()).toEqual(null);
+	});
+
+	it("undo removes and returns the last change", function() {
+		var lastChange = this.set.lastChange();
+		var change = this.set.undo();
+		expect(this.set.changes().length).toBe(2);
+		expect(change).toBe(lastChange);
+	});
+
 	it("discards all sets and changes when truncated", function() {
 		this.set.truncate();
 		expect(this.set.changes().length).toBe(0);

@@ -94,6 +94,42 @@ describe("ChangeLog", function() {
 		]);
 	});
 	
+	it("returns the last change added", function() {
+		expect(this.log.lastChange()).toBe(3);
+	});
+	
+	it("returns null if undo is called and there are no changes", function() {
+		var log = new ChangeLog();
+		log.start("test");
+		expect(log.undo()).toEqual(null);
+	});
+
+	it("cannot undo if the log is not active", function() {
+		expect(function() {
+			(new ChangeLog()).undo();
+		}).toThrow("The change log is not currently active.");
+	});
+
+	it("undo removes and returns the last change", function() {
+		var lastChange = this.log.lastChange();
+		var change = this.log.undo();
+		expect(this.log.sets().length).toBe(2);
+		expect(this.log.activeSet().source()).toBe("test2");
+		expect(this.log.activeSet().changes().length).toBe(0);
+		expect(change).toBe(lastChange);
+	});
+
+	it("undo steps over empty sets", function() {
+		// create an empty set
+		this.log.start("test3");
+
+		var change = this.log.undo();
+		expect(this.log.sets().length).toBe(2);
+		expect(this.log.activeSet().source()).toBe("test2");
+		expect(this.log.activeSet().changes().length).toBe(0);
+		expect(change).toBe(3);
+	});
+
 	it("discards all sets and changes when truncated, creating a new \"client\" set", function() {
 		this.log.truncate();
 

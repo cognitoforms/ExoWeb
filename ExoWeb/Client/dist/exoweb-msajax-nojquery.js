@@ -6417,6 +6417,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		changes: function() {
 			return this._changes;
 		},
+		lastChange: function() {
+			return this._changes.length > 0 ? this._changes[this._changes.length - 1] : null;
+		},
 		serialize: function(filter, thisPtr) {
 			return {
 				source: this._source,
@@ -6436,6 +6439,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 					this._changes.splice(i--, 1);
 				}
 			}
+		},
+		undo: function() {
+			if (this._changes.length > 0) {
+				var change = this._changes[this._changes.length - 1];
+				this._changes.splice(this._changes.length - 1, 1);
+				return change;
+			}
+
+			return null;
 		}
 	});
 
@@ -6463,6 +6475,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			this._activeSet.add(change);
+		},
+		lastChange: function() {
+			for (var i = this._sets.length - 1; i >= 0; i--) {
+				var set = this._sets[i];
+				var change = set.lastChange();
+				if (change !== null && change !== undefined) {
+					return change;
+				}
+			}
+
+			return null;
 		},
 		serialize: function(filter, thisPtr) {
 			// Serializes the log and it's sets, including
@@ -6501,11 +6524,36 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// If all changes have been removed then discard the set
 				if (this._sets[i].changes().length === 0) {
 					this._sets.splice(i--, 1);
+					if (this._sets[i] === this._activeSet) {
+						this._activeSet = null;
+					}
 				}
 			}
 
 			// Start a new change set
 			this.start("client");
+		},
+		undo: function() {
+			if (!this._activeSet) {
+				ExoWeb.trace.throwAndLog("server", "The change log is not currently active.");
+			}
+		
+			var currentSet = this._activeSet,
+				currentSetIndex = this._sets.indexOf(currentSet);
+
+			while(currentSet.changes().length === 0) {
+				// remove the set from the log
+				this._sets.splice(currentSetIndex, 1);
+
+				if (--currentSetIndex < 0) {
+					return null;
+				}
+
+				currentSet = this._sets[currentSetIndex];
+				this._activeSet = currentSet;
+			}
+
+			return currentSet.undo();
 		}
 	});
 
@@ -6568,17 +6616,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	function serializeChanges(includeAllChanges) {
-		var changes = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
-
 		if (ExoWeb.config.useChangeSets) {
-			return changes;
+			return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
 		}
 		else {
-			var list = [];
-			changes.forEach(function(set) {
-				list.addRange(set.changes);
-			});
-			return list;
+			return this.get_Changes(includeAllChanges, true);
 		}
 	}
 
@@ -7037,12 +7079,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Rollback
 		///////////////////////////////////////////////////////////////////////
 		rollback: function ServerSync$rollback(steps, callback) {
-			var changes = this._changes;
 			var depth = 0;
-
-			if (!changes || !(changes instanceof Array)) {
-				return;
-			}
 
 			try {
 //					ExoWeb.trace.log("server", "ServerSync.rollback() >> {0}", steps);
@@ -7055,7 +7092,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					var change = null;
 
 					if (steps === undefined || depth < steps) {
-						change = changes.pop();
+						change = this._changeLog.undo();
 					}
 
 					if (change) {
@@ -7087,6 +7124,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 					if (callback && callback instanceof Function) {
 						callback();
 					}
+
+					Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 				}, this);
 			}
 			catch (e) {
@@ -7156,6 +7195,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (this._saveInterval)
 					this._queueAutoSave();
 			}
+		},
+		get_Changes: function ServerSync$get_Changes(includeAllChanges/*, ignoreWarning*/) {
+			if (arguments.length < 2 || arguments[1] !== true) {
+				ExoWeb.trace.logWarning("server", "Method get_Changes is not intended for long-term use - it will be removed in the near future.");
+			}
+
+			var list = [];
+			var sets = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
+			sets.forEach(function(set) {
+				list.addRange(set.changes);
+			});
+			return list;
 		},
 		get_HasPendingChanges: function ServerSync$get_HasPendingChanges() {
 			return this._changeLog.sets().some(function(set) {

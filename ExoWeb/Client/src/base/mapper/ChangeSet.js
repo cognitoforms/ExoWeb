@@ -14,6 +14,9 @@ ChangeSet.mixin({
 	changes: function() {
 		return this._changes;
 	},
+	lastChange: function() {
+		return this._changes.length > 0 ? this._changes[this._changes.length - 1] : null;
+	},
 	serialize: function(filter, thisPtr) {
 		return {
 			source: this._source,
@@ -33,6 +36,15 @@ ChangeSet.mixin({
 				this._changes.splice(i--, 1);
 			}
 		}
+	},
+	undo: function() {
+		if (this._changes.length > 0) {
+			var change = this._changes[this._changes.length - 1];
+			this._changes.splice(this._changes.length - 1, 1);
+			return change;
+		}
+
+		return null;
 	}
 });
 exports.ChangeSet = ChangeSet; // IGNORE

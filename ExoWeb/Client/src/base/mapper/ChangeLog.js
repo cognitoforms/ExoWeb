@@ -18,6 +18,17 @@ ChangeLog.mixin({
 
 		this._activeSet.add(change);
 	},
+	lastChange: function() {
+		for (var i = this._sets.length - 1; i >= 0; i--) {
+			var set = this._sets[i];
+			var change = set.lastChange();
+			if (change !== null && change !== undefined) {
+				return change;
+			}
+		}
+
+		return null;
+	},
 	serialize: function(filter, thisPtr) {
 		// Serializes the log and it's sets, including
 		// those changes that pass the given filter.
@@ -55,11 +66,36 @@ ChangeLog.mixin({
 			// If all changes have been removed then discard the set
 			if (this._sets[i].changes().length === 0) {
 				this._sets.splice(i--, 1);
+				if (this._sets[i] === this._activeSet) {
+					this._activeSet = null;
+				}
 			}
 		}
 
 		// Start a new change set
 		this.start("client");
+	},
+	undo: function() {
+		if (!this._activeSet) {
+			ExoWeb.trace.throwAndLog("server", "The change log is not currently active.");
+		}
+		
+		var currentSet = this._activeSet,
+			currentSetIndex = this._sets.indexOf(currentSet);
+
+		while(currentSet.changes().length === 0) {
+			// remove the set from the log
+			this._sets.splice(currentSetIndex, 1);
+
+			if (--currentSetIndex < 0) {
+				return null;
+			}
+
+			currentSet = this._sets[currentSetIndex];
+			this._activeSet = currentSet;
+		}
+
+		return currentSet.undo();
 	}
 });
 exports.ChangeLog = ChangeLog; // IGNORE

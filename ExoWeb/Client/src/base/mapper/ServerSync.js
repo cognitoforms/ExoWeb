@@ -52,17 +52,11 @@ ExoWeb.registerActivity(function() {
 });
 
 function serializeChanges(includeAllChanges) {
-	var changes = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
-
 	if (ExoWeb.config.useChangeSets) {
-		return changes;
+		return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
 	}
 	else {
-		var list = [];
-		changes.forEach(function(set) {
-			list.addRange(set.changes);
-		});
-		return list;
+		return this.get_Changes(includeAllChanges, true);
 	}
 }
 
@@ -521,12 +515,7 @@ ServerSync.mixin({
 	// Rollback
 	///////////////////////////////////////////////////////////////////////
 	rollback: function ServerSync$rollback(steps, callback) {
-		var changes = this._changes;
 		var depth = 0;
-
-		if (!changes || !(changes instanceof Array)) {
-			return;
-		}
 
 		try {
 //					ExoWeb.trace.log("server", "ServerSync.rollback() >> {0}", steps);
@@ -539,7 +528,7 @@ ServerSync.mixin({
 				var change = null;
 
 				if (steps === undefined || depth < steps) {
-					change = changes.pop();
+					change = this._changeLog.undo();
 				}
 
 				if (change) {
@@ -571,6 +560,8 @@ ServerSync.mixin({
 				if (callback && callback instanceof Function) {
 					callback();
 				}
+
+				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 			}, this);
 		}
 		catch (e) {
@@ -640,6 +631,18 @@ ServerSync.mixin({
 			if (this._saveInterval)
 				this._queueAutoSave();
 		}
+	},
+	get_Changes: function ServerSync$get_Changes(includeAllChanges/*, ignoreWarning*/) {
+		if (arguments.length < 2 || arguments[1] !== true) {
+			ExoWeb.trace.logWarning("server", "Method get_Changes is not intended for long-term use - it will be removed in the near future.");
+		}
+
+		var list = [];
+		var sets = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
+		sets.forEach(function(set) {
+			list.addRange(set.changes);
+		});
+		return list;
 	},
 	get_HasPendingChanges: function ServerSync$get_HasPendingChanges() {
 		return this._changeLog.sets().some(function(set) {
