@@ -7914,8 +7914,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// define condition types
 		if (json.conditionTypes)
 			conditionTypesFromJson(model, mtype, json.conditionTypes);
-
-		TypeLazyLoader.unregister(mtype);
 	}
 
 	function conditionTypesFromJson(model, mtype, json) {
