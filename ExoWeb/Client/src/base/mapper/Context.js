@@ -168,10 +168,10 @@ function createContext(options, context) {
 		//only fetch the types if they are not embedded
 		//if the types are embedded then fetching the types from server will
 		//cause a signal to be created that will never be processed.
-		if (options.types && options.types instanceof Array) {
-			for (var varNameTypes in options.model) {
-				fetchTypes(model, options.model[varNameTypes], state[varNameTypes].signal.pending());
-			}
+		if (!options.types || options.types instanceof Array) {
+			eachVar(options.model, function(varName, query) {
+				fetchTypes(model, query, state[varName].signal.pending());
+			});
 		}
 
 		// 4) Process instances as they finish loading
