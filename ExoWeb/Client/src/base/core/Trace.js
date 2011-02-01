@@ -5,6 +5,9 @@ function setErrorHandler(fn) {
 ExoWeb.setErrorHandler = setErrorHandler;
 
 ExoWeb.config = {
+	// General debug setting that can encompose the purpose of other more focused settings.
+	debug: false,
+
 	// Indicates that signal should use window.setTimeout when invoking callbacks. This is
 	// done in order to get around problems with browser complaining about long-running script.
 	signalTimeout: false,

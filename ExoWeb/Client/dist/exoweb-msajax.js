@@ -424,6 +424,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ExoWeb.setErrorHandler = setErrorHandler;
 
 	ExoWeb.config = {
+		// General debug setting that can encompose the purpose of other more focused settings.
+		debug: false,
+
 		// Indicates that signal should use window.setTimeout when invoking callbacks. This is
 		// done in order to get around problems with browser complaining about long-running script.
 		signalTimeout: false,
@@ -898,16 +901,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._genCallback(callback, thisPtr, executeImmediately);
 		},
 		_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
-			if (ExoWeb.config.signalDebug) {
+			if (ExoWeb.config.signalDebug === true || ExoWeb.config.debug === true) {
+				doCallback.apply(this, arguments);
+			}
+			else {
 				try {
 					doCallback.apply(this, arguments);
 				}
 				catch (e) {
 					logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
 				}
-			}
-			else {
-				doCallback.apply(this, arguments);
 			}
 		},
 		_genCallback: function Signal$_genCallback(callback, thisPtr, executeImmediately) {
