@@ -96,6 +96,7 @@ end
 		ObjectLazyLoader
 		ListLazyLoader
 		Context
+		ExoWeb
 		Extend},
 
 	"base/ui" => %w{
