@@ -5996,16 +5996,21 @@ Type.registerNamespace("ExoWeb.Mapper");
 		throw "Object provider has not been implemented.  Call ExoWeb.Mapper.setObjectProvider(fn);";
 	};
 
-	function objectProvider(type, ids, paths, changes, onSuccess, onFailure) {
+	function objectProvider(type, ids, paths, changes, onSuccess, onFailure, thisPtr) {
+		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+			thisPtr = onFailure;
+			onFailure = null;
+		}
+
 		var batch = ExoWeb.Batch.suspendCurrent("objectProvider");
 		objectProviderFn.call(this, type, ids, paths, changes,
 			function objectProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(this, arguments);
+				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
 			},
 			function objectProviderFailure() {
 				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(this, arguments);
+				if (onFailure) onFailure.apply(thisPtr || this, arguments);
 			});
 	}
 	ExoWeb.Mapper.setObjectProvider = function setObjectProvider(fn) {
@@ -6021,18 +6026,24 @@ Type.registerNamespace("ExoWeb.Mapper");
 		throw "Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);";
 	};
 
-	function queryProvider(queries, changes, onSuccess, onFailure) {
+	function queryProvider(queries, changes, onSuccess, onFailure, thisPtr, thisPtr) {
+		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+			thisPtr = onFailure;
+			onFailure = null;
+		}
+
 		var batch = ExoWeb.Batch.suspendCurrent("queryProvider");
 		queryProviderFn.call(this, queries, changes,
 			function queryProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(this, arguments);
+				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
 			},
 			function queryProviderFailure() {
 				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(this, arguments);
+				if (onFailure) onFailure.apply(thisPtr || this, arguments);
 			});
 	}
+
 	ExoWeb.Mapper.setQueryProvider = function setQueryProvider(fn) {
 		queryProviderFn = fn;
 	};
@@ -6046,22 +6057,29 @@ Type.registerNamespace("ExoWeb.Mapper");
 		throw "Type provider has not been implemented.  Call ExoWeb.Mapper.setTypeProvider(fn);";
 	};
 
-	function typeProvider(type, onSuccess, onFailure) {
+	function typeProvider(type, onSuccess, onFailure, thisPtr) {
+		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+			thisPtr = onFailure;
+			onFailure = null;
+		}
+
 		var batch = ExoWeb.Batch.suspendCurrent("typeProvider");
 		var cachedType = ExoWeb.cache(type);
-		if (cachedType)
-			onSuccess(cachedType);
-		else
+		if (cachedType) {
+			onSuccess.call(thisPtr || this, cachedType);
+		}
+		else {
 			typeProviderFn.call(this, type,
 				function typeProviderSuccess() {
 					ExoWeb.Batch.resume(batch);
 					ExoWeb.cache(type, arguments[0]);
-					if (onSuccess) onSuccess.apply(this, arguments);
+					if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
 				},
 				function typeProviderFailure() {
 					ExoWeb.Batch.resume(batch);
-					if (onFailure) onFailure.apply(this, arguments);
+					if (onFailure) onFailure.apply(thisPtr || this, arguments);
 				});
+		}
 	}
 	ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 		typeProviderFn = fn;
@@ -6075,7 +6093,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 	var listProviderFn = function listProvider(ownerType, ownerId, paths, onSuccess, onFailure) {
 		throw "List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);";
 	};
-	function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure) {
+
+	function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure, thisPtr) {
+		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+			thisPtr = onFailure;
+			onFailure = null;
+		}
+
 		var batch = ExoWeb.Batch.suspendCurrent("listProvider");
 
 		var listPath = (ownerId == "static" ? ownerType : "this") + "." + listProp;
@@ -6091,13 +6115,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 		listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths,
 			function listProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(this, arguments);
+				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
 			},
 			function listProviderFailure() {
 				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(this, arguments);
+				if (onFailure) onFailure.apply(thisPtr || this, arguments);
 			});
 	}
+
 	ExoWeb.Mapper.setListProvider = function setListProvider(fn) {
 		listProviderFn = fn;
 	};
@@ -6110,18 +6135,25 @@ Type.registerNamespace("ExoWeb.Mapper");
 	var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
 		throw "Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);";
 	};
-	function roundtripProvider(changes, onSuccess, onFailure) {
+
+	function roundtripProvider(changes, onSuccess, onFailure, thisPtr) {
+		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+			thisPtr = onFailure;
+			onFailure = null;
+		}
+
 		var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
 		roundtripProviderFn.call(this, changes,
 			function roundtripProviderSucess() {
 				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(this, arguments);
+				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
 			},
 			function roundtripProviderFailure() {
 				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(this, arguments);
+				if (onFailure) onFailure.apply(thisPtr || this, arguments);
 			});
 	}
+
 	ExoWeb.Mapper.setRoundtripProvider = function setRoundtripProvider(fn) {
 		roundtripProviderFn = fn;
 	};
@@ -6134,18 +6166,25 @@ Type.registerNamespace("ExoWeb.Mapper");
 	var saveProviderFn = function saveProviderFn(root, changes, onSuccess, onFailure) {
 		throw "Save provider has not been implemented.  Call ExoWeb.Mapper.setSaveProvider(fn);";
 	};
-	function saveProvider(root, changes, onSuccess, onFailure) {
+
+	function saveProvider(root, changes, onSuccess, onFailure, thisPtr) {
+		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+			thisPtr = onFailure;
+			onFailure = null;
+		}
+
 		var batch = ExoWeb.Batch.suspendCurrent("saveProvider");
 		saveProviderFn.call(this, root, changes,
 			function saveProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(this, arguments);
+				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
 			},
 			function saveProviderFailure() {
 				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(this, arguments);
+				if (onFailure) onFailure.apply(thisPtr || this, arguments);
 			});
 	}
+
 	ExoWeb.Mapper.setSaveProvider = function setSaveProvider(fn) {
 		saveProviderFn = fn;
 	};
@@ -6159,18 +6198,24 @@ Type.registerNamespace("ExoWeb.Mapper");
 		throw "Event provider has not been implemented.  Call ExoWeb.Mapper.setEventProvider(fn);";
 	};
 
-	function eventProvider(eventType, instance, event, paths, changes, onSuccess, onFailure) {
+	function eventProvider(eventType, instance, event, paths, changes, onSuccess, onFailure, thisPtr) {
+		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+			thisPtr = onFailure;
+			onFailure = null;
+		}
+
 		var batch = ExoWeb.Batch.suspendCurrent("eventProvider");
 		eventProviderFn.call(this, eventType, instance, event, paths, changes,
 			function eventProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(this, arguments);
+				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
 			},
 			function eventProviderFailure() {
 				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(this, arguments);
+				if (onFailure) onFailure.apply(thisPtr || this, arguments);
 			});
 	}
+
 	ExoWeb.Mapper.setEventProvider = function setEventProvider(fn) {
 		eventProviderFn = fn;
 	};
