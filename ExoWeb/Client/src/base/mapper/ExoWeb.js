@@ -1,4 +1,4 @@
-var activateDom = false;
+Sys.activateDom = false;
 
 // object constant to single to mapper to create a new instance rather than load one
 var newId = "$newId";
