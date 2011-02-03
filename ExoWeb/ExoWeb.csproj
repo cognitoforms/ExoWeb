@@ -114,12 +114,14 @@
     <Content Include="Client\dist\exoweb.templates.htm" />
     <Content Include="Client\dist\jquery.exoweb-msajax.js" />
     <Content Include="Client\dist\json2.js" />
+    <Content Include="Client\specs\base\core\test_FunctionChain.js" />
     <Content Include="Client\specs\base\core\test_Batch.js" />
     <Content Include="Client\specs\base\core\test_Function.js" />
     <Content Include="Client\specs\base\core\test_Signal.js" />
     <Content Include="Client\specs\base\core\test_Translator.js" />
     <Content Include="Client\specs\base\mapper\test_ChangeSet.js" />
     <Content Include="Client\specs\base\mapper\test_ChangeLog.js" />
+    <Content Include="Client\specs\base\mapper\test_ResponseHandler.js" />
     <Content Include="Client\specs\base\model\test_PathTokens.js" />
     <Content Include="Client\specs\jasmine.console.js" />
     <Content Include="Client\specs\jasmine.js" />
@@ -130,6 +132,7 @@
     <Content Include="Client\src\base\core\EvalWrapper.js" />
     <Content Include="Client\src\base\core\EventQueue.js" />
     <Content Include="Client\src\base\core\Function.js" />
+    <Content Include="Client\src\base\core\FunctionChain.js" />
     <Content Include="Client\src\base\core\Functor.js" />
     <Content Include="Client\src\base\core\MsAjax.js" />
     <Content Include="Client\src\base\core\Object.js" />
@@ -144,6 +147,7 @@
     <Content Include="Client\src\base\mapper\ChangeLog.js" />
     <Content Include="Client\src\base\mapper\ChangeSet.js" />
     <Content Include="Client\src\base\mapper\Context.js" />
+    <Content Include="Client\src\base\mapper\ContextQuery.js" />
     <Content Include="Client\src\base\mapper\EventProvider.js" />
     <Content Include="Client\src\base\mapper\ExoGraphEventListener.js" />
     <Content Include="Client\src\base\mapper\ExoWeb.js" />
@@ -154,6 +158,7 @@
     <Content Include="Client\src\base\mapper\ObjectLazyLoader.js" />
     <Content Include="Client\src\base\mapper\ObjectProvider.js" />
     <Content Include="Client\src\base\mapper\QueryProvider.js" />
+    <Content Include="Client\src\base\mapper\ResponseHandler.js" />
     <Content Include="Client\src\base\mapper\RoundtripProvider.js" />
     <Content Include="Client\src\base\mapper\SaveProvider.js" />
     <Content Include="Client\src\base\mapper\ServerSync.js" />
@@ -207,7 +212,7 @@
   <ItemGroup>
     <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
-    <None Include="Client\README" />
+    <None Include="Client\README.markdown" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

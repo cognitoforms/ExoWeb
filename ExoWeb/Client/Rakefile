@@ -43,6 +43,7 @@ end
 		Batch
 		Signal
 		Functor
+		FunctionChain
 		EventQueue 
 		EvalWrapper
 		Transform
@@ -85,6 +86,7 @@ end
 		RoundtripProvider
 		SaveProvider
 		EventProvider
+		ResponseHandler
 		Translation
 		ExoGraphEventListener
 		ChangeSet
@@ -96,6 +98,7 @@ end
 		ObjectLazyLoader
 		ListLazyLoader
 		Context
+		ContextQuery
 		ExoWeb
 		Extend},
 

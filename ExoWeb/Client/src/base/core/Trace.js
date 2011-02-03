@@ -51,7 +51,8 @@ ExoWeb.trace = {
 		templates: false,
 		rule: false,
 		model: false,
-		conditions: false
+		conditions: false,
+		responseHandler: false
 	},
 	_isEnabled: function _isEnabled(category) {
 		if (ExoWeb.trace.flags.all) {

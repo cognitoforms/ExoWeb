@@ -467,7 +467,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 			templates: false,
 			rule: false,
 			model: false,
-			conditions: false
+			conditions: false,
+			responseHandler: false
 		},
 		_isEnabled: function _isEnabled(category) {
 			if (ExoWeb.trace.flags.all) {
@@ -1023,7 +1024,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	var eventsInProgress = 0;
 
 	// busy if there are any events in progress
-	registerActivity(function() {
+	ExoWeb.registerActivity(function() {
 		return eventsInProgress > 0;
 	});
 
@@ -1059,6 +1060,75 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	ExoWeb.Functor = Functor;
+
+	// #endregion
+
+	// #region FunctionChain
+	//////////////////////////////////////////////////
+
+	function FunctionChain(steps, thisPtr) {
+		if (!(steps instanceof Array)) {
+			ExoWeb.trace.throwAndLog("functionChain", "Steps must be an array of functions.");
+		}
+
+		this._steps = steps;
+		this._thisPtr = thisPtr;
+	}
+
+	FunctionChain.prepare = function FunctionChain$_invoke() {
+		// Return a function that can be invoked with callback and thisPtr.
+		// Useful for assigning to a prototype member, since "this" is used
+		// as the thisPtr for the chain if "thisPtr" argument is not supplied,
+		// while "thisPtr" of invocation is used as the argument to "invoke".
+
+		var steps = null,
+			thisPtrOuter = null;
+
+		// no args => empty chain
+		if (arguments.length === 0) {
+			steps = [];
+		}
+		// one array arg => array of steps
+		else if (arguments.length === 1 && arguments[0] instanceof Array) {
+			steps = arguments[0];
+		}
+		// two args (first array) => array of steps and this pointer
+		else if (arguments.length === 2 && arguments[0] instanceof Array) {
+			steps = arguments[0];
+			thisPtrOuter = arguments[1];
+		}
+		// otherwise, assume arguments correspond to steps
+		else {
+			steps = Array.prototype.slice.call(arguments);
+		}
+
+		return function(callback, thisPtr) {
+			var chain = new FunctionChain(steps, thisPtrOuter || this);
+			chain.invoke(callback, thisPtr);
+		};
+	};
+
+	function doStep(idx, callback, thisPtr) {
+		var _callback = callback;
+		var _thisPtr = thisPtr;
+		var nextStep = idx + 1 < this._steps.length ?
+			doStep.prependArguments(idx + 1, _callback, _thisPtr) :
+			function() {
+				if (_callback && _callback instanceof Function) {
+					_callback.apply(_thisPtr || this, arguments);
+				}
+			};
+
+		this._steps[idx].call(this._thisPtr || this, nextStep, this);
+	}
+
+	FunctionChain.mixin({
+		invoke: function(callback, thisPtr) {
+			doStep.call(this, 0, callback, thisPtr);
+		}
+	});
+
+	ExoWeb.FunctionChain = FunctionChain;
 
 	// #endregion
 
@@ -1571,13 +1641,21 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	ExoWeb.isType = isType;
 
-	function objectToArray(obj) {
-		var list = [];
-		for (var key in obj) {
-			if (obj.hasOwnProperty(key)) {
-				list.push(obj[key]);
+	function eachProp(obj, callback, thisPtr) {
+		for (var prop in obj) {
+			if (obj.hasOwnProperty(prop)) {
+				callback.apply(thisPtr || this, [prop, obj[prop]]);
 			}
 		}
+	}
+
+	ExoWeb.eachProp = eachProp;
+
+	function objectToArray(obj) {
+		var list = [];
+		eachProp(obj, function(prop, value) {
+			list.push(value);
+		});
 		return list;
 	}
 
@@ -6222,6 +6300,108 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	// #endregion
 
+	// #region ResponseHandler
+	//////////////////////////////////////////////////
+
+	function ResponseHandler(model, serverSync, options) {
+		if (options === undefined || options === null) {
+			throw new Error("Options cannot be null or undefined.");
+		}
+
+		this._model = model;
+		this._serverSync = serverSync;
+		this._options = options;
+	}
+
+	ResponseHandler.mixin({
+		execute: ExoWeb.FunctionChain.prepare(
+			// Load types from JSON
+			//////////////////////////////////////////
+			function loadTypes(callback, thisPtr) {
+				if (this._options.types) {
+					ExoWeb.trace.log("responseHandler", "Loading types.");
+					typesFromJson(this._model, this._options.types);
+				}
+
+				callback.call(thisPtr || this);
+			},
+
+			// Apply "init new" changes
+			//////////////////////////////////////////
+			function applyInitChanges(callback, thisPtr) {
+				if (this._options.changes) {
+					ExoWeb.trace.log("responseHandler", "Applying \"init new\" changes.");
+
+					var signal = new ExoWeb.Signal("applyInitChanges");
+
+					var changes = Array.prototype.slice.apply(this._options.changes);
+
+					var initChanges = changes.where(function(change) {
+						return change.type === "InitNew";
+					});
+
+					this._serverSync.applyChanges(initChanges, this._options.source, signal.pending());
+
+					signal.waitForAll(callback, thisPtr, true);
+				}
+				else {
+					callback.call(thisPtr || this);
+				}
+			},
+
+			// Load instance data from JSON
+			//////////////////////////////////////////
+			function loadInstances(callback, thisPtr) {
+				if (this._options.instances) {
+					ExoWeb.trace.log("responseHandler", "Loading instances.");
+					objectsFromJson(this._model, this._options.instances, callback, thisPtr);
+				}
+				else {
+					callback.call(thisPtr || this);
+				}
+			},
+
+			// Apply non-"init new" changes
+			//////////////////////////////////////////
+			function applyNonInitChanges(callback, thisPtr) {
+				if (this._options.changes) {
+					ExoWeb.trace.log("responseHandler", "Applying non-\"init new\" changes.");
+
+					var signal = new ExoWeb.Signal("applyNonInitChanges");
+
+					var changes = Array.prototype.slice.apply(this._options.changes);
+
+					var initChanges = changes.where(function(change) {
+						return change.type !== "InitNew";
+					});
+
+					this._serverSync.applyChanges(initChanges, this._options.source, signal.pending());
+
+					signal.waitForAll(callback, thisPtr, true);
+				}
+				else {
+					callback.call(thisPtr || this);
+				}
+			},
+
+			// Load conditions from JSON
+			//////////////////////////////////////////
+			function loadConditions(callback, thisPtr) {
+				if (this._options.conditions) {
+					ExoWeb.trace.log("reponseHandler", "Loading conditions.");
+					conditionsFromJson(this._model, this._options.conditions, callback, thisPtr);
+				}
+				else {
+					callback.call(thisPtr || this);
+				}
+			}
+		)
+	});
+
+	ExoWeb.Mapper.ResponseHandler = ResponseHandler;
+
+	// #endregion
+
 	// #region Translation
 	//////////////////////////////////////////////////
 
@@ -6617,8 +6797,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this._translator = new ExoWeb.Translator();
 		this._listener = new ExoGraphEventListener(this._model, this._translator);
 
-		this._changeLog.start("client");
-
 		var applyingChanges = false;
 		this.isApplyingChanges = function ServerSync$isApplyingChanges() {
 			return applyingChanges;
@@ -6630,21 +6808,24 @@ Type.registerNamespace("ExoWeb.Mapper");
 			applyingChanges = false;
 		};
 
-		var captureRegisteredObjects = false;
-		model.addObjectRegistered(function(obj) {
-			// if an existing object is registered then register for lazy loading
-			if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && captureRegisteredObjects && !applyingChanges) {
-				ObjectLazyLoader.register(obj);
-//					ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
-			}
-		});
-		this.isCapturingRegisteredObjects = function ServerSync$isCapturingRegisteredObjects() {
-			return captureRegisteredObjects;
+		var isCapturingChanges = false;
+		this.isCapturingChanges = function ServerSync$isCapturingChanges() {
+			return isCapturingChanges;
 		};
-		this.beginCapturingRegisteredObjects = function ServerSync$beginCapturingRegisteredObjects() {
-			captureRegisteredObjects = true;
+		this.beginCapturingChanges = function ServerSync$beginCapturingChanges() {
+			isCapturingChanges = true;
+			startChangeSet.call(this, "client");
 		};
 
+		model.addObjectRegistered(function(obj) {
+			// if an existing object is registered then register for lazy loading
+			if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges && !applyingChanges) {
+				ObjectLazyLoader.register(obj);
+				//ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
+			}
+		});
+
+		// Assign back reference
 		model._server = this;
 
 		this._listener.addChangeCaptured(this._captureChange.setScope(this));
@@ -7232,7 +7413,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		// Various
 		///////////////////////////////////////////////////////////////////////
 		_captureChange: function ServerSync$_captureChange(change) {
-			if (!this.isApplyingChanges()) {
+			if (!this.isApplyingChanges() && this.isCapturingChanges()) {
 				this._changeLog.add(change);
 
 				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
@@ -7310,7 +7491,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				this.beginApplyingChanges();
 
-				startChangeSet.call(this, source);
+				if ((source !== undefined && source !== null && (!this._changeLog.activeSet() || this._changeLog.activeSet().source() !== source)) || this.isCapturingChanges()) {
+					startChangeSet.call(this, source);
+				}
 
 				var signal = new ExoWeb.Signal("ServerSync.apply");
 
@@ -7400,7 +7583,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				signal.waitForAll(function() {
 //						ExoWeb.trace.log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
-					startChangeSet.call(this, "client");
+					if (this.isCapturingChanges()) {
+						startChangeSet.call(this, "client");
+					}
 					this.endApplyingChanges();
 					ExoWeb.Batch.end(batch);
 					if (callback && callback instanceof Function) {
@@ -8844,50 +9029,60 @@ Type.registerNamespace("ExoWeb.Mapper");
 		return allSignals.isActive();
 	});
 
-	function eachVar(obj, callback, thisPtr) {
-		for (var prop in obj) {
-			if (obj.hasOwnProperty(prop)) {
-				callback.apply(thisPtr || this, [prop, obj[prop]]);
-			}
-		}
+	function Context() {
+		var model = new ExoWeb.Model.Model();
+
+		this.model = { meta: model };
+		this.server = new ServerSync(model);
 	}
 
-	function createContext(options, context) {
-	
-		var model = context ? context.model.meta : new ExoWeb.Model.Model();
-
-		var ret = context ? context :  {
-			model: {
-				meta: model
-			},
-			ready: function context$model$ready(callback) { allSignals.waitForAll(callback); },
-			server: new ServerSync(model)
-		};
-
-		var state = {};
-
-		var batch = ExoWeb.Batch.start("init context");
-
-		//first determine if the types are embedded
-		//load up the embedded types first to avoiding timing issues with loading instance data and types at the same time
-		//this is for the client only implementation of ExoWeb.  The normal paradigm of passing types as an array
-		//will load the types and instance data asyc.
-		if (options.types && !(options.types instanceof Array)) {
-			//instead of fetching the types from the server use the embedded json.
-			typesFromJson(model, options.types)
+	Context.mixin({
+		ready: function Context$ready(callback, thisPtr) {
+			allSignals.waitForAll(callback, thisPtr);
 		}
+	});
 
-		if (options.model) {
-			// load all instances first
+	function Context$query(options) {
+		var contextQuery = new ContextQuery(this, options);
+		contextQuery.execute();
+	}
 
-			var pendingQueries = [];
-			var batchQuerySignal;
+	// #endregion
 
-			// 1) Preprocessing of model queries and setup in prep for batch load
-			eachVar(options.model, function(varName, query) {
+	// #region ContextQuery
+	//////////////////////////////////////////////////
+
+	function ContextQuery(context, options) {
+		this.context = context;
+		this.options = options;
+		this.batch = null;
+		this.state = {};
+	}
+
+	/*
+	=====================================================================
+	Starts a batch so that others will not respond to changes that are
+	broadcast during querying, i.e. instance loading.
+	=====================================================================
+	*/
+	function ContextQuery$startBatch(callback, thisPtr) {
+		ExoWeb.trace.log("context", "Starting context query batch.");
+		this.batch = ExoWeb.Batch.start("context query");
+		callback.call(thisPtr || this);
+	}
+
+	/*
+	=====================================================================
+	Perform pre-processing of model queries and their paths.
+	=====================================================================
+	*/
+	function ContextQuery$initModels(callback, thisPtr) {
+		if (this.options.model) {
+			ExoWeb.trace.log("context", "Running init step for model queries.");
+			ExoWeb.eachProp(this.options.model, function(varName, query) {
 				// Common initial setup of state for all model queries
-				state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
-				allSignals.pending();
+				this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
+				allSignals.pending(null, this, true);
 
 				// Normalize (expand) the query paths
 				query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
@@ -8908,71 +9103,166 @@ Type.registerNamespace("ExoWeb.Mapper");
 					});
 					return strPath;
 				});
+			}, this);
+		}
 
-				// Add query to batch if possible
-				if (ExoWeb.config.individualQueryLoading !== true && !query.load &&
-					query.id !== $newId() && query.id !== null && query.id !== undefined && query.id !== "") {
+		callback.call(thisPtr || this);
+	}
 
-					if (batchQuerySignal === undefined) {
-						batchQuerySignal = new ExoWeb.Signal("batch query");
-						batchQuerySignal.pending();
-					}
-
-					// complete the individual query signal after the batch is complete
-					batchQuerySignal.waitForAll(state[varName].signal.pending());
-
-					pendingQueries.push({
-						from: query.from,
-						id: query.id,
-						and: query.serverPaths
-					});
-				}
+	/*
+	=====================================================================
+	Process embedded data as if it had been recieved from the server in
+	the form of a web service response. This should enable flicker-free
+	page loads by embedded data, changes, etc.
+	=====================================================================
+	*/
+	function ContextQuery$processEmbedded(callback, thisPtr) {
+		ExoWeb.trace.log("context", "Processing embedded data in query.");
+		if (/*this.options.types, */this.options.instances || this.options.changes || this.options.conditions) {
+			var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
+				//types: options.types,
+				instances: this.options.instances,
+				changes: this.options.changes,
+				conditions: this.options.conditions,
+				source: "init"
 			});
 
-			if (ExoWeb.config.individualQueryLoading !== true && pendingQueries.length > 0) {
+			// "thisPtr" refers to the function chain in the context of
+			// the function chain callback, so reference the query here
+			var query = this;
+
+			handler.execute(function() {
+				// begin capturing changes and watching for existing objects that are created
+				query.context.server.beginCapturingChanges();
+
+				callback.apply(this, arguments);
+			}, thisPtr);
+		}
+		else {
+			// begin capturing changes and watching for existing objects that are created
+			this.context.server.beginCapturingChanges();
+
+			callback.call(thisPtr || this);
+		}
+	}
+
+	/*
+	=====================================================================
+	Detect batch query candidates and send batch request, if batching is
+	enabled (true by default).
+	=====================================================================
+	*/
+	function ContextQuery$doBatchRequest(callback, thisPtr) {
+		if (this.options.model && ExoWeb.config.individualQueryLoading !== true) {
+			var pendingQueries = [];
+			var batchQuerySignal;
+
+			ExoWeb.trace.log("context", "Looking for potential loading requests in query.");
+
+			ExoWeb.eachProp(this.options.model, function(varName, query) {
+				if (!query.load && query.id !== $newId() && query.id !== null && query.id !== undefined && query.id !== "") {
+			
+					tryGetJsType(this.context.model.meta, query.from, null, true, function(type) {
+						var id = translateId(this.context.server._translator, query.from, query.id);
+						var obj = type.meta.get(id);
+
+						if (obj !== undefined) {
+							this.context.model[varName] = obj;
+						}
+						else {
+							if (batchQuerySignal === undefined) {
+								batchQuerySignal = new ExoWeb.Signal("batch query");
+								batchQuerySignal.pending(null, this, true);
+							}
+
+							// complete the individual query signal after the batch is complete
+							batchQuerySignal.waitForAll(this.state[varName].signal.pending(null, this, true), this, true);
+
+							pendingQueries.push({
+								from: query.from,
+								id: query.id,
+								and: query.serverPaths
+							});
+						}
+					}, this);
+				}
+			}, this);
+
+			if (pendingQueries.length > 0) {
 				queryProvider(pendingQueries, null, 
 					function context$objects$callback(result) {
-						objectsFromJson(model, result.instances, function() {
+						objectsFromJson(this.context.model.meta, result.instances, function() {
 							if (result.conditions) {
-								conditionsFromJson(model, result.conditions);
+								conditionsFromJson(this.context.model.meta, result.conditions);
 							}
 							batchQuerySignal.oneDone();
-						});
+						}, this);
 					},
 					function context$objects$callback(error) {
 						ExoWeb.trace.logError("objectInit", "Failed to load batch query (HTTP: {_statusCode}, Timeout: {_timedOut})", error);
 						batchQuerySignal.oneDone();
-					});
+					}, this);
 			}
+		}
 
+		callback.call(thisPtr || this);
+	}
+
+	/*
+	=====================================================================
+	Send individual requests and simulate for "load" option.
+	=====================================================================
+	*/
+	function ContextQuery$doIndividualRequests(callback, thisPtr) {
+		if (this.options.model) {
 			// 2) Start loading instances individually
-			eachVar(options.model, function(varName, query) {
+			ExoWeb.eachProp(this.options.model, function(varName, query) {
 				if(query.load) {
 					// bypass all server callbacks if data is embedded
-					state[varName].objectJson = query.load.instances;
-					state[varName].conditionsJson = query.load.conditions;
+					this.state[varName].objectJson = query.load.instances;
+					this.state[varName].conditionsJson = query.load.conditions;
 				}
 				// need to load data from server
 				// fetch object state if an id of a persisted object was specified
 				else if (ExoWeb.config.individualQueryLoading === true && 
 					query.id !== $newId() && query.id !== null && query.id !== undefined && query.id !== "") {
 
-					objectProvider(query.from, [query.id], query.serverPaths, null,
-						state[varName].signal.pending(function context$objects$callback(result) {
-							state[varName].objectJson = result.instances;
-							state[varName].conditionsJson = result.conditions;
-						}),
-						state[varName].signal.orPending(function context$objects$callback(error) {
-							ExoWeb.trace.logError("objectInit",
-								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-								{ query: query, error: error });
-						})
-					);
-				}
-			});
+					tryGetJsType(this.context.model.meta, query.from, null, true, function(type) {
+						var id = translateId(this.context.server._translator, query.from, query.id);
+						var obj = type.meta.get(id);
 
-			// 3) Load static paths if not loading or fetching
-			eachVar(options.model, function(varName, query) {
+						if (obj !== undefined) {
+							this.context.model[varName] = obj;
+							allSignals.oneDone();
+						}
+						else {
+							objectProvider(query.from, [query.id], query.serverPaths, null,
+								this.state[varName].signal.pending(function context$objects$callback(result) {
+									this.state[varName].objectJson = result.instances;
+									this.state[varName].conditionsJson = result.conditions;
+								}, this, true),
+								this.state[varName].signal.orPending(function context$objects$callback(error) {
+									ExoWeb.trace.logError("objectInit",
+										"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+										{ query: query, error: error });
+								}, this, true), this);
+						}
+					}, this);
+				}
+			}, this);
+		}
+
+		callback.call(thisPtr || this);
+	}
+
+	/*
+	=====================================================================
+	Load static paths for queries that don't otherwise require loading.
+	=====================================================================
+	*/
+	function ContextQuery$doStaticRequests(callback, thisPtr) {
+		if (this.options.model) {
+			ExoWeb.eachProp(this.options.model, function(varName, query) {
 				if (!query.load && (query.id === $newId() || query.id === null || query.id === undefined || query.id === "")) {
 					if (query.serverPaths == null)
 						query.serverPaths = [];
@@ -8989,83 +9279,123 @@ Type.registerNamespace("ExoWeb.Mapper");
 						objectProvider(null, null, query.serverPaths, null,
 							allSignals.pending(function context$objects$callback(result) {
 								// load the json. this may happen asynchronously to increment the signal just in case
-								objectsFromJson(model, result.instances, allSignals.pending(function() {
+								objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
 									if (result.conditions) {
-										conditionsFromJson(model, result.conditions);
+										conditionsFromJson(this.context.model.meta, result.conditions);
 									}
-								}));
-							}),
+								}), this);
+							}, this, true),
 							allSignals.orPending(function context$objects$callback(error) {
 								ExoWeb.trace.logError("objectInit",
 									"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 									{ query: query, error: error });
-							})
+							}, this, true)
 						);
 					}
 				}
-			});
+			}, this);
+		}
 
-			//only fetch the types if they are not embedded
-			//if the types are embedded then fetching the types from server will
-			//cause a signal to be created that will never be processed.
-			if (!options.types || options.types instanceof Array) {
-				eachVar(options.model, function(varName, query) {
-					fetchTypes(model, query, state[varName].signal.pending());
-				});
-			}
+		callback.call(thisPtr || this);
+	}
 
-			// 4) Process instances as they finish loading
-			eachVar(options.model, function(varName, query) {
-				state[varName].signal.waitForAll(function context$model() {
+	/*
+	=====================================================================
+	Only fetch the types if they are not embedded. If the types are
+	embedded then fetching the types from server will cause a signal to
+	be created that will never be processed.
+	=====================================================================
+	*/
+	function ContextQuery$fetchPathTypes(callback, thisPtr) {
+		if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
+			ExoWeb.eachProp(this.options.model, function(varName, query) {
+				fetchTypes(this.context.model.meta, query, this.state[varName].signal.pending(null, this, true));
+			}, this);
+		}
+
+		callback.call(thisPtr || this);
+	}
+
+	/*
+	=====================================================================
+	Process instances data for queries as they finish loading.
+	=====================================================================
+	*/
+	function ContextQuery$processResults(callback, thisPtr) {
+		if (this.options.model) {
+			ExoWeb.eachProp(this.options.model, function(varName, query) {
+				this.state[varName].signal.waitForAll(function context$model() {
 					// construct a new object if a "newId" was specified
 					if (query.id === $newId()) {
-						ret.model[varName] = new (model.type(query.from).get_jstype())();
+						this.context.model[varName] = new (this.context.model.meta.type(query.from).get_jstype())();
 
 						// model object has been successfully loaded!
 						allSignals.oneDone();
 					}
 					// otherwise, load the object from json if an id was specified
 					else if (query.id !== null && query.id !== undefined && query.id !== "") {
+						if (this.context.model[varName]) {
+							return;
+						}
+
 						// load the json. this may happen asynchronously so increment the signal just in case
-						objectsFromJson(model, state[varName].objectJson, state[varName].signal.pending(function context$model$callback() {
-							var query = options.model[varName];
-							var mtype = model.type(query.from);
+						if (!this.state[varName].objectJson) {
+							ExoWeb.trace.logError("context", $format("Request failed for type {0} with id = {1}.", [query.from, query.id]));
+						}
 
-							var obj = mtype.get(query.id);
+						objectsFromJson(this.context.model.meta, this.state[varName].objectJson, this.state[varName].signal.pending(function context$model$callback() {
+							var mtype = this.context.model.meta.type(query.from);
 
-							if (obj === undefined) {
-								throw new ReferenceError($format("Could not get {0} with id = {1}.", [mtype.get_fullName(), query.id]));
+							if (!mtype) {
+								ExoWeb.trace.throwAndLog("context", $format("Could not get type {0} required to process query results.", [query.from]));
 							}
 
-							ret.model[varName] = obj;
+							// TODO: resolve translator access
+							var id = translateId(this.context.server._translator, query.from, query.id);
+							var obj = mtype.get(id);
 
-							if (state[varName].conditionsJson) {
-								conditionsFromJson(model, state[varName].conditionsJson, function() {
+							if (obj === undefined) {
+								ExoWeb.trace.throwAndLog("context", $format("Could not get {0} with id = {1}.", [query.from, query.id]));
+							}
+
+							this.context.model[varName] = obj;
+
+							if (this.state[varName].conditionsJson) {
+								conditionsFromJson(this.context.model.meta, this.state[varName].conditionsJson, function() {
 									// model object has been successfully loaded!
 									allSignals.oneDone();
-								});
+								}, this);
 							}
 							else {
 								// model object has been successfully loaded!
 								allSignals.oneDone();
 							}
-						}));
+						}), this, true);
 					}
 
 					else {
 						// model object has been successfully loaded!
 						allSignals.oneDone();
 					}
-				});
-			});
+				}, this);
+			}, this, true);
 		}
 
+		callback.call(thisPtr || this);
+	}
+
+	/*
+	=====================================================================
+	Load type data from query.
+	=====================================================================
+	*/
+	function ContextQuery$fetchTypes(callback, thisPtr) {
 		// load types if they are in array format.  This is for the full server/client model of ExoWeb
 		//to load the types and isntance data async
-		if (options.types && options.types instanceof Array) {
+		if (this.options.types && this.options.types instanceof Array) {
 			// allow specifying types and paths apart from instance data
-			for (var i = 0; i < options.types.length; i++) {
-				var typeQuery = options.types[i];
+			for (var i = 0; i < this.options.types.length; i++) {
+				var typeQuery = this.options.types[i];
 
 				typeQuery.and = ExoWeb.Model.PathTokens.normalizePaths(typeQuery.and);
 
@@ -9086,56 +9416,90 @@ Type.registerNamespace("ExoWeb.Mapper");
 					return strPath;
 				});
 
-				fetchTypes(model, typeQuery, allSignals.pending());
+				fetchTypes(this.context.model.meta, typeQuery, allSignals.pending(null, this, true));
 
 				if (typeQuery.serverPaths.length > 0) {
 					objectProvider(typeQuery.from, null, typeQuery.serverPaths, null,
 						allSignals.pending(function context$objects$callback(result) {
 							// load the json. this may happen asynchronously to increment the signal just in case
-							objectsFromJson(model, result.instances, allSignals.pending(function() {
+							objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
 								if (result.conditions) {
-									conditionsFromJson(model, result.conditions);
+									conditionsFromJson(this.context.model.meta, result.conditions);
 								}
-							}));
-						}),
+							}), this);
+						}, this, true),
 						allSignals.orPending(function context$objects$callback(error) {
 							ExoWeb.trace.logError("objectInit",
 								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 								{ query: typeQuery, error: error });
-						})
-					);
+						}, this, true), this, true);
 				}
 			}
 		}
 
-		// setup lazy loading on the container object to control
-		// lazy evaluation.  loading is considered complete at the same point
-		// model.ready() fires
-		ExoWeb.Model.LazyLoader.register(ret, {
-			load: function context$load(obj, propName, callback) {
-//					ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
+		callback.call(thisPtr || this);
+	}
+
+	/*
+	=====================================================================
+	Setup lazy loading on the context object to control lazy evaluation.
+	Loading is considered complete at the same point model.ready() fires.
+	=====================================================================
+	*/
+	function ContextQuery$registerLazyLoader(callback, thisPtr) {
+		ExoWeb.Model.LazyLoader.register(this.context, {
+			load: function context$load(obj, propName, callback, thisPtr) {
+				//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
 
 				// objects are already loading so just queue up the calls
 				allSignals.waitForAll(function context$load$callback() {
-//						ExoWeb.trace.log(["context", "lazyLoad"], "raising createContext.ready()");
+					//ExoWeb.trace.log(["context", "lazyLoad"], "raising createContext.ready()");
 
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
-					callback();
-				});
+
+					if (callback && callback instanceof Function) {
+						callback.call(thisPtr || this);
+					}
+				}, this, true);
 			}
 		});
 
-		allSignals.waitForAll(function() {
-			model.notifyBeforeContextReady();
-
-			ExoWeb.Batch.end(batch);
-
-			// begin watching for existing objects that are created
-			ret.server.beginCapturingRegisteredObjects();
-		});
-
-		return ret;
+		callback.call(thisPtr || this);
 	}
+
+	/*
+	=====================================================================
+	Final cleanup step. Allow rules to run initially, end the batch,
+	and allow the server sync to start capturing existing objects in
+	order to attach a lazy loader.
+	=====================================================================
+	*/
+	function ContextQuery$cleanup(callback, thisPtr) {
+		allSignals.waitForAll(function() {
+			// allows previously defered rules to run
+			this.context.model.meta.notifyBeforeContextReady();
+
+			ExoWeb.Batch.end(this.batch);
+		}, this, true);
+
+		callback.call(thisPtr || this);
+	}
+
+	ContextQuery.mixin({
+		execute: ExoWeb.FunctionChain.prepare(
+			ContextQuery$startBatch,
+			ContextQuery$initModels,
+			ContextQuery$processEmbedded,
+			ContextQuery$doBatchRequest,
+			ContextQuery$doIndividualRequests,
+			ContextQuery$doStaticRequests,
+			ContextQuery$fetchPathTypes,
+			ContextQuery$processResults,
+			ContextQuery$fetchTypes,
+			ContextQuery$registerLazyLoader,
+			ContextQuery$cleanup
+		)
+	});
 
 	// #endregion
 
@@ -9178,7 +9542,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			else {
 				pendingOptions.init = options.init;
 			}
-		
+
 			// Merge extendContext functions
 			if (pendingOptions.extendContext) {
 				if (options.extendContext) {
@@ -9231,6 +9595,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			// Merge model
 			pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, options.model) : options.model;
+		
+			// Merge changes
+			pendingOptions.changes = pendingOptions.changes ? (options.changes ? pendingOptions.changes.concat(options.changes) : pendingOptions.changes) : options.changes;
+
+			// Merge conditions
+			pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, options.conditions) : options.conditions;
+
+			// Merge instances
+			pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, options.instances) : options.instances;
 		}
 		else {
 			pendingOptions = options;
@@ -9247,8 +9620,20 @@ Type.registerNamespace("ExoWeb.Mapper");
 		if (currentOptions.init)
 			currentOptions.init();
 
+		var query = {
+			model: currentOptions.model,
+			types: currentOptions.types,
+			changes: currentOptions.changes,
+			conditions: currentOptions.conditions,
+			instances: currentOptions.instances
+		};
+
 		// Initialize the context
-		window.context = createContext({ model: currentOptions.model, types: currentOptions.types }, window.context);
+		if (!window.context) {
+			window.context = new Context();
+		}
+
+		Context$query.call(window.context, query);
 
 		// Perform initialization once the context is ready
 		window.context.ready(function () {

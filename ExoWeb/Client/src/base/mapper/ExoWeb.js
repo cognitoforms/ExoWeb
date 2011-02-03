@@ -34,7 +34,7 @@ window.$exoweb = function (options) {
 		else {
 			pendingOptions.init = options.init;
 		}
-		
+
 		// Merge extendContext functions
 		if (pendingOptions.extendContext) {
 			if (options.extendContext) {
@@ -87,6 +87,15 @@ window.$exoweb = function (options) {
 
 		// Merge model
 		pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, options.model) : options.model;
+		
+		// Merge changes
+		pendingOptions.changes = pendingOptions.changes ? (options.changes ? pendingOptions.changes.concat(options.changes) : pendingOptions.changes) : options.changes;
+
+		// Merge conditions
+		pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, options.conditions) : options.conditions;
+
+		// Merge instances
+		pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, options.instances) : options.instances;
 	}
 	else {
 		pendingOptions = options;
@@ -103,8 +112,20 @@ window.$exoweb = function (options) {
 	if (currentOptions.init)
 		currentOptions.init();
 
+	var query = {
+		model: currentOptions.model,
+		types: currentOptions.types,
+		changes: currentOptions.changes,
+		conditions: currentOptions.conditions,
+		instances: currentOptions.instances
+	};
+
 	// Initialize the context
-	window.context = createContext({ model: currentOptions.model, types: currentOptions.types }, window.context);
+	if (!window.context) {
+		window.context = new Context();
+	}
+
+	Context$query.call(window.context, query);
 
 	// Perform initialization once the context is ready
 	window.context.ready(function () {

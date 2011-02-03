@@ -167,13 +167,21 @@ function isType(val, type) {
 
 ExoWeb.isType = isType;
 
-function objectToArray(obj) {
-	var list = [];
-	for (var key in obj) {
-		if (obj.hasOwnProperty(key)) {
-			list.push(obj[key]);
+function eachProp(obj, callback, thisPtr) {
+	for (var prop in obj) {
+		if (obj.hasOwnProperty(prop)) {
+			callback.apply(thisPtr || this, [prop, obj[prop]]);
 		}
 	}
+}
+
+ExoWeb.eachProp = eachProp;
+
+function objectToArray(obj) {
+	var list = [];
+	eachProp(obj, function(prop, value) {
+		list.push(value);
+	});
 	return list;
 }
 

@@ -8,8 +8,6 @@ function ServerSync(model) {
 	this._translator = new ExoWeb.Translator();
 	this._listener = new ExoGraphEventListener(this._model, this._translator);
 
-	this._changeLog.start("client");
-
 	var applyingChanges = false;
 	this.isApplyingChanges = function ServerSync$isApplyingChanges() {
 		return applyingChanges;
@@ -21,21 +19,24 @@ function ServerSync(model) {
 		applyingChanges = false;
 	};
 
-	var captureRegisteredObjects = false;
-	model.addObjectRegistered(function(obj) {
-		// if an existing object is registered then register for lazy loading
-		if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && captureRegisteredObjects && !applyingChanges) {
-			ObjectLazyLoader.register(obj);
-//					ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
-		}
-	});
-	this.isCapturingRegisteredObjects = function ServerSync$isCapturingRegisteredObjects() {
-		return captureRegisteredObjects;
+	var isCapturingChanges = false;
+	this.isCapturingChanges = function ServerSync$isCapturingChanges() {
+		return isCapturingChanges;
 	};
-	this.beginCapturingRegisteredObjects = function ServerSync$beginCapturingRegisteredObjects() {
-		captureRegisteredObjects = true;
+	this.beginCapturingChanges = function ServerSync$beginCapturingChanges() {
+		isCapturingChanges = true;
+		startChangeSet.call(this, "client");
 	};
 
+	model.addObjectRegistered(function(obj) {
+		// if an existing object is registered then register for lazy loading
+		if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges && !applyingChanges) {
+			ObjectLazyLoader.register(obj);
+			//ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
+		}
+	});
+
+	// Assign back reference
 	model._server = this;
 
 	this._listener.addChangeCaptured(this._captureChange.setScope(this));
@@ -623,7 +624,7 @@ ServerSync.mixin({
 	// Various
 	///////////////////////////////////////////////////////////////////////
 	_captureChange: function ServerSync$_captureChange(change) {
-		if (!this.isApplyingChanges()) {
+		if (!this.isApplyingChanges() && this.isCapturingChanges()) {
 			this._changeLog.add(change);
 
 			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
@@ -701,7 +702,9 @@ ServerSync.mixin({
 
 			this.beginApplyingChanges();
 
-			startChangeSet.call(this, source);
+			if ((source !== undefined && source !== null && (!this._changeLog.activeSet() || this._changeLog.activeSet().source() !== source)) || this.isCapturingChanges()) {
+				startChangeSet.call(this, source);
+			}
 
 			var signal = new ExoWeb.Signal("ServerSync.apply");
 
@@ -791,7 +794,9 @@ ServerSync.mixin({
 
 			signal.waitForAll(function() {
 //						ExoWeb.trace.log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
-				startChangeSet.call(this, "client");
+				if (this.isCapturingChanges()) {
+					startChangeSet.call(this, "client");
+				}
 				this.endApplyingChanges();
 				ExoWeb.Batch.end(batch);
 				if (callback && callback instanceof Function) {
