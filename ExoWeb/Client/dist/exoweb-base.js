@@ -6716,13 +6716,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// #region ChangeSet
 	//////////////////////////////////////////////////
 
-	function ChangeSet(source) {
+	function ChangeSet(source, initialChanges) {
 		if (!source || source.constructor !== String) {
 			ExoWeb.trace.throwAndLog("changeLog", "Creating a change set requires a string source argument.");
 		}
 
-		this._changes = [];
 		this._source = source;
+		this._changes = (initialChanges && initialChanges instanceof Array) ?
+			[].concat(initialChanges) :
+			[];
 	}
 
 	ChangeSet.mixin({
@@ -6790,6 +6792,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 
 			this._activeSet.add(change);
+		},
+		addSet: function(source, changes) {
+			if (this._activeSet !== null) {
+				ExoWeb.trace.throwAndLog("server", "Cannot store init changes in an active change log.");
+			}
+
+			this._sets.push(new ChangeSet(source, changes));
 		},
 		lastChange: function() {
 			for (var i = this._sets.length - 1; i >= 0; i--) {
@@ -6954,6 +6963,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// when ServerSync is made singleton, this data will be referenced via closure
 	function ServerSync$addScopeQuery(query) {
 		this._scopeQueries.push(query);
+	}
+
+	function ServerSync$storeInitChanges(changes) {
+		this._changeLog.addSet("init", changes);
 	}
 
 	ServerSync.mixin({
@@ -9228,13 +9241,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 	*/
 	function ContextQuery$processEmbedded(callback, thisPtr) {
 		ExoWeb.trace.log("context", "Processing embedded data in query.");
-		if (/*this.options.types, */this.options.instances || this.options.changes || this.options.conditions) {
+
+		if (this.options.changes) {
+			ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
+		}
+
+		if (this.options.instances || this.options.conditions) {
 			var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
-				//types: options.types,
 				instances: this.options.instances,
-				changes: this.options.changes,
-				conditions: this.options.conditions,
-				source: "init"
+				conditions: this.options.conditions
 			});
 
 			// "thisPtr" refers to the function chain in the context of

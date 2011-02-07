@@ -1,10 +1,12 @@
-function ChangeSet(source) {
+function ChangeSet(source, initialChanges) {
 	if (!source || source.constructor !== String) {
 		ExoWeb.trace.throwAndLog("changeLog", "Creating a change set requires a string source argument.");
 	}
 
-	this._changes = [];
 	this._source = source;
+	this._changes = (initialChanges && initialChanges instanceof Array) ?
+		[].concat(initialChanges) :
+		[];
 }
 
 ChangeSet.mixin({

@@ -18,6 +18,13 @@ ChangeLog.mixin({
 
 		this._activeSet.add(change);
 	},
+	addSet: function(source, changes) {
+		if (this._activeSet !== null) {
+			ExoWeb.trace.throwAndLog("server", "Cannot store init changes in an active change log.");
+		}
+
+		this._sets.push(new ChangeSet(source, changes));
+	},
 	lastChange: function() {
 		for (var i = this._sets.length - 1; i >= 0; i--) {
 			var set = this._sets[i];

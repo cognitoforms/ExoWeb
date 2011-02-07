@@ -77,6 +77,10 @@ function ServerSync$addScopeQuery(query) {
 	this._scopeQueries.push(query);
 }
 
+function ServerSync$storeInitChanges(changes) {
+	this._changeLog.addSet("init", changes);
+}
+
 ServerSync.mixin({
 	getScopeQueries: function ServerSync$getScopeQueries() {
 		return this._scopeQueries;

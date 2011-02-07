@@ -153,6 +153,28 @@ describe("ChangeLog", function() {
 	});
 });
 
+describe("ChangeLog.addSet", function() {
+	it("will throws an error when the log is active", function() {
+		var log = new ChangeLog();
+		log.start("test");
+
+		expect(function() {
+			log.addSet([1, 2], "test2");
+		}).toThrow("Cannot store init changes in an active change log.");
+	});
+
+	it("adds a non-active set to the change log", function() {
+		var changes = [1, 2, 3];
+		var log = new ChangeLog();
+		log.addSet("test", changes);
+
+		expect(log.sets().length).toBe(1);
+		expect(log.sets()[0].changes().length).toBe(3);
+		expect(log.sets()[0].changes()).not.toBe(changes);
+		expect(log.activeSet()).toBe(null);
+	});
+});
+
 // Run Tests
 ///////////////////////////////////////
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());

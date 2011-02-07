@@ -73,6 +73,13 @@ describe("ChangeSet", function() {
 		expect(set.changes().length).toBe(1);
 		expect(set.changes()[0]).toBe(5);
 	});
+
+	it("accepts initial set of changes", function() {
+		var changes = [0, 1, 2];
+		var set = new ChangeSet("test", changes);
+		expect(set.changes()).not.toBe(changes);
+		expect(set.changes().length).toBe(3);
+	});
 });
 
 describe("ChangeSet", function() {

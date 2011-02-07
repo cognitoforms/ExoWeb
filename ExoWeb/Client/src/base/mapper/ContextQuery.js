@@ -75,13 +75,15 @@ page loads by embedded data, changes, etc.
 */
 function ContextQuery$processEmbedded(callback, thisPtr) {
 	ExoWeb.trace.log("context", "Processing embedded data in query.");
-	if (/*this.options.types, */this.options.instances || this.options.changes || this.options.conditions) {
+
+	if (this.options.changes) {
+		ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
+	}
+
+	if (this.options.instances || this.options.conditions) {
 		var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
-			//types: options.types,
 			instances: this.options.instances,
-			changes: this.options.changes,
-			conditions: this.options.conditions,
-			source: "init"
+			conditions: this.options.conditions
 		});
 
 		// "thisPtr" refers to the function chain in the context of
