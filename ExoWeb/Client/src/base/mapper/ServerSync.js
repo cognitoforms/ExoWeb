@@ -4,6 +4,7 @@ function ServerSync(model) {
 	this._pendingServerEvent = false;
 	this._pendingRoundtrip = false;
 	this._pendingSave = false;
+	this._scopeQueries = [];
 	this._objectsExcludedFromSave = [];
 	this._translator = new ExoWeb.Translator();
 	this._listener = new ExoGraphEventListener(this._model, this._translator);
@@ -53,7 +54,7 @@ ExoWeb.registerActivity(function() {
 });
 
 function serializeChanges(includeAllChanges) {
-	if (ExoWeb.config.useChangeSets) {
+	if (ExoWeb.config.useChangeSets === true) {
 		return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
 	}
 	else {
@@ -71,7 +72,15 @@ function startChangeSet(source) {
 	}
 }
 
+// when ServerSync is made singleton, this data will be referenced via closure
+function ServerSync$addScopeQuery(query) {
+	this._scopeQueries.push(query);
+}
+
 ServerSync.mixin({
+	getScopeQueries: function ServerSync$getScopeQueries() {
+		return this._scopeQueries;
+	},
 	_addEventHandler: function ServerSync$_addEventHandler(name, handler, includeAutomatic, automaticArgIndex) {
 		automaticArgIndex = (automaticArgIndex === undefined) ? 0 : automaticArgIndex;
 

@@ -49,6 +49,17 @@ function ContextQuery$initModels(callback, thisPtr) {
 				});
 				return strPath;
 			});
+
+			// use temporary config setting to enable/disable scope-of-work functionality
+			if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
+				this.state[varName].scopeQuery = {
+					from: query.from,
+					ids: [query.id],
+					paths: query.serverPaths, // TODO: this will be subset of paths interpreted as scope-of-work
+					inScope: true,
+					forLoad: false
+				};
+			}
 		}, this);
 	}
 
@@ -124,18 +135,25 @@ function ContextQuery$doBatchRequest(callback, thisPtr) {
 						// complete the individual query signal after the batch is complete
 						batchQuerySignal.waitForAll(this.state[varName].signal.pending(null, this, true), this, true);
 
-						pendingQueries.push({
+						var q = {
 							from: query.from,
 							id: query.id,
 							and: query.serverPaths
-						});
+						};
+
+						if (ExoWeb.config.useChangeSets) {
+							q.inScope = true;
+							q.forLoad = true;
+						}
+
+						pendingQueries.push(q);
 					}
 				}, this);
 			}
 		}, this);
 
 		if (pendingQueries.length > 0) {
-			queryProvider(pendingQueries, null, 
+			queryProvider(pendingQueries, null,
 				function context$objects$callback(result) {
 					objectsFromJson(this.context.model.meta, result.instances, function() {
 						if (result.conditions) {
@@ -182,7 +200,18 @@ function ContextQuery$doIndividualRequests(callback, thisPtr) {
 						allSignals.oneDone();
 					}
 					else {
-						objectProvider(query.from, [query.id], query.serverPaths, null,
+						// for individual queries, include scope queries for all but the query we are sending
+						var scopeQueries = [];
+						if (ExoWeb.config.useChangeSets === true) {
+							var currentVarName = varName;
+							ExoWeb.eachProp(this.options.model, function(varName, query) {
+								if (varName !== currentVarName && this.state[varName].scopeQuery) {
+									scopeQueries.push(this.state[varName].scopeQuery);
+								}
+							}, this);
+						}
+
+						objectProvider(query.from, [query.id], query.serverPaths, true, null, scopeQueries,
 							this.state[varName].signal.pending(function context$objects$callback(result) {
 								this.state[varName].objectJson = result.instances;
 								this.state[varName].conditionsJson = result.conditions;
@@ -222,7 +251,7 @@ function ContextQuery$doStaticRequests(callback, thisPtr) {
 				// Only call the server if paths were specified
 				if (query.serverPaths.length > 0)
 				{
-					objectProvider(null, null, query.serverPaths, null,
+					objectProvider(null, null, query.serverPaths, false, null,
 						allSignals.pending(function context$objects$callback(result) {
 							// load the json. this may happen asynchronously to increment the signal just in case
 							objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
@@ -365,7 +394,7 @@ function ContextQuery$fetchTypes(callback, thisPtr) {
 			fetchTypes(this.context.model.meta, typeQuery, allSignals.pending(null, this, true));
 
 			if (typeQuery.serverPaths.length > 0) {
-				objectProvider(typeQuery.from, null, typeQuery.serverPaths, null,
+				objectProvider(typeQuery.from, null, typeQuery.serverPaths, false, null,
 					allSignals.pending(function context$objects$callback(result) {
 						// load the json. this may happen asynchronously to increment the signal just in case
 						objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
@@ -378,9 +407,27 @@ function ContextQuery$fetchTypes(callback, thisPtr) {
 						ExoWeb.trace.logError("objectInit",
 							"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 							{ query: typeQuery, error: error });
-					}, this, true), this, true);
+					}, this, true), this);
 			}
 		}
+	}
+
+	callback.call(thisPtr || this);
+}
+
+/*
+=====================================================================
+Perform pre-processing of model queries and their paths.
+=====================================================================
+*/
+function ContextQuery$postQueries(callback, thisPtr) {
+	if (this.options.model) {
+		ExoWeb.trace.log("context", "Running post query step for model queries.");
+		ExoWeb.eachProp(this.options.model, function(varName, query) {
+			if (this.state[varName].scopeQuery) {
+				ServerSync$addScopeQuery.call(this.context.server, this.state[varName].scopeQuery);
+			}
+		}, this);
 	}
 
 	callback.call(thisPtr || this);
@@ -442,6 +489,7 @@ ContextQuery.mixin({
 		ContextQuery$fetchPathTypes,
 		ContextQuery$processResults,
 		ContextQuery$fetchTypes,
+		ContextQuery$postQueries,
 		ContextQuery$registerLazyLoader,
 		ContextQuery$cleanup
 	)

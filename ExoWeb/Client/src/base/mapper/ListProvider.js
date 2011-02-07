@@ -3,6 +3,21 @@ var listProviderFn = function listProvider(ownerType, ownerId, paths, onSuccess,
 };
 
 function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure, thisPtr) {
+	var scopeQueries;
+
+	// ensure correct value of "scopeQueries" argument
+	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+		// scopeQueries is included in call, so shift arguments
+		scopeQueries = onSuccess;
+		onSuccess = onFailure;
+		onFailure = thisPtr;
+		thisPtr = arguments.length > 7 ? arguments[7] : null;
+	}
+	else {
+		// scopeQueries is NOT included in call, so insert default value into args array
+		scopeQueries = context.server.getScopeQueries();
+	}
+
 	if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 		thisPtr = onFailure;
 		onFailure = null;
@@ -20,7 +35,7 @@ function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFai
 		});
 	}
 
-	listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths,
+	listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths, scopeQueries,
 		function listProviderSuccess() {
 			ExoWeb.Batch.resume(batch);
 			if (onSuccess) onSuccess.apply(thisPtr || this, arguments);

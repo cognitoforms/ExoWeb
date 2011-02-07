@@ -6070,18 +6070,33 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// #region ObjectProvider
 	//////////////////////////////////////////////////
 
-	var objectProviderFn = function objectProviderFn(type, ids, paths, changes, onSuccess, onFailure) {
+	var objectProviderFn = function objectProviderFn(type, ids, paths, inScope, changes, onSuccess, onFailure) {
 		throw "Object provider has not been implemented.  Call ExoWeb.Mapper.setObjectProvider(fn);";
 	};
 
-	function objectProvider(type, ids, paths, changes, onSuccess, onFailure, thisPtr) {
+	function objectProvider(type, ids, paths, inScope, changes, onSuccess, onFailure, thisPtr) {
+		var scopeQueries;
+
+		// ensure correct value of "scopeQueries" argument
+		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+			// scopeQueries is included in call, so shift arguments
+			scopeQueries = onSuccess;
+			onSuccess = onFailure;
+			onFailure = thisPtr;
+			thisPtr = arguments.length > 8 ? arguments[8] : null;
+		}
+		else {
+			// scopeQueries is NOT included in call, so insert default value into args array
+			scopeQueries = context.server.getScopeQueries();
+		}
+
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 			thisPtr = onFailure;
 			onFailure = null;
 		}
 
 		var batch = ExoWeb.Batch.suspendCurrent("objectProvider");
-		objectProviderFn.call(this, type, ids, paths, changes,
+		objectProviderFn.call(this, type, ids, paths, inScope, changes, scopeQueries,
 			function objectProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
 				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
@@ -6105,13 +6120,28 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	function queryProvider(queries, changes, onSuccess, onFailure, thisPtr, thisPtr) {
+		var scopeQueries;
+
+		// ensure correct value of "scopeQueries" argument
+		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+			// scopeQueries is included in call, so shift arguments
+			scopeQueries = onSuccess;
+			onSuccess = onFailure;
+			onFailure = thisPtr;
+			thisPtr = arguments.length > 5 ? arguments[5] : null;
+		}
+		else {
+			// scopeQueries is NOT included in call, so insert default value into args array
+			scopeQueries = context.server.getScopeQueries();
+		}
+
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 			thisPtr = onFailure;
 			onFailure = null;
 		}
 
 		var batch = ExoWeb.Batch.suspendCurrent("queryProvider");
-		queryProviderFn.call(this, queries, changes,
+		queryProviderFn.call(this, queries, changes, scopeQueries,
 			function queryProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
 				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
@@ -6173,6 +6203,21 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure, thisPtr) {
+		var scopeQueries;
+
+		// ensure correct value of "scopeQueries" argument
+		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+			// scopeQueries is included in call, so shift arguments
+			scopeQueries = onSuccess;
+			onSuccess = onFailure;
+			onFailure = thisPtr;
+			thisPtr = arguments.length > 7 ? arguments[7] : null;
+		}
+		else {
+			// scopeQueries is NOT included in call, so insert default value into args array
+			scopeQueries = context.server.getScopeQueries();
+		}
+
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 			thisPtr = onFailure;
 			onFailure = null;
@@ -6190,7 +6235,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			});
 		}
 
-		listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths,
+		listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths, scopeQueries,
 			function listProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
 				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
@@ -6215,13 +6260,28 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	function roundtripProvider(changes, onSuccess, onFailure, thisPtr) {
+		var scopeQueries;
+
+		// ensure correct value of "scopeQueries" argument
+		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+			// scopeQueries is included in call, so shift arguments
+			scopeQueries = onSuccess;
+			onSuccess = onFailure;
+			onFailure = thisPtr;
+			thisPtr = arguments.length > 4 ? arguments[4] : null;
+		}
+		else {
+			// scopeQueries is NOT included in call, so insert default value into args array
+			scopeQueries = context.server.getScopeQueries();
+		}
+
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 			thisPtr = onFailure;
 			onFailure = null;
 		}
 
 		var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
-		roundtripProviderFn.call(this, changes,
+		roundtripProviderFn.call(this, changes, scopeQueries,
 			function roundtripProviderSucess() {
 				ExoWeb.Batch.resume(batch);
 				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
@@ -6246,13 +6306,28 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	function saveProvider(root, changes, onSuccess, onFailure, thisPtr) {
+		var scopeQueries;
+
+		// ensure correct value of "scopeQueries" argument
+		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+			// scopeQueries is included in call, so shift arguments
+			scopeQueries = onSuccess;
+			onSuccess = onFailure;
+			onFailure = thisPtr;
+			thisPtr = arguments.length > 5 ? arguments[5] : null;
+		}
+		else {
+			// scopeQueries is NOT included in call, so insert default value into args array
+			scopeQueries = context.server.getScopeQueries();
+		}
+
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 			thisPtr = onFailure;
 			onFailure = null;
 		}
 
 		var batch = ExoWeb.Batch.suspendCurrent("saveProvider");
-		saveProviderFn.call(this, root, changes,
+		saveProviderFn.call(this, root, changes, scopeQueries,
 			function saveProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
 				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
@@ -6277,13 +6352,28 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	function eventProvider(eventType, instance, event, paths, changes, onSuccess, onFailure, thisPtr) {
+		var scopeQueries;
+
+		// ensure correct value of "scopeQueries" argument
+		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+			// scopeQueries is included in call, so shift arguments
+			scopeQueries = onSuccess;
+			onSuccess = onFailure;
+			onFailure = thisPtr;
+			thisPtr = arguments.length > 8 ? arguments[8] : null;
+		}
+		else {
+			// scopeQueries is NOT included in call, so insert default value into args array
+			scopeQueries = context.server.getScopeQueries();
+		}
+
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 			thisPtr = onFailure;
 			onFailure = null;
 		}
 
 		var batch = ExoWeb.Batch.suspendCurrent("eventProvider");
-		eventProviderFn.call(this, eventType, instance, event, paths, changes,
+		eventProviderFn.call(this, eventType, instance, event, paths, changes, scopeQueries,
 			function eventProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
 				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
@@ -6793,6 +6883,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this._pendingServerEvent = false;
 		this._pendingRoundtrip = false;
 		this._pendingSave = false;
+		this._scopeQueries = [];
 		this._objectsExcludedFromSave = [];
 		this._translator = new ExoWeb.Translator();
 		this._listener = new ExoGraphEventListener(this._model, this._translator);
@@ -6842,7 +6933,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	});
 
 	function serializeChanges(includeAllChanges) {
-		if (ExoWeb.config.useChangeSets) {
+		if (ExoWeb.config.useChangeSets === true) {
 			return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
 		}
 		else {
@@ -6860,7 +6951,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 	}
 
+	// when ServerSync is made singleton, this data will be referenced via closure
+	function ServerSync$addScopeQuery(query) {
+		this._scopeQueries.push(query);
+	}
+
 	ServerSync.mixin({
+		getScopeQueries: function ServerSync$getScopeQueries() {
+			return this._scopeQueries;
+		},
 		_addEventHandler: function ServerSync$_addEventHandler(name, handler, includeAutomatic, automaticArgIndex) {
 			automaticArgIndex = (automaticArgIndex === undefined) ? 0 : automaticArgIndex;
 
@@ -8750,7 +8849,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		// fetch object json
 //				ExoWeb.trace.log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 		// NOTE: should changes be included here?
-		objectProvider(mtype.get_fullName(), [id], paths, null,
+		objectProvider(mtype.get_fullName(), [id], paths, false, null,
 			function(result) {
 				mtype.get_model()._server._handleResult(result, null, true, function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
@@ -9103,6 +9202,17 @@ Type.registerNamespace("ExoWeb.Mapper");
 					});
 					return strPath;
 				});
+
+				// use temporary config setting to enable/disable scope-of-work functionality
+				if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
+					this.state[varName].scopeQuery = {
+						from: query.from,
+						ids: [query.id],
+						paths: query.serverPaths, // TODO: this will be subset of paths interpreted as scope-of-work
+						inScope: true,
+						forLoad: false
+					};
+				}
 			}, this);
 		}
 
@@ -9178,18 +9288,25 @@ Type.registerNamespace("ExoWeb.Mapper");
 							// complete the individual query signal after the batch is complete
 							batchQuerySignal.waitForAll(this.state[varName].signal.pending(null, this, true), this, true);
 
-							pendingQueries.push({
+							var q = {
 								from: query.from,
 								id: query.id,
 								and: query.serverPaths
-							});
+							};
+
+							if (ExoWeb.config.useChangeSets) {
+								q.inScope = true;
+								q.forLoad = true;
+							}
+
+							pendingQueries.push(q);
 						}
 					}, this);
 				}
 			}, this);
 
 			if (pendingQueries.length > 0) {
-				queryProvider(pendingQueries, null, 
+				queryProvider(pendingQueries, null,
 					function context$objects$callback(result) {
 						objectsFromJson(this.context.model.meta, result.instances, function() {
 							if (result.conditions) {
@@ -9236,7 +9353,18 @@ Type.registerNamespace("ExoWeb.Mapper");
 							allSignals.oneDone();
 						}
 						else {
-							objectProvider(query.from, [query.id], query.serverPaths, null,
+							// for individual queries, include scope queries for all but the query we are sending
+							var scopeQueries = [];
+							if (ExoWeb.config.useChangeSets === true) {
+								var currentVarName = varName;
+								ExoWeb.eachProp(this.options.model, function(varName, query) {
+									if (varName !== currentVarName && this.state[varName].scopeQuery) {
+										scopeQueries.push(this.state[varName].scopeQuery);
+									}
+								}, this);
+							}
+
+							objectProvider(query.from, [query.id], query.serverPaths, true, null, scopeQueries,
 								this.state[varName].signal.pending(function context$objects$callback(result) {
 									this.state[varName].objectJson = result.instances;
 									this.state[varName].conditionsJson = result.conditions;
@@ -9276,7 +9404,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 					// Only call the server if paths were specified
 					if (query.serverPaths.length > 0)
 					{
-						objectProvider(null, null, query.serverPaths, null,
+						objectProvider(null, null, query.serverPaths, false, null,
 							allSignals.pending(function context$objects$callback(result) {
 								// load the json. this may happen asynchronously to increment the signal just in case
 								objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
@@ -9419,7 +9547,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				fetchTypes(this.context.model.meta, typeQuery, allSignals.pending(null, this, true));
 
 				if (typeQuery.serverPaths.length > 0) {
-					objectProvider(typeQuery.from, null, typeQuery.serverPaths, null,
+					objectProvider(typeQuery.from, null, typeQuery.serverPaths, false, null,
 						allSignals.pending(function context$objects$callback(result) {
 							// load the json. this may happen asynchronously to increment the signal just in case
 							objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
@@ -9432,9 +9560,27 @@ Type.registerNamespace("ExoWeb.Mapper");
 							ExoWeb.trace.logError("objectInit",
 								"Failed to load {query.from}({query.id}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
 								{ query: typeQuery, error: error });
-						}, this, true), this, true);
+						}, this, true), this);
 				}
 			}
+		}
+
+		callback.call(thisPtr || this);
+	}
+
+	/*
+	=====================================================================
+	Perform pre-processing of model queries and their paths.
+	=====================================================================
+	*/
+	function ContextQuery$postQueries(callback, thisPtr) {
+		if (this.options.model) {
+			ExoWeb.trace.log("context", "Running post query step for model queries.");
+			ExoWeb.eachProp(this.options.model, function(varName, query) {
+				if (this.state[varName].scopeQuery) {
+					ServerSync$addScopeQuery.call(this.context.server, this.state[varName].scopeQuery);
+				}
+			}, this);
 		}
 
 		callback.call(thisPtr || this);
@@ -9496,6 +9642,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			ContextQuery$fetchPathTypes,
 			ContextQuery$processResults,
 			ContextQuery$fetchTypes,
+			ContextQuery$postQueries,
 			ContextQuery$registerLazyLoader,
 			ContextQuery$cleanup
 		)

@@ -146,7 +146,7 @@ Mock.mixin({
 				return mockCallback(callback, [json], delay, $format(">> fetch: {0}({1})", arguments));
 			};
 
-			ExoWeb.Mapper.setObjectProvider(function(type, ids, paths, changes, callback) {
+			ExoWeb.Mapper.setObjectProvider(function(type, ids, paths, inScope, changes, callback) {
 				return loader(type, ids, paths, changes, callback, _this._objectProviderDelay);
 			});
 			ExoWeb.Mapper.setListProvider(function(ownerType, ownerId, paths, callback) {

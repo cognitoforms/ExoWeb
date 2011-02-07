@@ -28,7 +28,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 	// fetch object json
 //				ExoWeb.trace.log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
 	// NOTE: should changes be included here?
-	objectProvider(mtype.get_fullName(), [id], paths, null,
+	objectProvider(mtype.get_fullName(), [id], paths, false, null,
 		function(result) {
 			mtype.get_model()._server._handleResult(result, null, true, function() {
 				ExoWeb.Model.LazyLoader.unregister(obj, this);

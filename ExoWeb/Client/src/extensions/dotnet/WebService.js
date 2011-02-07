@@ -37,44 +37,78 @@ function request(args, onSuccess, onFailure) {
 	processRequest("Request", args, onSuccess, onFailure);
 }
 
-ExoWeb.Mapper.setEventProvider(function eventProviderFn(eventType, instance, event, paths, changes, onSuccess, onFailure) {
+ExoWeb.Mapper.setEventProvider(function eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
 	request({
 		events:[{type: eventType, instance: instance, event: event}],
+		queries: scopeQueries,
 		paths:paths,
 		changes:changes
 	}, onSuccess, onFailure);
 });
 
-ExoWeb.Mapper.setRoundtripProvider(function roundtripProviderFn(changes, onSuccess, onFailure) {
-	request({changes:changes}, onSuccess, onFailure);
+ExoWeb.Mapper.setRoundtripProvider(function roundtripProviderFn(changes, scopeQueries, onSuccess, onFailure) {
+	request({
+		changes:changes,
+		queries: scopeQueries
+	}, onSuccess, onFailure);
 });
 
-ExoWeb.Mapper.setObjectProvider(function objectProviderFn(type, ids, paths, changes, onSuccess, onFailure) {
+ExoWeb.Mapper.setObjectProvider(function objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
+	var q = {
+		type: type,
+		ids: ids,
+		paths: paths
+	};
+
+	if (ExoWeb.config.useChangeSets === true) {
+		q.inScope = inScope;
+		q.forLoad = true;
+	}
+
 	request({
-		queries:[{type:type, ids:ids, paths:paths}],
+		queries:[q].concat(scopeQueries),
 		changes:changes
 	}, onSuccess, onFailure);
 });
 
-ExoWeb.Mapper.setQueryProvider(function queryProviderFn(queries, changes, onSuccess, onFailure) {
+ExoWeb.Mapper.setQueryProvider(function queryProviderFn(queries, changes, scopeQueries, onSuccess, onFailure) {
 	request({
 		changes: changes,
 		queries: queries.map(function(q) {
-			return { type: q.from, ids: [q.id], paths: q.and || [] };
-		})
+			var q = { type: q.from, ids: [q.id], paths: q.and || [] };
+			
+			if (ExoWeb.config.useChangeSets === true) {
+				q.inScope = true;
+				q.forLoad = true;
+			}
+
+			return q;
+		}).concat(scopeQueries)
 	}, onSuccess, onFailure);
 });
 
-ExoWeb.Mapper.setSaveProvider(function saveProviderFn(root, changes, onSuccess, onFailure) {
+ExoWeb.Mapper.setSaveProvider(function saveProviderFn(root, changes, scopeQueries, onSuccess, onFailure) {
 	request({
 		events:[{type: "Save", instance: root}],
+		queries: scopeQueries,
 		changes:changes
 	}, onSuccess, onFailure);
 });
 
-ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, onSuccess, onFailure) {
+ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, scopeQueries, onSuccess, onFailure) {
+	var q = {
+		type: ownerType,
+		ids: [ownerId],
+		paths: paths
+	};
+
+	if (ExoWeb.config.useChangeSets === true) {
+		q.inScope = false;
+		q.forLoad = true;
+	}
+
 	request({
-		queries: [{ type: ownerType, ids: [ownerId], paths: paths}]
+		queries: [q].concat(scopeQueries)
 	}, onSuccess, onFailure);
 });
 
