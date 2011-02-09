@@ -9219,7 +9219,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				// use temporary config setting to enable/disable scope-of-work functionality
 				if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
 					this.state[varName].scopeQuery = {
-						from: query.from,
+						type: query.from,
 						ids: [query.id],
 						paths: query.serverPaths, // TODO: this will be subset of paths interpreted as scope-of-work
 						inScope: true,
