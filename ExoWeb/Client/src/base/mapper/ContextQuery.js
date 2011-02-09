@@ -204,7 +204,7 @@ function ContextQuery$doIndividualRequests(callback, thisPtr) {
 
 					if (obj !== undefined) {
 						this.context.model[varName] = obj;
-						allSignals.oneDone();
+						//allSignals.oneDone();
 					}
 					else {
 						// for individual queries, include scope queries for all but the query we are sending
@@ -317,6 +317,7 @@ function ContextQuery$processResults(callback, thisPtr) {
 				// otherwise, load the object from json if an id was specified
 				else if (query.id !== null && query.id !== undefined && query.id !== "") {
 					if (this.context.model[varName]) {
+						allSignals.oneDone();
 						return;
 					}
 
