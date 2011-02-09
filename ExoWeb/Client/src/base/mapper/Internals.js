@@ -583,20 +583,15 @@ function fetchTypes(model, query, callback) {
 	}
 
 	// load root type, then load types referenced in paths
-	if (query.from !== undefined) {
-		var rootType = model.type(query.from);
-		if (!rootType) {
-			fetchType(model, query.from, signal.pending(rootTypeLoaded));
-		}
-		else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
-			ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
-		}
-		else {
-			rootTypeLoaded(rootType.get_jstype());
-		}
+	var rootType = model.type(query.from);
+	if (!rootType) {
+		fetchType(model, query.from, signal.pending(rootTypeLoaded));
+	}
+	else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
+		ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
 	}
 	else {
-		ExoWeb.trace.logWarning("types", "The query {0} requires a from clause, if you are loading types from the server.", [query.load]);
+		rootTypeLoaded(rootType.get_jstype());
 	}
 
 	signal.waitForAll(callback);

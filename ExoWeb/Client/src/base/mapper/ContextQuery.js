@@ -26,41 +26,43 @@ function ContextQuery$initModels(callback, thisPtr) {
 	if (this.options.model) {
 		ExoWeb.trace.log("context", "Running init step for model queries.");
 		ExoWeb.eachProp(this.options.model, function (varName, query) {
-			if (query.id !== undefined) {
-				// Common initial setup of state for all model queries
-				this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
-				allSignals.pending(null, this, true);
+			if (!query.hasOwnProperty("from") || !query.hasOwnProperty("id")) {
+				ExoWeb.trace.logWarning("types", "The model query \"{0}\" requires a from and id clause.", [varName]);
+			}
 
-				// Normalize (expand) the query paths
-				query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
+			// Common initial setup of state for all model queries
+			this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
+			allSignals.pending(null, this, true);
 
-				// Store the paths for later use in lazy loading
-				ObjectLazyLoader.addPaths(query.from, query.and);
+			// Normalize (expand) the query paths
+			query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
 
-				// Only send properties (no cast expressions) to the server
-				query.serverPaths = query.and.map(function (path) {
-					var strPath;
-					path.steps.forEach(function (step) {
-						if (!strPath) {
-							strPath = step.property;
-						}
-						else {
-							strPath += "." + step.property;
-						}
-					});
-					return strPath;
+			// Store the paths for later use in lazy loading
+			ObjectLazyLoader.addPaths(query.from, query.and);
+
+			// Only send properties (no cast expressions) to the server
+			query.serverPaths = query.and.map(function (path) {
+				var strPath;
+				path.steps.forEach(function (step) {
+					if (!strPath) {
+						strPath = step.property;
+					}
+					else {
+						strPath += "." + step.property;
+					}
 				});
+				return strPath;
+			});
 
-				// use temporary config setting to enable/disable scope-of-work functionality
-				if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
-					this.state[varName].scopeQuery = {
-						type: query.from,
-						ids: [query.id],
-						paths: query.serverPaths, // TODO: this will be subset of paths interpreted as scope-of-work
-						inScope: true,
-						forLoad: false
-					};
-				}
+			// use temporary config setting to enable/disable scope-of-work functionality
+			if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
+				this.state[varName].scopeQuery = {
+					type: query.from,
+					ids: [query.id],
+					paths: query.serverPaths, // TODO: this will be subset of paths interpreted as scope-of-work
+					inScope: true,
+					forLoad: false
+				};
 			}
 		}, this);
 	}
@@ -82,11 +84,11 @@ function ContextQuery$processEmbedded(callback, thisPtr) {
 		ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
 	}
 
-	if (this.options.instances || this.options.conditions || (this.options.types && this.options.types instanceof Object && !(this.options.types instanceof Array))) {
+	if (this.options.instances || this.options.conditions || (this.options.types && !(this.options.types instanceof Array))) {
 		var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
 			instances: this.options.instances,
 			conditions: this.options.conditions,
-            types: this.options.types
+			types: this.options.types
 		});
 
 		// "thisPtr" refers to the function chain in the context of
