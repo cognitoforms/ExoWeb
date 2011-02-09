@@ -17,7 +17,9 @@ function listLoad(list, propName, callback, thisPtr) {
 
 	var objectJson, conditionsJson;
 
+	// TODO: reference to server will be a singleton, not context
 	listProvider(ownerType, list._ownerId, propName, ObjectLazyLoader.getRelativePathsForType(propType),
+		serializeChanges.call(context.server, true),
 		signal.pending(function(result) {
 			objectJson = result.instances;
 			conditionsJson = result.conditions;

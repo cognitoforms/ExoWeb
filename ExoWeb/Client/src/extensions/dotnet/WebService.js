@@ -95,7 +95,7 @@ ExoWeb.Mapper.setSaveProvider(function saveProviderFn(root, changes, scopeQuerie
 	}, onSuccess, onFailure);
 });
 
-ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, scopeQueries, onSuccess, onFailure) {
+ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
 	var q = {
 		type: ownerType,
 		ids: [ownerId],
@@ -108,7 +108,8 @@ ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, s
 	}
 
 	request({
-		queries: [q].concat(scopeQueries)
+		queries: [q].concat(scopeQueries),
+		changes: changes
 	}, onSuccess, onFailure);
 });
 

@@ -1,8 +1,8 @@
-var listProviderFn = function listProvider(ownerType, ownerId, paths, onSuccess, onFailure) {
+var listProviderFn = function listProvider(ownerType, ownerId, paths, changes, onSuccess, onFailure) {
 	throw "List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);";
 };
 
-function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure, thisPtr) {
+function listProvider(ownerType, ownerId, listProp, otherProps, changes, onSuccess, onFailure, thisPtr) {
 	var scopeQueries;
 
 	// ensure correct value of "scopeQueries" argument
@@ -35,7 +35,7 @@ function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFai
 		});
 	}
 
-	listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths, scopeQueries,
+	listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths, changes, scopeQueries,
 		function listProviderSuccess() {
 			ExoWeb.Batch.resume(batch);
 			if (onSuccess) onSuccess.apply(thisPtr || this, arguments);

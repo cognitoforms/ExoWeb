@@ -6201,11 +6201,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region ListProvider
 	//////////////////////////////////////////////////
 
-	var listProviderFn = function listProvider(ownerType, ownerId, paths, onSuccess, onFailure) {
+	var listProviderFn = function listProvider(ownerType, ownerId, paths, changes, onSuccess, onFailure) {
 		throw "List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);";
 	};
 
-	function listProvider(ownerType, ownerId, listProp, otherProps, onSuccess, onFailure, thisPtr) {
+	function listProvider(ownerType, ownerId, listProp, otherProps, changes, onSuccess, onFailure, thisPtr) {
 		var scopeQueries;
 
 		// ensure correct value of "scopeQueries" argument
@@ -6238,7 +6238,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			});
 		}
 
-		listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths, scopeQueries,
+		listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths, changes, scopeQueries,
 			function listProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
 				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
@@ -8864,8 +8864,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// fetch object json
 //				ExoWeb.trace.log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
-		// NOTE: should changes be included here?
-		objectProvider(mtype.get_fullName(), [id], paths, false, null,
+		// TODO: reference to server will be a singleton, not context
+		objectProvider(mtype.get_fullName(), [id], paths, false,
+			serializeChanges.call(context.server, true),
 			function(result) {
 				mtype.get_model()._server._handleResult(result, null, true, function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
@@ -8979,7 +8980,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		var objectJson, conditionsJson;
 
+		// TODO: reference to server will be a singleton, not context
 		listProvider(ownerType, list._ownerId, propName, ObjectLazyLoader.getRelativePathsForType(propType),
+			serializeChanges.call(context.server, true),
 			signal.pending(function(result) {
 				objectJson = result.instances;
 				conditionsJson = result.conditions;
@@ -12744,7 +12747,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
 		var q = {
 			type: ownerType,
 			ids: [ownerId],
@@ -12757,7 +12760,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		request({
-			queries: [q].concat(scopeQueries)
+			queries: [q].concat(scopeQueries),
+			changes: changes
 		}, onSuccess, onFailure);
 	});
 
