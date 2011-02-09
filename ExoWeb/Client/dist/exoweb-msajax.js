@@ -8627,15 +8627,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		// load root type, then load types referenced in paths
-		var rootType = model.type(query.from);
-		if (!rootType) {
-			fetchType(model, query.from, signal.pending(rootTypeLoaded));
-		}
-		else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
-			ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
+		if (query.from !== undefined) {
+			var rootType = model.type(query.from);
+			if (!rootType) {
+				fetchType(model, query.from, signal.pending(rootTypeLoaded));
+			}
+			else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
+				ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
+			}
+			else {
+				rootTypeLoaded(rootType.get_jstype());
+			}
 		}
 		else {
-			rootTypeLoaded(rootType.get_jstype());
+			ExoWeb.trace.logWarning("types", "The query {0} requires a from clause, if you are loading types from the server.", [query.load]);
 		}
 
 		signal.waitForAll(callback);
@@ -9197,40 +9202,42 @@ Type.registerNamespace("ExoWeb.DotNet");
 	function ContextQuery$initModels(callback, thisPtr) {
 		if (this.options.model) {
 			ExoWeb.trace.log("context", "Running init step for model queries.");
-			ExoWeb.eachProp(this.options.model, function(varName, query) {
-				// Common initial setup of state for all model queries
-				this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
-				allSignals.pending(null, this, true);
+			ExoWeb.eachProp(this.options.model, function (varName, query) {
+				if (query.id !== undefined) {
+					// Common initial setup of state for all model queries
+					this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName) };
+					allSignals.pending(null, this, true);
 
-				// Normalize (expand) the query paths
-				query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
+					// Normalize (expand) the query paths
+					query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
 
-				// Store the paths for later use in lazy loading
-				ObjectLazyLoader.addPaths(query.from, query.and);
+					// Store the paths for later use in lazy loading
+					ObjectLazyLoader.addPaths(query.from, query.and);
 
-				// Only send properties (no cast expressions) to the server
-				query.serverPaths = query.and.map(function(path) {
-					var strPath;
-					path.steps.forEach(function(step) {
-						if (!strPath) {
-							strPath = step.property;
-						}
-						else {
-							strPath += "." + step.property;
-						}
+					// Only send properties (no cast expressions) to the server
+					query.serverPaths = query.and.map(function (path) {
+						var strPath;
+						path.steps.forEach(function (step) {
+							if (!strPath) {
+								strPath = step.property;
+							}
+							else {
+								strPath += "." + step.property;
+							}
+						});
+						return strPath;
 					});
-					return strPath;
-				});
 
-				// use temporary config setting to enable/disable scope-of-work functionality
-				if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
-					this.state[varName].scopeQuery = {
-						type: query.from,
-						ids: [query.id],
-						paths: query.serverPaths, // TODO: this will be subset of paths interpreted as scope-of-work
-						inScope: true,
-						forLoad: false
-					};
+					// use temporary config setting to enable/disable scope-of-work functionality
+					if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
+						this.state[varName].scopeQuery = {
+							type: query.from,
+							ids: [query.id],
+							paths: query.serverPaths, // TODO: this will be subset of paths interpreted as scope-of-work
+							inScope: true,
+							forLoad: false
+						};
+					}
 				}
 			}, this);
 		}
@@ -9252,10 +9259,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 			ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
 		}
 
-		if (this.options.instances || this.options.conditions) {
+		if (this.options.instances || this.options.conditions || (this.options.types && this.options.types instanceof Object && !(this.options.types instanceof Array))) {
 			var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
 				instances: this.options.instances,
-				conditions: this.options.conditions
+				conditions: this.options.conditions,
+	            types: this.options.types
 			});
 
 			// "thisPtr" refers to the function chain in the context of
@@ -9778,7 +9786,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		// Exit immediately if no model or types are pending
-		if (!(pendingOptions.model || pendingOptions.types))
+		if (!(pendingOptions.model || pendingOptions.types || pendingOptions.instances || pendingOptions.conditions || pendingOptions.changes))
 			return;
 
 		var currentOptions = pendingOptions;
@@ -10508,61 +10516,69 @@ Type.registerNamespace("ExoWeb.DotNet");
 	var externalTemplatesSignal = new ExoWeb.Signal("external templates");
 	var lastTemplateRequestSignal;
 
-	Template.load = function Template$load(path) {
-		/// <summary>
-		/// Loads external templates into the page.
-		/// </summary>
+	Template.load = function Template$load(path, options) {
+	    /// <summary>
+	    /// Loads external templates into the page.
+	    /// </summary>
 
-		var id = "exoweb-templates-" + (templateCount++);
+	    var id = "exoweb-templates-" + (templateCount++);
 
-		var lastReq = lastTemplateRequestSignal;
+	    var lastReq = lastTemplateRequestSignal;
 
-		// set the last request signal to the new signal and increment
-		lastTemplateRequestSignal = new ExoWeb.Signal(id);
-		var signal = lastTemplateRequestSignal;
-		var callback = signal.pending(function(elem) {
-//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
+	    // set the last request signal to the new signal and increment
+	    lastTemplateRequestSignal = new ExoWeb.Signal(id);
+	    var signal = lastTemplateRequestSignal;
+	    var callback = signal.pending(function (elem) {
+	        //				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
 
-			// Store the number of templates before activating this element.
-			var originalTemplateCount = allTemplates.length;
+	        // Store the number of templates before activating this element.
+	        var originalTemplateCount = allTemplates.length;
 
-			// Activate template controls within the response.
-			Sys.Application.activateElement(elem);
+	        // Activate template controls within the response.
+	        Sys.Application.activateElement(elem);
 
-			// No new templates were created.
-			if (originalTemplateCount === allTemplates.length) {
-				ExoWeb.trace.logWarning("ui", "Templates for request \"{0}\" from path \"{1}\" yields no templates.", [id, path]);
-			}
-		});
+	        // No new templates were created.
+	        if (originalTemplateCount === allTemplates.length) {
+	            ExoWeb.trace.logWarning("ui", "Templates for request \"{0}\" from path \"{1}\" yields no templates.", [id, path]);
+	        }
+	    });
 
-		$(function ($) {
+	    $(function ($) {
 
-			var tmpl = $("<div id='" + id + "'/>")
+	        var tmpl = $("<div id='" + id + "'/>")
 					.hide()
 					.appendTo("body");
 
-			var html = ExoWeb.cache(path);
+	        //if the template is stored locally look for the path as a div on the page rather than the cache
+	        if (options.isLocal && options.isLocal === true) {
+	            var localTemplate = $('#' + path);
+	            callback(localTemplate.get(0));
+	        }
+	        else {
+	            var html = ExoWeb.cache(path);
 
-			if (html) {
-				tmpl.append(html);
-				callback(tmpl.get(0));
-			}
-			else
-				tmpl.load(path, externalTemplatesSignal.pending(function () {
-					var elem = this;
+	            if (html) {
+	                tmpl.append(html);
+	                callback(tmpl.get(0));
+	            }
+	            else {
+	                tmpl.load(path, externalTemplatesSignal.pending(function () {
+	                    var elem = this;
 
-					// Cache the template
-					ExoWeb.cache(path, elem.innerHTML);
+	                    // Cache the template
+	                    ExoWeb.cache(path, elem.innerHTML);
 
-					// if there is a pending request then wait for it to complete
-					if (lastReq) {
-						lastReq.waitForAll(function () { callback(elem); });
-					}
-					else {
-						callback(elem);
-					}
-				}));
-		});
+	                    // if there is a pending request then wait for it to complete
+	                    if (lastReq) {
+	                        lastReq.waitForAll(function () { callback(elem); });
+	                    }
+	                    else {
+	                        callback(elem);
+	                    }
+	                }));
+	            }
+	        }
+	    });
 	};
 
 	ExoWeb.UI.Template = Template;

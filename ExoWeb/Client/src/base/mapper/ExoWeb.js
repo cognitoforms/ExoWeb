@@ -102,7 +102,7 @@ window.$exoweb = function (options) {
 	}
 
 	// Exit immediately if no model or types are pending
-	if (!(pendingOptions.model || pendingOptions.types))
+	if (!(pendingOptions.model || pendingOptions.types || pendingOptions.instances || pendingOptions.conditions || pendingOptions.changes))
 		return;
 
 	var currentOptions = pendingOptions;

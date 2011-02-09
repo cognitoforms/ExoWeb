@@ -153,61 +153,69 @@ var templateCount = 0;
 var externalTemplatesSignal = new ExoWeb.Signal("external templates");
 var lastTemplateRequestSignal;
 
-Template.load = function Template$load(path) {
-	/// <summary>
-	/// Loads external templates into the page.
-	/// </summary>
+Template.load = function Template$load(path, options) {
+    /// <summary>
+    /// Loads external templates into the page.
+    /// </summary>
 
-	var id = "exoweb-templates-" + (templateCount++);
+    var id = "exoweb-templates-" + (templateCount++);
 
-	var lastReq = lastTemplateRequestSignal;
+    var lastReq = lastTemplateRequestSignal;
 
-	// set the last request signal to the new signal and increment
-	lastTemplateRequestSignal = new ExoWeb.Signal(id);
-	var signal = lastTemplateRequestSignal;
-	var callback = signal.pending(function(elem) {
-//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
+    // set the last request signal to the new signal and increment
+    lastTemplateRequestSignal = new ExoWeb.Signal(id);
+    var signal = lastTemplateRequestSignal;
+    var callback = signal.pending(function (elem) {
+        //				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
 
-		// Store the number of templates before activating this element.
-		var originalTemplateCount = allTemplates.length;
+        // Store the number of templates before activating this element.
+        var originalTemplateCount = allTemplates.length;
 
-		// Activate template controls within the response.
-		Sys.Application.activateElement(elem);
+        // Activate template controls within the response.
+        Sys.Application.activateElement(elem);
 
-		// No new templates were created.
-		if (originalTemplateCount === allTemplates.length) {
-			ExoWeb.trace.logWarning("ui", "Templates for request \"{0}\" from path \"{1}\" yields no templates.", [id, path]);
-		}
-	});
+        // No new templates were created.
+        if (originalTemplateCount === allTemplates.length) {
+            ExoWeb.trace.logWarning("ui", "Templates for request \"{0}\" from path \"{1}\" yields no templates.", [id, path]);
+        }
+    });
 
-	$(function ($) {
+    $(function ($) {
 
-		var tmpl = $("<div id='" + id + "'/>")
+        var tmpl = $("<div id='" + id + "'/>")
 				.hide()
 				.appendTo("body");
 
-		var html = ExoWeb.cache(path);
+        //if the template is stored locally look for the path as a div on the page rather than the cache
+        if (options.isLocal && options.isLocal === true) {
+            var localTemplate = $('#' + path);
+            callback(localTemplate.get(0));
+        }
+        else {
+            var html = ExoWeb.cache(path);
 
-		if (html) {
-			tmpl.append(html);
-			callback(tmpl.get(0));
-		}
-		else
-			tmpl.load(path, externalTemplatesSignal.pending(function () {
-				var elem = this;
+            if (html) {
+                tmpl.append(html);
+                callback(tmpl.get(0));
+            }
+            else {
+                tmpl.load(path, externalTemplatesSignal.pending(function () {
+                    var elem = this;
 
-				// Cache the template
-				ExoWeb.cache(path, elem.innerHTML);
+                    // Cache the template
+                    ExoWeb.cache(path, elem.innerHTML);
 
-				// if there is a pending request then wait for it to complete
-				if (lastReq) {
-					lastReq.waitForAll(function () { callback(elem); });
-				}
-				else {
-					callback(elem);
-				}
-			}));
-	});
+                    // if there is a pending request then wait for it to complete
+                    if (lastReq) {
+                        lastReq.waitForAll(function () { callback(elem); });
+                    }
+                    else {
+                        callback(elem);
+                    }
+                }));
+            }
+        }
+    });
 };
 
 ExoWeb.UI.Template = Template;
