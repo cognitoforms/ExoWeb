@@ -26,7 +26,7 @@ ExoWeb.config = {
 
 	// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 	individualQueryLoading: false
-}
+};
 
 ExoWeb.trace = {
 	// The following flags can be turned on to see debugging info.

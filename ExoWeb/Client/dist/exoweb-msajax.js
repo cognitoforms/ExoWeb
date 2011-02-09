@@ -445,7 +445,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 		individualQueryLoading: false
-	}
+	};
 
 	ExoWeb.trace = {
 		// The following flags can be turned on to see debugging info.
@@ -622,7 +622,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Cache
 		ExoWeb.cache = function (key, value) {
 			if (arguments.length == 1) {
-				var value = window.localStorage.getItem(key);
+				value = window.localStorage.getItem(key);
 				return value ? JSON.parse(value) : null;
 			}
 			else if (arguments.length == 2) {

@@ -4,7 +4,7 @@ if (window.localStorage) {
 	// Cache
 	ExoWeb.cache = function (key, value) {
 		if (arguments.length == 1) {
-			var value = window.localStorage.getItem(key);
+			value = window.localStorage.getItem(key);
 			return value ? JSON.parse(value) : null;
 		}
 		else if (arguments.length == 2) {
