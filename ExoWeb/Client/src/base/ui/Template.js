@@ -187,7 +187,7 @@ Template.load = function Template$load(path, options) {
 				.appendTo("body");
 
         //if the template is stored locally look for the path as a div on the page rather than the cache
-        if (options.isLocal && options.isLocal === true) {
+        if (options && options.isLocal && options.isLocal === true) {
             var localTemplate = $('#' + path);
             callback(localTemplate.get(0));
         }
