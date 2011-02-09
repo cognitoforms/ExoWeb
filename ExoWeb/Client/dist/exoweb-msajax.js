@@ -6742,7 +6742,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		serialize: function(filter, thisPtr) {
 			return {
-				source: this._source,
+				source: (this._source === "init" || this._source === "client") ? this._source : "server",
 				changes: filter ? 
 					this._changes.where(filter, thisPtr) :
 					this._changes

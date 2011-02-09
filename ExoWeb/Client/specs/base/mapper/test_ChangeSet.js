@@ -84,7 +84,7 @@ describe("ChangeSet", function() {
 
 describe("ChangeSet", function() {
 	beforeEach(function() {
-		var set = new ChangeSet("test");
+		var set = new ChangeSet("client");
 		set.add(1);
 		set.add(2);
 		set.add(3);
@@ -96,9 +96,48 @@ describe("ChangeSet", function() {
 		expect(this.set.serialize(function(c) {
 			return c > 1;
 		})).toEqual({
-			source: "test",
+			source: "client",
 			changes: [2, 3]
 		});
+	});
+	
+	it("serializes source as server unless it is client or init", function() {
+		var set = new ChangeSet("client");
+		set.add(2);
+		set.add(3);
+
+		expect(set.serialize()).toEqual({
+			source: "client",
+			changes: [2, 3]
+		});
+		
+		set = new ChangeSet("init");
+		set.add(2);
+		set.add(3);
+
+		expect(set.serialize()).toEqual({
+			source: "init",
+			changes: [2, 3]
+		});
+		
+		function rand(num) {
+			var result = "";
+			for (var i = 0; i < num; i++) {
+				result += String.fromCharCode(65 + Math.floor(Math.random()*26));
+			}
+			return result;
+		}
+
+		for (var i = 0; i < 10; i++) {
+			set = new ChangeSet(rand(5));
+			set.add(2);
+			set.add(3);
+
+			expect(set.serialize()).toEqual({
+				source: "server",
+				changes: [2, 3]
+			});
+		}
 	});
 	
 	it("returns the last change added", function() {
