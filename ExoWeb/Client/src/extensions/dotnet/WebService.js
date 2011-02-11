@@ -113,8 +113,7 @@ ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, c
 	}, onSuccess, onFailure);
 });
 
-// Define the ExoWeb.GetType method
-function getType(type, onSuccess, onFailure) {
+ExoWeb.Mapper.setTypeProvider(function(type, onSuccess, onFailure) {
 	var data = { type: type, config: ExoWeb.DotNet.config};
 	
 	if (ExoWeb.cacheHash) {
@@ -122,24 +121,25 @@ function getType(type, onSuccess, onFailure) {
 	}
 
 	Sys.Net.WebServiceProxy.invoke(getPath(), "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
-}
-
-ExoWeb.Mapper.setTypeProvider(getType);
-
-// Define the ExoWeb.LogError method
-function logError(type, message, stackTrace, url, refererUrl, onSuccess, onFailure) {
-	var data = { type: type, message: message, stackTrace: stackTrace, url: url, refererUrl: refererUrl, config: ExoWeb.DotNet.config};
-	Sys.Net.WebServiceProxy.invoke(getPath(), "LogError", false, data, onSuccess, onFailure, null, 1000000, false, null);
-}
+});
 
 var loggingError = false;
 ExoWeb.setErrorHandler(function errorHandler(message, e) {
 	if (loggingError === false) {
 		try {
 			loggingError = true;
-			var stackTrace = ExoWeb.trace.getCallStack();
-			var type = e ? parseFunctionName(e.constructor) : "Error";
-			logError(type, message, stackTrace.join("\n"), window.location.href, document.referrer);
+			Sys.Net.WebServiceProxy.invoke(
+				getPath(),
+				"LogError",
+				false,
+				{
+					message: message,
+					type: e ? parseFunctionName(e.constructor) : "Error",
+					stackTrace: ExoWeb.trace.getCallStack().join("\n"),
+					url: window.location.href,
+					refererUrl: document.referrer,
+					config: ExoWeb.DotNet.config
+				}, null, null, null, 1000000, false, null);
 		}
 		finally {
 			loggingError = false;

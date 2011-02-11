@@ -2,7 +2,6 @@
 // jquery plugin for msajax helper
 //////////////////////////////////////////////////
 (function() {
-
 	var undefined;
 
 	// #region Validation
@@ -385,5 +384,5 @@
 	};
 
 	// #endregion
-	
+
 })();

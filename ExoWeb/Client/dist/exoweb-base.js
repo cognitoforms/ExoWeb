@@ -2,15 +2,12 @@ Type.registerNamespace("ExoWeb");
 Type.registerNamespace("ExoWeb.Model");
 Type.registerNamespace("ExoWeb.Mapper");
 
-// core
-//////////////////////////////////////////////////
 (function() {
-
 	var undefined;
+
 
 	// #region Function
 	//////////////////////////////////////////////////
-
 
 	var overridableNonEnumeratedMethods;
 
@@ -2142,14 +2139,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	// #endregion
-	
-})();
-
-// model
-//////////////////////////////////////////////////
-(function() {
-
-	var undefined;
 
 	// #region Model
 	//////////////////////////////////////////////////
@@ -6058,14 +6047,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 	LazyLoader.registerClass("ExoWeb.Model.LazyLoader");
 
 	// #endregion
-	
-})();
-
-// mapper
-//////////////////////////////////////////////////
-(function() {
-
-	var undefined;
 
 	// #region ObjectProvider
 	//////////////////////////////////////////////////
@@ -9941,5 +9922,4 @@ Type.registerNamespace("ExoWeb.Mapper");
 	};
 
 	// #endregion
-	
 })();

@@ -1,4 +1,3 @@
-
 var overridableNonEnumeratedMethods;
 
 for (var m in {}) {
