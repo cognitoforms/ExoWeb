@@ -8,7 +8,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 (function() {
 	var undefined;
 
-
 	// #region Function
 	//////////////////////////////////////////////////
 
@@ -12269,7 +12268,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		processRequest("Request", args, onSuccess, onFailure);
 	}
 
-	ExoWeb.Mapper.setEventProvider(function eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
 		request({
 			events:[{type: eventType, instance: instance, event: event}],
 			queries: scopeQueries,
@@ -12278,14 +12277,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setRoundtripProvider(function roundtripProviderFn(changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setRoundtripProvider(function WebService$roundtripProviderFn(changes, scopeQueries, onSuccess, onFailure) {
 		request({
 			changes:changes,
 			queries: scopeQueries
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setObjectProvider(function objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
 		var q = {
 			type: type,
 			ids: ids,
@@ -12303,7 +12302,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setQueryProvider(function queryProviderFn(queries, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setQueryProvider(function WebService$queryProviderFn(queries, changes, scopeQueries, onSuccess, onFailure) {
 		request({
 			changes: changes,
 			queries: queries.map(function(q) {
@@ -12319,7 +12318,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setSaveProvider(function saveProviderFn(root, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setSaveProvider(function WebService$saveProviderFn(root, changes, scopeQueries, onSuccess, onFailure) {
 		request({
 			events:[{type: "Save", instance: root}],
 			queries: scopeQueries,
@@ -12327,7 +12326,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setListProvider(function listProvider(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
 		var q = {
 			type: ownerType,
 			ids: [ownerId],
@@ -12345,7 +12344,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setTypeProvider(function(type, onSuccess, onFailure) {
+	ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(type, onSuccess, onFailure) {
 		var data = { type: type, config: ExoWeb.DotNet.config};
 	
 		if (ExoWeb.cacheHash) {
@@ -12356,7 +12355,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	var loggingError = false;
-	ExoWeb.setErrorHandler(function errorHandler(message, e) {
+	ExoWeb.setErrorHandler(function WebService$errorHandlerFn(message, e) {
 		if (loggingError === false) {
 			try {
 				loggingError = true;

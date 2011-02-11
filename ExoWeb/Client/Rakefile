@@ -163,7 +163,7 @@ task :build_msajax_nojquery do
 	File.open(File.join(@dist_dir, "exoweb-msajax-nojquery.js"), "w") do |f|
 		f.write("Type.registerNamespace(\"ExoWeb\");\n")
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
-		f.write("\n(function() {\n\tvar undefined;\n\n")
+		f.write("\n(function() {\n\tvar undefined;\n")
 		
 		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet"].each do |name|
 			src_dir = @src_dir
@@ -182,7 +182,7 @@ task :build_msajax do
 	File.open(File.join(@dist_dir, "exoweb-msajax.js"), "w") do |f|
 		f.write("Type.registerNamespace(\"ExoWeb\");\n")
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
-		f.write("\n(function() {\n\tvar undefined;\n\n\t")
+		f.write("\n(function() {\n\tvar undefined;\n")
 		
 		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/jquery-msajax", "extensions/dotnet"].each do |name|
 			src_dir = @src_dir
@@ -201,7 +201,7 @@ task :build_base do
 	File.open(File.join(@dist_dir, "exoweb-base.js"), "w") do |f|
 		f.write("Type.registerNamespace(\"ExoWeb\");\n")
 		["Model", "Mapper"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
-		f.write("\n(function() {\n\tvar undefined;\n\n")
+		f.write("\n(function() {\n\tvar undefined;\n")
 		
 		["base/core", "base/model", "base/mapper"].each do |name|
 			src_dir = @src_dir

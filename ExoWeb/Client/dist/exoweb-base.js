@@ -5,7 +5,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 (function() {
 	var undefined;
 
-
 	// #region Function
 	//////////////////////////////////////////////////
 
