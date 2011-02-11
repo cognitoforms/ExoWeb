@@ -9211,7 +9211,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 					this.state[varName].scopeQuery = {
 						type: query.from,
 						ids: [query.id],
-						paths: query.serverPaths, // TODO: this will be subset of paths interpreted as scope-of-work
+						// TODO: this will be subset of paths interpreted as scope-of-work
+						paths: query.serverPaths.where(function(p) { return p.startsWith("this."); }),
 						inScope: true,
 						forLoad: false
 					};
