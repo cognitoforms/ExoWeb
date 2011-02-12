@@ -3794,7 +3794,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	PathTokens.mixin({
 		buildExpression: function PathTokens$buildExpression() {
 			var path = "";
-			Array.forEach(this.steps, function(step) {
+			this.steps.forEach(function(step) {
 				path += (path ? "." : "") + step.property + (step.cast ? "<" + step.cast + ">" : "");
 			});
 			return path;
