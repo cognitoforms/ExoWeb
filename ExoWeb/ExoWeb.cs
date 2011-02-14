@@ -10,6 +10,7 @@ using ExoRule.Validation;
 using ExoRule;
 using System.Collections;
 using System.Runtime.Serialization;
+using System.Collections.Specialized;
 
 namespace ExoWeb
 {
@@ -125,7 +126,7 @@ namespace ExoWeb
 		#endregion
 
 		#region Methods
-		
+
 		/// <summary>
 		/// Determines whether a given property should be included in the
 		/// model on the client.  
@@ -134,7 +135,7 @@ namespace ExoWeb
 		/// <returns>A boolean value indicating whether to include the property.</returns>
 		internal static bool IncludeInClientModel(GraphProperty property)
 		{
-			return !(property is GraphValueProperty) ||				
+			return !(property is GraphValueProperty) ||
 				JsonConverter.GetJsonValueType(((GraphValueProperty)property).PropertyType) != null;
 		}
 
@@ -146,7 +147,7 @@ namespace ExoWeb
 		{
 			serializableTypes.Add(type);
 		}
-		 
+
 		internal static string FixJsonDates(string json)
 		{
 			return dateRegex.Replace(json,
@@ -163,11 +164,11 @@ namespace ExoWeb
 			serializableTypes.UnionWith(converters.SelectMany(c => c.SupportedTypes));
 		}
 
-        public static string ProcessRequest(string json)
-        {
-            ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
-            return ExoWeb.FixJsonDates(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke()));
-        }
+		public static string ProcessRequest(string json)
+		{
+			ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
+			return ExoWeb.FixJsonDates(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke()));
+		}
 
 		public static void RegisterForSerialization(Assembly assembly)
 		{
@@ -229,43 +230,59 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="paths"></param>
 		/// <returns></returns>
-		static string[] NormalizePaths(string[] collapsed)
+		internal static void TraversePaths(string[] collapsed, Action<string, char?> action)
 		{
-			var normalized = new List<string>();
-
 			if (collapsed != null)
 			{
-				foreach(string p in collapsed)
+				foreach (string p in collapsed)
 				{
 					Stack<string> stack = new Stack<string>();
 					string parent = null;
+					string previous = null;
+					string path = p +"^";
 					int start = 0;
 
-					for (var i = 0; i < p.Length; ++i)
+					for (var i = 0; i < path.Length; ++i)
 					{
-						var c = p[i];
+						var c = path[i];
 
-						if (c == '{' || c == ',' || c == '}')
+						if (c == '{' || c == ',' || c == '}' || c == '.' || c == '^')
 						{
-							var seg = p.Substring(start, i-start).Trim();
+							var seg = path.Substring(start, i - start).Trim();
 							start = i + 1;
 
-							if (c == '{') {
-								if (parent != null) {
+							if (seg.Length > 0)
+								action((parent != null ? parent + "." : "") + (previous != null ? previous + "." : "") + seg, c);
+
+							if (c == '{')
+							{
+								if (parent != null)
+								{
 									stack.Push(parent);
-									parent += "." + seg;
+									parent += "." + (previous != null ? previous + "." : "") + seg;
 								}
-								else {
-									parent = seg;
+								else
+								{
+									parent = (previous != null ? previous + "." : "") + seg;
 								}
+
+								previous = null;
+							}
+							else if (c == '.')
+							{
+								previous = (previous == null ? "" : previous + ".") + seg;
 							}
 							else
-							{   // ',' or '}'
-								if (seg.Length > 0)
-									normalized.Add(parent != null ? parent + "." + seg : seg);
-
+							{
+								// ',' or '}'
 								if (c == '}')
+								{
 									parent = (stack.Count == 0) ? null : stack.Pop();
+									previous = null;
+								}
+								else if (c == ',')
+									previous = null;
+
 							}
 						}
 					}
@@ -273,14 +290,24 @@ namespace ExoWeb
 					if (stack.Count > 0)
 						throw new ArgumentException("Unclosed '{' in path: " + p, "collapsed");
 
-					if (start == 0)
-						normalized.Add(p.Trim());
+					if (start == 0/* || (parent != null && parent.Length == start -1)*/)
+						action(path, null);
 				}
 			}
+		}
+
+		internal static string[] NormalizePaths(string[] collapsed)
+		{
+			var normalized = new List<string>();
+			TraversePaths(collapsed, (p, c) =>
+			{
+				if (p != "this" && (!c.HasValue || (c.Value != '{' && c.Value != '.')))
+					normalized.Add(p.Trim());
+			});
 			return normalized.ToArray();
 		}
 		#endregion
-		
+
 		#region JSON Serialization
 
 		static void InitializeSerialization()
