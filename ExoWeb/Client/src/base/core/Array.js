@@ -188,3 +188,18 @@ if (!Array.prototype.lastIndexOf) {
 		return -1;
 	};
 }
+
+if (!Array.prototype.removeAll) {
+	Array.prototype.removeAll = function(fn, thisPtr) {
+		for (var i = 0; i < this.length; i++) {
+			if (fn.call(thisPtr || this, this[i], i) === true) {
+				if (this.removeAt) {
+					this.removeAt(i--);
+				}
+				else {
+					this.splice(i--, 1);
+				}
+			}
+		}
+	}
+}

@@ -394,6 +394,21 @@ Type.registerNamespace("ExoWeb.Mapper");
 		};
 	}
 
+	if (!Array.prototype.removeAll) {
+		Array.prototype.removeAll = function(fn, thisPtr) {
+			for (var i = 0; i < this.length; i++) {
+				if (fn.call(thisPtr || this, this[i], i) === true) {
+					if (this.removeAt) {
+						this.removeAt(i--);
+					}
+					else {
+						this.splice(i--, 1);
+					}
+				}
+			}
+		}
+	}
+
 	// #endregion
 
 	// #region String

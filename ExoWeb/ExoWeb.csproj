@@ -114,6 +114,7 @@
     <Content Include="Client\dist\exoweb.templates.htm" />
     <Content Include="Client\dist\jquery.exoweb-msajax.js" />
     <Content Include="Client\dist\json2.js" />
+    <Content Include="Client\specs\base\core\test_Array.js" />
     <Content Include="Client\specs\base\core\test_FunctionChain.js" />
     <Content Include="Client\specs\base\core\test_Batch.js" />
     <Content Include="Client\specs\base\core\test_Function.js" />
