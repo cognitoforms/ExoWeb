@@ -13,7 +13,7 @@ function listLoad(list, propName, callback, thisPtr) {
 	var propType = list._ownerProperty.get_jstype().meta;
 
 	// load the objects in the list
-//				ExoWeb.trace.log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
+	ExoWeb.trace.log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
 
 	var objectJson, conditionsJson;
 

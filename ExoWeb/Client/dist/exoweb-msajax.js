@@ -8858,7 +8858,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		// fetch object json
-//				ExoWeb.trace.log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
+		ExoWeb.trace.log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
+
 		// TODO: reference to server will be a singleton, not context
 		objectProvider(mtype.get_fullName(), [id], paths, false,
 			serializeChanges.call(context.server, true),
@@ -8971,7 +8972,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var propType = list._ownerProperty.get_jstype().meta;
 
 		// load the objects in the list
-//				ExoWeb.trace.log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
+		ExoWeb.trace.log(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
 
 		var objectJson, conditionsJson;
 

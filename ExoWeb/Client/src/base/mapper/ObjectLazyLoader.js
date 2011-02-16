@@ -26,7 +26,8 @@ function objLoad(obj, propName, callback, thisPtr) {
 	}
 
 	// fetch object json
-//				ExoWeb.trace.log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
+	ExoWeb.trace.log(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
+
 	// TODO: reference to server will be a singleton, not context
 	objectProvider(mtype.get_fullName(), [id], paths, false,
 		serializeChanges.call(context.server, true),
