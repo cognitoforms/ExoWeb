@@ -9220,7 +9220,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 				});
 
 				// use temporary config setting to enable/disable scope-of-work functionality
-				if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
+				if (ExoWeb.config.useChangeSets === true && query.inScope !== false &&
+					query.id !== null && query.id !== undefined && query.id !== "" && query.id !== $newId()) {
 					this.state[varName].scopeQuery = {
 						type: query.from,
 						ids: [query.id],
@@ -9377,7 +9378,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 							if (ExoWeb.config.useChangeSets === true) {
 								var currentVarName = varName;
 								ExoWeb.eachProp(this.options.model, function(varName, query) {
-									if (varName !== currentVarName && this.state[varName].scopeQuery) {
+									if (query.id !== $newId() && query.id !== null && query.id !== undefined && query.id !== "" &&
+										varName !== currentVarName && this.state[varName].scopeQuery) {
 										scopeQueries.push(this.state[varName].scopeQuery);
 									}
 								}, this);
