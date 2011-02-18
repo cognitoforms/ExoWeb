@@ -1551,7 +1551,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			return value === undefined ? null : value;
 		}
 		else {
-			if (property in target) {
+			if ((target instanceof Object && (property in target)) || target.hasOwnProperty(property)) {
 				var value = target[property];
 				return value === undefined ? null : value;
 			}
@@ -1673,12 +1673,42 @@ Type.registerNamespace("ExoWeb.Mapper");
 	ExoWeb.objectToArray = objectToArray;
 
 	function $format(str, values) {
-		if (!values) {
-			return str;
+		if (!values) return str;
+
+		var source = null,
+			arrayMode = false;
+
+		if (arguments.length > 2) {
+			// use arguments passed to function as array
+			source = Array.prototype.slice.call(arguments, 1);
+			arrayMode = true;
+		}
+		else {
+			source = values;
+			if (values && values instanceof Array) {
+				// if the values are already an array there is no need to transform
+				// them into an array later on, in fact this would be unexpected behavior
+				arrayMode = true;
+			}
 		}
 
 		return str.replace(/{([a-z0-9_.]+)}/ig, function $format$token(match, expr) {
-			return evalPath(values, expr, "", match).toString();
+			// Attempt to determine that single arg was passed, but
+			// "arguments mode" was intended based on the format string.
+			if (arrayMode === false && expr === "0") {
+				var allOneIndex = true;
+				str.replace(/{([a-z0-9_.]+)}/ig, function $format$token(match, expr) {
+					if (expr !== "0") {
+						allOneIndex = false;
+					}
+				});
+				if (allOneIndex === true) {
+					source = [values];
+					arrayMode = true;
+				}
+			}
+
+			return evalPath(source, expr, "", match).toString();
 		});
 	}
 
