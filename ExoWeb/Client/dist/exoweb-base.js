@@ -9292,11 +9292,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 			// the function chain callback, so reference the query here
 			var query = this;
 
-			handler.execute(function() {
-				// begin capturing changes and watching for existing objects that are created
-				query.context.server.beginCapturingChanges();
+			handler.execute(function () {
+			    //begin tracking changes if instances/changes are embedded.
+			    if (this._thisPtr.options.instances || this._thisPtr.options.changes) {
+			        // begin capturing changes and watching for existing objects that are created
+			        query.context.server.beginCapturingChanges();
+			    }
 
-				callback.apply(this, arguments);
+			    callback.apply(this, arguments);
 			}, thisPtr);
 		}
 		else {
