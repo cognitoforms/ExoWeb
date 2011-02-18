@@ -9294,7 +9294,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			handler.execute(function () {
 			    //begin tracking changes if instances/changes are embedded.
-			    if (this._thisPtr.options.instances || this._thisPtr.options.changes) {
+			    if (query.options.instances || query.options.changes) {
 			        // begin capturing changes and watching for existing objects that are created
 			        query.context.server.beginCapturingChanges();
 			    }
