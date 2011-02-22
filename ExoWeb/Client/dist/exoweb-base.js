@@ -7950,12 +7950,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 					Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
 						var done = listSignal.pending();
 						tryGetJsType(this._model, item.type, null, true, function(itemType) {
-							tryGetEntity(this._model, this._translator, itemType, item.id, null, LazyLoadEnum.Force, function(itemObj) {
-								// Only add item to list if it isn't already present.
-								if (list.indexOf(itemObj) < 0) {
-									list.add(itemObj);
-								}
-							}, this);
+							var itemObj = fromExoGraph(item, this._translator);
+							if (list.indexOf(itemObj) < 0) {
+								list.add(itemObj);
+							}
 						}, this);
 					
 						// wait for processing of pending changes that target the new value
