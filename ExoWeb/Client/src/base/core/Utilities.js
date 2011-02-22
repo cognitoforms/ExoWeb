@@ -66,7 +66,8 @@ function getValue(target, property) {
 		return value === undefined ? null : value;
 	}
 	else {
-		if ((Object.prototype.toString.call(target) === "[object Object]" && (property in target)) || target.hasOwnProperty(property)) {
+		if (((target instanceof Object || Object.prototype.toString.call(target) === "[object Object]") && (property in target))
+			|| (target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property) < target.length)) {
 			var value = target[property];
 			return value === undefined ? null : value;
 		}

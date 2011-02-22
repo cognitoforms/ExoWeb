@@ -1554,7 +1554,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return value === undefined ? null : value;
 		}
 		else {
-			if ((target instanceof Object && (property in target)) || target.hasOwnProperty(property)) {
+			if (((target instanceof Object || Object.prototype.toString.call(target) === "[object Object]") && (property in target))
+				|| (target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property) < target.length)) {
 				var value = target[property];
 				return value === undefined ? null : value;
 			}
@@ -9296,13 +9297,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var query = this;
 
 			handler.execute(function () {
-			    //begin tracking changes if instances/changes are embedded.
-			    if (query.options.instances || query.options.changes) {
-			        // begin capturing changes and watching for existing objects that are created
-			        query.context.server.beginCapturingChanges();
-			    }
+				//begin tracking changes if instances/changes are embedded.
+				if (query.options.instances || query.options.changes) {
+					// begin capturing changes and watching for existing objects that are created
+					query.context.server.beginCapturingChanges();
+				}
 
-			    callback.apply(this, arguments);
+				callback.apply(this, arguments);
 			}, thisPtr);
 		}
 		else {

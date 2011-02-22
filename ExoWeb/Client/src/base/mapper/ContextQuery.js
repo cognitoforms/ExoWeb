@@ -98,13 +98,13 @@ function ContextQuery$processEmbedded(callback, thisPtr) {
 		var query = this;
 
 		handler.execute(function () {
-		    //begin tracking changes if instances/changes are embedded.
-		    if (query.options.instances || query.options.changes) {
-		        // begin capturing changes and watching for existing objects that are created
-		        query.context.server.beginCapturingChanges();
-		    }
+			//begin tracking changes if instances/changes are embedded.
+			if (query.options.instances || query.options.changes) {
+				// begin capturing changes and watching for existing objects that are created
+				query.context.server.beginCapturingChanges();
+			}
 
-		    callback.apply(this, arguments);
+			callback.apply(this, arguments);
 		}, thisPtr);
 	}
 	else {
