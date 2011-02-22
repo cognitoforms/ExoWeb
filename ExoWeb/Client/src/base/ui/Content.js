@@ -103,6 +103,12 @@ Content.prototype = {
 	remove_rendered: function Content$remove_rendered(handler) {
 		this._removeHandler("rendered", handler);
 	},
+	add_error: function(handler) {
+		this._addHandler("error", handler);
+	},
+	remove_error: function(handler) {
+		this._removeHandler("error", handler);
+	},
 	get_isRendered: function() {
 		return this._isRendered;
 	},
@@ -174,18 +180,19 @@ Content.prototype = {
 					}
 
 					this._isRendered = true;
+					Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+				}
+				catch (e) {
+					if (this._isRendered !== true) {
+						Sys.Observer.raiseEvent(this, "error", e);
+						ExoWeb.trace.logError("content", "An error occurred while rendering content: {0}", e);
+					}
+					else {
+						throw e;
+					}
 				}
 				finally {
-					try {
-						if (this._isRendered !== true) {
-							// disable if an error occurred
-							this._disabled = true;
-						}
-						Sys.Observer.raiseEvent(this, "rendered", this._contexts);
-					}
-					finally {
-						contentControlsRendering--;
-					}
+					contentControlsRendering--;
 				}
 
 			}, this);
