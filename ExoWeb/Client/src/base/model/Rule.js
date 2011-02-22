@@ -9,6 +9,8 @@ Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter, callba
 		}
 		else {
 			var input = new RuleInput(item);
+			if(item.get_origin() === "client")
+				input.set_dependsOnInit(true);
 
 			// If inputs are not setup up front then they are 
 			// assumed to be a target of the rule.
