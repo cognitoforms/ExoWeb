@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>ExoWeb</id>
+    <version>1.0.0</version>
+    <authors>Jamie Thomas Bryan Matthew</authors>
+    <description>ExoWeb description</description>
+    <summary>ExoWeb summary</summary>
+    <projectUrl>http://exosuite.com/</projectUrl>
+    <licenseUrl>http://exosuite.com/license</licenseUrl>
+    <dependencies>
+      <dependency id="ExoGraph" version="1.0.0" />
+			<dependency id="ExoRule" version="1.0.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\bin\ExoWeb.dll" target="lib"/>
+    <file src="..\Client\dist\*.js" target="content\Scripts" />
+    <file src="content\Web.config.transform" target="content" />
+  </files>
+</package>

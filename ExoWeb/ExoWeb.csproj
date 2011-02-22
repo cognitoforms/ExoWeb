@@ -106,7 +106,10 @@
       <Name>ExoRule</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="NuGet\content\Scripts\" />
+    <Folder Include="NuGet\lib\" />
+  </ItemGroup>
   <ItemGroup>
     <Content Include="Client\dist\exoweb-base.js" />
     <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
@@ -215,6 +218,8 @@
     <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
     <None Include="Client\README.markdown" />
+    <None Include="NuGet\ExoWeb.nuspec" />
+    <None Include="NuGet\content\Web.config.transform" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
