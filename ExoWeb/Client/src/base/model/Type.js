@@ -1,6 +1,11 @@
-function Type(model, name, baseType) {
+function Type(model, name, baseType, origin) {
 	this._rules = {};
 	this._fullName = name;
+
+	// if origin is not provided it is assumed to be client
+	this._origin = origin || "client";
+	this._originForNewProperties = this._origin;
+
 	this._pool = {};
 	this._legacyPool = {};
 	this._counter = 0;

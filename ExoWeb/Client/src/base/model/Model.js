@@ -117,8 +117,8 @@ Model.prototype = {
 			delete window[key];
 		}
 	},
-	addType: function Model$addType(name, base) {
-		var type = new Type(this, name, base);
+	addType: function Model$addType(name, base, origin) {
+		var type = new Type(this, name, base, origin);
 		this._types[name] = type;
 		return type;
 	},

@@ -378,8 +378,7 @@ function getType(model, finalType, propType) {
 
 			// if type doesn't exist, setup a ghost type
 			if (!mtype) {
-				mtype = model.addType(type, baseType);
-				mtype.set_origin("server");
+				mtype = model.addType(type, baseType, "server");
 
 				//if (!forLoading || family.length > 0) {
 //							ExoWeb.trace.log("typeInit", "{0} (ghost)", [type]);

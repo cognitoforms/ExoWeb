@@ -2307,8 +2307,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 				delete window[key];
 			}
 		},
-		addType: function Model$addType(name, base) {
-			var type = new Type(this, name, base);
+		addType: function Model$addType(name, base, origin) {
+			var type = new Type(this, name, base, origin);
 			this._types[name] = type;
 			return type;
 		},
@@ -2534,9 +2534,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// #region Type
 	//////////////////////////////////////////////////
 
-	function Type(model, name, baseType) {
+	function Type(model, name, baseType, origin) {
 		this._rules = {};
 		this._fullName = name;
+
+		// if origin is not provided it is assumed to be client
+		this._origin = origin || "client";
+		this._originForNewProperties = this._origin;
+
 		this._pool = {};
 		this._legacyPool = {};
 		this._counter = 0;
@@ -8445,8 +8450,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				// if type doesn't exist, setup a ghost type
 				if (!mtype) {
-					mtype = model.addType(type, baseType);
-					mtype.set_origin("server");
+					mtype = model.addType(type, baseType, "server");
 
 					//if (!forLoading || family.length > 0) {
 //							ExoWeb.trace.log("typeInit", "{0} (ghost)", [type]);
