@@ -449,7 +449,7 @@ Property.mixin({
 						// update the current list so observers will receive the change events
 						curList.beginUpdate();
 						curList.clear();
-						Array.addRange(curList, newList);
+						curList.addRange(newList);
 						curList.endUpdate();
 
 						if (callback) {
