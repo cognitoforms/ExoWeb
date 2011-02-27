@@ -4878,21 +4878,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var properties = [ this.prop ];
 
 		if (!ctype) {
-			ctype = Rule.ensureError("compare", this.prop);
+			ctype = Rule.ensureError($format("compare {0} {1}", [options.compareOperator, options.compareSource]), this.prop);
 		}
+		this.ctype = ctype;
 
 		this._comparePath = options.compareSource;
 		this._compareOp = options.compareOperator;
 
 		this._inited = false;
-
-		var message = $format("{0} must be {1}{2} {3}", [
-			this.prop.get_label(),
-			ExoWeb.makeHumanReadable(this._compareOp).toLowerCase(),
-			(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
-			ExoWeb.makeHumanReadable(this._comparePath.indexOf(".") >= 0 ? this._comparePath.replace(/^(.*\.)?([^\.]+)$/, "$2") : this._comparePath)
-		]);
-		this.err = new Condition(ctype, message, properties, this);
 
 		// Function to register this rule when its containing type is loaded.
 		var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype); }).setScope(this);
@@ -4974,7 +4967,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		execute: function CompareRule$execute(obj) {
 			if (this._inited === true) {
-				obj.meta.conditionIf(this.err, !this.satisfies(obj));
+
+				var isValid = this.satisfies(obj);
+
+				var message = isValid ? '' : $format("{0} must be {1}{2} {3}", [
+					this.prop.get_label(),
+					ExoWeb.makeHumanReadable(this._compareOp).toLowerCase(),
+					(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
+					this._compareProperty.value(obj)
+				]);
+				this.err = new Condition(this.ctype, message, [this.prop], this);
+
+
+				obj.meta.conditionIf(this.err, !isValid);
 			}
 			else {
 				ExoWeb.trace.logWarning("rule", "Compare rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
