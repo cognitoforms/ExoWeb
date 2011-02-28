@@ -4974,7 +4974,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					this.prop.get_label(),
 					ExoWeb.makeHumanReadable(this._compareOp).toLowerCase(),
 					(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
-					this._compareProperty.value(obj)
+					this._compareProperty.get_label()
 				]);
 				this.err = new Condition(this.ctype, message, [this.prop], this);
 
