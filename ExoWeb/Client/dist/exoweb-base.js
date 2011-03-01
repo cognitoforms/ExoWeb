@@ -203,6 +203,16 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// #region Array
 	//////////////////////////////////////////////////
 
+	function distinct(arr) {
+		var result = [];
+
+		for(var i = 0, len = arr.length; i < len; i++)
+			if (result.indexOf(arr[i]) < 0)
+				result.push(arr[i]);
+
+		return result;
+	}
+
 	if (!Array.prototype.map) {
 		Array.prototype.map = function Array$map(fun /*, thisp*/) {
 			var len = this.length >>> 0;
@@ -285,11 +295,11 @@ Type.registerNamespace("ExoWeb.Mapper");
 			if (typeof fun != "function") {
 				throw new TypeError();
 			}
-
+	
 			var thisp = arguments[1];
 			for (; i < len; i++) {
 				if (i in this && fun.call(thisp, this[i], i, this)) {
-					return true;
+				return true;
 				}
 			}
 
@@ -7165,26 +7175,32 @@ Type.registerNamespace("ExoWeb.Mapper");
 				var batch = ExoWeb.Batch.start();
 
 				objectsFromJson(this._model, result.instances, signal.pending(function() {
+					function processChanges() {
+						ExoWeb.Batch.end(batch);
+				
+						if (result.changes && result.changes.length > 0) {
+							this.applyChanges(result.changes, source, signal.pending());
+						}
+						else if (source) {
+							// no changes, so record empty set
+							startChangeSet.call(this, source);
+							startChangeSet.call(this, "client");
+						}
+					}
+
 					// if there is instance data to load then wait before loading conditions (since they may reference these instances)
 					if (result.conditions) {
-						conditionsFromJson(this._model, result.conditions);
+						conditionsFromJson(this._model, result.conditions, processChanges, this);
 					}
-					ExoWeb.Batch.end(batch);
-				
-					if (result.changes && result.changes.length > 0) {
-						this.applyChanges(result.changes, source, signal.pending());
-					}
-					else if (source) {
-						// no changes, so record empty set
-						startChangeSet.call(this, source);
-						startChangeSet.call(this, "client");
+					else {
+						processChanges.call(this);
 					}
 				}), this);
 			}
 			else if (result.changes && result.changes.length > 0) {
 				this.applyChanges(result.changes, source, signal.pending(function () {
 					if (result.conditions) {
-						conditionsFromJson(this._model, result.conditions);
+						conditionsFromJson(this._model, result.conditions, signal.pending());
 					}
 				}, this));
 			}
@@ -7196,7 +7212,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				}
 
 				if (result.conditions) {
-					conditionsFromJson(this._model, result.conditions);
+					conditionsFromJson(this._model, result.conditions, signal.pending());
 				}
 			}
 
@@ -8086,16 +8102,22 @@ Type.registerNamespace("ExoWeb.Mapper");
 	}
 
 	function conditionsFromJson(model, json, callback, thisPtr) {
+		var signal = new Signal("conditionsFromJson");
+
 		for (var code in json) {
-			conditionFromJson(model, code, json[code]);
+			conditionFromJson(model, code, json[code], signal.pending());
 		}
 
-		if (callback && callback instanceof Function) {
-			callback.call(thisPtr || this);
-		}
+		signal.waitForAll(function() {
+			if (callback && callback instanceof Function) {
+				callback.call(thisPtr || this);
+			}
+		});
 	}
 
-	function conditionFromJson(model, code, json) {
+	function conditionFromJson(model, code, json, callback, thisPtr) {
+		var signal = new Signal("conditionFromJson - " + code);
+
 		var type = ExoWeb.Model.ConditionType.get(code);
 
 		if (!type) {
@@ -8107,11 +8129,26 @@ Type.registerNamespace("ExoWeb.Mapper");
 				var inst = fromExoGraph(target.instance, model._server._translator);
 				if (inst)
 				{
-					var props = target.properties.map(function(p) { return inst.meta.type.property(p); });
-					var c = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
-					inst.meta.conditionIf(c, true);
+					var propsSignal = new Signal("conditionFromJson.properties");
+
+					var props = distinct(target.properties).map(function(p, i) {
+						return Model.property("this." + p, inst.meta.type, true, propsSignal.pending(function(chain) {
+							props[i] = chain;
+						}));
+					});
+
+					propsSignal.waitForAll(signal.pending(function() {
+						var c = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
+						inst.meta.conditionIf(c, true);
+					}));
 				}
 			});
+		});
+
+		signal.waitForAll(function() {
+			if (callback && callback instanceof Function) {
+				callback.call(thisPtr || this);
+			}
 		});
 	}
 
@@ -8750,57 +8787,69 @@ Type.registerNamespace("ExoWeb.Mapper");
 				signal.pending();
 			}
 
+			var filter = function() { return true; };
+
+			function invokeCallback() {
+				if (filter(obj) !== true)
+					return;
+
+				// only invoke the callback once
+				filter = function() { return false; };
+				callback.call(thisPtr || this, obj);
+			}
+
 			// wait until the object is loaded to invoke the callback
-			signal.waitForAll(function() {
-				callback.call(thisPtr || this, type.meta.get(translateId(translator, type.meta.get_fullName(), id)));
-			});
+			signal.waitForAll(invokeCallback, null, true);
 
 			function done() {
-				if (signal.isActive()) {
+				if (signal.isActive())
 					signal.oneDone();
-				}
+				else
+					invokeCallback();
 			}
 		
 			if (lazyLoad == LazyLoadEnum.Force) {
 				if (!obj) {
-//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 					obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
 				}
 				done();
-//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 				ExoWeb.Model.LazyLoader.eval(obj, property, function() {});
 			}
 			else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
 				if (!obj) {
-//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 					obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
 				}
-//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 				ExoWeb.Model.LazyLoader.eval(obj, property, done);
 			}
 			else {
-//					ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				waitMode = true;
 
-				function waitForProperty(obj) {
-					if (property) {
-						// if the property is not initialized then wait
-						var prop = type.meta.property(property, true);
-						if (prop.isInited(obj)) {
-							done();
-						}
-						else {
-//									ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
-							var initHandler = function() {
-//										ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
-								done();
-							};
+				ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
-							// Register the handler once.
-							prop.addChanged(initHandler, obj, true);
-						}
+				if (property) {
+					filter = function(obj) {
+						return type.meta.property(property, true).isInited(obj);
+					};
+				}
+
+				function waitForProperty() {
+					if (filter(obj) === true) {
+						done();
 					}
 					else {
-						done();
+						// if the property is not initialized then wait
+						ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
+						var initHandler = function() {
+							ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
+							done();
+						};
+
+						// Register the handler once.
+						type.meta.property(property, true).addChanged(initHandler, obj, true);
 					}
 				}
 
@@ -8809,8 +8858,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 					waitForProperty(obj);
 				}
 				else {
-					var registeredHandler = function(obj) {
-		//						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
+					var registeredHandler = function(newObj) {
+						obj = newObj;
+
+						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
 						if (obj.meta.type === type.meta && obj.meta.id === id) {
 							waitForProperty(obj);
 						}
@@ -9355,9 +9406,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 							function context$objects$callback(result) {
 								objectsFromJson(this.context.model.meta, result.instances, function() {
 									if (result.conditions) {
-										conditionsFromJson(this.context.model.meta, result.conditions);
+										conditionsFromJson(this.context.model.meta, result.conditions, function() {
+											batchQuerySignal.oneDone();
+										});
 									}
-									batchQuerySignal.oneDone();
+									else {
+										batchQuerySignal.oneDone();
+									}
 								}, this);
 							},
 							function context$objects$callback(error) {
@@ -9448,7 +9503,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 										// load the json. this may happen asynchronously to increment the signal just in case
 										objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
 											if (result.conditions) {
-												conditionsFromJson(this.context.model.meta, result.conditions);
+												conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
 											}
 										}), this);
 									}, this, true),
@@ -9583,7 +9638,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 									// load the json. this may happen asynchronously to increment the signal just in case
 									objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
 										if (result.conditions) {
-											conditionsFromJson(this.context.model.meta, result.conditions);
+											conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
 										}
 									}), this);
 								}, this, true),

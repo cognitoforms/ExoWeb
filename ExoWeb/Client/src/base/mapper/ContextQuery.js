@@ -160,9 +160,13 @@ ContextQuery.mixin({
 						function context$objects$callback(result) {
 							objectsFromJson(this.context.model.meta, result.instances, function() {
 								if (result.conditions) {
-									conditionsFromJson(this.context.model.meta, result.conditions);
+									conditionsFromJson(this.context.model.meta, result.conditions, function() {
+										batchQuerySignal.oneDone();
+									});
 								}
-								batchQuerySignal.oneDone();
+								else {
+									batchQuerySignal.oneDone();
+								}
 							}, this);
 						},
 						function context$objects$callback(error) {
@@ -253,7 +257,7 @@ ContextQuery.mixin({
 									// load the json. this may happen asynchronously to increment the signal just in case
 									objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
 										if (result.conditions) {
-											conditionsFromJson(this.context.model.meta, result.conditions);
+											conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
 										}
 									}), this);
 								}, this, true),
@@ -388,7 +392,7 @@ ContextQuery.mixin({
 								// load the json. this may happen asynchronously to increment the signal just in case
 								objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
 									if (result.conditions) {
-										conditionsFromJson(this.context.model.meta, result.conditions);
+										conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
 									}
 								}), this);
 							}, this, true),

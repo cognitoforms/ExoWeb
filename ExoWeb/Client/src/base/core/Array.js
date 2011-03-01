@@ -1,3 +1,14 @@
+function distinct(arr) {
+	var result = [];
+
+	for(var i = 0, len = arr.length; i < len; i++)
+		if (result.indexOf(arr[i]) < 0)
+			result.push(arr[i]);
+
+	return result;
+}
+exports.distinct = distinct; // IGNORE
+
 if (!Array.prototype.map) {
 	Array.prototype.map = function Array$map(fun /*, thisp*/) {
 		var len = this.length >>> 0;
@@ -80,11 +91,11 @@ if (!Array.prototype.some) {
 		if (typeof fun != "function") {
 			throw new TypeError();
 		}
-
+	
 		var thisp = arguments[1];
 		for (; i < len; i++) {
 			if (i in this && fun.call(thisp, this[i], i, this)) {
-				return true;
+			return true;
 			}
 		}
 

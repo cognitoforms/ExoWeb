@@ -19,16 +19,22 @@ function ensureJsType(model, typeName, callback, thisPtr) {
 }
 
 function conditionsFromJson(model, json, callback, thisPtr) {
+	var signal = new Signal("conditionsFromJson");
+
 	for (var code in json) {
-		conditionFromJson(model, code, json[code]);
+		conditionFromJson(model, code, json[code], signal.pending());
 	}
 
-	if (callback && callback instanceof Function) {
-		callback.call(thisPtr || this);
-	}
+	signal.waitForAll(function() {
+		if (callback && callback instanceof Function) {
+			callback.call(thisPtr || this);
+		}
+	});
 }
 
-function conditionFromJson(model, code, json) {
+function conditionFromJson(model, code, json, callback, thisPtr) {
+	var signal = new Signal("conditionFromJson - " + code);
+
 	var type = ExoWeb.Model.ConditionType.get(code);
 
 	if (!type) {
@@ -40,11 +46,26 @@ function conditionFromJson(model, code, json) {
 			var inst = fromExoGraph(target.instance, model._server._translator);
 			if (inst)
 			{
-				var props = target.properties.map(function(p) { return inst.meta.type.property(p); });
-				var c = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
-				inst.meta.conditionIf(c, true);
+				var propsSignal = new Signal("conditionFromJson.properties");
+
+				var props = distinct(target.properties).map(function(p, i) {
+					return Model.property("this." + p, inst.meta.type, true, propsSignal.pending(function(chain) {
+						props[i] = chain;
+					}));
+				});
+
+				propsSignal.waitForAll(signal.pending(function() {
+					var c = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
+					inst.meta.conditionIf(c, true);
+				}));
 			}
 		});
+	});
+
+	signal.waitForAll(function() {
+		if (callback && callback instanceof Function) {
+			callback.call(thisPtr || this);
+		}
 	});
 }
 
@@ -683,57 +704,69 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 			signal.pending();
 		}
 
+		var filter = function() { return true; };
+
+		function invokeCallback() {
+			if (filter(obj) !== true)
+				return;
+
+			// only invoke the callback once
+			filter = function() { return false; };
+			callback.call(thisPtr || this, obj);
+		}
+
 		// wait until the object is loaded to invoke the callback
-		signal.waitForAll(function() {
-			callback.call(thisPtr || this, type.meta.get(translateId(translator, type.meta.get_fullName(), id)));
-		});
+		signal.waitForAll(invokeCallback, null, true);
 
 		function done() {
-			if (signal.isActive()) {
+			if (signal.isActive())
 				signal.oneDone();
-			}
+			else
+				invokeCallback();
 		}
 		
 		if (lazyLoad == LazyLoadEnum.Force) {
 			if (!obj) {
-//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 				obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
 			}
 			done();
-//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 			ExoWeb.Model.LazyLoader.eval(obj, property, function() {});
 		}
 		else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
 			if (!obj) {
-//					ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 				obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
 			}
-//					ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 			ExoWeb.Model.LazyLoader.eval(obj, property, done);
 		}
 		else {
-//					ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+			waitMode = true;
 
-			function waitForProperty(obj) {
-				if (property) {
-					// if the property is not initialized then wait
-					var prop = type.meta.property(property, true);
-					if (prop.isInited(obj)) {
-						done();
-					}
-					else {
-//									ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
-						var initHandler = function() {
-//										ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
-							done();
-						};
+			ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
-						// Register the handler once.
-						prop.addChanged(initHandler, obj, true);
-					}
+			if (property) {
+				filter = function(obj) {
+					return type.meta.property(property, true).isInited(obj);
+				};
+			}
+
+			function waitForProperty() {
+				if (filter(obj) === true) {
+					done();
 				}
 				else {
-					done();
+					// if the property is not initialized then wait
+					ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
+					var initHandler = function() {
+						ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
+						done();
+					};
+
+					// Register the handler once.
+					type.meta.property(property, true).addChanged(initHandler, obj, true);
 				}
 			}
 
@@ -742,8 +775,10 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 				waitForProperty(obj);
 			}
 			else {
-				var registeredHandler = function(obj) {
-	//						ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
+				var registeredHandler = function(newObj) {
+					obj = newObj;
+
+					ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
 					if (obj.meta.type === type.meta && obj.meta.id === id) {
 						waitForProperty(obj);
 					}

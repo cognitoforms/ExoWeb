@@ -239,26 +239,32 @@ ServerSync.mixin({
 			var batch = ExoWeb.Batch.start();
 
 			objectsFromJson(this._model, result.instances, signal.pending(function() {
+				function processChanges() {
+					ExoWeb.Batch.end(batch);
+				
+					if (result.changes && result.changes.length > 0) {
+						this.applyChanges(result.changes, source, signal.pending());
+					}
+					else if (source) {
+						// no changes, so record empty set
+						startChangeSet.call(this, source);
+						startChangeSet.call(this, "client");
+					}
+				}
+
 				// if there is instance data to load then wait before loading conditions (since they may reference these instances)
 				if (result.conditions) {
-					conditionsFromJson(this._model, result.conditions);
+					conditionsFromJson(this._model, result.conditions, processChanges, this);
 				}
-				ExoWeb.Batch.end(batch);
-				
-				if (result.changes && result.changes.length > 0) {
-					this.applyChanges(result.changes, source, signal.pending());
-				}
-				else if (source) {
-					// no changes, so record empty set
-					startChangeSet.call(this, source);
-					startChangeSet.call(this, "client");
+				else {
+					processChanges.call(this);
 				}
 			}), this);
 		}
 		else if (result.changes && result.changes.length > 0) {
 			this.applyChanges(result.changes, source, signal.pending(function () {
 				if (result.conditions) {
-					conditionsFromJson(this._model, result.conditions);
+					conditionsFromJson(this._model, result.conditions, signal.pending());
 				}
 			}, this));
 		}
@@ -270,7 +276,7 @@ ServerSync.mixin({
 			}
 
 			if (result.conditions) {
-				conditionsFromJson(this._model, result.conditions);
+				conditionsFromJson(this._model, result.conditions, signal.pending());
 			}
 		}
 
