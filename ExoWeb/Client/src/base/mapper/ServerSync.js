@@ -1034,22 +1034,12 @@ ServerSync.mixin({
 
 				// apply added items
 				Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
-					var done = listSignal.pending();
-					tryGetJsType(this._model, item.type, null, true, function(itemType) {
+					tryGetJsType(this._model, item.type, null, true, listSignal.pending(function(itemType) {
 						var itemObj = fromExoGraph(item, this._translator);
 						if (list.indexOf(itemObj) < 0) {
 							list.add(itemObj);
 						}
-					}, this);
-					
-					// wait for processing of pending changes that target the new value
-					var signal = entitySignals[item.type + "|" + item.id];
-					if (signal) {
-						signal.waitForAll(done);
-					}
-					else {
-						done();
-					}
+					}), this);
 				}, this);
 
 				// apply removed items
