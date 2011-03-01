@@ -42,6 +42,8 @@ function conditionFromJson(model, code, json, callback, thisPtr) {
 	}
 
 	Array.forEach(json, function(condition) {
+		var conditionObj = null;
+
 		Array.forEach(condition.targets, function(target) {
 			var inst = fromExoGraph(target.instance, model._server._translator);
 			if (inst)
@@ -55,8 +57,14 @@ function conditionFromJson(model, code, json, callback, thisPtr) {
 				});
 
 				propsSignal.waitForAll(signal.pending(function() {
-					var c = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
-					inst.meta.conditionIf(c, true);
+					if (!conditionObj) {
+						conditionObj = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
+					}
+					else {
+						conditionObj.get_properties().addRange(props);
+					}
+
+					inst.meta.conditionIf(conditionObj, true);
 				}));
 			}
 		});
