@@ -10,8 +10,6 @@ global.ExoWeb = global.window.ExoWeb = {};
 
 var utilities = require("../../../src/base/core/Utilities");
 var $format = global.window.$format;
-var isObject = utilities.isObject;
-var hasProperty = utilities.hasProperty;
 
 // References
 ///////////////////////////////////////
