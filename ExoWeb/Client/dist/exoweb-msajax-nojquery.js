@@ -2837,7 +2837,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (prop.get_isList()) {
 					this._initNewProps.push({ property: prop, valueFn: function() { return []; } });
 
-					if (prop.get_origin() != "server") {
+					if (prop.get_origin() !== "server") {
 						this._initExistingProps.push({ property: prop, valueFn: function() { return []; } });
 						Array.forEach(this.known(), function(obj) {
 							prop.init(obj, []);
@@ -2846,9 +2846,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 				// Presumably the reason for this is that property calculation could be based on init of
 				// this property, though it seems unlikely that this would solve more problems that it causes.
-				else if (prop.get_origin() == "server") {
+				else if (prop.get_origin() === "server") {
 					this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
 				}
+			}
+			// initially client-based static list properties when added
+			else if (prop.get_isList() && prop.get_origin() === "client") {
+				prop.init(null, []);
 			}
 
 
@@ -4316,6 +4320,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	ObjectMeta.mixin({
+		get_entity: function() {
+			return this._obj;
+		},
 		executeRules: function ObjectMeta$executeRules(prop) {
 			this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
 			this._raisePropertyValidating(prop.get_name());
@@ -4379,7 +4386,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				pi.push(condition);
 			}
 
-			this._raiseEvent("conditionsChanged", [this, { condition: condition}]);
+			this._raiseEvent("conditionsChanged", [this, { condition: condition, add: true, remove: false }]);
 		},
 
 		_removeCondition: function (idx) {
@@ -4397,7 +4404,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				pi.splice(piIdx, 1);
 			}
 
-			this._raiseEvent("conditionsChanged", [this, { condition: condition}]);
+			this._raiseEvent("conditionsChanged", [this, { condition: condition, add: false, remove: true }]);
 		},
 
 		_isAllowedOne: function ObjectMeta$_isAllowedOne(code) {
@@ -8119,13 +8126,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function conditionFromJson(model, code, json, callback, thisPtr) {
-		var signal = new Signal("conditionFromJson - " + code);
-
 		var type = ExoWeb.Model.ConditionType.get(code);
 
 		if (!type) {
 			ExoWeb.trace.logError(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
+			callback.call(thisPtr || this);
+			return;
 		}
+
+		var signal = new Signal("conditionFromJson - " + code);
 
 		Array.forEach(json, function(condition) {
 			var conditionObj = null;
@@ -11351,6 +11360,57 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			var binding = Sys.Binding.bind(options);
 			templateContext.components.push(binding);
+		},
+		false);
+
+	// #endregion
+
+	// #region ConditionMarkupExtension
+	//////////////////////////////////////////////////
+
+	Sys.Application.registerMarkupExtension("?",
+		function(component, targetProperty, templateContext, properties) {
+			var options = Sys._merge({
+				source: templateContext.dataItem,
+				templateContext: templateContext,
+				targetProperty: targetProperty
+			}, properties);
+
+			var meta = options.source.meta;
+		
+			options.type = options.type || options.$default;
+			delete options.$default;
+
+			options.single = options.single === true || options.single.toString().toLowerCase() === "true";
+
+			var types = options.type.split(",");
+
+			var target = options.target;
+			options.target = target && function() {
+				if (target.constructor === String)
+					return evalPath(options.source, target);
+				return target;
+			};
+
+			function updateConditions() {
+				var conditions = meta.conditions().where(function(c) {
+					return types.indexOf(c.get_type().get_code()) >= 0 &&
+						(!options.target || c.get_targets().where(function(t) { return t.get_entity() === options.target(); }).length > 0);
+				});
+
+				if (options.single === true) {
+					if (conditions.length > 1) {
+						ExoWeb.trace.throwAndLog("?", "Multiple conditions were found for type \"{0}\".", [options.type]);
+					}
+
+					conditions = conditions.length === 0 ? null : conditions[0];
+				}
+
+				Sys.Observer.setValue(component, properties.targetProperty || targetProperty, conditions);
+			}
+
+			updateConditions();
+			meta.addConditionsChanged(updateConditions, meta);
 		},
 		false);
 

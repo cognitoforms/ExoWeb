@@ -6,6 +6,9 @@ function ObjectMeta(type, obj) {
 }
 
 ObjectMeta.mixin({
+	get_entity: function() {
+		return this._obj;
+	},
 	executeRules: function ObjectMeta$executeRules(prop) {
 		this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
 		this._raisePropertyValidating(prop.get_name());
@@ -69,7 +72,7 @@ ObjectMeta.mixin({
 			pi.push(condition);
 		}
 
-		this._raiseEvent("conditionsChanged", [this, { condition: condition}]);
+		this._raiseEvent("conditionsChanged", [this, { condition: condition, add: true, remove: false }]);
 	},
 
 	_removeCondition: function (idx) {
@@ -87,7 +90,7 @@ ObjectMeta.mixin({
 			pi.splice(piIdx, 1);
 		}
 
-		this._raiseEvent("conditionsChanged", [this, { condition: condition}]);
+		this._raiseEvent("conditionsChanged", [this, { condition: condition, add: false, remove: true }]);
 	},
 
 	_isAllowedOne: function ObjectMeta$_isAllowedOne(code) {

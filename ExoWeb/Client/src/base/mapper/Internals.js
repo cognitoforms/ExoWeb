@@ -33,13 +33,15 @@ function conditionsFromJson(model, json, callback, thisPtr) {
 }
 
 function conditionFromJson(model, code, json, callback, thisPtr) {
-	var signal = new Signal("conditionFromJson - " + code);
-
 	var type = ExoWeb.Model.ConditionType.get(code);
 
 	if (!type) {
 		ExoWeb.trace.logError(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
+		callback.call(thisPtr || this);
+		return;
 	}
+
+	var signal = new Signal("conditionFromJson - " + code);
 
 	Array.forEach(json, function(condition) {
 		var conditionObj = null;

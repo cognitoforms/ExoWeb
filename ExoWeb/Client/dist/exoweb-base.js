@@ -2834,7 +2834,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				if (prop.get_isList()) {
 					this._initNewProps.push({ property: prop, valueFn: function() { return []; } });
 
-					if (prop.get_origin() != "server") {
+					if (prop.get_origin() !== "server") {
 						this._initExistingProps.push({ property: prop, valueFn: function() { return []; } });
 						Array.forEach(this.known(), function(obj) {
 							prop.init(obj, []);
@@ -2843,9 +2843,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 				}
 				// Presumably the reason for this is that property calculation could be based on init of
 				// this property, though it seems unlikely that this would solve more problems that it causes.
-				else if (prop.get_origin() == "server") {
+				else if (prop.get_origin() === "server") {
 					this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
 				}
+			}
+			// initially client-based static list properties when added
+			else if (prop.get_isList() && prop.get_origin() === "client") {
+				prop.init(null, []);
 			}
 
 
@@ -4313,6 +4317,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 	}
 
 	ObjectMeta.mixin({
+		get_entity: function() {
+			return this._obj;
+		},
 		executeRules: function ObjectMeta$executeRules(prop) {
 			this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
 			this._raisePropertyValidating(prop.get_name());
@@ -4376,7 +4383,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				pi.push(condition);
 			}
 
-			this._raiseEvent("conditionsChanged", [this, { condition: condition}]);
+			this._raiseEvent("conditionsChanged", [this, { condition: condition, add: true, remove: false }]);
 		},
 
 		_removeCondition: function (idx) {
@@ -4394,7 +4401,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				pi.splice(piIdx, 1);
 			}
 
-			this._raiseEvent("conditionsChanged", [this, { condition: condition}]);
+			this._raiseEvent("conditionsChanged", [this, { condition: condition, add: false, remove: true }]);
 		},
 
 		_isAllowedOne: function ObjectMeta$_isAllowedOne(code) {
@@ -8116,13 +8123,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 	}
 
 	function conditionFromJson(model, code, json, callback, thisPtr) {
-		var signal = new Signal("conditionFromJson - " + code);
-
 		var type = ExoWeb.Model.ConditionType.get(code);
 
 		if (!type) {
 			ExoWeb.trace.logError(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
+			callback.call(thisPtr || this);
+			return;
 		}
+
+		var signal = new Signal("conditionFromJson - " + code);
 
 		Array.forEach(json, function(condition) {
 			var conditionObj = null;

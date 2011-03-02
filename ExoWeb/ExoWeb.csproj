@@ -205,6 +205,7 @@
     <Content Include="Client\src\base\ui\Utilities.js" />
     <Content Include="Client\src\base\view\Adapter.js" />
     <Content Include="Client\src\base\view\AdapterMarkupExtension.js" />
+    <Content Include="Client\src\base\view\ConditionMarkupExtension.js" />
     <Content Include="Client\src\base\view\LazyMarkupExtension.js" />
     <Content Include="Client\src\base\view\MetaMarkupExtension.js" />
     <Content Include="Client\src\base\view\MsAjax.js" />

@@ -288,7 +288,7 @@ Type.prototype = {
 			if (prop.get_isList()) {
 				this._initNewProps.push({ property: prop, valueFn: function() { return []; } });
 
-				if (prop.get_origin() != "server") {
+				if (prop.get_origin() !== "server") {
 					this._initExistingProps.push({ property: prop, valueFn: function() { return []; } });
 					Array.forEach(this.known(), function(obj) {
 						prop.init(obj, []);
@@ -297,9 +297,13 @@ Type.prototype = {
 			}
 			// Presumably the reason for this is that property calculation could be based on init of
 			// this property, though it seems unlikely that this would solve more problems that it causes.
-			else if (prop.get_origin() == "server") {
+			else if (prop.get_origin() === "server") {
 				this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
 			}
+		}
+		// initially client-based static list properties when added
+		else if (prop.get_isList() && prop.get_origin() === "client") {
+			prop.init(null, []);
 		}
 
 
