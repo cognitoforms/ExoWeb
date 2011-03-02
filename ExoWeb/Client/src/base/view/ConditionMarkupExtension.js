@@ -13,7 +13,9 @@ Sys.Application.registerMarkupExtension("?",
 
 		options.single = options.single === true || options.single.toString().toLowerCase() === "true";
 
-		var types = options.type.split(",");
+		var types = options.type ? options.type.split(",") : null;
+
+		var sets = options.set ? options.set.split(",") : null;
 
 		var target = options.target;
 		options.target = target && function() {
@@ -24,8 +26,9 @@ Sys.Application.registerMarkupExtension("?",
 
 		function updateConditions() {
 			var conditions = meta.conditions().where(function(c) {
-				return types.indexOf(c.get_type().get_code()) >= 0 &&
-					(!options.target || c.get_targets().where(function(t) { return t.get_entity() === options.target(); }).length > 0);
+				return (!types || types.indexOf(c.get_type().get_code()) >= 0) && // check for type code match (if specified)
+					(!sets || intersect(sets, c.get_type().get_sets().map(function(s) { return s.get_name(); })).length > 0) && // check for set code match (if specified)
+					(!options.target || c.get_targets().where(function(t) { return t.get_entity() === options.target(); }).length > 0); // check for target (if specified)
 			});
 
 			if (options.single === true) {

@@ -5,6 +5,7 @@ var jasmineConsole = require("../../jasmine.console");
 var arrays = require("../../../src/base/core/Array");
 
 var distinct = arrays.distinct;
+var intersect = arrays.intersect;
 
 // References
 ///////////////////////////////////////
@@ -12,9 +13,23 @@ var describe = jasmine.describe;
 var it = jasmine.it;
 var expect = jasmine.expect;
 
-function arrayEquals(arr1, arr2) {
+function arrayEquals(arr1, arr2, unordered) {
 	expect(arr1.length).toBe(arr2.length);
-	expect("\n\n" + arr1.join("\n") + "\n\n").toBe("\n\n" + arr2.join("\n") + "\n\n");
+
+	if (unordered) {
+		arr1 = Array.prototype.slice.call(arr1);
+		arr2 = Array.prototype.slice.call(arr2);
+
+		while (arr1.length > 0) {
+			var idx = arr2.indexOf(arr1[0]);
+			expect(arr1[0]).toBe(arr2[idx]);
+			arr1.splice(0, 1);
+			arr2.splice(idx, 1);
+		}
+	}
+	else {
+		expect("\n\n" + arr1.join("\n") + "\n\n").toBe("\n\n" + arr2.join("\n") + "\n\n");
+	}
 }
 
 // Test Suites
@@ -61,6 +76,23 @@ describe("distinct", function () {
 	
 	it("removes back-to-back duplicates", function() {
 		arrayEquals(distinct([0, 0, 1, 4, 1, 4, 5]), [0, 1, 4, 5]);
+	});
+	
+	it("preserves first encountered item", function() {
+		arrayEquals(distinct([0, 1, 0, 1, 4, 1, 4, 5]), [0, 1, 4, 5]);
+	});
+});
+
+describe("intersect", function() {
+	it("produces the set intersection of two arrays, using strict equality", function() {
+		arrayEquals(intersect([], []), [], true);
+		arrayEquals(intersect([0, 1], [1, 2]), [1], true);
+		arrayEquals(intersect([0, 1, 2, 3, 4], [4, 3, 2, 1]), [3, 1, 4, 2], true);
+	});
+	
+	it("returns distinct results", function() {
+		arrayEquals(intersect([0, 1], [1, 2]), [1], true);
+		arrayEquals(intersect([0, 1, 2, 4, 3, 4, 1], [4, 3, 2, 1]), [3, 1, 4, 2], true);
 	});
 });
 

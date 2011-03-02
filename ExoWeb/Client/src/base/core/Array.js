@@ -1,3 +1,45 @@
+function forEach(arr, callback, thisPtr) {
+	if (!(arr instanceof Array))
+		throw new TypeError("An array must be passed to \"forEach\".");
+
+	if (!(callback instanceof Function))
+		throw new TypeError("A callback function must be passed to \"forEach\".");
+
+	for (var i = 0, len = arr.length; i < len; i++)
+		if (i in arr)
+			callback.call(thisPtr || this, arr[i], i, arr);
+}
+
+if (!Array.prototype.forEach) {
+	Array.prototype.forEach = function(fun /*, thisp*/) {
+		forEach(this, fun, arguments[1]);
+	};
+}
+
+function filter(arr, callback, thisPtr) {
+	if (!(arr instanceof Array))
+		throw new TypeError("An array must be passed to \"filter\".");
+
+	if (!(callback instanceof Function))
+		throw new TypeError("A callback function must be passed to \"filter\".");
+
+	var result = [];
+
+	for (var i = 0, len = arr.length; i < len; i++)
+		if (i in arr && callback.call(thisPtr || this, arr[i], i, arr) === true)
+			result.push(arr[i]);
+
+	return result;
+}
+
+if (!Array.prototype.where) {
+	Array.prototype.where = function(fun /*, thisp*/) {
+		return filter(this, fun, arguments[1]);
+	};
+}
+
+// Filters out duplicate items from the given array.
+/////////////////////////////////////////////////////
 function distinct(arr) {
 	var result = [];
 
@@ -8,6 +50,16 @@ function distinct(arr) {
 	return result;
 }
 exports.distinct = distinct; // IGNORE
+
+// Finds the set intersection of the two given arrays.  The items
+// in the resulting list are distinct and in no particular order.
+///////////////////////////////////////////////////////////////////
+function intersect(arr1, arr2) {
+	return distinct(filter(arr1, function(item) {
+		return arr2.indexOf(item) >= 0;
+	}));
+}
+exports.intersect = intersect; // IGNORE
 
 if (!Array.prototype.map) {
 	Array.prototype.map = function Array$map(fun /*, thisp*/) {
@@ -25,22 +77,6 @@ if (!Array.prototype.map) {
 		}
 
 		return res;
-	};
-}
-
-if (!Array.prototype.forEach) {
-	Array.prototype.forEach = function Array$forEach(fun /*, thisp*/) {
-		var len = this.length >>> 0;
-		if (typeof fun != "function") {
-			throw new TypeError();
-		}
-
-		var thisp = arguments[1];
-		for (var i = 0; i < len; i++) {
-			if (i in this) {
-				fun.call(thisp, this[i], i, this);
-			}
-		}
 	};
 }
 
@@ -100,25 +136,6 @@ if (!Array.prototype.some) {
 		}
 
 		return false;
-	};
-}
-
-if (!Array.prototype.where) {
-	Array.prototype.where = function Array$where(fun /*, thisp*/) {
-		var len = this.length >>> 0;
-		if (typeof fun != "function") {
-			throw new TypeError();
-		}
-
-		var res = [];
-		var thisp = arguments[1];
-		for (var i = 0; i < len; i++) {
-			if (i in this && fun.call(thisp, this[i], i, this) === true) {
-				res.push(this[i]);
-			}
-		}
-
-		return res;
 	};
 }
 
