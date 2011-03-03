@@ -201,6 +201,44 @@ Type.registerNamespace("ExoWeb.DotNet");
 		};
 	};
 
+	function mergeFunctions(fn1, fn2, options) {
+		// return early if one or both functions are not defined
+		if (!fn1 && !fn2) return;
+		if (!fn2) return fn1;
+		if (!fn1) return fn2;
+
+		if (options && options.async === true) {
+			return function () {
+				var idx = options.callbackIndex || 0;
+				var callback = arguments[idx];
+
+				if (!callback || !(callback instanceof Function))
+					ExoWeb.trace.throwAndLog("functions",
+						"Unable to merge async functions: the argument at index {0}{1} is not a function.",
+						[idx, options.callbackIndex ? "" : " (default)"]);
+
+				var signal = new Signal("mergeFunctions");
+
+				// replace callback function with signal pending and invoke callback when both are complete
+				var args1 = Array.prototype.slice.call(arguments);
+				args1.splice(idx, 1, signal.pending());
+				fn1.apply(this, args1);
+
+				var args2 = Array.prototype.slice.call(arguments);
+				args2.splice(idx, 1, signal.pending());
+				fn2.apply(this, args2);
+
+				signal.waitForAll(callback, (options.thisPtrIndex && arguments[options.thisPtrIndex]) || this);
+			};
+		}
+		else {
+			return function () {
+				fn1.apply(this, arguments);
+				fn2.apply(this, arguments);
+			};
+		}
+	}
+
 	// #endregion
 
 	// #region Array
@@ -1683,11 +1721,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ExoWeb.isType = isType;
 
 	function eachProp(obj, callback, thisPtr) {
-		for (var prop in obj) {
-			if (obj.hasOwnProperty(prop)) {
-				callback.apply(thisPtr || this, [prop, obj[prop]]);
-			}
-		}
+		for (var prop in obj)
+			if (obj.hasOwnProperty(prop))
+				if (callback.apply(thisPtr || this, [prop, obj[prop]]) === false)
+					break;
 	}
 
 	ExoWeb.eachProp = eachProp;
@@ -9262,17 +9299,50 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		this.model = { meta: model };
 		this.server = new ServerSync(model);
+
+		// start capturing changes prior to processing any model query
+		this._addEvent("beforeModel", this.server.beginCapturingChanges.setScope(this.server), null, true);
 	}
 
+	Context.mixin(ExoWeb.Functor.eventing);
+
 	Context.mixin({
-		ready: function Context$ready(callback, thisPtr) {
-			allSignals.waitForAll(callback, thisPtr);
+		isModelReady: function() {
+			var result = false;
+
+			eachProp(this.model, function(prop, val) {
+				if (prop != "meta") {
+					result = true;
+					return false;
+				}
+			}, this);
+
+			return result;
+		},
+		addModelReady: function Context$ready(callback, thisPtr) {
+			this._addEvent("modelReady", thisPtr ? callback.setScope(thisPtr) : callback, null, true);
+
+			// Raise event immediately if there are currently models. Subscribers
+			// will not actually be called until signals have subsided.
+			if (this.isModelReady())
+				this.onModelReady();
+		},
+		onModelReady: function () {
+			// Indicate that one or more model queries are ready for consumption
+			allSignals.waitForAll(function() {
+				this._raiseEvent("modelReady");
+			}, this);
+		},
+		onBeforeModel: function () {
+			this._raiseEvent("beforeModel");
 		}
 	});
 
 	function Context$query(options) {
 		var contextQuery = new ContextQuery(this, options);
-		contextQuery.execute();
+
+		// if there is a model option, when the query is finished executing the model ready fn will be called
+		contextQuery.execute(options.model ? this.onModelReady.setScope(this) : null);
 	}
 
 	// #endregion
@@ -9298,11 +9368,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this.batch = ExoWeb.Batch.start("context query");
 				callback.call(thisPtr || this);
 			},
-
+		
 			// Perform pre-processing of model queries and their paths.
 			///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$initModels(callback, thisPtr) {
 				if (this.options.model) {
+					this.context.onBeforeModel();
 					ExoWeb.trace.log("context", "Running init step for model queries.");
 					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						if (!query.hasOwnProperty("from") || !query.hasOwnProperty("id")) {
@@ -9350,7 +9421,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				callback.call(thisPtr || this);
 			},
-
+		
 			// Process embedded data as if it had been recieved from the server in
 			// the form of a web service response. This should enable flicker-free
 			// page loads by embedded data, changes, etc.
@@ -9369,24 +9440,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 						types: this.options.types
 					});
 
-					// "thisPtr" refers to the function chain in the context of
-					// the function chain callback, so reference the query here
-					var query = this;
-
-					handler.execute(function () {
-						//begin tracking changes if instances/changes are embedded.
-						if (query.options.instances || query.options.changes) {
-							// begin capturing changes and watching for existing objects that are created
-							query.context.server.beginCapturingChanges();
-						}
-
-						callback.apply(this, arguments);
-					}, thisPtr);
+					handler.execute(callback, thisPtr);
 				}
 				else {
-					// begin capturing changes and watching for existing objects that are created
-					this.context.server.beginCapturingChanges();
-
 					callback.call(thisPtr || this);
 				}
 			},
@@ -9753,141 +9809,29 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	Sys.activateDom = false;
 
-	// object constant to single to mapper to create a new instance rather than load one
-	var newId = "$newId";
-	window.$newId = function $newId() {
-		return newId;
-	};
+	// Object constant to signal to mapper to create a new instance rather than load one
+	window.$newId = function() { return "$newId"; };
 
+	// Indicates whether or not the DOM has been activated
 	var activated = false;
 
-	// Global method for initializing ExoWeb on a page
+	// The (combined) set of options that are pending
+	// execution. Options will stack up until something
+	// is encountered that triggers loading to occur.
 	var pendingOptions;
 
-	window.$exoweb = function (options) {
-
-		// Support initialization function as parameter
-		if (options instanceof Function)
-			options = { init: options };
-
-		// Merge options if necessary
-		if (pendingOptions) {
-
-			// Merge init functions
-			if (pendingOptions.init) {
-				if (options.init) {
-					var init1 = pendingOptions.init;
-					var init2 = options.init;
-					pendingOptions.init = function () {
-						init1();
-						init2();
-					};
-				}
-			}
-			else {
-				pendingOptions.init = options.init;
-			}
-
-			// Merge extendContext functions
-			if (pendingOptions.extendContext) {
-				if (options.extendContext) {
-					var extendContext1 = pendingOptions.extendContext;
-					var extendContext2 = options.extendContext;
-					pendingOptions.extendContext = function (context, callback) {
-						var signal = new ExoWeb.Signal("combined extendContext");
-						extendContext1.call(this, context, signal.pending());
-						extendContext2.call(this, context, signal.pending());
-						signal.waitForAll(callback);
-					};
-				}
-			}
-			else {
-				pendingOptions.extendContext = options.extendContext;
-			}
-
-			// Merge contextReady functions
-			if (pendingOptions.contextReady) {
-				if (options.contextReady) {
-					var contextReady1 = pendingOptions.contextReady;
-					var contextReady2 = options.contextReady;
-					pendingOptions.contextReady = function () {
-						contextReady1.apply(this, arguments);
-						contextReady2.apply(this, arguments);
-					};
-				}
-			}
-			else {
-				pendingOptions.contextReady = options.contextReady;
-			}
-
-			// Merge domReady functions
-			if (pendingOptions.domReady) {
-				if (options.domReady) {
-					var domReady1 = pendingOptions.domReady;
-					var domReady2 = options.domReady;
-					pendingOptions.domReady = function () {
-						domReady1.apply(this, arguments);
-						domReady2.apply(this, arguments);
-					};
-				}
-			}
-			else {
-				pendingOptions.domReady = options.domReady;
-			}
-
-			// Merge types 
-			pendingOptions.types = pendingOptions.types ? (options.types ? pendingOptions.types.concat(options.types) : pendingOptions.types) : options.types;
-
-			// Merge model
-			pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, options.model) : options.model;
+	function modelReadyHandler(contextReady, extendContext, domReady) {
+		return function () {
+			var readySignal = new Signal();
 		
-			// Merge changes
-			pendingOptions.changes = pendingOptions.changes ? (options.changes ? pendingOptions.changes.concat(options.changes) : pendingOptions.changes) : options.changes;
+			if (extendContext)
+				extendContext(window.context, readySignal.pending());
 
-			// Merge conditions
-			pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, options.conditions) : options.conditions;
+			readySignal.waitForAll(function() {
+				if (contextReady)
+					contextReady(window.context);
 
-			// Merge instances
-			pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, options.instances) : options.instances;
-		}
-		else {
-			pendingOptions = options;
-		}
-
-		// Exit immediately if no model or types are pending
-		if (!(pendingOptions.model || pendingOptions.types || pendingOptions.instances || pendingOptions.conditions || pendingOptions.changes))
-			return;
-
-		var currentOptions = pendingOptions;
-		pendingOptions = null;
-
-		// Perform initialization
-		if (currentOptions.init)
-			currentOptions.init();
-
-		var query = {
-			model: currentOptions.model,
-			types: currentOptions.types,
-			changes: currentOptions.changes,
-			conditions: currentOptions.conditions,
-			instances: currentOptions.instances
-		};
-
-		// Initialize the context
-		if (!window.context) {
-			window.context = new Context();
-		}
-
-		Context$query.call(window.context, query);
-
-		// Perform initialization once the context is ready
-		window.context.ready(function () {
-
-			function contextReady() {
-				if (currentOptions.contextReady)
-					currentOptions.contextReady(window.context);
-
-				$(function ($) {
+				$(function() {
 					// Activate the document if this is the first context to load
 					if (!activated) {
 						activated = true;
@@ -9895,19 +9839,79 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 
 					// Invoke dom ready notifications
-					if (currentOptions.domReady)
-						currentOptions.domReady(window.context);
+					if (domReady)
+						domReady(window.context);
 				});
+			});
+		};
+	}
+
+	// Global method for initializing ExoWeb on a page
+	window.$exoweb = function (options) {
+		// Support initialization function as parameter
+		if (options instanceof Function)
+			options = { init: options };
+
+		if (!pendingOptions)
+			// No pending options to merge
+			pendingOptions = options;
+		else {
+			// Merge options as necessary
+			pendingOptions.init = mergeFunctions(pendingOptions.init, options.init);
+			pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, options.extendContext, { async: true, callbackIndex: 1 });
+			pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, options.contextReady);
+			pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, options.domReady);
+			pendingOptions.types = pendingOptions.types ? (options.types ? pendingOptions.types.concat(options.types) : pendingOptions.types) : options.types;
+			pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, options.model) : options.model;
+			pendingOptions.changes = pendingOptions.changes ? (options.changes ? pendingOptions.changes.concat(options.changes) : pendingOptions.changes) : options.changes;
+			pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, options.conditions) : options.conditions;
+			pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, options.instances) : options.instances;
+		}
+
+		// Exit immediately if no model or types are pending
+		if (!(pendingOptions.model || pendingOptions.types || pendingOptions.instances || pendingOptions.conditions || pendingOptions.changes)) {
+			if (window.context && pendingOptions.init) {
+
+				// Context has already been created, so perform initialization and remove it so that we don't double-up
+				pendingOptions.init(window.context);
+				pendingOptions.init = null;
 			}
 
-			if (currentOptions.extendContext) {
-				currentOptions.extendContext(window.context, contextReady);
-			}
-			else {
-				contextReady();
+			if (window.context && window.context.isModelReady() &&
+				(pendingOptions.contextReady || pendingOptions.extendContext || pendingOptions.domReady)) {
+
+				// The context is already ready, so invoke handlers and remove so that we don't double-up
+				window.context.addModelReady(modelReadyHandler(pendingOptions.contextReady, pendingOptions.extendContext, pendingOptions.domReady));
+				pendingOptions.contextReady = null;
+				pendingOptions.extendContext = null;
+				pendingOptions.domReady = null;
 			}
 
+			return;
+		}
+
+		var currentOptions = pendingOptions;
+		pendingOptions = null;
+
+		// Create a context if needed
+		window.context = window.context || new Context();
+	
+		// Perform initialization
+		if (currentOptions.init)
+			currentOptions.init(window.context);
+
+		// Start the new query
+		Context$query.call(window.context, {
+			model: currentOptions.model,
+			types: currentOptions.types,
+			changes: currentOptions.changes,
+			conditions: currentOptions.conditions,
+			instances: currentOptions.instances
 		});
+
+		// Perform initialization once the context is ready
+		if (currentOptions.contextReady || currentOptions.extendContext || currentOptions.domReady)
+			window.context.addModelReady(modelReadyHandler(currentOptions.contextReady, currentOptions.extendContext, currentOptions.domReady));
 	};
 	// #endregion
 

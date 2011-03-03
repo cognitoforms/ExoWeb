@@ -169,11 +169,10 @@ function isType(val, type) {
 ExoWeb.isType = isType;
 
 function eachProp(obj, callback, thisPtr) {
-	for (var prop in obj) {
-		if (obj.hasOwnProperty(prop)) {
-			callback.apply(thisPtr || this, [prop, obj[prop]]);
-		}
-	}
+	for (var prop in obj)
+		if (obj.hasOwnProperty(prop))
+			if (callback.apply(thisPtr || this, [prop, obj[prop]]) === false)
+				break;
 }
 
 ExoWeb.eachProp = eachProp;

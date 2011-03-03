@@ -187,3 +187,42 @@ Function.prototype.sliceArguments = function sliceArguments(/* start, end */) {
 		return func.apply(this, args);
 	};
 };
+
+function mergeFunctions(fn1, fn2, options) {
+	// return early if one or both functions are not defined
+	if (!fn1 && !fn2) return;
+	if (!fn2) return fn1;
+	if (!fn1) return fn2;
+
+	if (options && options.async === true) {
+		return function () {
+			var idx = options.callbackIndex || 0;
+			var callback = arguments[idx];
+
+			if (!callback || !(callback instanceof Function))
+				ExoWeb.trace.throwAndLog("functions",
+					"Unable to merge async functions: the argument at index {0}{1} is not a function.",
+					[idx, options.callbackIndex ? "" : " (default)"]);
+
+			var signal = new Signal("mergeFunctions");
+
+			// replace callback function with signal pending and invoke callback when both are complete
+			var args1 = Array.prototype.slice.call(arguments);
+			args1.splice(idx, 1, signal.pending());
+			fn1.apply(this, args1);
+
+			var args2 = Array.prototype.slice.call(arguments);
+			args2.splice(idx, 1, signal.pending());
+			fn2.apply(this, args2);
+
+			signal.waitForAll(callback, (options.thisPtrIndex && arguments[options.thisPtrIndex]) || this);
+		};
+	}
+	else {
+		return function () {
+			fn1.apply(this, arguments);
+			fn2.apply(this, arguments);
+		};
+	}
+}
+exports.mergeFunctions = mergeFunctions; // IGNORE

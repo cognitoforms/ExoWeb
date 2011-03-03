@@ -16,11 +16,12 @@ ContextQuery.mixin({
 			this.batch = ExoWeb.Batch.start("context query");
 			callback.call(thisPtr || this);
 		},
-
+		
 		// Perform pre-processing of model queries and their paths.
 		///////////////////////////////////////////////////////////////////////////////
 		function ContextQuery$initModels(callback, thisPtr) {
 			if (this.options.model) {
+				this.context.onBeforeModel();
 				ExoWeb.trace.log("context", "Running init step for model queries.");
 				ExoWeb.eachProp(this.options.model, function (varName, query) {
 					if (!query.hasOwnProperty("from") || !query.hasOwnProperty("id")) {
@@ -68,7 +69,7 @@ ContextQuery.mixin({
 
 			callback.call(thisPtr || this);
 		},
-
+		
 		// Process embedded data as if it had been recieved from the server in
 		// the form of a web service response. This should enable flicker-free
 		// page loads by embedded data, changes, etc.
@@ -87,24 +88,9 @@ ContextQuery.mixin({
 					types: this.options.types
 				});
 
-				// "thisPtr" refers to the function chain in the context of
-				// the function chain callback, so reference the query here
-				var query = this;
-
-				handler.execute(function () {
-					//begin tracking changes if instances/changes are embedded.
-					if (query.options.instances || query.options.changes) {
-						// begin capturing changes and watching for existing objects that are created
-						query.context.server.beginCapturingChanges();
-					}
-
-					callback.apply(this, arguments);
-				}, thisPtr);
+				handler.execute(callback, thisPtr);
 			}
 			else {
-				// begin capturing changes and watching for existing objects that are created
-				this.context.server.beginCapturingChanges();
-
 				callback.call(thisPtr || this);
 			}
 		},

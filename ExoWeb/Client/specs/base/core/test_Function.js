@@ -4,14 +4,20 @@ var jasmine = require("../../jasmine");
 var jasmineConsole = require("../../jasmine.console");
 var arrays = require("../../../src/base/core/Array");
 var functions = require("../../../src/base/core/Function");
-var trace = require("../../../src/base/core/Trace");
+
+ExoWeb = { config: {} };
+var signal = require("../../../src/base/core/Signal");
+Signal = ExoWeb.Signal;
+
+var mergeFunctions = functions.mergeFunctions;
+
+jasmine.jasmine.debug = true;
 
 // References
 ///////////////////////////////////////
 var describe = jasmine.describe;
 var it = jasmine.it;
 var expect = jasmine.expect;
-
 
 // Test Suites
 ///////////////////////////////////////
@@ -177,6 +183,117 @@ describe("spliceArguments", function() {
 
 describe("sliceArguments", function() {
 
+});
+
+describe("mergeFunctions", function() {
+	it("return undefined if neither function is defined", function() {
+		expect(mergeFunctions(null, null)).toBe();
+		expect(mergeFunctions()).toBe();
+	});
+
+	it("returns either function if the other is not defined", function() {
+		var fn = function() {};
+		expect(mergeFunctions(fn)).toBe(fn);
+		expect(mergeFunctions(fn, null)).toBe(fn);
+		expect(mergeFunctions(null, fn)).toBe(fn);
+	});
+
+	it("takes two functions as input and returns a function that will in turn call both", function() {
+		var mocks = {
+			fn1: function fn1() { },
+			fn2: function fn2() { }
+		};
+
+		var fn1 = jasmine.spyOn(mocks, "fn1").andCallThrough();
+		var fn2 = jasmine.spyOn(mocks, "fn2").andCallThrough();
+
+		var fn3 = mergeFunctions(fn1, fn2);
+
+		// invoke the joined function
+		fn3();
+
+		expect(fn1).toHaveBeenCalled();
+		expect(fn2).toHaveBeenCalled();
+	});
+	
+	it("invokes functions with the given \"this\" and arguments", function() {
+		var mocks = {
+			fn1: function fn1(arg1, arg2) {
+				expect(this).toBe(jasmine);
+				expect(arguments.length).toBe(2);
+				expect(arg1).toBe(0);
+				expect(arg2).toBe(1);
+			},
+			fn2: function fn2(arg1, arg2) {
+				expect(this).toBe(jasmine);
+				expect(arguments.length).toBe(2);
+				expect(arg1).toBe(0);
+				expect(arg2).toBe(1);
+			}
+		};
+
+		var fn1 = jasmine.spyOn(mocks, "fn1").andCallThrough();
+		var fn2 = jasmine.spyOn(mocks, "fn2").andCallThrough();
+
+		var fn3 = mergeFunctions(fn1, fn2);
+
+		// invoke the joined function
+		fn3.call(jasmine, 0, 1);
+
+		expect(fn1).toHaveBeenCalled();
+		expect(fn2).toHaveBeenCalled();
+	});
+
+	it("wraps async functions and only executes merged callback after both have been executed", function() {
+		var innerCallback;
+
+		var mocks = {
+			fn1: function fn1(arg, callback, thisPtr) {
+				expect(this).toBe(jasmine);
+				expect(arguments.length).toBe(3);
+				expect(arg).toBe(0);
+				callback.call(thisPtr || this);
+			},
+			fn2: function fn2(arg, callback, thisPtr) {
+				expect(this).toBe(jasmine);
+				expect(arguments.length).toBe(3);
+				expect(arg).toBe(0);
+
+				// don't invoke the callback immediately
+				mocks.innerCallback = callback;
+				innerCallback = jasmine.spyOn(mocks, "innerCallback").andCallThrough();
+			},
+			outerCallback: function() {
+				expect(this).toBe(functions);
+			}
+		};
+
+		var fn1 = jasmine.spyOn(mocks, "fn1").andCallThrough();
+		var fn2 = jasmine.spyOn(mocks, "fn2").andCallThrough();
+		var outerCallback = jasmine.spyOn(mocks, "outerCallback").andCallThrough();
+
+		var fn3 = mergeFunctions(fn1, fn2, {
+			async: true,
+			callbackIndex: 1,
+			thisPtrIndex: 2
+		});
+
+		// invoke the joined function
+		fn3.call(jasmine, 0, outerCallback, functions);
+
+		expect(fn1).toHaveBeenCalled();
+		expect(fn2).toHaveBeenCalled();
+
+		// second callback and outer callback have not been called yet
+		expect(innerCallback).not.toHaveBeenCalled();
+		expect(outerCallback).not.toHaveBeenCalled();
+
+		innerCallback();
+		
+		// callbacks should now have been called
+		expect(innerCallback).toHaveBeenCalled();
+		expect(outerCallback).toHaveBeenCalled();
+	});
 });
 
 // Run Tests
