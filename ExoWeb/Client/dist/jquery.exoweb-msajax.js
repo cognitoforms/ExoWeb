@@ -155,7 +155,7 @@
 			if (options.refresh)
 				target.meta.executeRules(prop);
 
-			Array.addRange(issues, target.meta.conditions(prop));
+			Array.addRange(issues, target.meta.conditions({ property: prop }));
 		}
 		return issues;
 	};

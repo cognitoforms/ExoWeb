@@ -689,8 +689,6 @@ function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
 	}
 }
 
-var entitySignals = [];
-
 var LazyLoadEnum = {
 	None: 0,
 	Force: 1,
@@ -703,100 +701,55 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 	if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
 		callback.call(thisPtr || this, obj);
 	}
-	else {
-		var objKey = type.meta.get_fullName() + "|" + id;
-		var signal = entitySignals[objKey];
-		if (!signal) {
-			signal = entitySignals[objKey] = new ExoWeb.Signal(objKey);
-
-			// When the signal is created increment its counter once, since
-			// we are only keeping track of whether the object is loaded.
-			signal.pending();
+	else if (lazyLoad == LazyLoadEnum.Force) {
+		if (!obj) {
+			ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+			obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+		}
+		callback.call(thisPtr || this, obj);
+		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+		ExoWeb.Model.LazyLoader.load(obj, property);
+	}
+	else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
+		if (!obj) {
+			ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+			obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
 		}
 
-		var filter = function() { return true; };
+		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
+		ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.setScope(thisPtr) : callback);
+	}
+	else {
+		ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
 		function invokeCallback() {
 			if (filter(obj) !== true)
 				return;
 
 			// only invoke the callback once
-			filter = function() { return false; };
+			propertyFilter = function() { return false; };
 			callback.call(thisPtr || this, obj);
 		}
 
-		// wait until the object is loaded to invoke the callback
-		signal.waitForAll(invokeCallback, null, true);
+		var objSignal = new Signal("wait for object to exist");
 
-		function done() {
-			if (signal.isActive())
-				signal.oneDone();
-			else
-				invokeCallback();
-		}
-		
-		if (lazyLoad == LazyLoadEnum.Force) {
-			if (!obj) {
-				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
-			}
-			done();
-			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-			ExoWeb.Model.LazyLoader.eval(obj, property, function() {});
-		}
-		else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
-			if (!obj) {
-				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
-			}
-			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-			ExoWeb.Model.LazyLoader.eval(obj, property, done);
-		}
-		else {
-			waitMode = true;
-
-			ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-
-			if (property) {
-				filter = function(obj) {
-					return type.meta.property(property, true).isInited(obj);
-				};
-			}
-
-			function waitForProperty() {
-				if (filter(obj) === true) {
-					done();
-				}
-				else {
-					// if the property is not initialized then wait
-					ExoWeb.trace.log("server", "Waiting on \"{0}\" property init for object \"{1}|{2}\".", [property, type.meta.get_fullName(), id]);
-					var initHandler = function() {
-						ExoWeb.trace.log("server", "Property \"{0}\" inited for object \"{1}|{2}\", now continuing.", [property, type.meta.get_fullName(), id]);
-						done();
-					};
-
-					// Register the handler once.
-					type.meta.property(property, true).addChanged(initHandler, obj, true);
-				}
-			}
-
-			// Object is already created but not loaded.
-			if (obj) {
-				waitForProperty(obj);
-			}
-			else {
-				var registeredHandler = function(newObj) {
+		if (!obj) {
+			model.addObjectRegistered(objSignal.pending(null, null, true), function(newObj) {
+				if (newObj.meta.type === type.meta && newObj.meta.id === id) {
 					obj = newObj;
-
-					ExoWeb.trace.log("server", "Object \"{0}|{1}\" was created, now continuing.", [type.meta.get_fullName(), id]);
-					if (obj.meta.type === type.meta && obj.meta.id === id) {
-						waitForProperty(obj);
-					}
-				};
-
-				// Register the handler once.
-				model.addObjectRegistered(registeredHandler, true);
-			}
+					return true;
+				}
+			}, true);
 		}
+
+		objSignal.waitForAll(function () {
+			// if a property was specified and its not inited, then wait for it
+			if (property && type.meta.property(property, true).isInited(obj) !== true) {
+				type.meta.property(property, true).addChanged(callback.setScope(thisPtr), obj, true);
+				return;
+			}
+
+			callback.call(thisPtr || this, obj);
+		}, null, true);
 	}
 }

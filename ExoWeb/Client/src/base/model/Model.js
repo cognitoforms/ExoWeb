@@ -154,8 +154,8 @@ Model.prototype = {
 	notifyAfterPropertySet: function(obj, property, newVal, oldVal) {
 		this._raiseEvent("afterPropertySet", [obj, property, newVal, oldVal]);
 	},
-	addObjectRegistered: function(func, once) {
-		this._addEvent("objectRegistered", func, null, once);
+	addObjectRegistered: function(func, objectOrFunction, once) {
+		this._addEvent("objectRegistered", func, objectOrFunction ? (objectOrFunction instanceof Function ? objectOrFunction : objectEquals(objectOrFunction)) : null, once);
 	},
 	removeObjectRegistered: function(func) {
 		this._removeEvent("objectRegistered", func);

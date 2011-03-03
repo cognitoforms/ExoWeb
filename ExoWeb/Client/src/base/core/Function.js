@@ -226,3 +226,10 @@ function mergeFunctions(fn1, fn2, options) {
 	}
 }
 exports.mergeFunctions = mergeFunctions; // IGNORE
+
+function objectEquals(obj) {
+	return function(other) {
+		return obj === other;
+	};
+}
+exports.objectEquals = objectEquals; // IGNORE

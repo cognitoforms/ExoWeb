@@ -376,16 +376,7 @@ Property.mixin({
 	// starts listening for change events on the property. Use obj argument to
 	// optionally filter the events to a specific object
 	addChanged: function Property$addChanged(handler, obj, once) {
-		var filter;
-		if (obj) {
-			filter = function(target) {
-				if (obj === target) {
-					handler.apply(this, arguments);
-				}
-			};
-		}
-
-		this._addEvent("changed", handler, filter, once);
+		this._addEvent("changed", handler, obj ? objectEquals(obj) : null, once);
 
 		// Return the property to support method chaining
 		return this;

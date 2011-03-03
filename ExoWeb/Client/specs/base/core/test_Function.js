@@ -10,6 +10,7 @@ var signal = require("../../../src/base/core/Signal");
 Signal = ExoWeb.Signal;
 
 var mergeFunctions = functions.mergeFunctions;
+var objectEquals = functions.objectEquals;
 
 jasmine.jasmine.debug = true;
 
@@ -293,6 +294,17 @@ describe("mergeFunctions", function() {
 		// callbacks should now have been called
 		expect(innerCallback).toHaveBeenCalled();
 		expect(outerCallback).toHaveBeenCalled();
+	});
+});
+
+describe("objectEquals", function() {
+	it("returns a function that will compare it's input to the given object for equality", function() {
+		var obj = {};
+		var fn = objectEquals(obj);
+
+		expect(fn({})).toEqual(false);
+		expect(fn("fail")).toEqual(false);
+		expect(fn(obj)).toEqual(true);
 	});
 });
 

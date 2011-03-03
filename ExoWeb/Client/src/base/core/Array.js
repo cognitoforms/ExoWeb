@@ -131,7 +131,7 @@ if (!Array.prototype.some) {
 		var thisp = arguments[1];
 		for (; i < len; i++) {
 			if (i in this && fun.call(thisp, this[i], i, this)) {
-			return true;
+				return true;
 			}
 		}
 

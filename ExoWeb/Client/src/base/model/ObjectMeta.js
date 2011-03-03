@@ -129,26 +129,19 @@ ObjectMeta.mixin({
 		return true;
 	},
 
-	conditions: function ObjectMeta$conditions(prop) {
-		if (!prop) {
-			return this._conditions;
-		}
+	conditions: function ObjectMeta$conditions(propOrOptions) {
+		if (!propOrOptions) return this._conditions;
 
-		var ret = [];
+		// backwards compatible with original property-only querying
+		var options = (propOrOptions instanceof Property || propOrOptions instanceof PropertyChain) ?
+			{ property: propOrOptions } :
+			propOrOptions;
 
-		for (var i = 0; i < this._conditions.length; ++i) {
-			var condition = this._conditions[i];
-			var props = condition.get_properties();
-
-			for (var p = 0; p < props.length; ++p) {
-				if (props[p].equals(prop)) {
-					ret.push(condition);
-					break;
-				}
-			}
-		}
-
-		return ret;
+		return filter(this._conditions, function(condition) {
+			return !options.property || condition.get_properties().some(function(p) {
+				return p.equals(options.property);
+			});
+		});
 	},
 
 	_raisePropertiesValidated: function (properties) {

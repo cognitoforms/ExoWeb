@@ -1052,9 +1052,8 @@ ServerSync.mixin({
 				Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
 					// no need to load instance only to remove it from a list
 					tryGetJsType(this._model, item.type, null, false, function(itemType) {
-						tryGetEntity(this._model, this._translator, itemType, item.id, null, LazyLoadEnum.None, function(itemObj) {
-							list.remove(itemObj);
-						}, this);
+						var itemObj = fromExoGraph(item, this._translator);
+						list.remove(itemObj);
 					}, this);
 				}, this);
 
