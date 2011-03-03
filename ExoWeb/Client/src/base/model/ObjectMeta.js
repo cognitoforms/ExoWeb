@@ -138,9 +138,10 @@ ObjectMeta.mixin({
 			propOrOptions;
 
 		return filter(this._conditions, function(condition) {
-			return !options.property || condition.get_properties().some(function(p) {
-				return p.equals(options.property);
-			});
+			return (!options.property || condition.get_properties().some(function(p) { return p.equals(options.property); })) &&
+				(!options.set || condition.get_type().get_sets().indexOf(options.set) >= 0) &&
+				(!options.target || condition.get_targets().some(function(t) { return t.get_entity() === options.target; })) &&
+				(!options.type || condition.get_type() === options.type);
 		});
 	},
 
