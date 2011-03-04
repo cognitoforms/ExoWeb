@@ -11439,7 +11439,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			options.type = options.type || options.$default;
 			delete options.$default;
 
-			options.single = options.single === true || options.single.toString().toLowerCase() === "true";
+			options.single = options.single && (options.single === true || options.single.toString().toLowerCase() === "true");
 
 			var types = options.type ? options.type.split(",") : null;
 
