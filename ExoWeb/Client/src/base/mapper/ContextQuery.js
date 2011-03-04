@@ -405,7 +405,7 @@ ContextQuery.mixin({
 								else {
 									this.context.model[varName] = new (this.context.model.meta.type(query.from).get_jstype())();
 								}
-							});
+							}, this);
 
 							// model object has been successfully loaded!
 							allSignals.oneDone();
