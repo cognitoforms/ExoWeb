@@ -217,17 +217,28 @@ if (!Array.prototype.lastIndexOf) {
 	};
 }
 
-if (!Array.prototype.removeAll) {
-	Array.prototype.removeAll = function(fn, thisPtr) {
-		for (var i = 0; i < this.length; i++) {
-			if (fn.call(thisPtr || this, this[i], i) === true) {
-				if (this.removeAt) {
-					this.removeAt(i--);
-				}
-				else {
-					this.splice(i--, 1);
-				}
+function purge(arr, fn, thisPtr) {
+	var result;
+	for (var i = arr.length - 1; i >= 0; i--) {
+		if (fn.call(thisPtr || this, arr[i], i) === true) {
+			if (arr.removeAt) {
+				arr.removeAt(i);
 			}
+			else {
+				arr.splice(i, 1);
+			}
+
+			if (!result) {
+				result = [];
+			}
+
+			result.splice(0, 0, i);
 		}
 	}
+	return result;
+}
+exports.purge = purge; // IGNORE
+
+Array.prototype.purge = function(fn, thisPtr) {
+	return purge(this, fn, thisPtr);
 }

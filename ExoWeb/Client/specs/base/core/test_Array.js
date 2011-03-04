@@ -6,6 +6,7 @@ var arrays = require("../../../src/base/core/Array");
 
 var distinct = arrays.distinct;
 var intersect = arrays.intersect;
+var purge = arrays.purge;
 
 // References
 ///////////////////////////////////////
@@ -34,14 +35,14 @@ function arrayEquals(arr1, arr2, unordered) {
 
 // Test Suites
 ///////////////////////////////////////
-describe("removeAll", function() {
-	function testRemoveAll(original, expected, filterFn) {
-		original.removeAll(filterFn);
+describe("purge", function() {
+	function testPurge(original, expected, filterFn) {
+		purge(original, filterFn);
 		arrayEquals(original, expected);
 	}
 
 	it("removes elements from the array that match the given filter callback", function() {
-		testRemoveAll([4, 6, 2, 6, 7, 2], [4, 2, 2], function(item) {
+		testPurge([4, 6, 2, 6, 7, 2], [4, 2, 2], function(item) {
 			return item >= 6;
 		});
 	});
@@ -56,11 +57,19 @@ describe("removeAll", function() {
 			this.splice(idx, 1);
 		};
 
-		testRemoveAll(arr, [4, 2, 2], function(item) {
+		testPurge(arr, [4, 2, 2], function(item) {
 			return item >= 6;
 		});
 
 		expect(removeAtCalls).toBe(3);
+	});
+
+	it("returns the indices where items where removed from the original array", function() {
+		arrayEquals(purge([parseInt("x"), parseInt("y"), 6, 7, parseInt("z"), 2], isNaN), [0, 1, 4]);
+	});
+
+	it("returns nothing if no items are removed", function() {
+		expect(purge([4, 6, 2, 6, 7, 2], isNaN)).toEqual(undefined);
 	});
 });
 

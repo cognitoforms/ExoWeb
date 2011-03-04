@@ -122,6 +122,7 @@
     <Content Include="Client\specs\base\core\test_Batch.js" />
     <Content Include="Client\specs\base\core\test_Function.js" />
     <Content Include="Client\specs\base\core\test_Signal.js" />
+    <Content Include="Client\specs\base\core\test_String.js" />
     <Content Include="Client\specs\base\core\test_Translator.js" />
     <Content Include="Client\specs\base\core\test_Utilities.js" />
     <Content Include="Client\specs\base\mapper\test_ChangeSet.js" />

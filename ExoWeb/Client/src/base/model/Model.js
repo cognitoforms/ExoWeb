@@ -155,7 +155,7 @@ Model.prototype = {
 		this._raiseEvent("afterPropertySet", [obj, property, newVal, oldVal]);
 	},
 	addObjectRegistered: function(func, objectOrFunction, once) {
-		this._addEvent("objectRegistered", func, objectOrFunction ? (objectOrFunction instanceof Function ? objectOrFunction : objectEquals(objectOrFunction)) : null, once);
+		this._addEvent("objectRegistered", func, objectOrFunction ? (objectOrFunction instanceof Function ? objectOrFunction : equals(objectOrFunction)) : null, once);
 	},
 	removeObjectRegistered: function(func) {
 		this._removeEvent("objectRegistered", func);

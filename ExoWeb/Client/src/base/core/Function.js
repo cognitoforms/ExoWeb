@@ -24,7 +24,6 @@ Function.prototype.mixin = function mixin(methods, object) {
 	overridableNonEnumeratedMethods.forEach(function (m) {
 		if (methods.hasOwnProperty(m))
 			object[m] = methods[m];
-
 	});
 };
 
@@ -227,9 +226,16 @@ function mergeFunctions(fn1, fn2, options) {
 }
 exports.mergeFunctions = mergeFunctions; // IGNORE
 
-function objectEquals(obj) {
+function equals(obj) {
 	return function(other) {
 		return obj === other;
 	};
 }
-exports.objectEquals = objectEquals; // IGNORE
+exports.equals = equals; // IGNORE
+
+function not(fn) {
+	return function() {
+		return !fn.apply(this, arguments);
+	};
+}
+exports.not = not; // IGNORE

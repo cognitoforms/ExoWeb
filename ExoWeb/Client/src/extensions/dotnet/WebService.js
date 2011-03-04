@@ -75,14 +75,7 @@ ExoWeb.Mapper.setQueryProvider(function WebService$queryProviderFn(queries, chan
 	request({
 		changes: changes,
 		queries: queries.map(function(q) {
-			var q = { type: q.from, ids: [q.id], paths: q.and || [] };
-			
-			if (ExoWeb.config.useChangeSets === true) {
-				q.inScope = true;
-				q.forLoad = true;
-			}
-
-			return q;
+			return { type: q.from, ids: q.ids, paths: q.and || [], inScope: true, forLoad: true };
 		}).concat(scopeQueries)
 	}, onSuccess, onFailure);
 });
