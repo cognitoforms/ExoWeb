@@ -550,12 +550,12 @@ function fetchPathTypes(model, jstype, path, callback) {
 	}
 }
 
-function fetchTypes(model, query, callback) {
+function fetchTypes(model, typeName, paths, callback) {
 	var signal = new ExoWeb.Signal("fetchTypes");
 
 	function rootTypeLoaded(jstype) {
-		if (query.and) {
-			Array.forEach(query.and, function(path) {
+		if (paths) {
+			Array.forEach(paths, function(path) {
 				if (path.steps[0].property === "this") {
 					var step = Array.dequeue(path.steps);
 					var mtype = jstype.meta;
@@ -613,9 +613,9 @@ function fetchTypes(model, query, callback) {
 	}
 
 	// load root type, then load types referenced in paths
-	var rootType = model.type(query.from);
+	var rootType = model.type(typeName);
 	if (!rootType) {
-		fetchType(model, query.from, signal.pending(rootTypeLoaded));
+		fetchType(model, typeName, signal.pending(rootTypeLoaded));
 	}
 	else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
 		ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));

@@ -59,25 +59,9 @@ ContextQuery.mixin({
 					// remove new ids for later processing
 					query.newIds = purge(query.ids, equals($newId()));
 
-					// Normalize (expand) the query paths
-					query.and = ExoWeb.Model.PathTokens.normalizePaths(query.and);
-
 					// Store the paths for later use in lazy loading
-					ObjectLazyLoader.addPaths(query.from, query.and);
-
-					// Only send properties (no cast expressions) to the server
-					query.serverPaths = query.and.map(function (path) {
-						var strPath;
-						path.steps.forEach(function (step) {
-							if (!strPath) {
-								strPath = step.property;
-							}
-							else {
-								strPath += "." + step.property;
-							}
-						});
-						return strPath;
-					});
+					query.normalized = ExoWeb.Model.PathTokens.normalizePaths(query.and);
+					ObjectLazyLoader.addPaths(query.from, query.normalized);
 
 					// use temporary config setting to enable/disable scope-of-work functionality
 					if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
@@ -86,7 +70,7 @@ ContextQuery.mixin({
 								type: query.from,
 								ids: query.ids,
 								// TODO: this will be subset of paths interpreted as scope-of-work
-								paths: query.serverPaths.where(function(p) { return p.startsWith("this."); }),
+								paths: query.and ? query.and.where(function(p) { return p.startsWith("this."); }) : [],
 								inScope: true,
 								forLoad: false
 							};
@@ -165,7 +149,7 @@ ContextQuery.mixin({
 								pendingQueries.push({
 									from: query.from,
 									ids: batchIds,
-									and: query.serverPaths,
+									and: query.and || [],
 									inScope: true,
 									forLoad: true
 								});
@@ -244,7 +228,7 @@ ContextQuery.mixin({
 									}, this);
 								}
 
-								objectProvider(query.from, individualIds, query.serverPaths, true, null, scopeQueries,
+								objectProvider(query.from, individualIds, query.and || [], true, null, scopeQueries,
 									this.state[varName].signal.pending(function context$objects$callback(result) {
 										this.state[varName].objectJson = result.instances;
 										this.state[varName].conditionsJson = result.conditions;
@@ -269,19 +253,13 @@ ContextQuery.mixin({
 			if (this.options.model) {
 				ExoWeb.eachProp(this.options.model, function(varName, query) {
 					if (!query.load && query.ids.length === 0) {
-						if (query.serverPaths == null)
-							query.serverPaths = [];
-
 						// Remove instance paths when an id is not specified
-						for (var i = query.serverPaths.length-1; i >= 0; i--) {
-							if (query.serverPaths[i].startsWith("this."))
-								query.serverPaths.splice(i, 1);	
-						}
+						var staticPaths = query.and ? query.and.where(function(p) { return !p.startsWith("this."); }) : null;
 
 						// Only call the server if paths were specified
-						if (query.serverPaths.length > 0)
+						if (staticPaths && staticPaths.length > 0)
 						{
-							objectProvider(null, null, query.serverPaths, false, null,
+							objectProvider(null, null, staticPaths, false, null,
 								allSignals.pending(function context$objects$callback(result) {
 									// load the json. this may happen asynchronously to increment the signal just in case
 									objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
@@ -311,7 +289,7 @@ ContextQuery.mixin({
 		function ContextQuery$fetchPathTypes(callback, thisPtr) {
 			if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
 				ExoWeb.eachProp(this.options.model, function(varName, query) {
-					fetchTypes(this.context.model.meta, query, this.state[varName].signal.pending(null, this, true));
+					fetchTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
 				}, this);
 			}
 
@@ -421,35 +399,22 @@ ContextQuery.mixin({
 		///////////////////////////////////////////////////////////////////////////////
 		function ContextQuery$fetchTypes(callback, thisPtr) {
 			// load types if they are in array format.  This is for the full server/client model of ExoWeb
-			//to load the types and isntance data async
+			// to load the types and isntance data async
 			if (this.options.types && this.options.types instanceof Array) {
 				// allow specifying types and paths apart from instance data
 				for (var i = 0; i < this.options.types.length; i++) {
 					var typeQuery = this.options.types[i];
 
-					typeQuery.and = ExoWeb.Model.PathTokens.normalizePaths(typeQuery.and);
-
 					// store the paths for later use
-					ObjectLazyLoader.addPaths(typeQuery.from, typeQuery.and);
+					typeQuery.normalized = ExoWeb.Model.PathTokens.normalizePaths(typeQuery.and);
+					ObjectLazyLoader.addPaths(typeQuery.from, typeQuery.normalized);
 
-					// only send properties to server
-					typeQuery.serverPaths = typeQuery.and.map(function(path) {
-						var strPath;
-						path.steps.forEach(function(step) {
-							if (!strPath) {
-								strPath = step.property;
-							}
-							else {
-								strPath += "." + step.property;
-							}
-						});
-						return strPath;
-					});
+					fetchTypes(this.context.model.meta, typeQuery.from, typeQuery.normalized, allSignals.pending(null, this, true));
 
-					fetchTypes(this.context.model.meta, typeQuery, allSignals.pending(null, this, true));
+					var staticPaths = typeQuery.and ? typeQuery.and.where(function(p) { return !p.startsWith("this."); }) : null;
 
-					if (typeQuery.serverPaths.length > 0) {
-						objectProvider(typeQuery.from, null, typeQuery.serverPaths, false, null,
+					if (staticPaths && staticPaths.length > 0) {
+						objectProvider(typeQuery.from, null, staticPaths, false, null,
 							allSignals.pending(function context$objects$callback(result) {
 								// load the json. this may happen asynchronously to increment the signal just in case
 								objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
