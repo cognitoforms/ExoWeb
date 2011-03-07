@@ -9322,9 +9322,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 			// Starts a batch so that others will not respond to changes that are
 			// broadcast during querying, i.e. instance loading.
 			///////////////////////////////////////////////////////////////////////////////
-			function ContextQuery$startBatch(callback, thisPtr) {
+			function ContextQuery$setup(callback, thisPtr) {
+				// start a batch to represent all of the pending work
 				ExoWeb.trace.log("context", "Starting context query batch.");
 				this.batch = ExoWeb.Batch.start("context query");
+
+				// store init changes as early as possible
+				if (this.options.changes)
+					ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
+
 				callback.call(thisPtr || this);
 			},
 
@@ -9392,17 +9398,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				callback.call(thisPtr || this);
 			},
-		
+
 			// Process embedded data as if it had been recieved from the server in
 			// the form of a web service response. This should enable flicker-free
 			// page loads by embedded data, changes, etc.
 			///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$processEmbedded(callback, thisPtr) {
 				ExoWeb.trace.log("context", "Processing embedded data in query.");
-
-				if (this.options.changes) {
-					ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
-				}
 
 				if (this.options.instances || this.options.conditions || (this.options.types && !(this.options.types instanceof Array))) {
 					var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
