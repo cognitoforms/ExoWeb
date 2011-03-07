@@ -17,18 +17,17 @@ Sys.Application.registerMarkupExtension("?",
 
 		var sets = options.set ? options.set.split(",") : null;
 
-		var target = options.target;
-		options.target = target && function() {
-			if (target.constructor === String)
-				return evalPath(options.source, target);
-			return target;
+		var target = function() {
+			if (options.target && options.target.constructor === String)
+				return evalPath(options.source, options.target);
+			return options.target;
 		};
 
 		function updateConditions() {
 			var conditions = meta.conditions().where(function(c) {
 				return (!types || types.indexOf(c.get_type().get_code()) >= 0) && // check for type code match (if specified)
 					(!sets || intersect(sets, c.get_type().get_sets().map(function(s) { return s.get_name(); })).length > 0) && // check for set code match (if specified)
-					(!options.target || c.get_targets().where(function(t) { return t.get_entity() === options.target(); }).length > 0); // check for target (if specified)
+					(!target || c.get_targets().where(function(t) { return t.get_entity() === target(); }).length > 0); // check for target (if specified)
 			});
 
 			if (options.single === true) {
