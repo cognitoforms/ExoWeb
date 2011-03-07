@@ -1,5 +1,9 @@
 Sys.Application.registerMarkupExtension("~",
 	function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
+		if (!properties.targetProperty) {
+			properties.targetProperty = targetProperty;
+		}
+
 		var isDisposed = false;
 
 		if (component.add_disposing) {
@@ -48,9 +52,22 @@ Sys.Application.registerMarkupExtension("~",
 							finalValue = prepareValue(value);
 						}
 
-						Sys.Observer.setValue(component, properties.targetProperty || targetProperty, finalValue);
-					});
+						if (Sys.UI.DomElement.isDomElement(component) && (properties.targetProperty === "innerText" || properties.targetProperty === "innerHTML")) {
+							if (finalValue && finalValue.constructor !== String)
+								finalValue = finalValue.toString();
 
+							// taken from Sys$Binding$_sourceChanged
+							Sys.Application._clearContent(component);
+							if (properties.targetProperty === "innerHTML")
+								component.innerHTML = finalValue;
+							else
+								component.appendChild(document.createTextNode(finalValue));
+							Sys.Observer.raisePropertyChanged(component, properties.targetProperty);
+						}
+						else {
+							Sys.Observer.setValue(component, properties.targetProperty, finalValue);
+						}
+					});
 				});
 			}
 		}
