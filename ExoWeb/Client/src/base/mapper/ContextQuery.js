@@ -119,42 +119,45 @@ ContextQuery.mixin({
 
 				ExoWeb.eachProp(this.options.model, function(varName, query) {
 					if (!query.load && query.ids.length > 0) {
-						tryGetJsType(this.context.model.meta, query.from, null, true, function(type) {
-							// get a list of ids that should be batch-requested
-							var batchIds = filter(query.ids, function(id, index) {
-								// check to see if the object already exists, i.e. because of embedding
-								var obj = type.meta.get(translateId(this.context.server._translator, query.from, id));
+						var jstype = ExoWeb.Model.Model.getJsType(query.from, true);
 
-								// if it doesn't exist, include the id in the batch query
-								if (obj === undefined) return true;
+						// get a list of ids that should be batch-requested
+						var batchIds = filter(query.ids, function(id, index) {
+							// if the type doesn't exist, include the id in the batch query
+							if (!jstype) return true;
 
-								// otherwise, include it in the model
-								if (this.state[varName].isArray) {
-									this.context.model[varName][index] = obj;
-								}
-								else {
-									this.context.model[varName] = obj;
-								}
-							}, this);
+							// check to see if the object already exists, i.e. because of embedding
+							var obj = jstype.meta.get(translateId(this.context.server._translator, query.from, id));
 
-							if (batchIds.length > 0) {
-								if (batchQuerySignal === undefined) {
-									batchQuerySignal = new ExoWeb.Signal("batch query");
-									batchQuerySignal.pending(null, this, true);
-								}
+							// if it doesn't exist, include the id in the batch query
+							if (obj === undefined) return true;
 
-								// complete the individual query signal after the batch is complete
-								batchQuerySignal.waitForAll(this.state[varName].signal.pending(null, this, true), this, true);
-
-								pendingQueries.push({
-									from: query.from,
-									ids: batchIds,
-									and: query.and || [],
-									inScope: true,
-									forLoad: true
-								});
+							// otherwise, include it in the model
+							if (this.state[varName].isArray) {
+								this.context.model[varName][index] = obj;
+							}
+							else {
+								this.context.model[varName] = obj;
 							}
 						}, this);
+
+						if (batchIds.length > 0) {
+							if (batchQuerySignal === undefined) {
+								batchQuerySignal = new ExoWeb.Signal("batch query");
+								batchQuerySignal.pending(null, this, true);
+							}
+
+							// complete the individual query signal after the batch is complete
+							batchQuerySignal.waitForAll(this.state[varName].signal.pending(null, this, true), this, true);
+
+							pendingQueries.push({
+								from: query.from,
+								ids: batchIds,
+								and: query.and || [],
+								inScope: true,
+								forLoad: true
+							});
+						}
 					}
 				}, this);
 
@@ -314,12 +317,17 @@ ContextQuery.mixin({
 						}
 						// otherwise, loading is required to establish roots if there are any server ids
 						else if (query.ids.length > 0) {
-							if (!this.state[varName].objectJson) {
-								ExoWeb.trace.logError("context", $format("Request failed for type {0} with id(s) = {1}.", [query.from, query.ids.join(",")]));
+							var processResponse = new Signal("processing response");
+
+							if (this.state[varName].objectJson) {
+								// load the json. this may happen asynchronously so increment the signal just in case
+								objectsFromJson(this.context.model.meta, this.state[varName].objectJson, processResponse.pending(null, this), this, true);
+
+								// indicate that instance data is already being loaded
+								delete this.state[varName].objectJson;
 							}
 
-							// load the json. this may happen asynchronously so increment the signal just in case
-							objectsFromJson(this.context.model.meta, this.state[varName].objectJson, this.state[varName].signal.pending(function context$model$callback() {
+							processResponse.waitForAll(this.state[varName].signal.pending(function context$model$callback() {
 								var mtype = this.context.model.meta.type(query.from);
 
 								if (!mtype) {
@@ -355,10 +363,7 @@ ContextQuery.mixin({
 									// model object has been successfully loaded!
 									allSignals.oneDone();
 								}
-							}), this, true);
-
-							// indicate that instance data is already being loaded
-							delete this.state[varName].objectJson;
+							}, this), this);
 						}
 						else {
 							// model object has been successfully loaded!
