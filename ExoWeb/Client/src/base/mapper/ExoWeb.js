@@ -101,6 +101,6 @@ window.$exoweb = function (options) {
 	});
 
 	// Perform initialization once the context is ready
-	if (currentOptions.contextReady || currentOptions.extendContext || currentOptions.domReady)
+	if (currentOptions.contextReady || currentOptions.extendContext || currentOptions.domReady || !activated)
 		window.context.addModelReady(modelReadyHandler(currentOptions.contextReady, currentOptions.extendContext, currentOptions.domReady));
 };
