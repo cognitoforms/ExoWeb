@@ -224,6 +224,10 @@ Toggle.mixin({
 
 			this.execute();
 		}
+		else if(this._when && this._when instanceof Function) {
+			this._on = value;
+			this.execute();
+		}
 	},
 
 	get_when: function Toggle$get_when() {
