@@ -6915,10 +6915,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._activeSet.add(change);
 		},
 		addSet: function(source, changes) {
-			if (this._activeSet !== null) {
-				ExoWeb.trace.throwAndLog("server", "Cannot store init changes in an active change log.");
-			}
-
 			this._sets.push(new ChangeSet(source, changes));
 		},
 		lastChange: function() {
@@ -7087,7 +7083,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function ServerSync$storeInitChanges(changes) {
+		var activeSet = this._changeLog.activeSet();
+
 		this._changeLog.addSet("init", changes);
+
+		if (activeSet)
+			startChangeSet.call(this, activeSet.source());
 	}
 
 	ServerSync.mixin({

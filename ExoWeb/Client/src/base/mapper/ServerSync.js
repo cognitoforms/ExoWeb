@@ -78,7 +78,12 @@ function ServerSync$addScopeQuery(query) {
 }
 
 function ServerSync$storeInitChanges(changes) {
+	var activeSet = this._changeLog.activeSet();
+
 	this._changeLog.addSet("init", changes);
+
+	if (activeSet)
+		startChangeSet.call(this, activeSet.source());
 }
 
 ServerSync.mixin({

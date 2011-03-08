@@ -84,11 +84,11 @@ describe("ChangeLog", function() {
 			return c > 1;
 		})).toEqual([
 			{
-				source: "test",
+				source: "server",
 				changes: [2]
 			},
 			{
-				source: "test2",
+				source: "server",
 				changes: [3]
 			}
 		]);
@@ -154,13 +154,16 @@ describe("ChangeLog", function() {
 });
 
 describe("ChangeLog.addSet", function() {
-	it("will throws an error when the log is active", function() {
+	it("allows a set to be added to an active change log", function() {
 		var log = new ChangeLog();
 		log.start("test");
+		expect(log.activeSet().source()).toBe("test");
 
-		expect(function() {
-			log.addSet([1, 2], "test2");
-		}).toThrow("Cannot store init changes in an active change log.");
+		var active = log.activeSet();
+
+		log.addSet("test2", [1, 2]);
+		expect(log.sets().length).toBe(2);
+		expect(log.activeSet()).toBe(active);
 	});
 
 	it("adds a non-active set to the change log", function() {
@@ -168,10 +171,12 @@ describe("ChangeLog.addSet", function() {
 		var log = new ChangeLog();
 		log.addSet("test", changes);
 
+		var active = log.activeSet();
+
 		expect(log.sets().length).toBe(1);
 		expect(log.sets()[0].changes().length).toBe(3);
 		expect(log.sets()[0].changes()).not.toBe(changes);
-		expect(log.activeSet()).toBe(null);
+		expect(log.activeSet()).toBe(active);
 	});
 });
 
