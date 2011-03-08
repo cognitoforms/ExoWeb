@@ -142,6 +142,7 @@
     <Content Include="Client\src\base\core\Functor.js" />
     <Content Include="Client\src\base\core\MsAjax.js" />
     <Content Include="Client\src\base\core\Object.js" />
+    <Content Include="Client\src\base\core\OWL.js" />
     <Content Include="Client\src\base\core\PropertyObserver.js" />
     <Content Include="Client\src\base\core\Signal.js" />
     <Content Include="Client\src\base\core\String.js" />
@@ -179,6 +180,7 @@
     <Content Include="Client\src\base\model\ConditionType.js" />
     <Content Include="Client\src\base\model\ConditionTypeSet.js" />
     <Content Include="Client\src\base\model\Entity.js" />
+    <Content Include="Client\src\base\model\ErrorIfExpressionsRule.js" />
     <Content Include="Client\src\base\model\Format.js" />
     <Content Include="Client\src\base\model\FormatError.js" />
     <Content Include="Client\src\base\model\Formats.js" />
@@ -189,6 +191,7 @@
     <Content Include="Client\src\base\model\Property.js" />
     <Content Include="Client\src\base\model\PropertyChain.js" />
     <Content Include="Client\src\base\model\RangeRule.js" />
+    <Content Include="Client\src\base\model\RequiredIfExpressionsRule.js" />
     <Content Include="Client\src\base\model\RequiredIfRule.js" />
     <Content Include="Client\src\base\model\RequiredRule.js" />
     <Content Include="Client\src\base\model\Rule.js" />

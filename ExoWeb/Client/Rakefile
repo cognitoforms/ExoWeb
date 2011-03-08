@@ -47,6 +47,7 @@ end
 		Translator
 		Utilities
 		TimeSpan
+		OWL
 		Object
 		PropertyObserver
 		MsAjax},
@@ -65,7 +66,9 @@ end
 		RangeRule
 		AllowedValuesRule
 		CompareRule
+		ErrorIfExpressionsRule
 		RequiredIfRule
+		RequiredIfExpressionsRule
 		StringLengthRule
 		ConditionTypeSet
 		ConditionType

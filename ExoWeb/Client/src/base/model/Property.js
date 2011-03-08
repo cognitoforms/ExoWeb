@@ -573,7 +573,20 @@ Property.mixin({
 		return this;
 	},
 	requiredIf: function(source, operator, value, conditionType) {
-		new ExoWeb.Model.Rule.requiredIf(this._containingType, { property: this._name, compareSource: source, compareOperator: operator, compareValue: value }, conditionType);
+		if(typeof(source) === "string") {
+			new ExoWeb.Model.Rule.requiredIf(this._containingType, { property: this._name, compareSource: source, compareOperator: operator, compareValue: value }, conditionType);
+		}
+		else {
+			new ExoWeb.Model.Rule.requiredIfExpressions(this._containingType, { property: this._name, fn: source.fn, dependsOn: source.dependsOn }, conditionType);
+		}
+		return this;
+	},
+	requiredIfExpressions: function(options, conditionType) {
+		new ExoWeb.Model.Rule.requiredIfExpressions(this._containingType, { property: this._name, fn: options.fn, dependsOn: options.dependsOn }, conditionType);
+		return this;
+	},
+	errorIfExpressions: function(options, conditionType) {
+		new ExoWeb.Model.Rule.errorIfExpressions(this._containingType, { property: this._name, fn: options.fn, dependsOn: options.dependsOn, errorMessage: options.errorMessage, isWarning: options.isWarning }, conditionType);
 		return this;
 	},
 	stringLength: function(min, max, conditionType) {

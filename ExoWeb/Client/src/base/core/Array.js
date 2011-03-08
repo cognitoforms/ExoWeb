@@ -242,3 +242,13 @@ exports.purge = purge; // IGNORE
 Array.prototype.purge = function(fn, thisPtr) {
 	return purge(this, fn, thisPtr);
 }
+
+function peek(arr) {
+	var peekVal = arr.pop();
+	arr.push(peekVal);
+	return peekVal;
+}
+
+Array.prototype.peek = function() {
+	return peek(this);
+}

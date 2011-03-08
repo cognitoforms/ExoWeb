@@ -36,18 +36,22 @@ Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter, callba
 
 Rule.ensureError = function Rule$ensureError(ruleName, prop) {
 	var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), ruleName]);
-	var conditionType = ConditionType.get(generatedCode);
+	var counter = "";
 
-	if (!conditionType) {
-		conditionType = new ConditionType.Error(generatedCode, $format("Generated condition type for {0} rule.", [ruleName]));
-		return conditionType;
-	}
-	else if (conditionType instanceof ConditionType.Error) {
-		return conditionType;
-	}
-	else {
-		ExoWeb.trace.throwAndLog("conditions", "Condition type \"{0}\" already exists but is not an error.", [generatedCode]);
-	}
+	while(ConditionType.get(generatedCode + counter))
+		counter++;
+
+	return new ConditionType.Error(generatedCode + counter, $format("Generated condition type for {0} rule.", [ruleName]));
+};
+
+Rule.ensureWarning = function Rule$ensureWarning(ruleName, prop, dependsOn) {
+	var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), ruleName]);
+	var counter = "";
+
+	while(ConditionType.get(generatedCode + counter))
+		counter++;
+
+	return new ConditionType.Warning(generatedCode + counter, $format("Generated condition type for {0} rule.", [ruleName]));
 };
 
 Rule.inferInputs = function Rule$inferInputs(rootType, func) {
