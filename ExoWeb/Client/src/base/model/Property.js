@@ -191,9 +191,9 @@ Property.mixin({
 //				}
 		// </DEBUG>
 
-		if (!this.canSetValue(obj, val)) {
-			ExoWeb.trace.throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
-		}
+//		if (!this.canSetValue(obj, val)) {
+//			ExoWeb.trace.throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
+//		}
 
 		var old = obj[this._fieldName];
 

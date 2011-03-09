@@ -3800,9 +3800,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 //				}
 			// </DEBUG>
 
-			if (!this.canSetValue(obj, val)) {
-				ExoWeb.trace.throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
-			}
+//		if (!this.canSetValue(obj, val)) {
+//			ExoWeb.trace.throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
+//		}
 
 			var old = obj[this._fieldName];
 
@@ -8948,6 +8948,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 		for (var typeName in json) {
 			typeFromJson(model, typeName, json[typeName]);
 		}
+
+		//do not check in 
+		//call raiseExtensions so certain rule types will register (allowedValues)
+		//need to wait until all types are loaded first
+		for(var typeName in json) {
+			var mtype = getType(model, typeName, json.baseType, true);
+			raiseExtensions(mtype);
+		}
 	}
 
 	function typeFromJson(model, typeName, json) {
@@ -9006,6 +9014,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 		// define condition types
 		if (json.conditionTypes)
 			conditionTypesFromJson(model, mtype, json.conditionTypes);
+
+		//do not check in temporary fix
+		TypeLazyLoader.unregister(mtype);
 	}
 
 	function conditionTypesFromJson(model, mtype, json) {
@@ -9968,7 +9979,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 					var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
 						instances: this.options.instances,
 						conditions: this.options.conditions,
-						types: this.options.types
+						types: this.options.types,
+						changes: this.options.changes,
+						source: "init"
 					});
 
 					handler.execute(callback, thisPtr);
