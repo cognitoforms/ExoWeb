@@ -23,6 +23,8 @@ namespace ExoWeb
 
 		public GraphTransaction Changes { get; set; }
 
+		public Dictionary<string, ServiceRequest.Query> Model { get; set; }
+
 		public GraphTypeInfo GetGraphTypeInfo(GraphType type)
 		{
 			// Create the set of type instance information if not initialized
@@ -53,6 +55,9 @@ namespace ExoWeb
 
 			if (Events != null && Events.Any())
 				json.Set("events", Events);
+
+			if (Model != null && Model.Any())
+				json.Set("model", Model);
 
 			if (Changes != null && Changes.Any())
 				json.Set("changes", (IEnumerable<GraphEvent>)Changes.Where(graphEvent => !(graphEvent is GraphValueChangeEvent) || ExoWeb.IncludeInClientModel(((GraphValueChangeEvent)graphEvent).Property)));

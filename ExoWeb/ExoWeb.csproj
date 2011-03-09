@@ -95,6 +95,7 @@
     </Compile>
     <Compile Include="ServiceRequest.cs" />
     <Compile Include="ServiceResponse.cs" />
+    <Compile Include="ViewScope.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ExoGraph\ExoGraph\ExoGraph.csproj">

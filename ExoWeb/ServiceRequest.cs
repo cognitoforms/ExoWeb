@@ -6,6 +6,7 @@ using ExoGraph;
 using ExoRule;
 using System.Reflection;
 using System.Collections;
+using System.Text.RegularExpressions;
 
 namespace ExoWeb
 {
@@ -18,9 +19,9 @@ namespace ExoWeb
 		ServiceRequest()
 		{ }
 
-		internal ServiceRequest(GraphType type, string[] ids, params string[] paths)
+		internal ServiceRequest(Query[] queries)
 		{
-			Queries = new ServiceRequest.Query[] { new ServiceRequest.Query(type, ids, paths) };
+			Queries = queries;
 			Config = new Dictionary<string, object>();
 		}
 
@@ -50,9 +51,9 @@ namespace ExoWeb
 		public DomainEvent[] Events { get; private set; }
 
 		/// <summary>
-		/// The changes to apply before raising events or loading data.
+		/// The set of changes to apply before raising events or loading data.
 		/// </summary>
-		public GraphTransaction Changes { get; private set; }
+		public ChangeSet[] Changes { get; private set; }
 
 		/// <summary>
 		/// Optional configuration information to customize the behavior of the request.
@@ -79,49 +80,26 @@ namespace ExoWeb
 			if (Types != null)
 				response.Types = Types.ToDictionary<GraphType, string>(type => type.Name);
 
-			// Apply changes before getting the root instances
-			if (Changes != null)
-				response.Changes = Changes.Perform(() => LoadAndRaise(response));
-
-			// Otherwise, just get the root instances
-			else
+			// Apply view initialization changes
+			if (Changes != null && Changes.Length > 0 && Changes[0].Source == ChangeSource.Init)
 			{
-				using (response.Changes = context.BeginTransaction())
-				{
-					LoadAndRaise(response);
-					response.Changes.Commit();
-				}
+				response.Changes = Changes[0].Changes;
+				response.Changes.Perform();
 			}
 
-			// Load data based on the specified queries
+			// Load root instances
 			if (Queries != null)
-			{
-				// Build a set of unique instance paths to match during recursion
-				foreach (Query query in Queries)
-				{
-					if (query.Paths != null)
-					{
-						query.InstancePaths = new HashSet<string>();
-						foreach (string path in query.Paths)
-							ProcessPath(path, query.InstancePaths, response);
-					}
-				}
+				foreach (var query in Queries)
+					query.LoadRoots(response.Changes);
 
-				// Track changes while loading the instances to serialize
-				GraphTransaction processChanges = null;
-				using (processChanges = GraphContext.Current.BeginTransaction())
-				{
-					// Recursively build up the list of instances to serialize
-					foreach (Query query in Queries)
-					{
-						foreach (GraphInstance root in query.Roots)
-							ProcessInstance(root, "this", query.InstancePaths, response);
-					}
+			// Preload the scope of work before applying changes
+			PerformQueries(response, false);
 
-					processChanges.Commit();
-				}
-				response.Changes += processChanges;
-			}
+			// Apply additional changes and raise domain events
+			ApplyChanges(response);
+
+			// Load instances specified by load queries
+			PerformQueries(response, true);
 
 			// Send conditions for instances loaded in the request
 			if (response.Instances != null || response.Changes != null)
@@ -160,32 +138,73 @@ namespace ExoWeb
 			return response;
 		}
 
-		/// <summary>
-		/// Loads root instances for queries and raises domain events.
-		/// </summary>
-		void LoadAndRaise(ServiceResponse response)
+		void PerformQueries(ServiceResponse response, bool forLoad)
 		{
-			// Process each query in the request
+			// Load data based on the specified queries
 			if (Queries != null)
 			{
+				// Build a set of unique instance paths to match during recursion
 				foreach (Query query in Queries)
 				{
-					// Create an array of roots to be loaded
-					query.Roots = new GraphInstance[query.Ids == null ? 0 : query.Ids.Length];
+					if (query.Include != null)
+					{
+						query.RootStep = new Query.Step { Property = "this" };
+						foreach (string path in query.Include)
+							ProcessPath(path, query.RootStep, response);
+					}
+				}
 
-					// Get the root instances in the scope of the current transaction
-					for (int i = 0; i < query.Roots.Length; i++)
-						query.Roots[i] = Changes != null ? Changes.GetInstance(query.Type, query.Ids[i]) : query.Type.Create(query.Ids[i]);
+				// Recursively build up the list of instances to serialize
+				foreach (Query query in Queries)
+				{
+					if ((forLoad && query.ForLoad) || (!forLoad && query.InScope))
+						foreach (GraphInstance root in query.Roots)
+							ProcessInstance(root, query.RootStep.Children, forLoad, response);
 				}
 			}
+		}
 
+		/// <summary>
+		/// Apply changes and raises domain events.
+		/// </summary>
+		void ApplyChanges(ServiceResponse response)
+		{
+			// Consolidate previous changes
+			GraphTransaction transaction = 
+				GraphTransaction.Combine((Changes ?? new ChangeSet[0])
+				.Where(cs => cs.Source != ChangeSource.Init)
+				.Select(cs => cs.Changes));
+
+			// Chain the transactions about to be applied to any previously applied initialization changes
+			if (response.Changes != null)
+				response.Changes.Chain(transaction);
+
+			// Apply changes and raise domain events
+			if (transaction != null)
+				response.Changes = transaction.Perform(() => RaiseEvents(response));
+
+			// Otherwise, just raise events
+			else
+			{
+				using (response.Changes = context.BeginTransaction())
+				{
+					RaiseEvents(response);
+				}
+			}	
+		}
+	
+		/// <summary>
+		/// Raises domain events.
+		/// </summary>
+		void RaiseEvents(ServiceResponse response)
+		{
 			// Process each event in the request
 			if (Events != null)
 			{
 				response.Events = Events
 					.Select((domainEvent) =>
 					{
-						domainEvent.Instance = Changes.GetInstance(domainEvent.Instance.Type, domainEvent.Instance.Id);
+						domainEvent.Instance = GetInstance(Changes, domainEvent.Instance.Type, domainEvent.Instance.Id);
 						var result = domainEvent.Raise(Changes);
 
 						if (result == null)
@@ -193,12 +212,14 @@ namespace ExoWeb
 
 						IList<Query> queries = new List<Query>();
 						GraphInstance[] roots = null;
-							
+						var isList = false;
+						
+						// Determine if the result is a graph instance
 						var type = context.GetGraphType(result);
 						if (type != null)
-						{
 							roots = new GraphInstance[] { type.GetGraphInstance(result) };
-						}
+
+						// Otherwise, determine if the result is a list of graph instances
 						else if (result is IEnumerable)
 						{
 							roots =
@@ -208,11 +229,12 @@ namespace ExoWeb
 								where elementType != null
 								select elementType.GetGraphInstance(element)
 							).ToArray();
+							isList = true;
 						}
 
 						if (roots != null && roots.Length > 0)
 						{
-							Query[] newQueries = new Query[] { new Query(roots, domainEvent.Paths) };
+							Query[] newQueries = new Query[] { new Query(roots, true, isList, domainEvent.Include) };
 							Queries = Queries == null ? newQueries : Queries.Union(newQueries).ToArray();
 
 							return type == null ? (object) roots : (object) roots[0];
@@ -224,22 +246,76 @@ namespace ExoWeb
 			}
 		}
 
+		static GraphInstance GetInstance(ChangeSet[] changes, GraphType type, string id)
+		{
+			foreach (var set in changes)
+			{
+				GraphInstance instance = set.Changes.GetInstance(type, id);
+				if (instance != null)
+					return instance;
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// Parses query paths into tokens for processing
+		/// </summary>
+		static Regex pathParser = new Regex(@"^this([a-zA-Z0-9_]+|[{}.,]|\s|(\<[a-zA-Z0-9_.]+\>))*$", RegexOptions.Compiled);
+
 		/// <summary>
 		/// Processes static and instance property paths in order to determine the information to serialize.
 		/// </summary>
 		/// <param name="path"></param>
-		static void ProcessPath(string path, HashSet<string> instancePaths, ServiceResponse response)
+		internal static void ProcessPath(string path, Query.Step step, ServiceResponse response)
 		{
 			// Instance Path
-			if (path.StartsWith("this."))
+			if (path.StartsWith("this"))
 			{
-				string p = "this";
-				foreach (string step in path.Substring(5).Split('.'))
+				// Parse the instance path
+				var match = pathParser.Match(path);
+				if (match == null)
+					throw new ArgumentException("The specified path, '" + path + "', is not valid.");
+
+				// Process each path token
+				Stack<Query.Step> stack = new Stack<Query.Step>();
+				foreach (var token in match.Groups[1].Captures.Cast<Capture>().Select(c => c.Value))
 				{
-					p += "." + step;
-					if (!instancePaths.Contains(p))
-						instancePaths.Add(p);
+					switch (token[0])
+					{
+						case '{' :
+							stack.Push(step);
+							break;
+						case '}' :
+							step = stack.Pop();
+							break;
+						case ',':
+							step = stack.Peek();
+							break;
+						case '.':
+							break;
+						case '<':
+							step.Filter = token;
+							break;
+						default:
+							string property = token.Trim();
+							if (property == "")
+								continue;
+							if (step.Children == null)
+								step.Children = new List<Query.Step>();
+							var nextStep = step.Children.Where(s => s.Property == token).FirstOrDefault();
+							if (nextStep == null)
+							{
+								nextStep = new Query.Step { Property = token };
+								step.Children.Add(nextStep);
+							}
+							step = nextStep;
+							break;
+					}
 				}
+
+				// Throw an exception if there are unmatched property group delimiters
+				if (stack.Count > 0)
+					throw new ArgumentException("Unclosed '{' in path: " + path, "path");
 			}
 
 			// Static Path
@@ -301,55 +377,116 @@ namespace ExoWeb
 		/// <param name="instances"></param>
 		/// <param name="paths"></param>
 		/// <param name="path"></param>
-		static void ProcessInstance(GraphInstance instance, string path, HashSet<string> instancePaths, ServiceResponse response)
+		static void ProcessInstance(GraphInstance instance, List<Query.Step> steps, bool includeInResponse, ServiceResponse response)
 		{
-			// Fetch or initialize the dictionary of instances for the type of the current instance
-			GraphTypeInfo typeInfo = response.GetGraphTypeInfo(instance.Type);
+			GraphInstanceInfo instanceInfo = null;
 
-			// Add the current instance to the dictionary if it is not already there
-			GraphInstanceInfo instanceInfo;
-			if (!typeInfo.Instances.TryGetValue(instance.Id, out instanceInfo))
-				typeInfo.Instances[instance.Id] = instanceInfo = new GraphInstanceInfo(instance);
-
-			// Process all reference property paths on the current instance
-			foreach (var reference in instance.Type.Properties
-				.Where(property => property is GraphReferenceProperty && instancePaths.Contains(path + "." + property.Name))
-				.Cast<GraphReferenceProperty>())
+			// Track the instance if the query represents a load request
+			if (includeInResponse)
 			{
-				// Get the full path to the property
-				string childPath = path + "." + reference.Name;
+				// Fetch or initialize the dictionary of instances for the type of the current instance
+				GraphTypeInfo typeInfo = response.GetGraphTypeInfo(instance.Type);
+
+				// Add the current instance to the dictionary if it is not already there
+				if (!typeInfo.Instances.TryGetValue(instance.Id, out instanceInfo))
+					typeInfo.Instances[instance.Id] = instanceInfo = new GraphInstanceInfo(instance);
+			}
+
+			// Exit immediately if there are no child steps to process
+			if (steps == null)
+				return;
+
+			// Process query steps for the current instance
+			foreach (var step in steps)
+			{
+				// Get the property for the current step
+				var property = instance.Type.Properties[step.Property];
+
+				// Ignore the step if the property was not found
+				if (property == null)
+					continue;
 
 				// Throw an exception if a static property is referenced
-				if (reference.IsStatic)
+				if (property.IsStatic)
 					throw new ArgumentException("Static properties cannot be referenced by instance property paths.  Specify 'TypeName.PropertyName' as the path to load static properties for a type.");
-
+				
 				// Process all items in a child list and register the list to be serialized
-				if (reference.IsList)
+				if (property.IsList)
 				{
-					// Process each child instance
-					foreach (GraphInstance childInstance in instance.GetList(reference))
-						ProcessInstance(childInstance, childPath, instancePaths, response);
+					// Recursively process instances for reference lists
+					if (property is GraphReferenceProperty)
+					{
+						// Process each child instance
+						foreach (GraphInstance childInstance in instance.GetList((GraphReferenceProperty)property))
+							ProcessInstance(childInstance, step.Children, includeInResponse, response);
+					}
 
 					// Mark the list to be included during serialization
-					instanceInfo.IncludeList(reference);
+					if (includeInResponse)
+						instanceInfo.IncludeList(property);
 				}
 
 				// Process child references
-				else
+				else if (property is GraphReferenceProperty)
 				{
-					GraphInstance childInstance = instance.GetReference(reference);
+					GraphInstance childInstance = instance.GetReference((GraphReferenceProperty)property);
 					if (childInstance != null)
-						ProcessInstance(childInstance, childPath, instancePaths, response);
+						ProcessInstance(childInstance, step.Children, includeInResponse, response);
 				}
 			}
-
-			// Register all value list properties for loading
-			foreach (var list in instance.Type.Properties
-				.Where(property => property is GraphValueProperty && property.IsList && instancePaths.Contains(path + "." + property.Name))
-				.Cast<GraphValueProperty>())
-				instanceInfo.IncludeList(list);
 		}
 
+		#endregion
+
+		#region ChangeSet
+
+		public class ChangeSet : IJsonSerializable
+		{
+			/// <summary>
+			/// The source of the change (Init, Client or Server)
+			/// </summary>
+			public ChangeSource Source { get; private set; }
+
+			/// <summary>
+			/// The changes to apply before raising events or loading data.
+			/// </summary>
+			public GraphTransaction Changes { get; private set; }
+
+			#region IJsonSerializable
+
+			public void Serialize(Json json)
+			{
+				throw new NotImplementedException();
+			}
+
+			public object Deserialize(Json json)
+			{
+				// Events
+				Source = json.Get<ChangeSource>("source");
+
+				// Changes
+				Changes = json.Get<List<GraphEvent>>("changes");
+
+				return this;
+			}
+
+			#endregion
+		}
+
+		#endregion
+
+		#region ChangeSource
+
+		/// <summary>
+		/// Indicates the source of the change.
+		/// </summary>
+		public enum ChangeSource
+		{
+			Init,		// Changes performed during view initialization on the server
+			Client,		// Changes performed on the client
+			Server		// Changes performed on the server during roundtrips
+		}
+		
 		#endregion
 
 		#region DomainEvent
@@ -361,9 +498,9 @@ namespace ExoWeb
 		{
 			public GraphInstance Instance { get; internal set; }
 
-			public string[] Paths { get; internal set; }			
+			public string[] Include { get; internal set; }			
 
-			internal virtual object Raise(GraphTransaction transaction)
+			internal virtual object Raise(ChangeSet[] changes)
 			{
 				throw new NotImplementedException();
 			}
@@ -380,8 +517,8 @@ namespace ExoWeb
 				// Get the event target
 				var instance = json.Get<GraphInstance>("instance");
 
-				// Get the property paths
-				Paths = json.Get<string[]>("paths");
+				// Get the property paths to include
+				Include = json.Get<string[]>("include");
 
 				// Get the type of event
 				string eventName = json.Get<string>("type");
@@ -396,8 +533,9 @@ namespace ExoWeb
 						.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { eventType }, null)
 						.Invoke(new object[] { json.Get(eventType, "event") });
 
-					// Set the event target
+					// Set the event target and inclusion paths
 					domainEvent.Instance = instance;
+					domainEvent.Include = Include;
 
 					// Return the new event
 					return domainEvent;
@@ -406,7 +544,7 @@ namespace ExoWeb
 				// Graph method
 				GraphMethod method = instance.Type.Methods[eventName];
 				if (method != null)
-					return new GraphMethodEvent(instance, method, json.Get<Json>("event"), Paths);
+					return new GraphMethodEvent(instance, method, json.Get<Json>("event"), Include);
 
 				// Indicate that the event name could not be resolved
 				throw new ArgumentException(eventName + " is not a valid event for " + instance.Type.Name);
@@ -434,7 +572,7 @@ namespace ExoWeb
 			/// <summary>
 			/// Raises the domain event on the target <see cref="GraphInstance"/>.
 			/// </summary>
-			internal override object Raise(GraphTransaction transaction)
+			internal override object Raise(ChangeSet[] changes)
 			{
 				if (typeof(TEvent) == typeof(SaveEvent))
 				{
@@ -454,20 +592,23 @@ namespace ExoWeb
 
 		#region GraphMethodEvent
 
+		/// <summary>
+		/// A domain event that supports calling graph methods on the specified instance.
+		/// </summary>
 		class GraphMethodEvent : DomainEvent
 		{
 			GraphMethod method;
 			Json json;
 
-			internal GraphMethodEvent(GraphInstance instance, GraphMethod method, Json json, string[] paths)
+			internal GraphMethodEvent(GraphInstance instance, GraphMethod method, Json json, string[] include)
 			{
 				this.Instance = instance;
 				this.method = method;
 				this.json = json;
-				this.Paths = paths;
+				this.Include = include;
 			}
 
-			internal override object Raise(GraphTransaction transaction)
+			internal override object Raise(ChangeSet[] changes)
 			{
 				object[] args = method.Parameters.Select(p =>
 				{
@@ -479,7 +620,7 @@ namespace ExoWeb
 					{
 						GraphInstance gi = json.Get<GraphInstance>(p.Name);
 						if (gi != null)
-							gi = transaction.GetInstance(gi.Type, gi.Id);
+							gi = GetInstance(changes, gi.Type, gi.Id);
 						return gi == null ? null : gi.Instance;
 					}
 				})
@@ -503,47 +644,149 @@ namespace ExoWeb
 			Query()
 			{ }
 
-			internal Query(GraphType type, string[] ids, string[] paths)
+			internal Query(GraphType type, string[] ids, bool inScope, bool isList, string[] paths)
 			{
-				this.Type = type;
+				this.From = type;
 				this.Ids = ids;
-				this.Paths = paths;
+				this.Include = paths;
+				this.ForLoad = true;
+				this.InScope = inScope;
+				this.IsList = isList;
 			}
 
-			// Being used specifically for streaming event results
-			internal Query(GraphInstance[] roots, string[] paths)
+			/// <summary>
+			/// Used for streaming event results.
+			/// </summary>
+			/// <param name="roots"></param>
+			/// <param name="paths"></param>
+			internal Query(GraphInstance[] roots, bool inScope, bool isList, string[] paths)
 			{
-				this.Paths = paths ?? new string[] { };
+				this.Include = paths ?? new string[] { };
 				this.Roots = roots;
+				this.ForLoad = true;
+				this.InScope = inScope;
+				this.IsList = isList;
+				GraphType commonType = roots[0].Type;
+				foreach (var type in roots.Select(r => r.Type))
+				{
+					if (type.IsSubType(commonType))
+						commonType = type;
+				}
+				this.From = commonType;
 			}
 
-			public GraphType Type { get; private set; }
+			public GraphType From { get; internal set; }
 
-			public string[] Ids { get; private set; }
+			public string[] Ids { get; internal set; }
 
-			public string[] Paths { get; private set; }
+			public string[] Include { get; internal set; }
 
-			internal GraphInstance[] Roots { get; set; }
+			public bool ForLoad { get; internal set; }
 
-			internal HashSet<string> InstancePaths { get; set; }
+			public bool InScope { get; internal set; }
+
+			public bool IsList { get; internal set; }
+
+			/// <summary>
+			/// Gets the set of root graph instances for the current query.
+			/// </summary>
+			internal GraphInstance[] Roots { get; set; }	
+
+			internal Step RootStep { get; set; }
+
+			internal void LoadRoots(GraphTransaction transaction)
+			{
+				// Exit immediately if roots have already been loaded
+				if (Roots != null)
+					return;
+
+				// Create an array of roots to be loaded
+				Roots = new GraphInstance[Ids == null ? 0 : Ids.Length];
+
+				// Get the root instances 
+				for (int i = 0; i < Roots.Length; i++)
+				{
+					// Create the root instance
+					Roots[i] = transaction == null ? From.Create(Ids[i]) : transaction.GetInstance(From, Ids[i]);
+
+					// Access a property to force the instance to initialize
+					object o = Roots[i][Roots[i].Type.Properties.First()];
+				}
+			}
+
+			/// <summary>
+			/// Removes out of scope paths before sending queries to the client.
+			/// </summary>
+			internal void ReducePaths()
+			{
+				Include = Include.Where(p => p.StartsWith("this")).ToArray();
+			}
 
 			#region IJsonSerializable
 
 			void IJsonSerializable.Serialize(Json json)
 			{
-				throw new NotSupportedException();
+				if (IsList)
+					json.Set("ids", Roots.Select(r => r.Id));
+				else
+					json.Set("id", Roots[0].Id);
+					json.Set("from", From.Name);
+
+				if (Include != null)
+					json.Set("include", Include);
+
+				json.Set("inScope", InScope);
 			}
 
 			object IJsonSerializable.Deserialize(Json json)
 			{
-				string typeName = json.Get<string>("type");
+				string typeName = json.Get<string>("from");
 				if (typeName != null)
-					Type = GraphContext.Current.GetGraphType(typeName);
+					From = GraphContext.Current.GetGraphType(typeName);
 
-				Ids = json.Get<string[]>("ids");
-				Paths = json.Get<string[]>("paths");
+				if (json.IsNull("id"))
+				{
+					IsList = true;
+					Ids = json.Get<string[]>("ids");
+				}
+				else
+				{
+					IsList = false;
+					Ids = new string[] { json.Get<string>("id") };
+				}
+
+				Include = json.Get<string[]>("include");
+				InScope = json.IsNull("inScope") || json.Get<bool>("inScope");
+				ForLoad = json.IsNull("forLoad") || json.Get<bool>("forLoad");
 
 				return this;
+			}
+
+			#endregion
+
+			#region Step
+
+			internal class Step
+			{
+				public string Property { get; set; }
+
+				public string Filter { get; set; }
+
+				public List<Step> Children { get; set; }
+
+				/// <summary>
+				/// Gets the string representation of the current step and all child steps
+				/// </summary>
+				/// <returns></returns>
+				public override string ToString()
+				{
+					if (Children == null || Children.Count == 0)
+						return Property + Filter;
+					else if (Children.Count == 1)
+						return Property + Filter + "." + Children[0];
+					else
+						return Property + Filter + "{" + Children.Aggregate("", (p, s) => p.Length > 0 ? p + "," + s : s.ToString()) + "}";
+				}
 			}
 
 			#endregion
@@ -572,7 +815,7 @@ namespace ExoWeb
 			Events = json.Get<DomainEvent[]>("events");
 
 			// Changes
-			Changes = json.Get<List<GraphEvent>>("changes");
+			Changes = json.Get<ChangeSet[]>("changes");
 
 			// Config
 			Config = json.Get<Dictionary<string, object>>("config");

@@ -128,6 +128,268 @@ namespace ExoWeb
 		#region Methods
 
 		/// <summary>
+		/// Generates a script tag to embed a model including instance data into a server-rendered view.
+		/// </summary>
+		/// <param name="query"></param>
+		/// <returns></returns>
+		public static string Model(object query)
+		{
+			return Model(query, (Delegate)null);
+		}
+
+		/// <summary>
+		/// Generates a script tag to embed a model including instance data into a server-rendered view.
+		/// Supports initial customization of the model via an initialization delegate.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="query"></param>
+		/// <param name="init"></param>
+		/// <returns></returns>
+		public static string Model<T>(object query, Action<T> init)
+		{
+			return Model(query, (Delegate)init);
+		}
+
+		/// <summary>
+		/// Generates a script tag to embed a model including instance data into a server-rendered view.
+		/// Supports initial customization of the model via an initialization delegate.
+		/// </summary>
+		/// <typeparam name="T1"></typeparam>
+		/// <typeparam name="T2"></typeparam>
+		/// <param name="query"></param>
+		/// <param name="init"></param>
+		/// <returns></returns>
+		public static string Model<T1, T2>(object query, Action<T1, T2> init)
+		{
+			return Model(query, (Delegate)init);
+		}
+
+		/// <summary>
+		/// Generates a script tag to embed a model including instance data into a server-rendered view.
+		/// Supports initial customization of the model via an initialization delegate.
+		/// </summary>
+		/// <typeparam name="T1"></typeparam>
+		/// <typeparam name="T2"></typeparam>
+		/// <typeparam name="T3"></typeparam>
+		/// <param name="query"></param>
+		/// <param name="init"></param>
+		/// <returns></returns>
+		public static string Model<T1, T2, T3>(object query, Action<T1, T2, T3> init)
+		{
+			return Model(query, (Delegate)init);
+		}
+
+		/// <summary>
+		/// Generates a script tag to embed a model including instance data into a server-rendered view.
+		/// Supports initial customization of the model via an initialization delegate.
+		/// </summary>
+		/// <typeparam name="T1"></typeparam>
+		/// <typeparam name="T2"></typeparam>
+		/// <typeparam name="T3"></typeparam>
+		/// <typeparam name="T4"></typeparam>
+		/// <param name="query"></param>
+		/// <param name="init"></param>
+		/// <returns></returns>
+		public static string Model<T1, T2, T3, T4>(object query, Action<T1, T2, T3, T4> init)
+		{
+			return Model(query, (Delegate)init);
+		}
+
+		/// <summary>
+		/// Generates a script tag to embed a model including instance data into a server-rendered view.
+		/// Supports initial customization of the model via an initialization delegate.
+		/// </summary>
+		/// <param name="query"></param>
+		/// <param name="init"></param>
+		/// <returns></returns>
+		static string Model(object query, Delegate init)
+		{
+			// Get the roots for each query
+			var roots = new List<KeyValuePair<string, ServiceRequest.Query>>();
+			foreach (var prop in query.GetType().GetProperties())
+			{
+				// Get the value of the model property
+				var m = prop.GetValue(query, null);
+				if (m == null)
+					continue;
+
+				// Convert the value into a query, if necessary
+				var q = m as ServiceRequest.Query ?? Query(m);
+				q.LoadRoots(null);
+				roots.Add(new KeyValuePair<string, ServiceRequest.Query>(prop.Name, q));
+			}
+
+			// Perform the initialization action, if specified
+			GraphTransaction initChanges = null;
+			if (init != null)
+			{
+				// Determine matching parameters
+				var parameters = new object[init.Method.GetParameters().Length];
+				foreach (var p in init.Method.GetParameters())
+				{
+					foreach (var root in roots)
+					{
+						if (p.Name.Equals(root.Key, StringComparison.InvariantCultureIgnoreCase))
+						{
+							// List parameter
+							if (p.ParameterType.IsArray)
+								parameters[p.Position] = root.Value.Roots.Select(r => r.Instance).ToArray();
+
+							// Instance parameter
+							else
+								parameters[p.Position] = root.Value.Roots.Select(r => r.Instance).FirstOrDefault();
+
+							break;
+						}
+					}
+
+					// Throw an exception if the model property value cannot be cast to the corresponding initialization parameter
+					if (parameters[p.Position] != null && !p.ParameterType.IsAssignableFrom(parameters[p.Position].GetType()))
+						throw new ArgumentException(String.Format("The model property '{0}' cannot be converted into the initialization parameter type of '{1}'.", p.Name, p.ParameterType.FullName));
+
+					// Throw an exception if a valid model parameter could not be found to pass to the initialization delegate
+					if (parameters[p.Position] == null && query.GetType().GetProperty(p.Name, BindingFlags.Public | BindingFlags.IgnoreCase | BindingFlags.Instance) == null)
+						throw new ArgumentException(String.Format("A model property could not be found to pass to the initialization parameter '{0}'.", p.Name));
+				}
+
+				// Perform initialization while capturing changes
+				using (initChanges = GraphContext.Current.BeginTransaction())
+				{
+					init.DynamicInvoke(parameters);
+					initChanges.Commit();
+				}
+			}
+
+			// Execute the queries
+			ServiceRequest request = new ServiceRequest(roots.Select(r => r.Value).ToArray());
+			ServiceResponse response = request.Invoke();
+
+			// Prepend initialization events for each instance created by the model queries
+			response.Changes = (GraphTransaction)request.Queries
+					.SelectMany(q => q.Roots)
+					.Where(i => i.IsNew)
+					.Select(i => new GraphInitEvent.InitNew(i))
+					.Cast<GraphEvent>()
+					.ToList();
+			if (initChanges != null)
+				response.Changes = GraphTransaction.Combine(new GraphTransaction[] { response.Changes, initChanges });
+
+			response.Model = roots.ToDictionary(r => r.Key, r => r.Value);
+			foreach (var q in response.Model.Values)
+				q.ReducePaths();
+
+			// Return the response
+			return "<script type=\"text/javascript\">$exoweb(" + FixJsonDates(ToJson(typeof(ServiceResponse), response)) + ");</script>";
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="id"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static ServiceRequest.Query Query(string type, string id, params string[] paths)
+		{
+			return new ServiceRequest.Query(GraphContext.Current.GetGraphType(type), new string[] { id }, true, false, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="id"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static ServiceRequest.Query Query<T>(string id, params string[] paths)
+		{
+			return new ServiceRequest.Query(GraphContext.Current.GetGraphType<T>(), new string[] { id }, true, false, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="scope"></param>
+		/// <param name="id"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static ServiceRequest.Query Query(string type, string id, ViewScope scope, params string[] paths)
+		{
+			return new ServiceRequest.Query(GraphContext.Current.GetGraphType(type), new string[] { id }, scope == ViewScope.InScope, false, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="id"></param>
+		/// <param name="scope"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static ServiceRequest.Query Query<T>(string id, ViewScope scope, params string[] paths)
+		{
+			return new ServiceRequest.Query(GraphContext.Current.GetGraphType<T>(), new string[] { id }, scope == ViewScope.InScope, false, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static ServiceRequest.Query Query(object instance, params string[] paths)
+		{
+			return Query(instance, ViewScope.InScope, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="scope"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static ServiceRequest.Query Query(object instance, ViewScope scope, params string[] paths)
+		{
+			if (instance == null)
+				return null;
+
+			var context = GraphContext.Current;
+			var gi = context.GetGraphInstance(instance);
+			if (gi != null)
+				return new ServiceRequest.Query(new GraphInstance[] { gi }, scope == ViewScope.InScope, false, paths);
+			else if (instance is IEnumerable)
+			{
+				var roots = ((IEnumerable)instance).Cast<object>().Select(i => context.GetGraphInstance(i)).Where(i => i != null).ToArray();
+
+				return roots.Length > 0 ? new ServiceRequest.Query(roots, scope == ViewScope.InScope, true, paths) : null;
+			}
+
+			return null;
+		}
+
+		public static ServiceRequest.Query Include(this object instance, params string[] paths)
+		{
+			var query = instance as ServiceRequest.Query;
+			if (query != null)
+				query.Include = query.Include.Concat(paths).ToArray();
+			else
+				query = Query(instance, paths);
+			return query;
+		}
+
+		public static ServiceRequest.Query OutOfScope(this object instance)
+		{
+			var query = instance as ServiceRequest.Query;
+			if (query != null)
+				query.InScope = false;
+			else
+				query = Query(instance, ViewScope.OutOfScope);
+			return query;
+		}
+
+		/// <summary>
 		/// Determines whether a given property should be included in the
 		/// model on the client.  
 		/// </summary>
@@ -176,6 +438,24 @@ namespace ExoWeb
 		}
 
 		/// <summary>
+		/// Condenses a set of instance paths into a single query path.
+		/// </summary>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static string CondensePaths(params string[] paths)
+		{
+			ServiceRequest.Query.Step step = new ServiceRequest.Query.Step { Property = "this" };
+			foreach (string path in paths)
+			{
+				if (!path.StartsWith("this"))
+					throw new ArgumentException("Only instance paths can be condensed.");
+
+				ServiceRequest.ProcessPath(path, step, null);
+			}
+			return step.ToString();
+		}
+
+		/// <summary>
 		/// Indicates whether the specified type can be serialized.
 		/// </summary>
 		/// <param name="type"></param>
@@ -183,30 +463,6 @@ namespace ExoWeb
 		internal static bool IsSerializable(Type type)
 		{
 			return serializableTypes.Contains(type);
-		}
-
-
-		public static string Load(string type, string id, params string[] paths)
-		{
-			return Load(GraphContext.Current.GetGraphType(type), id, paths);
-		}
-
-		public static string Load<T>(string id, params string[] paths)
-		{
-			return Load(GraphContext.Current.GetGraphType<T>(), id, paths);
-		}
-
-		//TODO: augment to automatically load property paths as needed when init'ing a new entity
-		static string Load(GraphType type, string id, string[] paths)
-		{
-			if (string.IsNullOrEmpty(id))
-			{
-				string path = paths.Length > 0 ? "\"" + string.Join("\",\"", paths) + "\"" : "";
-				return "{ id: $newId(), from: \"" + type.Name + "\", and: [" + path + "] }";
-			}
-
-			var request = new ServiceRequest(type, new string[] { id }, paths);
-			return "{ id : \"" + id + "\", from: \"" + type.Name + "\", load: " + FixJsonDates(ToJson(typeof(ServiceResponse), request.Invoke())) + "}";
 		}
 
 		public static string GetTypes(params string[] types)
@@ -225,87 +481,6 @@ namespace ExoWeb
 			return json.Substring(1, json.Length - 2);
 		}
 
-		/// <summary>
-		/// Expands paths.  Ex: ["a{b, c}"] -> ["a.b", "a.c"] 
-		/// </summary>
-		/// <param name="paths"></param>
-		/// <returns></returns>
-		internal static void TraversePaths(string[] collapsed, Action<string, char?> action)
-		{
-			if (collapsed != null)
-			{
-				foreach (string p in collapsed)
-				{
-					Stack<string> stack = new Stack<string>();
-					string parent = null;
-					string previous = null;
-					string path = p +"^";
-					int start = 0;
-
-					for (var i = 0; i < path.Length; ++i)
-					{
-						var c = path[i];
-
-						if (c == '{' || c == ',' || c == '}' || c == '.' || c == '^')
-						{
-							var seg = path.Substring(start, i - start).Trim();
-							start = i + 1;
-
-							if (seg.Length > 0)
-								action((parent != null ? parent + "." : "") + (previous != null ? previous + "." : "") + seg, c);
-
-							if (c == '{')
-							{
-								if (parent != null)
-								{
-									stack.Push(parent);
-									parent += "." + (previous != null ? previous + "." : "") + seg;
-								}
-								else
-								{
-									parent = (previous != null ? previous + "." : "") + seg;
-								}
-
-								previous = null;
-							}
-							else if (c == '.')
-							{
-								previous = (previous == null ? "" : previous + ".") + seg;
-							}
-							else
-							{
-								// ',' or '}'
-								if (c == '}')
-								{
-									parent = (stack.Count == 0) ? null : stack.Pop();
-									previous = null;
-								}
-								else if (c == ',')
-									previous = null;
-
-							}
-						}
-					}
-
-					if (stack.Count > 0)
-						throw new ArgumentException("Unclosed '{' in path: " + p, "collapsed");
-
-					if (start == 0/* || (parent != null && parent.Length == start -1)*/)
-						action(path, null);
-				}
-			}
-		}
-
-		internal static string[] NormalizePaths(string[] collapsed)
-		{
-			var normalized = new List<string>();
-			TraversePaths(collapsed, (p, c) =>
-			{
-				if (p != "this" && (!c.HasValue || (c.Value != '{' && c.Value != '.')))
-					normalized.Add(p.Trim());
-			});
-			return normalized.ToArray();
-		}
 		#endregion
 
 		#region JSON Serialization
