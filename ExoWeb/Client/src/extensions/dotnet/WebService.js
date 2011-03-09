@@ -39,9 +39,9 @@ function request(args, onSuccess, onFailure) {
 
 ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
 	request({
-		events:[{type: eventType, instance: instance, event: event, paths:paths}],
-		queries: scopeQueries,		
-		changes:changes
+		events: [{type: eventType, instance: instance, event: event, include: paths}],
+		queries: scopeQueries,
+		changes: changes
 	}, onSuccess, onFailure);
 });
 
@@ -54,9 +54,9 @@ ExoWeb.Mapper.setRoundtripProvider(function WebService$roundtripProviderFn(chang
 
 ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
 	var q = {
-		type: type,
+		from: type,
 		ids: ids,
-		paths: paths
+		include: paths
 	};
 
 	if (ExoWeb.config.useChangeSets === true) {
@@ -73,9 +73,7 @@ ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, 
 ExoWeb.Mapper.setQueryProvider(function WebService$queryProviderFn(queries, changes, scopeQueries, onSuccess, onFailure) {
 	request({
 		changes: changes,
-		queries: queries.map(function(q) {
-			return { type: q.from, ids: q.ids, paths: q.and || [], inScope: true, forLoad: true };
-		}).concat(scopeQueries)
+		queries: queries.concat(scopeQueries)
 	}, onSuccess, onFailure);
 });
 
@@ -89,9 +87,9 @@ ExoWeb.Mapper.setSaveProvider(function WebService$saveProviderFn(root, changes, 
 
 ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
 	var q = {
-		type: ownerType,
+		from: ownerType,
 		ids: [ownerId],
-		paths: paths
+		include: paths
 	};
 
 	if (ExoWeb.config.useChangeSets === true) {
