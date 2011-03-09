@@ -143,7 +143,6 @@
     <Content Include="Client\src\base\core\Functor.js" />
     <Content Include="Client\src\base\core\MsAjax.js" />
     <Content Include="Client\src\base\core\Object.js" />
-    <Content Include="Client\src\base\core\OWL.js" />
     <Content Include="Client\src\base\core\PropertyObserver.js" />
     <Content Include="Client\src\base\core\Signal.js" />
     <Content Include="Client\src\base\core\String.js" />

@@ -1,11 +1,4 @@
 // original code grabbed from http://oranlooney.com/functional-javascript/
-//modified to be utilized off Object instead of the owl library for consistency
-//has deep copy/shallow copy/and clone.
-
-//this copy function is kept for backwards compatibility.
-//not sure what changes to this would affect in TestView
-//There are new functions for deepCopy, shallowCopy, and Clone below
-//Keith La Force
 Object.copy = function Object$Copy(obj, options/*, level*/) {
 
 	var undefined;
@@ -63,15 +56,3 @@ Object.copy = function Object$Copy(obj, options/*, level*/) {
 		}
 	}
 };
-
-Object.shallowCopy = function Object$ShallowCopy(target) {
-	return owl.copy(target);
-}
-
-Object.deepCopy = function Object$DeepCopy(target) {
-	return owl.deepCopy(target);
-}
-
-Object.clone = function Object$Clone(target) {
-	return owl.clone(target);
-}
