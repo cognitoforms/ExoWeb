@@ -39,9 +39,8 @@ function request(args, onSuccess, onFailure) {
 
 ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
 	request({
-		events:[{type: eventType, instance: instance, event: event}],
-		queries: scopeQueries,
-		paths:paths,
+		events:[{type: eventType, instance: instance, event: event, paths:paths}],
+		queries: scopeQueries,		
 		changes:changes
 	}, onSuccess, onFailure);
 });

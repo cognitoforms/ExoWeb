@@ -175,7 +175,7 @@ namespace ExoWeb
 
 					// Get the root instances in the scope of the current transaction
 					for (int i = 0; i < query.Roots.Length; i++)
-						query.Roots[i] = query.Type.Create(query.Ids[i]);
+						query.Roots[i] = Changes != null ? Changes.GetInstance(query.Type, query.Ids[i]) : query.Type.Create(query.Ids[i]);
 				}
 			}
 
@@ -361,7 +361,7 @@ namespace ExoWeb
 		{
 			public GraphInstance Instance { get; internal set; }
 
-			public string[] Paths { get; private set; }			
+			public string[] Paths { get; internal set; }			
 
 			internal virtual object Raise(GraphTransaction transaction)
 			{
@@ -406,7 +406,7 @@ namespace ExoWeb
 				// Graph method
 				GraphMethod method = instance.Type.Methods[eventName];
 				if (method != null)
-					return new GraphMethodEvent(instance, method, json.Get<Json>("event"));
+					return new GraphMethodEvent(instance, method, json.Get<Json>("event"), Paths);
 
 				// Indicate that the event name could not be resolved
 				throw new ArgumentException(eventName + " is not a valid event for " + instance.Type.Name);
@@ -459,11 +459,12 @@ namespace ExoWeb
 			GraphMethod method;
 			Json json;
 
-			internal GraphMethodEvent(GraphInstance instance, GraphMethod method, Json json)
+			internal GraphMethodEvent(GraphInstance instance, GraphMethod method, Json json, string[] paths)
 			{
 				this.Instance = instance;
 				this.method = method;
 				this.json = json;
+				this.Paths = paths;
 			}
 
 			internal override object Raise(GraphTransaction transaction)

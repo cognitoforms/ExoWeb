@@ -7652,7 +7652,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		_addEventHandler: function ServerSync$_addEventHandler(name, handler, includeAutomatic, automaticArgIndex) {
 			automaticArgIndex = (automaticArgIndex === undefined) ? 0 : automaticArgIndex;
 
-			this._addEvent(name, function() {
+			this._addEvent(name, function () {
 				var automatic = arguments.length > automaticArgIndex ? arguments[automaticArgIndex] : null;
 
 				// only raise automated events if the subscriber requests them
@@ -7735,7 +7735,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 					var ignore = true;
 
 					// Search added and removed for an object that can be saved.
-					Array.forEach(change.added, function(item) {
+					Array.forEach(change.added, function (item) {
 						// if the type doesn't exist then obviously the instance doesn't either
 						var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
 						if (!jstype) {
@@ -7746,7 +7746,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 							ignore = false;
 						}
 					}, this);
-					Array.forEach(change.removed, function(item) {
+					Array.forEach(change.removed, function (item) {
 						// if the type doesn't exist then obviously the instance doesn't either
 						var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
 						if (!jstype) {
@@ -7766,11 +7766,11 @@ Type.registerNamespace("ExoWeb.Mapper");
 				}
 			}
 			// For reference changes additionally check oldValue/newValue
-			else if(change.type == "ReferenceChange:#ExoGraph"){
+			else if (change.type == "ReferenceChange:#ExoGraph") {
 				var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 				if (oldJsType) {
 					var oldValue = fromExoGraph(change.oldValue, this._translator);
-					if(oldValue && !this.canSaveObject(oldValue)) {
+					if (oldValue && !this.canSaveObject(oldValue)) {
 						return false;
 					}
 				}
@@ -7778,7 +7778,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				var newJsType = change.newValue && ExoWeb.Model.Model.getJsType(change.newValue.type, true);
 				if (newJsType) {
 					var newValue = fromExoGraph(change.newValue, this._translator);
-					if(newValue && !this.canSaveObject(newValue)) {
+					if (newValue && !this.canSaveObject(newValue)) {
 						return false;
 					}
 				}
@@ -7802,10 +7802,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 			if (result.instances) {
 				var batch = ExoWeb.Batch.start();
 
-				objectsFromJson(this._model, result.instances, signal.pending(function() {
+				objectsFromJson(this._model, result.instances, signal.pending(function () {
 					function processChanges() {
 						ExoWeb.Batch.end(batch);
-				
+
 						if (result.changes && result.changes.length > 0) {
 							this.applyChanges(result.changes, source, signal.pending());
 						}
@@ -7844,7 +7844,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				}
 			}
 
-			signal.waitForAll(function() {
+			signal.waitForAll(function () {
 				if (callback && callback instanceof Function) {
 					callback.call(this);
 				}
@@ -7859,7 +7859,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			Sys.Observer.setValue(this, "PendingServerEvent", true);
 
 			var automatic = arguments.length > 6 && arguments[6] === true;
-			var paths = arguments.length > 7 && arguments[7];
+			var paths = arguments[7];
 
 			this._raiseBeginEvent("raiseServerEvent", automatic);
 
@@ -7868,11 +7868,11 @@ Type.registerNamespace("ExoWeb.Mapper");
 				event = {};
 			}
 
-			for(var key in event) {
+			for (var key in event) {
 				var arg = event[key];
 
-				if(arg instanceof Array) {
-					for(var i=0; i<arg.length; ++i) {
+				if (arg instanceof Array) {
+					for (var i = 0; i < arg.length; ++i) {
 						arg[i] = toExoGraph(this._translator, arg[i]);
 					}
 				}
@@ -7886,8 +7886,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 				toExoGraph(this._translator, obj),
 				event,
 				paths,
-				// If includeAllChanges is true, then use all changes including those 
-				// that should not be saved, otherwise only use changes that can be saved.
+			// If includeAllChanges is true, then use all changes including those 
+			// that should not be saved, otherwise only use changes that can be saved.
 				serializeChanges.call(this, includeAllChanges),
 				this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
 				this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
@@ -7896,19 +7896,19 @@ Type.registerNamespace("ExoWeb.Mapper");
 		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, eventName, callback, automatic) {
 			Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-			this._handleResult(result, eventName, automatic, function() {
+			this._handleResult(result, eventName, automatic, function () {
 				this._raiseSuccessEvent("raiseServerEvent", result, automatic);
 
 				if (callback && callback instanceof Function) {
 					var event = result.events[0];
-					if(event instanceof Array) {
-						for(var i=0; i<event.length; ++i) {
+					if (event instanceof Array) {
+						for (var i = 0; i < event.length; ++i) {
 							event[i] = fromExoGraph(event[i], this._translator);
 						}
 					}
 					else {
 						event = fromExoGraph(event, this._translator);
-					}							
+					}
 
 					result.event = event;
 					restoreDates(result.event);
@@ -7962,7 +7962,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, callback, automatic) {
 			Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-			this._handleResult(result, "roundtrip", automatic, function() {
+			this._handleResult(result, "roundtrip", automatic, function () {
 				this._raiseSuccessEvent("roundtrip", result, automatic);
 
 				if (callback && callback instanceof Function) {
@@ -7985,16 +7985,16 @@ Type.registerNamespace("ExoWeb.Mapper");
 			pendingRequests--;
 		},
 		startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
-//				ExoWeb.trace.log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
+			//				ExoWeb.trace.log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
 
 			// cancel any pending roundtrip schedule
 			this.stopAutoRoundtrip();
 
 			var _this = this;
 			function doRoundtrip() {
-//					ExoWeb.trace.log("server", "auto-roundtrip starting ({0})", [new Date()]);
+				//					ExoWeb.trace.log("server", "auto-roundtrip starting ({0})", [new Date()]);
 				_this.roundtrip(function context$autoRoundtripCallback() {
-//						ExoWeb.trace.log("server", "auto-roundtrip complete ({0})", [new Date()]);
+					//						ExoWeb.trace.log("server", "auto-roundtrip complete ({0})", [new Date()]);
 					_this._roundtripTimeout = window.setTimeout(doRoundtrip, interval);
 				}, null, true);
 			}
@@ -8028,7 +8028,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, callback, automatic) {
 			Sys.Observer.setValue(this, "PendingSave", false);
 
-			this._handleResult(result, "save", automatic, function() {
+			this._handleResult(result, "save", automatic, function () {
 				this._raiseSuccessEvent("save", result, automatic);
 
 				if (callback && callback instanceof Function) {
@@ -8037,7 +8037,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				pendingRequests--;
 			});
-		
+
 		},
 		_onSaveFailed: function ServerSync$_onSaveFailed(result, callback, automatic) {
 			Sys.Observer.setValue(this, "PendingSave", false);
@@ -8072,9 +8072,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			var _this = this;
 			function ServerSync$doAutoSave() {
-//					ExoWeb.trace.log("server", "auto-save starting ({0})", [new Date()]);
+				//					ExoWeb.trace.log("server", "auto-save starting ({0})", [new Date()]);
 				_this.save(_this._saveRoot, function ServerSync$doAutoSave$callback() {
-//						ExoWeb.trace.log("server", "auto-save complete ({0})", [new Date()]);
+					//						ExoWeb.trace.log("server", "auto-save complete ({0})", [new Date()]);
 
 					// wait for the next change before next auto save
 					_this._saveTimeout = null;
@@ -8102,7 +8102,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			var depth = 0;
 
 			try {
-//					ExoWeb.trace.log("server", "ServerSync.rollback() >> {0}", steps);
+				//					ExoWeb.trace.log("server", "ServerSync.rollback() >> {0}", steps);
 
 				this.beginApplyingChanges();
 
@@ -8137,8 +8137,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				processNextChange.call(this);
 
-				signal.waitForAll(function() {
-//						ExoWeb.trace.log("server", "done rolling back {0} changes", [steps]);
+				signal.waitForAll(function () {
+					//						ExoWeb.trace.log("server", "done rolling back {0} changes", [steps]);
 					this.endApplyingChanges();
 
 					if (callback && callback instanceof Function) {
@@ -8154,7 +8154,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 		},
 		rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-//				ExoWeb.trace.log("server", "rollbackValChange", change.instance);
+			//				ExoWeb.trace.log("server", "rollbackValChange", change.instance);
 
 			var obj = fromExoGraph(change.instance, this._translator);
 
@@ -8162,7 +8162,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			callback();
 		},
 		rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-//				ExoWeb.trace.log("server", "rollbackRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
+			//				ExoWeb.trace.log("server", "rollbackRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
 			var obj = fromExoGraph(change.instance, this._translator);
 			var ref = fromExoGraph(change.oldValue, this._translator);
@@ -8171,7 +8171,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			callback();
 		},
 		rollbackInitChange: function ServerSync$rollbackInitChange(change, callback) {
-//				ExoWeb.trace.log("server", "rollbackInitChange: Type = {type}, Id = {id}", change.instance);
+			//				ExoWeb.trace.log("server", "rollbackInitChange: Type = {type}, Id = {id}", change.instance);
 
 			delete change.instance;
 
@@ -8223,14 +8223,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			var list = [];
 			var sets = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
-			sets.forEach(function(set) {
+			sets.forEach(function (set) {
 				list.addRange(set.changes);
 			});
 			return list;
 		},
 		get_HasPendingChanges: function ServerSync$get_HasPendingChanges() {
-			return this._changeLog.sets().some(function(set) {
-				return set.changes().some(function(change) {
+			return this._changeLog.sets().some(function (set) {
+				return set.changes().some(function (change) {
 					return this.canSave(change);
 				}, this);
 			}, this);
@@ -8281,7 +8281,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			try {
 				var batch = ExoWeb.Batch.start("apply changes");
-//					ExoWeb.trace.log("server", "begin applying {length} changes", changes);
+				//					ExoWeb.trace.log("server", "begin applying {length} changes", changes);
 
 				this.beginApplyingChanges();
 
@@ -8313,11 +8313,11 @@ Type.registerNamespace("ExoWeb.Mapper");
 					// look for remaining changes that are save changes, but only if 
 					// we are finished processing changes that occurred before a save
 					var saveChanges = null;
-//						if (ignoreCount === 0) {
-//							saveChanges = $transform(changes).where(function(c) {
-//								return c.type === "Save";
-//							});
-//						}
+					//						if (ignoreCount === 0) {
+					//							saveChanges = $transform(changes).where(function(c) {
+					//								return c.type === "Save";
+					//							});
+					//						}
 
 					// process the next save change
 					if (saveChanges && saveChanges.length > 0) {
@@ -8341,7 +8341,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 					if (change) {
 						var callback = signal.pending(processNextChange, this);
 
-						var ifApplied = (function(applied) {
+						var ifApplied = (function (applied) {
 							if (recordChange && applied) {
 								newChanges++;
 								this._changeLog.add(change);
@@ -8363,7 +8363,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 						}
 						else if (change.type == "Save") {
 							var lookahead = (saveChanges && saveChanges.length > 0 && ignoreCount !== 0);
-							this.applySaveChange(change, lookahead, function() {
+							this.applySaveChange(change, lookahead, function () {
 								// changes have been applied so truncate the log to this point
 								this._changeLog.truncate(this.canSave, this);
 								Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
@@ -8375,8 +8375,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				processNextChange.call(this);
 
-				signal.waitForAll(function() {
-//						ExoWeb.trace.log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
+				signal.waitForAll(function () {
+					//						ExoWeb.trace.log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
 					if (this.isCapturingChanges()) {
 						startChangeSet.call(this, "client");
 					}
@@ -8396,7 +8396,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 		},
 		applySaveChange: function ServerSync$applySaveChange(change, isLookahead, callback) {
-//				ExoWeb.trace.log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
+			//				ExoWeb.trace.log("server", "applySaveChange: {0} changes", [change.idChanges ? change.idChanges.length : "0"]);
 
 			if (change.idChanges && change.idChanges.length > 0) {
 
@@ -8477,33 +8477,33 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 		},
 		applyInitChange: function ServerSync$applyInitChange(change, callback) {
-//				ExoWeb.trace.log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
+			//				ExoWeb.trace.log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
 
 			var translator = this._translator;
 
 			ensureJsType(this._model, change.instance.type,
 				function applyInitChange$typeLoaded(jstype) {
-					// Create the new object
-					var newObj = new jstype();
+						// Create the new object
+						var newObj = new jstype();
 
-					// Check for a translation between the old id that was reported and an actual old id.  This is
-					// needed since new objects that are created on the server and then committed will result in an accurate
-					// id change record, but "instance.id" for this change will actually be the persisted id.
-					var serverOldId = translator.forward(change.instance.type, change.instance.id) || change.instance.id;
+						// Check for a translation between the old id that was reported and an actual old id.  This is
+						// needed since new objects that are created on the server and then committed will result in an accurate
+						// id change record, but "instance.id" for this change will actually be the persisted id.
+						var serverOldId = translator.forward(change.instance.type, change.instance.id) || change.instance.id;
 
-					// Remember the object's client-generated new id and the corresponding server-generated new id
-					translator.add(change.instance.type, newObj.meta.id, serverOldId);
+						// Remember the object's client-generated new id and the corresponding server-generated new id
+						translator.add(change.instance.type, newObj.meta.id, serverOldId);
 
 					callback(true);
 				});
 		},
 		applyRefChange: function ServerSync$applyRefChange(change, callback) {
-//				ExoWeb.trace.log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
+			//				ExoWeb.trace.log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
 
 			var returnImmediately = !ExoWeb.config.aggressiveLog;
 
-			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
+			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function (srcObj) {
 
 					// Call ballback here if type and instance were
 					// present immediately or aggressive mode is turned on
@@ -8513,7 +8513,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 					returnImmediately = false;
 
 					if (change.newValue) {
-						tryGetJsType(this._model, change.newValue.type, null, true, function(refType) {
+						tryGetJsType(this._model, change.newValue.type, null, true, function (refType) {
 							var refObj = fromExoGraph(change.newValue, this._translator);
 							var changed = ExoWeb.getValue(srcObj, change.property) != refObj;
 
@@ -8545,12 +8545,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 			returnImmediately = false;
 		},
 		applyValChange: function ServerSync$applyValChange(change, callback) {
-//				ExoWeb.trace.log("server", "applyValChange", change.instance);
+			//				ExoWeb.trace.log("server", "applyValChange", change.instance);
 
 			var returnImmediately = !ExoWeb.config.aggressiveLog;
 
-			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
+			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function (srcObj) {
 
 					// Call ballback here if type and instance were
 					// present immediately or aggressive mode is turned on
@@ -8581,12 +8581,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 			returnImmediately = false;
 		},
 		applyListChange: function ServerSync$applyListChange(change, callback) {
-//				ExoWeb.trace.log("server", "applyListChange", change.instance);
+			//				ExoWeb.trace.log("server", "applyListChange", change.instance);
 
 			var returnImmediately = !ExoWeb.config.aggressiveLog;
 
-			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function(srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function(srcObj) {
+			tryGetJsType(this._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function (srcObj) {
 
 					// Call callback here if type and instance were
 					// present immediately or aggressive mode is turned on
@@ -8604,7 +8604,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 					// apply added items
 					Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
-						tryGetJsType(this._model, item.type, null, true, listSignal.pending(function(itemType) {
+						tryGetJsType(this._model, item.type, null, true, listSignal.pending(function (itemType) {
 							var itemObj = fromExoGraph(item, this._translator);
 							if (list.indexOf(itemObj) < 0) {
 								list.add(itemObj);
@@ -8615,14 +8615,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 					// apply removed items
 					Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
 						// no need to load instance only to remove it from a list
-						tryGetJsType(this._model, item.type, null, false, function(itemType) {
+						tryGetJsType(this._model, item.type, null, false, function (itemType) {
 							var itemObj = fromExoGraph(item, this._translator);
 							list.remove(itemObj);
 						}, this);
 					}, this);
 
 					// don't end update until the items have been loaded
-					listSignal.waitForAll(function() {
+					listSignal.waitForAll(function () {
 						list.endUpdate();
 						if (doCallback) {
 							callback(true);
