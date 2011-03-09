@@ -47,7 +47,6 @@ end
 		Translator
 		Utilities
 		TimeSpan
-		OWL
 		Object
 		PropertyObserver
 		MsAjax},
