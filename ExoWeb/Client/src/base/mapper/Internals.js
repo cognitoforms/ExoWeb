@@ -238,14 +238,6 @@ function typesFromJson(model, json) {
 	for (var typeName in json) {
 		typeFromJson(model, typeName, json[typeName]);
 	}
-
-	//do not check in 
-	//call raiseExtensions so certain rule types will register (allowedValues)
-	//need to wait until all types are loaded first
-	for(var typeName in json) {
-		var mtype = getType(model, typeName, json.baseType, true);
-		raiseExtensions(mtype);
-	}
 }
 
 function typeFromJson(model, typeName, json) {
@@ -304,9 +296,6 @@ function typeFromJson(model, typeName, json) {
 	// define condition types
 	if (json.conditionTypes)
 		conditionTypesFromJson(model, mtype, json.conditionTypes);
-
-	//do not check in temporary fix
-	TypeLazyLoader.unregister(mtype);
 }
 
 function conditionTypesFromJson(model, mtype, json) {
