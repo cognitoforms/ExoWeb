@@ -53,19 +53,14 @@ ExoWeb.Mapper.setRoundtripProvider(function WebService$roundtripProviderFn(chang
 });
 
 ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
-	var q = {
-		from: type,
-		ids: ids,
-		include: paths
-	};
-
-	if (ExoWeb.config.useChangeSets === true) {
-		q.inScope = inScope;
-		q.forLoad = true;
-	}
-
 	request({
-		queries:[q].concat(scopeQueries),
+		queries:[{
+			from: type,
+			ids: ids,
+			include: paths,
+			inScope: inScope,
+			forLoad: true
+		}].concat(scopeQueries),
 		changes:changes
 	}, onSuccess, onFailure);
 });
@@ -86,19 +81,14 @@ ExoWeb.Mapper.setSaveProvider(function WebService$saveProviderFn(root, changes, 
 });
 
 ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
-	var q = {
-		from: ownerType,
-		ids: [ownerId],
-		include: paths
-	};
-
-	if (ExoWeb.config.useChangeSets === true) {
-		q.inScope = false;
-		q.forLoad = true;
-	}
-
 	request({
-		queries: [q].concat(scopeQueries),
+		queries: [{
+			from: ownerType,
+			ids: [ownerId],
+			include: paths,
+			inScope: false,
+			forLoad: true
+		}].concat(scopeQueries),
 		changes: changes
 	}, onSuccess, onFailure);
 });

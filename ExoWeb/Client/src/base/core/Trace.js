@@ -20,10 +20,6 @@ ExoWeb.config = {
 	// instances will be aggressively loaded as they are encountered.
 	aggressiveLog: false,
 
-	// Changes are tracked as sets corresponding to periods of alternating client changes and server
-	// changes due to events, save, etc. This setting enables sending changes in this form to the server.
-	useChangeSets: false,
-
 	// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 	individualQueryLoading: false
 };

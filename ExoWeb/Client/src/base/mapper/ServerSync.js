@@ -54,12 +54,7 @@ ExoWeb.registerActivity(function() {
 });
 
 function serializeChanges(includeAllChanges) {
-	if (ExoWeb.config.useChangeSets === true) {
-		return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
-	}
-	else {
-		return this.get_Changes(includeAllChanges, true);
-	}
+	return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
 }
 
 function startChangeSet(source) {

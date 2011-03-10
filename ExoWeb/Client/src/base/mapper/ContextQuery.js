@@ -70,7 +70,7 @@ ContextQuery.mixin({
 					ObjectLazyLoader.addPaths(query.from, query.normalized);
 
 					// use temporary config setting to enable/disable scope-of-work functionality
-					if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
+					if (query.inScope !== false) {
 						if (query.ids.length > 0) {
 							this.state[varName].scopeQuery = {
 								from: query.from,
@@ -224,14 +224,12 @@ ContextQuery.mixin({
 							if (individualIds.length > 0) {
 								// for individual queries, include scope queries for all *BUT* the query we are sending
 								var scopeQueries = [];
-								if (ExoWeb.config.useChangeSets === true) {
-									var currentVarName = varName;
-									ExoWeb.eachProp(this.options.model, function(varName, query) {
-										if (varName !== currentVarName && this.state[varName].scopeQuery) {
-											scopeQueries.push(this.state[varName].scopeQuery);
-										}
-									}, this);
-								}
+								var currentVarName = varName;
+								ExoWeb.eachProp(this.options.model, function(varName, query) {
+									if (varName !== currentVarName && this.state[varName].scopeQuery) {
+										scopeQueries.push(this.state[varName].scopeQuery);
+									}
+								}, this);
 
 								objectProvider(query.from, individualIds, query.include || [], true, null, scopeQueries,
 									this.state[varName].signal.pending(function context$objects$callback(result) {

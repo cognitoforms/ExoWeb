@@ -549,10 +549,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// instances will be aggressively loaded as they are encountered.
 		aggressiveLog: false,
 
-		// Changes are tracked as sets corresponding to periods of alternating client changes and server
-		// changes due to events, save, etc. This setting enables sending changes in this form to the server.
-		useChangeSets: false,
-
 		// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 		individualQueryLoading: false
 	};
@@ -7272,12 +7268,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	function serializeChanges(includeAllChanges) {
-		if (ExoWeb.config.useChangeSets === true) {
-			return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
-		}
-		else {
-			return this.get_Changes(includeAllChanges, true);
-		}
+		return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
 	}
 
 	function startChangeSet(source) {
@@ -9598,7 +9589,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						ObjectLazyLoader.addPaths(query.from, query.normalized);
 
 						// use temporary config setting to enable/disable scope-of-work functionality
-						if (ExoWeb.config.useChangeSets === true && query.inScope !== false) {
+						if (query.inScope !== false) {
 							if (query.ids.length > 0) {
 								this.state[varName].scopeQuery = {
 									from: query.from,
@@ -9752,14 +9743,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 								if (individualIds.length > 0) {
 									// for individual queries, include scope queries for all *BUT* the query we are sending
 									var scopeQueries = [];
-									if (ExoWeb.config.useChangeSets === true) {
-										var currentVarName = varName;
-										ExoWeb.eachProp(this.options.model, function(varName, query) {
-											if (varName !== currentVarName && this.state[varName].scopeQuery) {
-												scopeQueries.push(this.state[varName].scopeQuery);
-											}
-										}, this);
-									}
+									var currentVarName = varName;
+									ExoWeb.eachProp(this.options.model, function(varName, query) {
+										if (varName !== currentVarName && this.state[varName].scopeQuery) {
+											scopeQueries.push(this.state[varName].scopeQuery);
+										}
+									}, this);
 
 									objectProvider(query.from, individualIds, query.include || [], true, null, scopeQueries,
 										this.state[varName].signal.pending(function context$objects$callback(result) {
@@ -12705,19 +12694,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
-		var q = {
-			from: type,
-			ids: ids,
-			include: paths
-		};
-
-		if (ExoWeb.config.useChangeSets === true) {
-			q.inScope = inScope;
-			q.forLoad = true;
-		}
-
 		request({
-			queries:[q].concat(scopeQueries),
+			queries:[{
+				from: type,
+				ids: ids,
+				include: paths,
+				inScope: inScope,
+				forLoad: true
+			}].concat(scopeQueries),
 			changes:changes
 		}, onSuccess, onFailure);
 	});
@@ -12738,19 +12722,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
-		var q = {
-			from: ownerType,
-			ids: [ownerId],
-			include: paths
-		};
-
-		if (ExoWeb.config.useChangeSets === true) {
-			q.inScope = false;
-			q.forLoad = true;
-		}
-
 		request({
-			queries: [q].concat(scopeQueries),
+			queries: [{
+				from: ownerType,
+				ids: [ownerId],
+				include: paths,
+				inScope: false,
+				forLoad: true
+			}].concat(scopeQueries),
 			changes: changes
 		}, onSuccess, onFailure);
 	});
