@@ -24,7 +24,7 @@ ChangeSet.mixin({
 			source: (this._source === "init" || this._source === "client") ? this._source : "server",
 			changes: filter ? 
 				this._changes.where(filter, thisPtr) :
-				this._changes
+				Array.prototype.slice.call(this._changes)
 		};
 	},
 	source: function() {

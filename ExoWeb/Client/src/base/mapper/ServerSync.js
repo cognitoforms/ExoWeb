@@ -317,6 +317,37 @@ ServerSync.mixin({
 			}
 		}
 
+		var changes = serializeChanges.call(this, includeAllChanges);
+
+		function isRootChange(change) {
+			return change.type === "InitNew" && change.instance.type === obj.meta.type.get_fullName() && change.instance.id === obj.meta.id;
+		}
+
+		// temporary HACK (no, really): splice InitNew changes into init transaction
+		if (obj.meta.isNew) {
+			var found = false;
+			var initSet = changes.where(function(set) { return set.source === "init"; })[0];
+			if (!initSet || !initSet.changes.any(isRootChange)) {
+				changes.forEach(function(set) {
+					if (found === true) return;
+					set.changes.forEach(function(change, index) {
+						if (found === true) return;
+						else if (isRootChange(change)) {
+							set.changes.splice(index, 1);
+							if (!initSet) {
+								initSet = { changes: [change], source: "init" };
+								changes.splice(0, 0, initSet);
+							}
+							else {
+								initSet.changes.push(change);
+							}
+							found = true;
+						}
+					}, this);
+				}, this);
+			}
+		}
+
 		eventProvider(
 			name,
 			toExoGraph(this._translator, obj),
@@ -324,7 +355,7 @@ ServerSync.mixin({
 			paths,
 		// If includeAllChanges is true, then use all changes including those 
 		// that should not be saved, otherwise only use changes that can be saved.
-			serializeChanges.call(this, includeAllChanges),
+			changes,
 			this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
 			this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
 		);
