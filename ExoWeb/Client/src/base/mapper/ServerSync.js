@@ -580,6 +580,7 @@ ServerSync.mixin({
 
 				if (steps === undefined || depth < steps) {
 					change = this._changeLog.undo();
+					depth++;
 				}
 
 				if (change) {
@@ -598,8 +599,6 @@ ServerSync.mixin({
 						this.rollbackListChange(change, callback);
 					}
 				}
-
-				depth++;
 			}
 
 			processNextChange.call(this);

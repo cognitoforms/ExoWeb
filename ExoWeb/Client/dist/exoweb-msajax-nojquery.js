@@ -7794,6 +7794,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					if (steps === undefined || depth < steps) {
 						change = this._changeLog.undo();
+						depth++;
 					}
 
 					if (change) {
@@ -7812,8 +7813,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 							this.rollbackListChange(change, callback);
 						}
 					}
-
-					depth++;
 				}
 
 				processNextChange.call(this);

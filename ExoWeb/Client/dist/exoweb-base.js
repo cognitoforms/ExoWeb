@@ -7791,6 +7791,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 					if (steps === undefined || depth < steps) {
 						change = this._changeLog.undo();
+						depth++;
 					}
 
 					if (change) {
@@ -7809,8 +7810,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 							this.rollbackListChange(change, callback);
 						}
 					}
-
-					depth++;
 				}
 
 				processNextChange.call(this);

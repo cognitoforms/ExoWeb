@@ -7813,7 +7813,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 							this.rollbackListChange(change, callback);
 						}
 					}
-
 				}
 
 				processNextChange.call(this);
