@@ -8092,6 +8092,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 								type.changeObjectId(clientOldId, idChange.newId);
 								Sys.Observer.setValue(obj.meta, "isNew", false);
 
+								// Update affected scope queries
+								this._scopeQueries.forEach(function(query) {
+									query.ids = query.ids.map(function(id) {
+										return (id === clientOldId) ? idChange.newId : id;
+									}, this);
+								}, this);
+
 								// Remove the id change from the list and move the index back.
 								Array.remove(change.idChanges, idChange);
 								index = (index === 0) ? 0 : index - 1;
