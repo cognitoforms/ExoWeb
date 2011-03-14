@@ -4850,6 +4850,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			var targetInput = new RuleInput(rule.prop);
 			targetInput.set_isTarget(true);
+			if (rule.prop.get_origin() === "client")
+				targetInput.set_dependsOnInit(true);
 			inputs.push(targetInput);
 
 			Model.property(rule._allowedValuesPath, rule.prop.get_containingType(), true, function(chain) {
@@ -5005,6 +5007,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			var targetInput = new RuleInput(rule.prop);
 			targetInput.set_isTarget(true);
+			if (rule.prop.get_origin() === "client")
+				targetInput.set_dependsOnInit(true);
 			inputs.push(targetInput);
 
 			Model.property(rule._comparePath, rule.prop.get_containingType(), true, function(chain) {
@@ -5146,6 +5150,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 					var targetInput = new RuleInput(rule.prop);
 					targetInput.set_isTarget(true);
+					if (rule.prop.get_origin() === "client")
+						targetInput.set_dependsOnInit(true);
 					inputs.push(targetInput);
 
 					for(var i = 0; i < rule._dependsOn.length; i++) {
@@ -5319,6 +5325,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				var targetInput = new RuleInput(rule.prop);
 				targetInput.set_isTarget(true);
+				if (rule.prop.get_origin() === "client")
+					targetInput.set_dependsOnInit(true);
 				inputs.push(targetInput);
 
 				for(var i = 0; i < rule._dependsOn.length; i++) {

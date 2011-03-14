@@ -46,6 +46,8 @@ RequiredIfExpressionsRule.prototype = {
 
 			var targetInput = new RuleInput(rule.prop);
 			targetInput.set_isTarget(true);
+			if (rule.prop.get_origin() === "client")
+				targetInput.set_dependsOnInit(true);
 			inputs.push(targetInput);
 
 			for(var i = 0; i < rule._dependsOn.length; i++) {
