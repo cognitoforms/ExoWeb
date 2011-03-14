@@ -12382,7 +12382,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 								}
 							});
 						}
-
 					}
 
 					this._allowedValuesRule.addChanged(reloadOptions.setScope(this), this._propertyChain.lastTarget(this._target));
@@ -12395,16 +12394,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var rule = this.get_allowedValuesRule();
 				var targetObj = this._propertyChain.lastTarget(this._target);
 				if (rule) {
-					this._allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
+					var allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
 
-					if (this._allowedValues !== undefined) {
-						if (!ExoWeb.Model.LazyLoader.isLoaded(this._allowedValues)) {
+					if (allowedValues !== undefined) {
+						if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
 							ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
-							ExoWeb.Model.LazyLoader.load(this._allowedValues);
+							ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptions.setScope(this), this);
+							return;
 						}
-						if (this._optionsTransform) {
-							this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(this._allowedValues).live();
-						}
+
+						if (this._optionsTransform)
+							this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(allowedValues).live();
+						else
+							this._allowedValues = allowedValues;
 					}
 				}
 				else if (this.isType(Boolean)) {
