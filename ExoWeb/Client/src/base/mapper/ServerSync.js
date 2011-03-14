@@ -53,8 +53,39 @@ ExoWeb.registerActivity(function() {
 	return pendingRequests > 0;
 });
 
-function serializeChanges(includeAllChanges) {
-	return this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
+function serializeChanges(includeAllChanges, simulateInitRoot) {
+	var changes = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
+
+	// temporary HACK (no, really): splice InitNew changes into init transaction
+	if (simulateInitRoot && simulateInitRoot.meta.isNew) {
+		function isRootChange(change) {
+			return change.type === "InitNew" && change.instance.type === simulateInitRoot.meta.type.get_fullName() && change.instance.id === simulateInitRoot.meta.id;
+		}
+
+		var found = false;
+		var initSet = changes.where(function(set) { return set.source === "init"; })[0];
+		if (!initSet || !initSet.changes.some(isRootChange)) {
+			changes.forEach(function(set) {
+				if (found === true) return;
+				set.changes.forEach(function(change, index) {
+					if (found === true) return;
+					else if (isRootChange(change)) {
+						set.changes.splice(index, 1);
+						if (!initSet) {
+							initSet = { changes: [change], source: "init" };
+							changes.splice(0, 0, initSet);
+						}
+						else {
+							initSet.changes.push(change);
+						}
+						found = true;
+					}
+				}, this);
+			}, this);
+		}
+	}
+
+	return changes;
 }
 
 function startChangeSet(source) {
@@ -317,37 +348,6 @@ ServerSync.mixin({
 			}
 		}
 
-		var changes = serializeChanges.call(this, includeAllChanges);
-
-		function isRootChange(change) {
-			return change.type === "InitNew" && change.instance.type === obj.meta.type.get_fullName() && change.instance.id === obj.meta.id;
-		}
-
-		// temporary HACK (no, really): splice InitNew changes into init transaction
-		if (obj.meta.isNew) {
-			var found = false;
-			var initSet = changes.where(function(set) { return set.source === "init"; })[0];
-			if (!initSet || !initSet.changes.some(isRootChange)) {
-				changes.forEach(function(set) {
-					if (found === true) return;
-					set.changes.forEach(function(change, index) {
-						if (found === true) return;
-						else if (isRootChange(change)) {
-							set.changes.splice(index, 1);
-							if (!initSet) {
-								initSet = { changes: [change], source: "init" };
-								changes.splice(0, 0, initSet);
-							}
-							else {
-								initSet.changes.push(change);
-							}
-							found = true;
-						}
-					}, this);
-				}, this);
-			}
-		}
-
 		eventProvider(
 			name,
 			toExoGraph(this._translator, obj),
@@ -355,7 +355,7 @@ ServerSync.mixin({
 			paths,
 		// If includeAllChanges is true, then use all changes including those 
 		// that should not be saved, otherwise only use changes that can be saved.
-			changes,
+			serializeChanges.call(this, includeAllChanges, obj),
 			this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
 			this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
 		);
@@ -487,7 +487,7 @@ ServerSync.mixin({
 
 		saveProvider(
 			toExoGraph(this._translator, root),
-			serializeChanges.call(this, true),
+			serializeChanges.call(this, true, root),
 			this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
 			this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
 		);
