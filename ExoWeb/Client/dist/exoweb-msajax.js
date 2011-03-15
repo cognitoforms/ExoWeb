@@ -507,6 +507,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return peek(this);
 	}
 
+	function mapToList(arr, fn, thisPtr) {
+		var result = [];
+		forEach(arr, function(item) {
+			result.push.apply(result, fn.call(thisPtr || this, item));
+		});
+		return result;
+	}
+
+	Array.prototype.mapToList = function(fn, thisPtr) {
+		return mapToList(this, fn, thisPtr);
+	};
+
 	// #endregion
 
 	// #region String

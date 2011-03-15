@@ -504,6 +504,18 @@ Type.registerNamespace("ExoWeb.Mapper");
 		return peek(this);
 	}
 
+	function mapToList(arr, fn, thisPtr) {
+		var result = [];
+		forEach(arr, function(item) {
+			result.push.apply(result, fn.call(thisPtr || this, item));
+		});
+		return result;
+	}
+
+	Array.prototype.mapToList = function(fn, thisPtr) {
+		return mapToList(this, fn, thisPtr);
+	};
+
 	// #endregion
 
 	// #region String
@@ -1646,8 +1658,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			return value === undefined ? null : value;
 		}
 		else {
-			if (((target instanceof Object || Object.prototype.toString.call(target) === "[object Object]") && (property in target))
-				|| (target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property) < target.length)) {
+			if (property in target) {
 				var value = target[property];
 				return value === undefined ? null : value;
 			}
