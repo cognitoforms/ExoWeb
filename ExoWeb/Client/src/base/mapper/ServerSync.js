@@ -59,7 +59,8 @@ function serializeChanges(includeAllChanges, simulateInitRoot) {
 	// temporary HACK (no, really): splice InitNew changes into init transaction
 	if (simulateInitRoot && simulateInitRoot.meta.isNew) {
 		function isRootChange(change) {
-			return change.type === "InitNew" && change.instance.type === simulateInitRoot.meta.type.get_fullName() && change.instance.id === simulateInitRoot.meta.id;
+			return change.type === "InitNew" && change.instance.type === simulateInitRoot.meta.type.get_fullName() &&
+				(change.instance.id === simulateInitRoot.meta.id || this._translator.reverse(change.instance.type, change.instance.id) === simulateInitRoot.meta.id);
 		}
 
 		var found = false;
@@ -69,7 +70,7 @@ function serializeChanges(includeAllChanges, simulateInitRoot) {
 				if (found === true) return;
 				set.changes.forEach(function(change, index) {
 					if (found === true) return;
-					else if (isRootChange(change)) {
+					else if (isRootChange.call(this, change)) {
 						set.changes.splice(index, 1);
 						if (!initSet) {
 							initSet = { changes: [change], source: "init" };
