@@ -1649,8 +1649,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return value === undefined ? null : value;
 		}
 		else {
-			if (((target instanceof Object || Object.prototype.toString.call(target) === "[object Object]") && (property in target))
-				|| (target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property) < target.length)) {
+			if (property in target) {
 				var value = target[property];
 				return value === undefined ? null : value;
 			}
