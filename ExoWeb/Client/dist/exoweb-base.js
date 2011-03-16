@@ -1658,7 +1658,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 			return value === undefined ? null : value;
 		}
 		else {
-			if (property in target) {
+			if ((typeof(target) === "object" && (property in target))
+				|| (target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property) < target.length)) {
 				var value = target[property];
 				return value === undefined ? null : value;
 			}
