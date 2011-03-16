@@ -8405,8 +8405,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ExoWeb.Mapper.TriggerRoundtripRule = ExoWeb.Model.Rule.triggerRoundtrip = TriggerRoundtripRule;
 
 	ExoWeb.Model.Property.mixin({
-		triggersRoundtrip: function() {
-			var rule = new TriggerRoundtripRule(this);
+		triggersRoundtrip: function () {
+			if (!this._triggersRoundtrip) {
+				var rule = new TriggerRoundtripRule(this);
+				this._triggersRoundtrip = true;
+			}
 		}
 	});
 
