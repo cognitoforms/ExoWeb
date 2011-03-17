@@ -3831,6 +3831,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return (this._isStatic ? this._containingType.get_fullName() : "this") + "." + this._name;
 			}
 		},
+        label: function (label) {
+            this._label = label;
+            return this;
+        },
 		required: function(conditionType) {
 			new ExoWeb.Model.Rule.required(this._containingType, { property: this._name }, conditionType);
 			return this;
