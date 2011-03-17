@@ -66,8 +66,7 @@ function getValue(target, property) {
 		return value === undefined ? null : value;
 	}
 	else {
-		if ((typeof(target) === "object" && (property in target))
-			|| (target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property) < target.length)) {
+		if (property in target) {
 			var value = target[property];
 			return value === undefined ? null : value;
 		}
