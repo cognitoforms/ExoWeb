@@ -52,8 +52,9 @@ function conditionFromJson(model, code, json, callback, thisPtr) {
 			{
 				var propsSignal = new Signal("conditionFromJson.properties");
 
-				var props = distinct(target.properties).map(function(p, i) {
-					return Model.property("this." + p, inst.meta.type, true, propsSignal.pending(function(chain) {
+				var props = [];
+				distinct(target.properties).forEach(function(p, i) {
+					Model.property("this." + p, inst.meta.type, true, propsSignal.pending(function(chain) {
 						props[i] = chain;
 					}));
 				});
