@@ -1,0 +1,4 @@
+3 errors occurred:
+44: Don't make functions within a loop.
+50: Don't make functions within a loop.
+314: Missing semicolon.

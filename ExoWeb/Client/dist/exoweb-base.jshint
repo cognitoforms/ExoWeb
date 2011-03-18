@@ -1,0 +1,5 @@
+5 errors occurred:
+94: 'call' is already defined.
+106: Bad assignment.
+434: Expected an identifier and instead saw 'void'.
+434: Stopping, unable to continue. (4% scanned).

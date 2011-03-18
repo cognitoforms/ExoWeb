@@ -3,6 +3,8 @@ prefix = File.dirname(__FILE__)
 @src_dir = ENV["SRC_DIR"] || File.join(prefix, "src")
 @dist_dir = ENV["DIST_DIR"] || File.join(prefix, "dist")
 
+@no_jslint = ENV["NO_JSLINT"]
+
 # returns the contents of the given file, with each line
 # indented with the given number of tabs
 def read file, indent=0, exports=nil
@@ -52,6 +54,7 @@ end
 		MsAjax},
 
 	"base/model" => %w{
+		Format
 		Model
 		Entity
 		Type
@@ -73,7 +76,6 @@ end
 		ConditionType
 		Condition
 		FormatError
-		Format
 		Formats
 		LazyLoader},
 
@@ -151,22 +153,31 @@ def build_content(header_args, dir, files, indent, exports)
 		end.join("")
 end
 
+def jshint(file_name)
+	if system("node --version")
+		in_path = File.join(@dist_dir, file_name + ".js").sub(/^C\:\//, "/cygdrive/c/")
+		out_path = File.join(@dist_dir, file_name + ".jshint")
+		sh "node runjshint.js " + in_path + " > " + out_path
+	end
+end
+
 task :build_jquery_msajax_plugin do
 	File.open(File.join(@dist_dir, "jquery.exoweb-msajax.js"), "w") do |f|
-		f.write("\n// jquery plugin for msajax helper\n" + ("/" * 50) + "\n(function() {\n\tvar undefined;\n")
+		f.write("\n// jquery plugin for msajax helper\n" + ("/" * 50) + "\n(function() {\n")
 		src_dir = File.join(File.join(@src_dir, "extensions"), "jquery-msajax")
 		header = "jquery plugin for msajax helper"
 		f.write(build_content([header], src_dir, @src_files["extensions/jquery-msajax"], 1, @exports["extensions/jquery-msajax"]))
 		f.write("\n})();")
 	end
 	puts("completed build_jquery_msajax_plugin task")
+	jshint("jquery.exoweb-msajax")
 end
 
 task :build_msajax_nojquery do
 	File.open(File.join(@dist_dir, "exoweb-msajax-nojquery.js"), "w") do |f|
 		f.write("Type.registerNamespace(\"ExoWeb\");\n")
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
-		f.write("\n(function() {\n\tvar undefined;\n")
+		f.write("\n(function() {\n")
 		
 		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet"].each do |name|
 			src_dir = @src_dir
@@ -179,13 +190,14 @@ task :build_msajax_nojquery do
 		f.write("})();\n");
 	end
 	puts("completed build_msajax_nojquery task")
+	jshint("exoweb-msajax-nojquery")
 end
 
 task :build_msajax do
 	File.open(File.join(@dist_dir, "exoweb-msajax.js"), "w") do |f|
 		f.write("Type.registerNamespace(\"ExoWeb\");\n")
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
-		f.write("\n(function() {\n\tvar undefined;\n")
+		f.write("\n(function() {\n")
 		
 		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/jquery-msajax", "extensions/dotnet"].each do |name|
 			src_dir = @src_dir
@@ -198,13 +210,14 @@ task :build_msajax do
 		f.write("})();\n");
 	end
 	puts("completed build_msajax task")
+	jshint("exoweb-msajax")
 end
 
 task :build_base do
 	File.open(File.join(@dist_dir, "exoweb-base.js"), "w") do |f|
 		f.write("Type.registerNamespace(\"ExoWeb\");\n")
 		["Model", "Mapper"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
-		f.write("\n(function() {\n\tvar undefined;\n")
+		f.write("\n(function() {\n")
 		
 		["base/core", "base/model", "base/mapper"].each do |name|
 			src_dir = @src_dir
@@ -216,9 +229,9 @@ task :build_base do
 		f.write("})();\n");
 	end
 	puts("completed build_base task")
+	jshint("exoweb-base")
 end
 
 task :default => [:build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_base] do
 	puts("completed default task")
 end
-

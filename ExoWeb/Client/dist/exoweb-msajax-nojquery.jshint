@@ -1,0 +1,5 @@
+5 errors occurred:
+97: 'call' is already defined.
+109: Bad assignment.
+437: Expected an identifier and instead saw 'void'.
+437: Stopping, unable to continue. (3% scanned).
