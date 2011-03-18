@@ -932,10 +932,9 @@ ServerSync.mixin({
 						}
 						// Otherwise, log an error.
 						else {
-							ExoWeb.trace.logError("server",
+							ExoWeb.trace.logWarning("server",
 								"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
-								idChange
-							);
+								idChange);
 						}
 
 						processNextIdChange.call(this);
