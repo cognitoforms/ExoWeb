@@ -7440,22 +7440,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 					Array.forEach(change.added, function (item) {
 						// if the type doesn't exist then obviously the instance doesn't either
 						var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
-						if (!jstype) {
-							return;
-						}
-						var addedObj = fromExoGraph(item, this._translator);
-						if (this.canSaveObject(addedObj)) {
+						if (!jstype || this.canSaveObject(fromExoGraph(item, this._translator))) {
 							ignore = false;
 						}
 					}, this);
 					Array.forEach(change.removed, function (item) {
 						// if the type doesn't exist then obviously the instance doesn't either
 						var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
-						if (!jstype) {
-							return;
-						}
-						var removedObj = fromExoGraph(item, this._translator);
-						if (this.canSaveObject(removedObj)) {
+						if (!jstype || this.canSaveObject(fromExoGraph(item, this._translator))) {
 							ignore = false;
 						}
 					}, this);
