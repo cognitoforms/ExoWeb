@@ -9351,7 +9351,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var objectJson, conditionsJson;
 
 		// TODO: reference to server will be a singleton, not context
-		listProvider(ownerType, list._ownerId, propName, ObjectLazyLoader.getRelativePathsForType(propType),
+		listProvider(ownerType, list._ownerId, propName, list._ownerId === STATIC_ID ? [] : ObjectLazyLoader.getRelativePathsForType(propType),
 			serializeChanges.call(context.server, true),
 			signal.pending(function(result) {
 				objectJson = result.instances;
