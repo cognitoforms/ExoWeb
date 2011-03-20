@@ -161,6 +161,29 @@ def jshint(file_name)
 	end
 end
 
+def get_test_files(dir_name, prefix)
+	res = []
+	Dir.entries(File.join(dir_name, prefix)).each do |item|
+		if (item =~ /^\.*$/) == nil && File::directory?(File.join(File.join(dir_name, prefix), item))
+			get_test_files(dir_name, File.join(prefix, item)).each do |file|
+				res.push(file)
+			end
+		elsif (item =~ /^test_([^\.]*)\.js$/) == 0
+			res.push(File.join(prefix, item))
+		end
+	end
+	return res
+end
+
+task :run_tests do
+	if system("node --version")
+		get_test_files(File.join(Dir.pwd, 'specs'), '').each do |file|
+			mkdir_p File.join("dist/specs", file.sub(/^(.*)\/[^\/]*.js$/, "\\1"))
+			sh "node specs" + file + " > dist/specs" + file + ".out"
+		end
+	end
+end
+
 task :build_jquery_msajax_plugin do
 	File.open(File.join(@dist_dir, "jquery.exoweb-msajax.js"), "w") do |f|
 		f.write("\n// jquery plugin for msajax helper\n" + ("/" * 50) + "\n(function() {\n")
@@ -232,6 +255,6 @@ task :build_base do
 	jshint("exoweb-base")
 end
 
-task :default => [:build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_base] do
+task :default => [:run_tests, :build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_base] do
 	puts("completed default task")
 end

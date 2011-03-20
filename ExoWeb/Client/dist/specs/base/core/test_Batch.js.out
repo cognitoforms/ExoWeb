@@ -1,0 +1,46 @@
+Running tests...
+
+
+current batch
+=============================================
+Running "current batch is no longer active after ending"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+callback for batch
+=============================================
+Running "callback for batch is not invoked while the batch is active"...
+---------------------------------------------
+Running "callback for batch is invoked once the batch has ended"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+batch that is suspended
+=============================================
+Running "batch that is suspended should be returned when suspend is called"...
+---------------------------------------------
+Running "batch that is suspended is no longer current"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+batch that is resumed when a current batch exists
+=============================================
+Running "batch that is resumed when a current batch exists should *NOT* be the current batch"...
+---------------------------------------------
+Running "batch that is resumed when a current batch exists callbacks should *NOT* be invoked when the current batch is ended"...
+---------------------------------------------
+Running "batch that is resumed when a current batch exists callbacks should be invoked when the resumed batch is ended"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+8 specs, 0 failures in 0.002s
+Finished at Sun Mar 20 2011 04:13:07 GMT+0100 (EST)
+

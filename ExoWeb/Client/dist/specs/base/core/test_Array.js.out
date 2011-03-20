@@ -1,0 +1,44 @@
+Running tests...
+
+
+purge
+=============================================
+Running "purge removes elements from the array that match the given filter callback"...
+---------------------------------------------
+Running "purge uses removeAt if exists"...
+---------------------------------------------
+Running "purge returns the indices where items where removed from the original array"...
+---------------------------------------------
+Running "purge returns nothing if no items are removed"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+distinct
+=============================================
+Running "distinct removes duplicates from a list"...
+---------------------------------------------
+Running "distinct removes multiple duplicates"...
+---------------------------------------------
+Running "distinct removes back-to-back duplicates"...
+---------------------------------------------
+Running "distinct preserves first encountered item"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+intersect
+=============================================
+Running "intersect produces the set intersection of two arrays, using strict equality"...
+---------------------------------------------
+Running "intersect returns distinct results"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+10 specs, 0 failures in 0.002s
+Finished at Sun Mar 20 2011 04:13:07 GMT+0100 (EST)
+

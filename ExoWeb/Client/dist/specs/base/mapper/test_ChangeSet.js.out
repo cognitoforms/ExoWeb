@@ -1,0 +1,40 @@
+Running tests...
+
+
+ChangeSet
+=============================================
+Running "ChangeSet throws an error if a string source is not given"...
+---------------------------------------------
+Running "ChangeSet initially has no changes"...
+---------------------------------------------
+Running "ChangeSet stores an added change and returns it with a call to changes"...
+---------------------------------------------
+Running "ChangeSet accepts initial set of changes"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+ChangeSet
+=============================================
+Running "ChangeSet serializes only changes that pass a given filter"...
+---------------------------------------------
+Running "ChangeSet serializes source as server unless it is client or init"...
+---------------------------------------------
+Running "ChangeSet returns the last change added"...
+---------------------------------------------
+Running "ChangeSet returns null if undo is called and there are no changes"...
+---------------------------------------------
+Running "ChangeSet undo removes and returns the last change"...
+---------------------------------------------
+Running "ChangeSet discards all sets and changes when truncated"...
+---------------------------------------------
+Running "ChangeSet discards all sets and changes that meet the given filter when truncated"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+11 specs, 0 failures in 0.003s
+Finished at Sun Mar 20 2011 04:13:08 GMT+0100 (EST)
+

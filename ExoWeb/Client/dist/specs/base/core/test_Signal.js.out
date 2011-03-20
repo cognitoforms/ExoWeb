@@ -1,0 +1,16 @@
+Running tests...
+
+
+synchronous signal
+=============================================
+Running "synchronous signal is *NOT* done before pending callback is invoked"...
+---------------------------------------------
+Running "synchronous signal is done after the pending callback is invoked"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+2 specs, 0 failures in 0.002s
+Finished at Sun Mar 20 2011 04:13:07 GMT+0100 (EST)
+

@@ -1,0 +1,22 @@
+Running tests...
+
+
+$format
+=============================================
+Running "$format it accepts a format string and an array of format arguments"...
+---------------------------------------------
+Running "$format it accepts a format string and an format argument object"...
+---------------------------------------------
+Running "$format it accepts a format string and any number of format argument objects"...
+---------------------------------------------
+Running "$format if single argument is passed it uses "params mode" when format string uses only zero-index, argument object otherwise"...
+---------------------------------------------
+Running "$format if single array argument is passed it uses the array as arguments"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+5 specs, 0 failures in 0.002s
+Finished at Sun Mar 20 2011 04:13:08 GMT+0100 (EST)
+

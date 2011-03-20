@@ -1,0 +1,20 @@
+Running tests...
+
+
+ResponseHandler
+=============================================
+Running "ResponseHandler requires an options argument"...
+---------------------------------------------
+Running "ResponseHandler loads types, [init] changes, instances, [non-init] changes, and conditions in the correct order"...
+[responseHandler]: Loading types.
+[responseHandler]: Applying "init new" changes.
+[responseHandler]: Loading instances.
+[responseHandler]: Applying non-"init new" changes.
+---------------------------------------------
+suite passed
+=============================================
+
+
+2 specs, 0 failures in 0.003s
+Finished at Sun Mar 20 2011 04:13:08 GMT+0100 (EST)
+

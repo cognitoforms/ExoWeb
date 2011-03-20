@@ -1,0 +1,54 @@
+Running tests...
+
+
+ChangeLog
+=============================================
+Running "ChangeLog initially has no sets"...
+---------------------------------------------
+Running "ChangeLog throws an error if a change is added before starting"...
+---------------------------------------------
+Running "ChangeLog requires a string source when calling start"...
+---------------------------------------------
+Running "ChangeLog allows a change to be added after calling start"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+ChangeLog
+=============================================
+Running "ChangeLog pushes new changes onto the new set after calling start a second time"...
+---------------------------------------------
+Running "ChangeLog serializes only changes that pass a given filter"...
+---------------------------------------------
+Running "ChangeLog returns the last change added"...
+---------------------------------------------
+Running "ChangeLog returns null if undo is called and there are no changes"...
+---------------------------------------------
+Running "ChangeLog cannot undo if the log is not active"...
+---------------------------------------------
+Running "ChangeLog undo removes and returns the last change"...
+---------------------------------------------
+Running "ChangeLog undo steps over empty sets"...
+---------------------------------------------
+Running "ChangeLog discards all sets and changes when truncated, creating a new "client" set"...
+---------------------------------------------
+Running "ChangeLog discards all sets and changes that meet the given filter when truncated"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+ChangeLog.addSet
+=============================================
+Running "ChangeLog.addSet allows a set to be added to an active change log"...
+---------------------------------------------
+Running "ChangeLog.addSet adds a non-active set to the change log"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+15 specs, 0 failures in 0.002s
+Finished at Sun Mar 20 2011 04:13:08 GMT+0100 (EST)
+

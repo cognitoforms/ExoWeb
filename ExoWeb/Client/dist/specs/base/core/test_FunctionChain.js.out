@@ -1,0 +1,17 @@
+Running tests...
+
+
+Function Chain
+=============================================
+Running "Function Chain invokes each step in sequence, then the given callback"...
+step 1
+step 2
+step 3
+---------------------------------------------
+suite passed
+=============================================
+
+
+1 spec, 0 failures in 0.001s
+Finished at Sun Mar 20 2011 04:13:07 GMT+0100 (EST)
+
