@@ -65,7 +65,7 @@ function serializeChanges(includeAllChanges, simulateInitRoot) {
 
 		var found = false;
 		var initSet = changes.where(function(set) { return set.source === "init"; })[0];
-		if (!initSet || !initSet.changes.some(isRootChange)) {
+		if (!initSet || !initSet.changes.some(isRootChange, this)) {
 			changes.forEach(function(set) {
 				if (found === true) return;
 				set.changes.forEach(function(change, index) {
