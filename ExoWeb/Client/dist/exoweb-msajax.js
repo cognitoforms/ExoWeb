@@ -3209,7 +3209,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 					prop.get_containingType().get_model().beginValidation();
 					rule._isExecuting = true;						
 					ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-					fn.call(rule, obj);
+
+					if (prop.get_isStatic() === true) {
+						Array.forEach(jstype.meta.known(), function (obj) {
+							if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+								fn.call(rule, obj);
+							}
+						});
+					}
+					else {
+						fn.call(rule, obj);
+					}
 				}
 				catch (err) {
 					ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
