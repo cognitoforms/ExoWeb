@@ -1,5 +1,6 @@
 function Reporter() {
 	this.suites = [];
+	this.suppressDateAndTime = process.argv.indexOf("-no-date-time") >= 0;
 };
 
 Reporter.prototype.isFirstEncounter = function(suite) {
@@ -24,10 +25,14 @@ Reporter.prototype.reportRunnerResults = function(runner) {
 	var results = runner.results();
 	var specs = runner.specs();
 	var message = "\r\n" + specs.length + " spec" + (specs.length === 1 ? "" : "s" ) + ", " + results.failedCount + " failure" + ((results.failedCount === 1) ? "" : "s");
-	message += " in " + ((new Date().getTime() - this.startedAt.getTime()) / 1000) + "s";
 
-	console.log(message);
-	console.log("Finished at " + new Date().toString() + "\r\n");
+	if (this.suppressDateAndTime !== true)
+		message += " in " + ((new Date().getTime() - this.startedAt.getTime()) / 1000) + "s";
+
+	console.info(message);
+	
+	if (this.suppressDateAndTime !== true)
+		console.info("Finished at " + new Date().toString() + "\r\n");
 
 	if (results.failedCount > 0) {
 		process.exit(1);
