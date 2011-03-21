@@ -2,9 +2,10 @@ function RangeRule(mtype, options, ctype) {
 	this.prop = mtype.property(options.property, true);
 	var properties = [ this.prop ];
 
-	if (!ctype) {
+	if (!ctype)
 		ctype = Rule.ensureError("range", this.prop);
-	}
+
+	this.ctype = ctype;
 
 	this.min = options.min;
 	this.max = options.max;
@@ -13,24 +14,31 @@ function RangeRule(mtype, options, ctype) {
 	var hasMax = (this.max !== undefined && this.max !== null);
 
 	if (hasMin && hasMax) {
-		this.err = new Condition(ctype, $format("{0} must be between {1} and {2}", [this.prop.get_label(), this.min, this.max]), properties, this);
+		this._formatString = "{0} must be between {1} and {2}";
+		this._formatArgs = function() { return [this.prop.format(this.min), this.prop.format(this.max)]; };
 		this._test = this._testMinMax;
 	}
 	else if (hasMin) {
-		this.err = new Condition(ctype, $format("{0} must be at least {1}", [this.prop.get_label(), this.min]), properties, this);
+		this._formatString = "{0} must be at least {1}";
+		this._formatArgs = function() { return [this.prop.format(this.min)]; };
 		this._test = this._testMin;
 	}
 	else if (hasMax) {
-		this.err = new Condition(ctype, $format("{0} must no more than {1}", [this.prop.get_label()], this.max), properties, this);
+		this._formatString = "{0} must be no more than {1}";
+		this._formatArgs = function() { return [this.prop.format(this.max)]; };
 		this._test = this._testMax;
 	}
 
 	Rule.register(this, properties);
 }
+
 RangeRule.prototype = {
+	err: function() {
+		return new Condition(this.ctype, $format(this._formatString, [this.prop.get_label()].concat(this._formatArgs.call(this))), [this.prop], this);
+	},
 	execute: function(obj) {
 		var val = this.prop.value(obj);
-		obj.meta.conditionIf(this.err, this._test(val));
+		obj.meta.conditionIf(this.err(), this._test(val));
 	},
 	_testMinMax: function(val) {
 		return val < this.min || val > this.max;

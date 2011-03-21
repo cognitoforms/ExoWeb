@@ -107,6 +107,9 @@ Property.mixin({
     get_format: function Property$get_format() {
         return this._format;
     },
+	format: function(val) {
+		return this.get_format() ? this.get_format().convert(val) : val;
+	},
     get_origin: function Property$get_origin() {
         return this._origin ? this._origin : this._containingType.get_origin();
     },
