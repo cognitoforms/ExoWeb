@@ -36,7 +36,7 @@ function conditionFromJson(model, code, json, callback, thisPtr) {
 	var type = ExoWeb.Model.ConditionType.get(code);
 
 	if (!type) {
-		ExoWeb.trace.logError(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
+		ExoWeb.trace.logWarning(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
 		callback.call(thisPtr || this);
 		return;
 	}
