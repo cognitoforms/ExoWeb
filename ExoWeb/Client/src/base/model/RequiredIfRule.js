@@ -27,7 +27,7 @@ function RequiredIfRule(mtype, options, ctype) {
 	this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
 
 	// Function to register this rule when its containing type is loaded.
-	var register = (function RequiredIfRule$register(ctype) { CompareRule.load(this, ctype); }).setScope(this);
+	var register = (function RequiredIfRule$register(ctype) { CompareRule.load(this, ctype); }).bind(this);
 
 	// If the type is already loaded, then register immediately.
 	if (LazyLoader.isLoaded(this.prop.get_containingType())) {

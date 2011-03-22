@@ -126,11 +126,30 @@ Function.prototype.cached = function Function$cached(options) {
 	};
 };
 
-Function.prototype.setScope = function setScope(obj) {
-	var func = this;
-	return function setScope$fn() {
-		return func.apply(obj, arguments);
-	};
+function bind(obj) {
+	var slice = [].slice,
+		args = slice.call(arguments, 1),
+		self = this,
+		nop = function () {},
+		bound = function () {
+			return self.apply(this instanceof nop ? this : (obj || {}),
+				args.concat(slice.call(arguments)));
+		};
+
+	nop.prototype = self.prototype;
+	bound.prototype = new nop();
+
+	return bound;
+}
+exports.bind = bind; // IGNORE
+
+// Function.prototype.bind polyfill
+if (!Function.prototype.bind)
+	Function.prototype.bind = bind;
+
+Function.prototype.setScope = function() {
+	ExoWeb.trace.logWarning("functions", "Function \"setScope\" is decprecated. Use \"bind\" instead.");
+	bind.apply(this, arguments);
 };
 
 Function.prototype.prepare = function prepare(thisPtr, args) {

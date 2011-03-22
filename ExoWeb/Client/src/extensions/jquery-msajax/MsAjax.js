@@ -38,7 +38,7 @@ function processElements(els, action) {
 				reg.action.apply(reg.thisPtr || els[e], [0, els[e]]);
 
 			// test children
-			$(reg.selector, els[e]).each(reg.thisPtr ? reg.action.setScope(reg.thisPtr) : reg.action);
+			$(reg.selector, els[e]).each(reg.thisPtr ? reg.action.bind(reg.thisPtr) : reg.action);
 		}
 	}
 }
@@ -101,7 +101,7 @@ jQuery.fn.ever = function (added, deleted, thisPtr) {
 	}
 
 	// apply now
-	this.each(thisPtr ? added.setScope(thisPtr) : added);
+	this.each(thisPtr ? added.bind(thisPtr) : added);
 
 	// and then watch for dom changes
 	if (added) {

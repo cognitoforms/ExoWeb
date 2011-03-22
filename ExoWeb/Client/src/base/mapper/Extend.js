@@ -34,7 +34,7 @@ function extendOne(typeName, callback, thisPtr) {
 			pending = pendingTypeExtensions[typeName] = ExoWeb.Functor();
 		}
 
-		pending.add(thisPtr ? callback.setScope(thisPtr) : callback);
+		pending.add(thisPtr ? callback.bind(thisPtr) : callback);
 	}
 }
 
@@ -96,5 +96,5 @@ window.$extendSubtypes = function extendSubtypes(typeName, callback, thisPtr) {
 		pending = pendingSubtypeExtensions[typeName] = ExoWeb.Functor();
 	}
 
-	pending.add(thisPtr ? callback.setScope(thisPtr) : callback);
+	pending.add(thisPtr ? callback.bind(thisPtr) : callback);
 };

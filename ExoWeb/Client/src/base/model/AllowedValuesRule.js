@@ -11,7 +11,7 @@ function AllowedValuesRule(mtype, options, ctype) {
 
 	this.err = new Condition(ctype, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
 
-	var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type); }).setScope(this);
+	var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type); }).bind(this);
 
 	// If the type is already loaded, then register immediately.
 	if (LazyLoader.isLoaded(this.prop.get_containingType())) {

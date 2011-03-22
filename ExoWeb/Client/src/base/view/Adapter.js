@@ -118,7 +118,7 @@ Adapter.prototype = {
 	},
 	_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val, fmtName) {
 		this._doForFormatPaths(val, fmtName, function(path) {
-			var fn = this._formatSubscribers[fmtName + "|" + path] = this._loadForFormatAndRaiseChange.setScope(this).prependArguments(val, fmtName);
+			var fn = this._formatSubscribers[fmtName + "|" + path] = this._loadForFormatAndRaiseChange.bind(this).prependArguments(val, fmtName);
 			Sys.Observer.addPathChanged(val, path, fn);
 		});
 	},
@@ -129,7 +129,7 @@ Adapter.prototype = {
 			Sys.Observer.makeObservable(this);
 
 			// subscribe to property changes at all points in the path
-			this._propertyChain.addChanged(this._onTargetChanged.setScope(this), this._target);
+			this._propertyChain.addChanged(this._onTargetChanged.bind(this), this._target);
 
 			this._formatSubscribers = {};
 
@@ -390,7 +390,7 @@ Adapter.prototype = {
 					}
 				}
 
-				this._allowedValuesRule.addChanged(reloadOptions.setScope(this), this._propertyChain.lastTarget(this._target));
+				this._allowedValuesRule.addChanged(reloadOptions.bind(this), this._propertyChain.lastTarget(this._target));
 			}
 		}
 		return this._allowedValuesRule;
@@ -405,7 +405,7 @@ Adapter.prototype = {
 				if (allowedValues !== undefined) {
 					if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
 						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
-						ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptions.setScope(this), this);
+						ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptions.bind(this), this);
 						return;
 					}
 

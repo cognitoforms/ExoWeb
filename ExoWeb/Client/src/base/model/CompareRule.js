@@ -13,7 +13,7 @@ function CompareRule(mtype, options, ctype) {
 	this._inited = false;
 
 	// Function to register this rule when its containing type is loaded.
-	var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype); }).setScope(this);
+	var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype); }).bind(this);
 
 	// If the type is already loaded, then register immediately.
 	if (LazyLoader.isLoaded(this.prop.get_containingType())) {

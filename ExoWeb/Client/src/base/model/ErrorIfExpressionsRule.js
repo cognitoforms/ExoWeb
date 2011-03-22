@@ -32,7 +32,7 @@
 		this.err = new Condition(ctype, this._errorMessage, properties, this);
 
 		// Function to register this rule when its containing type is loaded.
-		var register = (function ErrorIfExpressionsRule$register(ctype) { this.load(this, ctype); }).setScope(this);
+		var register = (function ErrorIfExpressionsRule$register(ctype) { this.load(this, ctype); }).bind(this);
 
 		// If the type is already loaded, then register immediately.
 		if (LazyLoader.isLoaded(this.prop.get_containingType())) {

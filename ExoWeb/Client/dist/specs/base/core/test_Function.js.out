@@ -29,10 +29,10 @@ suite passed
 =============================================
 
 
-setScope
+bind
 =============================================
-Running "setScope ensures that the function is called with the argument as the this pointer"...
->> setting scope to "yes"
+Running "bind ensures that the function is called with the argument as the this pointer"...
+>> binding to "yes"
 >> applying function with "no" as this pointer
 >> result: y
 ---------------------------------------------

@@ -25,7 +25,7 @@ OptionAdapter.prototype = {
 	},
 	_subscribeToFormatChanges: function OptionAdapter$_subscribeToFormatChanges(val, fmtName) {
 		this._parent._doForFormatPaths(val, fmtName, function(path) {
-			Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.setScope(this).prependArguments(val, fmtName));
+			Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.bind(this).prependArguments(val, fmtName));
 		}, this);
 	},
 	_ensureObservable: function OptionAdapter$_ensureObservable() {

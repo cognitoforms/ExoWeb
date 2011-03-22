@@ -12,6 +12,7 @@ Signal = ExoWeb.Signal;
 var mergeFunctions = functions.mergeFunctions;
 var equals = functions.equals;
 var not = functions.not;
+var bind = functions.bind;
 
 jasmine.jasmine.debug = true;
 
@@ -88,14 +89,14 @@ describe("mixin", function() {
 	});
 });
 
-describe("setScope", function() {
+describe("bind", function() {
 	it("ensures that the function is called with the argument as the this pointer", function() {
 		function getFirstChar() {
 			return this[0];
 		}
 
-		console.log(">> setting scope to \"yes\"");
-		var callback = getFirstChar.setScope("yes");
+		console.log(">> binding to \"yes\"");
+		var callback = bind.call(getFirstChar, "yes");
 
 		console.log(">> applying function with \"no\" as this pointer");
 		var result = callback.call("no");

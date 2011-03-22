@@ -98,7 +98,7 @@ Behavior.prototype = {
 		Behavior.callBaseMethod(this, "initialize");
 
 		if (!this._dontForceLoad) {
-			Sys.require([this.get_scriptObject()], this._create.setScope(this));
+			Sys.require([this.get_scriptObject()], this._create.bind(this));
 		}
 		else {
 			this._create();

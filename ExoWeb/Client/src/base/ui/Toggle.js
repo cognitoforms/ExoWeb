@@ -218,7 +218,7 @@ Toggle.mixin({
 			this._on = value;
 
 			if (this._on && this._on instanceof Array) {
-				this._collectionChangedHandler = this.execute.setScope(this);
+				this._collectionChangedHandler = this.execute.bind(this);
 				Sys.Observer.addCollectionChanged(this._on, this._collectionChangedHandler);
 			}
 

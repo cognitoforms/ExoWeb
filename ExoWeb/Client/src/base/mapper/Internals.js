@@ -718,7 +718,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		}
 
 		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-		ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.setScope(thisPtr) : callback);
+		ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
 	}
 	else {
 		ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
@@ -746,7 +746,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		objSignal.waitForAll(function () {
 			// if a property was specified and its not inited, then wait for it
 			if (property && type.meta.property(property, true).isInited(obj) !== true) {
-				type.meta.property(property, true).addChanged(callback.setScope(thisPtr), obj, true);
+				type.meta.property(property, true).addChanged(callback.bind(thisPtr), obj, true);
 				return;
 			}
 

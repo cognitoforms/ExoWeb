@@ -40,7 +40,7 @@ function ServerSync(model) {
 	// Assign back reference
 	model._server = this;
 
-	this._listener.addChangeCaptured(this._captureChange.setScope(this));
+	this._listener.addChangeCaptured(this._captureChange.bind(this));
 
 	Sys.Observer.makeObservable(this);
 }
@@ -349,8 +349,8 @@ ServerSync.mixin({
 		// If includeAllChanges is true, then use all changes including those 
 		// that should not be saved, otherwise only use changes that can be saved.
 			serializeChanges.call(this, includeAllChanges, obj),
-			this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
-			this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
+			this._onRaiseServerEventSuccess.bind(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
+			this._onRaiseServerEventFailed.bind(this).appendArguments(failed || success, automatic)
 		);
 	},
 	_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, eventName, callback, automatic) {
@@ -415,8 +415,8 @@ ServerSync.mixin({
 
 		roundtripProvider(
 			serializeChanges.call(this),
-			this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic),
-			this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic)
+			this._onRoundtripSuccess.bind(this).appendArguments(success, automatic),
+			this._onRoundtripFailed.bind(this).appendArguments(failed || success, automatic)
 		);
 	},
 	_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, callback, automatic) {
@@ -481,8 +481,8 @@ ServerSync.mixin({
 		saveProvider(
 			toExoGraph(this._translator, root),
 			serializeChanges.call(this, true, root),
-			this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
-			this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
+			this._onSaveSuccess.bind(this).appendArguments(success, automatic),
+			this._onSaveFailed.bind(this).appendArguments(failed || success, automatic)
 		);
 	},
 	_onSaveSuccess: function ServerSync$_onSaveSuccess(result, callback, automatic) {
@@ -806,7 +806,7 @@ ServerSync.mixin({
 							this._changeLog.add(change);
 						}
 						callback();
-					}).setScope(this);
+					}).bind(this);
 
 					if (change.type == "InitNew") {
 						this.applyInitChange(change, ifApplied);

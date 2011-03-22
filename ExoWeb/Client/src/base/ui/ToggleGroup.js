@@ -55,8 +55,8 @@ ToggleGroup.mixin({
 		this._children = [];
 		this._counter = 0;
 
-		this._shownHandler = this._toggleShown.setScope(this);
-		this._hiddenHandler = this._toggleHidden.setScope(this);
+		this._shownHandler = this._toggleShown.bind(this);
+		this._hiddenHandler = this._toggleHidden.bind(this);
 
 		$(":toggle", this._element).ever(this._toggleAdded, this._toggleRemoved, this);
 

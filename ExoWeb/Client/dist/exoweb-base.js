@@ -135,11 +135,29 @@ Type.registerNamespace("ExoWeb.Mapper");
 		};
 	};
 
-	Function.prototype.setScope = function setScope(obj) {
-		var func = this;
-		return function setScope$fn() {
-			return func.apply(obj, arguments);
-		};
+	function bind(obj) {
+		var slice = [].slice,
+			args = slice.call(arguments, 1),
+			self = this,
+			nop = function () {},
+			bound = function () {
+				return self.apply(this instanceof nop ? this : (obj || {}),
+					args.concat(slice.call(arguments)));
+			};
+
+		nop.prototype = self.prototype;
+		bound.prototype = new nop();
+
+		return bound;
+	}
+
+	// Function.prototype.bind polyfill
+	if (!Function.prototype.bind)
+		Function.prototype.bind = bind;
+
+	Function.prototype.setScope = function() {
+		ExoWeb.trace.logWarning("functions", "Function \"setScope\" is decprecated. Use \"bind\" instead.");
+		bind.apply(this, arguments);
 	};
 
 	Function.prototype.prepare = function prepare(thisPtr, args) {
@@ -4966,7 +4984,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 		this.err = new Condition(ctype, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
 
-		var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type); }).setScope(this);
+		var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type); }).bind(this);
 
 		// If the type is already loaded, then register immediately.
 		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -5122,7 +5140,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this._inited = false;
 
 		// Function to register this rule when its containing type is loaded.
-		var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype); }).setScope(this);
+		var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype); }).bind(this);
 
 		// If the type is already loaded, then register immediately.
 		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -5264,7 +5282,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			this.err = new Condition(ctype, this._errorMessage, properties, this);
 
 			// Function to register this rule when its containing type is loaded.
-			var register = (function ErrorIfExpressionsRule$register(ctype) { this.load(this, ctype); }).setScope(this);
+			var register = (function ErrorIfExpressionsRule$register(ctype) { this.load(this, ctype); }).bind(this);
 
 			// If the type is already loaded, then register immediately.
 			if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -5357,7 +5375,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
 
 		// Function to register this rule when its containing type is loaded.
-		var register = (function RequiredIfRule$register(ctype) { CompareRule.load(this, ctype); }).setScope(this);
+		var register = (function RequiredIfRule$register(ctype) { CompareRule.load(this, ctype); }).bind(this);
 
 		// If the type is already loaded, then register immediately.
 		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -5439,7 +5457,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
 
 		// Function to register this rule when its containing type is loaded.
-		var register = (function RequiredIfExpressionsRule$register(ctype) { this.load(this, ctype); }).setScope(this);
+		var register = (function RequiredIfExpressionsRule$register(ctype) { this.load(this, ctype); }).bind(this);
 
 		// If the type is already loaded, then register immediately.
 		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -6961,10 +6979,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this._translator = translator;
 
 		// listen for events
-		model.addListChanged(this.onListChanged.setScope(this));
-		model.addAfterPropertySet(this.onPropertyChanged.setScope(this));
-		model.addObjectRegistered(this.onObjectRegistered.setScope(this));
-		model.addObjectUnregistered(this.onObjectUnregistered.setScope(this));
+		model.addListChanged(this.onListChanged.bind(this));
+		model.addAfterPropertySet(this.onPropertyChanged.bind(this));
+		model.addObjectRegistered(this.onObjectRegistered.bind(this));
+		model.addObjectUnregistered(this.onObjectUnregistered.bind(this));
 	}
 
 	ExoGraphEventListener.mixin(ExoWeb.Functor.eventing);
@@ -7300,7 +7318,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		// Assign back reference
 		model._server = this;
 
-		this._listener.addChangeCaptured(this._captureChange.setScope(this));
+		this._listener.addChangeCaptured(this._captureChange.bind(this));
 
 		Sys.Observer.makeObservable(this);
 	}
@@ -7609,8 +7627,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 			// If includeAllChanges is true, then use all changes including those 
 			// that should not be saved, otherwise only use changes that can be saved.
 				serializeChanges.call(this, includeAllChanges, obj),
-				this._onRaiseServerEventSuccess.setScope(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
-				this._onRaiseServerEventFailed.setScope(this).appendArguments(failed || success, automatic)
+				this._onRaiseServerEventSuccess.bind(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
+				this._onRaiseServerEventFailed.bind(this).appendArguments(failed || success, automatic)
 			);
 		},
 		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, eventName, callback, automatic) {
@@ -7675,8 +7693,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			roundtripProvider(
 				serializeChanges.call(this),
-				this._onRoundtripSuccess.setScope(this).appendArguments(success, automatic),
-				this._onRoundtripFailed.setScope(this).appendArguments(failed || success, automatic)
+				this._onRoundtripSuccess.bind(this).appendArguments(success, automatic),
+				this._onRoundtripFailed.bind(this).appendArguments(failed || success, automatic)
 			);
 		},
 		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, callback, automatic) {
@@ -7741,8 +7759,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 			saveProvider(
 				toExoGraph(this._translator, root),
 				serializeChanges.call(this, true, root),
-				this._onSaveSuccess.setScope(this).appendArguments(success, automatic),
-				this._onSaveFailed.setScope(this).appendArguments(failed || success, automatic)
+				this._onSaveSuccess.bind(this).appendArguments(success, automatic),
+				this._onSaveFailed.bind(this).appendArguments(failed || success, automatic)
 			);
 		},
 		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, callback, automatic) {
@@ -8066,7 +8084,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 								this._changeLog.add(change);
 							}
 							callback();
-						}).setScope(this);
+						}).bind(this);
 
 						if (change.type == "InitNew") {
 							this.applyInitChange(change, ifApplied);
@@ -9156,7 +9174,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 
 			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-			ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.setScope(thisPtr) : callback);
+			ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
 		}
 		else {
 			ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
@@ -9184,7 +9202,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			objSignal.waitForAll(function () {
 				// if a property was specified and its not inited, then wait for it
 				if (property && type.meta.property(property, true).isInited(obj) !== true) {
-					type.meta.property(property, true).addChanged(callback.setScope(thisPtr), obj, true);
+					type.meta.property(property, true).addChanged(callback.bind(thisPtr), obj, true);
 					return;
 				}
 
@@ -9547,7 +9565,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this.server = new ServerSync(model);
 
 		// start capturing changes prior to processing any model query
-		this._addEvent("beforeModel", this.server.beginCapturingChanges.setScope(this.server), null, true);
+		this._addEvent("beforeModel", this.server.beginCapturingChanges.bind(this.server), null, true);
 	}
 
 	Context.mixin(ExoWeb.Functor.eventing);
@@ -9566,7 +9584,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			return result;
 		},
 		addModelReady: function Context$ready(callback, thisPtr) {
-			this._addEvent("modelReady", thisPtr ? callback.setScope(thisPtr) : callback, null, true);
+			this._addEvent("modelReady", thisPtr ? callback.bind(thisPtr) : callback, null, true);
 
 			// Raise event immediately if there are currently models. Subscribers
 			// will not actually be called until signals have subsided.
@@ -9588,7 +9606,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		var contextQuery = new ContextQuery(this, options);
 
 		// if there is a model option, when the query is finished executing the model ready fn will be called
-		contextQuery.execute(options.model ? this.onModelReady.setScope(this) : null);
+		contextQuery.execute(options.model ? this.onModelReady.bind(this) : null);
 	}
 
 	// #endregion
@@ -10247,7 +10265,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				pending = pendingTypeExtensions[typeName] = ExoWeb.Functor();
 			}
 
-			pending.add(thisPtr ? callback.setScope(thisPtr) : callback);
+			pending.add(thisPtr ? callback.bind(thisPtr) : callback);
 		}
 	}
 
@@ -10309,7 +10327,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			pending = pendingSubtypeExtensions[typeName] = ExoWeb.Functor();
 		}
 
-		pending.add(thisPtr ? callback.setScope(thisPtr) : callback);
+		pending.add(thisPtr ? callback.bind(thisPtr) : callback);
 	};
 
 	// #endregion

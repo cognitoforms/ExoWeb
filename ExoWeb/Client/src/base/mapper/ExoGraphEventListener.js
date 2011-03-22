@@ -3,10 +3,10 @@ function ExoGraphEventListener(model, translator) {
 	this._translator = translator;
 
 	// listen for events
-	model.addListChanged(this.onListChanged.setScope(this));
-	model.addAfterPropertySet(this.onPropertyChanged.setScope(this));
-	model.addObjectRegistered(this.onObjectRegistered.setScope(this));
-	model.addObjectUnregistered(this.onObjectUnregistered.setScope(this));
+	model.addListChanged(this.onListChanged.bind(this));
+	model.addAfterPropertySet(this.onPropertyChanged.bind(this));
+	model.addObjectRegistered(this.onObjectRegistered.bind(this));
+	model.addObjectUnregistered(this.onObjectUnregistered.bind(this));
 }
 
 ExoGraphEventListener.mixin(ExoWeb.Functor.eventing);
