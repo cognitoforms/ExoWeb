@@ -5804,25 +5804,28 @@ Type.registerNamespace("ExoWeb.Mapper");
 	}
 
 	Condition.prototype = {
-		get_type: function Condition$get_type() {
+		get_type: function () {
 			return this._type;
 		},
-		get_properties: function Condition$get_properties() {
+		get_properties: function () {
 			return this._properties;
 		},
-		get_message: function Condition$get_message() {
+		get_message: function () {
 			return this._message;
 		},
-		get_origin: function Condition$get_origin() {
+		set_message: function (message) {
+			this._message = message;
+		},
+		get_origin: function () {
 			return this._origin;
 		},
-		set_origin: function Condition$set_origin(origin) {
+		set_origin: function (origin) {
 			this._origin = origin;
 		},
-		get_targets: function Condition$get_targets() {
+		get_targets: function () {
 			return this._targets;
 		},
-		equals: function Condition$equals(o) {
+		equals: function (o) {
 			return o.property.equals(this.property) && o._message.equals(this._message);
 		}
 	};

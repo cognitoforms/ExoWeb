@@ -143,7 +143,7 @@ Sys.Application.registerMarkupExtension("~",
 			else {
 				// setup prepare function to use the specified format
 				prepareValue = function doFormat(obj) {
-					if (properties.format && result.constructor.formats && result.constructor.formats[properties.format]) {
+					if (obj && properties.format && obj.constructor.formats && obj.constructor.formats[properties.format]) {
 						return obj.constructor.formats[properties.format].convert(obj);
 					}
 
