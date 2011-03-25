@@ -49,17 +49,17 @@ var expect = jasmine.expect;
 
 // Test Suites
 ///////////////////////////////////////
-describe("ResponseHandler", function() {
-	it("requires an options argument", function() {
-		expect(function() {
+describe("ResponseHandler", function () {
+	it("requires an options argument", function () {
+		expect(function () {
 			new ResponseHandler();
 		}).toThrow(new Error("Options cannot be null or undefined."));
 	});
 
-	it("loads types, [init] changes, instances, [non-init] changes, and conditions in the correct order", function() {
+	it("loads types, [init] changes, instances, [non-init] changes, and conditions in the correct order", function () {
 		var objs = {
 			Person: {
-				"?1": [null, "Doe", { type: "Person", id: "1" }],
+				"?1": [null, "Doe", { type: "Person", id: "1"}],
 				"1": ["John", "Doe", null]
 			}
 		};
@@ -100,19 +100,19 @@ describe("ResponseHandler", function() {
 			]
 		};
 
-		var initChanges = changes.filter(function(c) { return c.type === "InitNew"; });
-		var otherChanges = changes.filter(function(c) { return c.type !== "InitNew"; });
+		var initChanges = changes.filter(function (c) { return c.type === "InitNew"; });
+		var otherChanges = changes.filter(function (c) { return c.type !== "InitNew"; });
 
 		var appliedChanges = false;
 
 		var mocks = {
-			typesFromJson: function(model, json) {
+			typesFromJson: function (model, json) {
 				expect(model).toBe(modelObj);
 				expect(json).toBe(types);
 				expect(objSpy).not.toHaveBeenCalled();
 				expect(changeSpy).not.toHaveBeenCalled();
 			},
-			objectsFromJson: function(model, json, callback, thisPtr) {
+			objectsFromJson: function (model, json, callback, thisPtr) {
 				expect(model).toBe(modelObj);
 				expect(json).toBe(objs);
 				expect(typeSpy).toHaveBeenCalled();
@@ -120,7 +120,7 @@ describe("ResponseHandler", function() {
 
 				callback.call(thisPtr || this);
 			},
-			conditionsFromJson: function(model, json, callback, thisPtr) {
+			conditionsFromJson: function (model, json, callback, thisPtr) {
 				expect(model).toBe(modelObj);
 				expect(json).toBe(conditions);
 				expect(typeSpy).toHaveBeenCalled();
@@ -129,18 +129,18 @@ describe("ResponseHandler", function() {
 
 				callback.call(thisPtr || this);
 			},
-			applyChanges: function(changes, source, callback, thisPtr) {
+			applyChanges: function (changes, source, serverSync, callback, thisPtr) {
 				expect(typeSpy).toHaveBeenCalled();
 
 				expect(source).toBe("init");
 
 				// sequence: changes (init), objects, changes (non-init)
 				if (appliedChanges) {
-					changes.forEach(function(c, idx) { expect(c).toBe(otherChanges[idx]); });
+					changes.forEach(function (c, idx) { expect(c).toBe(otherChanges[idx]); });
 					expect(objSpy).toHaveBeenCalled();
 				}
 				else {
-					changes.forEach(function(c, idx) { expect(c).toBe(initChanges[idx]); });
+					changes.forEach(function (c, idx) { expect(c).toBe(initChanges[idx]); });
 					expect(objSpy).not.toHaveBeenCalled();
 				}
 
@@ -154,9 +154,9 @@ describe("ResponseHandler", function() {
 		var objSpy = jasmine.spyOn(mocks, "objectsFromJson").andCallThrough();
 		var changeSpy = jasmine.spyOn(mocks, "applyChanges").andCallThrough();
 		var conditionsSpy = jasmine.spyOn(mocks, "conditionsFromJson").andCallThrough();
-		
+
 		var modelObj = {};
-		var serverSyncObj = { applyChanges: changeSpy };
+		var serverSyncObj = { _changeLog: { applyChanges: changeSpy} };
 
 		typesFromJson = typeSpy;
 		objectsFromJson = objSpy;

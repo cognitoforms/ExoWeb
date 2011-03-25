@@ -47,4 +47,22 @@ suite passed
 =============================================
 
 
-11 specs, 0 failures
+map
+=============================================
+Running "map maps items in the array using the callback function provided"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+indexOf
+=============================================
+Running "indexOf returns the index of a given element in the array using the prototype"...
+---------------------------------------------
+Running "indexOf returns the index of a given element in the array not using the prototype"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+14 specs, 0 failures

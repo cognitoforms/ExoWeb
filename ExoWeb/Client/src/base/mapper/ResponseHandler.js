@@ -35,7 +35,7 @@ ResponseHandler.mixin({
 					return change.type === "InitNew";
 				});
 
-				this._serverSync.applyChanges(initChanges, this._options.source, signal.pending());
+				this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync, signal.pending());
 
 				signal.waitForAll(callback, thisPtr, true);
 			}
@@ -70,7 +70,7 @@ ResponseHandler.mixin({
 					return change.type !== "InitNew";
 				});
 
-				this._serverSync.applyChanges(initChanges, this._options.source, signal.pending());
+				this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync, signal.pending());
 
 				signal.waitForAll(callback, thisPtr, true);
 			}
