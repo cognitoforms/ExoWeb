@@ -15,6 +15,7 @@ function Property(containingType, name, jstype, isList, label, format, isStatic,
 	this._isList = !!isList;
 	this._isStatic = !!isStatic;
 	this._index = index;
+	this._rules = [];
 
 	if (containingType.get_originForNewProperties()) {
 		this._origin = containingType.get_originForNewProperties();
@@ -50,33 +51,24 @@ Property.mixin({
 			}
 		}
 	},
-	rule: function Property$rule(type, onlyTargets) {
+	rule: function(type, onlyTargets) {
 		if (!type || !(type instanceof Function)) {
 			ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type ? type : (type === undefined ? "undefined" : "null")]);
 		}
 
-		if (this._rules) {
-			for (var i = 0; i < this._rules.length; i++) {
-				var rule = this._rules[i];
-				if (rule.value instanceof type) {
-					if (!onlyTargets || rule.isTarget === true) {
-						return rule.value;
-					}
-				}
-			}
-		}
-		return null;
+		var rule = first(this._rules, function(rule) {
+			if (rule.value instanceof type)
+				if (!onlyTargets || rule.isTarget === true)
+					return true;
+		});
+
+		return rule ? rule.value : null;
 	},
 	isDefinedBy: function Property$isDefinedBy(mtype) {
 		return this._containingType === mtype || mtype.isSubclassOf(this._containingType);
 	},
 	_addRule: function Property$_addRule(rule, isTarget) {
-		if (!this._rules) {
-			this._rules = [{ value: rule, isTarget: isTarget}];
-		}
-		else {
-			this._rules.push({ value: rule, isTarget: isTarget });
-		}
+		this._rules.push({ value: rule, isTarget: isTarget });
 	},
 	get_rules: function Property$get_rules(onlyTargets) {
 		return this._rules

@@ -1,31 +1,58 @@
-function forEach(arr, callback, thisPtr) {
+function assertArrayArg(arr, functionName) {
 	if (!(arr instanceof Array))
-		throw new TypeError("An array must be passed to \"forEach\".");
-
-	if (!(callback instanceof Function))
-		throw new TypeError("A callback function must be passed to \"forEach\".");
-
-	for (var i = 0, len = arr.length; i < len; i++)
-		if (i in arr)
-			callback.call(thisPtr || this, arr[i], i, arr);
+		throw new TypeError("An array must be passed to \"" + functionName + "\".");
 }
 
-if (!Array.prototype.forEach) {
-	Array.prototype.forEach = function(fun /*, thisp*/) {
-		forEach(this, fun, arguments[1]);
-	};
+function assertFunctionArg(fun, allowNull, functionName) {
+	if (allowNull.constructor !== Boolean) {
+		functionName = allowNull;
+		allowNull = false;
+	}
+
+	if (allowNull && (fun === null || fun === undefined))
+		return;
+
+	if (!(fun instanceof Function))
+		throw new TypeError("A callback function must be passed to \"" + functionName + "\".");
 }
 
+function addRange(arr, items) {
+	assertArrayArg(arr, "addRange");
+	assertArrayArg(items, "addRange");
 
-function filter(arr, callback/*, thisPtr*/) {
-	if (!(arr instanceof Array))
-		throw new TypeError("An array must be passed to \"filter\".");
+	Array.prototype.push.apply(arr, items);
+}
 
-	if (!(callback instanceof Function))
-		throw new TypeError("A callback function must be passed to \"filter\".");
+// Filters out duplicate items from the given array.
+/////////////////////////////////////////////////////
+function distinct(arr) {
+	assertArrayArg(arr, "distinct");
 
 	var result = [];
-	var thisPtr = arguments[2];
+
+	for(var i = 0, len = arr.length; i < len; i++)
+		if (result.indexOf(arr[i]) < 0)
+			result.push(arr[i]);
+
+	return result;
+}
+
+function every(arr, callback, thisPtr) {
+	assertArrayArg(arr, "every");
+	assertFunctionArg(callback, "every");
+
+	for (var i = 0, len = arr.length; i < len; i++)
+		if (i in arr && !callback.call(thisPtr || this, arr[i], i, arr))
+			return false;
+
+	return true;
+}
+
+function filter(arr, callback, thisPtr) {
+	assertArrayArg(arr, "filter");
+	assertFunctionArg(callback, "filter");
+
+	var result = [];
 	for (var i = 0, len = arr.length; i < len; i++) {
 		if (i in arr) {
 			var val = arr[i]; // callback may mutate original item
@@ -37,24 +64,37 @@ function filter(arr, callback/*, thisPtr*/) {
 	return result;
 }
 
-if (!Array.prototype.filter) {
-	Array.prototype.filter = function(callback/*, thisp */) {
-		return filter(this, callback, arguments[1]);
-	};
+function first(arr, callback, thisPtr) {
+	assertArrayArg(arr, "first");
+	assertFunctionArg(callback, true, "first");
+
+	for (var i = 0, len = arr.length; i < len; i++)
+		if (i in arr)
+			callback.call(thisPtr || this, arr[i], i, arr);
 }
 
-// Filters out duplicate items from the given array.
-/////////////////////////////////////////////////////
-function distinct(arr) {
-	var result = [];
+function forEach(arr, callback, thisPtr) {
+	assertArrayArg(arr, "forEach");
+	assertFunctionArg(callback, "forEach");
 
-	for(var i = 0, len = arr.length; i < len; i++)
-		if (result.indexOf(arr[i]) < 0)
-			result.push(arr[i]);
-
-	return result;
+	for (var i = 0, len = arr.length; i < len; i++)
+		if (i in arr)
+			callback.call(thisPtr || this, arr[i], i, arr);
 }
-exports.distinct = distinct; // IGNORE
+
+function indexOf(arr, elt, from) {
+	assertArrayArg(arr, "indexOf");
+
+	var from = Number(from) || 0;
+	from = (from < 0) ? Math.ceil(from) : Math.floor(from);
+	if (from < 0) from += len;
+
+	for (; from < len; from++)
+		if (from in arr && arr[from] === elt)
+			return from;
+
+	return -1;
+}
 
 // Finds the set intersection of the two given arrays.  The items
 // in the resulting list are distinct and in no particular order.
@@ -64,188 +104,54 @@ function intersect(arr1, arr2) {
 		return arr2.indexOf(item) >= 0;
 	}));
 }
-exports.intersect = intersect; // IGNORE
 
-if (!Array.prototype.map) {
-	Array.prototype.map = function Array$map(fun /*, thisp*/) {
-		var len = this.length >>> 0;
-		if (typeof fun != "function") {
-			throw new TypeError();
-		}
+function lastIndexOf(arr, item, from) {
+	assertArrayArg(arr, "lastIndexOf");
 
-		var res = new Array(len);
-		var thisp = arguments[1];
-		for (var i = 0; i < len; i++) {
-			if (i in this) {
-				res[i] = fun.call(thisp, this[i], i, this);
-			}
-		}
+	var len = arr.length;
 
-		return res;
-	};
-}
+	if (len === 0) return -1;
 
-if (!Array.prototype.every) {
-	Array.prototype.every = function Array$every(fun /*, thisp*/) {
-		var len = this.length >>> 0;
-		if (typeof fun != "function") {
-			throw new TypeError();
-		}
+	var n = len;
+	if (from) {
+		n = Number(from);
 
-		var thisp = arguments[1];
-		for (var i = 0; i < len; i++) {
-			if (i in this && !fun.call(thisp, this[i], i, this)) {
-				return false;
-			}
-		}
-
-		return true;
-	};
-}
-
-if (!Array.prototype.indexOf) {
-	Array.prototype.indexOf = function Array$indexOf(elt /*, from*/) {
-		var len = this.length >>> 0;
-
-		var from = Number(arguments[1]) || 0;
-
-		from = (from < 0) ? Math.ceil(from) : Math.floor(from);
-
-		if (from < 0) {
-			from += len;
-		}
-
-		for (; from < len; from++) {
-			if (from in this && this[from] === elt) {
-				return from;
-			}
-		}
-		return -1;
-	};
-}
-
-if (!Array.prototype.some) {
-	Array.prototype.some = function Array$some(fun /*, thisp*/) {
-		var i = 0,
-		len = this.length >>> 0;
-
-		if (typeof fun != "function") {
-			throw new TypeError();
-		}
-	
-		var thisp = arguments[1];
-		for (; i < len; i++) {
-			if (i in this && fun.call(thisp, this[i], i, this)) {
-				return true;
-			}
-		}
-
-		return false;
-	};
-}
-
-if (!Array.prototype.addRange) {
-	Array.prototype.addRange = function Array$addRange(items) {
-		Array.prototype.push.apply(this, items);
-	};
-}
-
-if (!Array.prototype.clear) {
-	Array.prototype.clear = function Array$clear() {
-		this.length = 0;
-	};
-}
-
-if (!Array.prototype.dequeue) {
-	Array.prototype.dequeue = function Array$dequeue() {
-		return this.shift();
-	};
-}
-
-if (!Array.prototype.remove) {
-	Array.prototype.remove = function Array$remove(item) {
-		var idx = this.indexOf(item);
-		if (idx < 0) {
-			return false;
-		}
-
-		this.splice(idx, 1);
-		return true;
-	};
-}
-
-if (!Array.prototype.copy) {
-	Array.prototype.copy = function Array$copy() {
-		return Array.prototype.splice.apply([], [0, 0].concat(this));
-	};
-}
-
-// https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Array/lastIndexOf
-if (!Array.prototype.lastIndexOf) {
-	Array.prototype.lastIndexOf = function(searchElement /*, fromIndex*/) {
-		"use strict";
-
-		if (this === void 0 || this === null) {
-			throw new TypeError();
-		}
-
-		var t = Object(this);
-		var len = t.length >>> 0;
-
-		if (len === 0) {
-			return -1;
-		}
-
-		var n = len;
-		if (arguments.length > 0) {
-			n = Number(arguments[1]);
-			if (n !== n) {
-				n = 0;
-			}
-			else if (n !== 0 && n !== (1 / 0) && n !== -(1 / 0)) {
-				n = (n > 0 || -1) * Math.floor(Math.abs(n));
-			}
-		}
-
-		var k = n >= 0
-			? Math.min(n, len - 1)
-			: len - Math.abs(n);
-
-		while (k >= 0)
-		{
-			if (k in t && t[k] === searchElement) {
-				return k;
-			}
-		}
-
-		return -1;
-	};
-}
-
-function purge(arr, fn, thisPtr) {
-	var result;
-	for (var i = arr.length - 1; i >= 0; i--) {
-		if (fn.call(thisPtr || this, arr[i], i) === true) {
-			if (arr.removeAt) {
-				arr.removeAt(i);
-			}
-			else {
-				arr.splice(i, 1);
-			}
-
-			if (!result) {
-				result = [];
-			}
-
-			result.splice(0, 0, i);
-		}
+		if (n !== n)
+			n = 0;
+		else if (n !== 0 && n !== (1 / 0) && n !== -(1 / 0))
+			n = (n > 0 || -1) * Math.floor(Math.abs(n));
 	}
+
+	var k = n >= 0 ? Math.min(n, len - 1) : len - Math.abs(n);
+
+	while (k >= 0)
+		if (k in t && t[k] === searchElement)
+			return k;
+
+	return -1;
+}
+
+function map(arr, callback, thisPtr) {
+	assertArrayArg(arr, "map");
+	assertArrayArg(callback, "map");
+
+	var result = [];
+
+	for (var i = 0, len = arr.length; i < len; i++)
+		if (i in arr)
+			result[i] = callback.call(thisPtr || this, arr[i], i, arr);
+
 	return result;
 }
-exports.purge = purge; // IGNORE
 
-Array.prototype.purge = function(fn, thisPtr) {
-	return purge(this, fn, thisPtr);
+function mapToArray(arr, callback, thisPtr) {
+	var result = [];
+
+	forEach(arr, function(item, i, a) {
+		addRange(result, callback.call(thisPtr || this, item, i, a));
+	});
+
+	return result;
 }
 
 function peek(arr) {
@@ -254,18 +160,95 @@ function peek(arr) {
 	return peekVal;
 }
 
-Array.prototype.peek = function() {
-	return peek(this);
-}
+function purge(arr, callback, thisPtr) {
+	assertArrayArg(arr, "purge");
+	assertFunctionArg(callback, "purge");
 
-function mapToArray(arr, fn, thisPtr) {
-	var result = [];
-	forEach(arr, function(item) {
-		result.push.apply(result, fn.call(thisPtr || this, item));
-	});
+	var result;
+
+	for (var i = arr.length - 1; i >= 0; i--) {
+		if (callback.call(thisPtr || this, arr[i], i) === true) {
+			if (arr.removeAt)
+				arr.removeAt(i);
+			else
+				arr.splice(i, 1);
+
+			if (!result) result = [];
+
+			result.splice(0, 0, i);
+		}
+	}
+
 	return result;
 }
 
-Array.prototype.mapToArray = function(fn, thisPtr) {
-	return mapToArray(this, fn, thisPtr);
-};
+function remove(arr, item) {
+	var idx = arr.indexOf(item);
+	if (idx < 0)
+		return false;
+
+	arr.splice(idx, 1);
+	return true;
+}
+
+function some(arr, callback, thisPtr) {
+	assertArrayArg(arr, "some");
+	assertFunctionArg(callback, true, "some");
+
+	for (var i = 0, len = arr.length; i < len; i++)
+		if (i in arr && callback.call(thisPtr || this, arr[i], i, arr))
+			return true;
+
+	return false;
+}
+
+if (!Array.prototype.addRange)
+	Array.prototype.addRange = function(items) { addRange(this, items); };
+if (!Array.prototype.copy)
+	Array.prototype.copy = function() { return Array.prototype.splice.apply([], [0, 0].concat(this)); };
+if (!Array.prototype.clear)
+	Array.prototype.clear = function() { this.length = 0; };
+if (!Array.prototype.dequeue)
+	Array.prototype.dequeue = function() { return this.shift(); };
+if (!Array.prototype.distinct)
+	Array.prototype.distinct = function() { return distinct(this); };
+if (!Array.prototype.every)
+	Array.prototype.every = function(fun /*, thisp*/) { return every(this, fun, arguments[1]); };
+if (!Array.prototype.filter)
+	Array.prototype.filter = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
+if (!Array.prototype.first)
+	Array.prototype.first = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
+if (!Array.prototype.forEach)
+	Array.prototype.forEach = function(fun /*, thisp*/) { forEach(this, fun, arguments[1]); };
+if (!Array.prototype.indexOf)
+	Array.prototype.indexOf = function(elt/*, from*/) { return indexOf(this, elt, arguments[1]); };
+if (!Array.prototype.intersect)
+	Array.prototype.intersect = function(items) { return intersect(this, items); };
+if (!Array.prototype.lastIndexOf)
+	Array.prototype.lastIndexOf = function (item/*, from*/) { return lastIndexOf(this, item, arguments[1]); };
+if (!Array.prototype.map)
+	Array.prototype.map = function(fun /*, thisp*/) { return map(this, fun, arguments[1]); };
+if (!Array.prototype.mapToArray)
+	Array.prototype.mapToArray = function(fun/*, thisp*/) { return mapToArray(this, fun, arguments[1]); };
+if (!Array.prototype.peek)
+	Array.prototype.peek = function() { return peek(this); }
+if (!Array.prototype.purge)
+	Array.prototype.purge = function(fun/*, thisp*/) { return purge(this, fun, arguments[1]); }
+if (!Array.prototype.remove)
+	Array.prototype.remove = function(item) { return remove(this, item); };
+if (!Array.prototype.some)
+	Array.prototype.some = function(fun /*, thisp*/) { return some(this, fun, arguments[1]); };
+
+exports.distinct = distinct; // IGNORE
+exports.every = every; // IGNORE
+exports.filter = filter; // IGNORE
+exports.first = first; // IGNORE
+exports.forEach = forEach; // IGNORE
+exports.indexOf = indexOf; // IGNORE
+exports.intersect = intersect; // IGNORE
+exports.lastIndexOf = lastIndexOf; // IGNORE
+exports.map = map; // IGNORE
+exports.mapToArray = mapToArray; // IGNORE
+exports.peek = peek; // IGNORE
+exports.purge = purge; // IGNORE
+exports.some = some; // IGNORE

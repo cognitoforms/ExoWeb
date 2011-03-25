@@ -1,5 +1,41 @@
-5 errors occurred:
+41 errors occurred:
 97: 'call' is already defined.
 109: Bad assignment.
-460: Expected an identifier and instead saw 'void'.
-460: Stopping, unable to continue. (3% scanned).
+362: 'from' is already defined.
+508: Missing semicolon.
+510: Missing semicolon.
+667: Expected an identifier and instead saw 'arguments' (a reserved word).
+671: Expected an identifier and instead saw 'arguments' (a reserved word).
+696: Don't make functions within a loop.
+1665: Bad line breaking before '||'.
+1665: Missing radix parameter.
+1666: 'value' is already defined.
+1805: Unescaped '{'.
+1805: Unescaped '}'.
+1810: Unescaped '{'.
+1810: Unescaped '}'.
+1875: Expected an identifier and instead saw 'undefined' (a reserved word).
+2098: 'handler' is already defined.
+2098: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2223: Don't make functions within a loop.
+2235: 'handler' is already defined.
+2235: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2310: Unescaped '{'.
+2310: Unescaped '}'.
+2506: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2633: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2788: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2830: Use '===' to compare with ''.
+2887: 'type' is already defined.
+2983: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+3091: Use '===' to compare with '0'.
+3112: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+3248: Don't make functions within a loop.
+3259: Don't make functions within a loop.
+3270: Don't make functions within a loop.
+3303: Don't make functions within a loop.
+4208: Mixed spaces and tabs.
+4701: Unnecessary semicolon.
+5224: Unsafe character.
+5224: Unexpected '﻿'.
+5224: Stopping, unable to continue. (40% scanned).

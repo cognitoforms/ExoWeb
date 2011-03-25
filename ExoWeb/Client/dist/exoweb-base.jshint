@@ -1,5 +1,41 @@
-5 errors occurred:
+41 errors occurred:
 94: 'call' is already defined.
 106: Bad assignment.
-457: Expected an identifier and instead saw 'void'.
-457: Stopping, unable to continue. (4% scanned).
+359: 'from' is already defined.
+505: Missing semicolon.
+507: Missing semicolon.
+664: Expected an identifier and instead saw 'arguments' (a reserved word).
+668: Expected an identifier and instead saw 'arguments' (a reserved word).
+693: Don't make functions within a loop.
+1662: Bad line breaking before '||'.
+1662: Missing radix parameter.
+1663: 'value' is already defined.
+1802: Unescaped '{'.
+1802: Unescaped '}'.
+1807: Unescaped '{'.
+1807: Unescaped '}'.
+1872: Expected an identifier and instead saw 'undefined' (a reserved word).
+2095: 'handler' is already defined.
+2095: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2220: Don't make functions within a loop.
+2232: 'handler' is already defined.
+2232: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2307: Unescaped '{'.
+2307: Unescaped '}'.
+2503: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2630: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2785: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2827: Use '===' to compare with ''.
+2884: 'type' is already defined.
+2980: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+3088: Use '===' to compare with '0'.
+3109: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+3245: Don't make functions within a loop.
+3256: Don't make functions within a loop.
+3267: Don't make functions within a loop.
+3300: Don't make functions within a loop.
+4205: Mixed spaces and tabs.
+4698: Unnecessary semicolon.
+5221: Unsafe character.
+5221: Unexpected '﻿'.
+5221: Stopping, unable to continue. (50% scanned).
