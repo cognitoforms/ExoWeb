@@ -7,6 +7,7 @@ var arrays = require("../../../src/base/core/Array");
 var distinct = arrays.distinct;
 var intersect = arrays.intersect;
 var purge = arrays.purge;
+var first = arrays.first;
 
 // References
 ///////////////////////////////////////
@@ -102,6 +103,14 @@ describe("intersect", function() {
 	it("returns distinct results", function() {
 		arrayEquals(intersect([0, 1], [1, 2]), [1], true);
 		arrayEquals(intersect([0, 1, 2, 4, 3, 4, 1], [4, 3, 2, 1]), [3, 1, 4, 2], true);
+	});
+});
+
+describe("first", function() {
+	it("returns the first item in the list that passes the given filter", function() {
+		expect(first([0, 54, 23, 5], function(i) { return i > 5; })).toBe(54);
+		expect(first([0, 54, 23, 5], function(i) { return i > 54; })).toBe(null);
+		expect(first([0, 54, 23, 5], function(i) { return i > 0 && i < 10; })).toBe(5);
 	});
 });
 

@@ -1,41 +1,41 @@
 41 errors occurred:
 97: 'call' is already defined.
 109: Bad assignment.
-362: 'from' is already defined.
-508: Missing semicolon.
-510: Missing semicolon.
-667: Expected an identifier and instead saw 'arguments' (a reserved word).
-671: Expected an identifier and instead saw 'arguments' (a reserved word).
-696: Don't make functions within a loop.
-1665: Bad line breaking before '||'.
-1665: Missing radix parameter.
-1666: 'value' is already defined.
-1805: Unescaped '{'.
-1805: Unescaped '}'.
-1810: Unescaped '{'.
-1810: Unescaped '}'.
-1875: Expected an identifier and instead saw 'undefined' (a reserved word).
-2098: 'handler' is already defined.
-2098: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2223: Don't make functions within a loop.
-2235: 'handler' is already defined.
-2235: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2310: Unescaped '{'.
-2310: Unescaped '}'.
-2506: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2633: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2788: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2830: Use '===' to compare with ''.
-2887: 'type' is already defined.
-2983: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-3091: Use '===' to compare with '0'.
-3112: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-3248: Don't make functions within a loop.
-3259: Don't make functions within a loop.
-3270: Don't make functions within a loop.
-3303: Don't make functions within a loop.
-4208: Mixed spaces and tabs.
-4701: Unnecessary semicolon.
-5224: Unsafe character.
-5224: Unexpected '﻿'.
-5224: Stopping, unable to continue. (40% scanned).
+369: 'from' is already defined.
+515: Missing semicolon.
+517: Missing semicolon.
+674: Expected an identifier and instead saw 'arguments' (a reserved word).
+678: Expected an identifier and instead saw 'arguments' (a reserved word).
+703: Don't make functions within a loop.
+1672: Bad line breaking before '||'.
+1672: Missing radix parameter.
+1673: 'value' is already defined.
+1812: Unescaped '{'.
+1812: Unescaped '}'.
+1817: Unescaped '{'.
+1817: Unescaped '}'.
+1882: Expected an identifier and instead saw 'undefined' (a reserved word).
+2105: 'handler' is already defined.
+2105: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2230: Don't make functions within a loop.
+2242: 'handler' is already defined.
+2242: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2317: Unescaped '{'.
+2317: Unescaped '}'.
+2513: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2640: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2795: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2837: Use '===' to compare with ''.
+2894: 'type' is already defined.
+2990: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+3098: Use '===' to compare with '0'.
+3119: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+3255: Don't make functions within a loop.
+3266: Don't make functions within a loop.
+3277: Don't make functions within a loop.
+3310: Don't make functions within a loop.
+4215: Mixed spaces and tabs.
+4708: Unnecessary semicolon.
+5231: Unsafe character.
+5231: Unexpected '﻿'.
+5231: Stopping, unable to continue. (40% scanned).

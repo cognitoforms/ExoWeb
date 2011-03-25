@@ -68,9 +68,16 @@ function first(arr, callback, thisPtr) {
 	assertArrayArg(arr, "first");
 	assertFunctionArg(callback, true, "first");
 
-	for (var i = 0, len = arr.length; i < len; i++)
-		if (i in arr)
-			callback.call(thisPtr || this, arr[i], i, arr);
+	for (var i = 0, len = arr.length; i < len; i++) {
+		if (i in arr) {
+			var val = arr[i];
+			if (callback.call(thisPtr || this, val, i, arr) === true) {
+				return val;
+			}
+		}
+	}
+
+	return null;
 }
 
 function forEach(arr, callback, thisPtr) {
