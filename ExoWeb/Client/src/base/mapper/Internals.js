@@ -637,7 +637,7 @@ function ruleFromJson(rulesJson, prop) {
 	}
 }
 
-var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})\.\d{3}Z$/g;
+var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
 var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
 
 // Recursively searches throught the specified object and restores dates serialized as strings

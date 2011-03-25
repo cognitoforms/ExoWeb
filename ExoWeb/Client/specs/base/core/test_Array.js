@@ -8,6 +8,8 @@ var distinct = arrays.distinct;
 var intersect = arrays.intersect;
 var purge = arrays.purge;
 var first = arrays.first;
+var map = arrays.map;
+var indexOf = arrays.indexOf;
 
 // References
 ///////////////////////////////////////
@@ -111,6 +113,25 @@ describe("first", function() {
 		expect(first([0, 54, 23, 5], function(i) { return i > 5; })).toBe(54);
 		expect(first([0, 54, 23, 5], function(i) { return i > 54; })).toBe(null);
 		expect(first([0, 54, 23, 5], function(i) { return i > 0 && i < 10; })).toBe(5);
+	});
+});
+
+describe("map", function () {
+	it("maps items in the array using the callback function provided", function () {
+		arrayEquals(map(["A", "B", "C"], function (item, index) {
+			return item.toLowerCase();
+		}), ["a", "b", "c"], true);
+	});
+});
+
+describe("indexOf", function () {
+	it("returns the index of a given element in the array using the prototype", function () {
+		var tempArray = ["A", "B", "C"];
+		expect(tempArray.indexOf("B")).toBe(1);
+	});
+	it("returns the index of a given element in the array not using the prototype", function () {
+		var tempArray = ["A", "B", "C"];
+		expect(indexOf(tempArray, "B")).toBe(1);
 	});
 });
 

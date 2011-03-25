@@ -362,7 +362,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	function indexOf(arr, elt, from) {
 		assertArrayArg(arr, "indexOf");
-
+		var len = arr.length;
 		var from = Number(from) || 0;
 		from = (from < 0) ? Math.ceil(from) : Math.floor(from);
 		if (from < 0) from += len;
@@ -411,7 +411,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	function map(arr, callback, thisPtr) {
 		assertArrayArg(arr, "map");
-		assertArrayArg(callback, "map");
+		assertFunctionArg(callback, "map");
 
 		var result = [];
 
@@ -9068,7 +9068,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 	}
 
-	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})\.\d{3}Z$/g;
+	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
 	var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
 
 	// Recursively searches throught the specified object and restores dates serialized as strings

@@ -91,7 +91,7 @@ function forEach(arr, callback, thisPtr) {
 
 function indexOf(arr, elt, from) {
 	assertArrayArg(arr, "indexOf");
-
+	var len = arr.length;
 	var from = Number(from) || 0;
 	from = (from < 0) ? Math.ceil(from) : Math.floor(from);
 	if (from < 0) from += len;
@@ -140,7 +140,7 @@ function lastIndexOf(arr, item, from) {
 
 function map(arr, callback, thisPtr) {
 	assertArrayArg(arr, "map");
-	assertArrayArg(callback, "map");
+	assertFunctionArg(callback, "map");
 
 	var result = [];
 
