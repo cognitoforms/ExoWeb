@@ -31,7 +31,7 @@ ResponseHandler.mixin({
 
 				var changes = Array.prototype.slice.apply(this._options.changes);
 
-				var initChanges = changes.where(function(change) {
+				var initChanges = changes.filter(function(change) {
 					return change.type === "InitNew";
 				});
 
@@ -66,7 +66,7 @@ ResponseHandler.mixin({
 
 				var changes = Array.prototype.slice.apply(this._options.changes);
 
-				var initChanges = changes.where(function(change) {
+				var initChanges = changes.filter(function(change) {
 					return change.type !== "InitNew";
 				});
 

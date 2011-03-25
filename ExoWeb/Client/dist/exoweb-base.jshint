@@ -1,5 +1,5 @@
 5 errors occurred:
 94: 'call' is already defined.
 106: Bad assignment.
-452: Expected an identifier and instead saw 'void'.
-452: Stopping, unable to continue. (4% scanned).
+457: Expected an identifier and instead saw 'void'.
+457: Stopping, unable to continue. (4% scanned).

@@ -76,7 +76,7 @@ ContextQuery.mixin({
 								from: query.from,
 								ids: query.ids,
 								// TODO: this will be subset of paths interpreted as scope-of-work
-								include: query.include ? query.include.where(function(p) { return p.startsWith("this."); }) : [],
+								include: query.include ? query.include.filter(function(p) { return p.startsWith("this."); }) : [],
 								inScope: true,
 								forLoad: false
 							};
@@ -257,7 +257,7 @@ ContextQuery.mixin({
 				ExoWeb.eachProp(this.options.model, function(varName, query) {
 					if (!query.load && query.ids.length === 0) {
 						// Remove instance paths when an id is not specified
-						var staticPaths = query.include ? query.include.where(function(p) { return !p.startsWith("this."); }) : null;
+						var staticPaths = query.include ? query.include.filter(function(p) { return !p.startsWith("this."); }) : null;
 
 						// Only call the server if paths were specified
 						if (staticPaths && staticPaths.length > 0)
@@ -416,7 +416,7 @@ ContextQuery.mixin({
 
 					fetchTypes(this.context.model.meta, typeQuery.from, typeQuery.normalized, allSignals.pending(null, this, true));
 
-					var staticPaths = typeQuery.include ? typeQuery.include.where(function(p) { return !p.startsWith("this."); }) : null;
+					var staticPaths = typeQuery.include ? typeQuery.include.filter(function(p) { return !p.startsWith("this."); }) : null;
 
 					if (staticPaths && staticPaths.length > 0) {
 						objectProvider(typeQuery.from, null, staticPaths, false, null,

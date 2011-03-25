@@ -24,10 +24,10 @@ Sys.Application.registerMarkupExtension("?",
 		};
 
 		function updateConditions() {
-			var conditions = meta.conditions().where(function(c) {
+			var conditions = meta.conditions().filter(function(c) {
 				return (!types || types.indexOf(c.get_type().get_code()) >= 0) && // check for type code match (if specified)
 					(!sets || intersect(sets, c.get_type().get_sets().map(function(s) { return s.get_name(); })).length > 0) && // check for set code match (if specified)
-					(!target || c.get_targets().where(function(t) { return t.get_entity() === target(); }).length > 0); // check for target (if specified)
+					(!target || c.get_targets().some(function(t) { return t.get_entity() === target(); })); // check for target (if specified)
 			});
 
 			if (options.single === true) {

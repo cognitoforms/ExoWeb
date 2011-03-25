@@ -100,8 +100,8 @@ describe("ResponseHandler", function() {
 			]
 		};
 
-		var initChanges = changes.where(function(c) { return c.type === "InitNew"; });
-		var otherChanges = changes.where(function(c) { return c.type !== "InitNew"; });
+		var initChanges = changes.filter(function(c) { return c.type === "InitNew"; });
+		var otherChanges = changes.filter(function(c) { return c.type !== "InitNew"; });
 
 		var appliedChanges = false;
 

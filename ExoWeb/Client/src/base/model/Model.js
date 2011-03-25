@@ -43,7 +43,7 @@ Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callba
 
 	if (isGlobal) {
 		// Get all but the last step in the path.
-		var typePathSteps = $transform(tokens.steps).where(function(item, i) { return i != tokens.steps.length - 1; });
+		var typePathSteps = tokens.steps.filter(function(item, i) { return i != tokens.steps.length - 1; });
 
 		// Construct a string from these steps.
 		var typeName = typePathSteps.map(function(item) { return item.property; }).join(".");

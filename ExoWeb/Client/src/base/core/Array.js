@@ -16,7 +16,8 @@ if (!Array.prototype.forEach) {
 	};
 }
 
-function filter(arr, callback, thisPtr) {
+
+function filter(arr, callback/*, thisPtr*/) {
 	if (!(arr instanceof Array))
 		throw new TypeError("An array must be passed to \"filter\".");
 
@@ -24,17 +25,21 @@ function filter(arr, callback, thisPtr) {
 		throw new TypeError("A callback function must be passed to \"filter\".");
 
 	var result = [];
-
-	for (var i = 0, len = arr.length; i < len; i++)
-		if (i in arr && callback.call(thisPtr || this, arr[i], i, arr) === true)
-			result.push(arr[i]);
+	var thisPtr = arguments[2];
+	for (var i = 0, len = arr.length; i < len; i++) {
+		if (i in arr) {
+			var val = arr[i]; // callback may mutate original item
+			if (callback.call(thisPtr || this, val, i, arr) === true)
+				result.push(val);
+		}
+	}
 
 	return result;
 }
 
-if (!Array.prototype.where) {
-	Array.prototype.where = function(fun /*, thisp*/) {
-		return filter(this, fun, arguments[1]);
+if (!Array.prototype.filter) {
+	Array.prototype.filter = function(callback/*, thisp */) {
+		return filter(this, callback, arguments[1]);
 	};
 }
 
@@ -253,7 +258,7 @@ Array.prototype.peek = function() {
 	return peek(this);
 }
 
-function mapToList(arr, fn, thisPtr) {
+function mapToArray(arr, fn, thisPtr) {
 	var result = [];
 	forEach(arr, function(item) {
 		result.push.apply(result, fn.call(thisPtr || this, item));
@@ -261,6 +266,6 @@ function mapToList(arr, fn, thisPtr) {
 	return result;
 }
 
-Array.prototype.mapToList = function(fn, thisPtr) {
-	return mapToList(this, fn, thisPtr);
+Array.prototype.mapToArray = function(fn, thisPtr) {
+	return mapToArray(this, fn, thisPtr);
 };

@@ -18,7 +18,7 @@ ExoWeb.registerActivity(function() {
 });
 
 Batch.all = function Batch_$all(includeEnded) {
-	return allBatches.where(function(e) {
+	return allBatches.filter(function(e) {
 		return includeEnded || !e.isEnded();
 	});
 };

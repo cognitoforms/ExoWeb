@@ -64,7 +64,7 @@ function serializeChanges(includeAllChanges, simulateInitRoot) {
 		}
 
 		var found = false;
-		var initSet = changes.where(function(set) { return set.source === "init"; })[0];
+		var initSet = changes.filter(function(set) { return set.source === "init"; })[0];
 		if (!initSet || !initSet.changes.some(isRootChange, this)) {
 			changes.forEach(function(set) {
 				if (found === true) return;
@@ -772,11 +772,6 @@ ServerSync.mixin({
 				// look for remaining changes that are save changes, but only if 
 				// we are finished processing changes that occurred before a save
 				var saveChanges = null;
-				//						if (ignoreCount === 0) {
-				//							saveChanges = $transform(changes).where(function(c) {
-				//								return c.type === "Save";
-				//							});
-				//						}
 
 				// process the next save change
 				if (saveChanges && saveChanges.length > 0) {
