@@ -34,8 +34,8 @@
 3266: Don't make functions within a loop.
 3277: Don't make functions within a loop.
 3310: Don't make functions within a loop.
-4215: Mixed spaces and tabs.
-4708: Unnecessary semicolon.
-5231: Unsafe character.
-5231: Unexpected '﻿'.
-5231: Stopping, unable to continue. (39% scanned).
+4214: Mixed spaces and tabs.
+4707: Unnecessary semicolon.
+5230: Unsafe character.
+5230: Unexpected '﻿'.
+5230: Stopping, unable to continue. (39% scanned).

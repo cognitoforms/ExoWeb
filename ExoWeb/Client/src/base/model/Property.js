@@ -379,7 +379,7 @@ Property.mixin({
 	removeChanged: function Property$removeChanged(handler) {
 		this._removeEvent("changed", handler);
 	},
-	_addCalculatedRule: function Property$_addCalculatedRule(calculateFn, isAsync, inputs) {
+	_addCalculatedRule: function Property$_addCalculatedRule(rootType, calculateFn, isAsync, inputs) {
 		// calculated property should always be initialized when first accessed
 		var input = new RuleInput(this);
 		input.set_dependsOnGet(true);
@@ -467,11 +467,10 @@ Property.mixin({
 			}
 		};
 
-		Rule.register(rule, inputs, isAsync, this.get_containingType(), function () {
-
+		Rule.register(rule, inputs, isAsync, rootType, function () {
 			if (rule.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0) {
 				// Execute for existing instances
-				Array.forEach(this._containingType.known(), function (obj) {
+				Array.forEach(rootType.known(), function (obj) {
 					if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
 						try {
 							rule._isExecuting = true;
@@ -532,7 +531,7 @@ Property.mixin({
 			// wait until all property information is available to initialize the calculation
 			this._readySignal.waitForAll(function () {
 				ExoWeb.Batch.whenDone(function () {
-					prop._addCalculatedRule(options.fn, options.isAsync, inputs);
+					prop._addCalculatedRule(rootType, options.fn, options.isAsync, inputs);
 				});
 			});
 		}
@@ -541,7 +540,7 @@ Property.mixin({
 			inferredInputs.forEach(function (input) {
 				input.set_dependsOnInit(true);
 			});
-			prop._addCalculatedRule(options.fn, options.isAsync, inferredInputs);
+			prop._addCalculatedRule(rootType, options.fn, options.isAsync, inferredInputs);
 		}
 
 		return this;
