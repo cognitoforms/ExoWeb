@@ -181,14 +181,14 @@ namespace ExoWeb
 
 			// Apply changes and raise domain events
 			if (transaction != null)
-				response.Changes = transaction.Perform(() => RaiseEvents(response));
+				response.Changes = transaction.Perform(() => RaiseEvents(response, transaction));
 
 			// Otherwise, just raise events
 			else
 			{
 				using (response.Changes = context.BeginTransaction())
 				{
-					RaiseEvents(response);
+					RaiseEvents(response, null);
 				}
 			}	
 		}
@@ -196,7 +196,7 @@ namespace ExoWeb
 		/// <summary>
 		/// Raises domain events.
 		/// </summary>
-		void RaiseEvents(ServiceResponse response)
+		void RaiseEvents(ServiceResponse response, GraphTransaction transaction)
 		{
 			// Process each event in the request
 			if (Events != null)
@@ -204,8 +204,12 @@ namespace ExoWeb
 				response.Events = Events
 					.Select((domainEvent) =>
 					{
-						domainEvent.Instance = GetInstance(Changes, domainEvent.Instance.Type, domainEvent.Instance.Id);
-						var result = domainEvent.Raise(Changes);
+						if (transaction != null)
+							domainEvent.Instance = transaction.GetInstance(domainEvent.Instance.Type, domainEvent.Instance.Id);
+						else
+							domainEvent.Instance.Type.Create(domainEvent.Instance.Id);
+
+						var result = domainEvent.Raise(transaction);
 
 						if (result == null)
 							return null;
@@ -244,17 +248,6 @@ namespace ExoWeb
 					})
 					.ToArray();
 			}
-		}
-
-		static GraphInstance GetInstance(ChangeSet[] changes, GraphType type, string id)
-		{
-			foreach (var set in changes)
-			{
-				GraphInstance instance = set.Changes.GetInstance(type, id);
-				if (instance != null)
-					return instance;
-			}
-			return null;
 		}
 
 		/// <summary>
@@ -500,7 +493,7 @@ namespace ExoWeb
 
 			public string[] Include { get; internal set; }			
 
-			internal virtual object Raise(ChangeSet[] changes)
+			internal virtual object Raise(GraphTransaction transaction)
 			{
 				throw new NotImplementedException();
 			}
@@ -572,7 +565,7 @@ namespace ExoWeb
 			/// <summary>
 			/// Raises the domain event on the target <see cref="GraphInstance"/>.
 			/// </summary>
-			internal override object Raise(ChangeSet[] changes)
+			internal override object Raise(GraphTransaction transaction)
 			{
 				if (typeof(TEvent) == typeof(SaveEvent))
 				{
@@ -608,7 +601,7 @@ namespace ExoWeb
 				this.Include = include;
 			}
 
-			internal override object Raise(ChangeSet[] changes)
+			internal override object Raise(GraphTransaction transaction)
 			{
 				object[] args = method.Parameters.Select(p =>
 				{
@@ -620,7 +613,7 @@ namespace ExoWeb
 					{
 						GraphInstance gi = json.Get<GraphInstance>(p.Name);
 						if (gi != null)
-							gi = GetInstance(changes, gi.Type, gi.Id);
+							gi = transaction.GetInstance(gi.Type, gi.Id);
 						return gi == null ? null : gi.Instance;
 					}
 				})
