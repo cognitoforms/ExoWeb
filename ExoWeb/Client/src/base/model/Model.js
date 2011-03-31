@@ -27,7 +27,7 @@ function Model() {
 	);
 }
 
-Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback*/) {
+Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback, thisPtr*/) {
 	if (arguments.length === 0) {
 		ExoWeb.trace.throwAndLog("model", "No arguments passed to \"property\" method.");
 	}
@@ -88,18 +88,19 @@ Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callba
 	}
 
 	var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-	var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
+	var callback = arguments[3];
+	var thisPtr = arguments[4];
 
 	if (tokens.steps.length === 1) {
 		var name = tokens.steps[0].property;
 		if (lazyLoadTypes) {
 			if (!LazyLoader.isLoaded(type)) {
 				LazyLoader.load(type, null, function() {
-					callback(type.property(name, true));
+					callback.call(thisPtr || this, type.property(name, true));
 				});
 			}
 			else {
-				callback(type.property(name, true));
+				callback.call(thisPtr || this, type.property(name, true));
 			}
 		}
 		else {
@@ -107,7 +108,7 @@ Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callba
 		}
 	}
 	else {
-		return new PropertyChain(type, tokens, lazyLoadTypes, callback);
+		return new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
 	}
 };
 

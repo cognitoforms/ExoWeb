@@ -71,7 +71,7 @@ function first(arr, callback, thisPtr) {
 	for (var i = 0, len = arr.length; i < len; i++) {
 		if (i in arr) {
 			var val = arr[i];
-			if (callback.call(thisPtr || this, val, i, arr) === true) {
+			if (!callback || callback.call(thisPtr || this, val, i, arr) === true) {
 				return val;
 			}
 		}
@@ -224,7 +224,7 @@ if (!Array.prototype.every)
 if (!Array.prototype.filter)
 	Array.prototype.filter = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
 if (!Array.prototype.first)
-	Array.prototype.first = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
+	Array.prototype.first = function(fun/*, thisp */) { return first(this, fun, arguments[1]); };
 if (!Array.prototype.forEach)
 	Array.prototype.forEach = function(fun /*, thisp*/) { forEach(this, fun, arguments[1]); };
 if (!Array.prototype.indexOf)

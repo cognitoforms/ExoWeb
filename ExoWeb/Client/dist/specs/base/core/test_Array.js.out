@@ -57,12 +57,10 @@ suite passed
 
 indexOf
 =============================================
-Running "indexOf returns the index of a given element in the array using the prototype"...
----------------------------------------------
-Running "indexOf returns the index of a given element in the array not using the prototype"...
+Running "indexOf returns the index of a given element in the array"...
 ---------------------------------------------
 suite passed
 =============================================
 
 
-14 specs, 0 failures
+13 specs, 0 failures

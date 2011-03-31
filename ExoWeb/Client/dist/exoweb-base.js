@@ -342,7 +342,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		for (var i = 0, len = arr.length; i < len; i++) {
 			if (i in arr) {
 				var val = arr[i];
-				if (callback.call(thisPtr || this, val, i, arr) === true) {
+				if (!callback || callback.call(thisPtr || this, val, i, arr) === true) {
 					return val;
 				}
 			}
@@ -495,7 +495,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	if (!Array.prototype.filter)
 		Array.prototype.filter = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
 	if (!Array.prototype.first)
-		Array.prototype.first = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
+		Array.prototype.first = function(fun/*, thisp */) { return first(this, fun, arguments[1]); };
 	if (!Array.prototype.forEach)
 		Array.prototype.forEach = function(fun /*, thisp*/) { forEach(this, fun, arguments[1]); };
 	if (!Array.prototype.indexOf)
@@ -1834,6 +1834,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	ExoWeb.makeHumanReadable = makeHumanReadable;
 
+	function isNullOrUndefined(obj) {
+		return obj === null || obj === undefined;
+	}
+	ExoWeb.isNullOrUndefined = isNullOrUndefined;
+
+	ExoWeb.isNullOrUndefined = isNullOrUndefined;
+
 	// #endregion
 
 	// #region TimeSpan
@@ -2421,7 +2428,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		);
 	}
 
-	Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback*/) {
+	Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback, thisPtr*/) {
 		if (arguments.length === 0) {
 			ExoWeb.trace.throwAndLog("model", "No arguments passed to \"property\" method.");
 		}
@@ -2482,18 +2489,19 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 
 		var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-		var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
+		var callback = arguments[3];
+		var thisPtr = arguments[4];
 
 		if (tokens.steps.length === 1) {
 			var name = tokens.steps[0].property;
 			if (lazyLoadTypes) {
 				if (!LazyLoader.isLoaded(type)) {
 					LazyLoader.load(type, null, function() {
-						callback(type.property(name, true));
+						callback.call(thisPtr || this, type.property(name, true));
 					});
 				}
 				else {
-					callback(type.property(name, true));
+					callback.call(thisPtr || this, type.property(name, true));
 				}
 			}
 			else {
@@ -2501,7 +2509,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 		}
 		else {
-			return new PropertyChain(type, tokens, lazyLoadTypes, callback);
+			return new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
 		}
 	};
 
@@ -3924,6 +3932,30 @@ Type.registerNamespace("ExoWeb.Mapper");
 				});
 				prop._addCalculatedRule(rootType, options.fn, options.isAsync, inferredInputs);
 			}
+
+			return this;
+		},
+		ifExists: function(path) {
+			Model.property(path, this._containingType, true, function(chain) {
+				this.calculated({
+					basedOn: [path],
+					fn: function() {
+						return !isNullOrUndefined(chain.value(this));
+					}
+				});
+			}, this);
+
+			return this;
+		},
+		alias: function(path, eventName) {
+			Model.property(path, this._containingType, true, function(chain) {
+				this.calculated({
+					basedOn: [(eventName ? eventName + " of " : "") + path],
+					fn: function() {
+						return chain.value(this);
+					}
+				});
+			}, this);
 
 			return this;
 		},

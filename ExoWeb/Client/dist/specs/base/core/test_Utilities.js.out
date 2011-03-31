@@ -17,4 +17,12 @@ suite passed
 =============================================
 
 
-5 specs, 0 failures
+isNullOrUndefined
+=============================================
+Running "isNullOrUndefined returns true if the given object is either null or undefined"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+6 specs, 0 failures

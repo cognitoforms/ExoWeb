@@ -545,6 +545,30 @@ Property.mixin({
 
 		return this;
 	},
+	ifExists: function(path) {
+		Model.property(path, this._containingType, true, function(chain) {
+			this.calculated({
+				basedOn: [path],
+				fn: function() {
+					return !isNullOrUndefined(chain.value(this));
+				}
+			});
+		}, this);
+
+		return this;
+	},
+	alias: function(path, eventName) {
+		Model.property(path, this._containingType, true, function(chain) {
+			this.calculated({
+				basedOn: [(eventName ? eventName + " of " : "") + path],
+				fn: function() {
+					return chain.value(this);
+				}
+			});
+		}, this);
+
+		return this;
+	},
 	rootedPath: function Property$rootedPath(type) {
 		if (this.isDefinedBy(type)) {
 			return (this._isStatic ? this._containingType.get_fullName() : "this") + "." + this._name;

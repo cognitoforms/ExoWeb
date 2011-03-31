@@ -110,9 +110,17 @@ describe("intersect", function() {
 
 describe("first", function() {
 	it("returns the first item in the list that passes the given filter", function() {
-		expect(first([0, 54, 23, 5], function(i) { return i > 5; })).toBe(54);
-		expect(first([0, 54, 23, 5], function(i) { return i > 54; })).toBe(null);
-		expect(first([0, 54, 23, 5], function(i) { return i > 0 && i < 10; })).toBe(5);
+		var arr = [0, 54, 23, 5];
+
+		expect(first(arr, function(i) { return i > 5; })).toBe(54);
+		expect(first(arr, function(i) { return i > 54; })).toBe(null);
+		expect(first(arr, function(i) { return i > 0 && i < 10; })).toBe(5);
+		expect(first(arr)).toBe(0);
+
+		expect(arr.first(function(i) { return i > 5; })).toBe(54);
+		expect(arr.first(function(i) { return i > 54; })).toBe(null);
+		expect(arr.first(function(i) { return i > 0 && i < 10; })).toBe(5);
+		expect(arr.first()).toBe(0);
 	});
 });
 
@@ -125,13 +133,11 @@ describe("map", function () {
 });
 
 describe("indexOf", function () {
-	it("returns the index of a given element in the array using the prototype", function () {
-		var tempArray = ["A", "B", "C"];
-		expect(tempArray.indexOf("B")).toBe(1);
-	});
-	it("returns the index of a given element in the array not using the prototype", function () {
-		var tempArray = ["A", "B", "C"];
-		expect(indexOf(tempArray, "B")).toBe(1);
+	it("returns the index of a given element in the array", function () {
+		var arr = ["A", "B", "C"];
+
+		expect(indexOf(arr, "B")).toBe(1);
+		expect(arr.indexOf("B")).toBe(1);
 	});
 });
 

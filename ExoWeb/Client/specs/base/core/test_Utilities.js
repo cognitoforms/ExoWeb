@@ -10,6 +10,7 @@ global.ExoWeb = global.window.ExoWeb = {};
 
 var utilities = require("../../../src/base/core/Utilities");
 var $format = global.window.$format;
+var isNullOrUndefined = utilities.isNullOrUndefined;
 
 // References
 ///////////////////////////////////////
@@ -41,6 +42,15 @@ describe("$format", function() {
 
 	it("if single array argument is passed it uses the array as arguments", function() {
 		expect($format("{0}-{0}", ["ABC"])).toBe("ABC-ABC");
+	});
+});
+
+describe("isNullOrUndefined", function() {
+	it("returns true if the given object is either null or undefined", function() {
+		expect(isNullOrUndefined(null)).toEqual(true);
+		expect(isNullOrUndefined(undefined)).toEqual(true);
+		expect(isNullOrUndefined("")).toEqual(false);
+		expect(isNullOrUndefined(0)).toEqual(false);
 	});
 });
 

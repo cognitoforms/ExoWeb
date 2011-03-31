@@ -14,28 +14,28 @@
 1812: Unescaped '}'.
 1817: Unescaped '{'.
 1817: Unescaped '}'.
-1882: Expected an identifier and instead saw 'undefined' (a reserved word).
-2105: 'handler' is already defined.
-2105: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2230: Don't make functions within a loop.
-2242: 'handler' is already defined.
-2242: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2317: Unescaped '{'.
-2317: Unescaped '}'.
-2513: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2640: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2795: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-2837: Use '===' to compare with ''.
-2894: 'type' is already defined.
-2990: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-3098: Use '===' to compare with '0'.
-3119: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
-3255: Don't make functions within a loop.
-3266: Don't make functions within a loop.
-3277: Don't make functions within a loop.
-3310: Don't make functions within a loop.
-4214: Mixed spaces and tabs.
-4707: Unnecessary semicolon.
-5230: Unsafe character.
-5230: Unexpected '﻿'.
-5230: Stopping, unable to continue. (39% scanned).
+1889: Expected an identifier and instead saw 'undefined' (a reserved word).
+2112: 'handler' is already defined.
+2112: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2237: Don't make functions within a loop.
+2249: 'handler' is already defined.
+2249: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2324: Unescaped '{'.
+2324: Unescaped '}'.
+2521: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2648: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2803: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+2845: Use '===' to compare with ''.
+2902: 'type' is already defined.
+2998: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+3106: Use '===' to compare with '0'.
+3127: The body of a for in should be wrapped in an if statement to filter unwanted properties from the prototype.
+3263: Don't make functions within a loop.
+3274: Don't make functions within a loop.
+3285: Don't make functions within a loop.
+3318: Don't make functions within a loop.
+4246: Mixed spaces and tabs.
+4739: Unnecessary semicolon.
+5262: Unsafe character.
+5262: Unexpected '﻿'.
+5262: Stopping, unable to continue. (39% scanned).

@@ -239,3 +239,10 @@ function makeHumanReadable(text) {
 }
 
 ExoWeb.makeHumanReadable = makeHumanReadable;
+
+function isNullOrUndefined(obj) {
+	return obj === null || obj === undefined;
+}
+exports.isNullOrUndefined = isNullOrUndefined;
+
+ExoWeb.isNullOrUndefined = isNullOrUndefined;
