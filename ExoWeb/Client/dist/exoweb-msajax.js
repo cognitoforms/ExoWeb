@@ -12724,6 +12724,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// invoke the method implementation
 			impl.apply(this, [force]);
 
+			if (!this._target && this._disposed == true) return;
+
 			if (Sys.UI.DomElement.isDomElement(this._target)) {
 				var target = this._target;
 
