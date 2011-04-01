@@ -458,21 +458,18 @@ Adapter.prototype = {
 			}
 		}
 		else {
-			if (!obj) {
-				this.set_systemValue(null);
-			}
-			else {
+			if (selected) {
 				var value = (this.get_systemFormat()) ? this.get_systemFormat().convert(obj) : obj;
 				this.set_systemValue(value);
+			}
+			else {
+				this.set_systemValue(null);
 			}
 		}
 	},
 	get_rawValue: function Adapter$get_rawValue() {
 		this._ensureObservable();
-
-		return (this._propertyChain.lastTarget(this._target)) ?
-			this._propertyChain.value(this._target) :
-			null;
+		return this._propertyChain.value(this._target);
 	},
 	set_rawValue: function Adapter$set_rawValue(value, changed) {
 		var prop = this._propertyChain;

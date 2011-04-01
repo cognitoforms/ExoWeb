@@ -372,7 +372,7 @@ PropertyChain.prototype = {
 			prop.value(target, val, customInfo);
 		}
 		else {
-			return prop.value(target);
+			return (target !== undefined && target !== null) ? prop.value(target) : null;
 		}
 	},
 	// tolerateNull added to accomodate situation where calculated rules where not

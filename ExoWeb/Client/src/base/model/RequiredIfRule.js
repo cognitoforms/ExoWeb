@@ -48,12 +48,7 @@ RequiredIfRule.prototype = {
 			return;
 		}
 
-		var cmpValue;
-		var target = this._compareProperty instanceof PropertyChain ? this._compareProperty.lastTarget(obj, true) : obj;
-		if (target !== undefined && target !== null) {
-			cmpValue = this._compareProperty.value(obj);
-		}
-
+		var cmpValue = this._compareProperty.value(obj);
 		if (cmpValue && cmpValue instanceof String) {
 			cmpValue = $.trim(cmpValue);
 		}
