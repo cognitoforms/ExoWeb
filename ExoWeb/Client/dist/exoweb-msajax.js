@@ -8252,7 +8252,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 							this.rollbackListChange(change, callback);
 						}
 					}
-
 				}
 
 				processNextChange.call(this);
@@ -12758,9 +12757,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		return src;
 	}
-
-	// making getFinalSrcObject "public" to allow disposing of the adapter
-	Sys.UI.getFinalSrcObject = getFinalSrcObject;
 
 	function getFinalPathStep(binding) {
 		return binding._pathArray[binding._pathArray.length - 1];
