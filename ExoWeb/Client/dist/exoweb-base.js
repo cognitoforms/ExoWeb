@@ -4481,7 +4481,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			return this.lastProperty().get_rules(onlyTargets);
 		},
 		value: function PropertyChain$value(obj, val, customInfo) {
-			var target = this.lastTarget(obj);
+			var target = this.lastTarget(obj, true);
 			var prop = this.lastProperty();
 
 			if (arguments.length > 1) {
