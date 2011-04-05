@@ -8252,6 +8252,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							this.rollbackListChange(change, callback);
 						}
 					}
+
 				}
 
 				processNextChange.call(this);
@@ -12345,6 +12346,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 		dispose: function Adapter$dispose() {
 //				ExoWeb.trace.log(["@", "markupExt"], "Adapter disposed.");
 			this._isDisposed = true;
+
+			// re-execute rules when the adapter is disposed to ensure that all conditions bound
+			// to a field are removed with the field is removed from the page.
+			var prop = this._propertyChain;
+			var meta = prop.lastTarget(this._target).meta;
+
+			meta.clearConditions(this);
+
+			meta.executeRules(prop);
 		},
 		ready: function Adapter$ready(callback, thisPtr) {
 			this._readySignal.waitForAll(callback, thisPtr);
@@ -12748,6 +12758,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		return src;
 	}
+
+	// making getFinalSrcObject "public" to allow disposing of the adapter
+	Sys.UI.getFinalSrcObject = getFinalSrcObject;
 
 	function getFinalPathStep(binding) {
 		return binding._pathArray[binding._pathArray.length - 1];
