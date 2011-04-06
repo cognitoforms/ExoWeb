@@ -10886,9 +10886,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var lastReq = lastTemplateRequestSignal;
 
 		// set the last request signal to the new signal and increment
-		lastTemplateRequestSignal = new ExoWeb.Signal(id);
-		var signal = lastTemplateRequestSignal;
-		var callback = signal.pending(function (elem) {
+		var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
+		var callback = externalTemplatesSignal.pending(signal.pending(function (elem) {
 			//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
 
 			// Store the number of templates before activating this element.
@@ -10901,7 +10900,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (originalTemplateCount === allTemplates.length) {
 				ExoWeb.trace.logWarning("ui", "Templates for request \"{0}\" from path \"{1}\" yields no templates.", [id, path]);
 			}
-		});
+		}));
 
 		$(function ($) {
 			var tmpl = $("<div id='" + id + "'/>")
@@ -10921,7 +10920,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					callback(tmpl.get(0));
 				}
 				else {
-					tmpl.load(path, externalTemplatesSignal.pending(function () {
+					tmpl.load(path, function () {
 						var elem = this;
 
 						// Cache the template
@@ -10934,7 +10933,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						else {
 							callback(elem);
 						}
-					}));
+					});
 				}
 			}
 		});
