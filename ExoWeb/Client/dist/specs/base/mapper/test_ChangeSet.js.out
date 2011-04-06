@@ -35,4 +35,16 @@ suite passed
 =============================================
 
 
-11 specs, 0 failures
+ChangeSet.count
+=============================================
+Running "ChangeSet.count returns the number of changes in the set"...
+---------------------------------------------
+Running "ChangeSet.count returns the number of changes that match a given filter"...
+---------------------------------------------
+Running "ChangeSet.count uses thisPtr if provided"...
+---------------------------------------------
+suite passed
+=============================================
+
+
+14 specs, 0 failures

@@ -46,6 +46,15 @@ var it = jasmine.it;
 var expect = jasmine.expect;
 var beforeEach = jasmine.beforeEach;
 
+function setup() {
+	var set = new ChangeSet("client");
+	set.add(1);
+	set.add(2);
+	set.add(3);
+
+	this.set = set;
+}
+
 // Test Suites
 ///////////////////////////////////////
 describe("ChangeSet", function() {
@@ -83,14 +92,7 @@ describe("ChangeSet", function() {
 });
 
 describe("ChangeSet", function() {
-	beforeEach(function() {
-		var set = new ChangeSet("client");
-		set.add(1);
-		set.add(2);
-		set.add(3);
-
-		this.set = set;
-	});
+	beforeEach(setup);
 
 	it("serializes only changes that pass a given filter", function() {
 		expect(this.set.serialize(function(c) {
@@ -168,6 +170,24 @@ describe("ChangeSet", function() {
 
 		expect(this.set.changes().length).toBe(1);
 		expect(this.set.changes()[0]).toBe(1);
+	});
+});
+
+describe("ChangeSet.count", function() {
+	beforeEach(setup);
+
+	it("returns the number of changes in the set", function () {
+		expect(this.set.count()).toBe(3);
+		
+	});
+
+	it("returns the number of changes that match a given filter", function () {
+		expect(this.set.count(function(v) { return v > 2; })).toBe(1);
+	});
+	
+	it("uses thisPtr if provided", function () {
+		this.set.val = 1;
+		expect(this.set.count(function(v) { return v > this.set.val; }, this)).toBe(2);
 	});
 });
 

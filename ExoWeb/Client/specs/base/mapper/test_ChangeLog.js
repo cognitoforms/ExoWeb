@@ -5,15 +5,15 @@ var jasmineConsole = require("../../jasmine.console");
 
 jasmine.jasmine.debug = true;
 
-window = {};
-ExoWeb = {};
+global.window = global;
+global.ExoWeb = {};
 
 var functions = require("../../../src/base/core/Function");
 var arrays = require("../../../src/base/core/Array");
 var trace = require("../../../src/base/core/Trace");
 var utilities = require("../../../src/base/core/Utilities");
 
-$format = window.$format;
+global.forEach = arrays.forEach;
 
 // References
 ///////////////////////////////////////
@@ -24,6 +24,17 @@ var describe = jasmine.describe;
 var it = jasmine.it;
 var expect = jasmine.expect;
 var beforeEach = jasmine.beforeEach;
+
+function setup() {
+	var log = new ChangeLog();
+	log.start("test");
+	log.add(1);
+	log.add(2);
+	log.start("test2");
+	log.add(3);
+
+	this.log = log;
+}
 
 // Test Suites
 ///////////////////////////////////////
@@ -60,16 +71,7 @@ describe("ChangeLog", function() {
 });
 
 describe("ChangeLog", function() {
-	beforeEach(function() {
-		var log = new ChangeLog();
-		log.start("test");
-		log.add(1);
-		log.add(2);
-		log.start("test2");
-		log.add(3);
-
-		this.log = log;
-	});
+	beforeEach(setup);
 
 	it("pushes new changes onto the new set after calling start a second time", function() {
 		expect(this.log.sets().length).toBe(2);
@@ -177,6 +179,23 @@ describe("ChangeLog.addSet", function() {
 		expect(log.sets()[0].changes().length).toBe(3);
 		expect(log.sets()[0].changes()).not.toBe(changes);
 		expect(log.activeSet()).toBe(active);
+	});
+});
+
+describe("ChangeLog.count", function() {
+	beforeEach(setup);
+
+	it("returns the number of changes in the log", function () {
+		expect(this.log.count()).toBe(3);
+	});
+
+	it("returns the number of changes that match a given filter", function () {
+		expect(this.log.count(function(v) { return v > 2; })).toBe(1);
+	});
+	
+	it("uses thisPtr if provided", function () {
+		this.log.val = 1;
+		expect(this.log.count(function(v) { return v > this.log.val; }, this)).toBe(2);
 	});
 });
 

@@ -16,6 +16,13 @@ ChangeSet.mixin({
 	changes: function() {
 		return this._changes;
 	},
+	count: function (filter, thisPtr) {
+		if (!filter) {
+			return this._changes.length;
+		}
+
+		return this._changes.filter(filter, thisPtr).length;
+	},
 	lastChange: function() {
 		return this._changes.length > 0 ? this._changes[this._changes.length - 1] : null;
 	},
