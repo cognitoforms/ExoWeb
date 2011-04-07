@@ -7319,9 +7319,29 @@ Type.registerNamespace("ExoWeb.Mapper");
 				var totalChanges = changes.length;
 
 				// truncate change log up-front if save occurred
-				var numSaveChanges = changes.filter(function(c, i) { return c.type === "Save"; }).length;
+				var saveChanges = changes.filter(function(c, i) { return c.type === "Save"; });
+				var numSaveChanges = saveChanges.length;
 				if (numSaveChanges > 0) {
 					this.truncate(serverSync.canSave, serverSync);
+
+					// Update affected scope queries
+					saveChanges.forEach(function(change) {
+						if (!change.idChanges) return;
+						change.idChanges.forEach(function(idChange) {
+							var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
+							if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+								var serverOldId = idChange.oldId;
+								var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
+									serverSync._translator.reverse(idChange.type, serverOldId) :
+									idChange.oldId;
+								serverSync._scopeQueries.forEach(function (query) {
+									query.ids = query.ids.map(function (id) {
+										return (id === clientOldId) ? idChange.newId : id;
+									}, this);
+								}, this);
+							}
+						}, this);
+					}, this);
 				}
 
 				function processNextChange() {
@@ -7430,13 +7450,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 							// Change the id and make non-new.
 							type.changeObjectId(clientOldId, idChange.newId);
 							Sys.Observer.setValue(obj.meta, "isNew", false);
-
-							// Update affected scope queries
-							serverSync._scopeQueries.forEach(function (query) {
-								query.ids = query.ids.map(function (id) {
-									return (id === clientOldId) ? idChange.newId : id;
-								}, this);
-							}, this);
 
 							// Remove the id change from the list and move the index back.
 							Array.remove(change.idChanges, idChange);
