@@ -13209,7 +13209,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		request({
 			queries: [{
 				from: ownerType,
-				ids: [ownerId],
+				ids: ownerId === null ? [] : [ownerId],
 				include: paths,
 				inScope: false,
 				forLoad: true

@@ -84,7 +84,7 @@ ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, owne
 	request({
 		queries: [{
 			from: ownerType,
-			ids: [ownerId],
+			ids: ownerId === null ? [] : [ownerId],
 			include: paths,
 			inScope: false,
 			forLoad: true
