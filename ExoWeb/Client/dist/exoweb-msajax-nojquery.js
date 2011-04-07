@@ -12344,11 +12344,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// re-execute rules when the adapter is disposed to ensure that all conditions bound
 			// to a field are removed with the field is removed from the page.
 			var prop = this._propertyChain;
-			var meta = prop.lastTarget(this._target).meta;
-
-			meta.clearConditions(this);
-
-			meta.executeRules(prop);
+			var target = prop.lastTarget(this._target);
+			if (target && target.meta) {
+				target.meta.clearConditions(this);
+				target.meta.executeRules(prop);
+			}
 		},
 		ready: function Adapter$ready(callback, thisPtr) {
 			this._readySignal.waitForAll(callback, thisPtr);
