@@ -12273,6 +12273,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var state = this["_" + formatName + "State"];
 
 			if (state) {
+				// if a "bad value" exists then return it rather than the actual value
 				if (state.BadValue !== undefined) {
 					return state.BadValue;
 				}
@@ -12313,8 +12314,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			meta.clearConditions(this);
 
 			if (converted instanceof ExoWeb.Model.FormatError) {
-				state.BadValue = value;
-
 				condition = converted.createCondition(this, prop.lastProperty());
 
 				meta.conditionIf(condition, true);
@@ -12325,6 +12324,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 				// run the rules to preserve the order of conditions
 				else {
+					// store the "bad value" since the actual value will be different
+					state.BadValue = value;
 					meta.executeRules(prop);
 				}
 			}
@@ -12466,7 +12467,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						}
 					}
 
-					this._allowedValuesRule.addChanged(reloadOptions.bind(this), this._propertyChain.lastTarget(this._target));
+					this._allowedValuesRule.addChanged(reloadOptions.bind(this).prependArguments(true), this._propertyChain.lastTarget(this._target));
 				}
 			}
 			return this._allowedValuesRule;
@@ -12484,7 +12485,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						this._allowedValues = undefined;
 
 						if (!allowedValues) {
-							allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
+							//allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
 							ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
 							ExoWeb.Model.LazyLoader.eval(rule._allowedValuesProperty.get_isStatic() ? null : targetObj,
 								rule._allowedValuesProperty.get_path(),

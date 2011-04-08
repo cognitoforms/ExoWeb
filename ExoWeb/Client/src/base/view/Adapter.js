@@ -215,6 +215,7 @@ Adapter.prototype = {
 		var state = this["_" + formatName + "State"];
 
 		if (state) {
+			// if a "bad value" exists then return it rather than the actual value
 			if (state.BadValue !== undefined) {
 				return state.BadValue;
 			}
@@ -255,8 +256,6 @@ Adapter.prototype = {
 		meta.clearConditions(this);
 
 		if (converted instanceof ExoWeb.Model.FormatError) {
-			state.BadValue = value;
-
 			condition = converted.createCondition(this, prop.lastProperty());
 
 			meta.conditionIf(condition, true);
@@ -267,6 +266,8 @@ Adapter.prototype = {
 			}
 			// run the rules to preserve the order of conditions
 			else {
+				// store the "bad value" since the actual value will be different
+				state.BadValue = value;
 				meta.executeRules(prop);
 			}
 		}
