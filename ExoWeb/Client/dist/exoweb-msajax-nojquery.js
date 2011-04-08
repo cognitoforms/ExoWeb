@@ -12249,12 +12249,21 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this.addPropertyValidating(null, this._propertyValidatingHandler);
 			}
 		},
-		_reloadOptions: function Adapter$_reloadOptions() {
-//				ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
+		_reloadOptions: function Adapter$_reloadOptions(allowLazyLoad) {
+			ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
 
-			this._options = null;
-			this._allowedValues = null;
+			if (allowLazyLoad === true) {
+				// delete backing fields so that allowed values can be recalculated (and loaded)
+				delete this._allowedValues;
+				delete this._options;
+			}
+			else {
+				// clear out backing fields so that allowed values can be recalculated
+				this._allowedValues = undefined;
+				this._options = undefined;
+			}
 
+			// raise events in order to cause subscribers to fetch the new value
 			Sys.Observer.raisePropertyChanged(this, "allowedValues");
 			Sys.Observer.raisePropertyChanged(this, "options");
 		},
@@ -12430,7 +12439,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					var reloadOptions = function() {
 //							ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options due to change in allowed values path.");
 
-						this._reloadOptions();
+						this._reloadOptions(true);
 
 						// clear values that are no longer allowed
 						var targetObj = this._propertyChain.lastTarget(this._target);
@@ -12463,24 +12472,37 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._allowedValuesRule;
 		},
 		get_allowedValues: function Adapter$get_allowedValues() {
-			if (!this._allowedValues) {
+			if (this._allowedValues === undefined) {
 				var rule = this.get_allowedValuesRule();
-				var targetObj = this._propertyChain.lastTarget(this._target);
 				if (rule) {
+					var targetObj = this._propertyChain.lastTarget(this._target);
 					var allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
 
-					if (allowedValues !== undefined) {
+					// only do loading if backing field does not exist, which means we've never initialized or need to re-initialize
+					if (!this.hasOwnProperty("_allowedValues")) {
+						// create the backing field so that this logic does not execute again
+						this._allowedValues = undefined;
+
+						if (!allowedValues) {
+							allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
+							ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
+							ExoWeb.Model.LazyLoader.eval(rule._allowedValuesProperty.get_isStatic() ? null : targetObj,
+								rule._allowedValuesProperty.get_path(),
+								this._reloadOptions.bind(this));
+							return;
+						}
+
 						if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
 							ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
 							ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptions.bind(this), this);
 							return;
 						}
-
-						if (this._optionsTransform)
-							this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(allowedValues).live();
-						else
-							this._allowedValues = allowedValues;
 					}
+
+					if (this._optionsTransform)
+						this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(allowedValues).live();
+					else
+						this._allowedValues = allowedValues;
 				}
 				else if (this.isType(Boolean)) {
 					this._allowedValues = [true, false];
@@ -12490,7 +12512,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._allowedValues;
 		},
 		get_options: function Adapter$get_options() {
-			if (!this._options) {
+			if (this._options === undefined) {
 
 				var allowed = this.get_allowedValues();
 
