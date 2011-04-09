@@ -156,8 +156,7 @@ end
 def jshint(file_name)
 	if system("node --version")
 		in_path = File.join(@dist_dir, file_name + ".js").sub(/^C\:\//, "/cygdrive/c/")
-		out_path = File.join(@dist_dir, file_name + ".jshint")
-		sh "node runjshint.js " + in_path + " > " + out_path
+		sh "node runjshint.js " + in_path
 	end
 end
 
@@ -179,7 +178,7 @@ task :run_tests do
 	if system("node --version")
 		get_test_files(File.join(Dir.pwd, 'specs'), '').each do |file|
 			mkdir_p File.join("dist/specs", file.sub(/^(.*)\/[^\/]*.js$/, "\\1"))
-			sh "node specs" + file + " -no-date-time > dist/specs" + file + ".out"
+			sh "node specs" + file + " -no-date-time"
 		end
 	end
 end

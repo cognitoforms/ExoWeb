@@ -1,5 +1,5 @@
 var fs = require("fs");
-var JSHINT = require("./ref/jshint/jshint").JSHINT;
+var JSHINT = require("./ref/jshint").JSHINT;
 
 var fileName = process.argv[2];
 var content = fs.readFileSync(fileName, 'utf8');
