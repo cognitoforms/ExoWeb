@@ -225,22 +225,6 @@
     <Content Include="Client\src\extensions\jquery-msajax\Validation.js" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Client\dist\exoweb-base.jshint" />
-    <None Include="Client\dist\exoweb-msajax-nojquery.jshint" />
-    <None Include="Client\dist\exoweb-msajax.jshint" />
-    <None Include="Client\dist\jquery.exoweb-msajax.jshint" />
-    <None Include="Client\dist\specs\base\core\test_Array.js.out" />
-    <None Include="Client\dist\specs\base\core\test_Batch.js.out" />
-    <None Include="Client\dist\specs\base\core\test_Function.js.out" />
-    <None Include="Client\dist\specs\base\core\test_FunctionChain.js.out" />
-    <None Include="Client\dist\specs\base\core\test_Signal.js.out" />
-    <None Include="Client\dist\specs\base\core\test_String.js.out" />
-    <None Include="Client\dist\specs\base\core\test_Translator.js.out" />
-    <None Include="Client\dist\specs\base\core\test_Utilities.js.out" />
-    <None Include="Client\dist\specs\base\mapper\test_ChangeLog.js.out" />
-    <None Include="Client\dist\specs\base\mapper\test_ChangeSet.js.out" />
-    <None Include="Client\dist\specs\base\mapper\test_ResponseHandler.js.out" />
-    <None Include="Client\dist\specs\base\model\test_PathTokens.js.out" />
     <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
     <None Include="Client\README.markdown" />

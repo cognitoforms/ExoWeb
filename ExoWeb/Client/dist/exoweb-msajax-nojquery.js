@@ -2798,11 +2798,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			this.baseType = baseType;
 			baseType.derivedTypes.push(this);
-
+		
 			// inherit all shortcut properties that have aleady been defined
-			for (var propName in baseType._properties) {
-				jstype["$" + propName] = baseType._properties[propName];
-			}
+			inheritBaseTypePropShortcuts(jstype, baseType);
 		}
 		else {
 			baseJsType = Entity;
@@ -2825,6 +2823,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// done...
 		this._jstype.registerClass(name, baseJsType);
+	}
+
+	// copy shortcut properties from a base meta type (recursively) to a target jstype
+	function inheritBaseTypePropShortcuts(jstype, baseType) {
+		for (var propName in baseType._properties) {
+			jstype["$" + propName] = baseType._properties[propName];
+		}
+
+		// recursively add base type properties
+		if (baseType.baseType) {
+			inheritBaseTypePropShortcuts(jstype, baseType.baseType);
+		}
 	}
 
 	var disableConstruction = false;
