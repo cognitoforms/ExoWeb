@@ -1,0 +1,12 @@
+*.suo
+*.user
+*.vsmdi
+*.vssscc
+*.vspscc
+*.testsettings
+*.trx
+bin/
+obj/
+ExoWeb/Client/PreRake.bat
+ExoWeb/Client/dist/json2.js
+ExoWeb/Client/RakeScripts.bat
