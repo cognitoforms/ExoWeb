@@ -7549,59 +7549,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 		applyInitChange: function (change, serverSync, callback) {
 			//				ExoWeb.trace.log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
 
-			var returnImmediately = !ExoWeb.config.aggressiveLog;
+			ensureJsType(serverSync._model, change.instance.type, function(jstype) {
+				// Create the new object
+				var newObj = new jstype();
 
-			tryGetJsType(serverSync._model, change.instance.type, null, ExoWeb.config.aggressiveLog, function (jstype) {
-				// Call ballback here if type was present immediately or aggressive mode is turned on
-				var doCallback = returnImmediately || ExoWeb.config.aggressiveLog;
+				// Check for a translation between the old id that was reported and an actual old id.  This is
+				// needed since new objects that are created on the server and then committed will result in an accurate
+				// id change record, but "instance.id" for this change will actually be the persisted id.
+				var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
 
-				// Indicate that type was present immediately
-				returnImmediately = false;
+				// Remember the object's client-generated new id and the corresponding server-generated new id
+				serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
 
-				// don't record a change if the change is being deferred
-				var logIgnore = !doCallback;
-
-				try {
-					if (logIgnore) {
-						serverSync.beginApplyingChanges();
-					}
-
-					// Create the new object
-					var newObj = new jstype();
-
-					// Check for a translation between the old id that was reported and an actual old id.  This is
-					// needed since new objects that are created on the server and then committed will result in an accurate
-					// id change record, but "instance.id" for this change will actually be the persisted id.
-					var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
-
-					// Remember the object's client-generated new id and the corresponding server-generated new id
-					serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
-				
-					if (doCallback) {
-						callback.call(this);
-					}
-
-					if (logIgnore) {
-						logIgnore = false; // avoid double errors when ending
-						serverSync.endApplyingChanges();
-					}
-				}
-				catch(e) {
-					if (logIgnore) {
-						logIgnore = false; // avoid double errors when ending
-						serverSync.endApplyingChanges();
-					}
-					ExoWeb.trace.throwAndLog(["server"], e);
-				}
-			}, this);
-
-			// call callback here if target type or instance is not
-			// present and aggressive log behavior is not turned on
-			if (returnImmediately) {
 				callback.call(this);
-			}
-
-			returnImmediately = false;
+			}, this);
 		},
 		applyRefChange: function (change, serverSync, callback) {
 			//				ExoWeb.trace.log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
