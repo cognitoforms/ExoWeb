@@ -651,7 +651,7 @@ namespace ExoWeb
 						(graphEvent, json) =>
 						{
 							json.Set("type", "ValueChange");
-							json.Set("instance", GetEventInstance(graphEvent));
+							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
 							json.Set("property", graphEvent.Property.Name);
 							json.Set("oldValue", graphEvent.OldValue);
 							json.Set("newValue", graphEvent.NewValue);
@@ -663,10 +663,10 @@ namespace ExoWeb
 						(graphEvent, json) =>
 						{
 							json.Set("type", "ReferenceChange");
-							json.Set("instance", GetEventInstance(graphEvent));
+							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
 							json.Set("property", graphEvent.Property.Name);
-							json.Set("oldValue", graphEvent.OldValue);
-							json.Set("newValue", graphEvent.NewValue);
+							json.Set("oldValue", GetEventInstance(graphEvent.OldValue, graphEvent.OldValueId));
+							json.Set("newValue", GetEventInstance(graphEvent.NewValue, graphEvent.NewValueId));
 						},
 						deserializeReferenceChangeEvent),
 							
@@ -675,10 +675,10 @@ namespace ExoWeb
 						(graphEvent, json) =>
 						{
 							json.Set("type", "ListChange");
-							json.Set("instance", GetEventInstance(graphEvent));
+							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
 							json.Set("property", graphEvent.Property.Name);
-							json.Set("added", graphEvent.Added);
-							json.Set("removed", graphEvent.Removed);
+							json.Set("added", graphEvent.Added.Select((instance, index) => GetEventInstance(instance, graphEvent.AddedIds.ElementAt(index))));
+							json.Set("removed", graphEvent.Removed.Select((instance, index) => GetEventInstance(instance, graphEvent.RemovedIds.ElementAt(index))));
 						},
 						deserializeListChangeEvent),
 							
@@ -687,7 +687,7 @@ namespace ExoWeb
 						(graphEvent, json) =>
 						{
 							json.Set("type", "InitNew");
-							json.Set("instance", GetEventInstance(graphEvent));
+							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
 						},
 						deserializeInitNewEvent),
 							
@@ -696,7 +696,7 @@ namespace ExoWeb
 						(graphEvent, json) =>
 						{
 							json.Set("type", "InitExisting");
-							json.Set("instance", GetEventInstance(graphEvent));
+							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
 						},
 						deserializeInitExistingEvent),
 							
@@ -705,7 +705,7 @@ namespace ExoWeb
 						(graphEvent, json) =>
 						{
 							json.Set("type", "Delete");
-							json.Set("instance", GetEventInstance(graphEvent));
+							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
 						},
 						deserializeDeleteEvent),
 														
@@ -714,7 +714,7 @@ namespace ExoWeb
 						(graphEvent, json) =>
 						{
 							json.Set("type", "Save");
-							json.Set("instance", GetEventInstance(graphEvent));
+							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
 							json.Set("idChanges", graphEvent.IdChanges);
 						},
 						json => { throw new NotSupportedException("GraphSaveEvent cannot be deserialized."); }),
@@ -815,9 +815,12 @@ namespace ExoWeb
 			deserialize = serializer.GetType().GetMethod("Deserialize", new Type[] { typeof(string) });
 		}
 
-		static Dictionary<string, string> GetEventInstance(GraphEvent graphEvent)
+		static Dictionary<string, string> GetEventInstance(GraphInstance instance, string id)
 		{
-			return new Dictionary<string, string>() { { "type", graphEvent.Instance.Type.Name }, { "id", graphEvent.InstanceId } };
+			if (instance == null)
+				return null;
+			else
+				return new Dictionary<string, string>() { { "type", instance.Type.Name }, { "id", id } };
 		}
 
 		/// <summary>
