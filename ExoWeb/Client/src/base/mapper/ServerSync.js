@@ -9,15 +9,18 @@ function ServerSync(model) {
 	this._translator = new ExoWeb.Translator();
 	this._listener = new ExoGraphEventListener(this._model, this._translator);
 
-	var applyingChanges = false;
+	var applyingChanges = 0;
 	this.isApplyingChanges = function ServerSync$isApplyingChanges() {
-		return applyingChanges;
+		return applyingChanges > 0;
 	};
 	this.beginApplyingChanges = function ServerSync$beginApplyingChanges() {
-		applyingChanges = true;
+		applyingChanges++;
 	};
 	this.endApplyingChanges = function ServerSync$endApplyingChanges() {
-		applyingChanges = false;
+		applyingChanges--;
+
+		if (applyingChanges < 0)
+			ExoWeb.trace.throwAndLog("Error in transaction log processing: unmatched begin and end applying changes.");
 	};
 
 	var isCapturingChanges = false;

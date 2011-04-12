@@ -258,3 +258,19 @@ function not(fn) {
 	};
 }
 exports.not = not; // IGNORE
+
+function before(original, fn) {
+	return function() {
+		fn.apply(this, arguments);
+		original.apply(this, arguments);
+	};
+}
+exports.before = before; // IGNORE
+
+function after(original, fn) {
+	return function() {
+		original.apply(this, arguments);
+		fn.apply(this, arguments);
+	};
+}
+exports.after = after; // IGNORE

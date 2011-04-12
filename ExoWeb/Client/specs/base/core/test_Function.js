@@ -13,6 +13,8 @@ var mergeFunctions = functions.mergeFunctions;
 var equals = functions.equals;
 var not = functions.not;
 var bind = functions.bind;
+var before = functions.before;
+var after = functions.after;
 
 jasmine.jasmine.debug = true;
 
@@ -325,6 +327,38 @@ describe("not", function() {
 
 		expect(notEquals({})).toEqual(true);
 		expect(notEquals(obj)).toEqual(false);
+	});
+});
+
+describe("before", function() {
+	it("runs code before the functions is invoked", function() {
+		var text = "";
+		var fn = function(person) { text += "hello to " + person; };
+
+		fn("bob");
+		expect(text).toBe("hello to bob");
+
+		text = "";
+		fn = before(fn, function () { text += "I say "; });
+
+		fn("bob");
+		expect(text).toBe("I say hello to bob");
+	});
+});
+
+describe("after", function() {
+	it("runs code after the functions is invoked", function() {
+		var text = "";
+		var fn = function(person) { text += "hello to " + person; };
+
+		fn("bob");
+		expect(text).toBe("hello to bob");
+
+		text = "";
+		fn = after(fn, function () { text += " from mars"; });
+
+		fn("bob");
+		expect(text).toBe("hello to bob from mars");
 	});
 });
 

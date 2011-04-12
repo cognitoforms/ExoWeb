@@ -118,10 +118,7 @@
     <Content Include="Client\dist\exoweb.templates.htm" />
     <Content Include="Client\dist\jquery.exoweb-msajax.js" />
     <Content Include="Client\dist\json2.js" />
-    <Content Include="Client\ref\jshint\env\rhino.js" />
-    <Content Include="Client\ref\jshint\jshint.js" />
-    <Content Include="Client\ref\jshint\runtests.js" />
-    <Content Include="Client\ref\jshint\tests\jshint.js" />
+    <Content Include="Client\ref\jshint.js" />
     <Content Include="Client\runjshint.js" />
     <Content Include="Client\specs\base\core\test_Array.js" />
     <Content Include="Client\specs\base\core\test_FunctionChain.js" />
@@ -228,8 +225,6 @@
     <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
     <None Include="Client\README.markdown" />
-    <None Include="Client\ref\jshint\CHANGELOG" />
-    <None Include="Client\ref\jshint\README.markdown" />
     <None Include="NuGet\ExoWeb.nuspec" />
     <None Include="NuGet\content\Web.config.transform" />
   </ItemGroup>
