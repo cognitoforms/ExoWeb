@@ -158,11 +158,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	if (!Function.prototype.bind)
 		Function.prototype.bind = bind;
 
-	Function.prototype.setScope = function() {
-		ExoWeb.trace.logWarning("functions", "Function \"setScope\" is decprecated. Use \"bind\" instead.");
-		bind.apply(this, arguments);
-	};
-
 	Function.prototype.prepare = function prepare(thisPtr, args) {
 		/// <summary>
 		/// Returns a function that will invoke this function with the given
