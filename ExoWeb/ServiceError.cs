@@ -25,6 +25,8 @@ namespace ExoWeb
 
 		public string RefererUrl { get; set; }
 
+		public string RequestJson { get; set; }
+
 		#endregion
 
 		#region IJsonSerializable

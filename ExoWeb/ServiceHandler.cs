@@ -37,10 +37,11 @@ namespace ExoWeb
 		/// <param name="context"></param>
 		void IHttpHandler.ProcessRequest(HttpContext context)
 		{
+			string json = null;
+
 			try
 			{
 				// Read the request JSON
-				string json;
 				using (StreamReader reader = new StreamReader(context.Request.InputStream))
 					json = reader.ReadToEnd();
 
@@ -89,6 +90,7 @@ namespace ExoWeb
 				error.StackTrace = GetFullStackTrace(e);
 				error.Message = e.GetBaseException().Message;
 				error.Url = context.Request.RawUrl;
+				error.RequestJson = json;
 
 				// Raise the error event
 				ExoWeb.OnError(error);
