@@ -23,6 +23,11 @@ function addRange(arr, items) {
 	Array.prototype.push.apply(arr, items);
 }
 
+function contains(arr, elt, from) {
+	assertArrayArg(arr, "contains");
+	return indexOf(arr, elt, from) > -1 ? true : false;
+}
+
 // Filters out duplicate items from the given array.
 /////////////////////////////////////////////////////
 function distinct(arr) {
@@ -214,7 +219,9 @@ if (!Array.prototype.addRange)
 if (!Array.prototype.copy)
 	Array.prototype.copy = function() { return Array.prototype.splice.apply([], [0, 0].concat(this)); };
 if (!Array.prototype.clear)
-	Array.prototype.clear = function() { this.length = 0; };
+	Array.prototype.clear = function () { this.length = 0; };
+if (!Array.prototype.contains)
+	Array.prototype.contains = function (elt/*, from*/) { return contains(this, elt, arguments[1]); };
 if (!Array.prototype.dequeue)
 	Array.prototype.dequeue = function() { return this.shift(); };
 if (!Array.prototype.distinct)
@@ -246,6 +253,7 @@ if (!Array.prototype.remove)
 if (!Array.prototype.some)
 	Array.prototype.some = function(fun /*, thisp*/) { return some(this, fun, arguments[1]); };
 
+exports.contains = contains; // IGNORE
 exports.distinct = distinct; // IGNORE
 exports.every = every; // IGNORE
 exports.filter = filter; // IGNORE

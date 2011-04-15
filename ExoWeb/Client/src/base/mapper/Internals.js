@@ -132,11 +132,18 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 
 //			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
 
+	var loadedProperties = [];
+
 	// Load object's properties
 	for (var t = mtype; t !== null; t = t.baseType) {
 		var props = obj ? t.get_instanceProperties() : t.get_staticProperties();
 
-		for(var propName in props) {
+		for (var propName in props) {
+			if (loadedProperties.contains(propName))
+				continue;
+			
+			loadedProperties.push(propName);
+
 			var prop = props[propName];
 		
 //					ExoWeb.trace.log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);

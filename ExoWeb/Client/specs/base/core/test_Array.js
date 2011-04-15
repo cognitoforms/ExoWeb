@@ -4,6 +4,7 @@ var jasmine = require("../../jasmine");
 var jasmineConsole = require("../../jasmine.console");
 var arrays = require("../../../src/base/core/Array");
 
+var contains = arrays.contains;
 var distinct = arrays.distinct;
 var intersect = arrays.intersect;
 var purge = arrays.purge;
@@ -73,6 +74,22 @@ describe("purge", function() {
 
 	it("returns nothing if no items are removed", function() {
 		expect(purge([4, 6, 2, 6, 7, 2], isNaN)).toEqual(undefined);
+	});
+});
+
+describe("contains", function () {
+	it("returns true if an element exists in the array", function () {
+		var arr = ["A", "B", "C"];
+
+		expect(contains(arr, "B")).toBe(true);
+		expect(arr.contains("B")).toBe(true);
+	});
+
+	it("returns false if an element does not exist in the array", function () {
+		var arr = ["A", "B", "C"];
+
+		expect(contains(arr, "D")).toBe(false);
+		expect(arr.contains("D")).toBe(false);
 	});
 });
 

@@ -306,6 +306,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		Array.prototype.push.apply(arr, items);
 	}
 
+	function contains(arr, elt, from) {
+		assertArrayArg(arr, "contains");
+		return indexOf(arr, elt, from) > -1 ? true : false;
+	}
+
 	// Filters out duplicate items from the given array.
 	/////////////////////////////////////////////////////
 	function distinct(arr) {
@@ -497,7 +502,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 	if (!Array.prototype.copy)
 		Array.prototype.copy = function() { return Array.prototype.splice.apply([], [0, 0].concat(this)); };
 	if (!Array.prototype.clear)
-		Array.prototype.clear = function() { this.length = 0; };
+		Array.prototype.clear = function () { this.length = 0; };
+	if (!Array.prototype.contains)
+		Array.prototype.contains = function (elt/*, from*/) { return contains(this, elt, arguments[1]); };
 	if (!Array.prototype.dequeue)
 		Array.prototype.dequeue = function() { return this.shift(); };
 	if (!Array.prototype.distinct)
@@ -8718,11 +8725,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 //			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
 
+		var loadedProperties = [];
+
 		// Load object's properties
 		for (var t = mtype; t !== null; t = t.baseType) {
 			var props = obj ? t.get_instanceProperties() : t.get_staticProperties();
 
-			for(var propName in props) {
+			for (var propName in props) {
+				if (loadedProperties.contains(propName))
+					continue;
+			
+				loadedProperties.push(propName);
+
 				var prop = props[propName];
 		
 //					ExoWeb.trace.log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
