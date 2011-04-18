@@ -224,7 +224,6 @@
   <ItemGroup>
     <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
-    <None Include="Client\README.markdown" />
     <None Include="NuGet\ExoWeb.nuspec" />
     <None Include="NuGet\content\Web.config.transform" />
   </ItemGroup>
