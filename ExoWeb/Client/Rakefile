@@ -160,6 +160,17 @@ def jshint(file_name)
 	end
 end
 
+def minify(file_name)
+	if system("dir")
+		run = 'ref\jsmin\jsmin.exe'
+	else
+		run = 'ref/jsmin/jsmin'
+	end
+
+	path = File.join(@dist_dir, file_name).sub(/^C\:\//, "/cygdrive/c/")
+	sh run + " < " + path + ".js > " + path + ".min.js"
+end
+
 def get_test_files(dir_name, prefix)
 	res = []
 	Dir.entries(File.join(dir_name, prefix)).each do |item|
@@ -192,6 +203,7 @@ task :build_jquery_msajax_plugin do
 	end
 	puts("completed build_jquery_msajax_plugin task")
 	jshint("jquery.exoweb-msajax")
+	minify("jquery.exoweb-msajax")
 end
 
 task :build_msajax_nojquery do
@@ -212,6 +224,7 @@ task :build_msajax_nojquery do
 	end
 	puts("completed build_msajax_nojquery task")
 	jshint("exoweb-msajax-nojquery")
+	minify("exoweb-msajax-nojquery")
 end
 
 task :build_msajax do
@@ -232,6 +245,7 @@ task :build_msajax do
 	end
 	puts("completed build_msajax task")
 	jshint("exoweb-msajax")
+	minify("exoweb-msajax")
 end
 
 task :build_base do
@@ -251,6 +265,7 @@ task :build_base do
 	end
 	puts("completed build_base task")
 	jshint("exoweb-base")
+	minify("exoweb-base")
 end
 
 task :default => [:run_tests, :build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_base] do

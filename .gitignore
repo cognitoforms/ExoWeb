@@ -13,3 +13,4 @@ ExoWeb/Client/RakeScripts.bat
 ExoWeb.Samples/
 ExoWeb.UnitTests/
 Samples/
+.DS_STORE
