@@ -762,7 +762,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return value ? JSON.parse(value) : null;
 			}
 			else if (arguments.length == 2) {
-				window.localStorage.setItem(key, JSON.stringify(value));
+				var json = JSON.stringify(value);
+				try{
+					window.localStorage.setItem(key, json);
+				}
+				catch(e) {
+					ExoWeb.trace.logError("cache", e);
+				}
 				return value;
 			}
 		};

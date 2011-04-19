@@ -1,7 +1,7 @@
-prefix = File.dirname(__FILE__)
+@prefix = File.dirname(__FILE__)
 
-@src_dir = ENV["SRC_DIR"] || File.join(prefix, "src")
-@dist_dir = ENV["DIST_DIR"] || File.join(prefix, "dist")
+@src_dir = ENV["SRC_DIR"] || File.join(@prefix, "src")
+@dist_dir = ENV["DIST_DIR"] || File.join(@prefix, "dist")
 
 @no_jslint = ENV["NO_JSLINT"]
 
@@ -155,19 +155,19 @@ end
 
 def jshint(file_name)
 	if system("node --version")
-		in_path = File.join(@dist_dir, file_name + ".js").sub(/^C\:\//, "/cygdrive/c/")
+		in_path = File.join(@dist_dir, file_name + ".js")
 		sh "node runjshint.js " + in_path
 	end
 end
 
 def minify(file_name)
 	if system("dir")
-		run = 'ref\jsmin\jsmin.exe'
+		run = File.join(@prefix, 'ref/jsmin/jsmin.exe')
 	else
-		run = 'ref/jsmin/jsmin'
+		run = File.join(@prefix, 'ref/jsmin/jsmin')
 	end
 
-	path = File.join(@dist_dir, file_name).sub(/^C\:\//, "/cygdrive/c/")
+	path = File.join(@dist_dir, file_name)
 	sh run + " < " + path + ".js > " + path + ".min.js"
 end
 
