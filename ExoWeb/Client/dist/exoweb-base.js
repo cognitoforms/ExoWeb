@@ -7555,16 +7555,18 @@ Type.registerNamespace("ExoWeb.Mapper");
 			//				ExoWeb.trace.log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
 
 			ensureJsType(serverSync._model, change.instance.type, function(jstype) {
-				// Create the new object
-				var newObj = new jstype();
+				if (!jstype.meta.get(change.instance.id)) {
+					// Create the new object
+					var newObj = new jstype();
 
-				// Check for a translation between the old id that was reported and an actual old id.  This is
-				// needed since new objects that are created on the server and then committed will result in an accurate
-				// id change record, but "instance.id" for this change will actually be the persisted id.
-				var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
+					// Check for a translation between the old id that was reported and an actual old id.  This is
+					// needed since new objects that are created on the server and then committed will result in an accurate
+					// id change record, but "instance.id" for this change will actually be the persisted id.
+					var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
 
-				// Remember the object's client-generated new id and the corresponding server-generated new id
-				serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+					// Remember the object's client-generated new id and the corresponding server-generated new id
+					serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+				}
 
 				callback.call(this);
 			}, this);
