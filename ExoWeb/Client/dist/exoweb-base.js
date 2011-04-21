@@ -3140,7 +3140,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				{
 
 					// Invoke the server event
-					context.server.raiseServerEvent(def.name, this, arguments[0], false, function(result) { onSuccess(result.event); }, onFail, false, argCount == 2 ? arguments[1] : null);
+					context.server.raiseServerEvent(def.name, this, arguments[0], false, function(result) { onSuccess(result.event); }, onFail, argCount == 2 ? arguments[1] : null);
 				}
 
 				// Otherwise, assume that the parameters were all passed in sequential order
@@ -3157,7 +3157,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 						args[def.parameters[parameter]] = arguments[parameter];
 
 					// Invoke the server event
-					context.server.raiseServerEvent(def.name, this, args, false, function(result) { onSuccess(result.event); }, onFail, false, paths);
+					context.server.raiseServerEvent(def.name, this, args, false, function(result) { onSuccess(result.event); }, onFail, paths);
 				}
 			};
 		},
@@ -6519,7 +6519,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server.getScopeQueries();
+			scopeQueries = context.server._scopeQueries;
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -6564,7 +6564,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server.getScopeQueries();
+			scopeQueries = context.server._scopeQueries;
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -6659,7 +6659,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server.getScopeQueries();
+			scopeQueries = context.server._scopeQueries;
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -6716,7 +6716,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server.getScopeQueries();
+			scopeQueries = context.server._scopeQueries;
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -6762,7 +6762,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server.getScopeQueries();
+			scopeQueries = context.server._scopeQueries;
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -6808,7 +6808,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server.getScopeQueries();
+			scopeQueries = context.server._scopeQueries;
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -7907,52 +7907,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 	}
 
 	ServerSync.mixin({
-		getScopeQueries: function ServerSync$getScopeQueries() {
-			return this._scopeQueries;
-		},
-		_addEventHandler: function ServerSync$_addEventHandler(name, handler, includeAutomatic, automaticArgIndex) {
-			automaticArgIndex = (automaticArgIndex === undefined) ? 0 : automaticArgIndex;
-
-			this._addEvent(name, function () {
-				var automatic = arguments.length > automaticArgIndex ? arguments[automaticArgIndex] : null;
-
-				// only raise automated events if the subscriber requests them
-				if (!automatic || includeAutomatic) {
-					handler.apply(this, arguments);
-				}
-			});
-		},
-		_raiseBeginEvent: function ServerSync$raiseBeginEvent(method, includeAutomatic)
-		{
-			this._raiseEvent("requestBegin", [includeAutomatic]);
-			this._raiseEvent(method + "Begin", [includeAutomatic]);
-		},
-		_raiseSuccessEvent: function ServerSync$raiseSuccessEvent(method, result, includeAutomatic)
-		{
-			this._raiseEvent("requestEnd", [result, includeAutomatic]);
-			this._raiseEvent("requestSuccess", [result, includeAutomatic]);
-			this._raiseEvent(method + "End", [result, includeAutomatic]);
-			this._raiseEvent(method + "Success", [result, includeAutomatic]);
-		},
-		_raiseFailedEvent: function ServerSync$raiseFailedEvent(method, result, includeAutomatic)
-		{
-			this._raiseEvent("requestEnd", [result, includeAutomatic]);
-			this._raiseEvent("requestFailed", [result, includeAutomatic]);
-			this._raiseEvent(method + "End", [result, includeAutomatic]);
-			this._raiseEvent(method + "Failed", [result, includeAutomatic]);
-		},
-		addRequestBegin: function ServerSync$addRequestBegin(handler, includeAutomatic) {
-			this._addEventHandler("requestBegin", handler, includeAutomatic, 1);
-		},
-		addRequestEnd: function ServerSync$addRequestEnd(handler, includeAutomatic) {
-			this._addEventHandler("requestEnd", handler, includeAutomatic, 1);
-		},
-		addRequestSuccess: function ServerSync$addRequestSuccess(handler, includeAutomatic) {
-			this._addEventHandler("requestSuccess", handler, includeAutomatic, 3);
-		},
-		addRequestFailed: function ServerSync$addRequestFailed(handler, includeAutomatic) {
-			this._addEventHandler("requestFailed", handler, includeAutomatic, 3);
-		},
+		// Enable/disable save & related functions
+		///////////////////////////////////////////////////////////////////////
 		enableSave: function ServerSync$enableSave(obj) {
 			if (Array.contains(this._objectsExcludedFromSave, obj)) {
 				Array.remove(this._objectsExcludedFromSave, obj);
@@ -8048,7 +8004,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			return this.canSaveObject(instanceObj);
 		},
 
-		_handleResult: function ServerSync$handleResult(result, source, automatic, callback)
+		_handleResult: function ServerSync$handleResult(result, source, callback)
 		{
 			var signal = new ExoWeb.Signal("Success");
 
@@ -8104,17 +8060,40 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}, this);
 		},
 
+		// General events methods
+		///////////////////////////////////////////////////////////////////////
+		_raiseBeginEvents: function (method, args) {
+			this._raiseEvent("requestBegin", [this, args]);
+			this._raiseEvent(method + "Begin", [this, args]);
+		},
+		_raiseEndEvents:  function (method, result, args) {
+			this._raiseEvent("requestEnd", [this, args]);
+			this._raiseEvent("request" + result, [this, args]);
+			this._raiseEvent(method + "End", [this, args]);
+			this._raiseEvent(method + result, [this, args]);
+		},
+		addRequestBegin: function(handler) {
+			this._addEvent("requestBegin", handler);
+		},
+		addRequestEnd: function(handler) {
+			this._addEvent("requestEnd", handler);
+		},
+		addRequestSuccess: function(handler) {
+			this._addEvent("requestSuccess", handler);
+		},
+		addRequestFailed: function(handler) {
+			this._addEvent("requestFailed", handler);
+		},
+
 		// Raise Server Event
 		///////////////////////////////////////////////////////////////////////
-		raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed/*, automatic, paths */) {
+		raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed, paths) {
 			pendingRequests++;
 
 			Sys.Observer.setValue(this, "PendingServerEvent", true);
 
-			var automatic = arguments.length > 6 && arguments[6] === true;
-			var paths = arguments[7];
-
-			this._raiseBeginEvent("raiseServerEvent", automatic);
+			var args = { eventTarget: obj, eventName: name, eventRaised: event, includeAllChanges: includeAllChanges };
+			this._raiseBeginEvents("raiseServerEvent", args);
 
 			// if no event object is provided then use an empty object
 			if (event === undefined || event === null) {
@@ -8139,120 +8118,124 @@ Type.registerNamespace("ExoWeb.Mapper");
 				toExoGraph(this._translator, obj),
 				event,
 				paths,
-			// If includeAllChanges is true, then use all changes including those 
-			// that should not be saved, otherwise only use changes that can be saved.
+				// If includeAllChanges is true, then use all changes including those 
+				// that should not be saved, otherwise only use changes that can be saved.
 				serializeChanges.call(this, includeAllChanges, obj),
-				this._onRaiseServerEventSuccess.bind(this).appendArguments(success, automatic).spliceArguments(1, 0, name),
-				this._onRaiseServerEventFailed.bind(this).appendArguments(failed || success, automatic)
+				this._onRaiseServerEventSuccess.bind(this).appendArguments(args, success),
+				this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
-		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, eventName, callback, automatic) {
+		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, callback) {
 			Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-			this._handleResult(result, eventName, automatic, function () {
-				this._raiseSuccessEvent("raiseServerEvent", result, automatic);
+			args.responseObject = result;
 
-				if (callback && callback instanceof Function) {
-					var event = result.events[0];
-					if (event instanceof Array) {
-						for (var i = 0; i < event.length; ++i) {
-							event[i] = fromExoGraph(event[i], this._translator);
-						}
+			this._handleResult(result, args.name, function () {
+				var event = result.events[0];
+				if (event instanceof Array) {
+					for (var i = 0; i < event.length; ++i) {
+						event[i] = fromExoGraph(event[i], this._translator);
 					}
-					else {
-						event = fromExoGraph(event, this._translator);
-					}
-
-					result.event = event;
-					restoreDates(result.event);
-					callback.call(this, result);
 				}
+				else {
+					event = fromExoGraph(event, this._translator);
+				}
+
+				restoreDates(event);
+
+				result.event = event;
+				args.eventResponse = event;
+
+				this._raiseEndEvents("raiseServerEvent", "Success", args);
+
+				if (callback && callback instanceof Function)
+					callback.call(this, result);
 
 				pendingRequests--;
 			});
 		},
-		_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(result, callback, automatic) {
+		_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(error, args, callback) {
 			Sys.Observer.setValue(this, "PendingServerEvent", false);
 
-			this._raiseFailedEvent("raiseServerEvent", result, automatic);
+			args.error = error;
 
-			if (callback && callback instanceof Function) {
-				callback.call(this, result);
-			}
+			this._raiseEndEvents("raiseServerEvent", "Failed", args);
+
+			if (callback && callback instanceof Function)
+				callback.call(this, error);
 
 			pendingRequests--;
 		},
-		addRaiseServerEventBegin: function ServerSync$addRaiseServerEventBegin(handler, includeAutomatic) {
-			this._addEventHandler("raiseServerEventBegin", handler, includeAutomatic, 2);
+		addRaiseServerEventBegin: function(handler) {
+			this._addEvent("raiseServerEventBegin", handler);
 		},
-		addRaiseServerEventEnd: function ServerSync$addRaiseServerEventEnd(handler, includeAutomatic) {
-			this._addEventHandler("raiseServerEventEnd", handler, includeAutomatic, 1);
+		addRaiseServerEventEnd: function(handler) {
+			this._addEvent("raiseServerEventEnd", handler);
 		},
-		addRaiseServerEventSuccess: function ServerSync$addRaiseServerEventSuccess(handler, includeAutomatic) {
-			this._addEventHandler("raiseServerEventSuccess", handler, includeAutomatic, 3);
+		addRaiseServerEventSuccess: function(handler) {
+			this._addEvent("raiseServerEventSuccess", handler);
 		},
-		addRaiseServerEventFailed: function ServerSync$addRaiseServerEventFailed(handler, includeAutomatic) {
-			this._addEventHandler("raiseServerEventFailed", handler, includeAutomatic, 3);
+		addRaiseServerEventFailed: function(handler) {
+			this._addEvent("raiseServerEventFailed", handler);
 		},
 
 		// Roundtrip
 		///////////////////////////////////////////////////////////////////////
-		roundtrip: function ServerSync$roundtrip(success, failed/*, automatic */) {
+		roundtrip: function ServerSync$roundtrip(success, failed) {
 			pendingRequests++;
 
 			Sys.Observer.setValue(this, "PendingRoundtrip", true);
 
-			var automatic = arguments.length == 3 && arguments[2] === true;
-
-			this._raiseBeginEvent("roundtrip", automatic);
+			var args = {};
+			this._raiseBeginEvents("roundtrip", args);
 
 			roundtripProvider(
 				serializeChanges.call(this),
-				this._onRoundtripSuccess.bind(this).appendArguments(success, automatic),
-				this._onRoundtripFailed.bind(this).appendArguments(failed || success, automatic)
+				this._onRoundtripSuccess.bind(this).appendArguments(args, success),
+				this._onRoundtripFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
-		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, callback, automatic) {
+		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, args, callback) {
 			Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-			this._handleResult(result, "roundtrip", automatic, function () {
-				this._raiseSuccessEvent("roundtrip", result, automatic);
+			args.responseObject = result;
 
-				if (callback && callback instanceof Function) {
+			this._handleResult(result, "roundtrip", function () {
+				this._raiseEndEvents("roundtrip", "Success", args);
+
+				if (callback && callback instanceof Function)
 					callback.call(this, result);
-				}
 
 				pendingRequests--;
 			});
-
 		},
-		_onRoundtripFailed: function ServerSync$_onRoundtripFailed(result, callback, automatic) {
+		_onRoundtripFailed: function ServerSync$_onRoundtripFailed(error, args, callback) {
 			Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
-			this._raiseFailedEvent("roundtrip", result, automatic);
+			args.error = error;
 
-			if (callback && callback instanceof Function) {
-				callback.call(this, result);
-			}
+			this._raiseEndEvents("roundtrip", "Failed", args);
+
+			if (callback && callback instanceof Function)
+				callback.call(this, error);
 
 			pendingRequests--;
 		},
 		startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
-			//				ExoWeb.trace.log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
+			//ExoWeb.trace.log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
 
 			// cancel any pending roundtrip schedule
 			this.stopAutoRoundtrip();
 
-			var _this = this;
 			function doRoundtrip() {
-				//					ExoWeb.trace.log("server", "auto-roundtrip starting ({0})", [new Date()]);
-				_this.roundtrip(function context$autoRoundtripCallback() {
-					//						ExoWeb.trace.log("server", "auto-roundtrip complete ({0})", [new Date()]);
-					_this._roundtripTimeout = window.setTimeout(doRoundtrip, interval);
-				}, null, true);
+				//ExoWeb.trace.log("server", "auto-roundtrip starting ({0})", [new Date()]);
+				this.roundtrip(function() {
+					//ExoWeb.trace.log("server", "auto-roundtrip complete ({0})", [new Date()]);
+					this._roundtripTimeout = window.setTimeout(doRoundtrip.bind(this), interval);
+				});
 			}
 
-			this._roundtripTimeout = window.setTimeout(doRoundtrip, interval);
+			this._roundtripTimeout = window.setTimeout(doRoundtrip.bind(this), interval);
 		},
 		stopAutoRoundtrip: function ServerSync$stopAutoRoundtrip() {
 			if (this._roundtripTimeout) {
@@ -8262,44 +8245,44 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 		// Save
 		///////////////////////////////////////////////////////////////////////
-		save: function ServerSync$save(root, success, failed/*, automatic*/) {
+		save: function ServerSync$save(root, success, failed) {
 			pendingRequests++;
 
 			Sys.Observer.setValue(this, "PendingSave", true);
 
-			var automatic = arguments.length == 4 && arguments[3] === true;
-
-			this._raiseBeginEvent("save", automatic);
+			var args = { root: root };
+			this._raiseBeginEvents("save", args);
 
 			saveProvider(
 				toExoGraph(this._translator, root),
 				serializeChanges.call(this, true, root),
-				this._onSaveSuccess.bind(this).appendArguments(success, automatic),
-				this._onSaveFailed.bind(this).appendArguments(failed || success, automatic)
+				this._onSaveSuccess.bind(this).appendArguments(args, success),
+				this._onSaveFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
-		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, callback, automatic) {
+		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, callback) {
 			Sys.Observer.setValue(this, "PendingSave", false);
 
-			this._handleResult(result, "save", automatic, function () {
-				this._raiseSuccessEvent("save", result, automatic);
+			args.responseObject = result;
 
-				if (callback && callback instanceof Function) {
+			this._handleResult(result, "save", function () {
+				this._raiseEndEvents("save", "Success", args);
+
+				if (callback && callback instanceof Function)
 					callback.call(this, result);
-				}
 
 				pendingRequests--;
 			});
-
 		},
-		_onSaveFailed: function ServerSync$_onSaveFailed(result, callback, automatic) {
+		_onSaveFailed: function(error, args, callback) {
 			Sys.Observer.setValue(this, "PendingSave", false);
 
-			this._raiseFailedEvent("save", result, automatic);
+			args.error = error;
 
-			if (callback && callback instanceof Function) {
-				callback.call(this, result);
-			}
+			this._raiseEndEvents("save", "Failed", args);
+
+			if (callback && callback instanceof Function)
+				callback.call(this, error);
 
 			pendingRequests--;
 		},
@@ -8323,30 +8306,29 @@ Type.registerNamespace("ExoWeb.Mapper");
 			if (this._saveTimeout)
 				return;
 
-			var _this = this;
-			function ServerSync$doAutoSave() {
-				//					ExoWeb.trace.log("server", "auto-save starting ({0})", [new Date()]);
-				_this.save(_this._saveRoot, function ServerSync$doAutoSave$callback() {
-					//						ExoWeb.trace.log("server", "auto-save complete ({0})", [new Date()]);
+			function doAutoSave() {
+				//ExoWeb.trace.log("server", "auto-save starting ({0})", [new Date()]);
+				this.save(this._saveRoot, function ServerSync$doAutoSave$callback() {
+					//ExoWeb.trace.log("server", "auto-save complete ({0})", [new Date()]);
 
 					// wait for the next change before next auto save
-					_this._saveTimeout = null;
-				}, null, true);
+					this._saveTimeout = null;
+				});
 			}
 
-			this._saveTimeout = window.setTimeout(ServerSync$doAutoSave, this._saveInterval);
+			this._saveTimeout = window.setTimeout(doAutoSave.bind(this), this._saveInterval);
 		},
-		addSaveBegin: function ServerSync$addSaveBegin(handler, includeAutomatic) {
-			this._addEventHandler("saveBegin", handler, includeAutomatic);
+		addSaveBegin: function(handler) {
+			this._addEvent("saveBegin", handler);
 		},
-		addSaveEnd: function ServerSync$addSaveEnd(handler, includeAutomatic) {
-			this._addEventHandler("saveEnd", handler, includeAutomatic);
+		addSaveEnd: function(handler) {
+			this._addEvent("saveEnd", handler);
 		},
-		addSaveSuccess: function ServerSync$addSaveSuccess(handler, includeAutomatic) {
-			this._addEventHandler("saveSuccess", handler, includeAutomatic, 3);
+		addSaveSuccess: function(handler) {
+			this._addEvent("saveSuccess", handler);
 		},
-		addSaveFailed: function ServerSync$addSaveFailed(handler, includeAutomatic) {
-			this._addEventHandler("saveFailed", handler, includeAutomatic, 3);
+		addSaveFailed: function(handler) {
+			this._addEvent("saveFailed", handler);
 		},
 
 		// Rollback
@@ -9428,7 +9410,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		objectProvider(mtype.get_fullName(), [id], paths, false,
 			serializeChanges.call(context.server, true),
 			function(result) {
-				mtype.get_model()._server._handleResult(result, null, true, function() {
+				mtype.get_model()._server._handleResult(result, null, function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					pendingObjects--;
 					callback.call(thisPtr || this, obj);

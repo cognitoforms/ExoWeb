@@ -15,7 +15,7 @@ function eventProvider(eventType, instance, event, paths, changes, onSuccess, on
 	}
 	else {
 		// scopeQueries is NOT included in call, so insert default value into args array
-		scopeQueries = context.server.getScopeQueries();
+		scopeQueries = context.server._scopeQueries;
 	}
 
 	if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
