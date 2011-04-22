@@ -1,3 +1,5 @@
+var pendingSignalTimeouts;
+
 function Signal(debugLabel) {
 	this._waitForAll = [];
 	this._pending = 0;
@@ -10,10 +12,28 @@ function Signal(debugLabel) {
 function doCallback(name, thisPtr, callback, args, executeImmediately) {
 	if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
 		var batch = Batch.suspendCurrent("_doCallback");
-		window.setTimeout(function Signal$_doCallback$timeout() {
+
+		// manage a queue of callbacks to ensure the order of execution
+		function timeoutCallback() {
 			ExoWeb.Batch.resume(batch);
 			callback.apply(thisPtr, args || []);
-		}, 1);
+		}
+
+		if (!pendingSignalTimeouts) {
+			pendingSignalTimeouts = [timeoutCallback];
+
+			window.setTimeout(function () {
+				var callbacks = pendingSignalTimeouts;
+				pendingSignalTimeouts = null;
+
+				callbacks.forEach(function (cb) {
+					cb();
+				});
+			}, 1);
+		}
+		else {
+			pendingSignalTimeouts.push(timeoutCallback);
+		}
 	}
 	else {
 		callback.apply(thisPtr, args || []);
