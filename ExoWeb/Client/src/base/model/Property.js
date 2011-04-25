@@ -286,7 +286,10 @@ Property.mixin({
 		}
 
 		if (arguments.length > 1) {
-			this._setter(target, val, false, args);
+			if (this.isInited(target))
+				this._setter(target, val, false, args);
+			else
+				this.init(target, val);
 		}
 		else {
 			return this._getter(target);
@@ -456,6 +459,7 @@ Property.mixin({
 
 					signal.waitForAll(function () {
 						prop.value(obj, newValue, { calculated: true });
+
 						if (callback) {
 							callback(obj);
 						}

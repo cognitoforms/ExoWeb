@@ -3118,10 +3118,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			if (!prop.get_isList()) {
 				if (prop.get_isStatic()) {
-					this._jstype["set_" + def.name] = this._makeSetter(prop, prop._setter, true, true);
+					this._jstype["set_" + def.name] = this._makeSetter(prop);
 				}
 				else {
-					this._jstype.prototype["set_" + def.name] = this._makeSetter(prop, prop._setter, true, true);
+					this._jstype.prototype["set_" + def.name] = this._makeSetter(prop);
 				}
 			}
 
@@ -3186,12 +3186,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 				return fn.call(receiver, this, skipTypeCheck);
 			};
 		},
-		_makeSetter: function Type$_makeSetter(receiver, fn, notifiesChanges, skipTypeCheck) {
+		_makeSetter: function Type$_makeSetter(prop) {
 			var setter = function(val) {
-				fn.call(receiver, this, val, skipTypeCheck);
+				if (prop.isInited(this))
+					prop._setter(this, val, true);
+				else
+					prop.init(this, val);
 			};
 
-			setter.__notifies = !!notifiesChanges;
+			setter.__notifies = true;
 
 			return setter;
 		},
@@ -3728,7 +3731,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 
 			if (arguments.length > 1) {
-				this._setter(target, val, false, args);
+				if (this.isInited(target))
+					this._setter(target, val, false, args);
+				else
+					this.init(target, val);
 			}
 			else {
 				return this._getter(target);
@@ -3898,6 +3904,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 						signal.waitForAll(function () {
 							prop.value(obj, newValue, { calculated: true });
+
 							if (callback) {
 								callback(obj);
 							}
