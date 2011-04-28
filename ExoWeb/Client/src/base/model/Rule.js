@@ -27,11 +27,15 @@ Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter, callba
 	}
 
 	// register the rule after loading has completed
-	typeFilter.get_model().addBeforeContextReady(function() {				
+	typeFilter.get_model().addBeforeContextReady(function() {
 		typeFilter.addRule(rule);
 		if(callback)
 			callback.apply(thisPtr || this);
 	});
+};
+
+Rule.canExecute = function(rule, sender, property) {
+	return rule.inputs.every(function(input) { return input.property === property || !input.get_dependsOnInit() || input.property.isInited(sender, true); });
 };
 
 Rule.ensureError = function Rule$ensureError(ruleName, prop) {

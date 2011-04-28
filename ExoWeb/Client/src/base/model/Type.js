@@ -454,12 +454,12 @@ Type.prototype = {
 	},
 	addRule: function Type$addRule(rule) {
 		function Type$addRule$init(sender, args) {
-			if (!args.wasInited && rule.inputs.every(function(input) { return input.property === args.property || !input.get_dependsOnInit() || input.property.isInited(sender, true); })) {
+			if (!args.wasInited && (rule.canExecute ? rule.canExecute(sender, args.property) : Rule.canExecute(rule, sender, args.property))) {
 				Type$addRule$fn(sender, args.property, rule.execute);
 			}
 		}
 		function Type$addRule$changed(sender, args) {
-			if (args.wasInited && rule.inputs.every(function(input) { return input.property == args.property || !input.get_dependsOnInit() || input.property.isInited(sender, true); })) {
+			if (args.wasInited && (rule.canExecute  ? rule.canExecute(sender, args.property) : Rule.canExecute(rule, sender, args.property))) {
 				Type$addRule$fn(sender, args.property, rule.execute);
 			}
 		}
@@ -567,7 +567,10 @@ Type.prototype = {
 				processing = (i < rules.length);
 				while (processing) {
 					var rule = rules[i];
-					if (!rule._isExecuting) {
+
+					// Only execute a rule if it is not currently executing and can be executed for the target object.
+					// If rule doesn't define a custom canExecute this will simply check that all init inputs are inited.
+					if (!rule._isExecuting && (rule.canExecute ? rule.canExecute(obj) : Rule.canExecute(rule, obj))) {
 						rule._isExecuting = true;
 
 						if (rule.isAsync) {

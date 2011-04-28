@@ -3244,12 +3244,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 		},
 		addRule: function Type$addRule(rule) {
 			function Type$addRule$init(sender, args) {
-				if (!args.wasInited && rule.inputs.every(function(input) { return input.property === args.property || !input.get_dependsOnInit() || input.property.isInited(sender, true); })) {
+				if (!args.wasInited && (rule.canExecute ? rule.canExecute(sender, args.property) : Rule.canExecute(rule, sender, args.property))) {
 					Type$addRule$fn(sender, args.property, rule.execute);
 				}
 			}
 			function Type$addRule$changed(sender, args) {
-				if (args.wasInited && rule.inputs.every(function(input) { return input.property == args.property || !input.get_dependsOnInit() || input.property.isInited(sender, true); })) {
+				if (args.wasInited && (rule.canExecute  ? rule.canExecute(sender, args.property) : Rule.canExecute(rule, sender, args.property))) {
 					Type$addRule$fn(sender, args.property, rule.execute);
 				}
 			}
@@ -3357,7 +3357,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 					processing = (i < rules.length);
 					while (processing) {
 						var rule = rules[i];
-						if (!rule._isExecuting) {
+
+						// Only execute a rule if it is not currently executing and can be executed for the target object.
+						// If rule doesn't define a custom canExecute this will simply check that all init inputs are inited.
+						if (!rule._isExecuting && (rule.canExecute ? rule.canExecute(obj) : Rule.canExecute(rule, obj))) {
 							rule._isExecuting = true;
 
 							if (rule.isAsync) {
@@ -3837,6 +3840,16 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			var rule = {
 				prop: this,
+				canExecute: function(sender, property) {
+					// If there is no event, check if the calculation is based on some initialization, then defer to the default
+					// input check. This is done so that rules that are based on property changes alone do not fire when created,
+					// but calculations that are based on property initialization are allowed to fire if possible.
+					return (property || this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0) &&
+						// If no event is firing then the property argument will be the property that the rule is attached to,
+						// which should have no effect on the outcome. If no sender exists then this is a static check that is
+						// only dependent on the rule's inputs and not the initialization state of any particular object.
+						(!sender || Rule.canExecute(this, sender, property || input.property));
+				},
 				execute: function Property$calculated$execute(obj, callback) {
 					var signal = new ExoWeb.Signal("calculated rule");
 					var prop = this.prop;
@@ -3917,13 +3930,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 			};
 
 			Rule.register(rule, inputs, isAsync, rootType, function () {
-				if (rule.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0) {
-					// Execute for existing instances
-					Array.forEach(rootType.known(), function (obj) {
-						if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+				// Static check to determine if running when registered makes sense for this calculation based on its inputs.
+				if (rule.canExecute()) {
+					// Execute for existing instances if their initialization state allows it.
+					rootType.known().forEach(function (obj) {
+						if (rule.canExecute(obj)) {
 							try {
 								rule._isExecuting = true;
-								//									ExoWeb.trace.log("rule", "executing rule '{0}' when initialized", [rule]);
+								//ExoWeb.trace.log("rule", "executing rule '{0}' when initialized", [rule]);
 								rule.execute.call(rule, obj);
 							}
 							catch (err) {
@@ -4840,11 +4854,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 
 		// register the rule after loading has completed
-		typeFilter.get_model().addBeforeContextReady(function() {				
+		typeFilter.get_model().addBeforeContextReady(function() {
 			typeFilter.addRule(rule);
 			if(callback)
 				callback.apply(thisPtr || this);
 		});
+	};
+
+	Rule.canExecute = function(rule, sender, property) {
+		return rule.inputs.every(function(input) { return input.property === property || !input.get_dependsOnInit() || input.property.isInited(sender, true); });
 	};
 
 	Rule.ensureError = function Rule$ensureError(ruleName, prop) {

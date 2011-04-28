@@ -392,6 +392,16 @@ Property.mixin({
 
 		var rule = {
 			prop: this,
+			canExecute: function(sender, property) {
+				// If there is no event, check if the calculation is based on some initialization, then defer to the default
+				// input check. This is done so that rules that are based on property changes alone do not fire when created,
+				// but calculations that are based on property initialization are allowed to fire if possible.
+				return (property || this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0) &&
+					// If no event is firing then the property argument will be the property that the rule is attached to,
+					// which should have no effect on the outcome. If no sender exists then this is a static check that is
+					// only dependent on the rule's inputs and not the initialization state of any particular object.
+					(!sender || Rule.canExecute(this, sender, property || input.property));
+			},
 			execute: function Property$calculated$execute(obj, callback) {
 				var signal = new ExoWeb.Signal("calculated rule");
 				var prop = this.prop;
@@ -472,13 +482,14 @@ Property.mixin({
 		};
 
 		Rule.register(rule, inputs, isAsync, rootType, function () {
-			if (rule.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0) {
-				// Execute for existing instances
-				Array.forEach(rootType.known(), function (obj) {
-					if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+			// Static check to determine if running when registered makes sense for this calculation based on its inputs.
+			if (rule.canExecute()) {
+				// Execute for existing instances if their initialization state allows it.
+				rootType.known().forEach(function (obj) {
+					if (rule.canExecute(obj)) {
 						try {
 							rule._isExecuting = true;
-							//									ExoWeb.trace.log("rule", "executing rule '{0}' when initialized", [rule]);
+							//ExoWeb.trace.log("rule", "executing rule '{0}' when initialized", [rule]);
 							rule.execute.call(rule, obj);
 						}
 						catch (err) {
