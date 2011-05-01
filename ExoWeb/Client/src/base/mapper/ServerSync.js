@@ -32,6 +32,18 @@ function ServerSync(model) {
 		startChangeSet.call(this, "client");
 	};
 
+	this.ignoreChanges = function(callback, thisPtr) {
+		return function() {
+			try {
+				applyingChanges++;
+				callback.apply(thisPtr || this, arguments);
+			}
+			finally {
+				applyingChanges--;
+			}
+		};
+	};
+
 	model.addObjectRegistered(function(obj) {
 		// if an existing object is registered then register for lazy loading
 		if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges && !applyingChanges) {
@@ -226,7 +238,7 @@ ServerSync.mixin({
 					ExoWeb.Batch.end(batch);
 
 					if (result.changes && result.changes.length > 0) {
-						this._changeLog.applyChanges(result.changes, source, this, signal.pending());
+						this._changeLog.applyChanges(result.changes, source, this);
 					}
 					else if (source) {
 						// no changes, so record empty set
@@ -245,11 +257,10 @@ ServerSync.mixin({
 			}), this);
 		}
 		else if (result.changes && result.changes.length > 0) {
-			this._changeLog.applyChanges(result.changes, source, this, signal.pending(function () {
-				if (result.conditions) {
-					conditionsFromJson(this._model, result.conditions, signal.pending());
-				}
-			}, this));
+			this._changeLog.applyChanges(result.changes, source, this);
+			if (result.conditions) {
+				conditionsFromJson(this._model, result.conditions, signal.pending());
+			}
 		}
 		else {
 			if (source) {

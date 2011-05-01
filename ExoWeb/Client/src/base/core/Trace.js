@@ -16,10 +16,6 @@ ExoWeb.config = {
 	// as a result of invoking callbacks, which can aid in troubleshooting errors.
 	signalDebug: false,
 
-	// Causes change log processing to behave more aggressively, meaning that types and
-	// instances will be aggressively loaded as they are encountered.
-	aggressiveLog: false,
-
 	// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 	individualQueryLoading: false
 };

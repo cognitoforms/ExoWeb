@@ -575,10 +575,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// as a result of invoking callbacks, which can aid in troubleshooting errors.
 		signalDebug: false,
 
-		// Causes change log processing to behave more aggressively, meaning that types and
-		// instances will be aggressively loaded as they are encountered.
-		aggressiveLog: false,
-
 		// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 		individualQueryLoading: false
 	};
@@ -6897,8 +6893,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ResponseHandler.mixin({
 		execute: ExoWeb.FunctionChain.prepare(
-			// Load types from JSON
-			//////////////////////////////////////////
+		// Load types from JSON
+		//////////////////////////////////////////
 			function loadTypes(callback, thisPtr) {
 				if (this._options.types) {
 					ExoWeb.trace.log("responseHandler", "Loading types.");
@@ -6908,31 +6904,29 @@ Type.registerNamespace("ExoWeb.DotNet");
 				callback.call(thisPtr || this);
 			},
 
-			// Apply "init new" changes
-			//////////////////////////////////////////
+		// Apply "init new" changes
+		//////////////////////////////////////////
 			function applyInitChanges(callback, thisPtr) {
 				if (this._options.changes) {
 					ExoWeb.trace.log("responseHandler", "Applying \"init new\" changes.");
 
-					var signal = new ExoWeb.Signal("applyInitChanges");
-
 					var changes = Array.prototype.slice.apply(this._options.changes);
 
-					var initChanges = changes.filter(function(change) {
+					var initChanges = changes.filter(function (change) {
 						return change.type === "InitNew";
 					});
 
-					this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync, signal.pending());
+					this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync);
 
-					signal.waitForAll(callback, thisPtr, true);
+					callback.call(thisPtr);
 				}
 				else {
 					callback.call(thisPtr || this);
 				}
 			},
 
-			// Load instance data from JSON
-			//////////////////////////////////////////
+		// Load instance data from JSON
+		//////////////////////////////////////////
 			function loadInstances(callback, thisPtr) {
 				if (this._options.instances) {
 					ExoWeb.trace.log("responseHandler", "Loading instances.");
@@ -6943,31 +6937,29 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			},
 
-			// Apply non-"init new" changes
-			//////////////////////////////////////////
+		// Apply non-"init new" changes
+		//////////////////////////////////////////
 			function applyNonInitChanges(callback, thisPtr) {
 				if (this._options.changes) {
 					ExoWeb.trace.log("responseHandler", "Applying non-\"init new\" changes.");
 
-					var signal = new ExoWeb.Signal("applyNonInitChanges");
-
 					var changes = Array.prototype.slice.apply(this._options.changes);
 
-					var initChanges = changes.filter(function(change) {
+					var initChanges = changes.filter(function (change) {
 						return change.type !== "InitNew";
 					});
 
-					this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync, signal.pending());
+					this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync);
 
-					signal.waitForAll(callback, thisPtr, true);
+					callback.call(thisPtr);
 				}
 				else {
 					callback.call(thisPtr || this);
 				}
 			},
 
-			// Load conditions from JSON
-			//////////////////////////////////////////
+		// Load conditions from JSON
+		//////////////////////////////////////////
 			function loadConditions(callback, thisPtr) {
 				if (this._options.conditions) {
 					ExoWeb.trace.log("reponseHandler", "Loading conditions.");
@@ -7383,16 +7375,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		// APPLY CHANGES
 		///////////////////////////////////////////////////////////////////////
-		applyChanges: function (changes, source, serverSync, callback, thisPtr) {
+		applyChanges: function (changes, source, serverSync) {
 			if (!changes || !(changes instanceof Array)) {
 				return;
 			}
 
 			try {
 				var batch = ExoWeb.Batch.start("apply changes");
-				//					ExoWeb.trace.log("server", "begin applying {length} changes", changes);
-
-				serverSync.beginApplyingChanges();
 
 				if ((source !== undefined && source !== null && (!this.activeSet() || this.activeSet().source() !== source)) || serverSync.isCapturingChanges()) {
 					if (source) {
@@ -7403,8 +7392,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 						ExoWeb.trace.logWarning("server", "Changes to apply but no source is specified.");
 					}
 				}
-
-				var signal = new ExoWeb.Signal("ServerSync.apply");
 
 				var newChanges = 0;
 				var currentChanges = this.count(serverSync.canSave, serverSync);
@@ -7436,398 +7423,180 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}, this);
 				}
 
-				function processNextChange() {
-					// pull off the next change to process
-					var change = Array.dequeue(changes);
-
-					if (change) {
-						var callback = signal.pending(processNextChange, this);
-
-						function recordChange() {
-							// only record a change if there is not a pending save change
-							if (numSaveChanges <= 0) {
-								newChanges++;
-								this.add(change);
-							}
-						}
-
-						if (change.type == "InitNew") {
-							this.applyInitChange(change, serverSync, before(callback, recordChange));
-						}
-						else if (change.type == "ReferenceChange") {
-							this.applyRefChange(change, serverSync, before(callback, recordChange));
-						}
-						else if (change.type == "ValueChange") {
-							this.applyValChange(change, serverSync, before(callback, recordChange));
-						}
-						else if (change.type == "ListChange") {
-							this.applyListChange(change, serverSync, before(callback, recordChange));
-						}
-						else if (change.type == "Save") {
-							this.applySaveChange(change, serverSync, before(callback, function () { numSaveChanges--; }));
-						}
+				changes.forEach(function (change, changeIndex) {
+					if (change.type === "InitNew") {
+						this.applyInitChange(change, serverSync);
 					}
-				}
-
-				processNextChange.call(this);
-
-				signal.waitForAll(function () {
-					ExoWeb.trace.log("server", "done applying {0} changes: {1} captured", [totalChanges, newChanges]);
-
-					// start a new set to capture future changes
-					if (serverSync.isCapturingChanges()) {
-						this.start("client");
+					else if (change.type === "ReferenceChange") {
+						this.applyRefChange(change, serverSync);
+					}
+					else if (change.type === "ValueChange") {
+						this.applyValChange(change, serverSync);
+					}
+					else if (change.type === "ListChange") {
+						this.applyListChange(change, serverSync);
+					}
+					else if (change.type === "Save") {
+						this.applySaveChange(change, serverSync);
+						numSaveChanges--;
 					}
 
-					serverSync.endApplyingChanges();
-					ExoWeb.Batch.end(batch);
-
-					// invoke callback passed into applyChanges
-					if (callback && callback instanceof Function) {
-						callback.call(thisPtr || this);
-					}
-
-					// raise "HasPendingChanges" change event, only if the number of changes has changed
-					if (currentChanges !== this.count(serverSync.canSave, serverSync)) {
-						Sys.Observer.raisePropertyChanged(serverSync, "HasPendingChanges");
+					// only record a change if there is not a pending save change
+					if (change.type !== "Save" && numSaveChanges <= 0) {
+						newChanges++;
+						this.add(change);
 					}
 				}, this);
+
+
+				// start a new set to capture future changes
+				if (serverSync.isCapturingChanges()) {
+					this.start("client");
+				}
+
+				ExoWeb.Batch.end(batch);
+
+				// raise "HasPendingChanges" change event, only new changes were recorded
+				if (newChanges > 0) {
+					Sys.Observer.raisePropertyChanged(serverSync, "HasPendingChanges");
+				}
 			}
 			catch (e) {
 				// attempt to clean up in the event of an error
-				serverSync.endApplyingChanges();
 				ExoWeb.Batch.end(batch);
 				ExoWeb.trace.throwAndLog(["server"], e);
 			}
 		},
-		applySaveChange: function (change, serverSync, callback) {
-			if (!change.idChanges) {
-				callback.call(this);
+		applySaveChange: function (change, serverSync) {
+			if (!change.idChanges)
 				return;
-			}
 
-			var index = 0;
-
-			var processNextIdChange = function processNextIdChange() {
-				if (index === change.idChanges.length) {
-					callback.call(this);
-				}
-				else {
-					var idChange = change.idChanges[index++];
-
-					var returnImmediately = !ExoWeb.config.aggressiveLog;
-
-					tryGetJsType(serverSync._model, idChange.type, null, ExoWeb.config.aggressiveLog, function (jstype) {
-						// Call callback here if type was present immediately or aggressive mode is turned on
-						var doCallback = returnImmediately || ExoWeb.config.aggressiveLog;
-
-						// Indicate that type was present immediately
-						returnImmediately = false;
-
-						// don't record a change if the change is being deferred
-						var logIgnore = !doCallback;
-
-						try {
-							if (logIgnore) {
-								serverSync.beginApplyingChanges();
+			change.idChanges.forEach(function (idChange, idChangeIndex) {
+				ensureJsType(serverSync._model, idChange.type, function applySaveChange$typeLoaded(jstype) {
+					serverSync.ignoreChanges(function() {
+						var serverOldId = idChange.oldId;
+						var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
+								serverSync._translator.reverse(idChange.type, serverOldId) :
+								idChange.oldId;
+	
+						// If the client recognizes the old id then this is an object we have seen before
+						if (clientOldId) {
+							var type = serverSync._model.type(idChange.type);
+	
+							// Attempt to load the object.
+							var obj = type.get(clientOldId);
+	
+							// Ensure that the object exists.
+							if (!obj) {
+								ExoWeb.trace.throwAndLog("server",
+									"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
+									[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
+								);
 							}
-
-							var serverOldId = idChange.oldId;
-							var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
-									serverSync._translator.reverse(idChange.type, serverOldId) :
-									idChange.oldId;
-
-							// If the client recognizes the old id then this is an object we have seen before
-							if (clientOldId) {
-								var type = serverSync._model.type(idChange.type);
-
-								// Attempt to load the object.
-								var obj = type.get(clientOldId);
-
-								// Ensure that the object exists.
-								if (!obj) {
-									ExoWeb.trace.throwAndLog("server",
-										"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
-										[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
-									);
-								}
-
-								// Change the id and make non-new.
-								type.changeObjectId(clientOldId, idChange.newId);
-								Sys.Observer.setValue(obj.meta, "isNew", false);
-
-								// Remove the id change from the list and move the index back.
-								Array.remove(change.idChanges, idChange);
-								index = (index === 0) ? 0 : index - 1;
-							}
-							// Otherwise, log an error.
-							else {
-								ExoWeb.trace.logWarning("server",
-									"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
-									idChange);
-							}
-
-							// if type was not immediately present then id will be changed 
-							if (doCallback) {
-								processNextIdChange.call(this);
-							}
-
-							if (logIgnore) {
-								logIgnore = false; // avoid double errors when ending
-								serverSync.endApplyingChanges();
-							}
+	
+							// Change the id and make non-new.
+							type.changeObjectId(clientOldId, idChange.newId);
+							Sys.Observer.setValue(obj.meta, "isNew", false);
+	
+							// Update affected scope queries
+							serverSync._scopeQueries.forEach(function (query) {
+								query.ids = query.ids.map(function (id) {
+									return (id === clientOldId) ? idChange.newId : id;
+								}, this);
+							}, this);
+	
+							// Remove the id change from the list and move the index back.
+							Array.remove(change.idChanges, idChange);
+							index = (index === 0) ? 0 : index - 1;
 						}
-						catch(e) {
-							if (logIgnore) {
-								logIgnore = false; // avoid double errors when ending
-								serverSync.endApplyingChanges();
-							}
-							ExoWeb.trace.throwAndLog(["server"], e);
+						// Otherwise, log an error.
+						else {
+							ExoWeb.trace.logWarning("server",
+								"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
+								idChange);
 						}
 					}, this);
-
-					// call callback here if target type or instance is not
-					// present and aggressive log behavior is not turned on
-					if (returnImmediately) {
-						processNextIdChange.call(this);
-					}
-
-					returnImmediately = false;
-				}
-			};
-
-			// start processing id changes, use call so that "this" pointer refers to ServerSync object
-			processNextIdChange.call(this);
+				}, this);
+			}, this);
 		},
-		applyInitChange: function (change, serverSync, callback) {
-			//				ExoWeb.trace.log("server", "applyInitChange: Type = {type}, Id = {id}", change.instance);
-
-			ensureJsType(serverSync._model, change.instance.type, function(jstype) {
+		applyInitChange: function (change, serverSync) {
+			ensureJsType(serverSync._model, change.instance.type, serverSync.ignoreChanges(function(jstype) {
 				if (!jstype.meta.get(change.instance.id)) {
 					// Create the new object
 					var newObj = new jstype();
-
+	
 					// Check for a translation between the old id that was reported and an actual old id.  This is
 					// needed since new objects that are created on the server and then committed will result in an accurate
 					// id change record, but "instance.id" for this change will actually be the persisted id.
 					var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
-
+	
 					// Remember the object's client-generated new id and the corresponding server-generated new id
 					serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
 				}
-
-				callback.call(this);
+			}), this);
+		},
+		applyRefChange: function (change, serverSync) {
+			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(function (srcObj) {
+					if (change.newValue) {
+						tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(function (refType) {
+							var refObj = fromExoGraph(change.newValue, serverSync._translator);
+							Sys.Observer.setValue(srcObj, change.property, refObj);
+						}), this);
+					}
+					else {
+						Sys.Observer.setValue(srcObj, change.property, null);
+					}
+				}), this);
 			}, this);
 		},
-		applyRefChange: function (change, serverSync, callback) {
-			//				ExoWeb.trace.log("server", "applyRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
-
-			var returnImmediately = !ExoWeb.config.aggressiveLog;
-
-			tryGetJsType(serverSync._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function (srcObj) {
-					// Call ballback here if type and instance were
-					// present immediately or aggressive mode is turned on
-					var doCallback = returnImmediately || ExoWeb.config.aggressiveLog;
-
-					// Indicate that type and instance were present immediately
-					returnImmediately = false;
-
-					// don't record a change if the change is being deferred
-					var logIgnore = !doCallback;
-
-					try {
-						if (change.newValue) {
-							tryGetJsType(serverSync._model, change.newValue.type, null, true, function (refType) {
-								if (logIgnore) {
-									serverSync.beginApplyingChanges();
-								}
-
-								var refObj = fromExoGraph(change.newValue, serverSync._translator);
-								var changed = ExoWeb.getValue(srcObj, change.property) != refObj;
-
-								Sys.Observer.setValue(srcObj, change.property, refObj);
-
-								if (doCallback) {
-									callback.call(this);
-								}
-
-								if (logIgnore) {
-									logIgnore = false; // avoid double errors when ending
-									serverSync.endApplyingChanges();
-								}
-							}, this);
-						}
-						else {
-							if (logIgnore) {
-								serverSync.beginApplyingChanges();
-							}
-
-							var changed = ExoWeb.getValue(srcObj, change.property) != null;
-
-							Sys.Observer.setValue(srcObj, change.property, null);
-
-							if (doCallback) {
-								callback.call(this);
-							}
-
-							if (logIgnore) {
-								logIgnore = false; // avoid double errors when ending
-								serverSync.endApplyingChanges();
-							}
-						}
+		applyValChange: function (change, serverSync) {
+			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(function (srcObj) {
+					if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0) {
+						change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
+						change.newValue = new Date(change.newValue);
 					}
-					catch(e) {
-						if (logIgnore) {
-							logIgnore = false; // avoid double errors when ending
-							serverSync.endApplyingChanges();
-						}
-						ExoWeb.trace.throwAndLog(["server"], e);
-					}
-				}, this);
+
+					Sys.Observer.setValue(srcObj, change.property, change.newValue);
+				}), this);
 			}, this);
-
-			// call callback here if target type or instance is not
-			// present and aggressive log behavior is not turned on
-			if (returnImmediately) {
-				callback.call(this);
-			}
-
-			returnImmediately = false;
 		},
-		applyValChange: function (change, serverSync, callback) {
-			//				ExoWeb.trace.log("server", "applyValChange", change.instance);
+		applyListChange: function (change, serverSync) {
+			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(function (srcObj) {
+					var prop = srcObj.meta.property(change.property, true);
+					var list = prop.value(srcObj);
 
-			var returnImmediately = !ExoWeb.config.aggressiveLog;
+					list.beginUpdate();
 
-			tryGetJsType(serverSync._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function (srcObj) {
-					// Call ballback here if type and instance were
-					// present immediately or aggressive mode is turned on
-					var doCallback = returnImmediately || ExoWeb.config.aggressiveLog;
+					var listSignal = new ExoWeb.Signal("applyListChange-items");
 
-					// Indicate that type and instance were present immediately
-					returnImmediately = false;
+					// apply added items
+					change.added.forEach(function (item) {
+						tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(function (itemType) {
+							var itemObj = fromExoGraph(item, serverSync._translator);
+							if (list.indexOf(itemObj) < 0) {
+								list.add(itemObj);
+							}
+						})), this);
+					}, this);
 
-					// don't record a change if the change is being deferred
-					var logIgnore = !doCallback;
+					// apply removed items
+					change.removed.forEach(function (item) {
+						// no need to load instance only to remove it from a list
+						tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(function (itemType) {
+							var itemObj = fromExoGraph(item, serverSync._translator);
+							list.remove(itemObj);
+						}), this);
+					}, this);
 
-					try {
-						if (logIgnore) {
-							serverSync.beginApplyingChanges();
-						}
-
-						if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0) {
-							change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
-							change.newValue = new Date(change.newValue);
-						}
-
-						Sys.Observer.setValue(srcObj, change.property, change.newValue);
-
-						if (doCallback) {
-							callback.call(this);
-						}
-
-						if (logIgnore) {
-							logIgnore = false; // avoid double errors when ending
-							serverSync.endApplyingChanges();
-						}
-					}
-					catch(e) {
-						if (logIgnore) {
-							logIgnore = false; // avoid double errors when ending
-							serverSync.endApplyingChanges();
-						}
-						ExoWeb.trace.throwAndLog(["server"], e);
-					}
-				}, this);
+					// don't end update until the items have been loaded
+					listSignal.waitForAll(serverSync.ignoreChanges(function () {
+						list.endUpdate();
+					}), this);
+				}), this);
 			}, this);
-
-			if (returnImmediately) {
-				callback.call(this);
-			}
-
-			returnImmediately = false;
-		},
-		applyListChange: function (change, serverSync, callback) {
-			//				ExoWeb.trace.log("server", "applyListChange", change.instance);
-
-			var returnImmediately = !ExoWeb.config.aggressiveLog;
-
-			tryGetJsType(serverSync._model, change.instance.type, change.property, ExoWeb.config.aggressiveLog, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, ExoWeb.config.aggressiveLog ? LazyLoadEnum.ForceAndWait : LazyLoadEnum.None, function (srcObj) {
-
-					// Call callback here if type and instance were
-					// present immediately or aggressive mode is turned on
-					var doCallback = returnImmediately || ExoWeb.config.aggressiveLog;
-
-					// Indicate that type and instance were present immediately
-					returnImmediately = false;
-
-					// don't record a change if the change is being deferred
-					var logIgnore = !doCallback;
-
-					try {
-						var prop = srcObj.meta.property(change.property, true);
-						var list = prop.value(srcObj);
-
-						list.beginUpdate();
-
-						var listSignal = new ExoWeb.Signal("applyListChange-items");
-
-						// apply added items
-						Array.forEach(change.added, function ServerSync$applyListChanges$added(item) {
-							tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(function (itemType) {
-								var itemObj = fromExoGraph(item, serverSync._translator);
-								if (list.indexOf(itemObj) < 0) {
-									list.add(itemObj);
-								}
-							}), this);
-						}, this);
-
-						// apply removed items
-						Array.forEach(change.removed, function ServerSync$applyListChanges$removed(item) {
-							// no need to load instance only to remove it from a list
-							tryGetJsType(serverSync._model, item.type, null, false, function (itemType) {
-								var itemObj = fromExoGraph(item, serverSync._translator);
-								list.remove(itemObj);
-							}, this);
-						}, this);
-
-						// don't end update until the items have been loaded
-						listSignal.waitForAll(function () {
-							// changes are captured as a result of events that are raised when endUpdate is called
-							if (logIgnore) {
-								serverSync.beginApplyingChanges();
-							}
-
-							list.endUpdate();
-
-							if (doCallback) {
-								callback.call(this);
-							}
-
-							if (logIgnore) {
-								logIgnore = false; // avoid double errors when ending
-								serverSync.endApplyingChanges();
-							}
-						}, this);
-					}
-					catch(e) {
-						if (logIgnore) {
-							logIgnore = false; // avoid double errors when ending
-							serverSync.endApplyingChanges();
-						}
-						ExoWeb.trace.throwAndLog(["server"], e);
-					}
-				}, this);
-			}, this);
-
-			if (returnImmediately) {
-				callback.call(this);
-			}
-
-			returnImmediately = false;
 		}
 	});
 
@@ -7868,6 +7637,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this.beginCapturingChanges = function ServerSync$beginCapturingChanges() {
 			isCapturingChanges = true;
 			startChangeSet.call(this, "client");
+		};
+
+		this.ignoreChanges = function(callback, thisPtr) {
+			return function() {
+				try {
+					applyingChanges++;
+					callback.apply(thisPtr || this, arguments);
+				}
+				finally {
+					applyingChanges--;
+				}
+			};
 		};
 
 		model.addObjectRegistered(function(obj) {
@@ -8064,7 +7845,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						ExoWeb.Batch.end(batch);
 
 						if (result.changes && result.changes.length > 0) {
-							this._changeLog.applyChanges(result.changes, source, this, signal.pending());
+							this._changeLog.applyChanges(result.changes, source, this);
 						}
 						else if (source) {
 							// no changes, so record empty set
@@ -8083,11 +7864,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}), this);
 			}
 			else if (result.changes && result.changes.length > 0) {
-				this._changeLog.applyChanges(result.changes, source, this, signal.pending(function () {
-					if (result.conditions) {
-						conditionsFromJson(this._model, result.conditions, signal.pending());
-					}
-				}, this));
+				this._changeLog.applyChanges(result.changes, source, this);
+				if (result.conditions) {
+					conditionsFromJson(this._model, result.conditions, signal.pending());
+				}
 			}
 			else {
 				if (source) {

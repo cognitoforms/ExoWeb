@@ -129,7 +129,7 @@ describe("ResponseHandler", function () {
 
 				callback.call(thisPtr || this);
 			},
-			applyChanges: function (changes, source, serverSync, callback, thisPtr) {
+			applyChanges: function (changes, source, serverSync) {
 				expect(typeSpy).toHaveBeenCalled();
 
 				expect(source).toBe("init");
@@ -145,8 +145,6 @@ describe("ResponseHandler", function () {
 				}
 
 				appliedChanges = true;
-
-				callback.call(thisPtr || this);
 			}
 		};
 
