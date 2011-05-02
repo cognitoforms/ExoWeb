@@ -7472,51 +7472,45 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return;
 
 			change.idChanges.forEach(function (idChange, idChangeIndex) {
-				ensureJsType(serverSync._model, idChange.type, function applySaveChange$typeLoaded(jstype) {
-					serverSync.ignoreChanges(function() {
-						var serverOldId = idChange.oldId;
-						var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
-								serverSync._translator.reverse(idChange.type, serverOldId) :
-								idChange.oldId;
+				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(function(jstype) {
+					var serverOldId = idChange.oldId;
+					var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
+							serverSync._translator.reverse(idChange.type, serverOldId) :
+							idChange.oldId;
+
+					// If the client recognizes the old id then this is an object we have seen before
+					if (clientOldId) {
+						var type = serverSync._model.type(idChange.type);
+
+						// Attempt to load the object.
+						var obj = type.get(clientOldId);
 	
-						// If the client recognizes the old id then this is an object we have seen before
-						if (clientOldId) {
-							var type = serverSync._model.type(idChange.type);
-	
-							// Attempt to load the object.
-							var obj = type.get(clientOldId);
-	
-							// Ensure that the object exists.
-							if (!obj) {
-								ExoWeb.trace.throwAndLog("server",
-									"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
-									[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
-								);
-							}
-	
-							// Change the id and make non-new.
-							type.changeObjectId(clientOldId, idChange.newId);
-							Sys.Observer.setValue(obj.meta, "isNew", false);
-	
-							// Update affected scope queries
-							serverSync._scopeQueries.forEach(function (query) {
-								query.ids = query.ids.map(function (id) {
-									return (id === clientOldId) ? idChange.newId : id;
-								}, this);
+						// Ensure that the object exists.
+						if (!obj) {
+							ExoWeb.trace.throwAndLog("server",
+								"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
+								[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
+							);
+						}
+
+						// Change the id and make non-new.
+						type.changeObjectId(clientOldId, idChange.newId);
+						Sys.Observer.setValue(obj.meta, "isNew", false);
+
+						// Update affected scope queries
+						serverSync._scopeQueries.forEach(function (query) {
+							query.ids = query.ids.map(function (id) {
+								return (id === clientOldId) ? idChange.newId : id;
 							}, this);
-	
-							// Remove the id change from the list and move the index back.
-							Array.remove(change.idChanges, idChange);
-							index = (index === 0) ? 0 : index - 1;
-						}
-						// Otherwise, log an error.
-						else {
-							ExoWeb.trace.logWarning("server",
-								"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
-								idChange);
-						}
-					}, this);
-				}, this);
+						}, this);
+					}
+					// Otherwise, log an error.
+					else {
+						ExoWeb.trace.logWarning("server",
+							"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
+							idChange);
+					}
+				}), this);
 			}, this);
 		},
 		applyInitChange: function (change, serverSync) {
