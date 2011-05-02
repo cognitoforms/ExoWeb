@@ -7517,7 +7517,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}, this);
 		},
 		applyInitChange: function (change, serverSync) {
-			ensureJsType(serverSync._model, change.instance.type, serverSync.ignoreChanges(function(jstype) {
+			tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.ignoreChanges(function (jstype) {
 				if (!jstype.meta.get(change.instance.id)) {
 					// Create the new object
 					var newObj = new jstype();
@@ -8448,33 +8448,35 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 		var signal = new Signal("conditionFromJson - " + code);
 
-		Array.forEach(json, function(condition) {
+		var serverSync = model._server;
+
+		json.forEach(function(condition) {
 			var conditionObj = null;
 
-			Array.forEach(condition.targets, function(target) {
-				var inst = fromExoGraph(target.instance, model._server._translator);
-				if (inst)
-				{
-					var propsSignal = new Signal("conditionFromJson.properties");
+			condition.targets.forEach(function(target) {
+				tryGetJsType(serverSync._model, target.instance.type, null, false, function (jstype) {
+					tryGetEntity(serverSync._model, serverSync._translator, jstype, target.instance.id, null, LazyLoadEnum.None, function (inst) {
+						var propsSignal = new Signal("conditionFromJson.properties");
 
-					var props = [];
-					distinct(target.properties).forEach(function(p, i) {
-						Model.property("this." + p, inst.meta.type, true, propsSignal.pending(function(chain) {
-							props[i] = chain;
+						var props = [];
+						distinct(target.properties).forEach(function(p, i) {
+							Model.property("this." + p, inst.meta.type, true, propsSignal.pending(function(chain) {
+								props[i] = chain;
+							}));
+						});
+
+						propsSignal.waitForAll(signal.pending(function() {
+							if (!conditionObj) {
+								conditionObj = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
+							}
+							else {
+								conditionObj.get_properties().addRange(props);
+							}
+
+							inst.meta.conditionIf(conditionObj, true);
 						}));
 					});
-
-					propsSignal.waitForAll(signal.pending(function() {
-						if (!conditionObj) {
-							conditionObj = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
-						}
-						else {
-							conditionObj.get_properties().addRange(props);
-						}
-
-						inst.meta.conditionIf(conditionObj, true);
-					}));
-				}
+				});
 			});
 		});
 

@@ -254,7 +254,7 @@ ChangeLog.mixin({
 		}, this);
 	},
 	applyInitChange: function (change, serverSync) {
-		ensureJsType(serverSync._model, change.instance.type, serverSync.ignoreChanges(function(jstype) {
+		tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.ignoreChanges(function (jstype) {
 			if (!jstype.meta.get(change.instance.id)) {
 				// Create the new object
 				var newObj = new jstype();
