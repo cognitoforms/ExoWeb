@@ -50,10 +50,6 @@ Behavior.prototype = {
 			this._properties = {};
 			for (var prop in this) {
 				if (prop.startsWith("prop_") && !prop.startsWith("prop_add_")) {
-					if (!this.get_classObject()) {
-						throw "Could not find class for \"" + this._class + "\").";
-					}
-
 					var name = Sys.Application._mapToPrototype(prop.substring(5), this.get_classObject());
 
 					if (!name) {
@@ -74,10 +70,6 @@ Behavior.prototype = {
 			this._events = {};
 			for (var prop in this) {
 				if (prop.startsWith("prop_add_")) {
-					if (!this.get_classObject()) {
-						throw "Could not find class for \"" + this._class + "\").";
-					}
-
 					var name = Sys.Application._mapToPrototype(prop.substring(9), this.get_classObject());
 
 					if (!name) {
