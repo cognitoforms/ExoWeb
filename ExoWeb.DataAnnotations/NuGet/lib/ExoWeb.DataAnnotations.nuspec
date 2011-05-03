@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>ExoWeb</id>
+    <version>1.0.0</version>
+    <authors>Jamie Thomas, Bryan Matthews, Matt Hooper</authors>
+    <description>
+	  ExoWeb is primarily a JavaScript library but also includes a supporting ASP.NET service layer. 
+	  It aims to provide a rich JavaScript object model, intuitive UI code based on the fundamental 
+	  languages of the web (HTML, CSS, and JavaScript), model- and UI-driven validation, and seamless 
+	  synchronization of changes between client and server.
+	</description>
+    <summary>
+	  ExoWeb enables creation of rich Javascript/HTML-based user interfaces bound to a client-side
+	  domain model which is a transparent projection/extension of a server model, supporting
+	  complex client and server-based rule execution, validation, change tracking and persistence.
+	</summary>
+    <projectUrl>http://exosuite.com/</projectUrl>
+    <licenseUrl>http://exosuite.com/license</licenseUrl>
+    <dependencies>
+	  <dependency id="ExoWeb" version="1.0.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\bin\Debug\ExoWeb.DataAnnotations.dll" target="lib"/>
+  </files>
+</package>
