@@ -28,18 +28,15 @@ function Model() {
 }
 
 Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback, thisPtr*/) {
-	if (arguments.length === 0) {
-		ExoWeb.trace.throwAndLog("model", "No arguments passed to \"property\" method.");
-	}
-	else if (arguments.length === 1) {
-		ExoWeb.trace.throwAndLog("model", "Type is required for property path \"{0}\".", [path]);
-	}
-
 	var tokens = new PathTokens(path);
 	var firstStep = tokens.steps[0];
 	var isGlobal = firstStep.property !== "this";
 
 	var type;
+
+	var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+	var callback = arguments[3];
+	var thisPtr = arguments[4];
 
 	if (isGlobal) {
 		// Get all but the last step in the path.
@@ -54,12 +51,18 @@ Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callba
 		}
 
 		// Retrieve the javascript type by name.
-		type = Model.getJsType(typeName);
+		type = Model.getJsType(typeName, true);
 
 		// If the type is not found then the path must be bad.
 		if (!type) {
-			ExoWeb.trace.throwAndLog(["model"], "Invalid static property path \"{0}\":  type \"{1}\" could not be found.", [path, typeName]);
-
+			if (lazyLoadTypes) {
+				// Retry when type is loaded
+				$extend(typeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
+				return;
+			}
+			else {
+				ExoWeb.trace.throwAndLog(["model"], "Invalid static property path \"{0}\":  type \"{1}\" could not be found.", [path, typeName]);
+			}
 		}
 
 		// Get the corresponding meta type.
@@ -86,10 +89,6 @@ Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callba
 
 		Array.dequeue(tokens.steps);
 	}
-
-	var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-	var callback = arguments[3];
-	var thisPtr = arguments[4];
 
 	if (tokens.steps.length === 1) {
 		var name = tokens.steps[0].property;

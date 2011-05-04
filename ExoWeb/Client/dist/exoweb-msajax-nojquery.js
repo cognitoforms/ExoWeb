@@ -528,9 +528,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 	if (!Array.prototype.mapToArray)
 		Array.prototype.mapToArray = function(fun/*, thisp*/) { return mapToArray(this, fun, arguments[1]); };
 	if (!Array.prototype.peek)
-		Array.prototype.peek = function() { return peek(this); }
+		Array.prototype.peek = function() { return peek(this); };
 	if (!Array.prototype.purge)
-		Array.prototype.purge = function(fun/*, thisp*/) { return purge(this, fun, arguments[1]); }
+		Array.prototype.purge = function(fun/*, thisp*/) { return purge(this, fun, arguments[1]); };
 	if (!Array.prototype.remove)
 		Array.prototype.remove = function(item) { return remove(this, item); };
 	if (!Array.prototype.some)
@@ -1706,8 +1706,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return value === undefined ? null : value;
 		}
 		else {
-			if ((isObject(target) && property in target)
-				|| (target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property) < target.length)) {
+			if ((isObject(target) && property in target) ||
+				(target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property, 10) < target.length)) {
 				var value = target[property];
 				return value === undefined ? null : value;
 			}
@@ -2470,18 +2470,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback, thisPtr*/) {
-		if (arguments.length === 0) {
-			ExoWeb.trace.throwAndLog("model", "No arguments passed to \"property\" method.");
-		}
-		else if (arguments.length === 1) {
-			ExoWeb.trace.throwAndLog("model", "Type is required for property path \"{0}\".", [path]);
-		}
-
 		var tokens = new PathTokens(path);
 		var firstStep = tokens.steps[0];
 		var isGlobal = firstStep.property !== "this";
 
 		var type;
+
+		var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+		var callback = arguments[3];
+		var thisPtr = arguments[4];
 
 		if (isGlobal) {
 			// Get all but the last step in the path.
@@ -2496,12 +2493,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// Retrieve the javascript type by name.
-			type = Model.getJsType(typeName);
+			type = Model.getJsType(typeName, true);
 
 			// If the type is not found then the path must be bad.
 			if (!type) {
-				ExoWeb.trace.throwAndLog(["model"], "Invalid static property path \"{0}\":  type \"{1}\" could not be found.", [path, typeName]);
-
+				if (lazyLoadTypes) {
+					// Retry when type is loaded
+					$extend(typeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
+					return;
+				}
+				else {
+					ExoWeb.trace.throwAndLog(["model"], "Invalid static property path \"{0}\":  type \"{1}\" could not be found.", [path, typeName]);
+				}
 			}
 
 			// Get the corresponding meta type.
@@ -2528,10 +2531,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			Array.dequeue(tokens.steps);
 		}
-
-		var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-		var callback = arguments[3];
-		var thisPtr = arguments[4];
 
 		if (tokens.steps.length === 1) {
 			var name = tokens.steps[0].property;
@@ -2890,7 +2889,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				[id.toString(), ExoWeb.parseFunctionName(id.constructor), type.get_fullName()]
 			);
 		}
-		else if (id == "") {
+		else if (id === "") {
 			ExoWeb.trace.throwAndLog("model",
 				"Id cannot be a blank string (entity = {0}).",
 				[type.get_fullName()]
@@ -4312,7 +4311,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			/// If specified, only iterates over objects that are RETURNED by the property filter.  In other
 			/// words, steps that correspond to a value or values of the chain at a specific property step).
 			/// For example, if the chain path is "this.PropA.ListPropB", then...
-			/// 	chain.each(target, callback, ListPropB);
+			///     chain.each(target, callback, ListPropB);
 			/// ...will iterate of the values of the list property only.
 			/// </param>
 

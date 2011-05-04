@@ -71,8 +71,8 @@ function getValue(target, property) {
 		return value === undefined ? null : value;
 	}
 	else {
-		if ((isObject(target) && property in target)
-			|| (target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property) < target.length)) {
+		if ((isObject(target) && property in target) ||
+			(target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property, 10) < target.length)) {
 			var value = target[property];
 			return value === undefined ? null : value;
 		}

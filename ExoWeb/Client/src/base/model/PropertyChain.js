@@ -124,7 +124,7 @@ PropertyChain.prototype = {
 		/// If specified, only iterates over objects that are RETURNED by the property filter.  In other
 		/// words, steps that correspond to a value or values of the chain at a specific property step).
 		/// For example, if the chain path is "this.PropA.ListPropB", then...
-		/// 	chain.each(target, callback, ListPropB);
+		///     chain.each(target, callback, ListPropB);
 		/// ...will iterate of the values of the list property only.
 		/// </param>
 

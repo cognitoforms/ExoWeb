@@ -245,9 +245,9 @@ if (!Array.prototype.map)
 if (!Array.prototype.mapToArray)
 	Array.prototype.mapToArray = function(fun/*, thisp*/) { return mapToArray(this, fun, arguments[1]); };
 if (!Array.prototype.peek)
-	Array.prototype.peek = function() { return peek(this); }
+	Array.prototype.peek = function() { return peek(this); };
 if (!Array.prototype.purge)
-	Array.prototype.purge = function(fun/*, thisp*/) { return purge(this, fun, arguments[1]); }
+	Array.prototype.purge = function(fun/*, thisp*/) { return purge(this, fun, arguments[1]); };
 if (!Array.prototype.remove)
 	Array.prototype.remove = function(item) { return remove(this, item); };
 if (!Array.prototype.some)

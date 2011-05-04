@@ -101,7 +101,7 @@ var validateId = function Type$validateId(type, id) {
 			[id.toString(), ExoWeb.parseFunctionName(id.constructor), type.get_fullName()]
 		);
 	}
-	else if (id == "") {
+	else if (id === "") {
 		ExoWeb.trace.throwAndLog("model",
 			"Id cannot be a blank string (entity = {0}).",
 			[type.get_fullName()]
