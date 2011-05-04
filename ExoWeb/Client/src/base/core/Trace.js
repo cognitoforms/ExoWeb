@@ -17,7 +17,10 @@ ExoWeb.config = {
 	signalDebug: false,
 
 	// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
-	individualQueryLoading: false
+	individualQueryLoading: false,
+
+	// Uniquely identifies this application if more than one app is hosted under the same domain name.
+	appInstanceId: "?"
 };
 
 ExoWeb.trace = {
