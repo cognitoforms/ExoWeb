@@ -161,14 +161,14 @@ def jshint(file_name)
 end
 
 def minify(file_name)
-	#if system("dir")
-	#	run = File.join(@prefix, 'ref/jsmin/jsmin.exe')
-	#else
-	#	run = File.join(@prefix, 'ref/jsmin/jsmin')
-	#end
-	#
-	#path = File.join(@dist_dir, file_name)
-	#sh run + " < " + path + ".js > " + path + ".min.js"
+#	if system("dir")
+#		run = File.join(@prefix, 'ref/jsmin/jsmin.exe')
+#	else
+#		run = File.join(@prefix, 'ref/jsmin/jsmin')
+#	end
+#
+#	path = File.join(@dist_dir, file_name)
+#	sh run + " < " + path + ".js > " + path + ".min.js"
 end
 
 def get_test_files(dir_name, prefix)
