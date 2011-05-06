@@ -105,7 +105,7 @@ Template.prototype = {
 
 		// add a class that can be used to search for templates 
 		// and make sure that the template element is hidden
-		$(this.get_element()).addClass("vc3-template").hide();
+		$(this.get_element()).addClass("exoweb-template").hide();
 
 		if (this.get_element().control.constructor !== String) {
 			allTemplates.push(this.get_element());

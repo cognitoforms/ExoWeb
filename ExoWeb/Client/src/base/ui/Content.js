@@ -160,7 +160,7 @@ Content.prototype = {
 						// get custom classes from template
 						var classes = $(itemTemplate.get_element()).attr("class");
 						if (classes) {
-							classes = $.trim(classes.replace("vc3-template", "").replace("sys-template", ""));
+							classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
 						}
 
 						this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
