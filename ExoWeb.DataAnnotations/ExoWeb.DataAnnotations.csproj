@@ -59,7 +59,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="NuGet\lib\ExoWeb.DataAnnotations.nuspec" />
+    <None Include="NuGet\ExoWeb.DataAnnotations.nuspec" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="NuGet\lib\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
