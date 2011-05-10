@@ -750,7 +750,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	var cacheInited = false;
 
-
 	// Setup Caching
 	if (window.localStorage) {
 
@@ -784,7 +783,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 					window.localStorage.setItem(key, json);
 				}
 				catch (e) {
-					ExoWeb.trace.logError("cache", e);
+					ExoWeb.trace.logWarning("cache", e);
 				}
 				return value;
 			}
