@@ -659,16 +659,29 @@ namespace ExoWeb
 				this.ForLoad = true;
 				this.InScope = inScope;
 				this.IsList = isList;
-				GraphType commonType = roots[0].Type;
-				foreach (var type in roots.Select(r => r.Type))
-				{
-					if (type.IsSubType(commonType))
-						commonType = type;
-				}
-				this.From = commonType;
 			}
 
-			public GraphType From { get; internal set; }
+			GraphType from;
+			public GraphType From
+			{
+				get
+				{
+					if (from == null && Roots != null)
+					{
+						from = Roots[0].Type;
+						foreach (var type in Roots.Select(r => r.Type))
+						{
+							if (type.IsSubType(from))
+								from = type;
+						}
+					}
+					return from;
+				}
+				internal set
+				{
+					from = value;
+				}
+			}
 
 			public string[] Ids { get; internal set; }
 
