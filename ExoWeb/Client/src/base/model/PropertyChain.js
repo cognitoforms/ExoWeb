@@ -361,8 +361,8 @@ PropertyChain.prototype = {
 	get_isEntityListType: function PropertyChain$get_isEntityListType() {
 		return this.lastProperty().get_isEntityListType();
 	},
-	get_rules: function PropertyChain$_get_rules(onlyTargets) {
-		return this.lastProperty().get_rules(onlyTargets);
+	rules: function(targetsThis) {
+		return this.lastProperty().rules(targetsThis);
 	},
 	value: function PropertyChain$value(obj, val, customInfo) {
 		var target = this.lastTarget(obj, true);

@@ -750,6 +750,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	var cacheInited = false;
 
+
 	// Setup Caching
 	if (window.localStorage) {
 
@@ -783,7 +784,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 					window.localStorage.setItem(key, json);
 				}
 				catch (e) {
-					ExoWeb.trace.logWarning("cache", e);
+					ExoWeb.trace.logError("cache", e);
 				}
 				return value;
 			}
@@ -3177,7 +3178,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 					onSuccess = undefined;
 
 				var argCount = arguments.length - (onSuccess === undefined ? 0 : 1) - (onFail === undefined ? 0 : 1);
-				var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length == 0 || arguments[0][def.parameters[0]] === undefined);
+				var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length === 0 || arguments[0][def.parameters[0]] === undefined);
 
 				if (argCount >= 1 && argCount <= 2 && arguments[0] instanceof Object &&
 						((argCount == 1 && (def.parameters.length != 1 || firstArgCouldBeParameterSet)) ||
@@ -3377,7 +3378,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			try {
 				var i = (start ? start : 0);
 
-				var rules = prop.get_rules(true);
+				var rules = prop.rules(true);
 				if (rules) {
 					processing = (i < rules.length);
 					while (processing) {
@@ -3543,12 +3544,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 		_addRule: function Property$_addRule(rule, isTarget) {
 			this._rules.push({ value: rule, isTarget: isTarget });
 		},
-		get_rules: function Property$get_rules(onlyTargets) {
+		rules: function(targetsThis) {
 			return this._rules
-				.filter(function (r) {
-					return !onlyTargets || r.isTarget === true;
-				}).map(function (r) {
-					return r.value;
+				.filter(function(rule) {
+					return (!targetsThis && targetsThis !== false) || // no filter
+						(targetsThis === true && rule.isTarget === true) || // only targets
+						(targetsThis === false && rule.isTarget === false); // only non-targets
+				}).map(function(rule) {
+					return rule.value;
 				});
 		},
 		toString: function Property$toString() {
@@ -4575,8 +4578,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 		get_isEntityListType: function PropertyChain$get_isEntityListType() {
 			return this.lastProperty().get_isEntityListType();
 		},
-		get_rules: function PropertyChain$_get_rules(onlyTargets) {
-			return this.lastProperty().get_rules(onlyTargets);
+		rules: function(targetsThis) {
+			return this.lastProperty().rules(targetsThis);
 		},
 		value: function PropertyChain$value(obj, val, customInfo) {
 			var target = this.lastTarget(obj, true);
@@ -5831,8 +5834,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 		get_sets: function ConditionType$get_sets() {
 			return this._sets;
 		},
-		get_rules: function ConditionType$get_rules() {
-			return this._rules;
+		rules: function() {
+			return Array.prototype.slice.call(this._rules);
 		},
 		extend: function ConditionType$extend(data) {
 			for (var prop in data) {
@@ -8779,7 +8782,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		if (json.rule && json.rule.hasOwnProperty("type")) {
 			var ruleType = ExoWeb.Model.Rule[json.rule.type];
 			var rule = new ruleType(mtype, json.rule, conditionType);
-			conditionType.get_rules().push(rule);
+			conditionType.rules().push(rule);
 		}
 	}
 

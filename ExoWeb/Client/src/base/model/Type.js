@@ -362,7 +362,7 @@ Type.prototype = {
 				onSuccess = undefined;
 
 			var argCount = arguments.length - (onSuccess === undefined ? 0 : 1) - (onFail === undefined ? 0 : 1);
-			var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length == 0 || arguments[0][def.parameters[0]] === undefined);
+			var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length === 0 || arguments[0][def.parameters[0]] === undefined);
 
 			if (argCount >= 1 && argCount <= 2 && arguments[0] instanceof Object &&
 					((argCount == 1 && (def.parameters.length != 1 || firstArgCouldBeParameterSet)) ||
@@ -562,7 +562,7 @@ Type.prototype = {
 		try {
 			var i = (start ? start : 0);
 
-			var rules = prop.get_rules(true);
+			var rules = prop.rules(true);
 			if (rules) {
 				processing = (i < rules.length);
 				while (processing) {

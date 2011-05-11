@@ -753,6 +753,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var cacheInited = false;
 
+
 	// Setup Caching
 	if (window.localStorage) {
 
@@ -786,7 +787,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					window.localStorage.setItem(key, json);
 				}
 				catch (e) {
-					ExoWeb.trace.logWarning("cache", e);
+					ExoWeb.trace.logError("cache", e);
 				}
 				return value;
 			}
@@ -3180,7 +3181,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					onSuccess = undefined;
 
 				var argCount = arguments.length - (onSuccess === undefined ? 0 : 1) - (onFail === undefined ? 0 : 1);
-				var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length == 0 || arguments[0][def.parameters[0]] === undefined);
+				var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length === 0 || arguments[0][def.parameters[0]] === undefined);
 
 				if (argCount >= 1 && argCount <= 2 && arguments[0] instanceof Object &&
 						((argCount == 1 && (def.parameters.length != 1 || firstArgCouldBeParameterSet)) ||
@@ -3380,7 +3381,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			try {
 				var i = (start ? start : 0);
 
-				var rules = prop.get_rules(true);
+				var rules = prop.rules(true);
 				if (rules) {
 					processing = (i < rules.length);
 					while (processing) {
@@ -3546,12 +3547,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		_addRule: function Property$_addRule(rule, isTarget) {
 			this._rules.push({ value: rule, isTarget: isTarget });
 		},
-		get_rules: function Property$get_rules(onlyTargets) {
+		rules: function(targetsThis) {
 			return this._rules
-				.filter(function (r) {
-					return !onlyTargets || r.isTarget === true;
-				}).map(function (r) {
-					return r.value;
+				.filter(function(rule) {
+					return (!targetsThis && targetsThis !== false) || // no filter
+						(targetsThis === true && rule.isTarget === true) || // only targets
+						(targetsThis === false && rule.isTarget === false); // only non-targets
+				}).map(function(rule) {
+					return rule.value;
 				});
 		},
 		toString: function Property$toString() {
@@ -4578,8 +4581,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		get_isEntityListType: function PropertyChain$get_isEntityListType() {
 			return this.lastProperty().get_isEntityListType();
 		},
-		get_rules: function PropertyChain$_get_rules(onlyTargets) {
-			return this.lastProperty().get_rules(onlyTargets);
+		rules: function(targetsThis) {
+			return this.lastProperty().rules(targetsThis);
 		},
 		value: function PropertyChain$value(obj, val, customInfo) {
 			var target = this.lastTarget(obj, true);
@@ -5834,8 +5837,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		get_sets: function ConditionType$get_sets() {
 			return this._sets;
 		},
-		get_rules: function ConditionType$get_rules() {
-			return this._rules;
+		rules: function() {
+			return Array.prototype.slice.call(this._rules);
 		},
 		extend: function ConditionType$extend(data) {
 			for (var prop in data) {
@@ -8782,7 +8785,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		if (json.rule && json.rule.hasOwnProperty("type")) {
 			var ruleType = ExoWeb.Model.Rule[json.rule.type];
 			var rule = new ruleType(mtype, json.rule, conditionType);
-			conditionType.get_rules().push(rule);
+			conditionType.rules().push(rule);
 		}
 	}
 
@@ -12738,6 +12741,55 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		};
 	})();
+
+	// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
+	function getFinalSrcObject(binding) {
+		var src = binding.get_source();
+
+		for (var i = 0; i < binding._pathArray.length - 1; ++i) {
+			src = src[binding._pathArray[i]] || src["get_" + binding._pathArray[i]]();
+		}
+
+		return src;
+	}
+
+	ExoWeb.View.getFinalSrcObject = getFinalSrcObject;
+
+	function getFinalPathStep(binding) {
+		return binding._pathArray[binding._pathArray.length - 1];
+	}
+
+	ExoWeb.View.getFinalPathStep = getFinalPathStep;
+
+	function getBindingInfo(binding) {
+		var srcObj = getFinalSrcObject(binding);
+
+		var target;
+		var property;
+
+		// Option adapter defers to parent adapter
+		if (srcObj instanceof ExoWeb.View.OptionAdapter) {
+			srcObj = srcObj.get_parent();
+		}
+
+		if (srcObj instanceof ExoWeb.View.Adapter) {
+			var chain = srcObj.get_propertyChain();
+			property = chain.lastProperty();
+			target = chain.lastTarget(srcObj.get_target());
+		}
+		else if (srcObj instanceof ExoWeb.Model.Entity) {
+			var propName = getFinalPathStep(binding);
+			property = srcObj.meta.property(propName);
+			target = srcObj;
+		}
+
+		return {
+			target: target,
+			property: property
+		};
+	}
+
+	ExoWeb.View.getBindingInfo = getBindingInfo;
 
 	// #endregion
 

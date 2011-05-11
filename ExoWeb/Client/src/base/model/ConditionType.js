@@ -62,8 +62,8 @@ ConditionType.prototype = {
 	get_sets: function ConditionType$get_sets() {
 		return this._sets;
 	},
-	get_rules: function ConditionType$get_rules() {
-		return this._rules;
+	rules: function() {
+		return Array.prototype.slice.call(this._rules);
 	},
 	extend: function ConditionType$extend(data) {
 		for (var prop in data) {

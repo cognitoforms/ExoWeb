@@ -1,18 +1,3 @@
-// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
-function getFinalSrcObject(binding) {
-	var src = binding.get_source();
-
-	for (var i = 0; i < binding._pathArray.length - 1; ++i) {
-		src = src[binding._pathArray[i]] || src["get_" + binding._pathArray[i]]();
-	}
-
-	return src;
-}
-
-function getFinalPathStep(binding) {
-	return binding._pathArray[binding._pathArray.length - 1];
-}
-
 var ensureInited = function ($el) {
 	if (!window.ExoWeb) {
 		return;
@@ -24,8 +9,8 @@ var ensureInited = function ($el) {
 
 		for (var i = 0; i < bindings.length; i++) {
 			var binding = bindings[i];
-			var srcObj = getFinalSrcObject(binding);
-			var propName = getFinalPathStep(binding);
+			var srcObj = ExoWeb.View.getFinalSrcObject(binding);
+			var propName = ExoWeb.View.getFinalPathStep(binding);
 
 			var meta = srcObj.meta || srcObj;
 
@@ -68,85 +53,33 @@ jQuery.fn.validating = function (f) {
 
 // Gets all model rules associated with the property an element is bound to
 jQuery.fn.rules = function (ruleType) {
-	if (!(window.ExoWeb && ExoWeb.Model)) {
-		return [];
-	}
+	if (!window.Sys || !window.ExoWeb || !ExoWeb.Model) return [];
 
-	var rules = [];
-	var bindings = $(this).liveBindings();
-
-	for (var i = 0; i < bindings.length; i++) {
-		var binding = bindings[i];
-		var srcObj = getFinalSrcObject(binding);
-
-		var prop;
-
-		if (srcObj instanceof ExoWeb.View.Adapter) {
-			prop = srcObj.get_propertyChain().lastProperty();
-		}
-		else if (srcObj instanceof ExoWeb.View.OptionAdapter) {
-			prop = srcObj.get_parent().get_propertyChain().lastProperty();
-		}
-		else if (srcObj instanceof ExoWeb.Model.Entity) {
-			var propName = getFinalPathStep(binding);
-			prop = srcObj.meta.property(propName);
-		}
-		else {
-			continue;
-		}
-
-		var rule = prop.rule(ruleType);
-		if (rule) {
-			rules.push(rule);
-		}
-	}
-
-	return rules;
+	return $(this).liveBindings()
+		.map(function(binding) {
+			return ExoWeb.View.getBindingInfo(binding);
+		}).filter(function(info) {
+			return !!info.property;
+		}).map(function(info) {
+			return info.property.rule(ruleType);
+		});
 };
 
 jQuery.fn.issues = function (options) {
-	var issues = [];
+	if (!window.Sys || !window.ExoWeb || !ExoWeb.Model) return [];
 
 	options = options || { refresh: false };
 
-	var bindings = $(this).liveBindings();
-
-	for (var i = 0; i < bindings.length; i++) {
-		var binding = bindings[i];
-		var srcObj = getFinalSrcObject(binding);
-
-		var target;
-		var prop;
-
-		// Option adapter defers to parent adapter
-		if (srcObj instanceof ExoWeb.View.OptionAdapter) {
-			srcObj = srcObj.get_parent();
-		}
-
-		if (srcObj instanceof ExoWeb.View.Adapter) {
-			var chain = srcObj.get_propertyChain();
-			prop = chain.lastProperty();
-			target = chain.lastTarget(srcObj.get_target());
-
-			// Guard against null/undefined target.  This could happen if the target is 
-			// undefined, or if the path is multi-hop, and the full path is not defined.
-			if (target === null || target === undefined) {
-				continue;
-			}
-		}
-		else if (srcObj instanceof ExoWeb.Model.Entity) {
-			var propName = getFinalPathStep(binding);
-			prop = srcObj.meta.property(propName);
-			target = srcObj;
-		}
-		else {
-			continue;
-		}
+	return $(this).liveBindings().mapToArray(function(binding) {
+		var info = ExoWeb.View.getBindingInfo(binding);
+		
+		// Guard against null/undefined target.  This could happen if the target is 
+		// undefined, or if the path is multi-hop, and the full path is not defined.
+		if (!info.target || !info.property) return [];
 
 		if (options.refresh)
-			target.meta.executeRules(prop);
+			info.target.meta.executeRules(info.property);
 
-		Array.addRange(issues, target.meta.conditions({ property: prop }));
-	}
-	return issues;
+		return info.target.meta.conditions({ property: info.property });
+	});
 };

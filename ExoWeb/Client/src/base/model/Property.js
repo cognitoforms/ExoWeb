@@ -70,12 +70,14 @@ Property.mixin({
 	_addRule: function Property$_addRule(rule, isTarget) {
 		this._rules.push({ value: rule, isTarget: isTarget });
 	},
-	get_rules: function Property$get_rules(onlyTargets) {
+	rules: function(targetsThis) {
 		return this._rules
-			.filter(function (r) {
-				return !onlyTargets || r.isTarget === true;
-			}).map(function (r) {
-				return r.value;
+			.filter(function(rule) {
+				return (!targetsThis && targetsThis !== false) || // no filter
+					(targetsThis === true && rule.isTarget === true) || // only targets
+					(targetsThis === false && rule.isTarget === false); // only non-targets
+			}).map(function(rule) {
+				return rule.value;
 			});
 	},
 	toString: function Property$toString() {

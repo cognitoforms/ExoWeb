@@ -21,3 +21,52 @@
 		}
 	};
 })();
+
+// Get's the last object in the source path.  Ex: Customer.Address.Street returns the Address object.
+function getFinalSrcObject(binding) {
+	var src = binding.get_source();
+
+	for (var i = 0; i < binding._pathArray.length - 1; ++i) {
+		src = src[binding._pathArray[i]] || src["get_" + binding._pathArray[i]]();
+	}
+
+	return src;
+}
+
+ExoWeb.View.getFinalSrcObject = getFinalSrcObject;
+
+function getFinalPathStep(binding) {
+	return binding._pathArray[binding._pathArray.length - 1];
+}
+
+ExoWeb.View.getFinalPathStep = getFinalPathStep;
+
+function getBindingInfo(binding) {
+	var srcObj = getFinalSrcObject(binding);
+
+	var target;
+	var property;
+
+	// Option adapter defers to parent adapter
+	if (srcObj instanceof ExoWeb.View.OptionAdapter) {
+		srcObj = srcObj.get_parent();
+	}
+
+	if (srcObj instanceof ExoWeb.View.Adapter) {
+		var chain = srcObj.get_propertyChain();
+		property = chain.lastProperty();
+		target = chain.lastTarget(srcObj.get_target());
+	}
+	else if (srcObj instanceof ExoWeb.Model.Entity) {
+		var propName = getFinalPathStep(binding);
+		property = srcObj.meta.property(propName);
+		target = srcObj;
+	}
+
+	return {
+		target: target,
+		property: property
+	};
+}
+
+ExoWeb.View.getBindingInfo = getBindingInfo;
