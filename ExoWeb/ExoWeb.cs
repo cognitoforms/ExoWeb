@@ -215,8 +215,11 @@ namespace ExoWeb
 
 				// Convert the value into a query, if necessary
 				var q = m as ServiceRequest.Query ?? Query(m);
-				q.LoadRoots(null);
-				roots.Add(new KeyValuePair<string, ServiceRequest.Query>(prop.Name, q));
+				if (q != null)
+				{
+					q.LoadRoots(null);
+					roots.Add(new KeyValuePair<string, ServiceRequest.Query>(prop.Name, q));
+				}
 			}
 
 			// Perform the initialization action, if specified
