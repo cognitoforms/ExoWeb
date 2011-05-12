@@ -199,6 +199,37 @@ describe("ChangeLog.count", function() {
 	});
 });
 
+describe("ChangeLog.set", function() {
+	beforeEach(setup);
+
+	it("retrieves the change set at the given index", function() {
+		expect(this.log.set(0).source()).toBe("test");
+		expect(this.log.set(1).source()).toBe("test2");
+	});
+
+	it("raises an error if a valid index is not given", function() {
+		var log = this.log;
+
+		expect(function() {
+			log.set();
+		}).toThrow("The set method expects a numeric index argument.");
+
+		expect(function() {
+			log.set("bad");
+		}).toThrow("The set method expects a numeric index argument.");
+	});
+
+	it("supports negative indices", function() {
+		expect(this.log.set(-1).source()).toBe("test2");
+		expect(this.log.set(-2).source()).toBe("test");
+	});
+
+	it("does not support wrapping", function() {
+		expect(this.log.set(-3)).toBe(undefined);
+		expect(this.log.set(4)).toBe(undefined);
+	});
+});
+
 // Run Tests
 ///////////////////////////////////////
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());

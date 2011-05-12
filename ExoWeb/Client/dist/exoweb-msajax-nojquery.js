@@ -73,10 +73,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// is this call already in progress?
-			var callInProgress;
+			var callInProgress, call;
 
 			for (var c = 0; !callInProgress && c < calls.length; ++c) {
-				var call = calls[c];
+				call = calls[c];
 
 				// TODO: handle optional params better
 				if (groupBy.length != call.groupBy.length) {
@@ -94,7 +94,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (!callInProgress) {
 				// track the next call that is about to be made
-				var call = { callback: Functor(), groupBy: groupBy };
+				call = { callback: Functor(), groupBy: groupBy };
 				calls.push(call);
 
 				// make sure the original callback is invoked and that cleanup occurs
@@ -753,7 +753,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var cacheInited = false;
 
-
 	// Setup Caching
 	if (window.localStorage) {
 
@@ -787,7 +786,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					window.localStorage.setItem(key, json);
 				}
 				catch (e) {
-					ExoWeb.trace.logError("cache", e);
+					ExoWeb.trace.logWarning("cache", e);
 				}
 				return value;
 			}
@@ -7344,6 +7343,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._sets.map(function (set) {
 				return set.serialize(filter, thisPtr);
 			});
+		},
+		set: function(index) {
+			if (index === null || index === undefined || Object.prototype.toString.call(index) !== "[object Number]") {
+				throw Error("The set method expects a numeric index argument.");
+			}
+
+			var idx = index < 0 ? (this._sets.length + index) : index;
+			return this._sets[idx];
 		},
 		sets: function () {
 			// Returns the current list of sets.

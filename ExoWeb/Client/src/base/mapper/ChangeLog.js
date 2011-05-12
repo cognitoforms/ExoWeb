@@ -47,6 +47,14 @@ ChangeLog.mixin({
 			return set.serialize(filter, thisPtr);
 		});
 	},
+	set: function(index) {
+		if (index === null || index === undefined || Object.prototype.toString.call(index) !== "[object Number]") {
+			throw Error("The set method expects a numeric index argument.");
+		}
+
+		var idx = index < 0 ? (this._sets.length + index) : index;
+		return this._sets[idx];
+	},
 	sets: function () {
 		// Returns the current list of sets.
 

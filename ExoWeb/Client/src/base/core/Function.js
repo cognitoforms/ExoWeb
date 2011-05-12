@@ -61,10 +61,10 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 		}
 
 		// is this call already in progress?
-		var callInProgress;
+		var callInProgress, call;
 
 		for (var c = 0; !callInProgress && c < calls.length; ++c) {
-			var call = calls[c];
+			call = calls[c];
 
 			// TODO: handle optional params better
 			if (groupBy.length != call.groupBy.length) {
@@ -82,7 +82,7 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 
 		if (!callInProgress) {
 			// track the next call that is about to be made
-			var call = { callback: Functor(), groupBy: groupBy };
+			call = { callback: Functor(), groupBy: groupBy };
 			calls.push(call);
 
 			// make sure the original callback is invoked and that cleanup occurs
