@@ -110,14 +110,10 @@
   <ItemGroup />
   <ItemGroup>
     <Content Include="Client\dist\exoweb-base.js" />
-    <Content Include="Client\dist\exoweb-base.min.js" />
     <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
-    <Content Include="Client\dist\exoweb-msajax-nojquery.min.js" />
     <Content Include="Client\dist\exoweb-msajax.js" />
-    <Content Include="Client\dist\exoweb-msajax.min.js" />
     <Content Include="Client\dist\exoweb.templates.htm" />
     <Content Include="Client\dist\jquery.exoweb-msajax.js" />
-    <Content Include="Client\dist\jquery.exoweb-msajax.min.js" />
     <Content Include="Client\dist\json2.js" />
     <Content Include="Client\ref\jshint\jshint.js" />
     <Content Include="Client\ref\jsmin\jsmin.exe" />
