@@ -9,9 +9,22 @@ function ChangeSet(source, initialChanges) {
 		[];
 }
 
+ChangeSet.mixin(Functor.eventing);
+
 ChangeSet.mixin({
 	add: function(change) {
-		this._changes.push(change);
+		var idx = this._changes.push(change) - 1;
+		this._raiseEvent("changeAdded", [change, idx, this]);
+		return idx;
+	},
+	addChangeAdded: function(fn, filter, once) {
+		this._addEvent("changeAdded", fn, filter, once);
+	},
+	addChangeUndone: function(fn, filter, once) {
+		this._addEvent("changeUndone", fn, filter, once);
+	},
+	addTruncated: function(fn, filter, once) {
+		this._addEvent("truncated", fn, filter, once);
 	},
 	changes: function() {
 		return this._changes;
@@ -40,16 +53,24 @@ ChangeSet.mixin({
 	truncate: function(filter, thisPtr) {
 		// Discard all changes that match the given filter
 
-		for(var i = 0; i < this._changes.length; i++) {
-			if (!filter || filter.call(thisPtr || this, this._changes[i]) === true) {
-				this._changes.splice(i--, 1);
-			}
+		var numRemoved;
+		if (filter) {
+			numRemoved = this._changes.purge(filter, thisPtr).length;
 		}
+		else {
+			numRemoved = this._changes.length;
+			this._changes.clear();
+		}
+
+		this._raiseEvent("truncated", [numRemoved, this]);
+		return numRemoved;
 	},
 	undo: function() {
 		if (this._changes.length > 0) {
-			var change = this._changes[this._changes.length - 1];
-			this._changes.splice(this._changes.length - 1, 1);
+			var lastIdx = this._changes.length - 1;
+			var change = this._changes[lastIdx];
+			this._changes.splice(lastIdx, 1);
+			this._raiseEvent("changeUndone", [change, lastIdx, this]);
 			return change;
 		}
 

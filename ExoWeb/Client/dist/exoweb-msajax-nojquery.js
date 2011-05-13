@@ -106,8 +106,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 				});
 
 				// pass the new callback to the inner function
-				arguments[options.callbackArg] = call.callback;
-				proceed.apply(this, arguments);
+				var args = Array.prototype.slice.call(arguments);
+				args[options.callbackArg] = call.callback;
+				proceed.apply(this, args);
 			}
 			else if (origCallback) {
 				// wait for the original call to complete
@@ -462,7 +463,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var result;
 
 		for (var i = arr.length - 1; i >= 0; i--) {
-			if (callback.call(thisPtr || this, arr[i], i) === true) {
+			if (callback.call(thisPtr || this, arr[i], i, arr) === true) {
 				if (arr.removeAt)
 					arr.removeAt(i);
 				else
@@ -7242,9 +7243,22 @@ Type.registerNamespace("ExoWeb.DotNet");
 			[];
 	}
 
+	ChangeSet.mixin(Functor.eventing);
+
 	ChangeSet.mixin({
 		add: function(change) {
-			this._changes.push(change);
+			var idx = this._changes.push(change) - 1;
+			this._raiseEvent("changeAdded", [change, idx, this]);
+			return idx;
+		},
+		addChangeAdded: function(fn, filter, once) {
+			this._addEvent("changeAdded", fn, filter, once);
+		},
+		addChangeUndone: function(fn, filter, once) {
+			this._addEvent("changeUndone", fn, filter, once);
+		},
+		addTruncated: function(fn, filter, once) {
+			this._addEvent("truncated", fn, filter, once);
 		},
 		changes: function() {
 			return this._changes;
@@ -7273,16 +7287,24 @@ Type.registerNamespace("ExoWeb.DotNet");
 		truncate: function(filter, thisPtr) {
 			// Discard all changes that match the given filter
 
-			for(var i = 0; i < this._changes.length; i++) {
-				if (!filter || filter.call(thisPtr || this, this._changes[i]) === true) {
-					this._changes.splice(i--, 1);
-				}
+			var numRemoved;
+			if (filter) {
+				numRemoved = this._changes.purge(filter, thisPtr).length;
 			}
+			else {
+				numRemoved = this._changes.length;
+				this._changes.clear();
+			}
+
+			this._raiseEvent("truncated", [numRemoved, this]);
+			return numRemoved;
 		},
 		undo: function() {
 			if (this._changes.length > 0) {
-				var change = this._changes[this._changes.length - 1];
-				this._changes.splice(this._changes.length - 1, 1);
+				var lastIdx = this._changes.length - 1;
+				var change = this._changes[lastIdx];
+				this._changes.splice(lastIdx, 1);
+				this._raiseEvent("changeUndone", [change, lastIdx, this]);
 				return change;
 			}
 
@@ -7300,6 +7322,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._sets = [];
 	}
 
+	ChangeLog.mixin(Functor.eventing);
+
 	ChangeLog.mixin({
 		activeSet: function () {
 			// Returns the active change set.
@@ -7313,10 +7337,26 @@ Type.registerNamespace("ExoWeb.DotNet");
 				ExoWeb.trace.throwAndLog("server", "The change log is not currently active.");
 			}
 
-			this._activeSet.add(change);
+			var idx = this._activeSet.add(change);
+
+			this._raiseEvent("changeAdded", [change, idx, this._activeSet, this]);
+
+			return idx;
+		},
+		addChangeAdded: function (fn, filter, once) {
+			this._addEvent("changeAdded", fn, filter, once);
+		},
+		addChangeSetStarted: function (fn, filter, once) {
+			this._addEvent("changeSetStarted", fn, filter, once);
+		},
+		addChangeUndone: function (fn, filter, once) {
+			this._addEvent("changeUndone", fn, filter, once);
 		},
 		addSet: function (source, changes) {
 			this._sets.push(new ChangeSet(source, changes));
+		},
+		addTruncated: function (fn, filter, once) {
+			this._addEvent("truncated", fn, filter, once);
 		},
 		count: function (filter, thisPtr) {
 			var result = 0;
@@ -7366,8 +7406,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			var set = new ChangeSet(source);
-			this._sets.push(set);
+			var idx = this._sets.push(set) - 1;
 			this._activeSet = set;
+
+			this._raiseEvent("changeSetStarted", [set, idx, this]);
+
 			return set;
 		},
 		truncate: function (filter, thisPtr) {
@@ -7375,8 +7418,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// filter.  If a set contains one or more changes that do NOT
 			// match, the set is left intact with those changes.
 
+			var numRemoved = 0;
+
 			for (var i = 0; i < this._sets.length; i++) {
-				this._sets[i].truncate(filter, thisPtr);
+				numRemoved += this._sets[i].truncate(filter, thisPtr);
 
 				// If all changes have been removed then discard the set
 				if (this._sets[i].changes().length === 0) {
@@ -7389,6 +7434,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// Start a new change set
 			this.start("client");
+
+			this._raiseEvent("truncated", [numRemoved, this]);
+			return numRemoved;
 		},
 		undo: function () {
 			if (!this._activeSet) {
@@ -7410,7 +7458,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._activeSet = currentSet;
 			}
 
-			return currentSet.undo();
+			var idx = currentSet.changes().length - 1;
+			var change = currentSet.undo();
+
+			this._raiseEvent("changeUndone", [change, idx, currentSet, this]);
+
+			return change;
 		},
 		// APPLY CHANGES
 		///////////////////////////////////////////////////////////////////////

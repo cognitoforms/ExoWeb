@@ -179,7 +179,7 @@ function purge(arr, callback, thisPtr) {
 	var result;
 
 	for (var i = arr.length - 1; i >= 0; i--) {
-		if (callback.call(thisPtr || this, arr[i], i) === true) {
+		if (callback.call(thisPtr || this, arr[i], i, arr) === true) {
 			if (arr.removeAt)
 				arr.removeAt(i);
 			else

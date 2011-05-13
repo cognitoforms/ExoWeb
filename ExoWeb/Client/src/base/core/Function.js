@@ -94,8 +94,9 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 			});
 
 			// pass the new callback to the inner function
-			arguments[options.callbackArg] = call.callback;
-			proceed.apply(this, arguments);
+			var args = Array.prototype.slice.call(arguments);
+			args[options.callbackArg] = call.callback;
+			proceed.apply(this, args);
 		}
 		else if (origCallback) {
 			// wait for the original call to complete

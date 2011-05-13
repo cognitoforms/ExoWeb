@@ -3,6 +3,8 @@ function ChangeLog() {
 	this._sets = [];
 }
 
+ChangeLog.mixin(Functor.eventing);
+
 ChangeLog.mixin({
 	activeSet: function () {
 		// Returns the active change set.
@@ -16,10 +18,26 @@ ChangeLog.mixin({
 			ExoWeb.trace.throwAndLog("server", "The change log is not currently active.");
 		}
 
-		this._activeSet.add(change);
+		var idx = this._activeSet.add(change);
+
+		this._raiseEvent("changeAdded", [change, idx, this._activeSet, this]);
+
+		return idx;
+	},
+	addChangeAdded: function (fn, filter, once) {
+		this._addEvent("changeAdded", fn, filter, once);
+	},
+	addChangeSetStarted: function (fn, filter, once) {
+		this._addEvent("changeSetStarted", fn, filter, once);
+	},
+	addChangeUndone: function (fn, filter, once) {
+		this._addEvent("changeUndone", fn, filter, once);
 	},
 	addSet: function (source, changes) {
 		this._sets.push(new ChangeSet(source, changes));
+	},
+	addTruncated: function (fn, filter, once) {
+		this._addEvent("truncated", fn, filter, once);
 	},
 	count: function (filter, thisPtr) {
 		var result = 0;
@@ -69,8 +87,11 @@ ChangeLog.mixin({
 		}
 
 		var set = new ChangeSet(source);
-		this._sets.push(set);
+		var idx = this._sets.push(set) - 1;
 		this._activeSet = set;
+
+		this._raiseEvent("changeSetStarted", [set, idx, this]);
+
 		return set;
 	},
 	truncate: function (filter, thisPtr) {
@@ -78,8 +99,10 @@ ChangeLog.mixin({
 		// filter.  If a set contains one or more changes that do NOT
 		// match, the set is left intact with those changes.
 
+		var numRemoved = 0;
+
 		for (var i = 0; i < this._sets.length; i++) {
-			this._sets[i].truncate(filter, thisPtr);
+			numRemoved += this._sets[i].truncate(filter, thisPtr);
 
 			// If all changes have been removed then discard the set
 			if (this._sets[i].changes().length === 0) {
@@ -92,6 +115,9 @@ ChangeLog.mixin({
 
 		// Start a new change set
 		this.start("client");
+
+		this._raiseEvent("truncated", [numRemoved, this]);
+		return numRemoved;
 	},
 	undo: function () {
 		if (!this._activeSet) {
@@ -113,7 +139,12 @@ ChangeLog.mixin({
 			this._activeSet = currentSet;
 		}
 
-		return currentSet.undo();
+		var idx = currentSet.changes().length - 1;
+		var change = currentSet.undo();
+
+		this._raiseEvent("changeUndone", [change, idx, currentSet, this]);
+
+		return change;
 	},
 	// APPLY CHANGES
 	///////////////////////////////////////////////////////////////////////

@@ -8,17 +8,22 @@ jasmine.jasmine.debug = true;
 global.window = global;
 global.ExoWeb = {};
 
+var activity = require("../../../src/base/core/Activity");
 var functions = require("../../../src/base/core/Function");
+var functor = require("../../../src/base/core/Functor");
+global.Functor = ExoWeb.Functor;
+
 var arrays = require("../../../src/base/core/Array");
 var trace = require("../../../src/base/core/Trace");
 var utilities = require("../../../src/base/core/Utilities");
 
 global.forEach = arrays.forEach;
 
-// References
-///////////////////////////////////////
-ChangeLog = require("../../../src/base/mapper/ChangeLog").ChangeLog;
-ChangeSet = require("../../../src/base/mapper/ChangeSet").ChangeSet;
+var changeSet = require("../../../src/base/mapper/ChangeSet");
+global.ChangeSet = changeSet.ChangeSet;
+
+var changeLog = require("../../../src/base/mapper/ChangeLog");
+global.ChangeLog = changeLog.ChangeLog;
 
 var describe = jasmine.describe;
 var it = jasmine.it;
@@ -133,18 +138,20 @@ describe("ChangeLog", function() {
 	});
 
 	it("discards all sets and changes when truncated, creating a new \"client\" set", function() {
-		this.log.truncate();
+		var numRemoved = this.log.truncate();
 
+		expect(numRemoved).toBe(3);
 		expect(this.log.sets().length).toBe(1);
 		expect(this.log.sets()[0].source()).toBe("client");
 		expect(this.log.sets()[0].changes().length).toBe(0);
 	});
 
 	it("discards all sets and changes that meet the given filter when truncated", function() {
-		this.log.truncate(function(c) {
+		var numRemoved = this.log.truncate(function(c) {
 			return c > 1;
 		});
 
+		expect(numRemoved).toBe(2);
 		expect(this.log.sets().length).toBe(2);
 		expect(this.log.sets()[0].source()).toBe("test");
 		expect(this.log.sets()[0].changes().length).toBe(1);
@@ -227,6 +234,43 @@ describe("ChangeLog.set", function() {
 	it("does not support wrapping", function() {
 		expect(this.log.set(-3)).toBe(undefined);
 		expect(this.log.set(4)).toBe(undefined);
+	});
+});
+
+describe("ChangeSet events", function() {
+	beforeEach(setup);
+
+	it("exposes an add event which is raised when a new change is added:  fn(change, index, set, log)", function() {
+		var onChangeAdded = jasmine.jasmine.createSpy("changeAdded");
+		this.log.addChangeAdded(onChangeAdded);
+		this.log.add(42);
+
+		expect(onChangeAdded).toHaveBeenCalledWith(42, 1, this.log._activeSet, this.log);
+	});
+
+	it("exposes an undo event which is raised when a change is undone:  fn(change, index, set, log)", function() {
+		var onChangeUndone = jasmine.jasmine.createSpy("changeUndone");
+		this.log.addChangeUndone(onChangeUndone);
+		var set = this.log.activeSet();
+		this.log.undo();
+
+		expect(onChangeUndone).toHaveBeenCalledWith(3, 0, set, this.log);
+	});
+	
+	it("exposes a set started event which is raised when a new changeset is started:  fn(set, index, log)", function() {
+		var onChangeSetStarted = jasmine.jasmine.createSpy("changeSetStarted");
+		this.log.addChangeSetStarted(onChangeSetStarted);
+		var set = this.log.start("foo");
+
+		expect(onChangeSetStarted).toHaveBeenCalledWith(set, 2, this.log);
+	});
+
+	it("exposes a truncated event which is raised when the log is truncated:  fn(numRemoved, log)", function() {
+		var onTruncated = jasmine.jasmine.createSpy("truncated");
+		this.log.addTruncated(onTruncated);
+		this.log.truncate();
+
+		expect(onTruncated).toHaveBeenCalledWith(3, this.log);
 	});
 });
 

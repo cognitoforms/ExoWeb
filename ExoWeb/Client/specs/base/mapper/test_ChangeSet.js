@@ -5,41 +5,20 @@ var jasmineConsole = require("../../jasmine.console");
 
 jasmine.jasmine.debug = true;
 
-window = {};
-ExoWeb = {
-//	config: {
-//		signalDebug: true
-//	}
-};
+global.window = global;
+global.ExoWeb = {};
 
+var activity = require("../../../src/base/core/Activity");
 var functions = require("../../../src/base/core/Function");
+var functor = require("../../../src/base/core/Functor");
+global.Functor = ExoWeb.Functor;
+
 var arrays = require("../../../src/base/core/Array");
-//var query = require("../../../src/base/mapper/Query");
 var trace = require("../../../src/base/core/Trace");
-//var activity = require("../../../src/base/core/Activity");
-//var signal = require("../../../src/base/core/Signal");
 var utilities = require("../../../src/base/core/Utilities");
 
-//ExoWeb.Signal = signal.Signal;
-//ExoWeb.registerActivity = activity.registerActivity;
-//var batch = require("../../../src/base/core/Batch");
-//var internals = require("../../../src/base/mapper/Internals");
-//var pathTokens = require("../../../src/base/model/PathTokens");
-//var context = require("../../../src/base/mapper/Context");
-
-//ObjectLazyLoader = require("../../../src/base/mapper/ObjectLazyLoader").ObjectLazyLoader;
-//Model = require("../../../src/base/model/Model").Model;
-
-//logError = ExoWeb.trace.logError;
-//log = ExoWeb.trace.log;
-$format = window.$format;
-//fetchTypes = internals.fetchTypes;
-
-//ExoWeb.trace.flags.query = true;
-
-// References
-///////////////////////////////////////
-ChangeSet = require("../../../src/base/mapper/ChangeSet").ChangeSet;
+var changeSet = require("../../../src/base/mapper/ChangeSet");
+global.ChangeSet = changeSet.ChangeSet;
 
 var describe = jasmine.describe;
 var it = jasmine.it;
@@ -77,8 +56,9 @@ describe("ChangeSet", function() {
 
 		expect(set.changes().length).toBe(0);
 
-		set.add(5);
+		var result = set.add(5);
 
+		expect(result).toBe(0);
 		expect(set.changes().length).toBe(1);
 		expect(set.changes()[0]).toBe(5);
 	});
@@ -188,6 +168,34 @@ describe("ChangeSet.count", function() {
 	it("uses thisPtr if provided", function () {
 		this.set.val = 1;
 		expect(this.set.count(function(v) { return v > this.set.val; }, this)).toBe(2);
+	});
+});
+
+describe("ChangeSet events", function() {
+	beforeEach(setup);
+
+	it("exposes an add event which is raised when a new change is added:  fn(change, index, set)", function() {
+		var onChangeAdded = jasmine.jasmine.createSpy("changeAdded");
+		this.set.addChangeAdded(onChangeAdded);
+		this.set.add(42);
+
+		expect(onChangeAdded).toHaveBeenCalledWith(42, 3, this.set);
+	});
+
+	it("exposes an undo event which is raised when a change is undone:  fn(change, index, set)", function() {
+		var onChangeUndone = jasmine.jasmine.createSpy("changeUndone");
+		this.set.addChangeUndone(onChangeUndone);
+		this.set.undo();
+
+		expect(onChangeUndone).toHaveBeenCalledWith(3, 2, this.set);
+	});
+
+	it("exposes a truncated event which is raised when the set is truncated:  fn(numRemoved, set)", function() {
+		var onTruncated = jasmine.jasmine.createSpy("truncated");
+		this.set.addTruncated(onTruncated);
+		this.set.truncate();
+
+		expect(onTruncated).toHaveBeenCalledWith(3, this.set);
 	});
 });
 
