@@ -355,21 +355,14 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static ServiceRequest.Query Query(object instance, ViewScope scope, params string[] paths)
 		{
-			if (instance == null)
+			GraphType type;
+			GraphInstance[] roots;
+			bool isList;
+
+			if (ExoWeb.TryConvertQueryInstance(instance, out type, out roots, out isList))
+				return new ServiceRequest.Query(type, roots, scope == ViewScope.InScope, isList, paths);
+			else
 				return null;
-
-			var context = GraphContext.Current;
-			var gi = context.GetGraphInstance(instance);
-			if (gi != null)
-				return new ServiceRequest.Query(new GraphInstance[] { gi }, scope == ViewScope.InScope, false, paths);
-			else if (instance is IEnumerable)
-			{
-				var roots = ((IEnumerable)instance).Cast<object>().Select(i => context.GetGraphInstance(i)).Where(i => i != null).ToArray();
-
-				return roots.Length > 0 ? new ServiceRequest.Query(roots, scope == ViewScope.InScope, true, paths) : null;
-			}
-
-			return null;
 		}
 
 		public static ServiceRequest.Query Include(this object instance, params string[] paths)
@@ -390,6 +383,97 @@ namespace ExoWeb
 			else
 				query = Query(instance, ViewScope.OutOfScope);
 			return query;
+		}
+
+		/// <summary>
+		/// Attempt to infer a query request from an instance object.
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="type"></param>
+		/// <param name="roots"></param>
+		/// <param name="isList"></param>
+		/// <returns></returns>
+		internal static bool TryConvertQueryInstance(object instance, out GraphType type, out GraphInstance[] roots, out bool isList)
+		{
+			// Default the out parameters to null
+			type = null;
+			roots = null;
+			isList = false;
+
+			// Immediately return null if the query instance is null
+			if (instance == null)
+				return false;
+
+			// Get the current graph context
+			var context = GraphContext.Current;
+
+			// Determine if the instance is a graph instance
+			type = context.GetGraphType(instance);
+			if (type != null)
+			{
+				roots = new GraphInstance[] { type.GetGraphInstance(instance) };
+				isList = false;
+				return true;
+			}
+
+			// Otherwise, determine if the instance is a list of graph instances
+			else if (instance is IEnumerable)
+			{
+				// Convert the list to an array of graph instances
+				roots =
+				(
+					from element in ((IEnumerable)instance).Cast<object>()
+					let elementType = context.GetGraphType(element)
+					where elementType != null
+					select elementType.GetGraphInstance(element)
+				).ToArray();
+
+				// Indicate that the instance represents a list
+				isList = true;
+
+				// If the array contains at least one graph instance, determine the base graph type
+				if (roots.Length > 0)
+				{
+					type = roots[0].Type;
+					foreach (var rootType in roots.Select(r => r.Type))
+					{
+						if (rootType.IsSubType(type))
+							type = rootType;
+					}
+					return true;
+				}
+
+				// Otherwise, attempt to infer the graph type from the type of the list
+				else
+				{
+					// First see if the type implements IEnumerable<T>
+					var listType = instance.GetType();
+					foreach (Type interfaceType in listType.GetInterfaces())
+					{
+						if (interfaceType.IsGenericType && interfaceType.GetGenericTypeDefinition() == typeof(ICollection<>))
+						{
+							type = context.GetGraphType(interfaceType.GetGenericArguments()[0]);
+							if (type != null)
+								return true;
+						}
+					}
+
+					// Then see if the type implements IList and has a strongly-typed Item property indexed by an integer value
+					if (typeof(IList).IsAssignableFrom(listType))
+					{
+						PropertyInfo itemProperty = listType.GetProperty("Item", new Type[] { typeof(int) });
+						if (itemProperty != null)
+						{
+							type = context.GetGraphType(itemProperty.PropertyType);
+							if (type != null)
+								return true;
+						}
+					}
+				}
+			}
+
+			// Return false to indicate that the instance could not be coerced into a valid query definition
+			return false;
 		}
 
 		/// <summary>

@@ -214,34 +214,16 @@ namespace ExoWeb
 						if (result == null)
 							return null;
 
-						IList<Query> queries = new List<Query>();
-						GraphInstance[] roots = null;
-						var isList = false;
-						
-						// Determine if the result is a graph instance
-						var type = context.GetGraphType(result);
-						if (type != null)
-							roots = new GraphInstance[] { type.GetGraphInstance(result) };
+						GraphType type;
+						GraphInstance[] roots;
+						bool isList;
 
-						// Otherwise, determine if the result is a list of graph instances
-						else if (result is IEnumerable)
+						if (ExoWeb.TryConvertQueryInstance(result, out type, out roots, out isList))
 						{
-							roots =
-							(
-								from element in ((IEnumerable) result).Cast<object>()
-								let elementType = context.GetGraphType(element)
-								where elementType != null
-								select elementType.GetGraphInstance(element)
-							).ToArray();
-							isList = true;
-						}
-
-						if (roots != null && roots.Length > 0)
-						{
-							Query[] newQueries = new Query[] { new Query(roots, true, isList, domainEvent.Include) };
+							Query[] newQueries = new Query[] { new Query(type, roots, true, isList, domainEvent.Include) };
 							Queries = Queries == null ? newQueries : Queries.Union(newQueries).ToArray();
 
-							return type == null ? (object) roots : (object) roots[0];
+							return isList ? (object) roots : (object) roots[0];
 						}
 						else
 							return result;
@@ -652,23 +634,14 @@ namespace ExoWeb
 			/// </summary>
 			/// <param name="roots"></param>
 			/// <param name="paths"></param>
-			internal Query(GraphInstance[] roots, bool inScope, bool isList, string[] paths)
+			internal Query(GraphType type, GraphInstance[] roots, bool inScope, bool isList, string[] paths)
 			{
-				if (roots == null || roots.Length == 0)
-					throw new ArgumentException("At least one root instance must be specified for an instance-based query.");
-
+				this.From = type;
 				this.Include = paths ?? new string[] { };
 				this.Roots = roots;
 				this.ForLoad = true;
 				this.InScope = inScope;
 				this.IsList = isList;
-
-				this.From = Roots[0].Type;
-				foreach (var type in Roots.Select(r => r.Type))
-				{
-					if (type.IsSubType(this.From))
-						this.From = type;
-				}
 			}
 
 			public GraphType From { get; set; }
