@@ -654,34 +654,24 @@ namespace ExoWeb
 			/// <param name="paths"></param>
 			internal Query(GraphInstance[] roots, bool inScope, bool isList, string[] paths)
 			{
+				if (roots == null || roots.Length == 0)
+					throw new ArgumentException("At least one root instance must be specified for an instance-based query.");
+
 				this.Include = paths ?? new string[] { };
 				this.Roots = roots;
 				this.ForLoad = true;
 				this.InScope = inScope;
 				this.IsList = isList;
+
+				this.From = Roots[0].Type;
+				foreach (var type in Roots.Select(r => r.Type))
+				{
+					if (type.IsSubType(this.From))
+						this.From = type;
+				}
 			}
 
-			GraphType from;
-			public GraphType From
-			{
-				get
-				{
-					if (from == null && Roots != null)
-					{
-						from = Roots[0].Type;
-						foreach (var type in Roots.Select(r => r.Type))
-						{
-							if (type.IsSubType(from))
-								from = type;
-						}
-					}
-					return from;
-				}
-				internal set
-				{
-					from = value;
-				}
-			}
+			public GraphType From { get; set; }
 
 			public string[] Ids { get; internal set; }
 
