@@ -7286,7 +7286,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			var numRemoved;
 			if (filter) {
-				numRemoved = this._changes.purge(filter, thisPtr).length;
+				var removedAt = this._changes.purge(filter, thisPtr);
+				numRemoved = removedAt ? removedAt.length : 0;
 			}
 			else {
 				numRemoved = this._changes.length;
