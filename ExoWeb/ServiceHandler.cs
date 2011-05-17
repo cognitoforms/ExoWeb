@@ -102,7 +102,12 @@ namespace ExoWeb
 
 				// Enable error information on client
 				if (ExoWeb.EnableExceptionInformation)
+				{
 					context.Response.AddHeader("jsonerror", "true");
+
+					// Ensure IIS 7 doesn't intercept the error
+					context.Response.TrySkipIisCustomErrors = true; 
+				}
 
 				context.Response.Write(ExoWeb.ToJson(typeof(ServiceError), error));
 			}
