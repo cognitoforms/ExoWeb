@@ -10323,7 +10323,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		// If typeInfo is an arry of type names, then use a signal to wait until all types are loaded.
-		if (typeInfo instanceof Array) {
+		if (Object.prototype.toString.call(typeInfo) === "[object Array]") {
 			var signal = new ExoWeb.Signal("extend");
 
 			var types = [];
