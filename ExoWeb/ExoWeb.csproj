@@ -122,6 +122,7 @@
     <Content Include="Client\specs\base\core\test_FunctionChain.js" />
     <Content Include="Client\specs\base\core\test_Batch.js" />
     <Content Include="Client\specs\base\core\test_Function.js" />
+    <Content Include="Client\specs\base\core\test_MessageQueue.js" />
     <Content Include="Client\specs\base\core\test_Signal.js" />
     <Content Include="Client\specs\base\core\test_String.js" />
     <Content Include="Client\specs\base\core\test_Translator.js" />
@@ -141,6 +142,7 @@
     <Content Include="Client\src\base\core\Function.js" />
     <Content Include="Client\src\base\core\FunctionChain.js" />
     <Content Include="Client\src\base\core\Functor.js" />
+    <Content Include="Client\src\base\core\MessageQueue.js" />
     <Content Include="Client\src\base\core\MsAjax.js" />
     <Content Include="Client\src\base\core\Object.js" />
     <Content Include="Client\src\base\core\PropertyObserver.js" />

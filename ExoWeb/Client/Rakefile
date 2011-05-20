@@ -43,7 +43,8 @@ end
 		Signal
 		Functor
 		FunctionChain
-		EventQueue 
+		EventQueue
+		MessageQueue
 		EvalWrapper
 		Transform
 		Translator
