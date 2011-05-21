@@ -9,6 +9,7 @@ var distinct = arrays.distinct;
 var intersect = arrays.intersect;
 var purge = arrays.purge;
 var first = arrays.first;
+var fill = arrays.fill;
 var map = arrays.map;
 var indexOf = arrays.indexOf;
 
@@ -155,6 +156,17 @@ describe("indexOf", function () {
 
 		expect(indexOf(arr, "B")).toBe(1);
 		expect(arr.indexOf("B")).toBe(1);
+	});
+});
+
+describe("fill", function () {
+	it("pushes a given number of items into the array with the given value", function () {
+		var arr = ["A", "B", "C"];
+		arr.fill("D", 3);
+		expect(arr[3]).toBe("D");
+		expect(arr[4]).toBe("D");
+		expect(arr[5]).toBe("D");
+		expect(arr[6]).toBe(undefined);
 	});
 });
 

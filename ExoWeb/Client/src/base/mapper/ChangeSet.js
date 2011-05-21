@@ -29,6 +29,15 @@ ChangeSet.mixin({
 	changes: function() {
 		return this._changes;
 	},
+	checkpoint: function(title, code) {
+		// Generate a random code for the checkpoint if one is not given.
+		if (!code)
+			code = [].fill(null, 10).map(function() { return String.fromCharCode(Math.floor(Math.random() * 26) + 97); }).join("");
+
+		// Add the checkpoint and return the code.
+		this.add({ type: "Checkpoint", title: title || "untitled", code: code });
+		return code;
+	},
 	count: function (filter, thisPtr) {
 		if (!filter) {
 			return this._changes.length;
@@ -50,9 +59,33 @@ ChangeSet.mixin({
 	source: function() {
 		return this._source;
 	},
-	truncate: function(filter, thisPtr) {
-		// Discard all changes that match the given filter
+	truncate: function(checkpoint, filter, thisPtr) {
+		// Allow calling as function(filter, thisPtr)
+		if (checkpoint && Object.prototype.toString.call(checkpoint) === "[object Function]") {
+			thisPtr = filter;
+			filter = checkpoint;
+			checkpoint = null;
+		}
 
+		// Wrap custom filter if a checkpoint is given.
+		if (checkpoint) {
+			var foundCheckpoint = false;
+			var customFilter = filter;
+			filter = function(change) {
+				// Check to see if this is the checkpoint we're looking for.
+				if (change.type === "Checkpoint" && change.code === checkpoint)
+					foundCheckpoint = true;
+
+				// Stop truncating when the checkpoint is found.
+				if (foundCheckpoint === true)
+					return false;
+
+				// Delegate to custom filter if one is given.
+				return customFilter ? customFilter.apply(this, arguments) : true;
+			};
+		}
+
+		// Discard all changes that match the given filter
 		var numRemoved;
 		if (filter) {
 			var removedAt = this._changes.purge(filter, thisPtr);

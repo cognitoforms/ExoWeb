@@ -32,7 +32,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 	objectProvider(mtype.get_fullName(), [id], paths, false,
 		serializeChanges.call(context.server, true),
 		function(result) {
-			mtype.get_model()._server._handleResult(result, null, function() {
+			mtype.get_model()._server._handleResult(result, null, null, function() {
 				ExoWeb.Model.LazyLoader.unregister(obj, this);
 				pendingObjects--;
 				callback.call(thisPtr || this, obj);

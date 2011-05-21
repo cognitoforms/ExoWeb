@@ -69,7 +69,7 @@ ExoWeb.registerActivity(function() {
 });
 
 function serializeChanges(includeAllChanges, simulateInitRoot) {
-	var changes = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
+	var changes = this._changeLog.serialize(includeAllChanges ? this.canSend : this.canSave, this);
 
 	// temporary HACK (no, really): splice InitNew changes into init transaction
 	if (simulateInitRoot && simulateInitRoot.meta.isNew) {
@@ -145,6 +145,11 @@ ServerSync.mixin({
 			return true;
 		}
 	},
+	canSend: function(change) {
+		if (change.type === "Checkpoint") return false;
+
+		return true;
+	},
 	canSaveObject: function ServerSync$canSaveObject(objOrMeta) {
 		var obj;
 		var errorFmt = "Unable to test whether object can be saved:  {0}.";
@@ -168,8 +173,12 @@ ServerSync.mixin({
 		return !Array.contains(this._objectsExcludedFromSave, obj);
 	},
 	canSave: function ServerSync$canSave(change) {
+
+		// Can't save changes that can't be sent to the server at all.
+		if (!this.canSend(change)) return false;
+
 		// For list changes additionally check added and removed objects.
-		if (change.type == "ListChange") {
+		if (change.type === "ListChange") {
 			if (change.added.length > 0 || change.removed.length > 0) {
 				var ignore = true;
 
@@ -197,7 +206,7 @@ ServerSync.mixin({
 			}
 		}
 		// For reference changes additionally check oldValue/newValue
-		else if (change.type == "ReferenceChange:#ExoGraph") {
+		else if (change.type === "ReferenceChange:#ExoGraph") {
 			var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 			if (oldJsType) {
 				var oldValue = fromExoGraph(change.oldValue, this._translator);
@@ -226,7 +235,7 @@ ServerSync.mixin({
 		return this.canSaveObject(instanceObj);
 	},
 
-	_handleResult: function ServerSync$handleResult(result, source, callback)
+	_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback)
 	{
 		var signal = new ExoWeb.Signal("Success");
 
@@ -238,7 +247,7 @@ ServerSync.mixin({
 					ExoWeb.Batch.end(batch);
 
 					if (result.changes && result.changes.length > 0) {
-						this._changeLog.applyChanges(result.changes, source, this);
+						this._changeLog.applyChanges(checkpoint, result.changes, source, this);
 					}
 					else if (source) {
 						// no changes, so record empty set
@@ -257,7 +266,7 @@ ServerSync.mixin({
 			}), this);
 		}
 		else if (result.changes && result.changes.length > 0) {
-			this._changeLog.applyChanges(result.changes, source, this);
+			this._changeLog.applyChanges(checkpoint, result.changes, source, this);
 			if (result.conditions) {
 				conditionsFromJson(this._model, result.conditions, signal.pending());
 			}
@@ -351,7 +360,7 @@ ServerSync.mixin({
 
 		args.responseObject = result;
 
-		this._handleResult(result, args.name, function () {
+		this._handleResult(result, args.name, null, function () {
 			var event = result.events[0];
 			if (event instanceof Array) {
 				for (var i = 0; i < event.length; ++i) {
@@ -421,7 +430,7 @@ ServerSync.mixin({
 
 		args.responseObject = result;
 
-		this._handleResult(result, "roundtrip", function () {
+		this._handleResult(result, "roundtrip", null, function () {
 			this._raiseEndEvents("roundtrip", "Success", args);
 
 			if (callback && callback instanceof Function)
@@ -474,19 +483,22 @@ ServerSync.mixin({
 		var args = { root: root };
 		this._raiseBeginEvents("save", args);
 
+		// Checkpoint the log to ensure that we only truncate changes that were saved.
+		var checkpoint = this._changeLog.checkpoint("save " + Date.formats.DateTime.convert(new Date()));
+
 		saveProvider(
 			toExoGraph(this._translator, root),
 			serializeChanges.call(this, true, root),
-			this._onSaveSuccess.bind(this).appendArguments(args, success),
+			this._onSaveSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onSaveFailed.bind(this).appendArguments(args, failed || success)
 		);
 	},
-	_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, callback) {
+	_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, checkpoint, callback) {
 		Sys.Observer.setValue(this, "PendingSave", false);
 
 		args.responseObject = result;
 
-		this._handleResult(result, "save", function () {
+		this._handleResult(result, "save", checkpoint, function () {
 			this._raiseEndEvents("save", "Success", args);
 
 			if (callback && callback instanceof Function)

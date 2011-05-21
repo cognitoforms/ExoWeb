@@ -136,6 +136,10 @@ describe("ChangeLog", function() {
 		expect(this.log.activeSet().changes().length).toBe(0);
 		expect(change).toBe(3);
 	});
+});
+
+describe("ChangeLog.truncate", function() {
+	beforeEach(setup);
 
 	it("discards all sets and changes when truncated, creating a new \"client\" set", function() {
 		var numRemoved = this.log.truncate();
@@ -159,6 +163,39 @@ describe("ChangeLog", function() {
 		expect(this.log.sets()[1].source()).toBe("client");
 		expect(this.log.activeSet().source()).toBe("client");
 		expect(this.log.activeSet().changes().length).toBe(0);
+	});
+	
+	it("checkpoint returns undefined if there is not an active set or there are no changes", function() {
+		var log = new ChangeLog();
+		expect(log.checkpoint()).toBe(undefined);
+
+		log.start("test");
+		log.start("test2");
+		expect(log.checkpoint()).toBe(undefined);
+
+		log.add(1);
+		expect(log.checkpoint()).not.toBe(undefined);
+	});
+
+	it("discards all changes and sets up to the given checkpoint", function() {
+		var checkpoint = this.log.checkpoint();
+
+		expect(checkpoint).not.toBe(undefined);
+
+		this.log.start("test3");
+		this.log.add(4);
+		this.log.add(5);
+
+		var numRemoved = this.log.truncate(checkpoint);
+
+		// Checkpoint should be gone in this case since nothing precedes it.
+		expect(numRemoved).toBe(3);
+		
+		expect(this.log.sets().length).toBe(2);
+		expect(this.log.sets()[0].source()).toBe("test3");
+		expect(this.log.sets()[0].changes().length).toBe(2);
+		expect(this.log.sets()[1].source()).toBe("client");
+		expect(this.log.sets()[1].changes().length).toBe(0);
 	});
 });
 

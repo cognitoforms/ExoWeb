@@ -53,6 +53,12 @@ function every(arr, callback, thisPtr) {
 	return true;
 }
 
+function fill(arr, value, times) {
+	for (var i = 0; i < times; i++)
+		arr.push(value);
+	return arr;
+}
+
 function filter(arr, callback, thisPtr) {
 	assertArrayArg(arr, "filter");
 	assertFunctionArg(callback, "filter");
@@ -178,16 +184,20 @@ function purge(arr, callback, thisPtr) {
 
 	var result;
 
-	for (var i = arr.length - 1; i >= 0; i--) {
+	for (var i = 0; i < arr.length; i++) {
 		if (callback.call(thisPtr || this, arr[i], i, arr) === true) {
+			// Invoke removeAt method if it exists.
 			if (arr.removeAt)
 				arr.removeAt(i);
 			else
 				arr.splice(i, 1);
 
+			// Lazy create array and add index (accounting for previously removed).
 			if (!result) result = [];
+			result.push(i + result.length);
 
-			result.splice(0, 0, i);
+			// Decrement to account for removal.
+			i--;
 		}
 	}
 
@@ -228,6 +238,8 @@ if (!Array.prototype.distinct)
 	Array.prototype.distinct = function() { return distinct(this); };
 if (!Array.prototype.every)
 	Array.prototype.every = function(fun /*, thisp*/) { return every(this, fun, arguments[1]); };
+if (!Array.prototype.fill)
+	Array.prototype.fill = function(value, times) { return fill(this, value, times); };
 if (!Array.prototype.filter)
 	Array.prototype.filter = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
 if (!Array.prototype.first)

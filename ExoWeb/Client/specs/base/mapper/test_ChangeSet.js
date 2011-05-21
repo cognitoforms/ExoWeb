@@ -137,19 +137,50 @@ describe("ChangeSet", function() {
 		expect(this.set.changes().length).toBe(2);
 		expect(change).toBe(lastChange);
 	});
+});
 
-	it("discards all sets and changes when truncated", function() {
+describe("ChangeSet.truncate", function() {
+	beforeEach(setup);
+
+	it("discards all changes", function() {
 		this.set.truncate();
 		expect(this.set.changes().length).toBe(0);
 	});
 
-	it("discards all sets and changes that meet the given filter when truncated", function() {
+	it("discards all changes that meet the given filter", function() {
 		this.set.truncate(function(c) {
 			return c > 1;
 		});
 
 		expect(this.set.changes().length).toBe(1);
 		expect(this.set.changes()[0]).toBe(1);
+	});
+
+	it("discards all changes up to the given checkpoint", function() {
+		var checkpoint = this.set.checkpoint();
+
+		// Add another item and then truncate, up to the checkpoint.
+		this.set.add(4);
+		this.set.truncate(checkpoint);
+
+		expect(this.set.changes().length).toBe(2);
+		expect(this.set.changes()[0].code).toBe(checkpoint);
+		expect(this.set.changes()[1]).toBe(4);
+	});
+
+	it("uses combination of filter and checkpoint if both are given", function() {
+		var checkpoint = this.set.checkpoint();
+
+		// Add another item and then truncate, up to the checkpoint.
+		this.set.add(4);
+		this.set.truncate(checkpoint, function(c) {
+			return c > 1;
+		});
+
+		expect(this.set.changes().length).toBe(3);
+		expect(this.set.changes()[0]).toBe(1);
+		expect(this.set.changes()[1].code).toBe(checkpoint);
+		expect(this.set.changes()[2]).toBe(4);
 	});
 });
 

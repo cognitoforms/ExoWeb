@@ -39,6 +39,11 @@ ChangeLog.mixin({
 	addTruncated: function (fn, filter, once) {
 		this._addEvent("truncated", fn, filter, once);
 	},
+	checkpoint: function() {
+		if (this._activeSet && this._sets.some(function(s) { return s.changes().length > 0; })) {
+			return this._activeSet.checkpoint();
+		}
+	},
 	count: function (filter, thisPtr) {
 		var result = 0;
 		forEach(this._sets, function(set) {
@@ -94,23 +99,40 @@ ChangeLog.mixin({
 
 		return set;
 	},
-	truncate: function (filter, thisPtr) {
+	truncate: function (checkpoint, filter, thisPtr) {
 		// Removes all change sets where all changes match the given
 		// filter.  If a set contains one or more changes that do NOT
 		// match, the set is left intact with those changes.
 
+		// Allow calling as function(filter, thisPtr)
+		if (checkpoint && Object.prototype.toString.call(checkpoint) === "[object Function]") {
+			thisPtr = filter;
+			filter = checkpoint;
+			checkpoint = null;
+		}
+
 		var numRemoved = 0;
+		var foundCheckpoint = false;
 
 		for (var i = 0; i < this._sets.length; i++) {
-			numRemoved += this._sets[i].truncate(filter, thisPtr);
+			if (checkpoint) {
+				foundCheckpoint = this._sets[i].changes().some(function(c) {
+					return c.type === "Checkpoint" && c.code === checkpoint;
+				});
+			}
 
-			// If all changes have been removed then discard the set
-			if (this._sets[i].changes().length === 0) {
+			numRemoved += this._sets[i].truncate(checkpoint, filter, thisPtr);
+
+			// If all changes have been removed (or all but the given checkpoint) then discard the set
+			if (this._sets[i].changes().length === 0 || (this._sets[i].changes().length === 1 && foundCheckpoint === true)) {
 				this._sets.splice(i--, 1);
 				if (this._sets[i] === this._activeSet) {
 					this._activeSet = null;
 				}
 			}
+
+			if (foundCheckpoint)
+				break;
 		}
 
 		// Start a new change set
@@ -148,7 +170,7 @@ ChangeLog.mixin({
 	},
 	// APPLY CHANGES
 	///////////////////////////////////////////////////////////////////////
-	applyChanges: function (changes, source, serverSync) {
+	applyChanges: function (checkpoint, changes, source, serverSync) {
 		if (!changes || !(changes instanceof Array)) {
 			return;
 		}
@@ -174,7 +196,7 @@ ChangeLog.mixin({
 			var saveChanges = changes.filter(function(c, i) { return c.type === "Save"; });
 			var numSaveChanges = saveChanges.length;
 			if (numSaveChanges > 0) {
-				this.truncate(serverSync.canSave, serverSync);
+				this.truncate(checkpoint, serverSync.canSave, serverSync);
 
 				// Update affected scope queries
 				saveChanges.forEach(function(change) {

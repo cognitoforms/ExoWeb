@@ -337,6 +337,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return true;
 	}
 
+	function fill(arr, value, times) {
+		for (var i = 0; i < times; i++)
+			arr.push(value);
+		return arr;
+	}
+
 	function filter(arr, callback, thisPtr) {
 		assertArrayArg(arr, "filter");
 		assertFunctionArg(callback, "filter");
@@ -462,16 +468,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		var result;
 
-		for (var i = arr.length - 1; i >= 0; i--) {
+		for (var i = 0; i < arr.length; i++) {
 			if (callback.call(thisPtr || this, arr[i], i, arr) === true) {
+				// Invoke removeAt method if it exists.
 				if (arr.removeAt)
 					arr.removeAt(i);
 				else
 					arr.splice(i, 1);
 
+				// Lazy create array and add index (accounting for previously removed).
 				if (!result) result = [];
+				result.push(i + result.length);
 
-				result.splice(0, 0, i);
+				// Decrement to account for removal.
+				i--;
 			}
 		}
 
@@ -512,6 +522,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		Array.prototype.distinct = function() { return distinct(this); };
 	if (!Array.prototype.every)
 		Array.prototype.every = function(fun /*, thisp*/) { return every(this, fun, arguments[1]); };
+	if (!Array.prototype.fill)
+		Array.prototype.fill = function(value, times) { return fill(this, value, times); };
 	if (!Array.prototype.filter)
 		Array.prototype.filter = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
 	if (!Array.prototype.first)
@@ -7354,6 +7366,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 		changes: function() {
 			return this._changes;
 		},
+		checkpoint: function(title, code) {
+			// Generate a random code for the checkpoint if one is not given.
+			if (!code)
+				code = [].fill(null, 10).map(function() { return String.fromCharCode(Math.floor(Math.random() * 26) + 97); }).join("");
+
+			// Add the checkpoint and return the code.
+			this.add({ type: "Checkpoint", title: title || "untitled", code: code });
+			return code;
+		},
 		count: function (filter, thisPtr) {
 			if (!filter) {
 				return this._changes.length;
@@ -7375,9 +7396,33 @@ Type.registerNamespace("ExoWeb.DotNet");
 		source: function() {
 			return this._source;
 		},
-		truncate: function(filter, thisPtr) {
-			// Discard all changes that match the given filter
+		truncate: function(checkpoint, filter, thisPtr) {
+			// Allow calling as function(filter, thisPtr)
+			if (checkpoint && Object.prototype.toString.call(checkpoint) === "[object Function]") {
+				thisPtr = filter;
+				filter = checkpoint;
+				checkpoint = null;
+			}
 
+			// Wrap custom filter if a checkpoint is given.
+			if (checkpoint) {
+				var foundCheckpoint = false;
+				var customFilter = filter;
+				filter = function(change) {
+					// Check to see if this is the checkpoint we're looking for.
+					if (change.type === "Checkpoint" && change.code === checkpoint)
+						foundCheckpoint = true;
+
+					// Stop truncating when the checkpoint is found.
+					if (foundCheckpoint === true)
+						return false;
+
+					// Delegate to custom filter if one is given.
+					return customFilter ? customFilter.apply(this, arguments) : true;
+				};
+			}
+
+			// Discard all changes that match the given filter
 			var numRemoved;
 			if (filter) {
 				var removedAt = this._changes.purge(filter, thisPtr);
@@ -7450,6 +7495,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		addTruncated: function (fn, filter, once) {
 			this._addEvent("truncated", fn, filter, once);
 		},
+		checkpoint: function() {
+			if (this._activeSet && this._sets.some(function(s) { return s.changes().length > 0; })) {
+				return this._activeSet.checkpoint();
+			}
+		},
 		count: function (filter, thisPtr) {
 			var result = 0;
 			forEach(this._sets, function(set) {
@@ -7505,23 +7555,40 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return set;
 		},
-		truncate: function (filter, thisPtr) {
+		truncate: function (checkpoint, filter, thisPtr) {
 			// Removes all change sets where all changes match the given
 			// filter.  If a set contains one or more changes that do NOT
 			// match, the set is left intact with those changes.
 
+			// Allow calling as function(filter, thisPtr)
+			if (checkpoint && Object.prototype.toString.call(checkpoint) === "[object Function]") {
+				thisPtr = filter;
+				filter = checkpoint;
+				checkpoint = null;
+			}
+
 			var numRemoved = 0;
+			var foundCheckpoint = false;
 
 			for (var i = 0; i < this._sets.length; i++) {
-				numRemoved += this._sets[i].truncate(filter, thisPtr);
+				if (checkpoint) {
+					foundCheckpoint = this._sets[i].changes().some(function(c) {
+						return c.type === "Checkpoint" && c.code === checkpoint;
+					});
+				}
 
-				// If all changes have been removed then discard the set
-				if (this._sets[i].changes().length === 0) {
+				numRemoved += this._sets[i].truncate(checkpoint, filter, thisPtr);
+
+				// If all changes have been removed (or all but the given checkpoint) then discard the set
+				if (this._sets[i].changes().length === 0 || (this._sets[i].changes().length === 1 && foundCheckpoint === true)) {
 					this._sets.splice(i--, 1);
 					if (this._sets[i] === this._activeSet) {
 						this._activeSet = null;
 					}
 				}
+
+				if (foundCheckpoint)
+					break;
 			}
 
 			// Start a new change set
@@ -7559,7 +7626,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		// APPLY CHANGES
 		///////////////////////////////////////////////////////////////////////
-		applyChanges: function (changes, source, serverSync) {
+		applyChanges: function (checkpoint, changes, source, serverSync) {
 			if (!changes || !(changes instanceof Array)) {
 				return;
 			}
@@ -7585,7 +7652,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var saveChanges = changes.filter(function(c, i) { return c.type === "Save"; });
 				var numSaveChanges = saveChanges.length;
 				if (numSaveChanges > 0) {
-					this.truncate(serverSync.canSave, serverSync);
+					this.truncate(checkpoint, serverSync.canSave, serverSync);
 
 					// Update affected scope queries
 					saveChanges.forEach(function(change) {
@@ -7854,7 +7921,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	function serializeChanges(includeAllChanges, simulateInitRoot) {
-		var changes = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
+		var changes = this._changeLog.serialize(includeAllChanges ? this.canSend : this.canSave, this);
 
 		// temporary HACK (no, really): splice InitNew changes into init transaction
 		if (simulateInitRoot && simulateInitRoot.meta.isNew) {
@@ -7930,6 +7997,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return true;
 			}
 		},
+		canSend: function(change) {
+			if (change.type === "Checkpoint") return false;
+
+			return true;
+		},
 		canSaveObject: function ServerSync$canSaveObject(objOrMeta) {
 			var obj;
 			var errorFmt = "Unable to test whether object can be saved:  {0}.";
@@ -7953,8 +8025,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return !Array.contains(this._objectsExcludedFromSave, obj);
 		},
 		canSave: function ServerSync$canSave(change) {
+
+			// Can't save changes that can't be sent to the server at all.
+			if (!this.canSend(change)) return false;
+
 			// For list changes additionally check added and removed objects.
-			if (change.type == "ListChange") {
+			if (change.type === "ListChange") {
 				if (change.added.length > 0 || change.removed.length > 0) {
 					var ignore = true;
 
@@ -7982,7 +8058,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 			// For reference changes additionally check oldValue/newValue
-			else if (change.type == "ReferenceChange:#ExoGraph") {
+			else if (change.type === "ReferenceChange:#ExoGraph") {
 				var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 				if (oldJsType) {
 					var oldValue = fromExoGraph(change.oldValue, this._translator);
@@ -8011,7 +8087,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this.canSaveObject(instanceObj);
 		},
 
-		_handleResult: function ServerSync$handleResult(result, source, callback)
+		_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback)
 		{
 			var signal = new ExoWeb.Signal("Success");
 
@@ -8023,7 +8099,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						ExoWeb.Batch.end(batch);
 
 						if (result.changes && result.changes.length > 0) {
-							this._changeLog.applyChanges(result.changes, source, this);
+							this._changeLog.applyChanges(checkpoint, result.changes, source, this);
 						}
 						else if (source) {
 							// no changes, so record empty set
@@ -8042,7 +8118,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}), this);
 			}
 			else if (result.changes && result.changes.length > 0) {
-				this._changeLog.applyChanges(result.changes, source, this);
+				this._changeLog.applyChanges(checkpoint, result.changes, source, this);
 				if (result.conditions) {
 					conditionsFromJson(this._model, result.conditions, signal.pending());
 				}
@@ -8136,7 +8212,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			args.responseObject = result;
 
-			this._handleResult(result, args.name, function () {
+			this._handleResult(result, args.name, null, function () {
 				var event = result.events[0];
 				if (event instanceof Array) {
 					for (var i = 0; i < event.length; ++i) {
@@ -8206,7 +8282,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			args.responseObject = result;
 
-			this._handleResult(result, "roundtrip", function () {
+			this._handleResult(result, "roundtrip", null, function () {
 				this._raiseEndEvents("roundtrip", "Success", args);
 
 				if (callback && callback instanceof Function)
@@ -8259,19 +8335,22 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var args = { root: root };
 			this._raiseBeginEvents("save", args);
 
+			// Checkpoint the log to ensure that we only truncate changes that were saved.
+			var checkpoint = this._changeLog.checkpoint("save " + Date.formats.DateTime.convert(new Date()));
+
 			saveProvider(
 				toExoGraph(this._translator, root),
 				serializeChanges.call(this, true, root),
-				this._onSaveSuccess.bind(this).appendArguments(args, success),
+				this._onSaveSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onSaveFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
-		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, callback) {
+		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, checkpoint, callback) {
 			Sys.Observer.setValue(this, "PendingSave", false);
 
 			args.responseObject = result;
 
-			this._handleResult(result, "save", function () {
+			this._handleResult(result, "save", checkpoint, function () {
 				this._raiseEndEvents("save", "Success", args);
 
 				if (callback && callback instanceof Function)
@@ -9418,7 +9497,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		objectProvider(mtype.get_fullName(), [id], paths, false,
 			serializeChanges.call(context.server, true),
 			function(result) {
-				mtype.get_model()._server._handleResult(result, null, function() {
+				mtype.get_model()._server._handleResult(result, null, null, function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					pendingObjects--;
 					callback.call(thisPtr || this, obj);
