@@ -131,32 +131,7 @@ ExoWeb.trace = {
 
 			// format the function name and arguments
 			var name = parseFunctionName(f);
-			var args = Array.prototype.slice.call(f.arguments).map(function formatArg(arg) {
-				try {
-					if (arg === undefined) {
-						return "undefined";
-					}
-					else if (arg === null) {
-						return "null";
-					}
-					else if (arg instanceof Array) {
-						return "[" + arg.map(arguments.callee).join(", ") + "]";
-					}
-					else if (arg instanceof Function) {
-						return parseFunctionName(arg) + "()";
-					}
-					else if (arg.constructor === String) {
-						return "\"" + arg + "\"";
-					}
-					else {
-						var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
-						return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
-					}
-				}
-				catch (e) {
-					return "ERROR (" + parseFunctionName(arg.constructor) + "): " + e.toString();
-				}
-			}).join(", ");
+			var args = Array.prototype.slice.call(f.arguments).map(formatArgument).join(", ");
 
 			// append the new item
 			result.push(name + "(" + args + ")");
@@ -175,6 +150,33 @@ ExoWeb.trace = {
 		return result;
 	}
 };
+
+function formatArgument(arg) {
+	try {
+		if (arg === undefined) {
+			return "undefined";
+		}
+		else if (arg === null) {
+			return "null";
+		}
+		else if (arg instanceof Array) {
+			return "[" + arg.map(formatArgument).join(", ") + "]";
+		}
+		else if (arg instanceof Function) {
+			return parseFunctionName(arg) + "()";
+		}
+		else if (arg.constructor === String) {
+			return "\"" + arg + "\"";
+		}
+		else {
+			var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
+			return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
+		}
+	}
+	catch (e) {
+		return "ERROR (" + parseFunctionName(arg.constructor) + "): " + e.toString();
+	}
+}
 
 var funcRegex = /function\s*([\w_\$]*)/i;
 function parseFunctionName(f) {

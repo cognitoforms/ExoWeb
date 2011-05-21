@@ -703,32 +703,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				// format the function name and arguments
 				var name = parseFunctionName(f);
-				var args = Array.prototype.slice.call(f.arguments).map(function formatArg(arg) {
-					try {
-						if (arg === undefined) {
-							return "undefined";
-						}
-						else if (arg === null) {
-							return "null";
-						}
-						else if (arg instanceof Array) {
-							return "[" + arg.map(arguments.callee).join(", ") + "]";
-						}
-						else if (arg instanceof Function) {
-							return parseFunctionName(arg) + "()";
-						}
-						else if (arg.constructor === String) {
-							return "\"" + arg + "\"";
-						}
-						else {
-							var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
-							return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
-						}
-					}
-					catch (e) {
-						return "ERROR (" + parseFunctionName(arg.constructor) + "): " + e.toString();
-					}
-				}).join(", ");
+				var args = Array.prototype.slice.call(f.arguments).map(formatArgument).join(", ");
 
 				// append the new item
 				result.push(name + "(" + args + ")");
@@ -747,6 +722,33 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return result;
 		}
 	};
+
+	function formatArgument(arg) {
+		try {
+			if (arg === undefined) {
+				return "undefined";
+			}
+			else if (arg === null) {
+				return "null";
+			}
+			else if (arg instanceof Array) {
+				return "[" + arg.map(formatArgument).join(", ") + "]";
+			}
+			else if (arg instanceof Function) {
+				return parseFunctionName(arg) + "()";
+			}
+			else if (arg.constructor === String) {
+				return "\"" + arg + "\"";
+			}
+			else {
+				var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
+				return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
+			}
+		}
+		catch (e) {
+			return "ERROR (" + parseFunctionName(arg.constructor) + "): " + e.toString();
+		}
+	}
 
 	var funcRegex = /function\s*([\w_\$]*)/i;
 	function parseFunctionName(f) {
@@ -8195,6 +8197,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 
+			// Checkpoint the log to ensure that we only truncate changes that were saved.
+			var checkpoint = this._changeLog.checkpoint("server event " + name + " " + Date.formats.DateTime.convert(new Date()));
+
 			eventProvider(
 				name,
 				toExoGraph(this._translator, obj),
@@ -8203,16 +8208,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// If includeAllChanges is true, then use all changes including those 
 				// that should not be saved, otherwise only use changes that can be saved.
 				serializeChanges.call(this, includeAllChanges, obj),
-				this._onRaiseServerEventSuccess.bind(this).appendArguments(args, success),
+				this._onRaiseServerEventSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
-		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, callback) {
+		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, checkpoint, callback) {
 			Sys.Observer.setValue(this, "PendingServerEvent", false);
 
 			args.responseObject = result;
 
-			this._handleResult(result, args.name, null, function () {
+			this._handleResult(result, args.name, checkpoint, function () {
 				var event = result.events[0];
 				if (event instanceof Array) {
 					for (var i = 0; i < event.length; ++i) {

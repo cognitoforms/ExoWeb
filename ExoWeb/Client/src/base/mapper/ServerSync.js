@@ -343,6 +343,9 @@ ServerSync.mixin({
 			}
 		}
 
+		// Checkpoint the log to ensure that we only truncate changes that were saved.
+		var checkpoint = this._changeLog.checkpoint("server event " + name + " " + Date.formats.DateTime.convert(new Date()));
+
 		eventProvider(
 			name,
 			toExoGraph(this._translator, obj),
@@ -351,16 +354,16 @@ ServerSync.mixin({
 			// If includeAllChanges is true, then use all changes including those 
 			// that should not be saved, otherwise only use changes that can be saved.
 			serializeChanges.call(this, includeAllChanges, obj),
-			this._onRaiseServerEventSuccess.bind(this).appendArguments(args, success),
+			this._onRaiseServerEventSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
 		);
 	},
-	_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, callback) {
+	_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, checkpoint, callback) {
 		Sys.Observer.setValue(this, "PendingServerEvent", false);
 
 		args.responseObject = result;
 
-		this._handleResult(result, args.name, null, function () {
+		this._handleResult(result, args.name, checkpoint, function () {
 			var event = result.events[0];
 			if (event instanceof Array) {
 				for (var i = 0; i < event.length; ++i) {
