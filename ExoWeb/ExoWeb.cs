@@ -412,6 +412,10 @@ namespace ExoWeb
 			if (type != null)
 			{
 				roots = new GraphInstance[] { type.GetGraphInstance(instance) };
+
+				if (roots[0].Type.Properties.Any())
+					roots[0].OnPropertyGet(roots[0].Type.Properties.First());
+
 				isList = false;
 				return true;
 			}

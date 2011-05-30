@@ -679,7 +679,7 @@ namespace ExoWeb
 					Roots[i] = transaction == null ? From.Create(Ids[i]) : transaction.GetInstance(From, Ids[i]);
 
 					// Access a property to force the instance to initialize
-					object o = Roots[i][Roots[i].Type.Properties.First()];
+					Roots[i].OnPropertyGet(Roots[i].Type.Properties.First());
 				}
 			}
 
