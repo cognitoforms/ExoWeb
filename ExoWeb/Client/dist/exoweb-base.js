@@ -8057,7 +8057,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				}
 			}
 			// For reference changes additionally check oldValue/newValue
-			else if (change.type === "ReferenceChange:#ExoGraph") {
+			else if (change.type === "ReferenceChange") {
 				var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 				if (oldJsType) {
 					var oldValue = fromExoGraph(change.oldValue, this._translator);
