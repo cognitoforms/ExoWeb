@@ -144,10 +144,10 @@ Date.formats.DateTime = new Format({
 		return val.format("MM/dd/yyyy h:mm tt");
 	},
 	convertBack: function(str) {
-		var val = Date.parseInvariant(str);
+		var val = Date.parse(str);
 
 		if (val !== null) {
-			return val;
+			return new Date(val);
 		}
 
 		throw new Error("invalid date");

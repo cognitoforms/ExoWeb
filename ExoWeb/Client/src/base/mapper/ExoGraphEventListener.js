@@ -1,6 +1,7 @@
-function ExoGraphEventListener(model, translator) {
+function ExoGraphEventListener(model, translator, filters) {
 	this._model = model;
 	this._translator = translator;
+	this._filters = filters;
 
 	// listen for events
 	model.addListChanged(this.onListChanged.bind(this));
@@ -18,11 +19,8 @@ ExoGraphEventListener.mixin({
 
 	// Model event handlers
 	onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
-
-		// don't record changes to types or properties that didn't originate from the server
-		if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server" || property.get_isStatic()) {
+		if (this._filters && this._filters.listChanged && this._filters.listChanged(obj, property, listChanges) !== true)
 			return;
-		}
 
 		if (obj instanceof Function) {
 //					ExoWeb.trace.log("server", "logging list change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
@@ -58,11 +56,8 @@ ExoGraphEventListener.mixin({
 		}
 	},
 	onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
-
-		// don't record changes to types that didn't originate from the server
-		if (obj.meta.type.get_origin() != "server") {
+		if (this._filters && this._filters.objectRegistered && this._filters.objectRegistered(obj) !== true)
 			return;
-		}
 
 		if (obj.meta.isNew) {
 //					ExoWeb.trace.log("server", "logging new: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
@@ -76,19 +71,14 @@ ExoGraphEventListener.mixin({
 		}
 	},
 	onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
-		// ignore types that didn't originate from the server
-		if (obj.meta.type.get_origin() != "server") {
+		if (this._filters && this._filters.objectUnregistered && this._filters.objectUnregistered(obj) !== true)
 			return;
-		}
 
 		ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {type.fullName}({id})", obj.meta);
 	},
 	onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
-
-		// don't record changes to types or properties that didn't originate from the server
-		if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server" || property.get_isStatic()) {
+		if (this._filters && this._filters.propertyChanged && this._filters.propertyChanged(obj, property, newValue, oldValue) !== true)
 			return;
-		}
 
 		if (property.get_isValueType()) {
 			if (obj instanceof Function) {
@@ -128,3 +118,5 @@ ExoGraphEventListener.mixin({
 		}
 	}
 });
+
+exports.ExoGraphEventListener = ExoGraphEventListener;

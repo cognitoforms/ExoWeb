@@ -7,7 +7,23 @@ function ServerSync(model) {
 	this._scopeQueries = [];
 	this._objectsExcludedFromSave = [];
 	this._translator = new ExoWeb.Translator();
-	this._listener = new ExoGraphEventListener(this._model, this._translator);
+
+	// don't record changes to types that didn't originate from the server
+	function filterObjectEvent(obj) {
+		return obj.meta.type.get_origin() === "server";
+	}
+
+	// don't record changes to types or properties that didn't originate from the server
+	function filterPropertyEvent(obj, property) {
+		return property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
+	}
+
+	this._listener = new ExoGraphEventListener(this._model, this._translator, {
+		listChanged: filterPropertyEvent,
+		propertyChanged: filterPropertyEvent,
+		objectRegistered: filterObjectEvent,
+		objectUnregistered: filterObjectEvent
+	});
 
 	var applyingChanges = 0;
 	this.isApplyingChanges = function ServerSync$isApplyingChanges() {

@@ -170,7 +170,7 @@ ChangeLog.mixin({
 	},
 	// APPLY CHANGES
 	///////////////////////////////////////////////////////////////////////
-	applyChanges: function (checkpoint, changes, source, serverSync) {
+	applyChanges: function (checkpoint, changes, source, serverSync, filter) {
 		if (!changes || !(changes instanceof Array)) {
 			return;
 		}
@@ -237,7 +237,7 @@ ChangeLog.mixin({
 				}
 
 				// only record a change if there is not a pending save change
-				if (change.type !== "Save" && numSaveChanges <= 0) {
+				if (change.type !== "Save" && numSaveChanges <= 0 && (!filter || filter(change) === true)) {
 					newChanges++;
 					this.add(change);
 				}

@@ -6233,10 +6233,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return val.format("MM/dd/yyyy h:mm tt");
 		},
 		convertBack: function(str) {
-			var val = Date.parseInvariant(str);
+			var val = Date.parse(str);
 
 			if (val !== null) {
-				return val;
+				return new Date(val);
 			}
 
 			throw new Error("invalid date");
@@ -7201,9 +7201,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region ExoGraphEventListener
 	//////////////////////////////////////////////////
 
-	function ExoGraphEventListener(model, translator) {
+	function ExoGraphEventListener(model, translator, filters) {
 		this._model = model;
 		this._translator = translator;
+		this._filters = filters;
 
 		// listen for events
 		model.addListChanged(this.onListChanged.bind(this));
@@ -7221,11 +7222,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Model event handlers
 		onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
-
-			// don't record changes to types or properties that didn't originate from the server
-			if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server" || property.get_isStatic()) {
+			if (this._filters && this._filters.listChanged && this._filters.listChanged(obj, property, listChanges) !== true)
 				return;
-			}
 
 			if (obj instanceof Function) {
 //					ExoWeb.trace.log("server", "logging list change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
@@ -7261,11 +7259,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
-
-			// don't record changes to types that didn't originate from the server
-			if (obj.meta.type.get_origin() != "server") {
+			if (this._filters && this._filters.objectRegistered && this._filters.objectRegistered(obj) !== true)
 				return;
-			}
 
 			if (obj.meta.isNew) {
 //					ExoWeb.trace.log("server", "logging new: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
@@ -7279,19 +7274,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
-			// ignore types that didn't originate from the server
-			if (obj.meta.type.get_origin() != "server") {
+			if (this._filters && this._filters.objectUnregistered && this._filters.objectUnregistered(obj) !== true)
 				return;
-			}
 
 			ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {type.fullName}({id})", obj.meta);
 		},
 		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
-
-			// don't record changes to types or properties that didn't originate from the server
-			if (property.get_containingType().get_origin() != "server" || property.get_origin() !== "server" || property.get_isStatic()) {
+			if (this._filters && this._filters.propertyChanged && this._filters.propertyChanged(obj, property, newValue, oldValue) !== true)
 				return;
-			}
 
 			if (property.get_isValueType()) {
 				if (obj instanceof Function) {
@@ -7331,6 +7321,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		}
 	});
+
+	ExoWeb.Mapper.ExoGraphEventListener = ExoGraphEventListener;
 
 	// #endregion
 
@@ -7628,7 +7620,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		// APPLY CHANGES
 		///////////////////////////////////////////////////////////////////////
-		applyChanges: function (checkpoint, changes, source, serverSync) {
+		applyChanges: function (checkpoint, changes, source, serverSync, filter) {
 			if (!changes || !(changes instanceof Array)) {
 				return;
 			}
@@ -7695,7 +7687,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 
 					// only record a change if there is not a pending save change
-					if (change.type !== "Save" && numSaveChanges <= 0) {
+					if (change.type !== "Save" && numSaveChanges <= 0 && (!filter || filter(change) === true)) {
 						newChanges++;
 						this.add(change);
 					}
@@ -7861,7 +7853,23 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._scopeQueries = [];
 		this._objectsExcludedFromSave = [];
 		this._translator = new ExoWeb.Translator();
-		this._listener = new ExoGraphEventListener(this._model, this._translator);
+
+		// don't record changes to types that didn't originate from the server
+		function filterObjectEvent(obj) {
+			return obj.meta.type.get_origin() === "server";
+		}
+
+		// don't record changes to types or properties that didn't originate from the server
+		function filterPropertyEvent(obj, property) {
+			return property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
+		}
+
+		this._listener = new ExoGraphEventListener(this._model, this._translator, {
+			listChanged: filterPropertyEvent,
+			propertyChanged: filterPropertyEvent,
+			objectRegistered: filterObjectEvent,
+			objectUnregistered: filterObjectEvent
+		});
 
 		var applyingChanges = 0;
 		this.isApplyingChanges = function ServerSync$isApplyingChanges() {
