@@ -396,7 +396,7 @@ Adapter.prototype = {
 //											ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 									_this.set_selected(item, false);
 								}
-							});
+							}, !!this._allowedValuesMayBeNull);
 						}, this);
 					}
 					else {
@@ -405,7 +405,7 @@ Adapter.prototype = {
 //										ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 								_this.set_rawValue(null);
 							}
-						});
+						}, !!this._allowedValuesMayBeNull);
 					}
 				}
 

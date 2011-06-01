@@ -5285,10 +5285,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return Array.contains(allowed, value);
 			}
 		},
-		satisfiesAsync: function AllowedValuesRule$satisfiesAsync(obj, value, callback) {
+		satisfiesAsync: function AllowedValuesRule$satisfiesAsync(obj, value, callback, exitEarly) {
 			this._enforceInited();
 
-			this.valuesAsync(obj, false, function(allowed) {
+			this.valuesAsync(obj, exitEarly, function(allowed) {
 				if (value === undefined || value === null) {
 					callback(true);
 				}
@@ -12680,7 +12680,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 //											ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 										_this.set_selected(item, false);
 									}
-								});
+								}, !!this._allowedValuesMayBeNull);
 							}, this);
 						}
 						else {
@@ -12689,7 +12689,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 //										ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 									_this.set_rawValue(null);
 								}
-							});
+							}, !!this._allowedValuesMayBeNull);
 						}
 					}
 
