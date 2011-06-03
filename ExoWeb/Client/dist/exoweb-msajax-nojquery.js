@@ -10661,16 +10661,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 		},
-		add_rendering: function Content$add_rendering(handler) {
+		add_rendering: function (handler) {
 			this._addHandler("rendering", handler);
 		},
-		remove_rendering: function Content$remove_rendering(handler) {
+		remove_rendering: function (handler) {
 			this._removeHandler("rendering", handler);
 		},
-		add_rendered: function Content$add_rendered(handler) {
+		add_rendered: function (handler) {
 			this._addHandler("rendered", handler);
 		},
-		remove_rendered: function Content$remove_rendered(handler) {
+		remove_rendered: function (handler) {
 			this._removeHandler("rendered", handler);
 		},
 
