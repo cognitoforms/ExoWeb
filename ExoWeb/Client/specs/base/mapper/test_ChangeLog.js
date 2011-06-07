@@ -197,6 +197,11 @@ describe("ChangeLog.truncate", function() {
 		expect(this.log.sets()[1].source()).toBe("client");
 		expect(this.log.sets()[1].changes().length).toBe(0);
 	});
+
+	it("accepts an optional title", function () {
+		var checkpoint = this.log.checkpoint("title");
+		expect(this.log.sets()[1].changes()[1].title).toBe("title");
+	});
 });
 
 describe("ChangeLog.addSet", function() {

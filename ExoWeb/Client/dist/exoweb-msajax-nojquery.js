@@ -7489,9 +7489,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		addTruncated: function (fn, filter, once) {
 			this._addEvent("truncated", fn, filter, once);
 		},
-		checkpoint: function() {
+		checkpoint: function(title) {
 			if (this._activeSet && this._sets.some(function(s) { return s.changes().length > 0; })) {
-				return this._activeSet.checkpoint();
+				return this._activeSet.checkpoint(title);
 			}
 		},
 		count: function (filter, thisPtr) {
