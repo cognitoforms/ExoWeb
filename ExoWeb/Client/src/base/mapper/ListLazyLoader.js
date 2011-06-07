@@ -18,7 +18,7 @@ function listLoad(list, propName, callback, thisPtr) {
 	var objectJson, conditionsJson;
 
 	// TODO: reference to server will be a singleton, not context
-	listProvider(ownerType, list._ownerId, propName, list._ownerId === STATIC_ID ? [] : ObjectLazyLoader.getRelativePathsForType(propType),
+	listProvider(ownerType, ownerId, propName, ownerId === STATIC_ID ? [] : ObjectLazyLoader.getRelativePathsForType(propType),
 		serializeChanges.call(context.server, true),
 		signal.pending(function(result) {
 			objectJson = result.instances;
@@ -91,7 +91,7 @@ function listLoad(list, propName, callback, thisPtr) {
 			ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, ownerId]);
 		}
 
-		var listJson = list._ownerProperty.get_isStatic() ?
+		var listJson = prop.get_isStatic() ?
 			objectJson[jsonType][jsonId][propName] :
 			objectJson[jsonType][jsonId][propIndex];
 
