@@ -51,12 +51,12 @@ Property.mixin({
 			}
 		}
 	},
-	rule: function(type, onlyTargets) {
+	rule: function (type, onlyTargets) {
 		if (!type || !(type instanceof Function)) {
 			ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type ? type : (type === undefined ? "undefined" : "null")]);
 		}
 
-		var rule = first(this._rules, function(rule) {
+		var rule = first(this._rules, function (rule) {
 			if (rule.value instanceof type)
 				if (!onlyTargets || rule.isTarget === true)
 					return true;
@@ -70,13 +70,13 @@ Property.mixin({
 	_addRule: function Property$_addRule(rule, isTarget) {
 		this._rules.push({ value: rule, isTarget: isTarget });
 	},
-	rules: function(targetsThis) {
+	rules: function (targetsThis) {
 		return this._rules
-			.filter(function(rule) {
+			.filter(function (rule) {
 				return (!targetsThis && targetsThis !== false) || // no filter
 					(targetsThis === true && rule.isTarget === true) || // only targets
 					(targetsThis === false && rule.isTarget === false); // only non-targets
-			}).map(function(rule) {
+			}).map(function (rule) {
 				return rule.value;
 			});
 	},
@@ -101,7 +101,7 @@ Property.mixin({
 	get_format: function Property$get_format() {
 		return this._format;
 	},
-	format: function(val) {
+	format: function (val) {
 		return this.get_format() ? this.get_format().convert(val) : val;
 	},
 	get_origin: function Property$get_origin() {
@@ -384,189 +384,22 @@ Property.mixin({
 	removeChanged: function Property$removeChanged(handler) {
 		this._removeEvent("changed", handler);
 	},
-	_addCalculatedRule: function Property$_addCalculatedRule(rootType, calculateFn, isAsync, inputs) {
-		// calculated property should always be initialized when first accessed
-		var input = new RuleInput(this);
-		input.set_dependsOnGet(true);
-		input.set_dependsOnChange(false);
-		input.set_isTarget(true);
-		inputs.push(input);
-
-		var rule = {
-			prop: this,
-			canExecute: function(sender, property) {
-				// If there is no event, check if the calculation is based on some initialization, then defer to the default
-				// input check. This is done so that rules that are based on property changes alone do not fire when created,
-				// but calculations that are based on property initialization are allowed to fire if possible.
-				return (property || this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0) &&
-					// If no event is firing then the property argument will be the property that the rule is attached to,
-					// which should have no effect on the outcome. If no sender exists then this is a static check that is
-					// only dependent on the rule's inputs and not the initialization state of any particular object.
-					(!sender || Rule.canExecute(this, sender, property || input.property));
-			},
-			execute: function Property$calculated$execute(obj, callback) {
-				var signal = new ExoWeb.Signal("calculated rule");
-				var prop = this.prop;
-
-				if (prop._isList) {
-					// Initialize list if needed.  A calculated list property cannot depend on initialization 
-					// of a server-based list property since initialization is done when the object is constructed 
-					// and before data is available.  If it depends only on the change of the server-based list 
-					// property then initialization will not happen until the property value is requested.
-					if (!prop.isInited(obj)) {
-						prop.init(obj, []);
-					}
-
-					// re-calculate the list values
-					var newList;
-					if (isAsync) {
-						calculateFn.call(obj, signal.pending(function (result) {
-							newList = result;
-						}));
-					}
-					else {
-						newList = calculateFn.apply(obj);
-					}
-
-					signal.waitForAll(function () {
-						// compare the new list to the old one to see if changes were made
-						var curList = prop.value(obj);
-
-						if (newList.length === curList.length) {
-							var noChanges = true;
-
-							for (var i = 0; i < newList.length; ++i) {
-								if (newList[i] !== curList[i]) {
-									noChanges = false;
-									break;
-								}
-							}
-
-							if (noChanges) {
-								return;
-							}
-						}
-
-						// update the current list so observers will receive the change events
-						curList.beginUpdate();
-						curList.clear();
-						curList.addRange(newList);
-						curList.endUpdate();
-
-						if (callback) {
-							callback(obj);
-						}
-					}, null, !isAsync);
-				}
-				else {
-					var newValue;
-					if (isAsync) {
-						calculateFn.call(obj, signal.pending(function (result) {
-							newValue = result;
-						}));
-					}
-					else {
-						newValue = calculateFn.apply(obj);
-					}
-
-					signal.waitForAll(function () {
-						prop.value(obj, newValue, { calculated: true });
-
-						if (callback) {
-							callback(obj);
-						}
-					}, null, !isAsync);
-				}
-			},
-			toString: function () {
-				return "calculation of " + this.prop._name;
-			}
-		};
-
-		Rule.register(rule, inputs, isAsync, rootType, function () {
-			// Static check to determine if running when registered makes sense for this calculation based on its inputs.
-			if (rule.canExecute()) {
-				// Execute for existing instances if their initialization state allows it.
-				rootType.known().forEach(function (obj) {
-					if (rule.canExecute(obj)) {
-						try {
-							rule._isExecuting = true;
-							//ExoWeb.trace.log("rule", "executing rule '{0}' when initialized", [rule]);
-							rule.execute.call(rule, obj);
-						}
-						catch (err) {
-							ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
-						}
-						finally {
-							rule._isExecuting = false;
-						}
-					}
-				});
-			}
-		}, this);
-	},
-	// Adds a rule to the property that will update its value
-	// based on a calculation.
-	calculated: function Property$calculated(options) {
-		var prop = this;
-		var rootType = (options.rootType) ? options.rootType.meta : prop._containingType;
-
-		if (options.basedOn) {
-			this._readySignal = new ExoWeb.Signal("calculated property dependencies");
-			var inputs = [];
-
-			// setup loading of each property path that the calculation is based on
-			Array.forEach(options.basedOn, function (p, i) {
-				var dependsOnChange;
-				var dependsOnInit = true;
-
-				// if the event was specified then parse it
-				var parts = p.split(" of ");
-				if (parts.length >= 2) {
-					var events = parts[0].split(",");
-					dependsOnInit = (events.indexOf("init") >= 0);
-					dependsOnChange = (events.indexOf("change") >= 0);
-				}
-
-				var path = (parts.length >= 2) ? parts[1] : p;
-				Model.property(path, rootType, true, prop._readySignal.pending(function Property$calculated$chainLoaded(chain) {
-					var input = new RuleInput(chain);
-
-					if (!input.property) {
-						ExoWeb.trace.throwAndLog("model", "Calculated property {0}.{1} is based on an invalid property: {2}", [rootType.get_fullName(), prop._name, p]);
-					}
-
-					input.set_dependsOnInit(dependsOnInit);
-					if (dependsOnChange !== undefined) {
-						input.set_dependsOnChange(dependsOnChange);
-					}
-
-					inputs.push(input);
-				}));
-			});
-
-			// wait until all property information is available to initialize the calculation
-			this._readySignal.waitForAll(function () {
-				ExoWeb.Batch.whenDone(function () {
-					prop._addCalculatedRule(rootType, options.fn, options.isAsync, inputs);
-				});
-			});
-		}
-		else {
-			var inferredInputs = Rule.inferInputs(rootType, options.fn);
-			inferredInputs.forEach(function (input) {
-				input.set_dependsOnInit(true);
-			});
-			prop._addCalculatedRule(rootType, options.fn, options.isAsync, inferredInputs);
-		}
+	// Adds a rule to the property that will update its value based on a calculation.
+	calculated: function (options, conditionType) {
+		new CalculatedPropertyRule(options.rootType ? options.rootType.meta : this._containingType, {
+			property: this._name,
+			basedOn: options.basedOn,
+			fn: options.fn,
+			isAsync: options.isAsync
+		}, conditionType);
 
 		return this;
 	},
-	ifExists: function(path) {
-		Model.property(path, this._containingType, true, function(chain) {
+	ifExists: function (path) {
+		Model.property(path, this._containingType, true, function (chain) {
 			this.calculated({
 				basedOn: [path],
-				fn: function() {
+				fn: function () {
 					return !isNullOrUndefined(chain.value(this));
 				}
 			});
@@ -574,11 +407,11 @@ Property.mixin({
 
 		return this;
 	},
-	alias: function(path, eventName) {
-		Model.property(path, this._containingType, true, function(chain) {
+	alias: function (path, eventName) {
+		Model.property(path, this._containingType, true, function (chain) {
 			this.calculated({
 				basedOn: [(eventName ? eventName + " of " : "") + path],
-				fn: function() {
+				fn: function () {
 					return chain.value(this);
 				}
 			});

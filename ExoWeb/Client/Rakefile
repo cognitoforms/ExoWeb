@@ -73,6 +73,7 @@ end
 		RequiredIfRule
 		RequiredIfExpressionsRule
 		StringLengthRule
+		CalculatedPropertyRule
 		ConditionTypeSet
 		ConditionType
 		Condition

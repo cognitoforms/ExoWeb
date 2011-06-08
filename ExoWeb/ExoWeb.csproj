@@ -177,6 +177,7 @@
     <Content Include="Client\src\base\mapper\TypeProvider.js" />
     <Content Include="Client\src\base\mock\Mock.js" />
     <Content Include="Client\src\base\model\AllowedValuesRule.js" />
+    <Content Include="Client\src\base\model\CalculatedPropertyRule.js" />
     <Content Include="Client\src\base\model\CompareRule.js" />
     <Content Include="Client\src\base\model\Condition.js" />
     <Content Include="Client\src\base\model\ConditionType.js" />

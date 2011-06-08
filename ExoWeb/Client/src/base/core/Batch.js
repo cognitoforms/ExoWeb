@@ -57,12 +57,12 @@ Batch.end = function Batch_$end(batch) {
 	(batch._transferredTo || batch)._end();
 };
 
-Batch.whenDone = function Batch_$whenDone(fn) {
+Batch.whenDone = function Batch_$whenDone(fn, thisPtr) {
 	if (currentBatch) {
-		currentBatch.whenDone(fn);
+		currentBatch.whenDone(fn, thisPtr);
 	}
 	else {
-		fn();
+		fn.call(thisPtr || this);
 	}
 };
 
@@ -102,7 +102,7 @@ Batch.mixin({
 			// Invoke the subscribers.
 			var subscriber = this._subscribers.dequeue();
 			while (subscriber) {
-				subscriber.apply(this, arguments);
+				subscriber.fn.apply(subscriber.thisPtr || this, arguments);
 				subscriber = this._subscribers.dequeue();
 			}
 		}
@@ -143,10 +143,10 @@ Batch.mixin({
 	isEnded: function Batch$isEnded() {
 		return this._labels.length === 0;
 	},
-	whenDone: function Batch$whenDone(fn) {
+	whenDone: function Batch$whenDone(fn, thisPtr) {
 		ExoWeb.trace.log("batch", "[{0}] {1} - subscribing to batch done.", [this._index, this._rootLabel]);
 
-		this._subscribers.push(fn);
+		this._subscribers.push({ fn: fn, thisPtr: thisPtr });
 
 		return this;
 	}
