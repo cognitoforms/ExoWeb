@@ -91,7 +91,7 @@ AllowedValuesRule.prototype = {
 			return Array.contains(allowed, value);
 		}
 	},
-	satisfiesAsync: function AllowedValuesRule$satisfiesAsync(obj, value, callback, exitEarly) {
+	satisfiesAsync: function AllowedValuesRule$satisfiesAsync(obj, value, exitEarly, callback) {
 		this._enforceInited();
 
 		this.valuesAsync(obj, exitEarly, function(allowed) {

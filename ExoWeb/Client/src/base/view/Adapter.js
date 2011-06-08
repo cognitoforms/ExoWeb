@@ -392,21 +392,21 @@ Adapter.prototype = {
 
 					if (rawValue instanceof Array) {
 						Array.forEach(rawValue, function (item, index) {
-							this._allowedValuesRule.satisfiesAsync(targetObj, item, function (answer) {
+							this._allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, function (answer) {
 								if (!answer && !_this._isDisposed) {
 									//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 									_this.set_selected(item, false);
 								}
-							}, !!this._allowedValuesMayBeNull);
+							});
 						}, this);
 					}
 					else {
-						this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, function (answer) {
+						this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, function (answer) {
 							if (!answer && !_this._isDisposed) {
 								//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 								_this.set_rawValue(null);
 							}
-						}, !!this._allowedValuesMayBeNull);
+						});
 					}
 				}
 

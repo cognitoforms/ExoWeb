@@ -5123,7 +5123,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return Array.contains(allowed, value);
 			}
 		},
-		satisfiesAsync: function AllowedValuesRule$satisfiesAsync(obj, value, callback, exitEarly) {
+		satisfiesAsync: function AllowedValuesRule$satisfiesAsync(obj, value, exitEarly, callback) {
 			this._enforceInited();
 
 			this.valuesAsync(obj, exitEarly, function(allowed) {
@@ -12724,21 +12724,21 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						if (rawValue instanceof Array) {
 							Array.forEach(rawValue, function (item, index) {
-								this._allowedValuesRule.satisfiesAsync(targetObj, item, function (answer) {
+								this._allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, function (answer) {
 									if (!answer && !_this._isDisposed) {
 										//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 										_this.set_selected(item, false);
 									}
-								}, !!this._allowedValuesMayBeNull);
+								});
 							}, this);
 						}
 						else {
-							this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, function (answer) {
+							this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, function (answer) {
 								if (!answer && !_this._isDisposed) {
 									//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 									_this.set_rawValue(null);
 								}
-							}, !!this._allowedValuesMayBeNull);
+							});
 						}
 					}
 
