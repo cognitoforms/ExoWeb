@@ -12331,7 +12331,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
-		this._target = target;
+		this._target = target instanceof OptionAdapter ? target.get_rawValue() : target;
 		this._propertyPath = propertyPath;
 		this._ignoreTargetEvents = false;
 		this._readySignal = new ExoWeb.Signal("Adapter Ready");
@@ -12412,7 +12412,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{p}\" could not be found.", { p: this._propertyPath });
 			}
 
-			// if the target is an adapter, prepend it's property chain
+			// If the target is an adapter, prepend it's property chain.  Can't simply concatenate paths
+			// since the child path could be instance-dependent (i.e. the paren't value is a subtype).
 			if (this._target instanceof Adapter) {
 				this._propertyChain.prepend(this._target.get_propertyChain());
 				this._parentAdapter = this._target;
@@ -12422,11 +12423,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val, fmtName) {
 			var signal = new ExoWeb.Signal("Adapter." + fmtName + "Value");
 			if (val !== undefined && val !== null) {
-				this._doForFormatPaths(val, fmtName, function(path) {
+				this._doForFormatPaths(val, fmtName, function (path) {
 					ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 				});
 			}
-			signal.waitForAll(function() {
+			signal.waitForAll(function () {
 				Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
 			}, this);
 		},
@@ -12443,13 +12444,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val, fmtName) {
-			this._doForFormatPaths(val, fmtName, function(path) {
+			this._doForFormatPaths(val, fmtName, function (path) {
 				var fn = this._formatSubscribers[fmtName + "|" + path];
 				Sys.Observer.removePathChanged(val, path, fn);
 			});
 		},
 		_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val, fmtName) {
-			this._doForFormatPaths(val, fmtName, function(path) {
+			this._doForFormatPaths(val, fmtName, function (path) {
 				var fn = this._formatSubscribers[fmtName + "|" + path] = this._loadForFormatAndRaiseChange.bind(this).prependArguments(val, fmtName);
 				Sys.Observer.addPathChanged(val, path, fn);
 			});
@@ -12473,7 +12474,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				// when the value changes resubscribe
-				this._propertyChain.addChanged(function(sender, args) {
+				this._propertyChain.addChanged(function (sender, args) {
 					_this._unsubscribeFromFormatChanges(args.oldValue, "system");
 					_this._unsubscribeFromFormatChanges(args.oldValue, "display");
 
@@ -12493,7 +12494,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var rawValue = this.get_rawValue();
 
 			// raise raw value changed event
-			ExoWeb.Model.LazyLoader.eval(rawValue, null, function() {
+			ExoWeb.Model.LazyLoader.eval(rawValue, null, function () {
 				Sys.Observer.raisePropertyChanged(_this, "rawValue");
 			});
 
@@ -12507,7 +12508,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// has be changed by non-UI code or another UI component.  This will result in double raising 
 			// events if the value was set by changing selected on one of the OptionAdapter objects.
 			if (this._options) {
-				Array.forEach(this._options, function(o) {
+				Array.forEach(this._options, function (o) {
 					// Always reload selected for options in an array since we don't know what the old values in the list were
 					if (args.newValue instanceof Array || o.get_rawValue() == args.newValue || o.get_rawValue() == args.oldValue) {
 						Sys.Observer.raisePropertyChanged(o, "selected");
@@ -12559,7 +12560,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					var format = formatMethod.call(this);
 					if (format) {
 						if (rawValue instanceof Array) {
-							return rawValue.map(function(value) { return format.convert(value); });
+							return rawValue.map(function (value) { return format.convert(value); });
 						}
 						else {
 							return format.convert(rawValue);
@@ -12622,7 +12623,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Various methods.
 		///////////////////////////////////////////////////////////////////////
 		dispose: function Adapter$dispose() {
-//				ExoWeb.trace.log(["@", "markupExt"], "Adapter disposed.");
+			//ExoWeb.trace.log(["@", "markupExt"], "Adapter disposed.");
 			this._isDisposed = true;
 
 			// re-execute rules when the adapter is disposed to ensure that all conditions bound
@@ -12711,8 +12712,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
 				if (this._allowedValuesRule) {
 
-					var reloadOptions = function() {
-//							ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options due to change in allowed values path.");
+					var reloadOptions = function () {
+						//ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options due to change in allowed values path.");
 
 						this._reloadOptions(true);
 
@@ -12722,19 +12723,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 						var _this = this;
 
 						if (rawValue instanceof Array) {
-							Array.forEach(rawValue, function(item, index) {
-								this._allowedValuesRule.satisfiesAsync(targetObj, item, function(answer) {
+							Array.forEach(rawValue, function (item, index) {
+								this._allowedValuesRule.satisfiesAsync(targetObj, item, function (answer) {
 									if (!answer && !_this._isDisposed) {
-//											ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+										//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 										_this.set_selected(item, false);
 									}
 								}, !!this._allowedValuesMayBeNull);
 							}, this);
 						}
 						else {
-							this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, function(answer) {
+							this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, function (answer) {
 								if (!answer && !_this._isDisposed) {
-//										ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+									//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 									_this.set_rawValue(null);
 								}
 							}, !!this._allowedValuesMayBeNull);
