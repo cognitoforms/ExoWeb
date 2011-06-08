@@ -10,7 +10,7 @@ if (window.localStorage) {
 			cacheInited = true;
 
 			// if there's an older version of caching, clear the entire cache (the old way)
-			if (window.localStorage["cacheHash"])
+			if (window.localStorage.cacheHash)
 				window.localStorage.clear();
 
 			// Flush the local storage cache if the cache hash has changed

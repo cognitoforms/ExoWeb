@@ -9,7 +9,7 @@ function Format(options) {
 
 Format.fromTemplate = (function Format$fromTemplate(convertTemplate) {
 	var paths = [];
-	convertTemplate.replace(/{([a-z0-9_.]+)}/ig, function(match, expr) {
+	convertTemplate.replace(/\{([a-z0-9_.]+)\}/ig, function(match, expr) {
 		paths.push(expr);
 		return expr;
 	});

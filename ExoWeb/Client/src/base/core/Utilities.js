@@ -212,12 +212,12 @@ function $format(str, values) {
 		}
 	}
 
-	return str.replace(/{([a-z0-9_.]+)}/ig, function $format$token(match, expr) {
+	return str.replace(/\{([a-z0-9_.]+)\}/ig, function $format$token(match, expr) {
 		// Attempt to determine that single arg was passed, but
 		// "arguments mode" was intended based on the format string.
 		if (arrayMode === false && expr === "0") {
 			var allOneIndex = true;
-			str.replace(/{([a-z0-9_.]+)}/ig, function $format$token(match, expr) {
+			str.replace(/\{([a-z0-9_.]+)\}/ig, function $format$token(match, expr) {
 				if (expr !== "0") {
 					allOneIndex = false;
 				}

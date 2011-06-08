@@ -103,7 +103,7 @@ function forEach(arr, callback, thisPtr) {
 function indexOf(arr, elt, from) {
 	assertArrayArg(arr, "indexOf");
 	var len = arr.length;
-	var from = Number(from) || 0;
+	from = Number(from) || 0;
 	from = (from < 0) ? Math.ceil(from) : Math.floor(from);
 	if (from < 0) from += len;
 

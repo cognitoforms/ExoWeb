@@ -384,7 +384,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	function indexOf(arr, elt, from) {
 		assertArrayArg(arr, "indexOf");
 		var len = arr.length;
-		var from = Number(from) || 0;
+		from = Number(from) || 0;
 		from = (from < 0) ? Math.ceil(from) : Math.floor(from);
 		if (from < 0) from += len;
 
@@ -775,7 +775,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				cacheInited = true;
 
 				// if there's an older version of caching, clear the entire cache (the old way)
-				if (window.localStorage["cacheHash"])
+				if (window.localStorage.cacheHash)
 					window.localStorage.clear();
 
 				// Flush the local storage cache if the cache hash has changed
@@ -1980,12 +1980,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 		}
 
-		return str.replace(/{([a-z0-9_.]+)}/ig, function $format$token(match, expr) {
+		return str.replace(/\{([a-z0-9_.]+)\}/ig, function $format$token(match, expr) {
 			// Attempt to determine that single arg was passed, but
 			// "arguments mode" was intended based on the format string.
 			if (arrayMode === false && expr === "0") {
 				var allOneIndex = true;
-				str.replace(/{([a-z0-9_.]+)}/ig, function $format$token(match, expr) {
+				str.replace(/\{([a-z0-9_.]+)\}/ig, function $format$token(match, expr) {
 					if (expr !== "0") {
 						allOneIndex = false;
 					}
@@ -2492,7 +2492,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	Format.fromTemplate = (function Format$fromTemplate(convertTemplate) {
 		var paths = [];
-		convertTemplate.replace(/{([a-z0-9_.]+)}/ig, function(match, expr) {
+		convertTemplate.replace(/\{([a-z0-9_.]+)\}/ig, function(match, expr) {
 			paths.push(expr);
 			return expr;
 		});
