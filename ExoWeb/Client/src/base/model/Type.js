@@ -263,6 +263,9 @@ Type.prototype = {
 
 		return list;
 	},
+	addPropertyAdded: function(handler) {
+		this._addEvent("propertyAdded", handler);
+	},
 	addProperty: function Type$addProperty(def) {
 		var format = def.format;
 		if (format && format.constructor === String) {
@@ -334,6 +337,8 @@ Type.prototype = {
 				this._jstype.prototype["set_" + def.name] = this._makeSetter(prop);
 			}
 		}
+
+		this._raiseEvent("propertyAdded", [this, { property: prop }]);
 
 		return prop;
 	},

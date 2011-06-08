@@ -38,7 +38,7 @@ function extendOne(typeName, callback, thisPtr) {
 	}
 }
 
-window.$extend = function Mapper$extend(typeInfo, callback, thisPtr) {
+window.$extend = function(typeInfo, callback, thisPtr) {
 	if (!typeInfo) {
 		ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extend, argument must be of type String or String[].");
 	}
@@ -73,7 +73,7 @@ window.$extend = function Mapper$extend(typeInfo, callback, thisPtr) {
 	}
 };
 
-window.$extendSubtypes = function extendSubtypes(typeName, callback, thisPtr) {
+window.$extendSubtypes = function(typeName, callback, thisPtr) {
 	if (!typeName || typeName.constructor !== String) {
 		ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extendSubtypes, argument must be of type String.");
 	}
@@ -98,3 +98,29 @@ window.$extendSubtypes = function extendSubtypes(typeName, callback, thisPtr) {
 
 	pending.add(thisPtr ? callback.bind(thisPtr) : callback);
 };
+
+window.$extendProperties = function (typeName, includeBuiltIn, callback, thisPtr) {
+	if (!typeName || typeName.constructor !== String) {
+		ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extendProperties, argument must be of type String.");
+	}
+
+	if (includeBuiltIn && includeBuiltIn instanceof Function) {
+		thisPtr = callback;
+		callback = includeBuiltIn;
+		includeBuiltIn = false;
+	}
+
+	extendOne(typeName, function (jstype) {
+		if (includeBuiltIn === true) {
+			// Raise handler for existing properties
+			jstype.meta.get_properties().forEach(function (prop) {
+				callback.call(thisPtr || this, prop, true);
+			});
+		}
+
+		// Raise handler when new properties are added
+		jstype.meta.addPropertyAdded(function (sender, args) {
+			callback.call(thisPtr || this, args.property, false);
+		});
+	});
+}
