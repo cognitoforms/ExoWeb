@@ -33,10 +33,8 @@ function processRequest(method, data, success, failure) {
 
 // Define the ExoWeb.Request method
 function request(args, onSuccess, onFailure) {
-	setTimeout(function() {
-		args.config = ExoWeb.DotNet.config;
-		processRequest("Request", args, onSuccess, onFailure);
-	}, 2000);
+	args.config = ExoWeb.DotNet.config;
+	processRequest("Request", args, onSuccess, onFailure);
 }
 
 ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
