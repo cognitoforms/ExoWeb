@@ -366,6 +366,12 @@ Type.prototype = {
 			if (!onSuccess instanceof Function)
 				onSuccess = undefined;
 
+			var onSuccessFn = function(result) {
+				if(onSuccess !== undefined) {
+					onSuccess(result.event);
+				}
+			};
+
 			var argCount = arguments.length - (onSuccess === undefined ? 0 : 1) - (onFail === undefined ? 0 : 1);
 			var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length === 0 || arguments[0][def.parameters[0]] === undefined);
 
@@ -375,7 +381,7 @@ Type.prototype = {
 			{
 
 				// Invoke the server event
-				context.server.raiseServerEvent(def.name, this, arguments[0], false, function(result) { onSuccess(result.event); }, onFail, argCount == 2 ? arguments[1] : null);
+				context.server.raiseServerEvent(def.name, this, arguments[0], false, onSuccessFn, onFail, argCount == 2 ? arguments[1] : null);
 			}
 
 			// Otherwise, assume that the parameters were all passed in sequential order
@@ -392,7 +398,7 @@ Type.prototype = {
 					args[def.parameters[parameter]] = arguments[parameter];
 
 				// Invoke the server event
-				context.server.raiseServerEvent(def.name, this, args, false, function(result) { onSuccess(result.event); }, onFail, paths);
+				context.server.raiseServerEvent(def.name, this, args, false, onSuccessFn, onFail, paths);
 			}
 		};
 	},
