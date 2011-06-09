@@ -7770,6 +7770,34 @@ Type.registerNamespace("ExoWeb.DotNet");
 								return (id === clientOldId) ? idChange.newId : id;
 							}, this);
 						}, this);
+					
+						// Update post-save changes with new id
+						function fixInstance(inst) {
+							if (inst && obj === fromExoGraph(inst, serverSync._translator))
+								inst.id = idChange.newId;
+						}
+
+						this._sets.forEach(function(set) {
+							set._changes.forEach(function(change) {
+								// Only process changes to graph instances
+								if (!change.instance) return;
+
+								fixInstance(change.instance);
+
+								// For list changes additionally check added and removed objects.
+								if (change.type === "ListChange") {
+									if (change.added.length > 0)
+										change.added.forEach(fixInstance);
+									if (change.removed.length > 0)
+										change.removed.forEach(fixInstance);
+								}
+								// For reference changes additionally check oldValue/newValue
+								else if (change.type === "ReferenceChange") {
+									fixInstance(change.oldValue);
+									fixInstance(change.newValue);
+								}
+							}, this);
+						}, this);
 					}
 					// Otherwise, log an error.
 					else {
@@ -13138,8 +13166,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// Define the ExoWeb.Request method
 	function request(args, onSuccess, onFailure) {
-		args.config = ExoWeb.DotNet.config;
-		processRequest("Request", args, onSuccess, onFailure);
+		setTimeout(function() {
+			args.config = ExoWeb.DotNet.config;
+			processRequest("Request", args, onSuccess, onFailure);
+		}, 2000);
 	}
 
 	ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
