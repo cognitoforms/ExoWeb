@@ -102,7 +102,21 @@ ContextQuery.mixin({
 					types: this.options.types
 				});
 
-				handler.execute(callback, thisPtr);
+				handler.execute(function() {
+					// Update 'isNew' for objects that show up in InitNew changes.
+					if (this.options.changes) {
+						this.options.changes.forEach(function(change) {
+							tryGetJsType(this.context.server._model, change.instance.type, null, false, function (jstype) {
+								var obj = jstype.meta.get(change.instance.id);
+								if (obj) {
+									obj.meta.isNew = true;
+								}
+							}, this);
+						}, this);
+					}
+
+					callback.call(thisPtr || this);
+				}, this);
 			}
 			else {
 				callback.call(thisPtr || this);
