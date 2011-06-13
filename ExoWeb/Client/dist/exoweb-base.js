@@ -7646,7 +7646,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		},
 		// APPLY CHANGES
 		///////////////////////////////////////////////////////////////////////
-		applyChanges: function (checkpoint, changes, source, serverSync, filter) {
+		applyChanges: function (checkpoint, changes, source, serverSync, filter, beforeApply, afterApply) {
 			if (!changes || !(changes instanceof Array)) {
 				return;
 			}
@@ -7696,19 +7696,19 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				changes.forEach(function (change, changeIndex) {
 					if (change.type === "InitNew") {
-						this.applyInitChange(change, serverSync);
+						this.applyInitChange(change, serverSync, beforeApply, afterApply);
 					}
 					else if (change.type === "ReferenceChange") {
-						this.applyRefChange(change, serverSync);
+						this.applyRefChange(change, serverSync, beforeApply, afterApply);
 					}
 					else if (change.type === "ValueChange") {
-						this.applyValChange(change, serverSync);
+						this.applyValChange(change, serverSync, beforeApply, afterApply);
 					}
 					else if (change.type === "ListChange") {
-						this.applyListChange(change, serverSync);
+						this.applyListChange(change, serverSync, beforeApply, afterApply);
 					}
 					else if (change.type === "Save") {
-						this.applySaveChange(change, serverSync);
+						this.applySaveChange(change, serverSync, beforeApply, afterApply);
 						numSaveChanges--;
 					}
 
@@ -7738,12 +7738,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 				ExoWeb.trace.throwAndLog(["server"], e);
 			}
 		},
-		applySaveChange: function (change, serverSync) {
+		applySaveChange: function (change, serverSync, before, after) {
 			if (!change.idChanges)
 				return;
 
 			change.idChanges.forEach(function (idChange, idChangeIndex) {
-				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(function(jstype) {
+				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function(jstype) {
 					var serverOldId = idChange.oldId;
 					var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 							serverSync._translator.reverse(idChange.type, serverOldId) :
@@ -7809,11 +7809,11 @@ Type.registerNamespace("ExoWeb.Mapper");
 							"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
 							idChange);
 					}
-				}), this);
+				}, after), this);
 			}, this);
 		},
-		applyInitChange: function (change, serverSync) {
-			tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.ignoreChanges(function (jstype) {
+		applyInitChange: function (change, serverSync, before, after) {
+			tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.ignoreChanges(before, function (jstype) {
 				if (!jstype.meta.get(change.instance.id)) {
 					// Create the new object
 					var newObj = new jstype();
@@ -7826,38 +7826,38 @@ Type.registerNamespace("ExoWeb.Mapper");
 					// Remember the object's client-generated new id and the corresponding server-generated new id
 					serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
 				}
-			}), this);
+			}, after), this);
 		},
-		applyRefChange: function (change, serverSync) {
+		applyRefChange: function (change, serverSync, before, after) {
 			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(function (srcObj) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
 					if (change.newValue) {
-						tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(function (refType) {
+						tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(before, function (refType) {
 							var refObj = fromExoGraph(change.newValue, serverSync._translator);
 							Sys.Observer.setValue(srcObj, change.property, refObj);
-						}), this);
+						}, after), this);
 					}
 					else {
 						Sys.Observer.setValue(srcObj, change.property, null);
 					}
-				}), this);
+				}, after), this);
 			}, this);
 		},
-		applyValChange: function (change, serverSync) {
+		applyValChange: function (change, serverSync, before, after) {
 			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(function (srcObj) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
 					if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0) {
 						change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
 						change.newValue = new Date(change.newValue);
 					}
 
 					Sys.Observer.setValue(srcObj, change.property, change.newValue);
-				}), this);
+				}, after), this);
 			}, this);
 		},
-		applyListChange: function (change, serverSync) {
+		applyListChange: function (change, serverSync, before, after) {
 			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(function (srcObj) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
 					var prop = srcObj.meta.property(change.property, true);
 					var list = prop.value(srcObj);
 
@@ -7867,28 +7867,28 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 					// apply added items
 					change.added.forEach(function (item) {
-						tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(function (itemType) {
+						tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(before, function (itemType) {
 							var itemObj = fromExoGraph(item, serverSync._translator);
 							if (list.indexOf(itemObj) < 0) {
 								list.add(itemObj);
 							}
-						})), this);
+						}, after)), this);
 					}, this);
 
 					// apply removed items
 					change.removed.forEach(function (item) {
 						// no need to load instance only to remove it from a list
-						tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(function (itemType) {
+						tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
 							var itemObj = fromExoGraph(item, serverSync._translator);
 							list.remove(itemObj);
-						}), this);
+						}, after), this);
 					}, this);
 
 					// don't end update until the items have been loaded
-					listSignal.waitForAll(serverSync.ignoreChanges(function () {
+					listSignal.waitForAll(serverSync.ignoreChanges(before, function () {
 						list.endUpdate();
-					}), this);
-				}), this);
+					}, after), this);
+				}, after), this);
 			}, this);
 		}
 	});
@@ -7948,14 +7948,25 @@ Type.registerNamespace("ExoWeb.Mapper");
 			startChangeSet.call(this, "client");
 		};
 
-		this.ignoreChanges = function(callback, thisPtr) {
+		this.ignoreChanges = function(before, callback, after, thisPtr) {
 			return function() {
+				var beforeCalled = false;
+
 				try {
 					applyingChanges++;
+
+					if (before && before instanceof Function)
+						before();
+				
+					beforeCalled = true;
+
 					callback.apply(thisPtr || this, arguments);
 				}
 				finally {
 					applyingChanges--;
+				
+					if (beforeCalled === true && after && after instanceof Function)
+						after();
 				}
 			};
 		};

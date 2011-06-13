@@ -48,14 +48,25 @@ function ServerSync(model) {
 		startChangeSet.call(this, "client");
 	};
 
-	this.ignoreChanges = function(callback, thisPtr) {
+	this.ignoreChanges = function(before, callback, after, thisPtr) {
 		return function() {
+			var beforeCalled = false;
+
 			try {
 				applyingChanges++;
+
+				if (before && before instanceof Function)
+					before();
+				
+				beforeCalled = true;
+
 				callback.apply(thisPtr || this, arguments);
 			}
 			finally {
 				applyingChanges--;
+				
+				if (beforeCalled === true && after && after instanceof Function)
+					after();
 			}
 		};
 	};
