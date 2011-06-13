@@ -638,14 +638,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return !!ExoWeb.trace.flags[category];
 			}
 		},
-		_formatMessage: function _formatMessage(category, message, args) {
+		_formatMessage: function _formatMessage(category, message, args/*, ...*/) {
 			if (!(category instanceof Array)) {
 				category = [category];
 			}
 
 			var catStr = category.join(", ");
 
-			return "[" + catStr + "]: " + $format(message, args);
+			var formatArgs = Array.prototype.slice.call(arguments, 1);
+			return "[" + catStr + "]: " + $format.apply(null, formatArgs);
 		},
 		log: function trace$log(category, message, args) {
 			if (typeof (console) === "undefined") {
@@ -653,7 +654,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			if (ExoWeb.trace._isEnabled(category)) {
-				console.log(ExoWeb.trace._formatMessage(category, message, args));
+				console.log(ExoWeb.trace._formatMessage.apply(this, arguments));
 			}
 		},
 		logWarning: function trace$logWarning(category, message, args) {
@@ -667,7 +668,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// if the console is defined then log the message
 			if (typeof (console) !== "undefined") {
-				console.warn(ExoWeb.trace._formatMessage(category, message, args));
+				console.warn(ExoWeb.trace._formatMessage.apply(this, arguments));
 			}
 		},
 		logError: function trace$logError(category, message, args) {
@@ -680,7 +681,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// format the message text
-			var msg = ExoWeb.trace._formatMessage(category, message, args);
+			var msg = ExoWeb.trace._formatMessage.apply(this, arguments);
 
 			// handle the error
 			errorHandler(msg, message instanceof Error ? message : null);
