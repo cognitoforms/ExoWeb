@@ -441,16 +441,29 @@ ServerSync.mixin({
 
 	// Roundtrip
 	///////////////////////////////////////////////////////////////////////
-	roundtrip: function ServerSync$roundtrip(success, failed) {
+	roundtrip: function ServerSync$roundtrip(root, paths, success, failed) {
 		pendingRequests++;
+
+		if (root && root instanceof Function) {
+			success = root;
+			failed = paths;
+			root = null;
+			paths = null;
+		}
 
 		Sys.Observer.setValue(this, "PendingRoundtrip", true);
 
 		var args = {};
 		this._raiseBeginEvents("roundtrip", args);
 
+		var mtype = root ? root.meta.type || root.meta : null;
+		var id = root ? root.meta.id || STATIC_ID : null;
+
 		roundtripProvider(
-			serializeChanges.call(this),
+			mtype ? mtype.get_fullName() : null,
+			id,
+			paths,
+			serializeChanges.call(this, false, root),
 			this._onRoundtripSuccess.bind(this).appendArguments(args, success),
 			this._onRoundtripFailed.bind(this).appendArguments(args, failed || success)
 		);

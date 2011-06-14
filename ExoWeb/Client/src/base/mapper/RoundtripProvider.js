@@ -2,7 +2,7 @@ var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFai
 	throw "Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);";
 };
 
-function roundtripProvider(changes, onSuccess, onFailure, thisPtr) {
+function roundtripProvider(type, id, paths, changes, onSuccess, onFailure, thisPtr) {
 	var scopeQueries;
 
 	// ensure correct value of "scopeQueries" argument
@@ -24,7 +24,7 @@ function roundtripProvider(changes, onSuccess, onFailure, thisPtr) {
 	}
 
 	var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
-	roundtripProviderFn.call(this, changes, scopeQueries,
+	roundtripProviderFn.call(this, type, id, paths, changes, scopeQueries,
 		function roundtripProviderSucess() {
 			ExoWeb.Batch.resume(batch);
 			if (onSuccess) onSuccess.apply(thisPtr || this, arguments);

@@ -45,10 +45,24 @@ ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, in
 	}, onSuccess, onFailure);
 });
 
-ExoWeb.Mapper.setRoundtripProvider(function WebService$roundtripProviderFn(changes, scopeQueries, onSuccess, onFailure) {
+ExoWeb.Mapper.setRoundtripProvider(function (type, id, paths, changes, scopeQueries, onSuccess, onFailure) {
+	var queries = [];
+
+	if (type) {
+		queries.push({
+			from: type,
+			ids: [id],
+			include: paths,
+			inScope: false,
+			forLoad: true
+		});
+	}
+
+	queries.addRange(scopeQueries);
+
 	request({
-		changes:changes,
-		queries: scopeQueries
+		changes: changes,
+		queries: queries
 	}, onSuccess, onFailure);
 });
 

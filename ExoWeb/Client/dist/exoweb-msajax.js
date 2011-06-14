@@ -6913,7 +6913,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		throw "Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);";
 	};
 
-	function roundtripProvider(changes, onSuccess, onFailure, thisPtr) {
+	function roundtripProvider(type, id, paths, changes, onSuccess, onFailure, thisPtr) {
 		var scopeQueries;
 
 		// ensure correct value of "scopeQueries" argument
@@ -6935,7 +6935,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
-		roundtripProviderFn.call(this, changes, scopeQueries,
+		roundtripProviderFn.call(this, type, id, paths, changes, scopeQueries,
 			function roundtripProviderSucess() {
 				ExoWeb.Batch.resume(batch);
 				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
@@ -8344,16 +8344,29 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Roundtrip
 		///////////////////////////////////////////////////////////////////////
-		roundtrip: function ServerSync$roundtrip(success, failed) {
+		roundtrip: function ServerSync$roundtrip(root, paths, success, failed) {
 			pendingRequests++;
+
+			if (root && root instanceof Function) {
+				success = root;
+				failed = paths;
+				root = null;
+				paths = null;
+			}
 
 			Sys.Observer.setValue(this, "PendingRoundtrip", true);
 
 			var args = {};
 			this._raiseBeginEvents("roundtrip", args);
 
+			var mtype = root ? root.meta.type || root.meta : null;
+			var id = root ? root.meta.id || STATIC_ID : null;
+
 			roundtripProvider(
-				serializeChanges.call(this),
+				mtype ? mtype.get_fullName() : null,
+				id,
+				paths,
+				serializeChanges.call(this, false, root),
 				this._onRoundtripSuccess.bind(this).appendArguments(args, success),
 				this._onRoundtripFailed.bind(this).appendArguments(args, failed || success)
 			);
@@ -8918,7 +8931,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				if (propData === null) {
-					prop.init(obj, null);
+					prop.init(obj, null, false);
 				}
 				else {
 					var propType = prop.get_jstype();
@@ -8964,7 +8977,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						// assume if ctor is not found its a model type not an intrinsic
 						if (!ctor || ctor.meta) {
-							prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
+							prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)), false);
 						}
 						else {
 							// Coerce strings into dates
@@ -8972,7 +8985,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 								propData = propData.replace(dateRegex, dateRegexReplace);
 								propData = new Date(propData);
 							}
-							prop.init(obj, propData);
+							prop.init(obj, propData, false);
 						}
 					}
 				}
@@ -13510,10 +13523,24 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setRoundtripProvider(function WebService$roundtripProviderFn(changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setRoundtripProvider(function (type, id, paths, changes, scopeQueries, onSuccess, onFailure) {
+		var queries = [];
+
+		if (type) {
+			queries.push({
+				from: type,
+				ids: [id],
+				include: paths,
+				inScope: false,
+				forLoad: true
+			});
+		}
+
+		queries.addRange(scopeQueries);
+
 		request({
-			changes:changes,
-			queries: scopeQueries
+			changes: changes,
+			queries: queries
 		}, onSuccess, onFailure);
 	});
 
