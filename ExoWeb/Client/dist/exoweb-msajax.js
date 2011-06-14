@@ -8931,7 +8931,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				if (propData === null) {
-					prop.init(obj, null, false);
+					prop.init(obj, null);
 				}
 				else {
 					var propType = prop.get_jstype();
@@ -8977,7 +8977,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						// assume if ctor is not found its a model type not an intrinsic
 						if (!ctor || ctor.meta) {
-							prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)), false);
+							prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
 						}
 						else {
 							// Coerce strings into dates
@@ -8985,7 +8985,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 								propData = propData.replace(dateRegex, dateRegexReplace);
 								propData = new Date(propData);
 							}
-							prop.init(obj, propData, false);
+							prop.init(obj, propData);
 						}
 					}
 				}
