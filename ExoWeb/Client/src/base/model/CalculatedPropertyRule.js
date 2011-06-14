@@ -63,10 +63,10 @@ function CalculatedPropertyRule(mtype, options, ctype) {
 
 		Rule.register(this, inputs, options.isAsync, mtype, function () {
 			// Static check to determine if running when registered makes sense for this calculation based on its inputs.
-			if (this.canExecute()) {
+			if (this.canExecute(null, null, true)) {
 				// Execute for existing instances if their initialization state allows it.
 				mtype.known().forEach(function (obj) {
-					if (this.canExecute(obj)) {
+					if (this.canExecute(obj, null, true)) {
 						try {
 							this._isExecuting = true;
 							//ExoWeb.trace.log("rule", "executing rule '{0}' when initialized", [rule]);
@@ -86,14 +86,15 @@ function CalculatedPropertyRule(mtype, options, ctype) {
 }
 
 CalculatedPropertyRule.mixin({
-	canExecute: function(sender, property) {
+	canExecute: function(sender, property, retroactive) {
 		// If there is no event, check if the calculation is based on some initialization, then defer to the default
 		// input check. This is done so that rules that are based on property changes alone do not fire when created,
 		// but calculations that are based on property initialization are allowed to fire if possible.
-		return (property || this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0) &&
-			// If no event is firing then the property argument will be the property that the rule is attached to,
-			// which should have no effect on the outcome. If no sender exists then this is a static check that is
-			// only dependent on the rule's inputs and not the initialization state of any particular object.
+		return (!!property || (!!retroactive && this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0)) &&
+			// If no sender exists then this is a static check that is only dependent on the rule's inputs
+			// and not the initialization state of any particular object. If no event is firing (property
+			// argument is undefined) then the property argument will be the property that the rule is
+			// attached to, which should have no effect on the outcome.
 			(!sender || Rule.canExecute(this, sender, property || this.prop));
 	},
 	execute: function Property$calculated$execute(obj, callback) {
