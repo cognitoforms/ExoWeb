@@ -132,111 +132,117 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 		obj = getObject(model, typeName, id, null, true);
 	}
 
-//			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
+	// don't re-initialize
+	if (ExoWeb.Model.LazyLoader.isLoaded(obj)) {
+		//ExoWeb.trace.logWarning("objectInit", "{0}({1})   already loaded.", [typeName, id]);
+	}
+	else {
+	//			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
 
-	var loadedProperties = [];
+		var loadedProperties = [];
 
-	// Load object's properties
-	for (var t = mtype; t !== null; t = t.baseType) {
-		var props = obj ? t.get_instanceProperties() : t.get_staticProperties();
+		// Load object's properties
+		for (var t = mtype; t !== null; t = t.baseType) {
+			var props = obj ? t.get_instanceProperties() : t.get_staticProperties();
 
-		for (var propName in props) {
-			if (loadedProperties.contains(propName))
-				continue;
-			
-			loadedProperties.push(propName);
-
-			var prop = props[propName];
-		
-//					ExoWeb.trace.log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
-
-			if (!prop) {
-				ExoWeb.trace.throwAndLog(["objectInit"], "Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
-			}
-
-			if(prop.get_origin() !== "server")
-				continue;
-
-			var propData;
-
-			// instance fields have indexes, static fields use names
-			if(obj) {
-				propData = json[prop.get_index()]; 
-			}
-			else {
-				propData = json[propName]; 
-
-				// not all static fields may be present
-				if(propData === undefined)
+			for (var propName in props) {
+				if (loadedProperties.contains(propName))
 					continue;
-			}
+			
+				loadedProperties.push(propName);
 
-			if (propData === null) {
-				prop.init(obj, null);
-			}
-			else {
-				var propType = prop.get_jstype();
+				var prop = props[propName];
+		
+	//					ExoWeb.trace.log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
 
-				 if (prop.get_isList()) {
-					var list = prop.value(obj);
+				if (!prop) {
+					ExoWeb.trace.throwAndLog(["objectInit"], "Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
+				}
 
-					if (propData == "?") {
-						// don't overwrite list if its already a ghost
-						if (!list) {
-							list = ListLazyLoader.register(obj, prop);
-							prop.init(obj, list, false);
-						}
-					}
-					else {
-						if (!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
+				if(prop.get_origin() !== "server")
+					continue;
 
-							var doInit = undefined;
+				var propData;
 
-							// json has list members
-							if (list) {
-								ListLazyLoader.unregister(list);
-								doInit = false;
-							}
-							else {
-								list = [];
-								doInit = true;
-							}
-
-							for (var i = 0; i < propData.length; i++) {
-								var ref = propData[i];
-								list.push(getObject(model, propType, (ref && ref.id || ref), (ref && ref.type || propType)));
-							}
-
-							if (doInit) {
-								prop.init(obj, list);
-							}
-						}
-					}
+				// instance fields have indexes, static fields use names
+				if(obj) {
+					propData = json[prop.get_index()]; 
 				}
 				else {
-					var ctor = prop.get_jstype(true);
+					propData = json[propName]; 
 
-					// assume if ctor is not found its a model type not an intrinsic
-					if (!ctor || ctor.meta) {
-						prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
+					// not all static fields may be present
+					if(propData === undefined)
+						continue;
+				}
+
+				if (propData === null) {
+					prop.init(obj, null);
+				}
+				else {
+					var propType = prop.get_jstype();
+
+					 if (prop.get_isList()) {
+						var list = prop.value(obj);
+
+						if (propData == "?") {
+							// don't overwrite list if its already a ghost
+							if (!list) {
+								list = ListLazyLoader.register(obj, prop);
+								prop.init(obj, list, false);
+							}
+						}
+						else {
+							if (!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
+
+								var doInit = undefined;
+
+								// json has list members
+								if (list) {
+									ListLazyLoader.unregister(list);
+									doInit = false;
+								}
+								else {
+									list = [];
+									doInit = true;
+								}
+
+								for (var i = 0; i < propData.length; i++) {
+									var ref = propData[i];
+									list.push(getObject(model, propType, (ref && ref.id || ref), (ref && ref.type || propType)));
+								}
+
+								if (doInit) {
+									prop.init(obj, list);
+								}
+							}
+						}
 					}
 					else {
-						// Coerce strings into dates
-						if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
-							propData = propData.replace(dateRegex, dateRegexReplace);
-							propData = new Date(propData);
+						var ctor = prop.get_jstype(true);
+
+						// assume if ctor is not found its a model type not an intrinsic
+						if (!ctor || ctor.meta) {
+							prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
 						}
-						prop.init(obj, propData);
+						else {
+							// Coerce strings into dates
+							if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
+								propData = propData.replace(dateRegex, dateRegexReplace);
+								propData = new Date(propData);
+							}
+							prop.init(obj, propData);
+						}
 					}
 				}
+
+				// static fields are potentially loaded one at a time
 			}
-
-			// static fields are potentially loaded one at a time
 		}
-	}
 
-	if (obj) {
-		ObjectLazyLoader.unregister(obj);
+		if (obj) {
+			ObjectLazyLoader.unregister(obj);
+		}
 	}
 
 	if (callback && callback instanceof Function) {
