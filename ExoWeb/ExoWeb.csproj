@@ -119,6 +119,7 @@
     <Content Include="Client\ref\jsmin\jsmin.exe" />
     <Content Include="Client\runjshint.js" />
     <Content Include="Client\specs\base\core\test_Array.js" />
+    <Content Include="Client\specs\base\core\test_Date.js" />
     <Content Include="Client\specs\base\core\test_FunctionChain.js" />
     <Content Include="Client\specs\base\core\test_Batch.js" />
     <Content Include="Client\specs\base\core\test_Function.js" />
@@ -137,6 +138,7 @@
     <Content Include="Client\src\base\core\Array.js" />
     <Content Include="Client\src\base\core\Batch.js" />
     <Content Include="Client\src\base\core\Cache.js" />
+    <Content Include="Client\src\base\core\Date.js" />
     <Content Include="Client\src\base\core\EvalWrapper.js" />
     <Content Include="Client\src\base\core\EventQueue.js" />
     <Content Include="Client\src\base\core\Function.js" />

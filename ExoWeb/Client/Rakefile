@@ -50,6 +50,7 @@ end
 		Translator
 		Utilities
 		TimeSpan
+		Date
 		Object
 		PropertyObserver
 		MsAjax},
