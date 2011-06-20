@@ -1,5 +1,6 @@
 var dayOfWeek = {};
-["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].forEach(function(day, i) {
+var days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+days.forEach(function(day, i) {
 	dayOfWeek[day] = i;
 });
 
@@ -31,6 +32,58 @@ Date.prototype.addDays = function addDays(numDays, requireWeekDay) {
 	return date;
 };
 
-Date.prototype.startOfWeek = function() {
-	return this.addDays(dayOfWeek.monday - this.getDay());
+function getDayOfWeek(day) {
+	if (day !== undefined && day !== null && day.constructor === String)
+		day = days.indexOf(day.toLowerCase());
+	else if (day !== undefined && day !== null && day.constructor !== Number)
+		day = null;
+
+	return day >= 0 && day < days.length ? day : null;
+}
+exports.getDayOfWeek = getDayOfWeek; // IGNORE
+
+Date.prototype.startOfWeek = function(startOfWeekDay) {
+	var startOfWeek = getDayOfWeek(startOfWeekDay) || dayOfWeek.monday; // monday by default
+	return this.addDays(startOfWeek - this.getDay());
+};
+
+Date.prototype.weekOfYear = function(startOfWeekDay) {
+	var startOfWeek = getDayOfWeek(startOfWeekDay) || dayOfWeek.monday; // monday by default
+
+	if (this.startOfWeek(startOfWeek).getYear() < this.getYear()) {
+		return 0;
+	}
+
+	var firstDayOfYear = new Date(this.getFullYear(), 0, 1);
+	var firstWeek = firstDayOfYear.startOfWeek(startOfWeek);
+	if (firstWeek.getFullYear() < firstDayOfYear.getFullYear()) {
+		firstWeek = firstWeek.addDays(7);
+	}
+
+	var weeks = 0;
+	var target = this.toDate();
+	for (var day = firstWeek; day <= target; day = day.addDays(7)) {
+		weeks++;
+	}
+
+	return weeks;
+};
+
+Date.prototype.weekDifference = function (other, startOfWeek) {
+	var isNegative = other <= this;
+	var a = this, b = other;
+
+	if (isNegative)
+	{
+		a = other;
+		b = this;
+	}
+
+	var aWeek = a.weekOfYear(startOfWeek);
+	var bWeek = b.weekOfYear(startOfWeek);
+
+	for (var i = a.getFullYear(); i < b.getFullYear(); i++)
+		bWeek += (new Date(i, 11, 31)).weekOfYear(startOfWeek);
+
+	return isNegative ? aWeek - bWeek : bWeek - aWeek;
 };
