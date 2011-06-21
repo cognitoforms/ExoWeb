@@ -6322,7 +6322,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 	});
 
-	String.formats.$system = new Format({
+	String.formats.$system = String.formats.$display = new Format({
 		convertBack: function(val) {
 			return val ? $.trim(val) : val;
 		}
