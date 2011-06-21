@@ -33,6 +33,8 @@ Sys.Application.registerMarkupExtension("~",
 
 		var updatePending = false;
 
+		var isEl = Sys.UI.DomElement.isDomElement(component);
+
 		function queueUpdate(callback) {
 			if (!updatePending) {
 				updatePending = true;
@@ -52,7 +54,7 @@ Sys.Application.registerMarkupExtension("~",
 							finalValue = prepareValue(value);
 						}
 
-						if (Sys.UI.DomElement.isDomElement(component) && (properties.targetProperty === "innerText" || properties.targetProperty === "innerHTML")) {
+						if (isEl && (properties.targetProperty === "innerText" || properties.targetProperty === "innerHTML")) {
 							if (finalValue && finalValue.constructor !== String)
 								finalValue = finalValue.toString();
 
@@ -63,6 +65,10 @@ Sys.Application.registerMarkupExtension("~",
 							else
 								component.appendChild(document.createTextNode(finalValue));
 							Sys.Observer.raisePropertyChanged(component, properties.targetProperty);
+						}
+						else if (isEl && finalValue === null) {
+							// IE would set the value to "null"
+							Sys.Observer.setValue(component, properties.targetProperty, "");
 						}
 						else {
 							Sys.Observer.setValue(component, properties.targetProperty, finalValue);
