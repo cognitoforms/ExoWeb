@@ -396,7 +396,7 @@ ChangeLog.mixin({
 						if (list.indexOf(itemObj) < 0) {
 							list.add(itemObj);
 						}
-					}, after)), this);
+					}, after)), this, true);
 				}, this);
 
 				// apply removed items
@@ -405,13 +405,13 @@ ChangeLog.mixin({
 					tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
 						var itemObj = fromExoGraph(item, serverSync._translator);
 						list.remove(itemObj);
-					}, after), this);
+					}, after), this, true);
 				}, this);
 
 				// don't end update until the items have been loaded
 				listSignal.waitForAll(serverSync.ignoreChanges(before, function () {
 					list.endUpdate();
-				}, after), this);
+				}, after), this, true);
 			}, after), this);
 		}, this);
 	}

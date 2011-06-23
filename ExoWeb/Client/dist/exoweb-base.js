@@ -7969,7 +7969,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 							if (list.indexOf(itemObj) < 0) {
 								list.add(itemObj);
 							}
-						}, after)), this);
+						}, after)), this, true);
 					}, this);
 
 					// apply removed items
@@ -7978,13 +7978,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 						tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
 							var itemObj = fromExoGraph(item, serverSync._translator);
 							list.remove(itemObj);
-						}, after), this);
+						}, after), this, true);
 					}, this);
 
 					// don't end update until the items have been loaded
 					listSignal.waitForAll(serverSync.ignoreChanges(before, function () {
 						list.endUpdate();
-					}, after), this);
+					}, after), this, true);
 				}, after), this);
 			}, this);
 		}
@@ -8282,7 +8282,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 					// if there is instance data to load then wait before loading conditions (since they may reference these instances)
 					if (result.conditions) {
-						conditionsFromJson(this._model, result.conditions, processChanges, this);
+						conditionsFromJson(this._model, result.conditions, signal.pending(processChanges), this);
 					}
 					else {
 						processChanges.call(this);

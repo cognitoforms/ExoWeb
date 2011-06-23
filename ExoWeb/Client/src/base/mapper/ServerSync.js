@@ -285,7 +285,7 @@ ServerSync.mixin({
 
 				// if there is instance data to load then wait before loading conditions (since they may reference these instances)
 				if (result.conditions) {
-					conditionsFromJson(this._model, result.conditions, processChanges, this);
+					conditionsFromJson(this._model, result.conditions, signal.pending(processChanges), this);
 				}
 				else {
 					processChanges.call(this);
