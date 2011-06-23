@@ -4292,7 +4292,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var prop = type.property(step.property, true);
 
 			if (!prop) {
-				ExoWeb.trace.throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}", [pathTokens.expression, type.get_fullName(), step.property]);
+				ExoWeb.trace.throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}." +
+					(ExoWeb.Model.LazyLoader.isLoaded(type) ? "" : " The type is not loaded."),
+					[pathTokens.expression, type.get_fullName(), step.property]);
 			}
 
 			chain._properties.push(prop);
