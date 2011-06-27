@@ -33,23 +33,24 @@ function RangeRule(mtype, options, ctype) {
 }
 
 RangeRule.prototype = {
-	err: function() {
+	err: function () {
 		return new Condition(this.ctype, $format(this._formatString, [this.prop.get_label()].concat(this._formatArgs.call(this))), [this.prop], this);
 	},
-	execute: function(obj) {
+	execute: function (obj) {
 		var val = this.prop.value(obj);
-		obj.meta.conditionIf(this.err(), this._test(val));
+		var isNull = val == null || val == undefined;
+		obj.meta.conditionIf(this.err(), !isNull && this._test(val));
 	},
-	_testMinMax: function(val) {
+	_testMinMax: function (val) {
 		return val < this.min || val > this.max;
 	},
-	_testMin: function(val) {
+	_testMin: function (val) {
 		return val < this.min;
 	},
-	_testMax: function(val) {
+	_testMax: function (val) {
 		return val > this.max;
 	},
-	toString: function() {
+	toString: function () {
 		return $format("{0}.{1} in range, min: {2}, max: {3}",
 			[this.prop.get_containingType().get_fullName(),
 			this.prop.get_name(),
