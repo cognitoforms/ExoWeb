@@ -87,6 +87,10 @@ describe("orderBy", function() {
 		arrayEquals($transform(this.list).orderBy("name desc").map(getName), ["Oranges", "bananas", "apples"]);
 		arrayEquals($transform(this.list).orderBy("count desc").map(getName), ["apples", "bananas", "Oranges"]);
 	});
+	
+	it("handles nulls", function() {
+		arrayEquals($transform([{ name: null }, { name: null }]).orderBy("name").map(getName), [null, null]);
+	});
 });
 
 // Run Tests

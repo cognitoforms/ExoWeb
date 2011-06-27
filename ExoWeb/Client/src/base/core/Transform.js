@@ -46,7 +46,7 @@ function Transform$compileOrderingFunction(ordering) {
 	});
 
 	function before(a, b) {
-		if (a.constructor === String && b.constructor === String) {
+		if (a !== null && a !== undefined && a.constructor === String && b !== null && b !== undefined && b.constructor === String) {
 			a = a.toLowerCase();
 			b = b.toLowerCase();
 		}
