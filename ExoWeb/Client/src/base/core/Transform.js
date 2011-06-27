@@ -45,6 +45,14 @@ function Transform$compileOrderingFunction(ordering) {
 		});
 	});
 
+	function before(a, b) {
+		if (a.constructor === String && b.constructor === String) {
+			a = a.toLowerCase();
+			b = b.toLowerCase();
+		}
+		return a < b;
+	}
+
 	return function compare(aObj, bObj) {
 		for (var i = 0; i < orderings.length; ++i) {
 			var order = orderings[i];
@@ -58,10 +66,10 @@ function Transform$compileOrderingFunction(ordering) {
 			if (a !== null && b === null) {
 				return -order.nulls;
 			}
-			if (a < b) {
+			if (before(a, b)) {
 				return order.ab;
 			}
-			if (a > b) {
+			if (before(b, a)) {
 				return -order.ab;
 			}
 		}
