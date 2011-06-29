@@ -7965,7 +7965,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						//now that we have the value set for the date.
 						//if the underlying property datatype is actually a date and not a datetime
 						//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-						if (change.property.get_format() === Date.formats.ShortDate) {
+						if (srcObj.meta.property(change.property).get_format() === Date.formats.ShortDate) {
 							var serverOffset = serverSync.get_ServerTimezoneOffset();
 							var localOffset = -(new Date().getTimezoneOffset() / 60);
 							change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
