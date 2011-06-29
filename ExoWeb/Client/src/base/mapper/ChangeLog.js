@@ -39,14 +39,14 @@ ChangeLog.mixin({
 	addTruncated: function (fn, filter, once) {
 		this._addEvent("truncated", fn, filter, once);
 	},
-	checkpoint: function(title) {
-		if (this._activeSet && this._sets.some(function(s) { return s.changes().length > 0; })) {
+	checkpoint: function (title) {
+		if (this._activeSet && this._sets.some(function (s) { return s.changes().length > 0; })) {
 			return this._activeSet.checkpoint(title);
 		}
 	},
 	count: function (filter, thisPtr) {
 		var result = 0;
-		forEach(this._sets, function(set) {
+		forEach(this._sets, function (set) {
 			result += set.count(filter, thisPtr);
 		}, this);
 		return result;
@@ -70,7 +70,7 @@ ChangeLog.mixin({
 			return set.serialize(filter, thisPtr);
 		});
 	},
-	set: function(index) {
+	set: function (index) {
 		if (index === null || index === undefined || Object.prototype.toString.call(index) !== "[object Number]") {
 			throw Error("The set method expects a numeric index argument.");
 		}
@@ -116,7 +116,7 @@ ChangeLog.mixin({
 
 		for (var i = 0; i < this._sets.length; i++) {
 			if (checkpoint) {
-				foundCheckpoint = this._sets[i].changes().some(function(c) {
+				foundCheckpoint = this._sets[i].changes().some(function (c) {
 					return c.type === "Checkpoint" && c.code === checkpoint;
 				});
 			}
@@ -193,15 +193,15 @@ ChangeLog.mixin({
 			var totalChanges = changes.length;
 
 			// truncate change log up-front if save occurred
-			var saveChanges = changes.filter(function(c, i) { return c.type === "Save"; });
+			var saveChanges = changes.filter(function (c, i) { return c.type === "Save"; });
 			var numSaveChanges = saveChanges.length;
 			if (numSaveChanges > 0) {
 				this.truncate(checkpoint, serverSync.canSave, serverSync);
 
 				// Update affected scope queries
-				saveChanges.forEach(function(change) {
+				saveChanges.forEach(function (change) {
 					if (!change.idChanges) return;
-					change.idChanges.forEach(function(idChange) {
+					change.idChanges.forEach(function (idChange) {
 						var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
 						if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
 							var serverOldId = idChange.oldId;
@@ -267,7 +267,7 @@ ChangeLog.mixin({
 			return;
 
 		change.idChanges.forEach(function (idChange, idChangeIndex) {
-			ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function(jstype) {
+			ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function (jstype) {
 				var serverOldId = idChange.oldId;
 				var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 						serverSync._translator.reverse(idChange.type, serverOldId) :
@@ -279,7 +279,7 @@ ChangeLog.mixin({
 
 					// Attempt to load the object.
 					var obj = type.get(clientOldId);
-	
+
 					// Ensure that the object exists.
 					if (!obj) {
 						ExoWeb.trace.throwAndLog("server",
@@ -298,15 +298,15 @@ ChangeLog.mixin({
 							return (id === clientOldId) ? idChange.newId : id;
 						}, this);
 					}, this);
-					
+
 					// Update post-save changes with new id
 					function fixInstance(inst) {
 						if (inst && obj === fromExoGraph(inst, serverSync._translator))
 							inst.id = idChange.newId;
 					}
 
-					this._sets.forEach(function(set) {
-						set._changes.forEach(function(change) {
+					this._sets.forEach(function (set) {
+						set._changes.forEach(function (change) {
 							// Only process changes to graph instances
 							if (!change.instance) return;
 
@@ -341,12 +341,12 @@ ChangeLog.mixin({
 			if (!jstype.meta.get(change.instance.id)) {
 				// Create the new object
 				var newObj = new jstype();
-	
+
 				// Check for a translation between the old id that was reported and an actual old id.  This is
 				// needed since new objects that are created on the server and then committed will result in an accurate
 				// id change record, but "instance.id" for this change will actually be the persisted id.
 				var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
-	
+
 				// Remember the object's client-generated new id and the corresponding server-generated new id
 				serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
 			}
@@ -371,8 +371,21 @@ ChangeLog.mixin({
 		tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
 			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
 				if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0) {
-					change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
-					change.newValue = new Date(change.newValue);
+
+					//now that we have the value set for the date.
+					//if the underlying property datatype is actually a date and not a datetime
+					//then we need to add the local timezone offset to make sure that the date is displayed acurately.
+					if (change.property.get_format() === Date.formats.ShortDate) {
+						var serverOffset = serverSync.get_ServerTimezoneOffset();
+						var localOffset = -(new Date().getTimezoneOffset() / 60);
+						change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
+						change.newValue = new Date(change.newValue);
+						change.newValue.addHours(serverOffset - localOffset);
+					}
+					else {
+						change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
+						change.newValue = new Date(change.newValue);
+					}
 				}
 
 				Sys.Observer.setValue(srcObj, change.property, change.newValue);

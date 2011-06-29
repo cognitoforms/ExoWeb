@@ -2097,6 +2097,11 @@ Type.registerNamespace("ExoWeb.Mapper");
 		return date;
 	};
 
+	Date.prototype.addHours = function (h) {
+		this.setHours(this.getHours() + h);
+		return this;
+	}
+
 	function getDayOfWeek(day) {
 		if (day !== undefined && day !== null && day.constructor === String)
 			day = days.indexOf(day.toLowerCase());
@@ -7621,14 +7626,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 		addTruncated: function (fn, filter, once) {
 			this._addEvent("truncated", fn, filter, once);
 		},
-		checkpoint: function(title) {
-			if (this._activeSet && this._sets.some(function(s) { return s.changes().length > 0; })) {
+		checkpoint: function (title) {
+			if (this._activeSet && this._sets.some(function (s) { return s.changes().length > 0; })) {
 				return this._activeSet.checkpoint(title);
 			}
 		},
 		count: function (filter, thisPtr) {
 			var result = 0;
-			forEach(this._sets, function(set) {
+			forEach(this._sets, function (set) {
 				result += set.count(filter, thisPtr);
 			}, this);
 			return result;
@@ -7652,7 +7657,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				return set.serialize(filter, thisPtr);
 			});
 		},
-		set: function(index) {
+		set: function (index) {
 			if (index === null || index === undefined || Object.prototype.toString.call(index) !== "[object Number]") {
 				throw Error("The set method expects a numeric index argument.");
 			}
@@ -7698,7 +7703,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			for (var i = 0; i < this._sets.length; i++) {
 				if (checkpoint) {
-					foundCheckpoint = this._sets[i].changes().some(function(c) {
+					foundCheckpoint = this._sets[i].changes().some(function (c) {
 						return c.type === "Checkpoint" && c.code === checkpoint;
 					});
 				}
@@ -7775,15 +7780,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 				var totalChanges = changes.length;
 
 				// truncate change log up-front if save occurred
-				var saveChanges = changes.filter(function(c, i) { return c.type === "Save"; });
+				var saveChanges = changes.filter(function (c, i) { return c.type === "Save"; });
 				var numSaveChanges = saveChanges.length;
 				if (numSaveChanges > 0) {
 					this.truncate(checkpoint, serverSync.canSave, serverSync);
 
 					// Update affected scope queries
-					saveChanges.forEach(function(change) {
+					saveChanges.forEach(function (change) {
 						if (!change.idChanges) return;
-						change.idChanges.forEach(function(idChange) {
+						change.idChanges.forEach(function (idChange) {
 							var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
 							if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
 								var serverOldId = idChange.oldId;
@@ -7849,7 +7854,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				return;
 
 			change.idChanges.forEach(function (idChange, idChangeIndex) {
-				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function(jstype) {
+				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function (jstype) {
 					var serverOldId = idChange.oldId;
 					var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 							serverSync._translator.reverse(idChange.type, serverOldId) :
@@ -7861,7 +7866,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 						// Attempt to load the object.
 						var obj = type.get(clientOldId);
-	
+
 						// Ensure that the object exists.
 						if (!obj) {
 							ExoWeb.trace.throwAndLog("server",
@@ -7880,15 +7885,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 								return (id === clientOldId) ? idChange.newId : id;
 							}, this);
 						}, this);
-					
+
 						// Update post-save changes with new id
 						function fixInstance(inst) {
 							if (inst && obj === fromExoGraph(inst, serverSync._translator))
 								inst.id = idChange.newId;
 						}
 
-						this._sets.forEach(function(set) {
-							set._changes.forEach(function(change) {
+						this._sets.forEach(function (set) {
+							set._changes.forEach(function (change) {
 								// Only process changes to graph instances
 								if (!change.instance) return;
 
@@ -7923,12 +7928,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 				if (!jstype.meta.get(change.instance.id)) {
 					// Create the new object
 					var newObj = new jstype();
-	
+
 					// Check for a translation between the old id that was reported and an actual old id.  This is
 					// needed since new objects that are created on the server and then committed will result in an accurate
 					// id change record, but "instance.id" for this change will actually be the persisted id.
 					var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
-	
+
 					// Remember the object's client-generated new id and the corresponding server-generated new id
 					serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
 				}
@@ -7953,8 +7958,21 @@ Type.registerNamespace("ExoWeb.Mapper");
 			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
 					if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0) {
-						change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
-						change.newValue = new Date(change.newValue);
+
+						//now that we have the value set for the date.
+						//if the underlying property datatype is actually a date and not a datetime
+						//then we need to add the local timezone offset to make sure that the date is displayed acurately.
+						if (change.property.get_format() === Date.formats.ShortDate) {
+							var serverOffset = serverSync.get_ServerTimezoneOffset();
+							var localOffset = -(new Date().getTimezoneOffset() / 60);
+							change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
+							change.newValue = new Date(change.newValue);
+							change.newValue.addHours(serverOffset - localOffset);
+						}
+						else {
+							change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
+							change.newValue = new Date(change.newValue);
+						}
 					}
 
 					Sys.Observer.setValue(srcObj, change.property, change.newValue);
@@ -8013,6 +8031,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this._scopeQueries = [];
 		this._objectsExcludedFromSave = [];
 		this._translator = new ExoWeb.Translator();
+		this._serverInfo = null;
 
 		// don't record changes to types that didn't originate from the server
 		function filterObjectEvent(obj) {
@@ -8178,7 +8197,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				return true;
 			}
 		},
-		canSend: function(change) {
+		canSend: function (change) {
 			if (change.type === "Checkpoint") return false;
 
 			return true;
@@ -8268,9 +8287,11 @@ Type.registerNamespace("ExoWeb.Mapper");
 			return this.canSaveObject(instanceObj);
 		},
 
-		_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback)
-		{
+		_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback) {
 			var signal = new ExoWeb.Signal("Success");
+
+			if (result.serverinfo)
+				this.set_ServerInfo(result.serverinfo);
 
 			if (result.instances) {
 				var batch = ExoWeb.Batch.start();
@@ -8329,22 +8350,22 @@ Type.registerNamespace("ExoWeb.Mapper");
 			this._raiseEvent("requestBegin", [this, args]);
 			this._raiseEvent(method + "Begin", [this, args]);
 		},
-		_raiseEndEvents:  function (method, result, args) {
+		_raiseEndEvents: function (method, result, args) {
 			this._raiseEvent("requestEnd", [this, args]);
 			this._raiseEvent("request" + result, [this, args]);
 			this._raiseEvent(method + "End", [this, args]);
 			this._raiseEvent(method + result, [this, args]);
 		},
-		addRequestBegin: function(handler) {
+		addRequestBegin: function (handler) {
 			this._addEvent("requestBegin", handler);
 		},
-		addRequestEnd: function(handler) {
+		addRequestEnd: function (handler) {
 			this._addEvent("requestEnd", handler);
 		},
-		addRequestSuccess: function(handler) {
+		addRequestSuccess: function (handler) {
 			this._addEvent("requestSuccess", handler);
 		},
-		addRequestFailed: function(handler) {
+		addRequestFailed: function (handler) {
 			this._addEvent("requestFailed", handler);
 		},
 
@@ -8384,8 +8405,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 				toExoGraph(this._translator, obj),
 				event,
 				paths,
-				// If includeAllChanges is true, then use all changes including those 
-				// that should not be saved, otherwise only use changes that can be saved.
+			// If includeAllChanges is true, then use all changes including those 
+			// that should not be saved, otherwise only use changes that can be saved.
 				serializeChanges.call(this, includeAllChanges, obj),
 				this._onRaiseServerEventSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
@@ -8432,16 +8453,16 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			pendingRequests--;
 		},
-		addRaiseServerEventBegin: function(handler) {
+		addRaiseServerEventBegin: function (handler) {
 			this._addEvent("raiseServerEventBegin", handler);
 		},
-		addRaiseServerEventEnd: function(handler) {
+		addRaiseServerEventEnd: function (handler) {
 			this._addEvent("raiseServerEventEnd", handler);
 		},
-		addRaiseServerEventSuccess: function(handler) {
+		addRaiseServerEventSuccess: function (handler) {
 			this._addEvent("raiseServerEventSuccess", handler);
 		},
-		addRaiseServerEventFailed: function(handler) {
+		addRaiseServerEventFailed: function (handler) {
 			this._addEvent("raiseServerEventFailed", handler);
 		},
 
@@ -8508,7 +8529,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			function doRoundtrip() {
 				//ExoWeb.trace.log("server", "auto-roundtrip starting ({0})", [new Date()]);
-				this.roundtrip(function() {
+				this.roundtrip(function () {
 					//ExoWeb.trace.log("server", "auto-roundtrip complete ({0})", [new Date()]);
 					this._roundtripTimeout = window.setTimeout(doRoundtrip.bind(this), interval);
 				});
@@ -8556,7 +8577,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 				pendingRequests--;
 			});
 		},
-		_onSaveFailed: function(error, args, callback) {
+		_onSaveFailed: function (error, args, callback) {
 			Sys.Observer.setValue(this, "PendingSave", false);
 
 			args.error = error;
@@ -8600,16 +8621,16 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			this._saveTimeout = window.setTimeout(doAutoSave.bind(this), this._saveInterval);
 		},
-		addSaveBegin: function(handler) {
+		addSaveBegin: function (handler) {
 			this._addEvent("saveBegin", handler);
 		},
-		addSaveEnd: function(handler) {
+		addSaveEnd: function (handler) {
 			this._addEvent("saveEnd", handler);
 		},
-		addSaveSuccess: function(handler) {
+		addSaveSuccess: function (handler) {
 			this._addEvent("saveSuccess", handler);
 		},
-		addSaveFailed: function(handler) {
+		addSaveFailed: function (handler) {
 			this._addEvent("saveFailed", handler);
 		},
 
@@ -8786,6 +8807,20 @@ Type.registerNamespace("ExoWeb.Mapper");
 			if (oldValue !== value) {
 				Sys.Observer.raisePropertyChanged(this, "PendingAction");
 			}
+		},
+		get_ServerTimezoneOffset: function ServerSync$get_ServerTimezoneOffset() {
+			//if we have not set the server timezone offset yet, retrieve it from the server
+			var timezoneOffset = 0;
+
+			if (this._serverInfo !== null) {
+				timezoneOffset = this._serverInfo.TimeZoneOffset;
+			}
+
+			return timezoneOffset;
+		},
+		set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
+			//join the new server info with the information that you are adding.
+			this._serverInfo = this._serverInfo ? $.extend(this._serverInfo, newInfo) : newInfo;
 		}
 	});
 
@@ -8817,6 +8852,22 @@ Type.registerNamespace("ExoWeb.Mapper");
 		if (model && model instanceof ExoWeb.Model.Model) {
 			if (model._server) {
 				model._server.save(root, success, failed);
+			}
+			else {
+				// TODO
+			}
+		}
+	};
+
+	ServerSync.GetServerTimeZone = function ServerSync$GetServerTimeZone(root) {
+		var model;
+		if (root instanceof ExoWeb.Model.Entity) {
+			model = root.meta.type.get_model();
+		}
+
+		if (model && model instanceof ExoWeb.Model.Model) {
+			if (model._server) {
+				return model._server.get_ServerTimezoneOffset(root);
 			}
 			else {
 				// TODO
@@ -9090,8 +9141,22 @@ Type.registerNamespace("ExoWeb.Mapper");
 							else {
 								// Coerce strings into dates
 								if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
-									propData = propData.replace(dateRegex, dateRegexReplace);
-									propData = new Date(propData);
+
+									//now that we have the value set for the date.
+									//if the underlying property datatype is actually a date and not a datetime
+									//then we need to add the local timezone offset to make sure that the date is displayed acurately.
+									if (prop.get_format() === Date.formats.ShortDate) {
+										var serverOffset = model._server.get_ServerTimezoneOffset();
+										var localOffset = -(new Date().getTimezoneOffset() / 60);
+
+										propData = propData.replace(dateRegex, dateRegexReplace);
+										propData = new Date(propData);
+										propData.addHours(serverOffset - localOffset);
+									}
+									else {
+										propData = propData.replace(dateRegex, dateRegexReplace);
+										propData = new Date(propData);
+									}
 								}
 								prop.init(obj, propData);
 							}
@@ -10045,9 +10110,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 	ContextQuery.mixin({
 		execute: ExoWeb.FunctionChain.prepare(
 
-			// Starts a batch so that others will not respond to changes that are
-			// broadcast during querying, i.e. instance loading.
-			///////////////////////////////////////////////////////////////////////////////
+		// Starts a batch so that others will not respond to changes that are
+		// broadcast during querying, i.e. instance loading.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$setup(callback, thisPtr) {
 				// start a batch to represent all of the pending work
 				ExoWeb.trace.log("context", "Starting context query batch.");
@@ -10057,11 +10122,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 				if (this.options.changes)
 					ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
 
+				if (this.options.serverinfo)
+					this.context.server.set_ServerInfo(this.options.serverinfo);
+
 				callback.call(thisPtr || this);
 			},
 
-			// Perform pre-processing of model queries and their paths.
-			///////////////////////////////////////////////////////////////////////////////
+		// Perform pre-processing of model queries and their paths.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$initModels(callback, thisPtr) {
 				if (this.options.model) {
 					this.context.onBeforeModel();
@@ -10113,7 +10181,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 									from: query.from,
 									ids: query.ids,
 									// TODO: this will be subset of paths interpreted as scope-of-work
-									include: query.include ? query.include.filter(function(p) { return p.startsWith("this."); }) : [],
+									include: query.include ? query.include.filter(function (p) { return p.startsWith("this."); }) : [],
 									inScope: true,
 									forLoad: false
 								};
@@ -10125,10 +10193,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Process embedded data as if it had been recieved from the server in
-			// the form of a web service response. This should enable flicker-free
-			// page loads by embedded data, changes, etc.
-			///////////////////////////////////////////////////////////////////////////////
+		// Process embedded data as if it had been recieved from the server in
+		// the form of a web service response. This should enable flicker-free
+		// page loads by embedded data, changes, etc.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$processEmbedded(callback, thisPtr) {
 				ExoWeb.trace.log("context", "Processing embedded data in query.");
 
@@ -10139,10 +10207,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 						types: this.options.types
 					});
 
-					handler.execute(function() {
+					handler.execute(function () {
 						// Update 'isNew' for objects that show up in InitNew changes.
 						if (this.options.changes) {
-							this.options.changes.forEach(function(change) {
+							this.options.changes.forEach(function (change) {
 								tryGetJsType(this.context.server._model, change.instance.type, null, false, function (jstype) {
 									var obj = jstype.meta.get(change.instance.id);
 									if (obj) {
@@ -10160,9 +10228,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 				}
 			},
 
-			// Detect batch query candidates and send batch request, if batching is
-			// enabled (true by default).
-			///////////////////////////////////////////////////////////////////////////////
+		// Detect batch query candidates and send batch request, if batching is
+		// enabled (true by default).
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$doBatchRequest(callback, thisPtr) {
 				if (this.options.model && ExoWeb.config.individualQueryLoading !== true) {
 					var pendingQueries = [];
@@ -10170,12 +10238,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 					ExoWeb.trace.log("context", "Looking for potential loading requests in query.");
 
-					ExoWeb.eachProp(this.options.model, function(varName, query) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						if (!query.load && query.ids.length > 0) {
 							var jstype = ExoWeb.Model.Model.getJsType(query.from, true);
 
 							// get a list of ids that should be batch-requested
-							var batchIds = filter(query.ids, function(id, index) {
+							var batchIds = filter(query.ids, function (id, index) {
 								// if the type doesn't exist, include the id in the batch query
 								if (!jstype) return true;
 
@@ -10218,9 +10286,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 						// perform batch query
 						queryProvider(pendingQueries, null,
 							function context$objects$callback(result) {
-								objectsFromJson(this.context.model.meta, result.instances, function() {
+								objectsFromJson(this.context.model.meta, result.instances, function () {
 									if (result.conditions) {
-										conditionsFromJson(this.context.model.meta, result.conditions, function() {
+										conditionsFromJson(this.context.model.meta, result.conditions, function () {
 											batchQuerySignal.oneDone();
 										});
 									}
@@ -10239,13 +10307,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Send individual requests and simulate for "load" option.
-			///////////////////////////////////////////////////////////////////////////////
+		// Send individual requests and simulate for "load" option.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$doIndividualRequests(callback, thisPtr) {
 				if (this.options.model) {
 					// 2) Start loading instances individually
-					ExoWeb.eachProp(this.options.model, function(varName, query) {
-						if(query.load) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
+						if (query.load) {
 							// bypass all server callbacks if data is embedded
 							this.state[varName].objectJson = query.load.instances;
 							this.state[varName].conditionsJson = query.load.conditions;
@@ -10253,10 +10321,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 						// need to load data from server
 						// fetch object state if an id of a persisted object was specified
 						else if (ExoWeb.config.individualQueryLoading === true) {
-							tryGetJsType(this.context.model.meta, query.from, null, true, function(type) {
+							tryGetJsType(this.context.model.meta, query.from, null, true, function (type) {
 								// TODO: eliminate duplication!!!
 								// get the list of ids that should be individually loaded
-								var individualIds = filter(query.ids, function(id, index) {
+								var individualIds = filter(query.ids, function (id, index) {
 									// check to see if the object already exists, i.e. because of embedding
 									var obj = type.meta.get(translateId(this.context.server._translator, query.from, id));
 
@@ -10276,7 +10344,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 									// for individual queries, include scope queries for all *BUT* the query we are sending
 									var scopeQueries = [];
 									var currentVarName = varName;
-									ExoWeb.eachProp(this.options.model, function(varName, query) {
+									ExoWeb.eachProp(this.options.model, function (varName, query) {
 										if (varName !== currentVarName && this.state[varName].scopeQuery) {
 											scopeQueries.push(this.state[varName].scopeQuery);
 										}
@@ -10301,22 +10369,21 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Load static paths for queries that don't otherwise require loading.
-			///////////////////////////////////////////////////////////////////////////////
+		// Load static paths for queries that don't otherwise require loading.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$doStaticRequests(callback, thisPtr) {
 				if (this.options.model) {
-					ExoWeb.eachProp(this.options.model, function(varName, query) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						if (!query.load && query.ids.length === 0) {
 							// Remove instance paths when an id is not specified
-							var staticPaths = query.include ? query.include.filter(function(p) { return !p.startsWith("this."); }) : null;
+							var staticPaths = query.include ? query.include.filter(function (p) { return !p.startsWith("this."); }) : null;
 
 							// Only call the server if paths were specified
-							if (staticPaths && staticPaths.length > 0)
-							{
+							if (staticPaths && staticPaths.length > 0) {
 								objectProvider(null, null, staticPaths, false, null,
 									allSignals.pending(function context$objects$callback(result) {
 										// load the json. this may happen asynchronously to increment the signal just in case
-										objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
+										objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function () {
 											if (result.conditions) {
 												conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
 											}
@@ -10336,13 +10403,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Only fetch the types if they are not embedded. If the types are
-			// embedded then fetching the types from server will cause a signal to
-			// be created that will never be processed.
-			///////////////////////////////////////////////////////////////////////////////
+		// Only fetch the types if they are not embedded. If the types are
+		// embedded then fetching the types from server will cause a signal to
+		// be created that will never be processed.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$fetchPathTypes(callback, thisPtr) {
 				if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
-					ExoWeb.eachProp(this.options.model, function(varName, query) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						fetchTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
 					}, this);
 				}
@@ -10350,18 +10417,18 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Process instances data for queries as they finish loading.
-			///////////////////////////////////////////////////////////////////////////////
+		// Process instances data for queries as they finish loading.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$processResults(callback, thisPtr) {
 				if (this.options.model) {
-					ExoWeb.eachProp(this.options.model, function(varName, query) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						this.state[varName].signal.waitForAll(function context$model() {
 							// make sure everything isn't considered complete until new objects are also created
 							if (query.newIds) allSignals.pending();
 
 							// check to see if the root(s) have already been established
 							if ((!this.state[varName].isArray && this.context.model[varName]) ||
-								(this.state[varName].isArray && !query.ids.some(function(id, index) { return !this.context.model[varName][index]; }))) {
+								(this.state[varName].isArray && !query.ids.some(function (id, index) { return !this.context.model[varName][index]; }))) {
 
 								allSignals.oneDone();
 								return;
@@ -10386,7 +10453,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 									}
 
 									// establish roots for each id
-									forEach(query.ids, function(id, index) {
+									forEach(query.ids, function (id, index) {
 										// TODO: resolve translator access
 										var clientId = translateId(this.context.server._translator, query.from, id);
 										var obj = mtype.get(clientId);
@@ -10405,7 +10472,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 									}, this);
 
 									if (this.state[varName].conditionsJson) {
-										conditionsFromJson(this.context.model.meta, this.state[varName].conditionsJson, function() {
+										conditionsFromJson(this.context.model.meta, this.state[varName].conditionsJson, function () {
 											// model object has been successfully loaded!
 											allSignals.oneDone();
 										}, this);
@@ -10421,7 +10488,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 								allSignals.oneDone();
 							}
 
-							if(this.state[varName].objectJson) {
+							if (this.state[varName].objectJson) {
 								// ensure that instance data is loaded (even if not needed to establish roots) just in case
 								// root object was satisfied because it happened to be a part of the graph of another root object
 								objectsFromJson(this.context.model.meta, this.state[varName].objectJson, allSignals.pending());
@@ -10430,9 +10497,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 							// construct a new object(s) if a new id(s) was specified
 							if (query.newIds) {
 								// if json must be processed, signal will have been incremented again
-								this.state[varName].signal.waitForAll(function() {
+								this.state[varName].signal.waitForAll(function () {
 									if (this.state[varName].isArray) {
-										foreach(query.newIds, function(index) {
+										foreach(query.newIds, function (index) {
 											this.context.model[varName][index] = new (this.context.model.meta.type(query.from).get_jstype())();
 										}, this);
 									}
@@ -10451,8 +10518,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Load type data from query.
-			///////////////////////////////////////////////////////////////////////////////
+		// Load type data from query.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$fetchTypes(callback, thisPtr) {
 				// load types if they are in array format.  This is for the full server/client model of ExoWeb
 				// to load the types and isntance data async
@@ -10467,13 +10534,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 						fetchTypes(this.context.model.meta, typeQuery.from, typeQuery.normalized, allSignals.pending(null, this, true));
 
-						var staticPaths = typeQuery.include ? typeQuery.include.filter(function(p) { return !p.startsWith("this."); }) : null;
+						var staticPaths = typeQuery.include ? typeQuery.include.filter(function (p) { return !p.startsWith("this."); }) : null;
 
 						if (staticPaths && staticPaths.length > 0) {
 							objectProvider(typeQuery.from, null, staticPaths, false, null,
 								allSignals.pending(function context$objects$callback(result) {
 									// load the json. this may happen asynchronously to increment the signal just in case
-									objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function() {
+									objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function () {
 										if (result.conditions) {
 											conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
 										}
@@ -10491,12 +10558,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Perform pre-processing of model queries and their paths.
-			///////////////////////////////////////////////////////////////////////////////
+		// Perform pre-processing of model queries and their paths.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$postQueries(callback, thisPtr) {
 				if (this.options.model) {
 					ExoWeb.trace.log("context", "Running post query step for model queries.");
-					ExoWeb.eachProp(this.options.model, function(varName, query) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						if (this.state[varName].scopeQuery) {
 							ServerSync$addScopeQuery.call(this.context.server, this.state[varName].scopeQuery);
 						}
@@ -10506,9 +10573,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Setup lazy loading on the context object to control lazy evaluation.
-			// Loading is considered complete at the same point model.ready() fires.
-			///////////////////////////////////////////////////////////////////////////////
+		// Setup lazy loading on the context object to control lazy evaluation.
+		// Loading is considered complete at the same point model.ready() fires.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$registerLazyLoader(callback, thisPtr) {
 				ExoWeb.Model.LazyLoader.register(this.context, {
 					load: function context$load(obj, propName, callback, thisPtr) {
@@ -10530,12 +10597,12 @@ Type.registerNamespace("ExoWeb.Mapper");
 				callback.call(thisPtr || this);
 			},
 
-			// Final cleanup step. Allow rules to run initially, end the batch,
-			// and allow the server sync to start capturing existing objects in
-			// order to attach a lazy loader.
-			///////////////////////////////////////////////////////////////////////////////
+		// Final cleanup step. Allow rules to run initially, end the batch,
+		// and allow the server sync to start capturing existing objects in
+		// order to attach a lazy loader.
+		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$cleanup(callback, thisPtr) {
-				allSignals.waitForAll(function() {
+				allSignals.waitForAll(function () {
 					// allows previously defered rules to run
 					this.context.model.meta.notifyBeforeContextReady();
 
@@ -10611,6 +10678,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			pendingOptions.changes = pendingOptions.changes ? (options.changes ? pendingOptions.changes.concat(options.changes) : pendingOptions.changes) : options.changes;
 			pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, options.conditions) : options.conditions;
 			pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, options.instances) : options.instances;
+			pendingOptions.serverinfo = pendingOptions.serverinfo ? $.extend(pendingOptions.serverinfo, options.serverinfo) : options.serverinfo;
 		}
 
 		// Exit immediately if no model or types are pending
@@ -10651,7 +10719,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 			types: currentOptions.types,
 			changes: currentOptions.changes,
 			conditions: currentOptions.conditions,
-			instances: currentOptions.instances
+			instances: currentOptions.instances,
+			serverinfo: currentOptions.serverinfo
 		});
 
 		// Perform initialization once the context is ready

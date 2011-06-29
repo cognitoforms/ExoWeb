@@ -75,6 +75,7 @@ namespace ExoWeb
 
 			// Create a response for the request
 			ServiceResponse response = new ServiceResponse();
+			response.ServerInfo = new ServerInformation();
 
 			// Set the types to return from the request
 			if (Types != null)

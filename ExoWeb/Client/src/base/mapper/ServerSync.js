@@ -7,6 +7,7 @@ function ServerSync(model) {
 	this._scopeQueries = [];
 	this._objectsExcludedFromSave = [];
 	this._translator = new ExoWeb.Translator();
+	this._serverInfo = null;
 
 	// don't record changes to types that didn't originate from the server
 	function filterObjectEvent(obj) {
@@ -172,7 +173,7 @@ ServerSync.mixin({
 			return true;
 		}
 	},
-	canSend: function(change) {
+	canSend: function (change) {
 		if (change.type === "Checkpoint") return false;
 
 		return true;
@@ -262,9 +263,11 @@ ServerSync.mixin({
 		return this.canSaveObject(instanceObj);
 	},
 
-	_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback)
-	{
+	_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback) {
 		var signal = new ExoWeb.Signal("Success");
+
+		if (result.serverinfo)
+			this.set_ServerInfo(result.serverinfo);
 
 		if (result.instances) {
 			var batch = ExoWeb.Batch.start();
@@ -323,22 +326,22 @@ ServerSync.mixin({
 		this._raiseEvent("requestBegin", [this, args]);
 		this._raiseEvent(method + "Begin", [this, args]);
 	},
-	_raiseEndEvents:  function (method, result, args) {
+	_raiseEndEvents: function (method, result, args) {
 		this._raiseEvent("requestEnd", [this, args]);
 		this._raiseEvent("request" + result, [this, args]);
 		this._raiseEvent(method + "End", [this, args]);
 		this._raiseEvent(method + result, [this, args]);
 	},
-	addRequestBegin: function(handler) {
+	addRequestBegin: function (handler) {
 		this._addEvent("requestBegin", handler);
 	},
-	addRequestEnd: function(handler) {
+	addRequestEnd: function (handler) {
 		this._addEvent("requestEnd", handler);
 	},
-	addRequestSuccess: function(handler) {
+	addRequestSuccess: function (handler) {
 		this._addEvent("requestSuccess", handler);
 	},
-	addRequestFailed: function(handler) {
+	addRequestFailed: function (handler) {
 		this._addEvent("requestFailed", handler);
 	},
 
@@ -378,8 +381,8 @@ ServerSync.mixin({
 			toExoGraph(this._translator, obj),
 			event,
 			paths,
-			// If includeAllChanges is true, then use all changes including those 
-			// that should not be saved, otherwise only use changes that can be saved.
+		// If includeAllChanges is true, then use all changes including those 
+		// that should not be saved, otherwise only use changes that can be saved.
 			serializeChanges.call(this, includeAllChanges, obj),
 			this._onRaiseServerEventSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
@@ -426,16 +429,16 @@ ServerSync.mixin({
 
 		pendingRequests--;
 	},
-	addRaiseServerEventBegin: function(handler) {
+	addRaiseServerEventBegin: function (handler) {
 		this._addEvent("raiseServerEventBegin", handler);
 	},
-	addRaiseServerEventEnd: function(handler) {
+	addRaiseServerEventEnd: function (handler) {
 		this._addEvent("raiseServerEventEnd", handler);
 	},
-	addRaiseServerEventSuccess: function(handler) {
+	addRaiseServerEventSuccess: function (handler) {
 		this._addEvent("raiseServerEventSuccess", handler);
 	},
-	addRaiseServerEventFailed: function(handler) {
+	addRaiseServerEventFailed: function (handler) {
 		this._addEvent("raiseServerEventFailed", handler);
 	},
 
@@ -502,7 +505,7 @@ ServerSync.mixin({
 
 		function doRoundtrip() {
 			//ExoWeb.trace.log("server", "auto-roundtrip starting ({0})", [new Date()]);
-			this.roundtrip(function() {
+			this.roundtrip(function () {
 				//ExoWeb.trace.log("server", "auto-roundtrip complete ({0})", [new Date()]);
 				this._roundtripTimeout = window.setTimeout(doRoundtrip.bind(this), interval);
 			});
@@ -550,7 +553,7 @@ ServerSync.mixin({
 			pendingRequests--;
 		});
 	},
-	_onSaveFailed: function(error, args, callback) {
+	_onSaveFailed: function (error, args, callback) {
 		Sys.Observer.setValue(this, "PendingSave", false);
 
 		args.error = error;
@@ -594,16 +597,16 @@ ServerSync.mixin({
 
 		this._saveTimeout = window.setTimeout(doAutoSave.bind(this), this._saveInterval);
 	},
-	addSaveBegin: function(handler) {
+	addSaveBegin: function (handler) {
 		this._addEvent("saveBegin", handler);
 	},
-	addSaveEnd: function(handler) {
+	addSaveEnd: function (handler) {
 		this._addEvent("saveEnd", handler);
 	},
-	addSaveSuccess: function(handler) {
+	addSaveSuccess: function (handler) {
 		this._addEvent("saveSuccess", handler);
 	},
-	addSaveFailed: function(handler) {
+	addSaveFailed: function (handler) {
 		this._addEvent("saveFailed", handler);
 	},
 
@@ -780,6 +783,20 @@ ServerSync.mixin({
 		if (oldValue !== value) {
 			Sys.Observer.raisePropertyChanged(this, "PendingAction");
 		}
+	},
+	get_ServerTimezoneOffset: function ServerSync$get_ServerTimezoneOffset() {
+		//if we have not set the server timezone offset yet, retrieve it from the server
+		var timezoneOffset = 0;
+
+		if (this._serverInfo !== null) {
+			timezoneOffset = this._serverInfo.TimeZoneOffset;
+		}
+
+		return timezoneOffset;
+	},
+	set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
+		//join the new server info with the information that you are adding.
+		this._serverInfo = this._serverInfo ? $.extend(this._serverInfo, newInfo) : newInfo;
 	}
 });
 
@@ -811,6 +828,22 @@ ServerSync.Save = function ServerSync$Save(root, success, failed) {
 	if (model && model instanceof ExoWeb.Model.Model) {
 		if (model._server) {
 			model._server.save(root, success, failed);
+		}
+		else {
+			// TODO
+		}
+	}
+};
+
+ServerSync.GetServerTimeZone = function ServerSync$GetServerTimeZone(root) {
+	var model;
+	if (root instanceof ExoWeb.Model.Entity) {
+		model = root.meta.type.get_model();
+	}
+
+	if (model && model instanceof ExoWeb.Model.Model) {
+		if (model._server) {
+			return model._server.get_ServerTimezoneOffset(root);
 		}
 		else {
 			// TODO

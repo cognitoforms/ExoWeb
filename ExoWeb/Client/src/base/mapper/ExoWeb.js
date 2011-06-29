@@ -57,6 +57,7 @@ window.$exoweb = function (options) {
 		pendingOptions.changes = pendingOptions.changes ? (options.changes ? pendingOptions.changes.concat(options.changes) : pendingOptions.changes) : options.changes;
 		pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, options.conditions) : options.conditions;
 		pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, options.instances) : options.instances;
+		pendingOptions.serverinfo = pendingOptions.serverinfo ? $.extend(pendingOptions.serverinfo, options.serverinfo) : options.serverinfo;
 	}
 
 	// Exit immediately if no model or types are pending
@@ -97,7 +98,8 @@ window.$exoweb = function (options) {
 		types: currentOptions.types,
 		changes: currentOptions.changes,
 		conditions: currentOptions.conditions,
-		instances: currentOptions.instances
+		instances: currentOptions.instances,
+		serverinfo: currentOptions.serverinfo
 	});
 
 	// Perform initialization once the context is ready

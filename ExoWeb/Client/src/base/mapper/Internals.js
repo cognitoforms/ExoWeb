@@ -228,8 +228,22 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 						else {
 							// Coerce strings into dates
 							if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
-								propData = propData.replace(dateRegex, dateRegexReplace);
-								propData = new Date(propData);
+
+								//now that we have the value set for the date.
+								//if the underlying property datatype is actually a date and not a datetime
+								//then we need to add the local timezone offset to make sure that the date is displayed acurately.
+								if (prop.get_format() === Date.formats.ShortDate) {
+									var serverOffset = model._server.get_ServerTimezoneOffset();
+									var localOffset = -(new Date().getTimezoneOffset() / 60);
+
+									propData = propData.replace(dateRegex, dateRegexReplace);
+									propData = new Date(propData);
+									propData.addHours(serverOffset - localOffset);
+								}
+								else {
+									propData = propData.replace(dateRegex, dateRegexReplace);
+									propData = new Date(propData);
+								}
 							}
 							prop.init(obj, propData);
 						}
