@@ -35,7 +35,7 @@ Date.prototype.addDays = function addDays(numDays, requireWeekDay) {
 Date.prototype.addHours = function (h) {
 	this.setHours(this.getHours() + h);
 	return this;
-}
+};
 
 function getDayOfWeek(day) {
 	if (day !== undefined && day !== null && day.constructor === String)

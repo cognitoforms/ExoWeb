@@ -1,5 +1,17 @@
 var cacheInited = false;
 
+var scriptTag = document.getElementsByTagName("script");
+var referrer = scriptTag[scriptTag.length - 1].src;
+
+var cacheHash;
+
+var match = /[?&]cachehash=([^&]*)/i.exec(referrer);
+if (match) {
+	cacheHash = match[1];
+}
+
+ExoWeb.cacheHash = cacheHash;
+
 // Setup Caching
 if (window.localStorage) {
 
@@ -61,15 +73,3 @@ else {
 	ExoWeb.cache = function (key, value) { return null; };
 	ExoWeb.clearCache = function () { };
 }
-
-var scriptTag = document.getElementsByTagName("script");
-var referrer = scriptTag[scriptTag.length - 1].src;
-
-var cacheHash;
-
-var match = /[?&]cachehash=([^&]*)/i.exec(referrer);
-if (match) {
-	cacheHash = match[1];
-}
-
-ExoWeb.cacheHash = cacheHash;

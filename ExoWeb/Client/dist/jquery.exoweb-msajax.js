@@ -205,17 +205,22 @@
 		var regs = everRegs[action];
 
 		for (var e = 0; e < els.length; ++e) {
-			var $el = $(els[e]);
+			var el = els[e];
 
-			for (var i = 0; i < regs.length; ++i) {
-				var reg = regs[i];
+			// Ingore text nodes
+			if (el.nodeType && el.nodeType !== 3) {
+				var $el = $(el);
 
-				// test root
-				if ($el.is(reg.selector))
-					reg.action.apply(reg.thisPtr || els[e], [0, els[e]]);
+				for (var i = 0; i < regs.length; ++i) {
+					var reg = regs[i];
 
-				// test children
-				$(reg.selector, els[e]).each(reg.thisPtr ? reg.action.bind(reg.thisPtr) : reg.action);
+					// test root
+					if ($el.is(reg.selector))
+						reg.action.apply(reg.thisPtr || els[e], [0, els[e]]);
+
+					// test children
+					$(reg.selector, els[e]).each(reg.thisPtr ? reg.action.bind(reg.thisPtr) : reg.action);
+				}
 			}
 		}
 	}
@@ -236,15 +241,60 @@
 
 			// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
 			// dispose is too late because the nodes will have been cleared out.
-			var clearContainersBase = Sys.UI.DataView.prototype._clearContainers;
-			Sys.UI.DataView.prototype._clearContainers = function () {
-				var contexts = this.get_contexts();
-
-				for (var i = 0; i < contexts.length; i++)
-					processElements(contexts[i].nodes, "deleted");
-
-				clearContainersBase.apply(this, arguments);
-			}
+			Sys.UI.DataView.prototype._clearContainers = function (placeholders) {
+				var i, l;
+				for (i = 0, l = placeholders.length; i < l; i++) {
+					var ph = placeholders[i],
+					container = ph ? ph.parentNode : this.get_element();
+					this._clearContainer(container, ph, true);
+				}
+				for (i = 0, l = this._contexts.length; i < l; i++) {
+					var ctx = this._contexts[i];
+					processElements(ctx.nodes, "deleted");
+					ctx.nodes = null;
+					ctx.dispose();
+				}
+			};
+			Sys.UI.DataView.prototype._clearContainer = function (container, placeholder, suppressEvent) {
+				var count = placeholder ? placeholder.__msajaxphcount : -1;
+				if ((count > -1) && placeholder) placeholder.__msajaxphcount = 0;
+				if (count < 0) {
+					if (placeholder) {
+						container.removeChild(placeholder);
+					}
+					if (!suppressEvent) {
+						processElements([container], "deleted");
+					}
+					Sys.Application.disposeElement(container, true);
+					try {
+						container.innerHTML = "";
+					}
+					catch (err) {
+						var child;
+						while ((child = container.firstChild)) {
+							container.removeChild(child);
+						}
+					}
+					if (placeholder) {
+						container.appendChild(placeholder);
+					}
+				}
+				else if (count > 0) {
+					var i, l, start, children = container.childNodes;
+					for (i = 0, l = children.length; i < l; i++) {
+						if (children[i] === placeholder) {
+							break;
+						}
+					}
+					start = i - count;
+					for (i = 0; i < count; i++) {
+						var element = children[start];
+						processElements([element], "deleted");
+						Sys.Application.disposeElement(element, false);
+						container.removeChild(element);
+					}
+				}
+			};
 
 			interceptingTemplates = true;
 		}

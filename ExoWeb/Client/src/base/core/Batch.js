@@ -1,3 +1,7 @@
+var batchIndex = 0;
+var allBatches = [];
+var currentBatch = null;
+
 function Batch(label) {
 	this._index = batchIndex++;
 	this._labels = [label];
@@ -8,10 +12,6 @@ function Batch(label) {
 
 	allBatches.push(this);
 }
-
-var batchIndex = 0;
-var allBatches = [];
-var currentBatch = null;
 
 ExoWeb.registerActivity(function() {
 	return Batch.all().length > 0;

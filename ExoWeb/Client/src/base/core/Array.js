@@ -25,7 +25,7 @@ function addRange(arr, items) {
 
 function contains(arr, elt, from) {
 	assertArrayArg(arr, "contains");
-	return indexOf(arr, elt, from) > -1 ? true : false;
+	return arr.indexOf(elt, from) > -1 ? true : false;
 }
 
 // Filters out duplicate items from the given array.

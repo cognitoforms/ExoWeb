@@ -306,7 +306,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	function contains(arr, elt, from) {
 		assertArrayArg(arr, "contains");
-		return indexOf(arr, elt, from) > -1 ? true : false;
+		return arr.indexOf(elt, from) > -1 ? true : false;
 	}
 
 	// Filters out duplicate items from the given array.
@@ -766,6 +766,18 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	var cacheInited = false;
 
+	var scriptTag = document.getElementsByTagName("script");
+	var referrer = scriptTag[scriptTag.length - 1].src;
+
+	var cacheHash;
+
+	var match = /[?&]cachehash=([^&]*)/i.exec(referrer);
+	if (match) {
+		cacheHash = match[1];
+	}
+
+	ExoWeb.cacheHash = cacheHash;
+
 	// Setup Caching
 	if (window.localStorage) {
 
@@ -828,18 +840,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 		ExoWeb.clearCache = function () { };
 	}
 
-	var scriptTag = document.getElementsByTagName("script");
-	var referrer = scriptTag[scriptTag.length - 1].src;
-
-	var cacheHash;
-
-	var match = /[?&]cachehash=([^&]*)/i.exec(referrer);
-	if (match) {
-		cacheHash = match[1];
-	}
-
-	ExoWeb.cacheHash = cacheHash;
-
 	// #endregion
 
 	// #region Activity
@@ -886,6 +886,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// #region Batch
 	//////////////////////////////////////////////////
 
+	var batchIndex = 0;
+	var allBatches = [];
+	var currentBatch = null;
+
 	function Batch(label) {
 		this._index = batchIndex++;
 		this._labels = [label];
@@ -896,10 +900,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 		allBatches.push(this);
 	}
-
-	var batchIndex = 0;
-	var allBatches = [];
-	var currentBatch = null;
 
 	ExoWeb.registerActivity(function() {
 		return Batch.all().length > 0;
@@ -2100,7 +2100,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	Date.prototype.addHours = function (h) {
 		this.setHours(this.getHours() + h);
 		return this;
-	}
+	};
 
 	function getDayOfWeek(day) {
 		if (day !== undefined && day !== null && day.constructor === String)
