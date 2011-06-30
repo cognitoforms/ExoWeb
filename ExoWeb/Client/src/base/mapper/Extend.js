@@ -111,12 +111,11 @@ window.$extendProperties = function (typeName, includeBuiltIn, callback, thisPtr
 	}
 
 	extendOne(typeName, function (jstype) {
-		if (includeBuiltIn === true) {
-			// Raise handler for existing properties
-			jstype.meta.get_properties().forEach(function (prop) {
+		// Raise handler for existing properties
+		jstype.meta.get_properties().forEach(function (prop) {
+			if (includeBuiltIn === true || prop.get_origin() !== "server")
 				callback.call(thisPtr || this, prop, true);
-			});
-		}
+		});
 
 		// Raise handler when new properties are added
 		jstype.meta.addPropertyAdded(function (sender, args) {
