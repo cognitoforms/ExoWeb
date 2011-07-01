@@ -13590,6 +13590,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// dispose is too late because the nodes will have been cleared out.
 			Sys.UI.DataView.prototype._clearContainers = function (placeholders) {
 				var i, l;
+				for (i = 0, l = this._contexts.length; i < l; i++) {
+					processElements(this._contexts[i].nodes, "deleted");
+				}
 				for (i = 0, l = placeholders.length; i < l; i++) {
 					var ph = placeholders[i],
 					container = ph ? ph.parentNode : this.get_element();
@@ -13597,7 +13600,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 				for (i = 0, l = this._contexts.length; i < l; i++) {
 					var ctx = this._contexts[i];
-					processElements(ctx.nodes, "deleted");
 					ctx.nodes = null;
 					ctx.dispose();
 				}
