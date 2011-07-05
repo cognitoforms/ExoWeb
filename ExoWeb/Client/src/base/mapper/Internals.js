@@ -132,11 +132,8 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 		obj = getObject(model, typeName, id, null, true);
 	}
 
-	// don't re-initialize
-	if (ExoWeb.Model.LazyLoader.isLoaded(obj)) {
-		//ExoWeb.trace.logWarning("objectInit", "{0}({1})   already loaded.", [typeName, id]);
-	}
-	else {
+	///initialize the object if it was ghosted
+	if (obj.wasGhosted) {
 	//			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
 
 		var loadedProperties = [];
@@ -466,7 +463,7 @@ function getObject(model, propType, id, finalType, forLoading) {
 	// if it doesn't exist, create a ghost
 	if (!obj) {
 		obj = new (mtype.get_jstype())(id);
-
+		obj.wasGhosted = true;
 		if (!forLoading) {
 			ObjectLazyLoader.register(obj);
 //					ExoWeb.trace.log("entity", "{0}({1})  (ghost)", [mtype.get_fullName(), id]);

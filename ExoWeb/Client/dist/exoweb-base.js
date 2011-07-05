@@ -7172,7 +7172,28 @@ Type.registerNamespace("ExoWeb.Mapper");
 			function loadTypes(callback, thisPtr) {
 				if (this._options.types) {
 					ExoWeb.trace.log("responseHandler", "Loading types.");
-					typesFromJson(this._model, this._options.types);
+					for (var typeName in this._options.types) {
+						var signal = new ExoWeb.Signal("embeddedType(" + typeName + ")");
+
+						// load type(s)
+						var typesToUse = {};
+						typesToUse[typeName] = this._options.types[typeName];
+						typesFromJson(this._model, typesToUse);
+
+						var mtype = this._model.type(typeName);
+
+						// ensure base classes are loaded too
+						mtype.eachBaseType(function(mtype) {
+							if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+								ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
+							}
+						});
+
+						signal.waitForAll(function() {
+							TypeLazyLoader.unregister(mtype);
+							raiseExtensions(mtype);
+						});
+					}
 				}
 
 				callback.call(thisPtr || this);
@@ -9045,11 +9066,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 			obj = getObject(model, typeName, id, null, true);
 		}
 
-		// don't re-initialize
-		if (ExoWeb.Model.LazyLoader.isLoaded(obj)) {
-			//ExoWeb.trace.logWarning("objectInit", "{0}({1})   already loaded.", [typeName, id]);
-		}
-		else {
+		///initialize the object if it was ghosted
+		if (obj.wasGhosted) {
 		//			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
 
 			var loadedProperties = [];
@@ -9379,7 +9397,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		// if it doesn't exist, create a ghost
 		if (!obj) {
 			obj = new (mtype.get_jstype())(id);
-
+			obj.wasGhosted = true;
 			if (!forLoading) {
 				ObjectLazyLoader.register(obj);
 //					ExoWeb.trace.log("entity", "{0}({1})  (ghost)", [mtype.get_fullName(), id]);
@@ -10204,7 +10222,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 					var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
 						instances: this.options.instances,
 						conditions: this.options.conditions,
-						types: this.options.types
+						types: this.options.types,
+						changes: this.options.changes,
+						source: "init"
 					});
 
 					handler.execute(function () {

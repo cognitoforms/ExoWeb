@@ -15,7 +15,28 @@ ResponseHandler.mixin({
 		function loadTypes(callback, thisPtr) {
 			if (this._options.types) {
 				ExoWeb.trace.log("responseHandler", "Loading types.");
-				typesFromJson(this._model, this._options.types);
+				for (var typeName in this._options.types) {
+					var signal = new ExoWeb.Signal("embeddedType(" + typeName + ")");
+
+					// load type(s)
+					var typesToUse = {};
+					typesToUse[typeName] = this._options.types[typeName];
+					typesFromJson(this._model, typesToUse);
+
+					var mtype = this._model.type(typeName);
+
+					// ensure base classes are loaded too
+					mtype.eachBaseType(function(mtype) {
+						if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+							ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
+						}
+					});
+
+					signal.waitForAll(function() {
+						TypeLazyLoader.unregister(mtype);
+						raiseExtensions(mtype);
+					});
+				}
 			}
 
 			callback.call(thisPtr || this);

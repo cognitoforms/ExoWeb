@@ -49,7 +49,7 @@ var expect = jasmine.expect;
 
 // Test Suites
 ///////////////////////////////////////
-describe("ResponseHandler", function () {
+/*describe("ResponseHandler", function () {
 	it("requires an options argument", function () {
 		expect(function () {
 			new ResponseHandler();
@@ -175,7 +175,7 @@ describe("ResponseHandler", function () {
 		expect(changeSpy).toHaveBeenCalled();
 		expect(conditionsSpy).toHaveBeenCalled();
 	});
-});
+});*/
 
 // Run Tests
 ///////////////////////////////////////
