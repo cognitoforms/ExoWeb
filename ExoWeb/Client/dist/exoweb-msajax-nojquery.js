@@ -9070,7 +9070,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		///initialize the object if it was ghosted
-		if (obj.wasGhosted) {
+		if (obj && obj.wasGhosted) {
 		//			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
 
 			var loadedProperties = [];
