@@ -50,6 +50,8 @@ function processElements(els, action) {
 
 var interceptingTemplates = false;
 var interceptingWebForms = false;
+var interceptingToggle = false;
+var interceptingContent = false;
 var partialPageLoadOccurred = false;
 
 function ensureIntercepting() {
@@ -140,6 +142,34 @@ function ensureIntercepting() {
 			processElements(evt.get_panelsUpdated(), "added");
 		});
 		interceptingWebForms = true;
+	}
+	
+	if (!interceptingToggle && ExoWeb && ExoWeb.UI && ExoWeb.UI.Toggle) {
+		var undoRender = ExoWeb.UI.Toggle.prototype.undo_render;
+		ExoWeb.UI.Toggle.prototype.undo_render = function () {
+			processElements($(this._element).children().get(), "deleted");
+			undoRender.apply(this, arguments);
+		};
+
+		var toggleDispose = ExoWeb.UI.Toggle.prototype.do_dispose;
+		ExoWeb.UI.Toggle.prototype.do_dispose = function () {
+			processElements($(this._element).children().get(), "deleted");
+			toggleDispose.apply(this, arguments);
+		};
+
+		interceptingToggle = true;
+	}
+
+	if (!interceptingContent && ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
+		var render = ExoWeb.UI.Content.prototype.render;
+		ExoWeb.UI.Content.prototype.render = function () {
+			if(this._element)
+				processElements($(this._element).children().get(), "deleted");
+			
+			render.apply(this, arguments);
+		};
+
+		interceptingContent = true;
 	}
 }
 
