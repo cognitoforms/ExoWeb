@@ -17,6 +17,7 @@ if (window.localStorage) {
 
 	// Cache
 	ExoWeb.cache = function (key, value) {
+		var localKey = key;
 		// defer init of the cache so that the appInstanceId can be set
 		if (!cacheInited) {
 			cacheInited = true;
@@ -26,23 +27,23 @@ if (window.localStorage) {
 				window.localStorage.clear();
 
 			// Flush the local storage cache if the cache hash has changed
-			if (ExoWeb.cache("cacheHash") != cacheHash) {
+			if (window.localStorage.getItem("cacheHash") != cacheHash) {
 				ExoWeb.clearCache();
-				ExoWeb.cache("cacheHash", cacheHash);
+				window.localStorage.setItem("cacheHash", cacheHash);
 			}
 		}
 
 		// scope the cache to ExoWeb and to a particular app if there are multiple apps hosted at the same domain.
-		key = "ExoWeb:cache:" + ExoWeb.config.appInstanceId + ":" + key;
+		localKey = "ExoWeb:cache:" + ExoWeb.config.appInstanceId + ":" + localKey;
 
 		if (arguments.length == 1) {
-			value = window.localStorage.getItem(key);
+			value = window.localStorage.getItem(localKey);
 			return value ? JSON.parse(value) : null;
 		}
 		else if (arguments.length == 2) {
 			var json = JSON.stringify(value);
 			try {
-				window.localStorage.setItem(key, json);
+				window.localStorage.setItem(localKey, json);
 			}
 			catch (e) {
 				ExoWeb.trace.logWarning("cache", e);
