@@ -49,7 +49,7 @@ var expect = jasmine.expect;
 
 // Test Suites
 ///////////////////////////////////////
-/*describe("ResponseHandler", function () {
+describe("ResponseHandler", function () {
 	it("requires an options argument", function () {
 		expect(function () {
 			new ResponseHandler();
@@ -108,7 +108,7 @@ var expect = jasmine.expect;
 		var mocks = {
 			typesFromJson: function (model, json) {
 				expect(model).toBe(modelObj);
-				expect(json).toBe(types);
+				expect(json.Person).toBe(types.Person);
 				expect(objSpy).not.toHaveBeenCalled();
 				expect(changeSpy).not.toHaveBeenCalled();
 			},
@@ -153,7 +153,21 @@ var expect = jasmine.expect;
 		var changeSpy = jasmine.spyOn(mocks, "applyChanges").andCallThrough();
 		var conditionsSpy = jasmine.spyOn(mocks, "conditionsFromJson").andCallThrough();
 
-		var modelObj = {};
+		var modelObj = {
+			type: function() {
+				return {
+					eachBaseType: function() {
+						return;
+					}
+				};
+			}
+		};
+
+		ExoWeb.Model = { LazyLoader: { load: function() { } } };
+		var lazyLoadSpy = jasmine.spyOn(ExoWeb.Model.LazyLoader, "load").andCallThrough();
+
+		global.TypeLazyLoader = { unregister: function() { } };
+
 		var serverSyncObj = { _changeLog: { applyChanges: changeSpy} };
 
 		typesFromJson = typeSpy;
@@ -175,7 +189,7 @@ var expect = jasmine.expect;
 		expect(changeSpy).toHaveBeenCalled();
 		expect(conditionsSpy).toHaveBeenCalled();
 	});
-});*/
+});
 
 // Run Tests
 ///////////////////////////////////////
