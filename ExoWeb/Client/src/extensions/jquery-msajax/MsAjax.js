@@ -144,7 +144,7 @@ function ensureIntercepting() {
 		interceptingWebForms = true;
 	}
 	
-	if (!interceptingToggle && ExoWeb && ExoWeb.UI && ExoWeb.UI.Toggle) {
+	if (!interceptingToggle && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Toggle) {
 		var undoRender = ExoWeb.UI.Toggle.prototype.undo_render;
 		ExoWeb.UI.Toggle.prototype.undo_render = function () {
 			processElements($(this._element).children().get(), "deleted");
@@ -160,7 +160,7 @@ function ensureIntercepting() {
 		interceptingToggle = true;
 	}
 
-	if (!interceptingContent && ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
+	if (!interceptingContent && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
 		var render = ExoWeb.UI.Content.prototype.render;
 		ExoWeb.UI.Content.prototype.render = function () {
 			if(this._element)
