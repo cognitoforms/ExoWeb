@@ -7,10 +7,4 @@
 *.trx
 bin/
 obj/
-ExoWeb/Client/PreRake.bat
-ExoWeb/Client/dist/json2.js
-ExoWeb/Client/RakeScripts.bat
-ExoWeb.Samples/
-ExoWeb.UnitTests/
-Samples/
 .DS_STORE
