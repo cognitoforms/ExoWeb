@@ -6,7 +6,7 @@ ExoWeb is primarily a JavaScript library but also includes a supporting ASP.NET 
 
 JavaScript Object Model
 --------------------
-Using the open source ExoGraph library, a server-side object model, e.g., Entity Framework or NHibernate, can be represented in a basic form on the client (check out the ExoGraph project page for support details). This client-side model is built and modified based on JSON, which can be fetched from the server as needed. Each model type is represented by a unique JavaScript type of the same name. For this reason, mixing of these generated types with intrinsic JavaScript types (String, Number, etc) should be relatively transparent and easy. Also, types can be extended on the client to add additional behavior or properties.
+Using the open source [ExoGraph](http://github.com/vc3/exograph) library, a server-side object model, e.g., Entity Framework or NHibernate, can be represented in a basic form on the client (check out the ExoGraph project page for support details). This client-side model is built and modified based on JSON, which can be fetched from the server as needed. Each model type is represented by a unique JavaScript type of the same name. For this reason, mixing of these generated types with intrinsic JavaScript types (String, Number, etc) should be relatively transparent and easy. Also, types can be extended on the client to add additional behavior or properties.
 
 Instances can be fetched from the server using a simple querying interface, or they can be created on the client. Changes to the model are detected - including property value changes, list modification, and creating and deleting objects. These changes can trigger rules, drive UI behavior, and are replayed on the server with each asynchronous request.
 
