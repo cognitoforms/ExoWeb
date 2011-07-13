@@ -18,18 +18,19 @@ if (window.localStorage) {
 	// Cache
 	ExoWeb.cache = function (key, value) {
 		var localKey = key;
+
 		// defer init of the cache so that the appInstanceId can be set
 		if (!cacheInited) {
 			cacheInited = true;
 
 			// if there's an older version of caching, clear the entire cache (the old way)
-			if (window.localStorage.cacheHash)
+			if (window.localStorage.getItem("cacheHash"))
 				window.localStorage.clear();
 
 			// Flush the local storage cache if the cache hash has changed
-			if (window.localStorage.getItem("cacheHash") != cacheHash) {
+			if (ExoWeb.cache("cacheHash") != cacheHash) {
 				ExoWeb.clearCache();
-				window.localStorage.setItem("cacheHash", cacheHash);
+				ExoWeb.cache("cacheHash", cacheHash);
 			}
 		}
 

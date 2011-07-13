@@ -488,6 +488,34 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return result;
 	}
 
+	function reduce(arr, accumlator, initialValue){
+		var i = 0, len = arr.length, curr;
+
+		if(typeof(accumlator) !== "function")
+			throw new TypeError("First argument is not a function.");
+
+		if(!len && arguments.length <= 2)
+			throw new TypeError("Array length is 0 and no intial value was given.");
+
+		if(arguments.length <= 2) {
+			if (len === 0)
+				throw new TypeError("Empty array and no second argument");
+
+			curr = arr[i++]; // Increase i to start searching the secondly defined element in the array
+		}
+		else {
+			curr = arguments[2];
+		}
+
+		for(; i < len; i++) {
+			if (i in arr) {
+				curr = accumlator.call(undefined, curr, arr[i], i, arr);
+			}
+		}
+
+		return curr;
+	}
+
 	function remove(arr, item) {
 		var idx = arr.indexOf(item);
 		if (idx < 0)
@@ -544,6 +572,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		Array.prototype.peek = function() { return peek(this); };
 	if (!Array.prototype.purge)
 		Array.prototype.purge = function(fun/*, thisp*/) { return purge(this, fun, arguments[1]); };
+	if (!Array.prototype.reduce)
+		Array.prototype.reduce = function(accumulator, intialValue) { return reduce(this, accumulator, intialValue); };
 	if (!Array.prototype.remove)
 		Array.prototype.remove = function(item) { return remove(this, item); };
 	if (!Array.prototype.some)
@@ -787,18 +817,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Cache
 		ExoWeb.cache = function (key, value) {
 			var localKey = key;
+
 			// defer init of the cache so that the appInstanceId can be set
 			if (!cacheInited) {
 				cacheInited = true;
 
 				// if there's an older version of caching, clear the entire cache (the old way)
-				if (window.localStorage.cacheHash)
+				if (window.localStorage.getItem("cacheHash"))
 					window.localStorage.clear();
 
 				// Flush the local storage cache if the cache hash has changed
-				if (window.localStorage.getItem("cacheHash") != cacheHash) {
+				if (ExoWeb.cache("cacheHash") != cacheHash) {
 					ExoWeb.clearCache();
-					window.localStorage.setItem("cacheHash", cacheHash);
+					ExoWeb.cache("cacheHash", cacheHash);
 				}
 			}
 
@@ -12369,6 +12400,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 							var finalValue = value;
 							if (prepareValue && prepareValue instanceof Function) {
 								finalValue = prepareValue(value);
+							}
+
+							if ((finalValue === null || finalValue === undefined) && properties.ifNull) {
+								finalValue = properties.ifNull;
 							}
 
 							if (isEl && (properties.targetProperty === "innerText" || properties.targetProperty === "innerHTML")) {

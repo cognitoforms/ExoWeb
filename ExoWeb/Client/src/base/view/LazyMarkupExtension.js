@@ -54,6 +54,10 @@ Sys.Application.registerMarkupExtension("~",
 							finalValue = prepareValue(value);
 						}
 
+						if ((finalValue === null || finalValue === undefined) && properties.ifNull) {
+							finalValue = properties.ifNull;
+						}
+
 						if (isEl && (properties.targetProperty === "innerText" || properties.targetProperty === "innerHTML")) {
 							if (finalValue && finalValue.constructor !== String)
 								finalValue = finalValue.toString();

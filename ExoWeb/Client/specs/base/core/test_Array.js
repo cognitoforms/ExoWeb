@@ -12,6 +12,9 @@ var first = arrays.first;
 var fill = arrays.fill;
 var map = arrays.map;
 var indexOf = arrays.indexOf;
+var reduce = arrays.reduce;
+
+jasmine.jasmine.debug = true;
 
 // References
 ///////////////////////////////////////
@@ -167,6 +170,24 @@ describe("fill", function () {
 		expect(arr[4]).toBe("D");
 		expect(arr[5]).toBe("D");
 		expect(arr[6]).toBe(undefined);
+	});
+});
+
+describe("reduce", function () {
+	it("accumulates values in the array into a single value", function () {
+		var arr = [5, 2, 3, -4];
+
+		var total = reduce(arr, function(previousValue, currentValue, index, array) {
+			return previousValue + currentValue;
+		});
+
+		expect(total).toBe(6);
+
+		total = reduce(arr, function(previousValue, currentValue, index, array) {
+			return previousValue + currentValue;
+		}, 0);
+
+		expect(total).toBe(6);
 	});
 });
 
