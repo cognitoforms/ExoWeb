@@ -67,7 +67,7 @@ function filter(arr, callback, thisPtr) {
 	for (var i = 0, len = arr.length; i < len; i++) {
 		if (i in arr) {
 			var val = arr[i]; // callback may mutate original item
-			if (callback.call(thisPtr || this, val, i, arr) === true)
+			if (callback.call(thisPtr || this, val, i, arr))
 				result.push(val);
 		}
 	}

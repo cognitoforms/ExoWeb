@@ -8,6 +8,7 @@ var contains = arrays.contains;
 var distinct = arrays.distinct;
 var intersect = arrays.intersect;
 var purge = arrays.purge;
+var filter = arrays.filter;
 var first = arrays.first;
 var fill = arrays.fill;
 var map = arrays.map;
@@ -188,6 +189,18 @@ describe("reduce", function () {
 		}, 0);
 
 		expect(total).toBe(6);
+	});
+});
+
+describe("filter", function () {
+	it("copies elements of the source array that pass the given filter function", function () {
+		var arr = [5, 2, 3, -4, 0];
+		arrayEquals(filter(arr, function(i) { return i >= 0; }), [5, 2, 3, 0]);
+	});
+
+	it("filter function result can be truthy", function () {
+		var arr = [5, 2, 3, -4, 0];
+		arrayEquals(filter(arr, function(i) { return i; }), [5, 2, 3, -4]);
 	});
 });
 
