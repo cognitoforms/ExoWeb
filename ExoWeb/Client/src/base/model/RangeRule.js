@@ -1,4 +1,4 @@
-function RangeRule(mtype, options, ctype) {
+function RangeRule(mtype, options, ctype, callback, thisPtr) {
 	this.prop = mtype.property(options.property, true);
 	var properties = [ this.prop ];
 
@@ -29,7 +29,7 @@ function RangeRule(mtype, options, ctype) {
 		this._test = this._testMax;
 	}
 
-	Rule.register(this, properties);
+	Rule.register(this, properties, false, mtype, callback, thisPtr);
 }
 
 RangeRule.prototype = {

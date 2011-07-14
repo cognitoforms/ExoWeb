@@ -1,4 +1,4 @@
-function StringLengthRule(mtype, options, ctype) {
+function StringLengthRule(mtype, options, ctype, callback, thisPtr) {
 	this.prop = mtype.property(options.property, true);
 	var properties = [ this.prop ];
 
@@ -25,7 +25,7 @@ function StringLengthRule(mtype, options, ctype) {
 		this._test = this._testMax;
 	}
 
-	Rule.register(this, properties);
+	Rule.register(this, properties, false, mtype, callback, thisPtr);
 }
 StringLengthRule.prototype = {
 	execute: function(obj) {

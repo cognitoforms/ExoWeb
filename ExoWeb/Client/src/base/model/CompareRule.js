@@ -1,4 +1,4 @@
-function CompareRule(mtype, options, ctype) {
+function CompareRule(mtype, options, ctype, callback, thisPtr) {
 	this.prop = mtype.property(options.property, true);
 	var properties = [ this.prop ];
 
@@ -13,11 +13,11 @@ function CompareRule(mtype, options, ctype) {
 	this._inited = false;
 
 	// Function to register this rule when its containing type is loaded.
-	var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype); }).bind(this);
+	var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype, mtype, callback, thisPtr); }).bind(this);
 
 	// If the type is already loaded, then register immediately.
 	if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-		CompareRule.load(this, this.prop.get_containingType().get_jstype());
+		CompareRule.load(this, this.prop.get_containingType().get_jstype(), mtype, callback, thisPtr);
 	}
 	// Otherwise, wait until the type is loaded.
 	else {
@@ -25,7 +25,7 @@ function CompareRule(mtype, options, ctype) {
 	}
 }
 
-CompareRule.load = function CompareRule$load(rule, loadedType) {
+CompareRule.load = function CompareRule$load(rule, loadedType, mtype, callback, thisPtr) {
 	if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
 		var inputs = [];
 
@@ -41,7 +41,7 @@ CompareRule.load = function CompareRule$load(rule, loadedType) {
 			var compareInput = new RuleInput(rule._compareProperty);
 			inputs.push(compareInput);
 
-			Rule.register(rule, inputs);
+			Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 
 			rule._inited = true;
 
@@ -53,7 +53,7 @@ CompareRule.load = function CompareRule$load(rule, loadedType) {
 	}
 	else {
 		$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
-			CompareRule.load(rule, baseType);
+			CompareRule.load(rule, baseType, mtype, callback, thisPtr);
 		});
 	}
 };

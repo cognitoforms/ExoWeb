@@ -1,4 +1,4 @@
-﻿function RequiredIfExpressionsRule(mtype, options, ctype) {
+﻿function RequiredIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
 	this.prop = mtype.property(options.property, true);
 	var properties = [ this.prop ];
 
@@ -27,7 +27,7 @@
 	this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
 
 	// Function to register this rule when its containing type is loaded.
-	var register = (function RequiredIfExpressionsRule$register(ctype) { this.load(this, ctype); }).bind(this);
+	var register = (function RequiredIfExpressionsRule$register(ctype) { this.load(this, ctype, mtype, callback, thisPtr); }).bind(this);
 
 	// If the type is already loaded, then register immediately.
 	if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -40,7 +40,7 @@
 }
 
 RequiredIfExpressionsRule.prototype = {
-	load: function RequiredIfExpressionsRule$load(rule, loadedType) {
+	load: function RequiredIfExpressionsRule$load(rule, loadedType, mtype, callback, thisPtr) {
 		if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
 			var inputs = [];
 
@@ -57,7 +57,7 @@ RequiredIfExpressionsRule.prototype = {
 					var watchPathInput = new RuleInput(rule._dependsOn[i]);
 					inputs.push(watchPathInput);
 
-					Rule.register(rule, inputs);
+					Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 
 					rule._inited = true;
 				});

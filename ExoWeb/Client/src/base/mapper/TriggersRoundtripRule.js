@@ -1,7 +1,7 @@
 function TriggerRoundtripRule(property) {
 	var prop = this.prop = property;
 
-	ExoWeb.Model.Rule.register(this, [property], true);
+	ExoWeb.Model.Rule.register(this, [property], true, property._containingType);
 }
 
 TriggerRoundtripRule.prototype = {

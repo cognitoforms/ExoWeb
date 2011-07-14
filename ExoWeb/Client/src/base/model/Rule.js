@@ -30,7 +30,7 @@ Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter, callba
 	typeFilter.get_model().addBeforeContextReady(function() {
 		typeFilter.addRule(rule);
 		if(callback)
-			callback.apply(thisPtr || this);
+			callback.call(thisPtr || this, rule);
 	});
 };
 

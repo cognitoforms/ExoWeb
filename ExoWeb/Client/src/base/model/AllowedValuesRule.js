@@ -1,4 +1,4 @@
-function AllowedValuesRule(mtype, options, ctype) {
+function AllowedValuesRule(mtype, options, ctype, callback, thisPtr) {
 	this.prop = mtype.property(options.property, true);
 	var properties = [ this.prop ];
 
@@ -11,7 +11,7 @@ function AllowedValuesRule(mtype, options, ctype) {
 
 	this.err = new Condition(ctype, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
 
-	var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type); }).bind(this);
+	var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type, mtype, callback, thisPtr); }).bind(this);
 
 	// If the type is already loaded, then register immediately.
 	if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -22,7 +22,7 @@ function AllowedValuesRule(mtype, options, ctype) {
 		$extend(this.prop.get_containingType().get_fullName(), register);
 	}
 }
-AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType) {
+AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType, mtype, callback, thisPtr) {
 	if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
 		var inputs = [];
 
@@ -38,7 +38,7 @@ AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType) {
 			var allowedValuesInput = new RuleInput(rule._allowedValuesProperty);
 			inputs.push(allowedValuesInput);
 
-			Rule.register(rule, inputs);
+			Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 
 			rule._inited = true;
 		});

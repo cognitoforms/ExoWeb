@@ -1,4 +1,4 @@
-function RequiredRule(mtype, options, ctype) {
+function RequiredRule(mtype, options, ctype, callback, thisPtr) {
 	this.prop = mtype.property(options.property, true);
 
 	if (!ctype) {
@@ -7,7 +7,7 @@ function RequiredRule(mtype, options, ctype) {
 
 	this.err = new Condition(ctype, this.prop.get_label() + " is required", [ this.prop ], this);
 
-	Rule.register(this, [ this.prop ]);
+	Rule.register(this, [this.prop], false, mtype, callback, thisPtr);
 }
 
 RequiredRule.hasValue = function RequiredRule$hasValue(obj, prop) {
