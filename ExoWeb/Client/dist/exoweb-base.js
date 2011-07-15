@@ -8611,7 +8611,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 			saveProvider(
 				toExoGraph(this._translator, root),
-				serializeChanges.call(this, true, root),
+				serializeChanges.call(this, false, root),
 				this._onSaveSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onSaveFailed.bind(this).appendArguments(args, failed || success)
 			);
