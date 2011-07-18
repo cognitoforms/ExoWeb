@@ -14,6 +14,7 @@ var fill = arrays.fill;
 var map = arrays.map;
 var indexOf = arrays.indexOf;
 var reduce = arrays.reduce;
+var single = arrays.single;
 
 jasmine.jasmine.debug = true;
 
@@ -201,6 +202,20 @@ describe("filter", function () {
 	it("filter function result can be truthy", function () {
 		var arr = [5, 2, 3, -4, 0];
 		arrayEquals(filter(arr, function(i) { return i; }), [5, 2, 3, -4]);
+	});
+});
+
+describe("single", function () {
+	it("returns a single item from the array that matches the given filter function", function () {
+		var arr = [5, 2, 3, -4, 0];
+		expect(single(arr, function(i) { return i < 0; })).toBe(-4);
+	});
+
+	it("throws an error if more than one item matches the given filter function", function () {
+		var arr = [5, 2, 3, -4, 0];
+		expect(function() {
+			single(arr, function(i) { return i <= 0; });
+		}).toThrow("Expected a single item, but found 2.");
 	});
 });
 

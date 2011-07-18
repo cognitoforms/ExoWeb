@@ -241,6 +241,15 @@ function remove(arr, item) {
 	return true;
 }
 
+function single(arr, callback, thisPtr) {
+	var items = filter(arr, callback, thisPtr);
+
+	if (items.length > 1)
+		throw new Error("Expected a single item, but found " + items.length + ".");
+
+	return items[0];
+}
+
 function some(arr, callback, thisPtr) {
 	assertArrayArg(arr, "some");
 	assertFunctionArg(callback, true, "some");
@@ -292,6 +301,8 @@ if (!Array.prototype.reduce)
 	Array.prototype.reduce = function(accumulator, intialValue) { return reduce(this, accumulator, intialValue); };
 if (!Array.prototype.remove)
 	Array.prototype.remove = function(item) { return remove(this, item); };
+if (!Array.prototype.single)
+	Array.prototype.single = function(fun/*, thisp */) { return single(this, fun, arguments[1]); };
 if (!Array.prototype.some)
 	Array.prototype.some = function(fun /*, thisp*/) { return some(this, fun, arguments[1]); };
 
@@ -310,4 +321,5 @@ exports.peek = peek; // IGNORE
 exports.purge = purge; // IGNORE
 exports.remove = remove; // IGNORE
 exports.reduce = reduce; // IGNORE
+exports.single = single; // IGNORE
 exports.some = some; // IGNORE
