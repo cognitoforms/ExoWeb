@@ -45,7 +45,7 @@ function getLastTarget(target, propertyPath) {
 
 	for (var i = 0; i < path.length - 1; i++) {
 		if (finalTarget) {
-			finalTarget = getValue(finalTarget, path[i]);
+			finalTarget = ExoWeb.getValue(finalTarget, path[i]);
 		}
 	}
 
@@ -65,21 +65,28 @@ function isObject(obj) {
 // calling code can interpret a return value of undefined to mean that the property it requested does not exist.
 // TODO: better name
 function getValue(target, property) {
+	var value;
 	var getter = target["get_" + property];
 	if (getter) {
-		var value = getter.call(target);
-		return value === undefined ? null : value;
+		value = getter.call(target);
+		if (value === undefined) {
+			value = null;
+		}
 	}
 	else {
 		if ((isObject(target) && property in target) ||
 			(target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property, 10) < target.length)) {
-			var value = target[property];
-			return value === undefined ? null : value;
+			value = target[property];
+			if (value === undefined) {
+				value = null;
+			}
 		}
 		else if (/\./.test(property)) {
 			ExoWeb.trace.logWarning("", "Possible incorrect usage of \"getValue()\", the path \"{0}\" does not exist on the target and appears to represent a multi-hop path.", [property]);
 		}
 	}
+
+	return value;
 }
 
 ExoWeb.getValue = getValue;
@@ -90,18 +97,18 @@ function addCtorProvider(type, provider) {
 	var key;
 
 	// given type is a string, then use it as the dictionary key
-	if (isType(type, String)) {
+	if (ExoWeb.isType(type, String)) {
 		key = type;
 	}
 	// given type is a function, then parse the name
-	else if (isType(type, Function)) {
+	else if (ExoWeb.isType(type, Function)) {
 		key = parseFunctionName(type);
 	}
 	else {
 		// TODO
 	}
 
-	if (!isType(provider, Function)) {
+	if (!ExoWeb.isType(provider, Function)) {
 		// TODO
 	}
 
@@ -116,14 +123,14 @@ function getCtor(type) {
 	if (type !== undefined && type !== null) {
 
 		// If the argument is a function then return it immediately.
-		if (isType(type, Function)) {
+		if (ExoWeb.isType(type, Function)) {
 			return type;
 
 		}
 		else {
 			var ctor;
 
-			if (isType(type, String)) {
+			if (ExoWeb.isType(type, String)) {
 				// remove "window." from the type name since it is implied
 				type = type.replace(/(window\.)?(.*)/, "$2");
 
@@ -143,7 +150,7 @@ function getCtor(type) {
 			}
 
 			// warn (and implicitly return undefined) if the result is not a javascript function
-			if (ctor !== undefined && ctor !== null && !isType(ctor, Function)) {
+			if (ctor !== undefined && ctor !== null && !ExoWeb.isType(ctor, Function)) {
 				ExoWeb.trace.logWarning("", "The given type \"{0}\" is not a function.", [type]);
 			}
 			else {

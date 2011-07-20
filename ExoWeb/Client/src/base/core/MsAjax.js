@@ -35,8 +35,10 @@ Sys.Observer.removeSpecificPropertyChanged = function Sys$Observer$removeSpecifi
 			delete target.__propertyChangeHandlers[property];
 
 			var hasHandlers = false;
-			for (var handler in target.__propertyChangeHandlers) {
-				hasHandlers = true;
+			for (var remainingHandler in target.__propertyChangeHandlers) {
+				if (target.__propertyChangeHandlers.hasOwnProperty(remainingHandler)) {
+					hasHandlers = true;
+				}
 			}
 
 			if (!hasHandlers) {
@@ -155,15 +157,14 @@ Sys.Observer.removePathChanged = function Sys$Observer$removePathChanged(target,
 
 	if (pathChangeHandlers) {
 		// Search the list for handlers that match the given handler and stop and remove them
-		for (var i = 0; i < pathChangeHandlers.length; i++) {
-			var pathChangeHandler = pathChangeHandlers[i];
+		pathChangeHandlers.purge(function(pathChangeHandler) {
 			if (pathChangeHandler.handler === handler) {
 				Array.forEach(pathChangeHandler.roots, function(observer) {
 					observer.stop();
 				});
-				Array.removeAt(pathChangeHandlers, i--);
+				return true;
 			}
-		}
+		});
 
 		// If there are no more handlers for this path then remove it from the cache
 		if (pathChangeHandlers.length === 0) {
@@ -172,8 +173,10 @@ Sys.Observer.removePathChanged = function Sys$Observer$removePathChanged(target,
 
 			// determine if there are any other paths being watched
 			var hasHandlers = false;
-			for (var handler in target.__pathChangeHandlers) {
-				hasHandlers = true;
+			for (var remainingHandler in target.__pathChangeHandlers) {
+				if (target.__pathChangeHandlers.hasOwnProperty(remainingHandler)) {
+					hasHandlers = true;
+				}
 			}
 
 			// delete the property from the object if there are no longer any paths being watched

@@ -1,8 +1,5 @@
 // original code grabbed from http://oranlooney.com/functional-javascript/
 Object.copy = function Object$Copy(obj, options/*, level*/) {
-
-	var undefined;
-
 	if (!options) {
 		options = {};
 	}
