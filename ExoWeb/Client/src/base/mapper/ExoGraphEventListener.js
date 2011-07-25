@@ -34,7 +34,7 @@ ExoGraphEventListener.mixin({
 
 			var change = {
 				type: "ListChange",
-				instance: toExoGraph(this._translator, obj),
+				instance: toExoGraph(obj, this._translator),
 				property: property.get_name(),
 				added: [],
 				removed: []
@@ -43,12 +43,12 @@ ExoGraphEventListener.mixin({
 			var _this = this;
 			if (listChange.newStartingIndex >= 0 || listChange.newItems) {
 				Array.forEach(listChange.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
-					change.added.push(toExoGraph(_this._translator, obj));
+					change.added.push(toExoGraph(obj, _this._translator));
 				});
 			}
 			if (listChange.oldStartingIndex >= 0 || listChange.oldItems) {
 				Array.forEach(listChange.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
-					change.removed.push(toExoGraph(_this._translator, obj));
+					change.removed.push(toExoGraph(obj, _this._translator));
 				});
 			}
 
@@ -64,7 +64,7 @@ ExoGraphEventListener.mixin({
 
 			var change = {
 				type: "InitNew",
-				instance: toExoGraph(this._translator, obj)
+				instance: toExoGraph(obj, this._translator)
 			};
 
 			this._raiseEvent("changeCaptured", [change]);
@@ -90,7 +90,7 @@ ExoGraphEventListener.mixin({
 
 			var valueChange = {
 				type: "ValueChange",
-				instance: toExoGraph(this._translator, obj),
+				instance: toExoGraph(obj, this._translator),
 				property: property.get_name(),
 				oldValue: oldValue,
 				newValue: newValue
@@ -108,10 +108,10 @@ ExoGraphEventListener.mixin({
 
 			var refChange = {
 				type: "ReferenceChange",
-				instance: toExoGraph(this._translator, obj),
+				instance: toExoGraph(obj, this._translator),
 				property: property.get_name(),
-				oldValue: toExoGraph(this._translator, oldValue),
-				newValue: toExoGraph(this._translator, newValue)
+				oldValue: toExoGraph(oldValue, this._translator),
+				newValue: toExoGraph(newValue, this._translator)
 			};
 
 			this._raiseEvent("changeCaptured", [refChange]);

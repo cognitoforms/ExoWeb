@@ -734,7 +734,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 	else if (lazyLoad == LazyLoadEnum.Force) {
 		if (!obj) {
 			ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-			obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+			obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator, true);
 		}
 		callback.call(thisPtr || this, obj);
 		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
@@ -743,7 +743,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 	else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
 		if (!obj) {
 			ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-			obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator);
+			obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator, true);
 		}
 
 		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);

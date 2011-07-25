@@ -214,15 +214,28 @@ ServerSync.mixin({
 				Array.forEach(change.added, function (item) {
 					// if the type doesn't exist then obviously the instance doesn't either
 					var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
-					if (!jstype || this.canSaveObject(fromExoGraph(item, this._translator))) {
+					if (!jstype) {
 						ignore = false;
+					}
+					else {
+						var obj = fromExoGraph(item, this._translator);
+						// Only objects that exist can be disabled
+						if (!obj || this.canSaveObject(obj)) {
+							ignore = false;
+						}
 					}
 				}, this);
 				Array.forEach(change.removed, function (item) {
 					// if the type doesn't exist then obviously the instance doesn't either
 					var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
-					if (!jstype || this.canSaveObject(fromExoGraph(item, this._translator))) {
+					if (!jstype) {
 						ignore = false;
+					}
+					else {
+						var obj = fromExoGraph(item, this._translator);
+						if (!obj || this.canSaveObject(obj)) {
+							ignore = false;
+						}
 					}
 				}, this);
 
@@ -260,7 +273,7 @@ ServerSync.mixin({
 
 		// Ensure that the instance that the change pertains to can be saved.
 		var instanceObj = fromExoGraph(change.instance, this._translator);
-		return this.canSaveObject(instanceObj);
+		return !instanceObj || this.canSaveObject(instanceObj);
 	},
 
 	_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback) {
@@ -365,11 +378,11 @@ ServerSync.mixin({
 
 			if (arg instanceof Array) {
 				for (var i = 0; i < arg.length; ++i) {
-					arg[i] = toExoGraph(this._translator, arg[i]);
+					arg[i] = toExoGraph(arg[i], this._translator);
 				}
 			}
 			else {
-				event[key] = toExoGraph(this._translator, arg);
+				event[key] = toExoGraph(arg, this._translator);
 			}
 		}
 
@@ -378,7 +391,7 @@ ServerSync.mixin({
 
 		eventProvider(
 			name,
-			toExoGraph(this._translator, obj),
+			toExoGraph(obj, this._translator),
 			event,
 			paths,
 		// If includeAllChanges is true, then use all changes including those 
@@ -397,11 +410,11 @@ ServerSync.mixin({
 			var event = result.events[0];
 			if (event instanceof Array) {
 				for (var i = 0; i < event.length; ++i) {
-					event[i] = fromExoGraph(event[i], this._translator);
+					event[i] = fromExoGraph(event[i], this._translator, true);
 				}
 			}
 			else {
-				event = fromExoGraph(event, this._translator);
+				event = fromExoGraph(event, this._translator, true);
 			}
 
 			restoreDates(event);
@@ -533,7 +546,7 @@ ServerSync.mixin({
 		var checkpoint = this._changeLog.checkpoint("save " + Date.formats.DateTime.convert(new Date()));
 
 		saveProvider(
-			toExoGraph(this._translator, root),
+			toExoGraph(root, this._translator),
 			serializeChanges.call(this, false, root),
 			this._onSaveSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onSaveFailed.bind(this).appendArguments(args, failed || success)

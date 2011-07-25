@@ -17,7 +17,7 @@ ExoWeb.Model.Entity.formats.$load = new ExoWeb.Model.Format({
 	}
 });
 
-function toExoGraph(translator, val) {
+function toExoGraph(val, translator) {
 	if (val === undefined || val === null)
 		return;
 
@@ -48,7 +48,7 @@ function translateId(translator, type, id) {
 	return clientId;
 }
 
-function fromExoGraph(val, translator) {
+function fromExoGraph(val, translator, create) {
 	if (val !== undefined && val !== null && val.type && val.id ) {
 		var type = ExoWeb.Model.Model.getJsType(val.type);
 
@@ -62,7 +62,7 @@ function fromExoGraph(val, translator) {
 
 			var obj = type.meta.get(id);
 
-			if (!obj) {
+			if (!obj && create) {
 				obj = new type(id);
 				ObjectLazyLoader.register(obj);
 				ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [type.meta.get_fullName(), id]);

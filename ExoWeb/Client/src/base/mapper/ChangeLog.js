@@ -357,7 +357,7 @@ ChangeLog.mixin({
 			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
 				if (change.newValue) {
 					tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(before, function (refType) {
-						var refObj = fromExoGraph(change.newValue, serverSync._translator);
+						var refObj = fromExoGraph(change.newValue, serverSync._translator, true);
 						Sys.Observer.setValue(srcObj, change.property, refObj);
 					}, after), this);
 				}
@@ -405,7 +405,7 @@ ChangeLog.mixin({
 				// apply added items
 				change.added.forEach(function (item) {
 					tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(before, function (itemType) {
-						var itemObj = fromExoGraph(item, serverSync._translator);
+						var itemObj = fromExoGraph(item, serverSync._translator, true);
 						if (list.indexOf(itemObj) < 0) {
 							list.add(itemObj);
 						}
@@ -416,7 +416,7 @@ ChangeLog.mixin({
 				change.removed.forEach(function (item) {
 					// no need to load instance only to remove it from a list
 					tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
-						var itemObj = fromExoGraph(item, serverSync._translator);
+						var itemObj = fromExoGraph(item, serverSync._translator, true);
 						list.remove(itemObj);
 					}, after), this, true);
 				}, this);
