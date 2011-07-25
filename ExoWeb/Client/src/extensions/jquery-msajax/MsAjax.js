@@ -39,10 +39,10 @@ function processElements(els, action) {
 
 				// test root
 				if ($el.is(reg.selector))
-					reg.action.apply(reg.thisPtr || els[e], [0, els[e]]);
+					reg.action.apply(reg.thisPtr || el, [0, el]);
 
 				// test children
-				$(reg.selector, els[e]).each(reg.thisPtr ? reg.action.bind(reg.thisPtr) : reg.action);
+				$el.find(reg.selector).each(reg.thisPtr ? reg.action.bind(reg.thisPtr) : reg.action);
 			}
 		}
 	}
