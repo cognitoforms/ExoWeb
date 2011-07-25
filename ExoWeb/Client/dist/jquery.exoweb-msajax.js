@@ -367,25 +367,53 @@
 
 		// and then watch for dom changes
 		if (added) {
-			var addedReg = everRegs.added.single(function(a) { return a.selector === selector; });
-
-			if (!addedReg) {
-				addedReg = { selector: selector, action: ExoWeb.Functor() };
-				everRegs.added.push(addedReg);
+			var addedReg = null;
+			for (var a = 0, aLen = everRegs.added.length; a < aLen; ++a) {
+				var regA = everRegs.added[a];
+				if (regA.selector === selector) {
+					addedReg = regA;
+					break;
+				}
 			}
 
-			addedReg.action.add(added);
+			if (!addedReg) {
+				addedReg = { selector: selector, action: added };
+				everRegs.added.push(addedReg);
+			}
+			else if (addedReg.action.add) {
+				addedReg.action.add(added);
+			}
+			else {
+				var addedPrev = addedReg.action;
+				addedReg.action = ExoWeb.Functor();
+				addedReg.action.add(addedPrev);
+				addedReg.action.add(added);
+			}
 		}
 
 		if (deleted) {
-			var deletedReg = everRegs.deleted.single(function(d) { return d.selector === selector; });
-
-			if (!deletedReg) {
-				deletedReg = { selector: selector, action: ExoWeb.Functor() };
-				everRegs.deleted.push(deletedReg);
+			var deletedReg = null;
+			for (var d = 0, dLen = everRegs.deleted.length; d < dLen; ++d) {
+				var regD = everRegs.deleted[d];
+				if (regD.selector === selector) {
+					deletedReg = regD;
+					break;
+				}
 			}
 
-			deletedReg.action.add(deleted);
+			if (!deletedReg) {
+				deletedReg = { selector: selector, action: deleted };
+				everRegs.deleted.push(deletedReg);
+			}
+			else if (deletedReg.action.add) {
+				deletedReg.action.add(deleted);
+			}
+			else {
+				var deletedPrev = deletedReg.action;
+				deletedReg.action = ExoWeb.Functor();
+				deletedReg.action.add(deletedPrev);
+				deletedReg.action.add(deleted);
+			}
 		}
 
 		ensureIntercepting();
