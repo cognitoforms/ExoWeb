@@ -11351,7 +11351,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._shownHandler = this._toggleShown.bind(this);
 			this._hiddenHandler = this._toggleHidden.bind(this);
 
-			$(":toggle", this._element).ever(this._toggleAdded, this._toggleRemoved, this);
+			$(":toggle", this._element).ever(this._toggleAdded.bind(this), this._toggleRemoved.bind(this));
 
 			this._execute();
 		}

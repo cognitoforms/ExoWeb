@@ -216,10 +216,10 @@
 
 					// test root
 					if ($el.is(reg.selector))
-						reg.action.apply(reg.thisPtr || el, [0, el]);
+						reg.action.apply(el, [0, el]);
 
 					// test children
-					$el.find(reg.selector).each(reg.thisPtr ? reg.action.bind(reg.thisPtr) : reg.action);
+					$el.find(reg.selector).each(reg.action);
 				}
 			}
 		}
@@ -351,7 +351,8 @@
 	}
 
 	// matches elements as they are dynamically added to the DOM
-	jQuery.fn.ever = function (added, deleted, thisPtr) {
+	jQuery.fn.ever = function (added, deleted) {
+
 		// If the function is called in any way other than as a method on the 
 		// jQuery object, then intercept and return early.
 		if (!(this instanceof jQuery)) {
@@ -360,23 +361,31 @@
 		}
 
 		// apply now
-		this.each(thisPtr ? added.bind(thisPtr) : added);
+		this.each(added);
+
+		var selector = this.selector;
 
 		// and then watch for dom changes
 		if (added) {
-			everRegs.added.push({
-				selector: this.selector,
-				action: added,
-				thisPtr: thisPtr
-			});
+			var addedReg = everRegs.added.single(function(a) { return a.selector === selector; });
+
+			if (!addedReg) {
+				addedReg = { selector: selector, action: ExoWeb.Functor() };
+				everRegs.added.push(addedReg);
+			}
+
+			addedReg.action.add(added);
 		}
 
 		if (deleted) {
-			everRegs.deleted.push({
-				selector: this.selector,
-				action: deleted,
-				thisPtr: thisPtr
-			});
+			var deletedReg = everRegs.deleted.single(function(d) { return d.selector === selector; });
+
+			if (!deletedReg) {
+				deletedReg = { selector: selector, action: ExoWeb.Functor() };
+				everRegs.deleted.push(deletedReg);
+			}
+
+			deletedReg.action.add(deleted);
 		}
 
 		ensureIntercepting();
