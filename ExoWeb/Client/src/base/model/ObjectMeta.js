@@ -41,15 +41,15 @@ ObjectMeta.mixin({
 			}
 		}
 
-		if (idx >= 0) {
-			this._removeCondition(idx);
-		}
-
-		if (when) {
-			this._addCondition(condition);
-		}
-
 		if ((idx < 0 && when) || (idx >= 0 && !when)) {
+			if (idx >= 0) {
+				this._removeCondition(idx);
+			}
+
+			if (when) {
+				this._addCondition(condition);
+			}
+
 			this._raisePropertiesValidated(condition.get_properties());
 		}
 	},

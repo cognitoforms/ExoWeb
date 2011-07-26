@@ -4804,15 +4804,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 
-			if (idx >= 0) {
-				this._removeCondition(idx);
-			}
-
-			if (when) {
-				this._addCondition(condition);
-			}
-
 			if ((idx < 0 && when) || (idx >= 0 && !when)) {
+				if (idx >= 0) {
+					this._removeCondition(idx);
+				}
+
+				if (when) {
+					this._addCondition(condition);
+				}
+
 				this._raisePropertiesValidated(condition.get_properties());
 			}
 		},
@@ -13717,7 +13717,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						container.removeChild(placeholder);
 					}
 					if (!suppressEvent) {
-						processElements([container], "deleted");
+						processElements(container.childNodes, "deleted");
 					}
 					Sys.Application.disposeElement(container, true);
 					try {

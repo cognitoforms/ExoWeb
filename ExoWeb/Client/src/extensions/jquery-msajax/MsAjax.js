@@ -90,7 +90,7 @@ function ensureIntercepting() {
 					container.removeChild(placeholder);
 				}
 				if (!suppressEvent) {
-					processElements([container], "deleted");
+					processElements(container.childNodes, "deleted");
 				}
 				Sys.Application.disposeElement(container, true);
 				try {
