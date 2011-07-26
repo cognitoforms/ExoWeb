@@ -123,6 +123,24 @@ function intersect(arr1, arr2) {
 	}));
 }
 
+function last(arr, callback, thisPtr) {
+	assertArrayArg(arr, "last");
+	assertFunctionArg(callback, true, "last");
+
+	var result = null;
+
+	for (var i = 0, len = arr.length; i < len; i++) {
+		if (i in arr) {
+			var val = arr[i];
+			if (!callback || callback.call(thisPtr || this, val, i, arr) === true) {
+				result = val;
+			}
+		}
+	}
+
+	return result;
+}
+
 function lastIndexOf(arr, item, from) {
 	assertArrayArg(arr, "lastIndexOf");
 
@@ -287,6 +305,8 @@ if (!Array.prototype.indexOf)
 	Array.prototype.indexOf = function(elt/*, from*/) { return indexOf(this, elt, arguments[1]); };
 if (!Array.prototype.intersect)
 	Array.prototype.intersect = function(items) { return intersect(this, items); };
+if (!Array.prototype.last)
+	Array.prototype.last = function(fun/*, thisp */) { return last(this, fun, arguments[1]); };
 if (!Array.prototype.lastIndexOf)
 	Array.prototype.lastIndexOf = function (item/*, from*/) { return lastIndexOf(this, item, arguments[1]); };
 if (!Array.prototype.map)
@@ -314,6 +334,7 @@ exports.first = first; // IGNORE
 exports.forEach = forEach; // IGNORE
 exports.indexOf = indexOf; // IGNORE
 exports.intersect = intersect; // IGNORE
+exports.last = last; // IGNORE
 exports.lastIndexOf = lastIndexOf; // IGNORE
 exports.map = map; // IGNORE
 exports.mapToArray = mapToArray; // IGNORE

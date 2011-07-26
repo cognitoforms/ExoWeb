@@ -6,13 +6,14 @@ var arrays = require("../../../src/base/core/Array");
 
 var contains = arrays.contains;
 var distinct = arrays.distinct;
-var intersect = arrays.intersect;
-var purge = arrays.purge;
 var filter = arrays.filter;
 var first = arrays.first;
 var fill = arrays.fill;
-var map = arrays.map;
 var indexOf = arrays.indexOf;
+var intersect = arrays.intersect;
+var last = arrays.last;
+var map = arrays.map;
+var purge = arrays.purge;
 var reduce = arrays.reduce;
 var single = arrays.single;
 
@@ -216,6 +217,24 @@ describe("single", function () {
 		expect(function() {
 			single(arr, function(i) { return i <= 0; });
 		}).toThrow("Expected a single item, but found 2.");
+	});
+});
+
+describe("last", function() {
+	it("returns the last item in the list that passes the given filter", function() {
+		var arr = [0, 54, 23, 5];
+
+		expect(last(arr, function(i) { return i > 5; })).toBe(23);
+		expect(last(arr, function(i) { return i > 54; })).toBe(null);
+		expect(last(arr, function(i) { return i > 0 && i < 10; })).toBe(5);
+		expect(last(arr, function(i) { return i < 10; })).toBe(5);
+		expect(last(arr)).toBe(5);
+
+		expect(arr.last(function(i) { return i > 5; })).toBe(23);
+		expect(arr.last(function(i) { return i > 54; })).toBe(null);
+		expect(arr.last(function(i) { return i > 0 && i < 10; })).toBe(5);
+		expect(arr.last(function(i) { return i < 10; })).toBe(5);
+		expect(arr.last()).toBe(5);
 	});
 });
 

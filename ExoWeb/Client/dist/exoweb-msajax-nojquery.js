@@ -407,6 +407,24 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}));
 	}
 
+	function last(arr, callback, thisPtr) {
+		assertArrayArg(arr, "last");
+		assertFunctionArg(callback, true, "last");
+
+		var result = null;
+
+		for (var i = 0, len = arr.length; i < len; i++) {
+			if (i in arr) {
+				var val = arr[i];
+				if (!callback || callback.call(thisPtr || this, val, i, arr) === true) {
+					result = val;
+				}
+			}
+		}
+
+		return result;
+	}
+
 	function lastIndexOf(arr, item, from) {
 		assertArrayArg(arr, "lastIndexOf");
 
@@ -571,6 +589,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		Array.prototype.indexOf = function(elt/*, from*/) { return indexOf(this, elt, arguments[1]); };
 	if (!Array.prototype.intersect)
 		Array.prototype.intersect = function(items) { return intersect(this, items); };
+	if (!Array.prototype.last)
+		Array.prototype.last = function(fun/*, thisp */) { return last(this, fun, arguments[1]); };
 	if (!Array.prototype.lastIndexOf)
 		Array.prototype.lastIndexOf = function (item/*, from*/) { return lastIndexOf(this, item, arguments[1]); };
 	if (!Array.prototype.map)
