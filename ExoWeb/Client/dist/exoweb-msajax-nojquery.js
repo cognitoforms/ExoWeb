@@ -4795,7 +4795,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._obj;
 		},
 		ensureValidation: function ObjectMeta$ensureValidation(prop) {
-			// TODO: if isNew can be reliably determined then it could shortcut this method.
+			// Assumption: existing objects have already been validated.
+			if (!this.isNew) {
+				return;
+			}
 
 			var rules = prop.rules(true);
 
