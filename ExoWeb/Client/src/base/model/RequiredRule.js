@@ -5,6 +5,8 @@ function RequiredRule(mtype, options, ctype, callback, thisPtr) {
 		ctype = Rule.ensureError("required", this.prop);
 	}
 
+	this.ctype = ctype;
+
 	this.err = new Condition(ctype, this.prop.get_label() + " is required", [ this.prop ], this);
 
 	Rule.register(this, [this.prop], false, mtype, callback, thisPtr);

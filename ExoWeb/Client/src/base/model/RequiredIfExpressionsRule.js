@@ -6,6 +6,8 @@
 		ctype = Rule.ensureError("requiredIfExpressions", this.prop);
 	}
 
+	this.ctype = ctype;
+
 	this._evaluationFunction = options.fn;
 	this._dependsOn = options.dependsOn;
 

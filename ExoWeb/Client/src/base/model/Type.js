@@ -1,5 +1,4 @@
 function Type(model, name, baseType, origin) {
-	this._rules = {};
 	this._fullName = name;
 
 	// if origin is not provided it is assumed to be client
@@ -498,11 +497,13 @@ Type.prototype = {
 					Array.forEach(jstype.meta.known(), function (obj) {
 						if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
 							fn.call(rule, obj);
+							obj.meta.markRuleExecuted(rule);
 						}
 					});
 				}
 				else {
 					fn.call(rule, obj);
+					obj.meta.markRuleExecuted(rule);
 				}
 			}
 			catch (err) {
@@ -562,7 +563,7 @@ Type.prototype = {
 		}
 	},
 	// Executes all rules that have a particular property as input
-	executeRules: function Type$executeRules(obj, prop, callback, start) {
+	executeRules: function Type$executeRules(obj, rules, callback, start) {
 
 		var processing;
 
@@ -573,41 +574,41 @@ Type.prototype = {
 		try {
 			var i = (start ? start : 0);
 
-			var rules = prop.rules(true);
-			if (rules) {
-				processing = (i < rules.length);
-				while (processing) {
-					var rule = rules[i];
+			processing = (i < rules.length);
 
-					// Only execute a rule if it is not currently executing and can be executed for the target object.
-					// If rule doesn't define a custom canExecute this will simply check that all init inputs are inited.
-					if (!rule._isExecuting && (rule.canExecute ? rule.canExecute(obj) : Rule.canExecute(rule, obj))) {
-						rule._isExecuting = true;
+			while (processing) {
+				var rule = rules[i];
 
-						if (rule.isAsync) {
-							// run rule asynchronously, and then pickup running next rules afterwards
-							var _this = this;
+				// Only execute a rule if it is not currently executing and can be executed for the target object.
+				// If rule doesn't define a custom canExecute this will simply check that all init inputs are inited.
+				if (!rule._isExecuting && (rule.canExecute ? rule.canExecute(obj) : Rule.canExecute(rule, obj))) {
+					rule._isExecuting = true;
+
+					if (rule.isAsync) {
+						// run rule asynchronously, and then pickup running next rules afterwards
+						var _this = this;
 //									ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-							rule.execute(obj, function() {
-								rule._isExecuting = false;
-								_this.executeRules(obj, prop, callback, i + 1);
-							});
-							break;
-						}
-						else {
-							try {
+						rule.execute(obj, function() {
+							rule._isExecuting = false;
+							obj.meta.markRuleExecuted(rule);
+							_this.executeRules(obj, rules, callback, i + 1);
+						});
+						break;
+					}
+					else {
+						try {
 //										ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-								rule.execute(obj);
-							}
-							finally {
-								rule._isExecuting = false;
-							}
+							rule.execute(obj);
+							obj.meta.markRuleExecuted(rule);
+						}
+						finally {
+							rule._isExecuting = false;
 						}
 					}
-
-					++i;
-					processing = (i < rules.length);
 				}
+
+				++i;
+				processing = (i < rules.length);
 			}
 		}
 		finally {

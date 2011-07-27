@@ -3099,7 +3099,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 	//////////////////////////////////////////////////
 
 	function Type(model, name, baseType, origin) {
-		this._rules = {};
 		this._fullName = name;
 
 		// if origin is not provided it is assumed to be client
@@ -3598,11 +3597,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 						Array.forEach(jstype.meta.known(), function (obj) {
 							if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
 								fn.call(rule, obj);
+								obj.meta.markRuleExecuted(rule);
 							}
 						});
 					}
 					else {
 						fn.call(rule, obj);
+						obj.meta.markRuleExecuted(rule);
 					}
 				}
 				catch (err) {
@@ -3662,7 +3663,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 		},
 		// Executes all rules that have a particular property as input
-		executeRules: function Type$executeRules(obj, prop, callback, start) {
+		executeRules: function Type$executeRules(obj, rules, callback, start) {
 
 			var processing;
 
@@ -3673,41 +3674,41 @@ Type.registerNamespace("ExoWeb.Mapper");
 			try {
 				var i = (start ? start : 0);
 
-				var rules = prop.rules(true);
-				if (rules) {
-					processing = (i < rules.length);
-					while (processing) {
-						var rule = rules[i];
+				processing = (i < rules.length);
 
-						// Only execute a rule if it is not currently executing and can be executed for the target object.
-						// If rule doesn't define a custom canExecute this will simply check that all init inputs are inited.
-						if (!rule._isExecuting && (rule.canExecute ? rule.canExecute(obj) : Rule.canExecute(rule, obj))) {
-							rule._isExecuting = true;
+				while (processing) {
+					var rule = rules[i];
 
-							if (rule.isAsync) {
-								// run rule asynchronously, and then pickup running next rules afterwards
-								var _this = this;
+					// Only execute a rule if it is not currently executing and can be executed for the target object.
+					// If rule doesn't define a custom canExecute this will simply check that all init inputs are inited.
+					if (!rule._isExecuting && (rule.canExecute ? rule.canExecute(obj) : Rule.canExecute(rule, obj))) {
+						rule._isExecuting = true;
+
+						if (rule.isAsync) {
+							// run rule asynchronously, and then pickup running next rules afterwards
+							var _this = this;
 //									ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-								rule.execute(obj, function() {
-									rule._isExecuting = false;
-									_this.executeRules(obj, prop, callback, i + 1);
-								});
-								break;
-							}
-							else {
-								try {
+							rule.execute(obj, function() {
+								rule._isExecuting = false;
+								obj.meta.markRuleExecuted(rule);
+								_this.executeRules(obj, rules, callback, i + 1);
+							});
+							break;
+						}
+						else {
+							try {
 //										ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-									rule.execute(obj);
-								}
-								finally {
-									rule._isExecuting = false;
-								}
+								rule.execute(obj);
+								obj.meta.markRuleExecuted(rule);
+							}
+							finally {
+								rule._isExecuting = false;
 							}
 						}
-
-						++i;
-						processing = (i < rules.length);
 					}
+
+					++i;
+					processing = (i < rules.length);
 				}
 			}
 			finally {
@@ -4782,6 +4783,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this._obj = obj;
 		this.type = type;
 		this._conditions = [];
+		this._executedRules = [];
 		this._propertyConditions = {};
 	}
 
@@ -4789,11 +4791,34 @@ Type.registerNamespace("ExoWeb.Mapper");
 		get_entity: function() {
 			return this._obj;
 		},
+		ensureValidation: function ObjectMeta$ensureValidation(prop) {
+			// TODO: if isNew can be reliably determined then it could shortcut this method.
+
+			var rules = prop.rules(true);
+
+			// Exclude non-validation rules, rules that have previously been executed or their
+			// conditions have been attached, and allowed values rules (since if the property has
+			// not been interacted with there is no value and the rule does not apply).
+			rules.purge(function(rule) {
+				return !Rule.isValidation(rule) || this._executedRules.contains(rule) || rule instanceof AllowedValuesRule;
+			}, this);
+
+			if (rules.length > 0) {
+				this.executeRulesImpl(prop, rules);
+			}
+		},
 		executeRules: function ObjectMeta$executeRules(prop) {
+			this.executeRulesImpl(prop, prop.rules(true));
+		},
+		executeRulesImpl: function ObjectMeta$executeRulesImpl(prop, rules) {
 			this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
 			this._raisePropertyValidating(prop.get_name());
-
-			this.type.executeRules(this._obj, prop);
+			this.type.executeRules(this._obj, rules);
+		},
+		markRuleExecuted: function ObjectMeta$markRuleExecuted(rule) {
+			if (!this._executedRules.contains(rule)) {
+				this._executedRules.push(rule);
+			}
 		},
 		property: function ObjectMeta$property(propName, thisOnly) {
 			return this.type.property(propName, thisOnly);
@@ -4837,6 +4862,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 		_addCondition: function (condition) {
 			condition.get_targets().add(this);
 			this._conditions.push(condition);
+
+			// make sure the rule that drives the condition is marked as executed
+			condition._type._rules.forEach(this.markRuleExecuted.bind(this));
 
 			// update _propertyConditions
 			var props = condition.get_properties();
@@ -5056,6 +5084,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 		return inputs;
 	};
 
+	Rule.isValidation = function Rule$isValidation(rule) {
+		return rule.ctype && rule.ctype instanceof ExoWeb.Model.ConditionType.Error;
+	};
+
 	ExoWeb.Model.Rule = Rule;
 	Rule.registerClass("ExoWeb.Model.Rule");
 
@@ -5108,6 +5140,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 		if (!ctype) {
 			ctype = Rule.ensureError("required", this.prop);
 		}
+
+		this.ctype = ctype;
 
 		this.err = new Condition(ctype, this.prop.get_label() + " is required", [ this.prop ], this);
 
@@ -5222,6 +5256,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 		if (!ctype) {
 			ctype = Rule.ensureError("allowedValues", this.prop);
 		}
+
+		this.ctype = ctype;
 
 		this._allowedValuesPath = options.source;
 		this._inited = false;
@@ -5376,6 +5412,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		if (!ctype) {
 			ctype = Rule.ensureError($format("compare {0} {1}", [options.compareOperator, options.compareSource]), this.prop);
 		}
+
 		this.ctype = ctype;
 
 		this._comparePath = options.compareSource;
@@ -5507,6 +5544,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 		else if(!ctype && this._isWarning) {
 			ctype = Rule.ensureWarning("errorIfExpressions", this.prop);
 		}
+
+		this.ctype = ctype;
 
 		if(this._evaluationFunction === undefined || this._evaluationFunction === null || !(this._evaluationFunction instanceof Function)) {
 			ExoWeb.trace.logError("rule",
@@ -5675,6 +5714,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 			ctype = Rule.ensureError("requiredIfExpressions", this.prop);
 		}
 
+		this.ctype = ctype;
+
 		this._evaluationFunction = options.fn;
 		this._dependsOn = options.dependsOn;
 
@@ -5767,6 +5808,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 		if (!ctype) {
 			ctype = Rule.ensureError("stringLength", this.prop);
 		}
+
+		this.ctype = ctype;
 
 		this.min = options.min;
 		this.max = options.max;
@@ -9389,7 +9432,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		if (json.rule && json.rule.hasOwnProperty("type")) {
 			var ruleType = ExoWeb.Model.Rule[json.rule.type];
 			var rule = new ruleType(mtype, json.rule, conditionType);
-			conditionType.rules().push(rule);
+			conditionType._rules.push(rule);
 		}
 	}
 

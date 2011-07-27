@@ -14,6 +14,8 @@
 		ctype = Rule.ensureWarning("errorIfExpressions", this.prop);
 	}
 
+	this.ctype = ctype;
+
 	if(this._evaluationFunction === undefined || this._evaluationFunction === null || !(this._evaluationFunction instanceof Function)) {
 		ExoWeb.trace.logError("rule",
 				"Rule configuration error - {0}:  you must define an evaluation function.",

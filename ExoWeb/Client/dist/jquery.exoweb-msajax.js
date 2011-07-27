@@ -87,6 +87,8 @@
 
 			if (options.refresh)
 				info.target.meta.executeRules(info.property);
+			else if (options.ensure)
+				info.target.meta.ensureValidation(info.property);
 
 			return info.target.meta.conditions({ property: info.property });
 		});

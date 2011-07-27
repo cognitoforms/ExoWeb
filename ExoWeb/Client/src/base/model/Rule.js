@@ -71,5 +71,9 @@ Rule.inferInputs = function Rule$inferInputs(rootType, func) {
 	return inputs;
 };
 
+Rule.isValidation = function Rule$isValidation(rule) {
+	return rule.ctype && rule.ctype instanceof ExoWeb.Model.ConditionType.Error;
+};
+
 ExoWeb.Model.Rule = Rule;
 Rule.registerClass("ExoWeb.Model.Rule");

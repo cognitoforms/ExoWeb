@@ -6,6 +6,8 @@ function AllowedValuesRule(mtype, options, ctype, callback, thisPtr) {
 		ctype = Rule.ensureError("allowedValues", this.prop);
 	}
 
+	this.ctype = ctype;
+
 	this._allowedValuesPath = options.source;
 	this._inited = false;
 

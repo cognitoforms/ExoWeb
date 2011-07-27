@@ -5,6 +5,7 @@ function CompareRule(mtype, options, ctype, callback, thisPtr) {
 	if (!ctype) {
 		ctype = Rule.ensureError($format("compare {0} {1}", [options.compareOperator, options.compareSource]), this.prop);
 	}
+
 	this.ctype = ctype;
 
 	this._comparePath = options.compareSource;

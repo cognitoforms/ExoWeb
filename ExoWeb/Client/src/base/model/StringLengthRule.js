@@ -6,6 +6,8 @@ function StringLengthRule(mtype, options, ctype, callback, thisPtr) {
 		ctype = Rule.ensureError("stringLength", this.prop);
 	}
 
+	this.ctype = ctype;
+
 	this.min = options.min;
 	this.max = options.max;
 

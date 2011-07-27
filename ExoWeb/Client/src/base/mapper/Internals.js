@@ -371,7 +371,7 @@ function conditionTypeFromJson(model, mtype, code, json) {
 	if (json.rule && json.rule.hasOwnProperty("type")) {
 		var ruleType = ExoWeb.Model.Rule[json.rule.type];
 		var rule = new ruleType(mtype, json.rule, conditionType);
-		conditionType.rules().push(rule);
+		conditionType._rules.push(rule);
 	}
 }
 

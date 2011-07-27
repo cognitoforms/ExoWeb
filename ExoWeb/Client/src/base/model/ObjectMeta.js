@@ -2,6 +2,7 @@ function ObjectMeta(type, obj) {
 	this._obj = obj;
 	this.type = type;
 	this._conditions = [];
+	this._executedRules = [];
 	this._propertyConditions = {};
 }
 
@@ -9,11 +10,34 @@ ObjectMeta.mixin({
 	get_entity: function() {
 		return this._obj;
 	},
+	ensureValidation: function ObjectMeta$ensureValidation(prop) {
+		// TODO: if isNew can be reliably determined then it could shortcut this method.
+
+		var rules = prop.rules(true);
+
+		// Exclude non-validation rules, rules that have previously been executed or their
+		// conditions have been attached, and allowed values rules (since if the property has
+		// not been interacted with there is no value and the rule does not apply).
+		rules.purge(function(rule) {
+			return !Rule.isValidation(rule) || this._executedRules.contains(rule) || rule instanceof AllowedValuesRule;
+		}, this);
+
+		if (rules.length > 0) {
+			this.executeRulesImpl(prop, rules);
+		}
+	},
 	executeRules: function ObjectMeta$executeRules(prop) {
+		this.executeRulesImpl(prop, prop.rules(true));
+	},
+	executeRulesImpl: function ObjectMeta$executeRulesImpl(prop, rules) {
 		this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
 		this._raisePropertyValidating(prop.get_name());
-
-		this.type.executeRules(this._obj, prop);
+		this.type.executeRules(this._obj, rules);
+	},
+	markRuleExecuted: function ObjectMeta$markRuleExecuted(rule) {
+		if (!this._executedRules.contains(rule)) {
+			this._executedRules.push(rule);
+		}
 	},
 	property: function ObjectMeta$property(propName, thisOnly) {
 		return this.type.property(propName, thisOnly);
@@ -57,6 +81,9 @@ ObjectMeta.mixin({
 	_addCondition: function (condition) {
 		condition.get_targets().add(this);
 		this._conditions.push(condition);
+
+		// make sure the rule that drives the condition is marked as executed
+		condition._type._rules.forEach(this.markRuleExecuted.bind(this));
 
 		// update _propertyConditions
 		var props = condition.get_properties();
