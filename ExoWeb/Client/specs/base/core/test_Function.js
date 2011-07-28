@@ -5,7 +5,11 @@ var jasmineConsole = require("../../jasmine.console");
 var arrays = require("../../../src/base/core/Array");
 var functions = require("../../../src/base/core/Function");
 
-ExoWeb = { config: {} };
+ExoWeb = {};
+
+var config = require("../../../src/base/core/Config");
+ExoWeb.config = config.config;
+
 var signal = require("../../../src/base/core/Signal");
 Signal = ExoWeb.Signal;
 

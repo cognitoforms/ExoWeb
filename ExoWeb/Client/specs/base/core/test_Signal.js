@@ -9,7 +9,10 @@ ExoWeb = window.ExoWeb = {};
 var functions = require("../../../src/base/core/Function");
 var arrays = require("../../../src/base/core/Array");
 var signal = require("../../../src/base/core/Signal");
+var config = require("../../../src/base/core/Config");
 var trace = require("../../../src/base/core/Trace");
+
+ExoWeb.config = config.config;
 
 // References
 ///////////////////////////////////////

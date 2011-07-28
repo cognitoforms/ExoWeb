@@ -625,16 +625,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	// #endregion
 
-	// #region Trace
+	// #region Config
 	//////////////////////////////////////////////////
 
-	var errorHandler = function noOpErrorHandler(message, e) { };
-	function setErrorHandler(fn) {
-		errorHandler = fn;
-	}
-	ExoWeb.setErrorHandler = setErrorHandler;
-
-	ExoWeb.config = {
+	var config = {
 		// General debug setting that can encompose the purpose of other more focused settings.
 		debug: false,
 
@@ -652,6 +646,19 @@ Type.registerNamespace("ExoWeb.Mapper");
 		// Uniquely identifies this application if more than one app is hosted under the same domain name.
 		appInstanceId: "?"
 	};
+
+	ExoWeb.config = config;
+
+	// #endregion
+
+	// #region Trace
+	//////////////////////////////////////////////////
+
+	var errorHandler = function noOpErrorHandler(message, e) { };
+	function setErrorHandler(fn) {
+		errorHandler = fn;
+	}
+	ExoWeb.setErrorHandler = setErrorHandler;
 
 	ExoWeb.trace = {
 		// The following flags can be turned on to see debugging info.

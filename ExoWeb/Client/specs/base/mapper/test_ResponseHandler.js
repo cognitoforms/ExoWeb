@@ -6,19 +6,19 @@ var jasmineConsole = require("../../jasmine.console");
 jasmine.jasmine.debug = true;
 
 window = {};
-ExoWeb = {
-	config: {
-		signalDebug: true
-	}
-};
+ExoWeb = {};
 
 var functions = require("../../../src/base/core/Function");
 var functionChain = require("../../../src/base/core/FunctionChain");
 var arrays = require("../../../src/base/core/Array");
+var config = require("../../../src/base/core/Config");
 var trace = require("../../../src/base/core/Trace");
 var activity = require("../../../src/base/core/Activity");
 var signal = require("../../../src/base/core/Signal");
 var utilities = require("../../../src/base/core/Utilities");
+
+ExoWeb.config = config.config;
+ExoWeb.config.signalDebug = true;
 
 //ExoWeb.Signal = signal.Signal;
 //ExoWeb.registerActivity = activity.registerActivity;
@@ -46,6 +46,8 @@ var ResponseHandler = responseHandler.ResponseHandler;
 var describe = jasmine.describe;
 var it = jasmine.it;
 var expect = jasmine.expect;
+
+global.raiseExtensions = function() { };
 
 // Test Suites
 ///////////////////////////////////////
