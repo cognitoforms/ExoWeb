@@ -24,4 +24,3 @@ FormatError.mixin({
 });
 
 ExoWeb.Model.FormatError = FormatError;
-FormatError.registerClass("ExoWeb.Model.FormatError");

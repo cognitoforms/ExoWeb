@@ -370,25 +370,31 @@ ChangeLog.mixin({
 	applyValChange: function (change, serverSync, before, after) {
 		tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
 			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
-				if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0) {
+
+				// Cache the new value, becuase we access it many times and also it may be modified below
+				// to account for timezone differences, but we don't want to modify the actual change object.
+				var newValue = change.newValue;
+				
+				// Cache the property since it is not a simple property access.
+				var property = srcObj.meta.property(change.property);
+
+				if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
+
+					// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
+					newValue = Date.formats.$json.convertBack(newValue);
 
 					//now that we have the value set for the date.
 					//if the underlying property datatype is actually a date and not a datetime
 					//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-					if (srcObj.meta.property(change.property).get_format() === Date.formats.ShortDate) {
+					if (property.get_format() === Date.formats.ShortDate) {
 						var serverOffset = serverSync.get_ServerTimezoneOffset();
 						var localOffset = -(new Date().getTimezoneOffset() / 60);
-						change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
-						change.newValue = new Date(change.newValue);
-						change.newValue.addHours(serverOffset - localOffset);
-					}
-					else {
-						change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
-						change.newValue = new Date(change.newValue);
+						newValue.addHours(serverOffset - localOffset);
 					}
 				}
 
-				Sys.Observer.setValue(srcObj, change.property, change.newValue);
+				Sys.Observer.setValue(srcObj, change.property, newValue);
+
 			}, after), this);
 		}, this);
 	},

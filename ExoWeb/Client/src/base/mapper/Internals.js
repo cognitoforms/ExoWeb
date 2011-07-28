@@ -229,20 +229,16 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 							// Coerce strings into dates
 							if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
 
+								// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
+								propData = Date.formats.$json.convertBack(propData);
+
 								//now that we have the value set for the date.
 								//if the underlying property datatype is actually a date and not a datetime
 								//then we need to add the local timezone offset to make sure that the date is displayed acurately.
 								if (prop.get_format() === Date.formats.ShortDate) {
 									var serverOffset = model._server.get_ServerTimezoneOffset();
 									var localOffset = -(new Date().getTimezoneOffset() / 60);
-
-									propData = propData.replace(dateRegex, dateRegexReplace);
-									propData = new Date(propData);
 									propData.addHours(serverOffset - localOffset);
-								}
-								else {
-									propData = propData.replace(dateRegex, dateRegexReplace);
-									propData = new Date(propData);
 								}
 							}
 							prop.init(obj, propData);
@@ -666,31 +662,24 @@ function ruleFromJson(rulesJson, prop) {
 	}
 }
 
-var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
-var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
-
 // Recursively searches throught the specified object and restores dates serialized as strings
 function restoreDates(value) {
+	function tryRestoreDate(obj, key) {
+		var val = obj[key];
+		if (val && val.constructor === String && dateRegex.test(val)) {
+			obj[key] = Date.formats.$json.convertBack(val);
+		}
+	}
+
 	if (value instanceof Array) {
-		for (var i = 0; i < value.length; i++)
-		{
-			var element = value[i];
-			if (element && element.constructor == String && dateRegex.test(element)) {
-				dateRegex.lastIndex = 0;
-				element = element.replace(dateRegex, dateRegexReplace);
-				value[i] = new Date(element);
-			}
+		for (var i = 0; i < value.length; i++) {
+			tryRestoreDate(value, i);
 		}
 	}
 	else if (value instanceof Object) {
 		for (var field in value) {
 			if (value.hasOwnProperty(field)) {
-				var element = value[field];
-				if (element && element.constructor == String && dateRegex.test(element)) {
-					dateRegex.lastIndex = 0;
-					element = element.replace(dateRegex, dateRegexReplace);
-					value[field] = new Date(element);
-				}
+				tryRestoreDate(value, field);
 			}
 		}
 	}

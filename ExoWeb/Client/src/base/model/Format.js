@@ -83,4 +83,3 @@ Format.mixin({
 });
 
 ExoWeb.Model.Format = Format;
-Format.registerClass("ExoWeb.Model.Format");

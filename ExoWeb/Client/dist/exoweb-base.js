@@ -2752,7 +2752,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 	});
 
 	ExoWeb.Model.Format = Format;
-	Format.registerClass("ExoWeb.Model.Format");
 
 	// #endregion
 
@@ -6341,7 +6340,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 	});
 
 	ExoWeb.Model.FormatError = FormatError;
-	FormatError.registerClass("ExoWeb.Model.FormatError");
 
 	// #endregion
 
@@ -6553,6 +6551,22 @@ Type.registerNamespace("ExoWeb.Mapper");
 			val.setMilliseconds(0);
 
 			return val;
+		}
+	});
+
+	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
+	var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
+
+	// Format that converts from a date to a JSON string
+	// (using JSON.stringify) and then converts back to a date.
+	Date.formats.$json = new ExoWeb.Model.Format({
+		convert: function(obj) {
+			return JSON.stringify(obj);
+		},
+		convertBack: function(str) {
+			dateRegex.lastIndex = 0;
+			str = str.replace(dateRegex, dateRegexReplace);
+			return new Date(str);
 		}
 	});
 
@@ -8102,25 +8116,31 @@ Type.registerNamespace("ExoWeb.Mapper");
 		applyValChange: function (change, serverSync, before, after) {
 			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
-					if (srcObj.meta.property(change.property).get_jstype() == Date && change.newValue && change.newValue.constructor == String && change.newValue.length > 0) {
+
+					// Cache the new value, becuase we access it many times and also it may be modified below
+					// to account for timezone differences, but we don't want to modify the actual change object.
+					var newValue = change.newValue;
+				
+					// Cache the property since it is not a simple property access.
+					var property = srcObj.meta.property(change.property);
+
+					if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
+
+						// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
+						newValue = Date.formats.$json.convertBack(newValue);
 
 						//now that we have the value set for the date.
 						//if the underlying property datatype is actually a date and not a datetime
 						//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-						if (srcObj.meta.property(change.property).get_format() === Date.formats.ShortDate) {
+						if (property.get_format() === Date.formats.ShortDate) {
 							var serverOffset = serverSync.get_ServerTimezoneOffset();
 							var localOffset = -(new Date().getTimezoneOffset() / 60);
-							change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
-							change.newValue = new Date(change.newValue);
-							change.newValue.addHours(serverOffset - localOffset);
-						}
-						else {
-							change.newValue = change.newValue.replace(dateRegex, dateRegexReplace);
-							change.newValue = new Date(change.newValue);
+							newValue.addHours(serverOffset - localOffset);
 						}
 					}
 
-					Sys.Observer.setValue(srcObj, change.property, change.newValue);
+					Sys.Observer.setValue(srcObj, change.property, newValue);
+
 				}, after), this);
 			}, this);
 		},
@@ -9300,20 +9320,16 @@ Type.registerNamespace("ExoWeb.Mapper");
 								// Coerce strings into dates
 								if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
 
+									// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
+									propData = Date.formats.$json.convertBack(propData);
+
 									//now that we have the value set for the date.
 									//if the underlying property datatype is actually a date and not a datetime
 									//then we need to add the local timezone offset to make sure that the date is displayed acurately.
 									if (prop.get_format() === Date.formats.ShortDate) {
 										var serverOffset = model._server.get_ServerTimezoneOffset();
 										var localOffset = -(new Date().getTimezoneOffset() / 60);
-
-										propData = propData.replace(dateRegex, dateRegexReplace);
-										propData = new Date(propData);
 										propData.addHours(serverOffset - localOffset);
-									}
-									else {
-										propData = propData.replace(dateRegex, dateRegexReplace);
-										propData = new Date(propData);
 									}
 								}
 								prop.init(obj, propData);
@@ -9737,31 +9753,24 @@ Type.registerNamespace("ExoWeb.Mapper");
 		}
 	}
 
-	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
-	var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
-
 	// Recursively searches throught the specified object and restores dates serialized as strings
 	function restoreDates(value) {
+		function tryRestoreDate(obj, key) {
+			var val = obj[key];
+			if (val && val.constructor === String && dateRegex.test(val)) {
+				obj[key] = Date.formats.$json.convertBack(val);
+			}
+		}
+
 		if (value instanceof Array) {
-			for (var i = 0; i < value.length; i++)
-			{
-				var element = value[i];
-				if (element && element.constructor == String && dateRegex.test(element)) {
-					dateRegex.lastIndex = 0;
-					element = element.replace(dateRegex, dateRegexReplace);
-					value[i] = new Date(element);
-				}
+			for (var i = 0; i < value.length; i++) {
+				tryRestoreDate(value, i);
 			}
 		}
 		else if (value instanceof Object) {
 			for (var field in value) {
 				if (value.hasOwnProperty(field)) {
-					var element = value[field];
-					if (element && element.constructor == String && dateRegex.test(element)) {
-						dateRegex.lastIndex = 0;
-						element = element.replace(dateRegex, dateRegexReplace);
-						value[field] = new Date(element);
-					}
+					tryRestoreDate(value, field);
 				}
 			}
 		}

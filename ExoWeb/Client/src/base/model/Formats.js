@@ -206,6 +206,22 @@ Date.formats.Time = new Format({
 	}
 });
 
+var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
+var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
+
+// Format that converts from a date to a JSON string
+// (using JSON.stringify) and then converts back to a date.
+Date.formats.$json = new ExoWeb.Model.Format({
+	convert: function(obj) {
+		return JSON.stringify(obj);
+	},
+	convertBack: function(str) {
+		dateRegex.lastIndex = 0;
+		str = str.replace(dateRegex, dateRegexReplace);
+		return new Date(str);
+	}
+});
+
 Date.formats.$system = Date.formats.DateTime;
 Date.formats.$display = Date.formats.DateTime;
 
