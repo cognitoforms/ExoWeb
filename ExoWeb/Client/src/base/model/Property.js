@@ -198,7 +198,7 @@ Property.mixin({
 		var oldValue = (old === undefined || old === null) ? old : old.valueOf();
 		var newValue = (val === undefined || val === null) ? val : val.valueOf();
 
-		if (oldValue !== newValue) {
+		if (oldValue !== newValue && !(isNaN(oldValue) && isNaN(newValue))) {
 			var wasInited = this.isInited(obj);
 
 			obj[this._fieldName] = val;
