@@ -3977,7 +3977,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var oldValue = (old === undefined || old === null) ? old : old.valueOf();
 			var newValue = (val === undefined || val === null) ? val : val.valueOf();
 
-			if (oldValue !== newValue && !(isNaN(oldValue) && isNaN(newValue))) {
+			// Do nothing if the new value is the same as the old value. Account for NaN numbers, which are
+			// not equivalent (even to themselves). Although isNaN returns true for non-Number values, we won't
+			// get this far for Number properties unless the value is actually of type Number (a number or NaN).
+			if (oldValue !== newValue && !(this._jstype === Number && isNaN(oldValue) && isNaN(newValue))) {
 				var wasInited = this.isInited(obj);
 
 				obj[this._fieldName] = val;
