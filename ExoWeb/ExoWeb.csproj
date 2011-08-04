@@ -84,6 +84,7 @@
     <Compile Include="IJsonSerializable.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="JsonConverter.cs" />
+    <Compile Include="Diagnostics\PerformanceCounters.cs" />
     <Compile Include="ServerInformation.cs" />
     <Compile Include="ServiceError.cs" />
     <Compile Include="ServiceRequestEventArgs.cs" />

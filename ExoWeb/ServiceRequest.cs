@@ -59,7 +59,6 @@ namespace ExoWeb
 		/// Optional configuration information to customize the behavior of the request.
 		/// </summary>
 		public Dictionary<string, object> Config { get; private set; }
-
 		#endregion
 
 		#region Methods

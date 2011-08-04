@@ -18,6 +18,8 @@ namespace ExoWeb
 	/// </summary>
 	public class ServiceHandler : IHttpHandler
 	{
+		static object executingKey = new object();
+
 		#region IHttpHandler
 
 		/// <summary>
@@ -37,6 +39,8 @@ namespace ExoWeb
 		/// <param name="context"></param>
 		void IHttpHandler.ProcessRequest(HttpContext context)
 		{
+			IsExecuting = true;
+
 			string json = null;
 
 			try
@@ -116,6 +120,25 @@ namespace ExoWeb
 		#endregion
 
 		#region Methods
+		/// <summary>
+		/// True if the service handler is currently executing a request
+		/// </summary>
+		public static bool IsExecuting
+		{
+			get
+			{
+				HttpContext ctx = HttpContext.Current;
+				return ctx != null && ctx.Items[executingKey] != null;
+			}
+			private set
+			{
+				if(value)
+					HttpContext.Current.Items[executingKey] = true;
+				else
+					HttpContext.Current.Items[executingKey] = null;
+			}
+		}
+
 
 		/// <summary>
 		/// Utility method for getting the full stack trace for a list
