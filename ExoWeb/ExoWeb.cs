@@ -91,17 +91,17 @@ namespace ExoWeb
 		internal static void OnBeginRequest(ServiceRequest request)
 		{
 			if (BeginRequest != null)
-				BeginRequest(request, new ServiceRequestEventArgs(request));
+				BeginRequest(request, new ServiceRequestEventArgs(request, null));
 		}
 
 		/// <summary>
 		/// Raises the <see cref="EndRequest"/> event for the specified <see cref="ServiceRequest"/>.
 		/// </summary>
 		/// <param name="error"></param>
-		internal static void OnEndRequest(ServiceRequest request)
+		internal static void OnEndRequest(ServiceRequest request, ServiceResponse response)
 		{
 			if (EndRequest != null)
-				EndRequest(request, new ServiceRequestEventArgs(request));
+				EndRequest(request, new ServiceRequestEventArgs(request, response));
 		}
 
 		/// <summary>

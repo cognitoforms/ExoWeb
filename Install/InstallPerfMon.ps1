@@ -19,7 +19,7 @@ $ignore = $counters.Add( (New-Object $ccdType `
 
 $ignore = $counters.Add( (New-Object $ccdType `
 	"Local Requests",
-	"Total number  of locally-requested ExoWeb queries. Excludes queries sent by clients to the ExoWeb web service.",
+	"Total number of locally-requested ExoWeb queries. Excludes queries sent by clients to the ExoWeb web service.",
 	NumberOfItems32) );
 
 $ignore = $counters.Add( (New-Object $ccdType `
@@ -37,6 +37,57 @@ $ignore = $counters.Add( (New-Object $ccdType `
 	"Total change log entries sent to the ExoWeb web service during data queries, round trips and server events.",
 	NumberOfItems32) );
 
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Request Change Log Actions Out",
+	"Total change log entries sent from the ExoWeb web service during data queries, round trips and server events.  Includes both local and remote queries.",
+	NumberOfItems32) );
+
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Local Request Change Log Actions Out",
+	"Total change log entries sent from locally-requested ExoWeb queries.",
+	NumberOfItems32) );
+
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Remote Request Change Log Actions Out",
+	"Total change log entries sent from the ExoWeb web service during data queries, round trips and server events.",
+	NumberOfItems32) );
+	
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Request Instances Out",
+	"Total instances sent from the ExoWeb web service during data queries, round trips and server events.  Includes both local and remote queries.",
+	NumberOfItems32) );
+
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Local Request Instances Out",
+	"Total instances returned from locally-requested ExoWeb queries.",
+	NumberOfItems32) );
+
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Remote Request Instances Out",
+	"Total instances sent from the ExoWeb web service during data queries, round trips and server events.",
+	NumberOfItems32) );
+	
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Request Conditions Out",
+	"Total conditions sent from the ExoWeb web service during data queries, round trips and server events.  Includes both local and remote queries.",
+	NumberOfItems32) );
+
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Local Request Conditions Out",
+	"Total conditions returned from locally-requested ExoWeb queries.",
+	NumberOfItems32) );
+
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Remote Request Conditions Out",
+	"Total conditions sent from the ExoWeb web service during data queries, round trips and server events.",
+	NumberOfItems32) );
+	
+$ignore = $counters.Add( (New-Object $ccdType `
+	"Remote Request Types Out",
+	"Total types (metadata) sent from the ExoWeb web service.",
+	NumberOfItems32) );
+	
+	
 $counters | foreach { 
 	"  " + $category + " > " + $_.CounterName
 }

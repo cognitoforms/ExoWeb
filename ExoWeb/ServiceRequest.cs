@@ -132,7 +132,7 @@ namespace ExoWeb
 			}
 
 			// Raise the end request event
-			ExoWeb.OnEndRequest(this);
+			ExoWeb.OnEndRequest(this, response);
 
 			// Return the response
 			return response;
