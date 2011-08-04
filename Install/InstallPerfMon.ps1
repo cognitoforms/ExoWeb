@@ -23,7 +23,7 @@ $ignore = $counters.Add( (New-Object $ccdType `
 	NumberOfItems32) );
 
 $ignore = $counters.Add( (New-Object $ccdType `
-	"Local Requests",
+	"Remote Requests",
 	"Total number of times the ExoWeb web service has been invoked for data queries, round trips and server events. Type load requests and error log requests are not included in this number.",
 	NumberOfItems32) );
 
