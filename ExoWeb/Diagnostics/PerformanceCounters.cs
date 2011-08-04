@@ -51,7 +51,7 @@ namespace ExoWeb.Diagnostics
 
 		static void Init()
 		{
-			string instance = FullyQualifiedApplicationPath.Replace("//", "-");
+			string instance = FullyQualifiedApplicationPath.Replace("/", "-");
 
 			requests = new PerformanceCounter(category, "Requests", instance, false);
 			requests.RawValue = 0;
