@@ -653,6 +653,7 @@ namespace ExoWeb
 						// Condition Types
 						json.Set("conditionTypes", 
 							Rule.GetRegisteredRules(graphType)
+								.Where(rule => !(rule is PropertyRule) || IncludeInClientModel(((PropertyRule)rule).Property))
 								.SelectMany(rule => rule.ConditionTypes)
 								.ToDictionary(conditionType => conditionType.Code));
 					}, 
