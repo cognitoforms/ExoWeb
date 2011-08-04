@@ -323,13 +323,14 @@ namespace ExoWeb
 				if (reference != null)
 				{
 					// Get the cached set of instances to be serialized for the property type
-					GraphTypeInfo typeInfo = response.GetGraphTypeInfo(reference.PropertyType);
+					GraphTypeInfo propertyTypeInfo = response.GetGraphTypeInfo(reference.PropertyType);
 
 					// Static lists
 					if (reference.IsList)
 					{
 						foreach (GraphInstance instance in graphType.GetList(reference))
 						{
+							GraphTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetGraphTypeInfo(instance.Type);
 							if (!typeInfo.Instances.ContainsKey(instance.Id))
 								typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
 						}
@@ -339,6 +340,7 @@ namespace ExoWeb
 					else
 					{
 						GraphInstance instance = graphType.GetReference(reference);
+						GraphTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetGraphTypeInfo(instance.Type);
 						if (instance != null && !typeInfo.Instances.ContainsKey(instance.Id))
 							typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
 					}
