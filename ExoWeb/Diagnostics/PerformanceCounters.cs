@@ -62,6 +62,7 @@ namespace ExoWeb.Diagnostics
 					return;
 
 				ExoWeb.BeginRequest -= ExoWeb_BeginRequest;
+				ExoWeb.EndRequest -= ExoWeb_EndRequest;
 			}
 		}
 
