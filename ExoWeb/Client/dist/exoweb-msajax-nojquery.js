@@ -10128,6 +10128,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 				objectJson[jsonType][jsonId][propName] :
 				objectJson[jsonType][jsonId][propIndex];
 
+			if (!(listJson instanceof Array)) {
+				ExoWeb.trace.throwAndLog(["list", "lazyLoad"],
+					"Attempting to load list {0} of instance {1}:{2}, but the response JSON is not an array: {3}.",
+					[propName, ownerType, ownerId, listJson]);
+			}
+
 			// populate the list with objects
 			for (var i = 0; i < listJson.length; i++) {
 				var ref = listJson[i];
