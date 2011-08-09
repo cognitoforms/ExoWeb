@@ -6,6 +6,8 @@ function RequiredIfRule(mtype, options, ctype, callback, thisPtr) {
 		ctype = Rule.ensureError("requiredIf", this.prop);
 	}
 
+	this.ctype = ctype;
+
 	this._comparePath = options.compareSource;
 	this._compareOp = options.compareOperator;
 	this._compareValue = options.compareValue;
