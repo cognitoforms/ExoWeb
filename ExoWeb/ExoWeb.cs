@@ -529,24 +529,6 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Condenses a set of instance paths into a single query path.
-		/// </summary>
-		/// <param name="paths"></param>
-		/// <returns></returns>
-		public static string CondensePaths(params string[] paths)
-		{
-			ServiceRequest.Query.Step step = new ServiceRequest.Query.Step { Property = "this" };
-			foreach (string path in paths)
-			{
-				if (!path.StartsWith("this"))
-					throw new ArgumentException("Only instance paths can be condensed.");
-
-				ServiceRequest.ProcessPath(path, step, null);
-			}
-			return step.ToString();
-		}
-
-		/// <summary>
 		/// Indicates whether the specified type can be serialized.
 		/// </summary>
 		/// <param name="type"></param>
