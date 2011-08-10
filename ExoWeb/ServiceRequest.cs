@@ -89,8 +89,13 @@ namespace ExoWeb
 
 			// Load root instances
 			if (Queries != null)
+			{
 				foreach (var query in Queries)
+				{
+					query.Prepare(response);
 					query.LoadRoots(response.Changes);
+				}
+			}
 
 			// Preload the scope of work before applying changes
 			PerformQueries(response, false);
@@ -143,23 +148,19 @@ namespace ExoWeb
 			// Load data based on the specified queries
 			if (Queries != null)
 			{
-				// Build a set of unique instance paths to match during recursion
-				foreach (Query query in Queries)
+				// Record changes while processing queries
+				using (var changes = response.Changes != null ? response.Changes.Append() : GraphContext.Current.BeginTransaction())
 				{
-					if (query.Include != null)
+					// Recursively build up the list of instances to serialize
+					foreach (Query query in Queries)
 					{
-						query.RootStep = new Query.Step { Property = "this" };
-						foreach (string path in query.Include)
-							ProcessPath(path, query.RootStep, response);
+						if ((forLoad && query.ForLoad) || query.InScope)
+							foreach (GraphInstance root in query.Roots)
+								ProcessInstance(root, query.Path != null ? query.Path.FirstSteps : null, query.ForLoad, forLoad && query.InScope, response);
 					}
-				}
 
-				// Recursively build up the list of instances to serialize
-				foreach (Query query in Queries)
-				{
-					if ((forLoad && query.ForLoad) || (!forLoad && query.InScope))
-						foreach (GraphInstance root in query.Roots)
-							ProcessInstance(root, query.RootStep.Children, forLoad, response);
+					// Commit the new changes, if any
+					changes.Commit();
 				}
 			}
 		}
@@ -233,129 +234,18 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Parses query paths into tokens for processing
-		/// </summary>
-		static Regex pathParser = new Regex(@"^this([a-zA-Z0-9_]+|[{}.,]|\s|(\<[a-zA-Z0-9_.]+\>))*$", RegexOptions.Compiled);
-
-		/// <summary>
-		/// Processes static and instance property paths in order to determine the information to serialize.
-		/// </summary>
-		/// <param name="path"></param>
-		internal static void ProcessPath(string path, Query.Step step, ServiceResponse response)
-		{
-			// Instance Path
-			if (path.StartsWith("this"))
-			{
-				// Parse the instance path
-				var match = pathParser.Match(path);
-				if (match == null)
-					throw new ArgumentException("The specified path, '" + path + "', is not valid.");
-
-				// Process each path token
-				Stack<Query.Step> stack = new Stack<Query.Step>();
-				foreach (var token in match.Groups[1].Captures.Cast<Capture>().Select(c => c.Value))
-				{
-					switch (token[0])
-					{
-						case '{' :
-							stack.Push(step);
-							break;
-						case '}' :
-							step = stack.Pop();
-							break;
-						case ',':
-							step = stack.Peek();
-							break;
-						case '.':
-							break;
-						case '<':
-							step.Filter = token;
-							break;
-						default:
-							string property = token.Trim();
-							if (property == "")
-								continue;
-							if (step.Children == null)
-								step.Children = new List<Query.Step>();
-							var nextStep = step.Children.Where(s => s.Property == token).FirstOrDefault();
-							if (nextStep == null)
-							{
-								nextStep = new Query.Step { Property = token };
-								step.Children.Add(nextStep);
-							}
-							step = nextStep;
-							break;
-					}
-				}
-
-				// Throw an exception if there are unmatched property group delimiters
-				if (stack.Count > 0)
-					throw new ArgumentException("Unclosed '{' in path: " + path, "path");
-			}
-
-			// Static Path
-			else
-			{
-				if (path.IndexOf('.') < 0)
-					throw new ArgumentException("'" + path + "' is not a valid static property path.");
-
-				// Split the static property reference
-				int propertyIndex = path.LastIndexOf('.');
-				string type = path.Substring(0, propertyIndex);
-				string property = path.Substring(propertyIndex + 1);
-
-				// Get the graph type
-				GraphType graphType = GraphContext.Current.GetGraphType(type);
-				if (graphType == null)
-					throw new ArgumentException("'" + type + "' is not a valid graph type for the static property path of '" + path + "'.");
-
-				// Get the graph property
-				GraphProperty graphProperty = graphType.Properties[property];
-				if (graphProperty == null || !graphProperty.IsStatic)
-					throw new ArgumentException("'" + property + "' is not a valid property for the static property path of '" + path + "'.");
-
-				// Add the property to the set of static properties to serialize
-				response.GetGraphTypeInfo(graphType).StaticProperties.Add(graphProperty);
-
-				// Register instances for static reference properties to be serialized
-				GraphReferenceProperty reference = graphProperty as GraphReferenceProperty;
-				if (reference != null)
-				{
-					// Get the cached set of instances to be serialized for the property type
-					GraphTypeInfo propertyTypeInfo = response.GetGraphTypeInfo(reference.PropertyType);
-
-					// Static lists
-					if (reference.IsList)
-					{
-						foreach (GraphInstance instance in graphType.GetList(reference))
-						{
-							GraphTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetGraphTypeInfo(instance.Type);
-							if (!typeInfo.Instances.ContainsKey(instance.Id))
-								typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
-						}
-					}
-
-					// Static references
-					else
-					{
-						GraphInstance instance = graphType.GetReference(reference);
-						GraphTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetGraphTypeInfo(instance.Type);
-						if (instance != null && !typeInfo.Instances.ContainsKey(instance.Id))
-							typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
-					}
-				}
-			}
-		}
-
-		/// <summary>
 		/// Recursively builds up a list of instances to serialize.
 		/// </summary>
 		/// <param name="instance"></param>
 		/// <param name="instances"></param>
 		/// <param name="paths"></param>
 		/// <param name="path"></param>
-		static void ProcessInstance(GraphInstance instance, List<Query.Step> steps, bool includeInResponse, ServiceResponse response)
+		static void ProcessInstance(GraphInstance instance, GraphStepList steps, bool includeInResponse, bool runPropertyGetRules, ServiceResponse response)
 		{
+			// Run all property get rules on the instance
+			if (runPropertyGetRules)
+				instance.RunPropertyGetRules();
+
 			GraphInstanceInfo instanceInfo = null;
 
 			// Track the instance if the query represents a load request
@@ -376,40 +266,13 @@ namespace ExoWeb
 			// Process query steps for the current instance
 			foreach (var step in steps)
 			{
-				// Get the property for the current step
-				var property = instance.Type.Properties[step.Property];
+				// Recursively process child instances
+				foreach (var childInstance in step.GetInstances(instance))
+					ProcessInstance(childInstance, step.NextSteps, includeInResponse, runPropertyGetRules, response);
 
-				// Ignore the step if the property was not found
-				if (property == null)
-					continue;
-
-				// Throw an exception if a static property is referenced
-				if (property.IsStatic)
-					throw new ArgumentException("Static properties cannot be referenced by instance property paths.  Specify 'TypeName.PropertyName' as the path to load static properties for a type.");
-				
-				// Process all items in a child list and register the list to be serialized
-				if (property.IsList)
-				{
-					// Recursively process instances for reference lists
-					if (property is GraphReferenceProperty)
-					{
-						// Process each child instance
-						foreach (GraphInstance childInstance in instance.GetList((GraphReferenceProperty)property))
-							ProcessInstance(childInstance, step.Children, includeInResponse, response);
-					}
-
-					// Mark the list to be included during serialization
-					if (includeInResponse)
-						instanceInfo.IncludeList(property);
-				}
-
-				// Process child references
-				else if (property is GraphReferenceProperty)
-				{
-					GraphInstance childInstance = instance.GetReference((GraphReferenceProperty)property);
-					if (childInstance != null)
-						ProcessInstance(childInstance, step.Children, includeInResponse, response);
-				}
+				// Mark value lists to be included during serialization
+				if (step.Property.IsList && includeInResponse)
+					instanceInfo.IncludeList(step.Property);
 			}
 		}
 
@@ -663,7 +526,93 @@ namespace ExoWeb
 			/// </summary>
 			internal GraphInstance[] Roots { get; set; }	
 
-			internal Step RootStep { get; set; }
+			internal GraphPath Path { get; set; }
+
+			/// <summary>
+			/// Prepares the query by parsing instance and static paths to determine
+			/// what information is being requested by the query.
+			/// </summary>
+			/// <param name="response"></param>
+			internal void Prepare(ServiceResponse response)
+			{
+				if (Include != null && Include.Length > 0)
+				{
+					string paths = "{";
+					foreach (var p in Include)
+					{
+						var path = p.Replace(" ", "");
+						if (path.StartsWith("this.") || path.StartsWith("this{"))
+						{
+							if (path.StartsWith("this{"))
+								path = path.Substring(5, path.Length - 6);
+							else
+								path = path.Substring(5);
+							paths += path + ",";
+						}
+						else
+							PrepareStaticPath(path, response);
+					}
+
+					if (paths.Length > 1)
+						Path = From.GetPath(paths.Substring(0, paths.Length - 1) + "}");
+				}
+			}
+
+			/// <summary>
+			/// Processes static property paths in order to determine the information to serialize.
+			/// </summary>
+			/// <param name="path"></param>
+			internal static void PrepareStaticPath(string path, ServiceResponse response)
+			{
+				if (path.IndexOf('.') < 0)
+					throw new ArgumentException("'" + path + "' is not a valid static property path.");
+
+				// Split the static property reference
+				int propertyIndex = path.LastIndexOf('.');
+				string type = path.Substring(0, propertyIndex);
+				string property = path.Substring(propertyIndex + 1);
+
+				// Get the graph type
+				GraphType graphType = GraphContext.Current.GetGraphType(type);
+				if (graphType == null)
+					throw new ArgumentException("'" + type + "' is not a valid graph type for the static property path of '" + path + "'.");
+
+				// Get the graph property
+				GraphProperty graphProperty = graphType.Properties[property];
+				if (graphProperty == null || !graphProperty.IsStatic)
+					throw new ArgumentException("'" + property + "' is not a valid property for the static property path of '" + path + "'.");
+
+				// Add the property to the set of static properties to serialize
+				response.GetGraphTypeInfo(graphType).StaticProperties.Add(graphProperty);
+
+				// Register instances for static reference properties to be serialized
+				GraphReferenceProperty reference = graphProperty as GraphReferenceProperty;
+				if (reference != null)
+				{
+					// Get the cached set of instances to be serialized for the property type
+					GraphTypeInfo propertyTypeInfo = response.GetGraphTypeInfo(reference.PropertyType);
+
+					// Static lists
+					if (reference.IsList)
+					{
+						foreach (GraphInstance instance in graphType.GetList(reference))
+						{
+							GraphTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetGraphTypeInfo(instance.Type);
+							if (!typeInfo.Instances.ContainsKey(instance.Id))
+								typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
+						}
+					}
+
+					// Static references
+					else
+					{
+						GraphInstance instance = graphType.GetReference(reference);
+						GraphTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetGraphTypeInfo(instance.Type);
+						if (instance != null && !typeInfo.Instances.ContainsKey(instance.Id))
+							typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
+					}
+				}
+			}
 
 			internal void LoadRoots(GraphTransaction transaction)
 			{
@@ -731,33 +680,6 @@ namespace ExoWeb
 				ForLoad = json.IsNull("forLoad") || json.Get<bool>("forLoad");
 
 				return this;
-			}
-
-			#endregion
-
-			#region Step
-
-			internal class Step
-			{
-				public string Property { get; set; }
-
-				public string Filter { get; set; }
-
-				public List<Step> Children { get; set; }
-
-				/// <summary>
-				/// Gets the string representation of the current step and all child steps
-				/// </summary>
-				/// <returns></returns>
-				public override string ToString()
-				{
-					if (Children == null || Children.Count == 0)
-						return Property + Filter;
-					else if (Children.Count == 1)
-						return Property + Filter + "." + Children[0];
-					else
-						return Property + Filter + "{" + Children.Aggregate("", (p, s) => p.Length > 0 ? p + "," + s : s.ToString()) + "}";
-				}
 			}
 
 			#endregion
