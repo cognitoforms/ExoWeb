@@ -3413,9 +3413,10 @@ Type.registerNamespace("ExoWeb.Mapper");
 						});
 					}
 				}
-				// Presumably the reason for this is that property calculation could be based on init of
-				// this property, though it seems unlikely that this would solve more problems that it causes.
-				else if (prop.get_origin() === "server") {
+				else {
+					// Previously only server-origin properties were inited in an attempt to allow
+					// calculations of client-origin properties to run when accessed. However, since
+					// rules attempt to run when registered this is no longer necessary.
 					this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
 				}
 			}
