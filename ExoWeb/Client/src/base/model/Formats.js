@@ -160,13 +160,18 @@ Date.formats.ShortDate = new Format({
 		return val.format("M/d/yyyy");
 	},
 	convertBack: function(str) {
-		var val = Date.parseInvariant(str);
+		var val = Date._parseExact(str, Sys.CultureInfo.InvariantCulture.dateTimeFormat.ShortDatePattern, Sys.CultureInfo.InvariantCulture);
 
 		if (val !== null) {
 			return val;
 		}
 
-		throw new Error("invalid date");
+		if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str.trim())) {
+			throw new FormatError("{value} is not a valid date", str);
+		}
+		else {
+			throw new Error("invalid date");
+		}
 	}
 });
 

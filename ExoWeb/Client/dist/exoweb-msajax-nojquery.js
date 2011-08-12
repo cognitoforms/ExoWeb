@@ -2746,10 +2746,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return this._convertBack(val);
 			}
 			catch (err) {
-				return new FormatError(this._description ?
-							"{value} must be formatted as " + this._description :
-							"{value} is not properly formatted",
-							val);
+				if (err instanceof FormatError) {
+					return err;
+				}
+				else {
+					return new FormatError(this._description ?
+								"{value} must be formatted as " + this._description :
+								"{value} is not properly formatted",
+								val);
+				}
 			}
 		}
 	});
@@ -6517,13 +6522,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return val.format("M/d/yyyy");
 		},
 		convertBack: function(str) {
-			var val = Date.parseInvariant(str);
+			var val = Date._parseExact(str, Sys.CultureInfo.InvariantCulture.dateTimeFormat.ShortDatePattern, Sys.CultureInfo.InvariantCulture);
 
 			if (val !== null) {
 				return val;
 			}
 
-			throw new Error("invalid date");
+			if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str.trim())) {
+				throw new FormatError("{value} is not a valid date", str);
+			}
+			else {
+				throw new Error("invalid date");
+			}
 		}
 	});
 

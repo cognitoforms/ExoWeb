@@ -74,10 +74,15 @@ Format.mixin({
 			return this._convertBack(val);
 		}
 		catch (err) {
-			return new FormatError(this._description ?
-						"{value} must be formatted as " + this._description :
-						"{value} is not properly formatted",
-						val);
+			if (err instanceof FormatError) {
+				return err;
+			}
+			else {
+				return new FormatError(this._description ?
+							"{value} must be formatted as " + this._description :
+							"{value} is not properly formatted",
+							val);
+			}
 		}
 	}
 });
