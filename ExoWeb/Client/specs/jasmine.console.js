@@ -45,26 +45,31 @@ Reporter.prototype.reportSuiteResults = function(suite) {
 		(results.passed() ? 'passed' : 'failed') : "skipped or empty";
 
 	if (status === "skipped or empty" && this.isFirstEncounter(suite)) {
-		console.log("\r\n" + suite.getFullName());
+		console.log("\r\n" + suite.description);
 		console.log("=============================================");
 	}
-	else {
+	else if (!suite.parentSuite) {
 		console.log("---------------------------------------------");
 	}
 
-	console.log("suite " + status);
-	console.log("=============================================\r\n");
+	if (!suite.parentSuite) {
+		console.log("suite " + status);
+		console.log("=============================================\r\n");
+	}
 };
 
 Reporter.prototype.reportSpecStarting = function(spec) {
-	if (this.isFirstEncounter(spec.suite)) {
-		console.log("\r\n" + spec.suite.getFullName());
+	if (this.isFirstEncounter(spec.suite) && (!spec.suite.parentSuite || this.isFirstEncounter(spec.suite.parentSuite))) {
+		console.log("\r\n" + (spec.suite.parentSuite ? spec.suite.parentSuite.description : spec.suite.description));
 		console.log("=============================================");
 	}
 	else {
 		console.log("---------------------------------------------");
 	}
 
+	if (spec.suite.parentSuite) {
+		this.suites.push(spec.suite.parentSuite);
+	}
 	this.suites.push(spec.suite);
 	console.log("Running \"" + spec.suite.description + " " + spec.description + "\"...");
 };

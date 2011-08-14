@@ -33,6 +33,7 @@ end
 # define the files in each module
 @src_files = {
 	"base/core" => %w{
+		TypeChecking
 		Function
 		Array
 		String

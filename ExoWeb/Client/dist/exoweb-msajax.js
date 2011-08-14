@@ -7,6 +7,80 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 (function() {
 
+	// #region TypeChecking
+	//////////////////////////////////////////////////
+
+	var typeExpr = /\s([a-z|A-Z]+)/;
+
+	function type(obj) {
+		if (obj === undefined) {
+			return "undefined";
+		}
+		else if (obj === null) {
+			return "null";
+		}
+		else {
+			return Object.prototype.toString.call(obj).match(typeExpr)[1].toLowerCase();
+		}
+	}
+	ExoWeb.type = type;
+
+	function isNullOrUndefined(obj) {
+		return obj === null || obj === undefined;
+	}
+	ExoWeb.isNullOrUndefined = isNullOrUndefined;
+
+	function isArray(obj) {
+		return type(obj) === "array";
+	}
+	ExoWeb.isArray = isArray;
+
+	function isString(obj) {
+		return type(obj) === "string";
+	}
+	ExoWeb.isString = isString;
+
+	function isNumber(obj) {
+		return type(obj) === "number";
+	}
+	ExoWeb.isNumber = isNumber;
+
+	var integerExpr = /^-?[0-9]+$/;
+
+	function isInteger(obj) {
+		return isNumber(obj) && !isNaN(obj) && integerExpr.test(obj.toString());
+	}
+	ExoWeb.isInteger = isInteger;
+
+	function isNatural(obj) {
+		return isInteger(obj) && obj > 0;
+	}
+	ExoWeb.isNatural = isNatural;
+
+	function isWhole(obj) {
+		return isInteger(obj) && obj >= 0;
+	}
+	ExoWeb.isWhole = isWhole;
+
+	var decimalExpr = /^-?[0-9]+\.[0-9]+$/;
+
+	function isDecimal(obj) {
+		return isNumber(obj) && !isNaN(obj) && decimalExpr.test(obj.toString());
+	}
+	ExoWeb.isDecimal = isDecimal;
+
+	function isFunction(obj) {
+		return type(obj) === "function";
+	}
+	ExoWeb.isFunction = isFunction;
+
+	function isObject(obj) {
+		return type(obj) === "object" || (obj && obj instanceof Object);
+	}
+	ExoWeb.isObject = isObject;
+
+	// #endregion
+
 	// #region Function
 	//////////////////////////////////////////////////
 
@@ -2097,13 +2171,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	ExoWeb.makeHumanReadable = makeHumanReadable;
-
-	function isNullOrUndefined(obj) {
-		return obj === null || obj === undefined;
-	}
-	ExoWeb.isNullOrUndefined = isNullOrUndefined;
-
-	ExoWeb.isNullOrUndefined = isNullOrUndefined;
 
 	// #endregion
 

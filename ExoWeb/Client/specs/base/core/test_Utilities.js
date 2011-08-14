@@ -45,17 +45,7 @@ describe("$format", function() {
 	});
 });
 
-describe("isNullOrUndefined", function() {
-	it("returns true if the given object is either null or undefined", function() {
-		expect(isNullOrUndefined(null)).toEqual(true);
-		expect(isNullOrUndefined(undefined)).toEqual(true);
-		expect(isNullOrUndefined("")).toEqual(false);
-		expect(isNullOrUndefined(0)).toEqual(false);
-	});
-});
-
 // Run Tests
 ///////////////////////////////////////
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());
 jasmine.jasmine.getEnv().execute();
-

@@ -110,9 +110,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Client\src\extensions\profiling\" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="Client\dist\exoweb-base.js" />
     <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
     <Content Include="Client\dist\exoweb-msajax.js" />
@@ -128,7 +125,6 @@
     <Content Include="Client\ref\jshint\jshint.js" />
     <Content Include="Client\ref\jsmin\jsmin.exe" />
     <Content Include="Client\runjshint.js" />
-    <Content Include="Client\specs\base\core\test_Hijack.js" />
     <Content Include="Client\specs\base\core\test_Array.js" />
     <Content Include="Client\specs\base\core\test_Date.js" />
     <Content Include="Client\specs\base\core\test_FunctionChain.js" />
@@ -139,6 +135,7 @@
     <Content Include="Client\specs\base\core\test_String.js" />
     <Content Include="Client\specs\base\core\test_Transform.js" />
     <Content Include="Client\specs\base\core\test_Translator.js" />
+    <Content Include="Client\specs\base\core\test_TypeChecking.js" />
     <Content Include="Client\specs\base\core\test_Utilities.js" />
     <Content Include="Client\specs\base\mapper\test_ChangeSet.js" />
     <Content Include="Client\specs\base\mapper\test_ChangeLog.js" />
@@ -168,6 +165,7 @@
     <Content Include="Client\src\base\core\Trace.js" />
     <Content Include="Client\src\base\core\Transform.js" />
     <Content Include="Client\src\base\core\Translator.js" />
+    <Content Include="Client\src\base\core\TypeChecking.js" />
     <Content Include="Client\src\base\core\Utilities.js" />
     <Content Include="Client\src\base\mapper\ChangeLog.js" />
     <Content Include="Client\src\base\mapper\ChangeSet.js" />
@@ -237,7 +235,6 @@
     <Content Include="Client\src\extensions\jquery-msajax\MsAjax.js" />
     <Content Include="Client\src\extensions\jquery-msajax\Selectors.js" />
     <Content Include="Client\src\extensions\jquery-msajax\Validation.js" />
-    <Content Include="Client\src\base\core\Hijack.js" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Client\PreRake.bat" />
