@@ -33,11 +33,12 @@ end
 # define the files in each module
 @src_files = {
 	"base/core" => %w{
+		Config
 		TypeChecking
+		Random
 		Function
 		Array
 		String
-		Config
 		Trace
 		Cache
 		Activity

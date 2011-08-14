@@ -1,4 +1,4 @@
-﻿function RequiredIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
+function RequiredIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
 	this.prop = mtype.property(options.property, true);
 	var properties = [ this.prop ];
 
@@ -29,7 +29,9 @@
 	this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
 
 	// Function to register this rule when its containing type is loaded.
-	var register = (function RequiredIfExpressionsRule$register(ctype) { this.load(this, ctype, mtype, callback, thisPtr); }).bind(this);
+	var register = (function RequiredIfExpressionsRule$register(ctype) {
+		this.load(this, ctype, mtype, callback, thisPtr);
+	}).bind(this);
 
 	// If the type is already loaded, then register immediately.
 	if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -48,22 +50,23 @@ RequiredIfExpressionsRule.prototype = {
 
 			var targetInput = new RuleInput(rule.prop);
 			targetInput.set_isTarget(true);
-			if (rule.prop.get_origin() === "client")
+			if (rule.prop.get_origin() === "client") {
 				targetInput.set_dependsOnInit(true);
+			}
 			inputs.push(targetInput);
 
-			for(var i = 0; i < rule._dependsOn.length; i++) {
-				Model.property(rule._dependsOn[i], rule.prop.get_containingType(), true, function(chain) {
+			rule._dependsOn.forEach(function(prop, i) {
+				Model.property(prop, rule.prop.get_containingType(), true, function(chain) {
 					rule._dependsOn[i] = chain;
 
-					var watchPathInput = new RuleInput(rule._dependsOn[i]);
+					var watchPathInput = new RuleInput(chain);
 					inputs.push(watchPathInput);
 
 					Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 
 					rule._inited = true;
 				});
-			}
+			});
 		}
 		else {
 			$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {

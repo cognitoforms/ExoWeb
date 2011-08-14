@@ -31,8 +31,9 @@ ChangeSet.mixin({
 	},
 	checkpoint: function(title, code) {
 		// Generate a random code for the checkpoint if one is not given.
-		if (!code)
-			code = [].fill(null, 10).map(function() { return String.fromCharCode(Math.floor(Math.random() * 26) + 97); }).join("");
+		if (!code) {
+			code = randomText(10);
+		}
 
 		// Add the checkpoint and return the code.
 		this.add({ type: "Checkpoint", title: title || "untitled", code: code });

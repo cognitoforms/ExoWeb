@@ -55,11 +55,6 @@ function getLastTarget(target, propertyPath) {
 ExoWeb.getLastTarget = getLastTarget;
 window.$lastTarget = getLastTarget;
 
-function isObject(obj) {
-	//
-	return obj !== null && obj !== undefined && (obj instanceof Object || typeof(obj) === "object" || Object.prototype.toString.call(obj) === "[object Object]");
-}
-
 // If a getter method matching the given property name is found on the target it is invoked and returns the 
 // value, unless the the value is undefined, in which case null is returned instead.  This is done so that 
 // calling code can interpret a return value of undefined to mean that the property it requested does not exist.
@@ -104,13 +99,13 @@ function addCtorProvider(type, provider) {
 	else if (ExoWeb.isType(type, Function)) {
 		key = parseFunctionName(type);
 	}
+	/* TODO
 	else {
-		// TODO
-	}
+	}*/
 
+	/* TODO
 	if (!ExoWeb.isType(provider, Function)) {
-		// TODO
-	}
+	}*/
 
 	if (key !== undefined && key !== null) {
 		ctorProviders[key] = provider;

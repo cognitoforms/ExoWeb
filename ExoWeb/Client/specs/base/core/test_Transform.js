@@ -9,9 +9,12 @@ jasmine.jasmine.debug = true;
 global.window = global;
 global.ExoWeb = {};
 
+var typeChecking = require("../../../src/base/core/TypeChecking");
+var isObject = global.isObject = typeChecking.isObject;
+
 var functions = require("../../../src/base/core/Function");
 var utilities = require("../../../src/base/core/Utilities");
-evalPath = ExoWeb.evalPath;
+global.evalPath = ExoWeb.evalPath;
 var transform = require("../../../src/base/core/Transform");
 
 // References

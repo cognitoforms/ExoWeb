@@ -131,6 +131,7 @@
     <Content Include="Client\specs\base\core\test_Batch.js" />
     <Content Include="Client\specs\base\core\test_Function.js" />
     <Content Include="Client\specs\base\core\test_MessageQueue.js" />
+    <Content Include="Client\specs\base\core\test_Random.js" />
     <Content Include="Client\specs\base\core\test_Signal.js" />
     <Content Include="Client\specs\base\core\test_String.js" />
     <Content Include="Client\specs\base\core\test_Transform.js" />
@@ -159,6 +160,7 @@
     <Content Include="Client\src\base\core\MsAjax.js" />
     <Content Include="Client\src\base\core\Object.js" />
     <Content Include="Client\src\base\core\PropertyObserver.js" />
+    <Content Include="Client\src\base\core\Random.js" />
     <Content Include="Client\src\base\core\Signal.js" />
     <Content Include="Client\src\base\core\String.js" />
     <Content Include="Client\src\base\core\TimeSpan.js" />

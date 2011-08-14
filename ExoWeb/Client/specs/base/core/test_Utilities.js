@@ -12,6 +12,9 @@ var utilities = require("../../../src/base/core/Utilities");
 var $format = global.window.$format;
 var isNullOrUndefined = utilities.isNullOrUndefined;
 
+var typeChecking = require("../../../src/base/core/TypeChecking");
+var isObject = global.isObject = typeChecking.isObject;
+
 // References
 ///////////////////////////////////////
 var describe = jasmine.describe;

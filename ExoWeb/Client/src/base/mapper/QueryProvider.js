@@ -1,4 +1,4 @@
-﻿var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
+var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
 	throw "Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);";
 };
 
@@ -6,7 +6,7 @@ function queryProvider(queries, changes, onSuccess, onFailure, thisPtr, thisPtr)
 	var scopeQueries;
 
 	// ensure correct value of "scopeQueries" argument
-	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+	if (isFunction(onSuccess)) {
 		// scopeQueries is included in call, so shift arguments
 		scopeQueries = onSuccess;
 		onSuccess = onFailure;
@@ -18,7 +18,7 @@ function queryProvider(queries, changes, onSuccess, onFailure, thisPtr, thisPtr)
 		scopeQueries = context.server._scopeQueries;
 	}
 
-	if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+	if (isFunction(onFailure)) {
 		thisPtr = onFailure;
 		onFailure = null;
 	}
@@ -27,11 +27,15 @@ function queryProvider(queries, changes, onSuccess, onFailure, thisPtr, thisPtr)
 	queryProviderFn.call(this, queries, changes, scopeQueries,
 		function queryProviderSuccess() {
 			ExoWeb.Batch.resume(batch);
-			if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+			if (onSuccess) {
+				onSuccess.apply(thisPtr || this, arguments);
+			}
 		},
 		function queryProviderFailure() {
 			ExoWeb.Batch.resume(batch);
-			if (onFailure) onFailure.apply(thisPtr || this, arguments);
+			if (onFailure) {
+				onFailure.apply(thisPtr || this, arguments);
+			}
 		});
 }
 

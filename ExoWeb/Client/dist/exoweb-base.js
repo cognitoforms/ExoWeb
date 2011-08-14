@@ -4,6 +4,32 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 (function() {
 
+	// #region Config
+	//////////////////////////////////////////////////
+
+	var config = {
+		// General debug setting that can encompose the purpose of other more focused settings.
+		debug: false,
+
+		// Indicates that signal should use window.setTimeout when invoking callbacks. This is
+		// done in order to get around problems with browser complaining about long-running script.
+		signalTimeout: false,
+
+		// "Debugging" signal means that signal will not attempt to handle errors that occur
+		// as a result of invoking callbacks, which can aid in troubleshooting errors.
+		signalDebug: false,
+
+		// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
+		individualQueryLoading: false,
+
+		// Uniquely identifies this application if more than one app is hosted under the same domain name.
+		appInstanceId: "?"
+	};
+
+	ExoWeb.config = config;
+
+	// #endregion
+
 	// #region TypeChecking
 	//////////////////////////////////////////////////
 
@@ -75,6 +101,62 @@ Type.registerNamespace("ExoWeb.Mapper");
 		return type(obj) === "object" || (obj && obj instanceof Object);
 	}
 	ExoWeb.isObject = isObject;
+
+	// #endregion
+
+	// #region Random
+	//////////////////////////////////////////////////
+
+	function randomInteger(min, max) {
+		var scale;
+		if (arguments.length === 0) {
+			min = 0;
+			max = 9;
+		}
+		else if (arguments.length === 1) {
+			if (!isInteger(min)) {
+				throw "Minimum argument must be an integer.";
+			}
+
+			if (min < 0) {
+				max = 0;
+			}
+			else {
+				max = min;
+				min = 0;
+			}
+		}
+		else if (!isInteger(min)) {
+			throw "Minimum argument must be an integer.";
+		}
+		else if (!isInteger(max)) {
+			throw "Maximum argument must be an integer.";
+		}
+		else if (min >= max) {
+			throw "Minimum argument must be less than maximum argument.";
+		}
+
+		return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
+
+	ExoWeb.randomInteger = randomInteger;
+
+	function randomText(len) {
+		if (arguments.length === 0) {
+			throw "Length argument is required.";
+		}
+		else if (!isNatural(len)) {
+			throw "Length argument must be a natural number.";
+		}
+
+		var result = "";
+		for (var i = 0; i < len; i++) {
+			result += String.fromCharCode(randomInteger(97, 122));
+		}
+		return result;
+	}
+
+	ExoWeb.randomText = randomText;
 
 	// #endregion
 
@@ -696,32 +778,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 	function isNullOrEmpty(str) {
 		return str === null || str === undefined || str === "";
 	}
-
-	// #endregion
-
-	// #region Config
-	//////////////////////////////////////////////////
-
-	var config = {
-		// General debug setting that can encompose the purpose of other more focused settings.
-		debug: false,
-
-		// Indicates that signal should use window.setTimeout when invoking callbacks. This is
-		// done in order to get around problems with browser complaining about long-running script.
-		signalTimeout: false,
-
-		// "Debugging" signal means that signal will not attempt to handle errors that occur
-		// as a result of invoking callbacks, which can aid in troubleshooting errors.
-		signalDebug: false,
-
-		// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
-		individualQueryLoading: false,
-
-		// Uniquely identifies this application if more than one app is hosted under the same domain name.
-		appInstanceId: "?"
-	};
-
-	ExoWeb.config = config;
 
 	// #endregion
 
@@ -1977,11 +2033,6 @@ Type.registerNamespace("ExoWeb.Mapper");
 	ExoWeb.getLastTarget = getLastTarget;
 	window.$lastTarget = getLastTarget;
 
-	function isObject(obj) {
-		//
-		return obj !== null && obj !== undefined && (obj instanceof Object || typeof(obj) === "object" || Object.prototype.toString.call(obj) === "[object Object]");
-	}
-
 	// If a getter method matching the given property name is found on the target it is invoked and returns the 
 	// value, unless the the value is undefined, in which case null is returned instead.  This is done so that 
 	// calling code can interpret a return value of undefined to mean that the property it requested does not exist.
@@ -2026,13 +2077,13 @@ Type.registerNamespace("ExoWeb.Mapper");
 		else if (ExoWeb.isType(type, Function)) {
 			key = parseFunctionName(type);
 		}
+		/* TODO
 		else {
-			// TODO
-		}
+		}*/
 
+		/* TODO
 		if (!ExoWeb.isType(provider, Function)) {
-			// TODO
-		}
+		}*/
 
 		if (key !== undefined && key !== null) {
 			ctorProviders[key] = provider;
@@ -5614,7 +5665,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// #region ErrorIfExpressionsRule
 	//////////////////////////////////////////////////
 
-	﻿function ErrorIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
+	function ErrorIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
 		this.prop = mtype.property(options.property, true);
 		var properties = [ this.prop ];
 
@@ -5673,18 +5724,18 @@ Type.registerNamespace("ExoWeb.Mapper");
 					targetInput.set_dependsOnInit(true);
 				inputs.push(targetInput);
 
-				for(var i = 0; i < rule._dependsOn.length; i++) {
-					Model.property(rule._dependsOn[i], rule.prop.get_containingType(), true, function(chain) {
+				rule._dependsOn.forEach(function(prop, i) {
+					Model.property(prop, rule.prop.get_containingType(), true, function(chain) {
 						rule._dependsOn[i] = chain;
 
-						var watchPathInput = new RuleInput(rule._dependsOn[i]);
+						var watchPathInput = new RuleInput(chain);
 						inputs.push(watchPathInput);
 
 						Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 
 						rule._inited = true;
 					});
-				}
+				});
 			}
 			else {
 				$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
@@ -5793,7 +5844,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// #region RequiredIfExpressionsRule
 	//////////////////////////////////////////////////
 
-	﻿function RequiredIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
+	function RequiredIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
 		this.prop = mtype.property(options.property, true);
 		var properties = [ this.prop ];
 
@@ -5824,7 +5875,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 		this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
 
 		// Function to register this rule when its containing type is loaded.
-		var register = (function RequiredIfExpressionsRule$register(ctype) { this.load(this, ctype, mtype, callback, thisPtr); }).bind(this);
+		var register = (function RequiredIfExpressionsRule$register(ctype) {
+			this.load(this, ctype, mtype, callback, thisPtr);
+		}).bind(this);
 
 		// If the type is already loaded, then register immediately.
 		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
@@ -5843,22 +5896,23 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 				var targetInput = new RuleInput(rule.prop);
 				targetInput.set_isTarget(true);
-				if (rule.prop.get_origin() === "client")
+				if (rule.prop.get_origin() === "client") {
 					targetInput.set_dependsOnInit(true);
+				}
 				inputs.push(targetInput);
 
-				for(var i = 0; i < rule._dependsOn.length; i++) {
-					Model.property(rule._dependsOn[i], rule.prop.get_containingType(), true, function(chain) {
+				rule._dependsOn.forEach(function(prop, i) {
+					Model.property(prop, rule.prop.get_containingType(), true, function(chain) {
 						rule._dependsOn[i] = chain;
 
-						var watchPathInput = new RuleInput(rule._dependsOn[i]);
+						var watchPathInput = new RuleInput(chain);
 						inputs.push(watchPathInput);
 
 						Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 
 						rule._inited = true;
 					});
-				}
+				});
 			}
 			else {
 				$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
@@ -7086,7 +7140,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 	// #region QueryProvider
 	//////////////////////////////////////////////////
 
-	﻿var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
+	var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
 		throw "Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);";
 	};
 
@@ -7094,7 +7148,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 		var scopeQueries;
 
 		// ensure correct value of "scopeQueries" argument
-		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
+		if (isFunction(onSuccess)) {
 			// scopeQueries is included in call, so shift arguments
 			scopeQueries = onSuccess;
 			onSuccess = onFailure;
@@ -7106,7 +7160,7 @@ Type.registerNamespace("ExoWeb.Mapper");
 			scopeQueries = context.server._scopeQueries;
 		}
 
-		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
+		if (isFunction(onFailure)) {
 			thisPtr = onFailure;
 			onFailure = null;
 		}
@@ -7115,11 +7169,15 @@ Type.registerNamespace("ExoWeb.Mapper");
 		queryProviderFn.call(this, queries, changes, scopeQueries,
 			function queryProviderSuccess() {
 				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+				if (onSuccess) {
+					onSuccess.apply(thisPtr || this, arguments);
+				}
 			},
 			function queryProviderFailure() {
 				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(thisPtr || this, arguments);
+				if (onFailure) {
+					onFailure.apply(thisPtr || this, arguments);
+				}
 			});
 	}
 
@@ -7741,8 +7799,9 @@ Type.registerNamespace("ExoWeb.Mapper");
 		},
 		checkpoint: function(title, code) {
 			// Generate a random code for the checkpoint if one is not given.
-			if (!code)
-				code = [].fill(null, 10).map(function() { return String.fromCharCode(Math.floor(Math.random() * 26) + 97); }).join("");
+			if (!code) {
+				code = randomText(10);
+			}
 
 			// Add the checkpoint and return the code.
 			this.add({ type: "Checkpoint", title: title || "untitled", code: code });

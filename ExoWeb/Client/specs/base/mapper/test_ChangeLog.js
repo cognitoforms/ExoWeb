@@ -8,6 +8,13 @@ jasmine.jasmine.debug = true;
 global.window = global;
 global.ExoWeb = {};
 
+var random = require("../../../src/base/core/Random");
+var randomText = global.randomText = random.randomText;
+
+var typeChecking = require("../../../src/base/core/TypeChecking");
+var isNatural = global.isNatural = typeChecking.isNatural;
+var isInteger = global.isInteger = typeChecking.isInteger;
+
 var activity = require("../../../src/base/core/Activity");
 var functions = require("../../../src/base/core/Function");
 var functor = require("../../../src/base/core/Functor");
@@ -16,6 +23,7 @@ global.Functor = ExoWeb.Functor;
 var arrays = require("../../../src/base/core/Array");
 var trace = require("../../../src/base/core/Trace");
 var utilities = require("../../../src/base/core/Utilities");
+var strings = require("../../../src/base/core/String");
 
 global.forEach = arrays.forEach;
 
