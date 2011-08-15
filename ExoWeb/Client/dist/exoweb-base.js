@@ -10528,12 +10528,14 @@ Type.registerNamespace("ExoWeb.Mapper");
 						// Update 'isNew' for objects that show up in InitNew changes.
 						if (this.options.changes) {
 							this.options.changes.forEach(function (change) {
-								tryGetJsType(this.context.server._model, change.instance.type, null, false, function (jstype) {
-									var obj = jstype.meta.get(change.instance.id);
-									if (obj) {
-										obj.meta.isNew = true;
-									}
-								}, this);
+								if (change.type === "InitNew") {
+									tryGetJsType(this.context.server._model, change.instance.type, null, false, function (jstype) {
+										var obj = jstype.meta.get(change.instance.id);
+										if (obj) {
+											obj.meta.isNew = true;
+										}
+									}, this);
+								}
 							}, this);
 						}
 
