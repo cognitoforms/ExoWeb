@@ -126,7 +126,7 @@ function ensureIntercepting() {
 		interceptingTemplates = true;
 	}
 
-	if (!interceptingWebForms && window.Sys && Sys.WebForms) {
+	if (!interceptingWebForms && window.Sys && Sys.WebForms && Sys.WebForms.PageRequestManager) {
 		Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function (sender, evt) {
 			partialPageLoadOccurred = true;
 			processElements(evt.get_panelsUpdating(), "deleted");
