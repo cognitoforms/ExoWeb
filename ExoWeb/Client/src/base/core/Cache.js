@@ -28,7 +28,7 @@ if (window.localStorage) {
 				window.localStorage.clear();
 
 			// Flush the local storage cache if the cache hash has changed
-			if (ExoWeb.cache("cacheHash") != cacheHash) {
+			if (cacheHash && ExoWeb.cache("cacheHash") != cacheHash) {
 				ExoWeb.clearCache();
 				ExoWeb.cache("cacheHash", cacheHash);
 			}
