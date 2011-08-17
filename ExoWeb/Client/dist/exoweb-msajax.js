@@ -12321,7 +12321,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return data;
 	}
 
-	function getParentContextData(options/*{ target, index, level, dataType, ifFn }*/) {
+	function getParentContext(options/*{ target, subcontainer, index, level, dataType, ifFn }*/) {
 		/// <summary>
 		/// 	Finds the template context data based on the given options.
 		/// </summary>
@@ -12344,7 +12344,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		/// </param>
 		/// <returns type="Object" />
 
-		var target = options.target, effectiveLevel = options.level || 1, container, subcontainer, i = 0, searching = true, data;
+		var target = options.target, effectiveLevel = options.level || 1, container, subcontainer = options.subcontainer, i = 0, searching = true, data;
 
 		if (target.control && (target.control instanceof Sys.UI.DataView || target.control instanceof ExoWeb.UI.Content)) {
 			target = target.control;
@@ -12361,6 +12361,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// up the dom (since the element will probably not be present in the dom)
 			if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
 				container = target.get_templateContext().containerElement;
+				if (options.target && options.target.tagName) {
+					subcontainer = getTemplateSubContainer(options.target);
+				}
 			}
 			else {
 				var obj = container || target;
@@ -12400,10 +12403,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		}
 
-		return data;
+		return { data: data, container: container, subcontainer: subcontainer };
 	}
 
-	ExoWeb.UI.getParentContextData = getParentContextData;
+	ExoWeb.UI.getParentContext = getParentContext;
+
+	ExoWeb.UI.getParentContextData = function() {
+		return getParentContext.apply(this, arguments).data;
+	};
 
 	window.$parentContextData = function $parentContextData(target, index, level, dataType, ifFn) {
 		/// <summary>
@@ -12434,13 +12441,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		/// </param>
 		/// <returns type="Object" />
 
-		return getParentContextData({
+		return getParentContext({
 			"target": target,
 			"index": index,
 			"level": level,
 			"dataType": dataType,
 			"ifFn": ifFn
-		});
+		}).data;
 	};
 
 	function getIsLast(control, index) {
@@ -12514,6 +12521,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 					});
 				}
 			});
+
+			templateContext.components.push(adapter);
 		}, false);
 
 	// #endregion
@@ -12607,309 +12616,240 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
+	// #region Binding
+	//////////////////////////////////////////////////
+
+	function Binding(templateContext, source, sourcePath, target, targetPath, options, scopeChain) {
+		Binding.initializeBase(this);
+
+		this._templateContext = templateContext;
+		this._source = source;
+		this._sourcePath = sourcePath;
+		this._target = target;
+		this._targetPath = targetPath;
+		this._options = options || {};
+
+		this._isTargetElement = Sys.UI.DomElement.isDomElement(target);
+
+		this._collectionChangedHandler = this._collectionChanged.bind(this);
+		this._pathChangedHandler = this._pathChanged.bind(this);
+		this._evalSuccessHandler = this._evalSuccess.bind(this);
+		this._evalFailureHandler = this._evalFailure.bind(this);
+
+		if (sourcePath) {
+			Sys.Observer.addPathChanged(source, sourcePath, this._pathChangedHandler, true);
+		}
+
+		// Start the initial fetch of the source value.
+		ExoWeb.Model.LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
+	}
+
+	Binding.mixin({
+
+		// Functions concerned with setting the value of the target after
+		// the source value has been retrieved and manipulated based on options.
+		//////////////////////////////////////////////////////////////////////////
+
+		_setTarget: function(value) {
+			if (this._isTargetElement && (this._targetPath === "innerText" || this._targetPath === "innerHTML")) {
+				if (value && !isString(value))
+					value = value.toString();
+
+				// taken from Sys$Binding$_sourceChanged
+				Sys.Application._clearContent(this._target);
+				if (this._targetPath === "innerHTML")
+					this._target.innerHTML = value;
+				else
+					this._target.appendChild(document.createTextNode(value));
+				Sys.Observer.raisePropertyChanged(this._target, this._targetPath);
+			}
+			else if (this._isTargetElement && value === null) {
+				// IE would set the value to "null"
+				Sys.Observer.setValue(this._target, this._targetPath, "");
+			}
+			else {
+				Sys.Observer.setValue(this._target, this._targetPath, value);
+			}
+		},
+
+		_queue: function(value) {
+			if (this._pendingValue) {
+				this._pendingValue = value;
+				return;
+			}
+
+			this._pendingValue = value;
+
+			Batch.whenDone(function() {
+				var targetValue = this._pendingValue;
+				delete this._pendingValue;
+
+				if (this._isDisposed === true) {
+					return;
+				}
+
+				this._setTarget(targetValue);
+			}, this);
+		},
+
+		// Functions that filter or transform the value of the source before
+		// setting the target.  These methods are NOT asynchronous.
+		//////////////////////////////////////////////////////////////////////////
+
+		_ifNull: function(value) {
+			// use a default value if the source value is null or undefined
+			if (isNullOrUndefined(value) && this._options.ifNull) {
+				return properties.ifNull;
+			}
+
+			return value;
+		},
+
+		_format: function(value) {
+			// attempt to format the source value used the named format
+			if (value && this._options.format && value.constructor.formats && value.constructor.formats[this._options.format]) {
+				return value.constructor.formats[this._options.format].convert(value);
+			}
+
+			return value;
+		},
+
+		_transform: function(value) {
+			if (!this._options.transform)
+				return value;
+
+			if (!this._transformFn) {
+				this._transformFn = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
+			}
+
+			// transform the original list using the given options
+			return this._transformFn(value, this._isTargetElement ? this._target : this._target.get_element(), this._templateContext.index, this._templateContext.dataItem);
+		},
+
+		// Functions that deal with responding to changes, asynchronous loading,
+		// and general bookkeeping.
+		//////////////////////////////////////////////////////////////////////////
+
+		_require: function(items, callback) {
+			// If additional paths are required then load them before invoking the callback.
+			if (this._options.required) {
+				ExoWeb.Model.LazyLoader.evalAll(items, this._options.required, function() {
+					callback.call(this, items);
+				}, null, null, this);
+			}
+			else {
+				callback.call(this, items);
+			}
+		},
+
+		_update: function(value, toRequire) {
+			// if necessary, remove an existing collection change handler
+			if (this._value && this._value instanceof Array) {
+				Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
+				delete this._value;
+			}
+
+			// if the value is an array and we will transform the value or require paths, then watch for collection change events
+			if (value instanceof Array && (this._options.required || this._options.transform)) {
+				this._value = value;
+				Sys.Observer.makeObservable(value);
+				Sys.Observer.addCollectionChanged(value, this._collectionChangedHandler);
+			}
+
+			// Allow calling with simply the new value in most cases, however, in the case of a
+			// list change the caller can specify for what objects required paths should be loaded.
+			if (arguments.length === 1) {
+				toRequire = value;
+			}
+
+			// Load required paths, then manipulate the source value and update the target.
+			this._require(isArray(toRequire) ? toRequire : (isNullOrUndefined(toRequire) ? [] : [toRequire]), function() {
+				this._queue(this._ifNull(this._format(this._transform(value))));
+			});
+		},
+
+		_collectionChanged: function(items, evt) {
+			// In the case of an array-valued source, respond to a collection change that is raised for the source value.
+			// Optimization: short circuit mapping of changes based on whether there are required paths.
+			this._update(items, this._options.required ? evt.get_changes().mapToArray(function(change) { return change.newItems || []; }) : null);
+		},
+
+		_pathChanged: function(sender, args) {
+			// Respond to a change that occurs at any point along the source path.
+			this._update(evalPath(this._source, this._sourcePath));
+		},
+
+		_evalSuccess: function(result, message) {
+			if (result !== undefined || result !== null) {
+				this._update(result);
+			}
+		},
+
+		_evalFailure: function(err) {
+			ExoWeb.trace.throwAndLog(["~", "markupExt"], "Couldn't evaluate path '{0}', {1}", [this._sourcePath, err]);
+		},
+
+		dispose: function() {
+			this._isDisposed = true;
+			Binding.callBaseMethod(this, "dispose");
+		}
+
+	});
+
+	ExoWeb.View.Binding = Binding;
+	Binding.registerClass("ExoWeb.View.Binding", Sys.Component, Sys.UI.ITemplateContextConsumer);
+
+	// #endregion
+
 	// #region LazyMarkupExtension
 	//////////////////////////////////////////////////
 
 	Sys.Application.registerMarkupExtension("~",
-		function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
-			if (!properties.targetProperty) {
-				properties.targetProperty = targetProperty;
-			}
-
-			var isDisposed = false;
-
-			if (component.add_disposing) {
-				component.add_disposing(function() {
-					isDisposed = true;
-				});
-			}
-
-			var getMessage = function getMessage(msg, value) {
-				return $format("~ {path}, required=[{required}] ({operation}) {message}{value}", {
-					path: (properties.$default || "(no path)"),
-					required: properties.required || "",
-					message: msg ? msg + " " : "",
-					value: arguments.length === 1 ? "" : "- " + value,
-					operation: arguments.length === 1 ? "info" : "set"
-				});
-			};
-
-			var lazyLog = function lazyLog(msg, value) {
-//					ExoWeb.trace.log(["~", "markupExt"], getMessage(msg, value));
-			};
-
-			lazyLog("initialized");
-
+		function(component, targetProperty, templateContext, properties) {
 			var source;
 			var scopeChain;
+			var path = properties.path || properties.$default || null;
 
-			var updatePending = false;
-
-			var isEl = Sys.UI.DomElement.isDomElement(component);
-
-			function queueUpdate(callback) {
-				if (!updatePending) {
-					updatePending = true;
-					ExoWeb.Batch.whenDone(function() {
-						callback(function(value, msg) {
-							updatePending = false;
-
-							if (isDisposed) {
-								ExoWeb.trace.logWarning(["~", "markupExt"], getMessage("Component is disposed - " + msg, value));
-								return;
-							}
-
-							lazyLog(msg, value);
-
-							var finalValue = value;
-							if (prepareValue && prepareValue instanceof Function) {
-								finalValue = prepareValue(value);
-							}
-
-							if ((finalValue === null || finalValue === undefined) && properties.ifNull) {
-								finalValue = properties.ifNull;
-							}
-
-							if (isEl && (properties.targetProperty === "innerText" || properties.targetProperty === "innerHTML")) {
-								if (finalValue && finalValue.constructor !== String)
-									finalValue = finalValue.toString();
-
-								// taken from Sys$Binding$_sourceChanged
-								Sys.Application._clearContent(component);
-								if (properties.targetProperty === "innerHTML")
-									component.innerHTML = finalValue;
-								else
-									component.appendChild(document.createTextNode(finalValue));
-								Sys.Observer.raisePropertyChanged(component, properties.targetProperty);
-							}
-							else if (isEl && finalValue === null) {
-								// IE would set the value to "null"
-								Sys.Observer.setValue(component, properties.targetProperty, "");
-							}
-							else {
-								Sys.Observer.setValue(component, properties.targetProperty, finalValue);
-							}
-						});
-					});
-				}
-			}
-
+			// if a source is specified and it is a string, then execute the source as a JavaScript expression
 			if (properties.source) {
-				var evalSource = new Function("$element", "$index", "$dataItem", "$context", "return " + properties.source + ";");
-				var element = null;
-				if (Sys.Component.isInstanceOfType(component)) {
-					element = component.get_element();
-				}
-				else if (Sys.UI.DomElement.isDomElement(component)) {
-					element = component;
-				}
-				source = evalSource(element, templateContext.index, templateContext.dataItem, templateContext);
+				if (properties.source.constructor === String) {
+					// create a function to evaluate the binding source from the given string
+					var evalSource = new Function("$element", "$index", "$dataItem", "$context", "return " + properties.source + ";");
 
-				// don't try to eval the path against window
-				scopeChain = [];
+					// get the relevant html element either as the component or the component's target element
+					var element = null;
+					if (Sys.Component.isInstanceOfType(component)) {
+						element = component.get_element();
+					}
+					else if (Sys.UI.DomElement.isDomElement(component)) {
+						element = component;
+					}
+
+					// evaluate the value of the expression
+					source = evalSource(element, templateContext.index, templateContext.dataItem, templateContext);
+
+					// don't try to eval the path against window
+					scopeChain = [];
+				}
+				else {
+					source = properties.source;
+				}
 			}
 			else {
 				source = templateContext.dataItem;
 			}
 
-			var prepareValue = null;
+			var binding = new Binding(templateContext, source, path, component, properties.targetProperty || targetProperty, {
+				required: properties.required,
+				transform: properties.transform,
+				format: properties.format,
+				ifNull: properties.ifNull
+			}, scopeChain);
 
-			var setup = function lazy$setup(result, monitorChangesFromSource) {
-				if (properties.transform && result instanceof Array) {
-					// generate transform function
-					var doTrans = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + properties.transform + ";");
-
-					// setup prepare function to perform the transform
-					prepareValue = function doTransform(listValue) {
-						return doTrans(listValue, component.get_element(), templateContext.index, templateContext.dataItem);
-					};
-
-					// watch for changes to the list and refresh
-					var list = result;
-					Sys.Observer.makeObservable(list);
-					Sys.Observer.addCollectionChanged(list, function lazy$listChanged$transform(list, evt) {
-						// take a count of all added and removed items
-						var added = 0, removed = 0;
-						Array.forEach(evt.get_changes(), function(change) {
-							if (change.newItems) {
-								added += change.newItems.length;
-							}
-							if (change.oldItems) {
-								removed += change.oldItems.length;
-							}
-						});
-
-						var msg = "changes to underlying list [" + added + " added, " + removed + " removed]";
-
-						// if additional paths are required then load them before updating the value
-						if (properties.required) {
-							Array.forEach(evt.get_changes(), function(change) {
-								queueUpdate(function(setValue) {
-									ExoWeb.Model.LazyLoader.evalAll(change.newItems || [], properties.required, function(requiredResult, performedLoading) {
-										if (performedLoading) {
-											lazyLog("New items added to list:  eval caused loading to occur on required path");
-										}
-										setValue(result, msg);
-									});
-								});
-							});
-						}
-						// otherwise, simply update the value
-						else {
-							queueUpdate(function(setValue) {
-								setValue(result, msg);
-							});
-						}
-					});
-				}
-				else {
-					// setup prepare function to use the specified format
-					prepareValue = function doFormat(obj) {
-						if (obj && properties.format && obj.constructor.formats && obj.constructor.formats[properties.format]) {
-							return obj.constructor.formats[properties.format].convert(obj);
-						}
-
-						return obj;
-					};
-
-					if (properties.$default && monitorChangesFromSource) {
-						Sys.Observer.addPathChanged(source, properties.$default, function(sender, args) {
-							queueUpdate(function(setValue) {
-								var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection changed" :
-									((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() + " property change" : "unknown change");
-								setValue(ExoWeb.evalPath(source, properties.$default), msg);
-							});
-						}, true);
-					}
-				}
-				if (properties.required) {
-					var watchItemRequiredPaths = function watchItemRequiredPaths(item) {
-						if (item.meta) {
-							try {
-								var props = properties.required.split(".");
-
-								// static property: more than one step, first step is not an instance property, first step IS a type
-								if (props.length > 1 && !item.meta.type.property(props[0], true) && ExoWeb.Model.Model.getJsType(props[0], true)) {
-									Sys.Observer.addPathChanged(window, properties.required, function(sender, args) {
-										queueUpdate(function(setValue) {
-											var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection" :
-												((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() : "unknown");
-											setValue(result, "required path step change [" + msg + "]");
-										});
-									}, true);
-								}
-								else {
-									ExoWeb.Model.Model.property("this." + properties.required, item.meta.type, true, function(chain) {
-										chain.addChanged(function lazy$requiredChanged(sender, args) {
-											queueUpdate(function(setValue) {
-												// when a point in the required path changes then load the chain and refresh the value
-												ExoWeb.Model.LazyLoader.evalAll(sender, args.property.get_path(), function lazy$requiredChanged$load(requiredResult, performedLoading) {
-													if (performedLoading) {
-														lazyLog("Required path change.  Eval caused loading to occur.");
-													}
-													var triggeredBy = args.triggeredBy || args.property;
-													setValue(result, "required path property change [" + triggeredBy.get_name() + "]");
-												});
-											});
-										}, item);
-									});
-								}
-							}
-							catch (e) {
-								ExoWeb.trace.logError(["markupExt", "~"], e);
-							}
-						}
-						else {
-							Sys.Observer.addPathChanged(item, properties.required, function(sender, args) {
-								queueUpdate(function(setValue) {
-									var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection" :
-										((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() : "unknown");
-									setValue(result, "required path step change [" + msg + "]");
-								});
-							}, true);
-						}
-					};
-
-					// attempt to watch changes along the required path
-					var listToWatch = (result instanceof Array) ? result : [result];
-					Array.forEach(listToWatch, watchItemRequiredPaths);
-					Sys.Observer.makeObservable(listToWatch);
-					Sys.Observer.addCollectionChanged(listToWatch, function lazy$listChanged$watchRequired(list, evt) {
-						Array.forEach(evt.get_changes(), function(change) {
-							Array.forEach(change.newItems || [], watchItemRequiredPaths);
-						});
-					});
-				}
-			}
-
-			ExoWeb.Model.LazyLoader.eval(source, properties.$default,
-				function lazy$Loaded(result, message) {
-					lazyLog("path loaded <.>");
-
-					var init = function lazy$init(result) {
-						try {
-							// Load additional required paths
-							if (properties.required) {
-								queueUpdate(function(setValue) {
-									ExoWeb.Model.LazyLoader.evalAll(result, properties.required, function(requiredResult, performedLoading) {
-										if (performedLoading) {
-											lazyLog("Initial setup.  Eval caused loading to occur on required path");
-										}
-										setValue(result, message || "required path loaded");
-									});
-								});
-							}
-							else {
-								queueUpdate(function(setValue) {
-									setValue(result, message || "no required path");
-								});
-							}
-						}
-						catch (err) {
-							ExoWeb.trace.throwAndLog(["~", "markupExt"], "Path '{0}' was evaluated but the '{2}' property on the target could not be set, {1}", [properties.$default, err, properties.targetProperty || targetProperty]);
-						}
-					}
-
-					if (result === undefined || result === null) {
-						queueUpdate(function(setValue) {
-							setValue(result, "no value");
-						});
-
-						var isSetup = false;
-
-						Sys.Observer.addPathChanged(source, properties.$default, function(target, args) {
-							queueUpdate(function(setValue) {
-								ExoWeb.Model.LazyLoader.eval(source, properties.$default, function lazy$Loaded(result, message) {
-									var msg = (args instanceof Sys.NotifyCollectionChangedEventArgs) ? "collection changed" :
-										((args instanceof Sys.PropertyChangedEventArgs) ? args.get_propertyName() + " property change" : "unknown change");
-
-									// If we now have a value, ensure initialization and set the value.
-									if (result !== undefined && result !== null) {
-										if (!isSetup) {
-											setup(result, false);
-											init(result, msg);
-											isSetup = true;
-										}
-									}
-
-									setValue(result, msg);
-								});
-							});
-						}, true);
-					}
-					else {
-						setup(result, true);
-						init(result);
-					}
-				},
-				function(err) {
-					ExoWeb.trace.throwAndLog(["~", "markupExt"], "Couldn't evaluate path '{0}', {1}", [properties.$default, err]);
-				},
-				scopeChain
-			);
+			// register with the template context as a child component
+			templateContext.components.push(binding);
 		},
-		false
-	);
+		false);
 
 	// #endregion
 
@@ -12917,6 +12857,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
+		Adapter.initializeBase(this);
+
 		this._target = target instanceof OptionAdapter ? target.get_rawValue() : target;
 		this._propertyPath = propertyPath;
 		this._ignoreTargetEvents = false;
@@ -13220,6 +13162,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				target.meta.clearConditions(this);
 				target.meta.executeRules(prop);
 			}
+
+			Adapter.callBaseMethod(this, "dispose");
 		},
 		ready: function Adapter$ready(callback, thisPtr) {
 			this._readySignal.waitForAll(callback, thisPtr);
@@ -13505,7 +13449,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ExoWeb.View.Adapter = Adapter;
-	Adapter.registerClass("ExoWeb.View.Adapter");
+	Adapter.registerClass("ExoWeb.View.Adapter", Sys.Component, Sys.UI.ITemplateContextConsumer);
 
 	// #endregion
 

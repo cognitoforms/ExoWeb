@@ -1,4 +1,6 @@
 function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
+	Adapter.initializeBase(this);
+
 	this._target = target instanceof OptionAdapter ? target.get_rawValue() : target;
 	this._propertyPath = propertyPath;
 	this._ignoreTargetEvents = false;
@@ -302,6 +304,8 @@ Adapter.prototype = {
 			target.meta.clearConditions(this);
 			target.meta.executeRules(prop);
 		}
+
+		Adapter.callBaseMethod(this, "dispose");
 	},
 	ready: function Adapter$ready(callback, thisPtr) {
 		this._readySignal.waitForAll(callback, thisPtr);
@@ -587,4 +591,4 @@ Adapter.prototype = {
 };
 
 ExoWeb.View.Adapter = Adapter;
-Adapter.registerClass("ExoWeb.View.Adapter");
+Adapter.registerClass("ExoWeb.View.Adapter", Sys.Component, Sys.UI.ITemplateContextConsumer);

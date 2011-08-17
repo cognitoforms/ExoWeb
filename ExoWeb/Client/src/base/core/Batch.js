@@ -152,4 +152,4 @@ Batch.mixin({
 	}
 });
 
-ExoWeb.Batch = Batch;
+exports.Batch = Batch;

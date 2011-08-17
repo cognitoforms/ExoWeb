@@ -124,6 +124,7 @@ end
 		AdapterMarkupExtension
 		MetaMarkupExtension
 		ConditionMarkupExtension
+		Binding
 		LazyMarkupExtension
 		Adapter
 		OptionAdapter

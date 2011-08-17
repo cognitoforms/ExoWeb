@@ -64,7 +64,7 @@ function getDataForContainer(container, subcontainer, index) {
 	return data;
 }
 
-function getParentContextData(options/*{ target, index, level, dataType, ifFn }*/) {
+function getParentContext(options/*{ target, subcontainer, index, level, dataType, ifFn }*/) {
 	/// <summary>
 	/// 	Finds the template context data based on the given options.
 	/// </summary>
@@ -87,7 +87,7 @@ function getParentContextData(options/*{ target, index, level, dataType, ifFn }*
 	/// </param>
 	/// <returns type="Object" />
 
-	var target = options.target, effectiveLevel = options.level || 1, container, subcontainer, i = 0, searching = true, data;
+	var target = options.target, effectiveLevel = options.level || 1, container, subcontainer = options.subcontainer, i = 0, searching = true, data;
 
 	if (target.control && (target.control instanceof Sys.UI.DataView || target.control instanceof ExoWeb.UI.Content)) {
 		target = target.control;
@@ -104,6 +104,9 @@ function getParentContextData(options/*{ target, index, level, dataType, ifFn }*
 		// up the dom (since the element will probably not be present in the dom)
 		if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
 			container = target.get_templateContext().containerElement;
+			if (options.target && options.target.tagName) {
+				subcontainer = getTemplateSubContainer(options.target);
+			}
 		}
 		else {
 			var obj = container || target;
@@ -143,10 +146,14 @@ function getParentContextData(options/*{ target, index, level, dataType, ifFn }*
 		}
 	}
 
-	return data;
+	return { data: data, container: container, subcontainer: subcontainer };
 }
 
-ExoWeb.UI.getParentContextData = getParentContextData;
+ExoWeb.UI.getParentContext = getParentContext;
+
+ExoWeb.UI.getParentContextData = function() {
+	return getParentContext.apply(this, arguments).data;
+};
 
 window.$parentContextData = function $parentContextData(target, index, level, dataType, ifFn) {
 	/// <summary>
@@ -177,13 +184,13 @@ window.$parentContextData = function $parentContextData(target, index, level, da
 	/// </param>
 	/// <returns type="Object" />
 
-	return getParentContextData({
+	return getParentContext({
 		"target": target,
 		"index": index,
 		"level": level,
 		"dataType": dataType,
 		"ifFn": ifFn
-	});
+	}).data;
 };
 
 function getIsLast(control, index) {

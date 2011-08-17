@@ -14,7 +14,7 @@ var batch = require("../../../src/base/core/Batch");
 
 // References
 ///////////////////////////////////////
-var Batch = ExoWeb.Batch;
+var Batch = batch.Batch;
 var describe = jasmine.describe;
 var it = jasmine.it;
 var expect = jasmine.expect;

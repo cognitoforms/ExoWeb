@@ -202,5 +202,5 @@ Transform.mixin({
 	}
 });
 
-ExoWeb.Transform = Transform;
+exports.Transform = Transform;
 window.$transform = function transform(array) { return new Transform(array); };

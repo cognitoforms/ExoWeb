@@ -20,4 +20,6 @@ Sys.Application.registerMarkupExtension("@",
 				});
 			}
 		});
+
+		templateContext.components.push(adapter);
 	}, false);
