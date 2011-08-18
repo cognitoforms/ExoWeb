@@ -976,10 +976,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 
 	ExoWeb.cacheHash = cacheHash;
 
-	// Setup Caching
 	if (window.localStorage) {
 
-		// Cache
 		ExoWeb.cache = function (key, value) {
 			var localKey = key;
 
@@ -1017,20 +1015,8 @@ Type.registerNamespace("ExoWeb.Mapper");
 			}
 		};
 
-		// Clear
 		ExoWeb.clearCache = function () {
-			// There's a bug in IE 8 that causes localStorage to appear like its been
-			// cleared but the quota to not decrease.  Attempt to delete one key at a time rather than
-			// use the clear() method in an attempt to work around the bug.
-			for (var i = localStorage.length-1; i>=0; i--) {
-				var key = localStorage.key(i);
-
-				// Only clear ExoWeb keys. Clear them across all application instances
-				// to prevent leaked data if/when an appInstanceId changes.
-				if (key.substring(0, "ExoWeb:cache".length) == "ExoWeb:cache") {
-					window.localStorage.removeItem(key);
-				}
-			}
+			window.localStorage.clear();
 		};
 	}
 
