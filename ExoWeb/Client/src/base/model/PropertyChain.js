@@ -156,8 +156,9 @@ PropertyChain.prototype = {
 							return false;
 						}
 
+						var targetValue = prop.value(target[i]);
 						// continue along the chain for this list item
-						if (!canSkipRemainingProps && this.each(obj, callback, propFilter, target[i]["get_" + prop.get_name()](), p + 1, prop) === false) {
+						if (!canSkipRemainingProps && (!targetValue || this.each(obj, callback, propFilter, targetValue, p + 1, prop) === false)){
 							return false;
 						}
 					}
