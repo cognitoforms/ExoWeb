@@ -12699,7 +12699,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		_ifNull: function(value) {
 			// use a default value if the source value is null or undefined
 			if (isNullOrUndefined(value) && this._options.ifNull) {
-				return properties.ifNull;
+				return this._options.ifNull;
 			}
 
 			return value;

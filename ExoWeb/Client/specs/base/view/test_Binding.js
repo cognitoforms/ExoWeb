@@ -203,6 +203,22 @@ describe("Format option", function() {
 
 });
 
+describe("IfNull option", function() {
+
+	beforeEach(onBeforeEach);
+
+	describe("Binding", function() {
+
+		it("sets the target to the given value if the source value is null or undefined", function() {
+			var setTargetSpy = jasmine.spyOn(Binding.prototype, "_setTarget").andCallThrough();
+			var adapter = new Binding({ index: 0, dataItem: {} }, {}, "value", { get_element: function() { } }, "value", { ifNull: "n/a" });
+			expect(setTargetSpy).toHaveBeenCalledWith("n/a");
+		});
+
+	});
+
+});
+
 // Run Tests
 ///////////////////////////////////////
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());
