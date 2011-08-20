@@ -255,26 +255,6 @@ task :build_msajax do
 	minify("exoweb-msajax")
 end
 
-task :build_base do
-	File.open(File.join(@dist_dir, "exoweb-base.js"), "w") do |f|
-		f.write("Type.registerNamespace(\"ExoWeb\");\n")
-		["Model", "Mapper"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
-		f.write("\n(function() {\n")
-		
-		["base/core", "base/model", "base/mapper"].each do |name|
-			src_dir = @src_dir
-			names = name.split("/")
-			names.each { |step| src_dir = File.join(src_dir, step) }
-			
-			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1, @exports[name]))
-		end
-		f.write("})();\n");
-	end
-	puts("completed build_base task")
-	jshint("exoweb-base")
-	minify("exoweb-base")
-end
-
-task :default => [:run_tests, :build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_base] do
+task :default => [:run_tests, :build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin] do
 	puts("completed default task")
 end
