@@ -12619,16 +12619,22 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._isTargetElement = Sys.UI.DomElement.isDomElement(target);
 
 		this._collectionChangedHandler = this._collectionChanged.bind(this);
-		this._pathChangedHandler = this._pathChanged.bind(this);
+		this._sourcePathChangedHandler = this._sourcePathChanged.bind(this);
+		this._watchedItemPathChangedHandler = this._watchedItemPathChanged.bind(this);
 		this._evalSuccessHandler = this._evalSuccess.bind(this);
 		this._evalFailureHandler = this._evalFailure.bind(this);
 
-		if (sourcePath) {
-			Sys.Observer.addPathChanged(source, sourcePath, this._pathChangedHandler, true);
+		if (this._sourcePath) {
+			// Start the initial fetch of the source value.
+			ExoWeb.Model.LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
 		}
+		else {
+			this._evalSuccess(this._source);
+		}
+	}
 
-		// Start the initial fetch of the source value.
-		ExoWeb.Model.LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
+	function ensureArray(value) {
+		return isArray(value) ? value : (isNullOrUndefined(value) ? [] : [value]);
 	}
 
 	Binding.mixin({
@@ -12717,19 +12723,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// and general bookkeeping.
 		//////////////////////////////////////////////////////////////////////////
 
-		_require: function(items, callback) {
-			// If additional paths are required then load them before invoking the callback.
-			if (this._options.required) {
-				ExoWeb.Model.LazyLoader.evalAll(items, this._options.required, function() {
-					callback.call(this, items);
-				}, null, null, this);
-			}
-			else {
-				callback.call(this, items);
-			}
+		_require: function(source, callback) {
+			ExoWeb.Model.LazyLoader.evalAll(source, this._options.required, function() {
+				callback.call(this);
+			}, null, null, this);
 		},
 
-		_update: function(value, toRequire) {
+		_update: function(value, newItems, oldItems) {
 			// if necessary, remove an existing collection change handler
 			if (this._value && this._value instanceof Array) {
 				Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
@@ -12743,32 +12743,60 @@ Type.registerNamespace("ExoWeb.DotNet");
 				Sys.Observer.addCollectionChanged(value, this._collectionChangedHandler);
 			}
 
-			// Allow calling with simply the new value in most cases, however, in the case of a
-			// list change the caller can specify for what objects required paths should be loaded.
-			if (arguments.length === 1) {
-				toRequire = value;
-			}
+			// If additional paths are required then load them before invoking the callback.
+			if (this._options.required) {
 
-			// Load required paths, then manipulate the source value and update the target.
-			this._require(isArray(toRequire) ? toRequire : (isNullOrUndefined(toRequire) ? [] : [toRequire]), function() {
+				// Unwatch require path for items that are no longer relevant.
+				forEach(oldItems, function(item) {
+					Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
+				}, this);
+
+				// Load required paths, then manipulate the source value and update the target.
+				this._require(value, function() {
+
+					// Watch require path for new items.
+					forEach(newItems, function(item) {
+						Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
+					}, this);
+
+					this._queue(this._ifNull(this._format(this._transform(value))));
+				});
+			}
+			else {
 				this._queue(this._ifNull(this._format(this._transform(value))));
-			});
+			}
 		},
 
 		_collectionChanged: function(items, evt) {
 			// In the case of an array-valued source, respond to a collection change that is raised for the source value.
 			// Optimization: short circuit mapping of changes based on whether there are required paths.
-			this._update(items, this._options.required ? evt.get_changes().mapToArray(function(change) { return change.newItems || []; }) : null);
+			this._update(items,
+				this._options.required ? evt.get_changes().mapToArray(function(change) { return change.newItems || []; }) : [],
+				this._options.required ? evt.get_changes().mapToArray(function(change) { return change.oldItems || []; }) : []);
 		},
 
-		_pathChanged: function(sender, args) {
+		_watchedItemPathChanged: function(sender, args) {
+			this._update(this._sourcePathResult, [], []);
+		},
+
+		_sourcePathChanged: function() {
+			// Save the previous result and evaluate and store the new one.
+			var prevSourcePathResult = this._sourcePathResult;
+			this._sourcePathResult = evalPath(this._source, this._sourcePath);
+
 			// Respond to a change that occurs at any point along the source path.
-			this._update(evalPath(this._source, this._sourcePath));
+			this._update(this._sourcePathResult, ensureArray(this._sourcePathResult), ensureArray(prevSourcePathResult));
 		},
 
 		_evalSuccess: function(result, message) {
+			if (this._sourcePath) {
+				Sys.Observer.addPathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler, true);
+			}
+
+			this._sourcePathResult = result;
+
 			if (result !== undefined || result !== null) {
-				this._update(result);
+				this._update(result, ensureArray(result), []);
 			}
 		},
 

@@ -2362,4 +2362,4 @@ exports.beforeEach = beforeEach;
 exports.afterEach = afterEach;
 exports.describe = describe;
 exports.xdescribe = xdescribe;
-
+exports.any = jasmine.any;
