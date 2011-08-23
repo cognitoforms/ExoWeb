@@ -62,7 +62,7 @@ ObjectMeta.mixin({
 		// always remove and re-add the condition to preserve order
 		var idx = -1;
 		for (var i = 0; i < this._conditions.length; i++) {
-			if (this._conditions[i].get_type() === condition.get_type()) {
+			if (this._conditions[i].equals(condition)) {
 				idx = i;
 				break;
 			}

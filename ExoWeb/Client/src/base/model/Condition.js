@@ -30,8 +30,11 @@ Condition.prototype = {
 	get_targets: function () {
 		return this._targets;
 	},
-	equals: function (o) {
-		return o.property.equals(this.property) && o._message.equals(this._message);
+	equals: function (other) {
+		return this._type === other._type &&
+			this._properties.length === other._properties.length &&
+			!some(this._properties, function(p, i) { return p !== other._properties[i]; }) &&
+			this._origin === other._origin;
 	}
 };
 
