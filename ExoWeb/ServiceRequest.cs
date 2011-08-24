@@ -161,6 +161,9 @@ namespace ExoWeb
 
 					// Commit the new changes, if any
 					changes.Commit();
+
+					// Make sure that the changes are added to the response if a new transaction was created
+					response.Changes = changes;
 				}
 			}
 		}

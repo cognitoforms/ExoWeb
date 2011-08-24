@@ -267,15 +267,19 @@ namespace ExoWeb
 			ServiceRequest request = new ServiceRequest(roots.Select(r => r.Value).ToArray());
 			ServiceResponse response = request.Invoke();
 
+			// Keep init and property get changes that were captured when processing the queries.
+			GraphTransaction queryChanges = response.Changes;
+
 			// Prepend initialization events for each instance created by the model queries
-			response.Changes = (GraphTransaction)request.Queries
+			var rootChanges = (GraphTransaction)request.Queries
 					.SelectMany(q => q.Roots)
 					.Where(i => i.IsNew)
 					.Select(i => new GraphInitEvent.InitNew(i))
 					.Cast<GraphEvent>()
 					.ToList();
-			if (initChanges != null)
-				response.Changes = GraphTransaction.Combine(new GraphTransaction[] { response.Changes, initChanges });
+
+			// Combine all changes into a single graph transaction.
+			response.Changes = GraphTransaction.Combine(new GraphTransaction[] { rootChanges, initChanges, queryChanges }.Where(t => t != null));
 
 			response.Model = roots.ToDictionary(r => r.Key, r => r.Value);
 			foreach (var q in response.Model.Values)
