@@ -148,23 +148,32 @@ namespace ExoWeb
 			// Load data based on the specified queries
 			if (Queries != null)
 			{
-				// Record changes while processing queries
-				using (var changes = response.Changes != null ? response.Changes.Append() : GraphContext.Current.BeginTransaction())
+				if (forLoad)
 				{
-					// Recursively build up the list of instances to serialize
-					foreach (Query query in Queries)
+					// Record changes while processing queries
+					using (var changes = response.Changes != null ? response.Changes.Append() : GraphContext.Current.BeginTransaction())
 					{
-						if ((forLoad && query.ForLoad) || query.InScope)
-							foreach (GraphInstance root in query.Roots)
-								ProcessInstance(root, query.Path != null ? query.Path.FirstSteps : null, query.ForLoad, forLoad && query.InScope, response);
+						ProcessQueryInstances(response, forLoad);
+
+						// Commit the new changes, if any
+						changes.Commit();
 					}
-
-					// Commit the new changes, if any
-					changes.Commit();
-
-					// Make sure that the changes are added to the response if a new transaction was created
-					response.Changes = changes;
 				}
+				else
+				{
+					ProcessQueryInstances(response, forLoad);
+				}
+			}
+		}
+
+		private void ProcessQueryInstances(ServiceResponse response, bool forLoad)
+		{
+			// Recursively build up the list of instances to serialize
+			foreach (Query query in Queries)
+			{
+				if ((forLoad && query.ForLoad) || query.InScope)
+					foreach (GraphInstance root in query.Roots)
+						ProcessInstance(root, query.Path != null ? query.Path.FirstSteps : null, query.ForLoad, forLoad && query.InScope, response);
 			}
 		}
 
