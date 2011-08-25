@@ -173,7 +173,7 @@ namespace ExoWeb
 			{
 				if ((forLoad && query.ForLoad) || query.InScope)
 					foreach (GraphInstance root in query.Roots)
-						ProcessInstance(root, query.Path != null ? query.Path.FirstSteps : null, query.ForLoad, query.InScope, response);
+						ProcessInstance(root, query.Path != null ? query.Path.FirstSteps : null, forLoad && query.ForLoad, query.InScope, forLoad, response);
 			}
 		}
 
@@ -252,7 +252,7 @@ namespace ExoWeb
 		/// <param name="instances"></param>
 		/// <param name="paths"></param>
 		/// <param name="path"></param>
-		static void ProcessInstance(GraphInstance instance, GraphStepList steps, bool includeInResponse, bool runPropertyGetRules, ServiceResponse response)
+		static void ProcessInstance(GraphInstance instance, GraphStepList steps, bool includeInResponse, bool inScope, bool forLoad, ServiceResponse response)
 		{
 			GraphInstanceInfo instanceInfo = null;
 
@@ -276,7 +276,7 @@ namespace ExoWeb
 			{
 				// Recursively process child instances
 				foreach (var childInstance in step.GetInstances(instance))
-					ProcessInstance(childInstance, step.NextSteps, includeInResponse, runPropertyGetRules, response);
+					ProcessInstance(childInstance, step.NextSteps, includeInResponse, inScope, forLoad, response);
 
 				// Mark value lists to be included during serialization
 				if (step.Property.IsList && includeInResponse)
@@ -284,8 +284,13 @@ namespace ExoWeb
 			}
 
 			// Run all property get rules on the instance
-			if (runPropertyGetRules)
-				instance.RunPropertyGetRules();
+			if (inScope)
+			{
+				if (forLoad)
+					instance.RunPendingPropertyGetRules(p => p is GraphValueProperty || steps.Any(s => s.Property == p));
+				else
+					instance.RunPropertyGetRules(p => p is GraphValueProperty);
+			}
 		}
 
 		#endregion
