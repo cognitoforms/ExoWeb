@@ -173,7 +173,7 @@ namespace ExoWeb
 			{
 				if ((forLoad && query.ForLoad) || query.InScope)
 					foreach (GraphInstance root in query.Roots)
-						ProcessInstance(root, query.Path != null ? query.Path.FirstSteps : null, query.ForLoad, forLoad && query.InScope, response);
+						ProcessInstance(root, query.Path != null ? query.Path.FirstSteps : null, query.ForLoad, query.InScope, response);
 			}
 		}
 
@@ -254,10 +254,6 @@ namespace ExoWeb
 		/// <param name="path"></param>
 		static void ProcessInstance(GraphInstance instance, GraphStepList steps, bool includeInResponse, bool runPropertyGetRules, ServiceResponse response)
 		{
-			// Run all property get rules on the instance
-			if (runPropertyGetRules)
-				instance.RunPropertyGetRules();
-
 			GraphInstanceInfo instanceInfo = null;
 
 			// Track the instance if the query represents a load request
@@ -286,6 +282,10 @@ namespace ExoWeb
 				if (step.Property.IsList && includeInResponse)
 					instanceInfo.IncludeList(step.Property);
 			}
+
+			// Run all property get rules on the instance
+			if (runPropertyGetRules)
+				instance.RunPropertyGetRules();
 		}
 
 		#endregion
