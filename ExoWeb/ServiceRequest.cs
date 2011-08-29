@@ -12,7 +12,11 @@ namespace ExoWeb
 {
 	public class ServiceRequest : IJsonSerializable
 	{
-		private GraphContext context = GraphContext.Current;
+		#region Fields
+
+		GraphContext context = GraphContext.Current;
+
+		#endregion
 
 		#region Constructors
 
@@ -59,6 +63,7 @@ namespace ExoWeb
 		/// Optional configuration information to customize the behavior of the request.
 		/// </summary>
 		public Dictionary<string, object> Config { get; private set; }
+
 		#endregion
 
 		#region Methods
@@ -76,73 +81,85 @@ namespace ExoWeb
 			ServiceResponse response = new ServiceResponse();
 			response.ServerInfo = new ServerInformation();
 
-			// Set the types to return from the request
-			if (Types != null)
-				response.Types = Types.ToDictionary<GraphType, string>(type => type.Name);
-
-			// Apply view initialization changes
-			if (Changes != null && Changes.Length > 0 && Changes[0].Source == ChangeSource.Init)
+			try
 			{
-				response.Changes = Changes[0].Changes;
-				response.Changes.Perform();
-			}
+				// Set the types to return from the request
+				if (Types != null)
+					response.Types = Types.ToDictionary<GraphType, string>(type => type.Name);
 
-			// Load root instances
-			if (Queries != null)
-			{
-				foreach (var query in Queries)
+				// Apply view initialization changes
+				if (Changes != null && Changes.Length > 0 && Changes[0].Source == ChangeSource.Init)
 				{
-					query.Prepare(response);
-					query.LoadRoots(response.Changes);
+					response.Changes = Changes[0].Changes;
+					response.Changes.Perform();
+				}
+
+				// Load root instances
+				if (Queries != null)
+				{
+					foreach (var query in Queries)
+					{
+						query.Prepare(response);
+						query.LoadRoots(response.Changes);
+					}
+				}
+
+				// Preload the scope of work before applying changes
+				PerformQueries(response, false);
+
+				// Apply additional changes and raise domain events
+				ApplyChanges(response);
+
+				// Load instances specified by load queries
+				PerformQueries(response, true);
+
+				// Send conditions for instances loaded in the request
+				if (response.Instances != null || response.Changes != null)
+				{
+					// Get instances loaded by the request
+					var instances = response.Instances != null ?
+						response.Instances.Values.SelectMany(d => d.Instances.Values).Select(instance => instance.Instance) :
+						new GraphInstance[0];
+
+					// Add instances created during the request
+					instances = response.Changes != null ?
+						instances.Union(response.Changes.OfType<GraphInitEvent.InitNew>().Select(graphEvent => graphEvent.Instance)) :
+						instances;
+
+					// Ensure conditions are evaluated before extracting them
+					ExoWeb.OnEnsureConditions(response, instances);
+
+					// Extract conditions for all instances involved in the request
+					Dictionary<string, List<Condition>> conditionsByType = new Dictionary<string, List<Condition>>();
+					foreach (var condition in instances.SelectMany(instance => Condition.GetConditions(instance)))
+					{
+						List<Condition> conditions;
+						if (!conditionsByType.TryGetValue(condition.Type.Code, out conditions))
+							conditionsByType[condition.Type.Code] = conditions = new List<Condition>();
+
+						if (!conditions.Contains(condition))
+							conditions.Add(condition);
+					}
+					response.Conditions = conditionsByType;
 				}
 			}
-
-			// Preload the scope of work before applying changes
-			PerformQueries(response, false);
-
-			// Apply additional changes and raise domain events
-			ApplyChanges(response);
-
-			// Load instances specified by load queries
-			PerformQueries(response, true);
-
-			// Send conditions for instances loaded in the request
-			if (response.Instances != null || response.Changes != null)
+			finally
 			{
-				// Get instances loaded by the request
-				var instances = response.Instances != null ? 
-					response.Instances.Values.SelectMany(d => d.Instances.Values).Select(instance => instance.Instance) : 
-					new GraphInstance[0];
-
-				// Add instances created during the request
-				instances = response.Changes != null ?
-					instances.Union(response.Changes.OfType<GraphInitEvent.InitNew>().Select(graphEvent => graphEvent.Instance)) :
-					instances;
-
-				// Ensure conditions are evaluated before extracting them
-				ExoWeb.OnEnsureConditions(response, instances);
-
-				// Extract conditions for all instances involved in the request
-				Dictionary<string, List<Condition>> conditionsByType = new Dictionary<string, List<Condition>>();
-				foreach (var condition in instances.SelectMany(instance => Condition.GetConditions(instance)))
-				{
-					List<Condition> conditions;
-					if (!conditionsByType.TryGetValue(condition.Type.Code, out conditions))
-						conditionsByType[condition.Type.Code] = conditions = new List<Condition>();
-
-					if (!conditions.Contains(condition))
-						conditions.Add(condition);
-				}
-				response.Conditions = conditionsByType;
+				// Raise the end request event
+				ExoWeb.OnEndRequest(this, response);
 			}
-
-			// Raise the end request event
-			ExoWeb.OnEndRequest(this, response);
 
 			// Return the response
 			return response;
 		}
 
+		/// <summary>
+		/// Performs the queries for the current request, either to prepare the graph before 
+		/// applying changes (forLoad = false), or to actually load the graph and transmit the 
+		/// requested instances to the client.
+		/// </summary>
+		/// <param name="response"></param>
+		/// <param name="forLoad"></param>
 		void PerformQueries(ServiceResponse response, bool forLoad)
 		{
 			// Load data based on the specified queries
@@ -291,6 +308,17 @@ namespace ExoWeb
 				else
 					instance.RunPropertyGetRules(p => p is GraphValueProperty);
 			}
+		}
+
+		/// <summary>
+		/// Returns the string representation of the current request.
+		/// </summary>
+		/// <returns></returns>
+		public override string ToString()
+		{
+			return
+				(Types != null && Types.Length > 0 ? Types.Aggregate("Types: ", (p, t) => p.Length > 7 ? p + "," + t : t.Name) : "") +
+				(Queries != null && Queries.Length > 0 ? Queries.Aggregate("Queries: ", (p, q) => p.Length > 7 ? p + "," + q : q.ToString()) : "");
 		}
 
 		#endregion
@@ -657,6 +685,15 @@ namespace ExoWeb
 			internal void ReducePaths()
 			{
 				Include = Include.Where(p => p.StartsWith("this")).ToArray();
+			}
+
+			/// <summary>
+			/// Returns the string representation of the current query.
+			/// </summary>
+			/// <returns></returns>
+			public override string ToString()
+			{
+				return From + "{" + (Include != null && Include.Length > 0 ? Include.Aggregate((s1, s2) => s1 + "," + s2) : "") + "}";
 			}
 
 			#region IJsonSerializable
