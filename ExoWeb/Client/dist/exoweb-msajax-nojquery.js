@@ -8803,7 +8803,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				mtype ? mtype.get_fullName() : null,
 				id,
 				paths,
-				serializeChanges.call(this, false, root),
+				serializeChanges.call(this, !!root, root),
 				this._onRoundtripSuccess.bind(this).appendArguments(args, success),
 				this._onRoundtripFailed.bind(this).appendArguments(args, failed || success)
 			);
@@ -13705,7 +13705,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				from: type,
 				ids: [id],
 				include: paths,
-				inScope: false,
+				inScope: true,
 				forLoad: true
 			});
 		}

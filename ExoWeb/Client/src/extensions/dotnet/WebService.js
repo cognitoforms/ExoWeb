@@ -53,7 +53,7 @@ ExoWeb.Mapper.setRoundtripProvider(function (type, id, paths, changes, scopeQuer
 			from: type,
 			ids: [id],
 			include: paths,
-			inScope: false,
+			inScope: true,
 			forLoad: true
 		});
 	}
