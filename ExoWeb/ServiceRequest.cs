@@ -306,7 +306,7 @@ namespace ExoWeb
 				if (forLoad)
 					instance.RunPendingPropertyGetRules(p => p is GraphValueProperty || steps.Any(s => s.Property == p));
 				else
-					instance.RunPropertyGetRules(p => p is GraphValueProperty);
+					instance.RunPendingPropertyGetRules(p => p is GraphValueProperty);
 			}
 		}
 
