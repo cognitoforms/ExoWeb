@@ -360,7 +360,21 @@
 			}
 			else {
 				try {
+					// JBP: In IE9 the getAttributeNode method handles 'class' special, in that it appears to actually create
+					// a new 'class' attribute and sets the value to empty string if it doesn't exist on the element.  
+					// This behavior appears to affect the sys:class attribute value, as it is also set to empty string after the getAttributeNode method is called.
+
+					if (name.toLowerCase() === "class" && Sys.Browser.agent === Sys.Browser['InternetExplorer'] && Sys.Browser.version >= 9) {
+						if (!element.className) {
+							return;
+						} else {
+							// HACK: evaluate the sys:class attribute, which somehow sets the class attribute equal to sys:class value
+							element.getAttributeNode("sys:class");
+						}
+					}
+
 					node = element.getAttributeNode(name);
+
 					if (node && node.specified) {
 						value = node.nodeValue;
 					}
