@@ -67,8 +67,17 @@ Property.mixin({
 	isDefinedBy: function Property$isDefinedBy(mtype) {
 		return this._containingType === mtype || mtype.isSubclassOf(this._containingType);
 	},
-	_addRule: function Property$_addRule(rule, isTarget) {
+	_registerRule: function Property$_addRule(rule, isTarget) {
 		this._rules.push({ value: rule, isTarget: isTarget });
+
+		// Raise events if registered.
+		var handler = this._getEventHandler("ruleRegistered");
+		if (handler)
+			handler(rule, { property: this, isTarget: isTarget });
+	},
+	addRuleRegistered: function Property$addChanged(handler, obj, once) {
+		this._addEvent("ruleRegistered", handler, obj ? equals(obj) : null, once);
+		return this;
 	},
 	rules: function (targetsThis) {
 		return this._rules

@@ -560,7 +560,7 @@ Type.prototype = {
 				);
 			}
 
-			(prop instanceof PropertyChain ? prop.lastProperty() : prop)._addRule(rule, input.get_isTarget());
+			(prop instanceof PropertyChain ? prop.lastProperty() : prop)._registerRule(rule, input.get_isTarget());
 		}
 	},
 	// Executes all rules that have a particular property as input

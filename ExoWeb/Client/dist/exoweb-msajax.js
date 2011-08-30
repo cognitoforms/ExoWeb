@@ -3778,7 +3778,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					);
 				}
 
-				(prop instanceof PropertyChain ? prop.lastProperty() : prop)._addRule(rule, input.get_isTarget());
+				(prop instanceof PropertyChain ? prop.lastProperty() : prop)._registerRule(rule, input.get_isTarget());
 			}
 		},
 		// Executes all rules that have a particular property as input
@@ -3956,8 +3956,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 		isDefinedBy: function Property$isDefinedBy(mtype) {
 			return this._containingType === mtype || mtype.isSubclassOf(this._containingType);
 		},
-		_addRule: function Property$_addRule(rule, isTarget) {
+		_registerRule: function Property$_addRule(rule, isTarget) {
 			this._rules.push({ value: rule, isTarget: isTarget });
+
+			// Raise events if registered.
+			var handler = this._getEventHandler("ruleRegistered");
+			if (handler)
+				handler(rule, { property: this, isTarget: isTarget });
+		},
+		addRuleRegistered: function Property$addChanged(handler, obj, once) {
+			this._addEvent("ruleRegistered", handler, obj ? equals(obj) : null, once);
+			return this;
 		},
 		rules: function (targetsThis) {
 			return this._rules
@@ -5417,9 +5426,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var allowedValuesInput = new RuleInput(rule._allowedValuesProperty);
 				inputs.push(allowedValuesInput);
 
-				Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-
 				rule._inited = true;
+
+				Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 			});
 		}
 		else {
@@ -5575,14 +5584,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var compareInput = new RuleInput(rule._compareProperty);
 				inputs.push(compareInput);
 
-				Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-
 				rule._inited = true;
 
 				if (chain.get_jstype() === Boolean && rule._compareOp == "NotEqual" && (rule._compareValue === undefined || rule._compareValue === null)) {
 					rule._compareOp = "Equal";
 					rule._compareValue = true;
 				}
+
+				Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 			});
 		}
 		else {
@@ -5721,9 +5730,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 						var watchPathInput = new RuleInput(chain);
 						inputs.push(watchPathInput);
 
-						Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-
 						rule._inited = true;
+
+						Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 					});
 				});
 			}
@@ -5898,9 +5907,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 						var watchPathInput = new RuleInput(chain);
 						inputs.push(watchPathInput);
 
-						Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-
 						rule._inited = true;
+
+						Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 					});
 				});
 			}
@@ -13291,6 +13300,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 
 					this._allowedValuesRule.addChanged(reloadOptions.bind(this).prependArguments(true), this._propertyChain.lastTarget(this._target));
+				}
+				else {
+					var _this = this;
+					prop.addRuleRegistered(function(sender, args) {
+						if (!_this._allowedValuesRule) {
+							_this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
+							if (_this._allowedValuesRule) {
+								_this._reloadOptions(true);
+							}
+						}
+					});
 				}
 			}
 			return this._allowedValuesRule;

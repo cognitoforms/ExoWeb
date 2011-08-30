@@ -64,9 +64,9 @@ ErrorIfExpressionsRule.prototype = {
 					var watchPathInput = new RuleInput(chain);
 					inputs.push(watchPathInput);
 
-					Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-
 					rule._inited = true;
+
+					Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 				});
 			});
 		}

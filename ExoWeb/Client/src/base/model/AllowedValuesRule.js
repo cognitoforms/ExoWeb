@@ -40,9 +40,9 @@ AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType, mtype
 			var allowedValuesInput = new RuleInput(rule._allowedValuesProperty);
 			inputs.push(allowedValuesInput);
 
-			Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-
 			rule._inited = true;
+
+			Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 		});
 	}
 	else {

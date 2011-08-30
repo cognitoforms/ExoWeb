@@ -416,6 +416,17 @@ Adapter.prototype = {
 
 				this._allowedValuesRule.addChanged(reloadOptions.bind(this).prependArguments(true), this._propertyChain.lastTarget(this._target));
 			}
+			else {
+				var _this = this;
+				prop.addRuleRegistered(function(sender, args) {
+					if (!_this._allowedValuesRule) {
+						_this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
+						if (_this._allowedValuesRule) {
+							_this._reloadOptions(true);
+						}
+					}
+				});
+			}
 		}
 		return this._allowedValuesRule;
 	},

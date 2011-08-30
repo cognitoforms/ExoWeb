@@ -42,14 +42,14 @@ CompareRule.load = function CompareRule$load(rule, loadedType, mtype, callback, 
 			var compareInput = new RuleInput(rule._compareProperty);
 			inputs.push(compareInput);
 
-			Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-
 			rule._inited = true;
 
 			if (chain.get_jstype() === Boolean && rule._compareOp == "NotEqual" && (rule._compareValue === undefined || rule._compareValue === null)) {
 				rule._compareOp = "Equal";
 				rule._compareValue = true;
 			}
+
+			Rule.register(rule, inputs, false, mtype, callback, thisPtr);
 		});
 	}
 	else {
