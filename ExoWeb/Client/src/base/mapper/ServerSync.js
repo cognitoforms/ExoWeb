@@ -49,13 +49,38 @@ function ServerSync(model) {
 		startChangeSet.call(this, "client");
 	};
 
-	this.ignoreChanges = function(before, callback, after, thisPtr) {
+	var expected = null;
+
+	// It is safe to assume that if the expected change is going
+	// to be raised it will be the first change captured.
+	this.expect = function(type, instance, property, filter) {
+		expected = { type: type, instance: instance, property: property, filter: filter };
+	};
+
+	this.isExpecting = function(change) {
+		if (!expected)
+			return false;
+
+		var expectedLocal = expected;
+		expected = null;
+
+		if (change.type !== expectedLocal.type)
+			return false;
+
+		if (expectedLocal.instance && fromExoGraph(change.instance, this._translator) !== expectedLocal.instance)
+			return false;
+
+		if (expectedLocal.property && change.property !== expectedLocal.property)
+			return false;
+
+		return !expectedLocal.filter || expectedLocal.filter(change);
+	};
+
+	this.wrap = function(before, callback, after, thisPtr) {
 		return function() {
 			var beforeCalled = false;
 
 			try {
-				applyingChanges++;
-
 				if (before && before instanceof Function)
 					before();
 				
@@ -64,8 +89,6 @@ function ServerSync(model) {
 				callback.apply(thisPtr || this, arguments);
 			}
 			finally {
-				applyingChanges--;
-				
 				if (beforeCalled === true && after && after instanceof Function)
 					after();
 			}
@@ -733,7 +756,7 @@ ServerSync.mixin({
 	// Various
 	///////////////////////////////////////////////////////////////////////
 	_captureChange: function ServerSync$_captureChange(change) {
-		if (!this.isApplyingChanges() && this.isCapturingChanges()) {
+		if (!this.isApplyingChanges() && this.isCapturingChanges() && !this.isExpecting(change)) {
 			this._changeLog.add(change);
 
 			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");

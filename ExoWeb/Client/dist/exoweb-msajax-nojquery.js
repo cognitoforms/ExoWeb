@@ -8157,7 +8157,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return;
 
 			change.idChanges.forEach(function (idChange, idChangeIndex) {
-				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function (jstype) {
+				ensureJsType(serverSync._model, idChange.type, serverSync.wrap(before, function (jstype) {
 					var serverOldId = idChange.oldId;
 					var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 							serverSync._translator.reverse(idChange.type, serverOldId) :
@@ -8227,8 +8227,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}, this);
 		},
 		applyInitChange: function (change, serverSync, before, after) {
-			tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.ignoreChanges(before, function (jstype) {
+			tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.wrap(before, function (jstype) {
 				if (!jstype.meta.get(change.instance.id)) {
+					serverSync.expect(change.type, null, null, function(captured) {
+						return captured.type === jstype.meta.get_fullName();
+					});
+
 					// Create the new object
 					var newObj = new jstype();
 
@@ -8244,14 +8248,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		applyRefChange: function (change, serverSync, before, after) {
 			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.wrap(before, function (srcObj) {
 					if (change.newValue) {
-						tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(before, function (refType) {
+						tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.wrap(before, function (refType) {
 							var refObj = fromExoGraph(change.newValue, serverSync._translator, true);
+							serverSync.expect(change.type, srcObj, change.property, function(captured) {
+								return captured.newValue && fromExoGraph(captured.newValue, serverSync._translator, true) === refObj;
+							});
 							Sys.Observer.setValue(srcObj, change.property, refObj);
 						}, after), this);
 					}
 					else {
+						serverSync.expect(change.type, srcObj, change.property, function(captured) {
+							return captured.newValue === null;
+						});
 						Sys.Observer.setValue(srcObj, change.property, null);
 					}
 				}, after), this);
@@ -8259,7 +8269,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		applyValChange: function (change, serverSync, before, after) {
 			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.wrap(before, function (srcObj) {
 
 					// Cache the new value, becuase we access it many times and also it may be modified below
 					// to account for timezone differences, but we don't want to modify the actual change object.
@@ -8283,6 +8293,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 						}
 					}
 
+					serverSync.expect(change.type, srcObj, change.property, function(captured) {
+						return captured.newValue === newValue;
+					});
 					Sys.Observer.setValue(srcObj, change.property, newValue);
 
 				}, after), this);
@@ -8290,7 +8303,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		applyListChange: function (change, serverSync, before, after) {
 			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
+				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.wrap(before, function (srcObj) {
 					var prop = srcObj.meta.property(change.property, true);
 					var list = prop.value(srcObj);
 
@@ -8300,7 +8313,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// apply added items
 					change.added.forEach(function (item) {
-						tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(before, function (itemType) {
+						tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.wrap(before, function (itemType) {
 							var itemObj = fromExoGraph(item, serverSync._translator, true);
 							if (list.indexOf(itemObj) < 0) {
 								list.add(itemObj);
@@ -8311,14 +8324,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// apply removed items
 					change.removed.forEach(function (item) {
 						// no need to load instance only to remove it from a list
-						tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
+						tryGetJsType(serverSync._model, item.type, null, false, serverSync.wrap(before, function (itemType) {
 							var itemObj = fromExoGraph(item, serverSync._translator, true);
 							list.remove(itemObj);
 						}, after), this, true);
 					}, this);
 
 					// don't end update until the items have been loaded
-					listSignal.waitForAll(serverSync.ignoreChanges(before, function () {
+					listSignal.waitForAll(serverSync.wrap(before, function () {
+						serverSync.expect(change.type, srcObj, change.property);
 						list.endUpdate();
 					}, after), this, true);
 				}, after), this);
@@ -8382,13 +8396,38 @@ Type.registerNamespace("ExoWeb.DotNet");
 			startChangeSet.call(this, "client");
 		};
 
-		this.ignoreChanges = function(before, callback, after, thisPtr) {
+		var expected = null;
+
+		// It is safe to assume that if the expected change is going
+		// to be raised it will be the first change captured.
+		this.expect = function(type, instance, property, filter) {
+			expected = { type: type, instance: instance, property: property, filter: filter };
+		};
+
+		this.isExpecting = function(change) {
+			if (!expected)
+				return false;
+
+			var expectedLocal = expected;
+			expected = null;
+
+			if (change.type !== expectedLocal.type)
+				return false;
+
+			if (expectedLocal.instance && fromExoGraph(change.instance, this._translator) !== expectedLocal.instance)
+				return false;
+
+			if (expectedLocal.property && change.property !== expectedLocal.property)
+				return false;
+
+			return !expectedLocal.filter || expectedLocal.filter(change);
+		};
+
+		this.wrap = function(before, callback, after, thisPtr) {
 			return function() {
 				var beforeCalled = false;
 
 				try {
-					applyingChanges++;
-
 					if (before && before instanceof Function)
 						before();
 				
@@ -8397,8 +8436,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 					callback.apply(thisPtr || this, arguments);
 				}
 				finally {
-					applyingChanges--;
-				
 					if (beforeCalled === true && after && after instanceof Function)
 						after();
 				}
@@ -9066,7 +9103,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Various
 		///////////////////////////////////////////////////////////////////////
 		_captureChange: function ServerSync$_captureChange(change) {
-			if (!this.isApplyingChanges() && this.isCapturingChanges()) {
+			if (!this.isApplyingChanges() && this.isCapturingChanges() && !this.isExpecting(change)) {
 				this._changeLog.add(change);
 
 				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");

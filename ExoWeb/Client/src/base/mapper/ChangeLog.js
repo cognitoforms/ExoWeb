@@ -267,7 +267,7 @@ ChangeLog.mixin({
 			return;
 
 		change.idChanges.forEach(function (idChange, idChangeIndex) {
-			ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function (jstype) {
+			ensureJsType(serverSync._model, idChange.type, serverSync.wrap(before, function (jstype) {
 				var serverOldId = idChange.oldId;
 				var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 						serverSync._translator.reverse(idChange.type, serverOldId) :
@@ -337,8 +337,12 @@ ChangeLog.mixin({
 		}, this);
 	},
 	applyInitChange: function (change, serverSync, before, after) {
-		tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.ignoreChanges(before, function (jstype) {
+		tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.wrap(before, function (jstype) {
 			if (!jstype.meta.get(change.instance.id)) {
+				serverSync.expect(change.type, null, null, function(captured) {
+					return captured.type === jstype.meta.get_fullName();
+				});
+
 				// Create the new object
 				var newObj = new jstype();
 
@@ -354,14 +358,20 @@ ChangeLog.mixin({
 	},
 	applyRefChange: function (change, serverSync, before, after) {
 		tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
+			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.wrap(before, function (srcObj) {
 				if (change.newValue) {
-					tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(before, function (refType) {
+					tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.wrap(before, function (refType) {
 						var refObj = fromExoGraph(change.newValue, serverSync._translator, true);
+						serverSync.expect(change.type, srcObj, change.property, function(captured) {
+							return captured.newValue && fromExoGraph(captured.newValue, serverSync._translator, true) === refObj;
+						});
 						Sys.Observer.setValue(srcObj, change.property, refObj);
 					}, after), this);
 				}
 				else {
+					serverSync.expect(change.type, srcObj, change.property, function(captured) {
+						return captured.newValue === null;
+					});
 					Sys.Observer.setValue(srcObj, change.property, null);
 				}
 			}, after), this);
@@ -369,7 +379,7 @@ ChangeLog.mixin({
 	},
 	applyValChange: function (change, serverSync, before, after) {
 		tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
+			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.wrap(before, function (srcObj) {
 
 				// Cache the new value, becuase we access it many times and also it may be modified below
 				// to account for timezone differences, but we don't want to modify the actual change object.
@@ -393,6 +403,9 @@ ChangeLog.mixin({
 					}
 				}
 
+				serverSync.expect(change.type, srcObj, change.property, function(captured) {
+					return captured.newValue === newValue;
+				});
 				Sys.Observer.setValue(srcObj, change.property, newValue);
 
 			}, after), this);
@@ -400,7 +413,7 @@ ChangeLog.mixin({
 	},
 	applyListChange: function (change, serverSync, before, after) {
 		tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
+			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.wrap(before, function (srcObj) {
 				var prop = srcObj.meta.property(change.property, true);
 				var list = prop.value(srcObj);
 
@@ -410,7 +423,7 @@ ChangeLog.mixin({
 
 				// apply added items
 				change.added.forEach(function (item) {
-					tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(before, function (itemType) {
+					tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.wrap(before, function (itemType) {
 						var itemObj = fromExoGraph(item, serverSync._translator, true);
 						if (list.indexOf(itemObj) < 0) {
 							list.add(itemObj);
@@ -421,14 +434,15 @@ ChangeLog.mixin({
 				// apply removed items
 				change.removed.forEach(function (item) {
 					// no need to load instance only to remove it from a list
-					tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
+					tryGetJsType(serverSync._model, item.type, null, false, serverSync.wrap(before, function (itemType) {
 						var itemObj = fromExoGraph(item, serverSync._translator, true);
 						list.remove(itemObj);
 					}, after), this, true);
 				}, this);
 
 				// don't end update until the items have been loaded
-				listSignal.waitForAll(serverSync.ignoreChanges(before, function () {
+				listSignal.waitForAll(serverSync.wrap(before, function () {
+					serverSync.expect(change.type, srcObj, change.property);
 					list.endUpdate();
 				}, after), this, true);
 			}, after), this);
