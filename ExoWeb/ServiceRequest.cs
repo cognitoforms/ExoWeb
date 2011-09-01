@@ -113,6 +113,10 @@ namespace ExoWeb
 				// Load instances specified by load queries
 				PerformQueries(response, true);
 
+				// Condense the transaction log
+				if (response.Changes != null)
+					response.Changes.Condense();
+
 				// Send conditions for instances loaded in the request
 				if (response.Instances != null || response.Changes != null)
 				{
