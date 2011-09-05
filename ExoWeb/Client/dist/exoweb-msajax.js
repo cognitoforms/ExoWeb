@@ -13591,7 +13591,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// remember the last target that was recieved when an event fires and radio button
 			// target change events fire on click (which does not account for de-selection).  
 			// Otherwise, the source value is only set the first time the radio button is selected.
-			if (Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]")) {
+			if (Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]") && $(target).attr("checked")) {
 				$("input[type=radio][name='" + target.name + "']").each(function () {
 					if (this != target && this.__msajaxbindings !== undefined) {
 						var bindings = this.__msajaxbindings;
