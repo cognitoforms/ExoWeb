@@ -258,7 +258,11 @@ namespace ExoWeb
 				// Perform initialization while capturing changes
 				using (initChanges = GraphContext.Current.BeginTransaction())
 				{
-					init.DynamicInvoke(parameters);
+					// Prevent property change rules from running until after initialization
+					using (new GraphEventScope())
+					{
+						init.DynamicInvoke(parameters);
+					}
 					initChanges.Commit();
 				}
 			}
