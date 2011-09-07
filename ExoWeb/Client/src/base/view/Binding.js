@@ -187,7 +187,7 @@ Binding.mixin({
 
 		this._sourcePathResult = result;
 
-		if (result !== undefined || result !== null) {
+		if (result !== undefined && result !== null) {
 			this._update(result, ensureArray(result), []);
 		}
 	},
