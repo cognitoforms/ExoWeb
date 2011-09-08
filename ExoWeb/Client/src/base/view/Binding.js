@@ -104,7 +104,7 @@ Binding.mixin({
 	},
 
 	_transform: function(value) {
-		if (!this._options.transform)
+		if (!this._options.transform || !value)
 			return value;
 
 		if (!this._transformFn) {
@@ -137,7 +137,7 @@ Binding.mixin({
 		}
 
 		// if the value is an array and we will transform the value or require paths, then watch for collection change events
-		if (value instanceof Array && (this._options.required || this._options.transform)) {
+		if (value && value instanceof Array && (this._options.required || this._options.transform)) {
 			this._value = value;
 			Sys.Observer.makeObservable(value);
 			Sys.Observer.addCollectionChanged(value, this._collectionChangedHandler);
@@ -151,19 +151,24 @@ Binding.mixin({
 				Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
 			}, this);
 
-			// Load required paths, then manipulate the source value and update the target.
-			this._require(value, function() {
-				if (this._isDisposed === true) {
-					return;
-				}
-
-				// Watch require path for new items.
-				forEach(newItems, function(item) {
-					Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
-				}, this);
-
+			if (value) {
+				// Load required paths, then manipulate the source value and update the target.
+				this._require(value, function() {
+					if (this._isDisposed === true) {
+						return;
+					}
+	
+					// Watch require path for new items.
+					forEach(newItems, function(item) {
+						Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
+					}, this);
+	
+					this._queue(this._ifNull(this._format(this._transform(value))));
+				});
+			}
+			else {
 				this._queue(this._ifNull(this._format(this._transform(value))));
-			});
+			}
 		}
 		else {
 			this._queue(this._ifNull(this._format(this._transform(value))));
@@ -198,9 +203,7 @@ Binding.mixin({
 
 		this._sourcePathResult = result;
 
-		if (result !== undefined && result !== null) {
-			this._update(result, ensureArray(result), []);
-		}
+		this._update(result, ensureArray(result), []);
 	},
 
 	_evalFailure: function(err) {
