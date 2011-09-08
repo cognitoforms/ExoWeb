@@ -118,7 +118,7 @@ describe("Basic behavior", function() {
 
 			var source = {};
 			this.evalResult = "value";
-			var binding = new Binding(null, source, "property");
+			var binding = new Binding(null, source, "property", {});
 
 			expect(addPathChangedSpy).toHaveBeenCalledWith(source, "property", binding._sourcePathChangedHandler, true);
 		});
@@ -128,7 +128,7 @@ describe("Basic behavior", function() {
 
 			var source = {};
 			this.evalResult = source;
-			var binding = new Binding(null, source, null);
+			var binding = new Binding(null, source, null, {});
 
 			expect(addPathChangedSpy).not.toHaveBeenCalled();
 		});
@@ -138,7 +138,7 @@ describe("Basic behavior", function() {
 
 			var source = {};
 			this.evalResult = source;
-			var binding = new Binding(null, source, null);
+			var binding = new Binding(null, source, null, {});
 
 			expect(setTargetSpy).toHaveBeenCalledWith(source);
 		});
@@ -149,7 +149,7 @@ describe("Basic behavior", function() {
 			var source = {};
 			var value = "value";
 			this.evalResult = value;
-			var binding = new Binding(null, source, "value");
+			var binding = new Binding(null, source, "value", {});
 
 			expect(setTargetSpy).toHaveBeenCalledWith(value);
 		});

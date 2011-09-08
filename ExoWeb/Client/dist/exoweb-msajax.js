@@ -12636,6 +12636,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._evalSuccessHandler = this._evalSuccess.bind(this);
 		this._evalFailureHandler = this._evalFailure.bind(this);
 
+		if (target.add_disposing) {
+			target.add_disposing(this.dispose.bind(this));
+		}
+
 		if (this._sourcePath) {
 			// Start the initial fetch of the source value.
 			ExoWeb.Model.LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
@@ -12742,6 +12746,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		_update: function(value, newItems, oldItems) {
+			if (this._isDisposed === true) {
+				return;
+			}
+
 			// if necessary, remove an existing collection change handler
 			if (this._value && this._value instanceof Array) {
 				Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
@@ -12765,6 +12773,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				// Load required paths, then manipulate the source value and update the target.
 				this._require(value, function() {
+					if (this._isDisposed === true) {
+						return;
+					}
 
 					// Watch require path for new items.
 					forEach(newItems, function(item) {
