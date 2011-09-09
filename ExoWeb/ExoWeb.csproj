@@ -204,6 +204,7 @@
     <Content Include="Client\src\base\model\FormatError.js" />
     <Content Include="Client\src\base\model\Formats.js" />
     <Content Include="Client\src\base\model\LazyLoader.js" />
+    <Content Include="Client\src\base\model\ListLengthRule.js" />
     <Content Include="Client\src\base\model\Model.js" />
     <Content Include="Client\src\base\model\ObjectMeta.js" />
     <Content Include="Client\src\base\model\PathTokens.js" />

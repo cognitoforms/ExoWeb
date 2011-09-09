@@ -890,6 +890,22 @@ namespace ExoWeb
 							json.Set("compareValue", rule.CompareValue);
 						},
 						json => { throw new NotSupportedException("RequiredIfRule cannot be deserialized."); }),
+
+					// ListLengthRule
+					new JsonConverter<ListLengthRule>(
+						(rule, json) =>
+						{
+							json.Set("type", "listLength");
+
+							json.Set("property", rule.Property.Name);
+
+							json.Set("compareOperator", rule.CompareOperator.ToString());
+
+							json.Set("compareSource", rule.CompareLengthSourceIsStatic ? rule.CompareLengthSource : "this." + rule.CompareLengthSource);
+
+							json.Set("staticLength", rule.StaticLength.ToString());
+						},
+						json => { throw new NotSupportedException("ListLengthRule cannot be deserialized."); }),
 			});
 
 			// Cache the method info of the deserialize method

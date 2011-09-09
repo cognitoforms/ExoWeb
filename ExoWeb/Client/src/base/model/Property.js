@@ -476,6 +476,10 @@ Property.mixin({
 	stringLength: function (min, max, conditionType) {
 		new ExoWeb.Model.Rule.stringLength(this._containingType, { property: this._name, min: min, max: max }, conditionType);
 		return this;
+	},
+	listLength: function (options, conditionType) {
+		new ExoWeb.Model.Rule.listLength(this._containingType, { property: this._name, staticLength: options.staticLength, compareSource: options.compareSource, compareOperator: options.compareOperator }, conditionType);
+		return this;
 	}
 });
 Property.mixin(ExoWeb.Functor.eventing);
