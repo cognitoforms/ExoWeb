@@ -252,6 +252,13 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 
 		if (obj) {
 			ObjectLazyLoader.unregister(obj);
+
+			// Raise init events if registered.
+			for (var t = mtype; t; t = t.baseType) {
+				var handler = t._getEventHandler("initExisting");
+				if (handler)
+					handler(obj, {});
+			}
 		}
 	}
 

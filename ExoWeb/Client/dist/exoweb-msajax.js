@@ -3326,8 +3326,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	};
 
-	function generateClass(type)
-	{
+	function generateClass(type) {
 		function construct(idOrProps, props) {
 			if (!disableConstruction) {
 				if (idOrProps && idOrProps.constructor === String) {
@@ -3355,6 +3354,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 					if (idOrProps) {
 						this.set(idOrProps);
 					}
+
+					// Raise init events if registered.
+					for (var t = type; t; t = t.baseType) {
+						var handler = t._getEventHandler("initNew");
+						if (handler)
+							handler(this, {});
+					}
 				}
 			}
 		}
@@ -3363,6 +3369,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	Type.prototype = {
+		addInitNew: function Type$addInitNew(handler, obj, once) {
+			this._addEvent("initNew", handler, obj ? equals(obj) : null, once);
+			return this;
+		},
+		addInitExisting: function Type$addInitExisting(handler, obj, once) {
+			this._addEvent("initExisting", handler, obj ? equals(obj) : null, once);
+			return this;
+		},
 		toIdString: function Type$toIdString(id) {
 			if (id) {
 				return $format("{0}|{1}", [this.get_fullName(), id]);
@@ -9609,6 +9623,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (obj) {
 				ObjectLazyLoader.unregister(obj);
+
+				// Raise init events if registered.
+				for (var t = mtype; t; t = t.baseType) {
+					var handler = t._getEventHandler("initExisting");
+					if (handler)
+						handler(obj, {});
+				}
 			}
 		}
 
@@ -10201,6 +10222,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 				mtype.get_model()._server._handleResult(result, null, null, function() {
 					ExoWeb.Model.LazyLoader.unregister(obj, this);
 					pendingObjects--;
+
+					// Raise init events if registered.
+					for (var t = mtype; t; t = t.baseType) {
+						var handler = t._getEventHandler("initExisting");
+						if (handler)
+							handler(obj, {});
+					}
+
 					callback.call(thisPtr || this, obj);
 				});
 			},

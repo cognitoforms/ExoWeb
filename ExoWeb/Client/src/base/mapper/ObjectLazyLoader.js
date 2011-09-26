@@ -35,6 +35,14 @@ function objLoad(obj, propName, callback, thisPtr) {
 			mtype.get_model()._server._handleResult(result, null, null, function() {
 				ExoWeb.Model.LazyLoader.unregister(obj, this);
 				pendingObjects--;
+
+				// Raise init events if registered.
+				for (var t = mtype; t; t = t.baseType) {
+					var handler = t._getEventHandler("initExisting");
+					if (handler)
+						handler(obj, {});
+				}
+
 				callback.call(thisPtr || this, obj);
 			});
 		},
