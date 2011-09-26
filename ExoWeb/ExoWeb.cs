@@ -927,7 +927,7 @@ namespace ExoWeb
 		/// <typeparam name="T"></typeparam>
 		/// <param name="json"></param>
 		/// <returns></returns>
-		internal static T FromJson<T>(string json)
+		public static T FromJson<T>(string json)
 		{
 			return (T)FromJson(typeof(T), json);
 		}
@@ -938,7 +938,7 @@ namespace ExoWeb
 		/// <typeparam name="T"></typeparam>
 		/// <param name="json"></param>
 		/// <returns></returns>
-		internal static object FromJson(Type type, string json)
+		public static object FromJson(Type type, string json)
 		{
 			return deserialize.MakeGenericMethod(type).Invoke(serializer, new object[] { json });
 		}
@@ -949,7 +949,7 @@ namespace ExoWeb
 		/// <param name="type"></param>
 		/// <param name="value"></param>
 		/// <returns></returns>
-		internal static string ToJson(Type type, object value)
+		public static string ToJson(Type type, object value)
 		{
 			return serializer.Serialize(value);
 		}
