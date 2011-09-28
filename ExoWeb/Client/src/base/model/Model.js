@@ -137,8 +137,9 @@ Model.prototype = {
 		return this._types[name];
 	},
 	addBeforeContextReady: function(handler) {
+		// Only executes the given handler once, since the event should only fire once
 		if (!this._contextReady) {
-			this._addEvent("beforeContextReady", handler);
+			this._addEvent("beforeContextReady", handler, null, true);
 		}
 		else {
 			handler();
