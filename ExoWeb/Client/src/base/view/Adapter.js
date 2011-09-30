@@ -296,6 +296,12 @@ Adapter.prototype = {
 		//ExoWeb.trace.log(["@", "markupExt"], "Adapter disposed.");
 		this._isDisposed = true;
 
+		this.clearValidation();
+
+		Adapter.callBaseMethod(this, "dispose");
+	},
+	clearValidation: function () {
+		
 		// re-execute rules when the adapter is disposed to ensure that all conditions bound
 		// to a field are removed with the field is removed from the page.
 		var prop = this._propertyChain;
@@ -305,7 +311,6 @@ Adapter.prototype = {
 			target.meta.executeRules(prop);
 		}
 
-		Adapter.callBaseMethod(this, "dispose");
 	},
 	ready: function Adapter$ready(callback, thisPtr) {
 		this._readySignal.waitForAll(callback, thisPtr);
@@ -418,7 +423,7 @@ Adapter.prototype = {
 			}
 			else {
 				var _this = this;
-				prop.addRuleRegistered(function(sender, args) {
+				prop.addRuleRegistered(function (sender, args) {
 					if (!_this._allowedValuesRule) {
 						_this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
 						if (_this._allowedValuesRule) {
