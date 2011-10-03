@@ -86,16 +86,16 @@ function CalculatedPropertyRule(mtype, options, ctype) {
 }
 
 CalculatedPropertyRule.mixin({
-	canExecute: function(sender, property, retroactive) {
+	canExecute: function(sender, args, retroactive) {
 		// If there is no event, check if the calculation is based on some initialization, then defer to the default
 		// input check. This is done so that rules that are based on property changes alone do not fire when created,
 		// but calculations that are based on property initialization are allowed to fire if possible.
-		return (!!property || (!!retroactive && this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0)) &&
+		return ((!!args && !!args.property) || (!!retroactive && this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0)) &&
 			// If no sender exists then this is a static check that is only dependent on the rule's inputs
 			// and not the initialization state of any particular object. If no event is firing (property
 			// argument is undefined) then the property argument will be the property that the rule is
 			// attached to, which should have no effect on the outcome.
-			(!sender || Rule.canExecute(this, sender, property || this.prop));
+			(!sender || Rule.canExecute(this, sender, args || { property: this.prop }));
 	},
 	execute: function Property$calculated$execute(obj, callback) {
 		var signal = new Signal("calculated rule");

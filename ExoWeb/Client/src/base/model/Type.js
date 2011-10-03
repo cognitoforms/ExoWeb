@@ -479,12 +479,12 @@ Type.prototype = {
 	},
 	addRule: function Type$addRule(rule) {
 		function Type$addRule$init(sender, args) {
-			if (!args.wasInited && (rule.canExecute ? rule.canExecute(sender, args.property) : Rule.canExecute(rule, sender, args.property))) {
+			if (!args.wasInited && (rule.canExecute ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
 				Type$addRule$fn(sender, args.property, rule.execute);
 			}
 		}
 		function Type$addRule$changed(sender, args) {
-			if (args.wasInited && (rule.canExecute  ? rule.canExecute(sender, args.property) : Rule.canExecute(rule, sender, args.property))) {
+			if (args.wasInited && (rule.canExecute  ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
 				Type$addRule$fn(sender, args.property, rule.execute);
 			}
 		}

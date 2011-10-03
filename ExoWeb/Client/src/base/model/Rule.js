@@ -34,8 +34,8 @@ Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter, callba
 	});
 };
 
-Rule.canExecute = function(rule, sender, property) {
-	return rule.inputs.every(function(input) { return input.property === property || !input.get_dependsOnInit() || input.property.isInited(sender, true); });
+Rule.canExecute = function(rule, sender, args) {
+	return rule.inputs.every(function(input) { return input.property === args.property || !input.get_dependsOnInit() || input.property.isInited(sender, true); });
 };
 
 Rule.ensureError = function Rule$ensureError(ruleName, prop) {
