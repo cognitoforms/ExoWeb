@@ -5202,7 +5202,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	Rule.canExecute = function(rule, sender, args) {
-		return rule.inputs.every(function(input) { return input.property === args.property || !input.get_dependsOnInit() || input.property.isInited(sender, true); });
+		return rule.inputs.every(function(input) { return (args && input.property === args.property) || !input.get_dependsOnInit() || input.property.isInited(sender, true); });
 	};
 
 	Rule.ensureError = function Rule$ensureError(ruleName, prop) {
