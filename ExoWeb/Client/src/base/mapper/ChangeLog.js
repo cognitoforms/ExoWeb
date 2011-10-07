@@ -149,7 +149,7 @@ ChangeLog.mixin({
 		var currentSet = this._activeSet,
 			currentSetIndex = this._sets.indexOf(currentSet);
 
-		while (currentSet.changes().length === 0) {
+		while (!currentSet.changes().some(function(c) { return c.type !== "Checkpoint"; })) {
 			// remove the set from the log
 			this._sets.splice(currentSetIndex, 1);
 

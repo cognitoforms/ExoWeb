@@ -101,9 +101,13 @@ ChangeSet.mixin({
 		return numRemoved;
 	},
 	undo: function() {
-		if (this._changes.length > 0) {
+		if (this._changes.some(function(c) { return c.type !== "Checkpoint"; })) {
 			var lastIdx = this._changes.length - 1;
 			var change = this._changes[lastIdx];
+			while (change.type === "Checkpoint") {
+				this._changes.splice(lastIdx--, 1);
+				change = this._changes[lastIdx];
+			}
 			this._changes.splice(lastIdx, 1);
 			this._raiseEvent("changeUndone", [change, lastIdx, this]);
 			return change;
