@@ -93,19 +93,21 @@ CompareRule.prototype = {
 		var cmpValue = this._compareProperty.value(obj);
 		return CompareRule.compare(srcValue, this._compareOp, cmpValue, true);
 	},
+	message: function() {
+		return $format("{0} must be {1}{2} {3}", [
+			this.prop.get_label(),
+			ExoWeb.makeHumanReadable(this._compareOp).toLowerCase(),
+			(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
+			this._compareProperty.get_label()
+		]);
+	},
 	execute: function CompareRule$execute(obj) {
 		if (this._inited === true) {
 
 			var isValid = this.satisfies(obj);
 
-			var message = isValid ? '' : $format("{0} must be {1}{2} {3}", [
-				this.prop.get_label(),
-				ExoWeb.makeHumanReadable(this._compareOp).toLowerCase(),
-				(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
-				this._compareProperty.get_label()
-			]);
+			var message = isValid ? '' : this.message();
 			this.err = new Condition(this.ctype, message, [this.prop], this);
-
 
 			obj.meta.conditionIf(this.err, !isValid);
 		}
