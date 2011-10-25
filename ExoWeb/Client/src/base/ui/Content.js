@@ -45,7 +45,20 @@ Content.prototype = {
 		// Force rendering to occur if we previously had a value and now do not.
 		var force = ((value === undefined || value === null) && (this._data !== undefined && this._data !== null));
 
+		// Remove old change handler if applicable.
+		if (this._data && this._changeHandler) {
+			Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
+			this._changedHandler = null;
+		}
+
 		this._data = value;
+
+		// Watch for changes to an array.
+		if (value instanceof Array) {
+			this._changedHandler = this._collectionChanged.bind(this);
+			Sys.Observer.addCollectionChanged(value, this._changedHandler);
+		}
+
 		this.renderStart(force);
 	},
 	get_disabled: function Content$get_disabled() {
@@ -111,6 +124,9 @@ Content.prototype = {
 	},
 	get_isRendered: function () {
 		return this._isRendered;
+	},
+	_collectionChanged: function(sender, args) {
+		this.renderStart(true);
 	},
 	render: function Content$render() {
 		if (this._element === undefined || this._element === null) {

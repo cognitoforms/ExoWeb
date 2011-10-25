@@ -6832,14 +6832,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	});
 
-	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
-	var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
+	var dateRegex = /^\(\d{4}\)-\(\d{2}\)-\(\d{2}\)T\(\d{2}\)\:\(\d{2}\)\:\(\d{2}\)\(\.\d{3}\)?Z$/g;
+	var dateRegexReplace = "$2/$3/$1 $4:$5:$6$7 GMT";
 
 	// Format that converts from a date to a JSON string
 	// (using JSON.stringify) and then converts back to a date.
 	Date.formats.$json = new ExoWeb.Model.Format({
 		convert: function(obj) {
-			return JSON.stringify(obj);
+			return JSON.stringify(obj).replace(/^"/, "").replace(/"$/, "");
 		},
 		convertBack: function(str) {
 			dateRegex.lastIndex = 0;
@@ -12027,7 +12027,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Force rendering to occur if we previously had a value and now do not.
 			var force = ((value === undefined || value === null) && (this._data !== undefined && this._data !== null));
 
+			// Remove old change handler if applicable.
+			if (this._data && this._changeHandler) {
+				Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
+				this._changedHandler = null;
+			}
+
 			this._data = value;
+
+			// Watch for changes to an array.
+			if (value instanceof Array) {
+				this._changedHandler = this._collectionChanged.bind(this);
+				Sys.Observer.addCollectionChanged(value, this._changedHandler);
+			}
+
 			this.renderStart(force);
 		},
 		get_disabled: function Content$get_disabled() {
@@ -12093,6 +12106,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		get_isRendered: function () {
 			return this._isRendered;
+		},
+		_collectionChanged: function(sender, args) {
+			this.renderStart(true);
 		},
 		render: function Content$render() {
 			if (this._element === undefined || this._element === null) {

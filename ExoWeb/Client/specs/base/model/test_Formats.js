@@ -37,7 +37,7 @@ describe("Date.$json", function() {
 	it("converts to and from the JSON representation of a date", function() {
 		var date = new Date();
 		var json = Date.formats.$json.convert(date);
-		expect(json).toBe(JSON.stringify(date));
+		expect("\"" + json + "\"").toBe(JSON.stringify(date));
 		expect(Date.formats.$json.convertBack(json)).toEqual(date);
 	});
 });
@@ -46,4 +46,3 @@ describe("Date.$json", function() {
 ///////////////////////////////////////
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());
 jasmine.jasmine.getEnv().execute();
-
