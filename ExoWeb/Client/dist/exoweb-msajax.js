@@ -438,41 +438,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region Array
 	//////////////////////////////////////////////////
 
-	function assertArrayArg(arr, functionName) {
-		if (!(arr instanceof Array))
-			throw new TypeError("An array must be passed to \"" + functionName + "\".");
-	}
-
-	function assertFunctionArg(fun, allowNull, functionName) {
-		if (allowNull.constructor !== Boolean) {
-			functionName = allowNull;
-			allowNull = false;
-		}
-
-		if (allowNull && (fun === null || fun === undefined))
-			return;
-
-		if (!(fun instanceof Function))
-			throw new TypeError("A callback function must be passed to \"" + functionName + "\".");
-	}
-
 	function addRange(arr, items) {
-		assertArrayArg(arr, "addRange");
-		assertArrayArg(items, "addRange");
-
 		Array.prototype.push.apply(arr, items);
 	}
 
 	function contains(arr, elt, from) {
-		assertArrayArg(arr, "contains");
 		return arr.indexOf(elt, from) > -1 ? true : false;
 	}
 
 	// Filters out duplicate items from the given array.
 	/////////////////////////////////////////////////////
 	function distinct(arr) {
-		assertArrayArg(arr, "distinct");
-
 		var result = [];
 
 		for(var i = 0, len = arr.length; i < len; i++)
@@ -483,9 +459,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function every(arr, callback, thisPtr) {
-		assertArrayArg(arr, "every");
-		assertFunctionArg(callback, "every");
-
 		for (var i = 0, len = arr.length; i < len; i++)
 			if (i in arr && !callback.call(thisPtr || this, arr[i], i, arr))
 				return false;
@@ -500,9 +473,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function filter(arr, callback, thisPtr) {
-		assertArrayArg(arr, "filter");
-		assertFunctionArg(callback, "filter");
-
 		var result = [];
 		for (var i = 0, len = arr.length; i < len; i++) {
 			if (i in arr) {
@@ -516,9 +486,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function first(arr, callback, thisPtr) {
-		assertArrayArg(arr, "first");
-		assertFunctionArg(callback, true, "first");
-
 		for (var i = 0, len = arr.length; i < len; i++) {
 			if (i in arr) {
 				var val = arr[i];
@@ -532,16 +499,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function forEach(arr, callback, thisPtr) {
-		assertArrayArg(arr, "forEach");
-		assertFunctionArg(callback, "forEach");
-
 		for (var i = 0, len = arr.length; i < len; i++)
 			if (i in arr)
 				callback.call(thisPtr || this, arr[i], i, arr);
 	}
 
 	function indexOf(arr, elt, from) {
-		assertArrayArg(arr, "indexOf");
 		var len = arr.length;
 		from = Number(from) || 0;
 		from = (from < 0) ? Math.ceil(from) : Math.floor(from);
@@ -564,9 +527,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function last(arr, callback, thisPtr) {
-		assertArrayArg(arr, "last");
-		assertFunctionArg(callback, true, "last");
-
 		var result = null;
 
 		for (var i = 0, len = arr.length; i < len; i++) {
@@ -582,8 +542,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function lastIndexOf(arr, item, from) {
-		assertArrayArg(arr, "lastIndexOf");
-
 		var len = arr.length;
 
 		if (len === 0) return -1;
@@ -608,9 +566,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function map(arr, callback, thisPtr) {
-		assertArrayArg(arr, "map");
-		assertFunctionArg(callback, "map");
-
 		var result = [];
 
 		for (var i = 0, len = arr.length; i < len; i++)
@@ -637,9 +592,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function purge(arr, callback, thisPtr) {
-		assertArrayArg(arr, "purge");
-		assertFunctionArg(callback, "purge");
-
 		var result;
 
 		for (var i = 0; i < arr.length; i++) {
@@ -709,9 +661,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function some(arr, callback, thisPtr) {
-		assertArrayArg(arr, "some");
-		assertFunctionArg(callback, true, "some");
-
 		for (var i = 0, len = arr.length; i < len; i++)
 			if (i in arr && callback.call(thisPtr || this, arr[i], i, arr))
 				return true;
