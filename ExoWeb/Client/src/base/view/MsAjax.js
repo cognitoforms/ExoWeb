@@ -18,7 +18,7 @@
 						bindings[i]._lastTarget = bindings[i]._lastSource = false;
 				}
 			});
-		}
+		};
 	};
 
 	var sourceChangedImpl = Sys.Binding.prototype._sourceChanged;
@@ -31,6 +31,41 @@
 		// Remove checked attribute from other radio buttons in the group that are currently checked.
 		if (Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]") && !this._lastSource) {
 			$(target).removeAttr("checked");
+		}
+	};
+
+	Sys.UI.DataView.prototype._loadData = function _loadData(value) {
+		this._swapData(this._data, value);
+		var oldValue = this._data;
+		this._data = value;
+		this._setData = true;
+		this._stale = false;
+		// Array data should not typically be set unless some intermediate
+		// process (like transform) is creating a new array from the same original.
+		if ((value && value instanceof Array) && (oldValue && oldValue instanceof Array)) {
+			// copy the original array
+			var arr = oldValue.slice();
+			var events = update(arr, value, true);
+			var changes = events.map(function(e) {
+				return {
+					action: Sys.NotifyCollectionChangedAction[e.type],
+					newStartingIndex: e.type === "add" ? e.index : null,
+					newItems: e.type === "add" ? e.items : null,
+					oldStartingIndex: e.type === "remove" ? e.index : null,
+					oldItems: e.type === "remove" ? e.items : null
+				};
+			});
+			this._collectionChanged(value, { get_changes: function() { return changes; } });
+		}
+		else {
+			this._dirty = true;
+			if (this._isActive()) {
+				this.refresh();
+				this.raisePropertyChanged("data");
+			}
+			else {
+				this._changed = true;
+			}
 		}
 	};
 })();

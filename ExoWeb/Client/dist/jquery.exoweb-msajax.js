@@ -245,23 +245,32 @@
 
 			// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
 			// dispose is too late because the nodes will have been cleared out.
-			Sys.UI.DataView.prototype._clearContainers = function (placeholders) {
-				var i, l;
-				for (i = 0, l = this._contexts.length; i < l; i++) {
-					processElements(this._contexts[i].nodes, "deleted");
+			Sys.UI.DataView.prototype._clearContainers = function (placeholders, start, count) {
+				var i, len, nodes, startNode, endNode;
+				for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
+					nodes = this._contexts[i].nodes;
+					processElements(nodes, "deleted");
+					if (count) {
+						if (i === start) {
+							startNode = nodes[0];
+						}
+						if (i === len - 1) {
+							endNode = nodes[nodes.length - 1];
+						}
+					}
 				}
-				for (i = 0, l = placeholders.length; i < l; i++) {
+				for (i = 0, len = placeholders.length; i < len; i++) {
 					var ph = placeholders[i],
 					container = ph ? ph.parentNode : this.get_element();
-					this._clearContainer(container, ph, true);
+					this._clearContainer(container, ph, startNode, endNode, true);
 				}
-				for (i = 0, l = this._contexts.length; i < l; i++) {
+				for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
 					var ctx = this._contexts[i];
 					ctx.nodes = null;
 					ctx.dispose();
 				}
 			};
-			Sys.UI.DataView.prototype._clearContainer = function (container, placeholder, suppressEvent) {
+			Sys.UI.DataView.prototype._clearContainer = function (container, placeholder, startNode, endNode, suppressEvent) {
 				var count = placeholder ? placeholder.__msajaxphcount : -1;
 				if ((count > -1) && placeholder) placeholder.__msajaxphcount = 0;
 				if (count < 0) {
@@ -271,14 +280,23 @@
 					if (!suppressEvent) {
 						processElements(container.childNodes, "deleted");
 					}
-					Sys.Application.disposeElement(container, true);
-					try {
-						container.innerHTML = "";
+					if (!startNode) {
+						Sys.Application.disposeElement(container, true);
 					}
-					catch (err) {
-						var child;
-						while ((child = container.firstChild)) {
+					var cleared = false;
+					if (!startNode) {
+						try {
+							container.innerHTML = "";
+							cleared = true;
+						}
+						catch (err) { }
+					}
+					if (!cleared) {
+						var child = startNode || container.firstChild, nextChild = child.nextSibling;
+						while (child && child !== endNode) {
 							container.removeChild(child);
+							child = nextChild;
+							nextChild = child.nextSibling;
 						}
 					}
 					if (placeholder) {

@@ -2544,11 +2544,37 @@ false);
 		}
 		function Sys$UI$DataView$_collectionChanged(sender, args) {
 			var oldSelected = this._currentData,
-            changes = args.get_changes(),
-            selectedIndex = this.get_selectedIndex(), oldIndex = selectedIndex;
+			changes = args.get_changes(),
+			selectedIndex = this.get_selectedIndex(), oldIndex = selectedIndex;
 			if (this._isActive()) {
 				this._changing = true;
-				this.refresh();
+
+				var template = this._ensureTemplate(this._getTemplate());
+				template._ensureCompiled();
+
+				var templateUsesDollarIndex = /with\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
+
+				// Do a full update if the template depends on the rendering index.
+				if (templateUsesDollarIndex) {
+					this.refresh();
+				} else {
+					var _this = this;
+					foreach(changes, function(evt) {
+						if (evt.oldItems && evt.oldItems.length > 0) {
+							// TODO: accurately dispose of contexts
+							_this._clearContainers(_this._placeholders, evt.oldStartingIndex, evt.oldItems.length);
+							_this._contexts.splice(evt.oldStartingIndex, evt.oldItems.length);
+						}
+
+						if (evt.newItems && evt.newItems.length > 0) {
+							// TODO: accurately include new contexts
+							for (var i = 0, len = evt.newItems.length; i < len; i++) {
+								_this._contexts.splice(evt.newStartingIndex + i, 0, null);
+							}
+							_this.refresh(evt.newStartingIndex, evt.newItems.length)
+						}
+					});
+				}
 			}
 			else {
 				this._dirty = true;
@@ -2679,8 +2705,8 @@ false);
 			this._currentData = this.get_selectedData();
 			this._raiseSelectedData();
 		}
-		function Sys$UI$DataView$_initializeResults() {
-			for (var i = 0, l = this._contexts.length; i < l; i++) {
+		function Sys$UI$DataView$_initializeResults(start, count) {
+			for (var i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
 				var ctx = this._contexts[i];
 				if (ctx) ctx.initializeComponents();
 			}
@@ -2787,21 +2813,30 @@ false);
 			var index = this._findContextIndex(source);
 			return (index !== -1) ? this.get_contexts()[index] : null;
 		}
-		function Sys$UI$DataView$_clearContainer(container, placeholder) {
+		function Sys$UI$DataView$_clearContainer(container, placeholder, startNode, endNode) {
 			var count = placeholder ? placeholder.__msajaxphcount : -1;
 			if ((count > -1) && placeholder) placeholder.__msajaxphcount = 0;
 			if (count < 0) {
 				if (placeholder) {
 					container.removeChild(placeholder);
 				}
-				Sys.Application.disposeElement(container, true);
-				try {
-					container.innerHTML = "";
+				if (!startNode) {
+					Sys.Application.disposeElement(container, true);
 				}
-				catch (err) {
-					var child;
-					while ((child = container.firstChild)) {
+				var cleared = false;
+				if (!startNode) {
+					try {
+						container.innerHTML = "";
+						cleared = true;
+					}
+					catch (err) { }
+				}
+				if (!cleared) {
+					var child = startNode || container.firstChild, nextChild = child.nextSibling;
+					while (child && child !== endNode) {
 						container.removeChild(child);
+						child = nextChild;
+						nextChild = child.nextSibling;
 					}
 				}
 				if (placeholder) {
@@ -2823,14 +2858,14 @@ false);
 				}
 			}
 		}
-		function Sys$UI$DataView$_clearContainers(placeholders) {
-			var i, l;
-			for (i = 0, l = placeholders.length; i < l; i++) {
+		function Sys$UI$DataView$_clearContainers(placeholders, start, count) {
+			var i, len;
+			for (i = 0, len = placeholders.length; i < len; i++) {
 				var ph = placeholders[i],
                 container = ph ? ph.parentNode : this.get_element();
 				this._clearContainer(container, ph);
 			}
-			for (i = 0, l = this._contexts.length; i < l; i++) {
+			for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
 				var ctx = this._contexts[i];
 				ctx.nodes = null;
 				ctx.dispose();
@@ -2854,13 +2889,13 @@ false);
 			}
 			return true;
 		}
-		function Sys$UI$DataView$refresh() {
+		function Sys$UI$DataView$refresh(start, count) {
 			/// <summary locid="M:J#Sys.UI.DataView.refresh" />
 			if (!this._setData) return;
 			var collectionChange = this._changing;
 			this._changing = false;
 			var data = this.get_data(),
-            pctx = this.get_templateContext(),
+			pctx = this.get_templateContext(),
             renderArgs = new Sys.Data.DataEventArgs(data);
 			renderArgs._itemTemplate = this._getTemplate();
 			renderArgs._placeholder = Sys.UI.DomElement._ensureGet(this.get_itemPlaceholder(), pctx, "itemPlaceholder");
@@ -2873,22 +2908,25 @@ false);
 			var template = this._ensureTemplate(renderArgs._itemTemplate);
 			this._dirty = false;
 			var ph = Sys.UI.DomElement._ensureGet(renderArgs._placeholder, pctx, "itemPlaceholder"),
-            element = this.get_element(),
-            result, itemTemplate, args;
-			if (this._placeholders) {
+			element = this.get_element(),
+			result, itemTemplate, args;
+			if (this._placeholders && arguments.length === 0) {
 				this._clearContainers(this._placeholders);
 			}
 			var list = data;
-			var len;
+			var len, i;
 			if ((data === null) || (typeof (data) === "undefined")) {
+				i = 0;
 				len = 0;
 			}
 			else if (!(data instanceof Array)) {
 				list = [data];
+				i = 0;
 				len = 1;
 			}
 			else {
-				len = data.length;
+				i = start || 0;
+				len = count ? (start + count) : data.length;
 			}
 			function clearAndShow() {
 				if (!this._cleared) {
@@ -2906,11 +2944,21 @@ false);
 			if (!len && template && template.get_element() === element) {
 				clearAndShow.call(this);
 			}
-			var currentPh, lastPh, placeholders, container, containers, optionsChanged;
-			this._placeholders = placeholders = [];
-			this._containers = containers = [];
-			this._contexts = new Array(len);
-			for (var i = 0; i < len; i++) {
+			var currentPh, lastPh, placeholders, container, containers, optionsChanged, insertBefore;
+			if (arguments.length === 0) {
+				this._placeholders = placeholders = [];
+				this._containers = containers = [];
+				this._contexts = new Array(len);
+			}
+			else {
+				placeholders = this._placeholders;
+				containers = this._containers;
+				var nextContext = this._contexts[start + count];
+				if (nextContext && nextContext.nodes) {
+					insertBefore = nextContext.nodes[0];
+				}
+			}
+			for (; i < len; i++) {
 				var item = list[i];
 				args = new Sys.UI.DataViewItemEventArgs(item);
 				args._itemTemplate = template;
@@ -2952,7 +3000,7 @@ false);
 				}
 				lastPh = currentPh;
 				if (itemTemplate) {
-					result = itemTemplate.instantiateIn(container, data, item, i, currentPh, pctx);
+					result = itemTemplate.instantiateIn(container, data, item, i, currentPh || insertBefore, pctx);
 				}
 				else {
 					result = merge(new Sys.UI.TemplateContext(), {
@@ -2998,7 +3046,7 @@ false);
 			}
 			this.raisePropertyChanged("viewData");
 			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
-			this._initializeResults();
+			this._initializeResults(start, count);
 		}
 		function Sys$UI$DataView$_swapData(oldData, newData) {
 			if (oldData) {
@@ -3040,7 +3088,7 @@ false);
 			return value;
 		}
 		function Sys$UI$DataView$dispose() {
-			/// <summary locid="M:J#clearAndShow" />
+			/// <summary locid="M:J#dispose" />
 			if (this._placeholders && !Sys.Application.get_isDisposing()) {
 				this._clearContainers(this._placeholders);
 			}
@@ -3058,13 +3106,13 @@ false);
 			Sys.UI.DataView.callBaseMethod(this, "dispose")
 		}
 		function Sys$UI$DataView$initialize() {
-			/// <summary locid="M:J#clearAndShow" />
+			/// <summary locid="M:J#initialize" />
 			Sys.UI.DataView.callBaseMethod(this, "initialize");
 			this.refresh();
 			this.updated();
 		}
 		function Sys$UI$DataView$fetchData(succeededCallback, failedCallback, mergeOption, userContext) {
-			/// <summary locid="M:J#clearAndShow" />
+			/// <summary locid="M:J#fetchData" />
 			/// <param name="succeededCallback" type="Function" mayBeNull="true" optional="true"></param>
 			/// <param name="failedCallback" type="Function" mayBeNull="true" optional="true"></param>
 			/// <param name="mergeOption" type="Sys.Data.MergeOption" mayBeNull="true" optional="true"></param>

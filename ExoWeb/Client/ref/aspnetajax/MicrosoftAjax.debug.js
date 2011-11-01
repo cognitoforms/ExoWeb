@@ -1,4 +1,4 @@
-// Name:        MicrosoftAjax.debug.js
+﻿// Name:        MicrosoftAjax.debug.js
 // Assembly:    System.Web.Ajax
 // Version:     3.0.31106.0
 // FileVersion: 3.0.31106.0
@@ -2469,6 +2469,29 @@ Sys.Observer.addRange = function Sys$Observer$addRange(target, items) {
     Array.addRange(target, items);
     Sys.Observer._collectionChange(target, change);
 }
+Sys.Observer.insertRange = function Sys$Observer$insertRange(target, index, items) {
+    /// <summary locid="M:J#Sys.Observer.insertRange" />
+    /// <param name="target" type="Array" elementMayBeNull="true"></param>
+    /// <param name="index" type="Array" elementMayBeNull="true"></param>
+    /// <param name="items" type="Array" elementMayBeNull="true"></param>
+    
+    var change = new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.add, items, index);
+    var spliceArgs = items.slice();
+    spliceArgs.splice(0, 0, index, 0);
+    Array.prototype.splice.apply(target, spliceArgs);
+    Sys.Observer._collectionChange(target, change);
+}
+Sys.Observer.removeRange = function Sys$Observer$addRange(target, start, count) {
+    /// <summary locid="M:J#Sys.Observer.removeRange" />
+    /// <param name="target" type="Array" elementMayBeNull="true"></param>
+    /// <param name="start" type="Array" elementMayBeNull="true"></param>
+    /// <param name="count" type="Array" elementMayBeNull="true"></param>
+    
+    var items = target.splice(start, count);
+    var change = new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.remove, null, -1, items, count);
+    Sys.Observer._collectionChange(target, change);
+	return items;
+}
 Sys.Observer.clear = function Sys$Observer$clear(target) {
     /// <summary locid="M:J#Sys.Observer.clear" />
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
@@ -2509,6 +2532,7 @@ Sys.Observer.removeAt = function Sys$Observer$removeAt(target, index) {
         var item = target[index];
         Array.removeAt(target, index);
         Sys.Observer._collectionChange(target, new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.remove, null, -1, [item], index));
+		return item;
     }
 }
 Sys.Observer.raiseCollectionChanged = function Sys$Observer$raiseCollectionChanged(target, changes) {

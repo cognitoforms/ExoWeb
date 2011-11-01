@@ -142,8 +142,7 @@ CalculatedPropertyRule.mixin({
 
 				// update the current list so observers will receive the change events
 				curList.beginUpdate();
-				curList.clear();
-				curList.addRange(newList);
+				update(curList, newList);
 				curList.endUpdate();
 
 				if (callback) {

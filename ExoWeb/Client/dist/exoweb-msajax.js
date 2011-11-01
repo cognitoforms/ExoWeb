@@ -517,6 +517,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return -1;
 	}
 
+	function insert(arr, index, item) {
+		Array.prototype.splice.call(arr, index, 0, item);
+	}
+
+	function insertRange(arr, index, items) {
+		var args = items.slice();
+		args.splice(0, 0, index, 0);
+		Array.prototype.splice.apply(arr, args);
+	}
+
 	// Finds the set intersection of the two given arrays.  The items
 	// in the resulting list are distinct and in no particular order.
 	///////////////////////////////////////////////////////////////////
@@ -647,8 +657,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 		if (idx < 0)
 			return false;
 
-		arr.splice(idx, 1);
+		removeAt(arr, idx);
 		return true;
+	}
+
+	function removeAt(arr, index) {
+		arr.splice(index, 1);
+	}
+
+	function removeRange(arr, index, count) {
+		return arr.splice(index, count);
 	}
 
 	function single(arr, callback, thisPtr) {
@@ -666,6 +684,103 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return true;
 
 		return false;
+	}
+
+	function update(arr, target, trackEvents) {
+		var removeAt = null, removeCount = null, events;
+
+		if (trackEvents) {
+			events = [];
+		}
+
+		function flushRemoval() {
+			if (removeAt !== null) {
+				var removedArray, removedItem;
+				if (removeCount > 1 && arr.removeRange) {
+					removedArray = arr.removeRange(removeAt, removeCount);
+				}
+				else if (removeCount === 1 && arr.removeAt) {
+					removedItem = arr.removeAt(removeAt);
+				}
+				else {
+					removedArray = arr.splice(removeAt, removeCount);
+				}
+
+				if (trackEvents) {
+					events.push({ type: "remove", index: removeAt, items: removedArray || [removedItem] });
+				}
+
+				removeAt = removeCount = null;
+			}
+		}
+
+		// remove items not in target
+		for (var i = 0, len = arr.length; i < len; i++) {
+			var item = arr[i];
+			if (indexOf(target, item) < 0) {
+				if (removeAt != null) {
+					removeCount++;
+				}
+				else {
+					removeAt = i;
+					removeCount = 1;
+				}
+			}
+			else {
+				if (removeCount) {
+					i -= removeCount;
+				}
+				flushRemoval();
+			}
+		}
+
+		flushRemoval();
+
+		var addAt = null, addItems = null;
+		function flushAdd() {
+			if (addAt !== null) {
+				if (addItems.length > 1 && arr.insertRange) {
+					arr.insertRange(addAt, addItems);
+				}
+				else if (addItems.length === 1 && arr.insert) {
+					arr.insert(addAt, addItems[0]);
+				}
+				else {
+					insertRange(arr, addAt, addItems);
+				}
+			
+				if (trackEvents) {
+					events.push({ type: "add", index: addAt, items: addItems });
+				}
+
+				addAt = addItems = null;
+			}
+		}
+
+		for (var j = 0, k = 0, len = target.length; j < len; j++) {
+			var targetItem = target[j];
+			var item = arr[k];
+			if (targetItem != item) {
+				if (addItems != null) {
+					addItems.push(targetItem);
+				}
+				else {
+					addAt = k;
+					addItems = [targetItem];
+				}
+			}
+			else {
+				if (addItems !== null) {
+					k += addItems.length;
+				}
+				flushAdd();
+				k++;
+			}
+		}
+
+		flushAdd();
+
+		return events;
 	}
 
 	if (!Array.prototype.addRange)
@@ -6234,8 +6349,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// update the current list so observers will receive the change events
 					curList.beginUpdate();
-					curList.clear();
-					curList.addRange(newList);
+					update(curList, newList);
 					curList.endUpdate();
 
 					if (callback) {
@@ -13741,7 +13855,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							bindings[i]._lastTarget = bindings[i]._lastSource = false;
 					}
 				});
-			}
+			};
 		};
 
 		var sourceChangedImpl = Sys.Binding.prototype._sourceChanged;
@@ -13754,6 +13868,41 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Remove checked attribute from other radio buttons in the group that are currently checked.
 			if (Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]") && !this._lastSource) {
 				$(target).removeAttr("checked");
+			}
+		};
+
+		Sys.UI.DataView.prototype._loadData = function _loadData(value) {
+			this._swapData(this._data, value);
+			var oldValue = this._data;
+			this._data = value;
+			this._setData = true;
+			this._stale = false;
+			// Array data should not typically be set unless some intermediate
+			// process (like transform) is creating a new array from the same original.
+			if ((value && value instanceof Array) && (oldValue && oldValue instanceof Array)) {
+				// copy the original array
+				var arr = oldValue.slice();
+				var events = update(arr, value, true);
+				var changes = events.map(function(e) {
+					return {
+						action: Sys.NotifyCollectionChangedAction[e.type],
+						newStartingIndex: e.type === "add" ? e.index : null,
+						newItems: e.type === "add" ? e.items : null,
+						oldStartingIndex: e.type === "remove" ? e.index : null,
+						oldItems: e.type === "remove" ? e.items : null
+					};
+				});
+				this._collectionChanged(value, { get_changes: function() { return changes; } });
+			}
+			else {
+				this._dirty = true;
+				if (this._isActive()) {
+					this.refresh();
+					this.raisePropertyChanged("data");
+				}
+				else {
+					this._changed = true;
+				}
 			}
 		};
 	})();
@@ -14051,23 +14200,32 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
 			// dispose is too late because the nodes will have been cleared out.
-			Sys.UI.DataView.prototype._clearContainers = function (placeholders) {
-				var i, l;
-				for (i = 0, l = this._contexts.length; i < l; i++) {
-					processElements(this._contexts[i].nodes, "deleted");
+			Sys.UI.DataView.prototype._clearContainers = function (placeholders, start, count) {
+				var i, len, nodes, startNode, endNode;
+				for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
+					nodes = this._contexts[i].nodes;
+					processElements(nodes, "deleted");
+					if (count) {
+						if (i === start) {
+							startNode = nodes[0];
+						}
+						if (i === len - 1) {
+							endNode = nodes[nodes.length - 1];
+						}
+					}
 				}
-				for (i = 0, l = placeholders.length; i < l; i++) {
+				for (i = 0, len = placeholders.length; i < len; i++) {
 					var ph = placeholders[i],
 					container = ph ? ph.parentNode : this.get_element();
-					this._clearContainer(container, ph, true);
+					this._clearContainer(container, ph, startNode, endNode, true);
 				}
-				for (i = 0, l = this._contexts.length; i < l; i++) {
+				for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
 					var ctx = this._contexts[i];
 					ctx.nodes = null;
 					ctx.dispose();
 				}
 			};
-			Sys.UI.DataView.prototype._clearContainer = function (container, placeholder, suppressEvent) {
+			Sys.UI.DataView.prototype._clearContainer = function (container, placeholder, startNode, endNode, suppressEvent) {
 				var count = placeholder ? placeholder.__msajaxphcount : -1;
 				if ((count > -1) && placeholder) placeholder.__msajaxphcount = 0;
 				if (count < 0) {
@@ -14077,14 +14235,23 @@ Type.registerNamespace("ExoWeb.DotNet");
 					if (!suppressEvent) {
 						processElements(container.childNodes, "deleted");
 					}
-					Sys.Application.disposeElement(container, true);
-					try {
-						container.innerHTML = "";
+					if (!startNode) {
+						Sys.Application.disposeElement(container, true);
 					}
-					catch (err) {
-						var child;
-						while ((child = container.firstChild)) {
+					var cleared = false;
+					if (!startNode) {
+						try {
+							container.innerHTML = "";
+							cleared = true;
+						}
+						catch (err) { }
+					}
+					if (!cleared) {
+						var child = startNode || container.firstChild, nextChild = child.nextSibling;
+						while (child && child !== endNode) {
 							container.removeChild(child);
+							child = nextChild;
+							nextChild = child.nextSibling;
 						}
 					}
 					if (placeholder) {
