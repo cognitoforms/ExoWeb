@@ -7,7 +7,7 @@
 
 
 
-(function() {
+(function () {
 
 	function execute() {
 		Type._registerScript("MicrosoftAjaxTemplates.js", ["MicrosoftAjaxComponentModel.js", "MicrosoftAjaxSerialization.js"]);
@@ -184,7 +184,7 @@
 					code.push("  $component = $element;\n  ");
 					if (isExpression) {
 						if (attrib.textNode) {
-							code.push("$element.appendChild(document.createTextNode(", expression, "));\n");
+							code.push("container.appendChild(document.createTextNode(", expression, "));\n");
 						}
 						else {
 							code.push("$element.", name, " = ", expression, ";\n");
@@ -458,12 +458,12 @@
 						if (!typeExpression.isExpression || !nameExpression.isExpression) {
 							throw Error.invalidOperation(Sys.UI.TemplatesRes.mustSetInputElementsExplicitly);
 						}
-						code.push("  $element=__p[__d]=Sys.UI.Template._createInput(" + typeExpression.code + ", " + nameExpression.code + ", " + isButton + ");\n");
+						code.push("  $element=container=__p[__d]=Sys.UI.Template._createInput(" + typeExpression.code + ", " + nameExpression.code + ", " + isButton + ");\n");
 						booleanAttributes = Sys.UI.Template._inputBooleanAttributes;
 						this._processBooleanAttributes(childNode, code, typeIndex, booleanAttributes[" list"]);
 					}
 					else {
-						code.push("  $element=__p[__d]=document.createElement('" + childNode.nodeName + "');\n");
+						code.push("  $element=container=__p[__d]=document.createElement('" + childNode.nodeName + "');\n");
 					}
 					if (!depth) {
 						code.push(" $element.__mstcindex = $context._tcindex;\n");
@@ -588,7 +588,7 @@
 					}
 					else if (!skipChildren) {
 						this._buildTemplateCode(nestedTemplates, childNode, code, dp1);
-						code.push("  $element=__p[__d];\n");
+						code.push("  $element=container=__p[__d];\n");
 					}
 					if (delayedAttributes) {
 						for (j = 0, m = delayedAttributes.length; j < m; j++) {
@@ -618,10 +618,10 @@
 		function Sys$UI$Template$recompile() {
 			/// <summary locid="M:J#Sys.UI.Template.recompile" />
 			var element = this.get_element(),
-            code = [" $index = (typeof($index) === 'number' ? $index : __instanceId);\n var $component, __componentIndex, __e, __f, __topElements = [], __d = 0, __p = [__containerElement], $element = __containerElement, $context = new Sys.UI.TemplateContext(), $id = function(prefix) { return $context.getInstanceId(prefix); };\n $context.data = (typeof(__data) === 'undefined' ? null : __data);\n $context.components = [];\n $context.nodes = __topElements;\n $context.dataItem = $dataItem;\n $context.index = $index;\n $context.parentContext = __parentContext;\n $context.containerElement = __containerElement;\n $context.insertBeforeNode = __referenceNode;\n $context.template = this;\n with($dataItem || {}) {\n"],
+            code = [" $index = (typeof($index) === 'number' ? $index : __instanceId);\n var fragment=document.createDocumentFragment(), $component, __componentIndex, __e, __f, __topElements = [], __d = 0, __p = [fragment], $element = __containerElement, container = fragment, $context = new Sys.UI.TemplateContext(), $id = function(prefix) { return $context.getInstanceId(prefix); };\n $context.data = (typeof(__data) === 'undefined' ? null : __data);\n $context.components = [];\n $context.nodes = __topElements;\n $context.dataItem = $dataItem;\n $context.index = $index;\n $context.parentContext = __parentContext;\n $context.containerElement = __containerElement;\n $context.insertBeforeNode = __referenceNode;\n $context.template = this;\n with($dataItem || {}) {\n"],
             nestedTemplates = [];
 			this._buildTemplateCode(nestedTemplates, element, code, 0);
-			code.push("}\n $context._onInstantiated(__referenceNode);\n return $context;");
+			code.push("}\n __containerElement.appendChild(fragment);\n $context._onInstantiated(__referenceNode);\n return $context;");
 			code = code.join('');
 			element._msajaxtemplate = [this._instantiateIn = new Function("__containerElement", "__data", "$dataItem", "$index", "__referenceNode", "__parentContext", "__instanceId", code), nestedTemplates];
 		}
@@ -639,6 +639,7 @@
 			this._ensureCompiled();
 			return this._instantiateIn(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext, this._instanceId++);
 		}
+
 		Sys.UI.Template.prototype = {
 			get_element: Sys$UI$Template$get_element,
 			dispose: Sys$UI$Template$dispose,
@@ -676,7 +677,7 @@
 			return newValue;
 		}
 		Sys.UI.Template._getIdFunction = function Sys$UI$Template$_getIdFunction(instance) {
-			return function(prefix) {
+			return function (prefix) {
 				return prefix + instance;
 			}
 		}
@@ -796,7 +797,7 @@
 			do {
 				tc = Sys.UI.TemplateContext._contexts[element.__mstcindex];
 				element = element.parentNode;
-			} while(!tc && element);
+			} while (!tc && element);
 			return tc || Sys.Application.get_templateContext();
 		}
 
@@ -907,7 +908,7 @@
 				s = "";
 			}
 			else {
-				s = this.index; 
+				s = this.index;
 				var ctx = this.parentContext;
 				while (ctx && !ctx._global) {
 					s = ctx.index + "_" + s;
@@ -936,13 +937,13 @@
 			}
 		}
 		function Sys$UI$TemplateContext$_onInstantiated(referenceNode, global) {
-			foreach(this._completed, function(callback) {
+			foreach(this._completed, function (callback) {
 				callback();
 			});
 			this._completed = [];
 			if (!global) {
 				var container = this.containerElement;
-				foreach(this.nodes, function(node) {
+				foreach(this.nodes, function (node) {
 					container.insertBefore(node, referenceNode || null);
 				});
 			}
@@ -1034,7 +1035,7 @@
 			tc.components = tc.components || [];
 			tc.nodes = elements;
 			recursive = (recursive !== false);
-			Sys._queryAll(elements, function(element) {
+			Sys._queryAll(elements, function (element) {
 				app._activateElement(element, tc, useDirect, recursive);
 			});
 			tc.initializeComponents();
@@ -1815,7 +1816,7 @@
             handlers = {
             	listener: listener,
             	object: object,
-            	pc: function(sender, args) {
+            	pc: function (sender, args) {
             		var changed = args.get_propertyName();
             		if (!changed || changed === property) {
             			listener();
@@ -2023,7 +2024,7 @@
 								}
 								Sys.Observer.raisePropertyChanged(target, name);
 							}
-							else if(isElement && (name === "tabIndex" || name === "tabindex")) {
+							else if (isElement && (name === "tabIndex" || name === "tabindex")) {
 								Sys.Observer._setValue(target, "tabIndex", source);
 							}
 							else {
@@ -2179,7 +2180,7 @@
 				options.ignoreErrors = Boolean.parse(value);
 			}
 			var binding = new Sys.Binding();
-			forIn(options, function(v, n) {
+			forIn(options, function (v, n) {
 				if (typeof (v) !== "undefined") Sys.Observer.setValue(binding, n, v);
 			});
 			binding.initialize();
@@ -2193,7 +2194,7 @@
 
 		Sys.Application.registerMarkupExtension(
 "binding",
-function(component, targetProperty, templateContext, properties) {
+function (component, targetProperty, templateContext, properties) {
 	var options = merge({
 		source: templateContext.dataItem,
 		templateContext: templateContext,
