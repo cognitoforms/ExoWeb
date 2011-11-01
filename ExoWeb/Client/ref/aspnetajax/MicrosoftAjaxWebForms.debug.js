@@ -1656,6 +1656,9 @@ Sys.WebForms.PageRequestManager = function Sys$WebForms$PageRequestManager() {
                     break;
                 case "pageRedirect":
                     if (Sys.Browser.agent === Sys.Browser.InternetExplorer) {
+                        function cancelBubble(e) {
+                            e.cancelBubble = true;
+                        }
                         var anchor = document.createElement("a");
                         anchor.style.display = 'none';
                         anchor.attachEvent("onclick", cancelBubble);
@@ -1664,9 +1667,6 @@ Sys.WebForms.PageRequestManager = function Sys$WebForms$PageRequestManager() {
                         anchor.click();
                         anchor.detachEvent("onclick", cancelBubble);
                         this._form.parentNode.removeChild(anchor);
-                        function cancelBubble(e) {
-                            e.cancelBubble = true;
-                        }
                     }
                     else {
                         window.location.href = deltaNode.content;
