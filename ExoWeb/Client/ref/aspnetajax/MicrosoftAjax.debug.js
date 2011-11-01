@@ -1,4 +1,4 @@
-﻿// Name:        MicrosoftAjax.debug.js
+// Name:        MicrosoftAjax.debug.js
 // Assembly:    System.Web.Ajax
 // Version:     3.0.31106.0
 // FileVersion: 3.0.31106.0
@@ -347,11 +347,7 @@ Function.createCallback = function Function$createCallback(method, context) {
     /// <param name="method" type="Function"></param>
     /// <param name="context" mayBeNull="true"></param>
     /// <returns type="Function"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "method", type: Function},
-        {name: "context", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
 
 
     return function() {
@@ -373,11 +369,7 @@ Function.createDelegate = function Function$createDelegate(instance, method) {
     /// <param name="instance" mayBeNull="true"></param>
     /// <param name="method" type="Function"></param>
     /// <returns type="Function"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "instance", mayBeNull: true},
-        {name: "method", type: Function}
-    ]);
-    if (e) throw e;
+    
 
 
     return function() {
@@ -395,12 +387,7 @@ Function.validateParameters = function Function$validateParameters(parameters, e
     /// <param name="expectedParameters"></param>
     /// <param name="validateParameterCount" type="Boolean" optional="true" mayBeNull="true"></param>
     /// <returns type="Error" mayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "parameters"},
-        {name: "expectedParameters"},
-        {name: "validateParameterCount", type: Boolean, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     return Function._validateParams(parameters, expectedParameters, validateParameterCount);
 }
 
@@ -584,11 +571,7 @@ Error.create = function Error$create(message, errorInfo) {
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <param name="errorInfo" optional="true" mayBeNull="true"></param>
     /// <returns type="Error"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "message", type: String, mayBeNull: true, optional: true},
-        {name: "errorInfo", mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
 
     var err = new Error(message);
     err.message = message;
@@ -614,11 +597,7 @@ Error.argument = function Error$argument(paramName, message) {
     /// <param name="paramName" type="String" optional="true" mayBeNull="true"></param>
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "paramName", type: String, mayBeNull: true, optional: true},
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
 
     var displayMessage = "Sys.ArgumentException: " + (message ? message : Sys.Res.argument);
     if (paramName) {
@@ -635,11 +614,7 @@ Error.argumentNull = function Error$argumentNull(paramName, message) {
     /// <param name="paramName" type="String" optional="true" mayBeNull="true"></param>
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "paramName", type: String, mayBeNull: true, optional: true},
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
 
     var displayMessage = "Sys.ArgumentNullException: " + (message ? message : Sys.Res.argumentNull);
     if (paramName) {
@@ -657,12 +632,7 @@ Error.argumentOutOfRange = function Error$argumentOutOfRange(paramName, actualVa
     /// <param name="actualValue" optional="true" mayBeNull="true"></param>
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "paramName", type: String, mayBeNull: true, optional: true},
-        {name: "actualValue", mayBeNull: true, optional: true},
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
 
     var displayMessage = "Sys.ArgumentOutOfRangeException: " + (message ? message : Sys.Res.argumentOutOfRange);
     if (paramName) {
@@ -689,13 +659,7 @@ Error.argumentType = function Error$argumentType(paramName, actualType, expected
     /// <param name="expectedType" type="Type" optional="true" mayBeNull="true"></param>
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "paramName", type: String, mayBeNull: true, optional: true},
-        {name: "actualType", type: Type, mayBeNull: true, optional: true},
-        {name: "expectedType", type: Type, mayBeNull: true, optional: true},
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
 
     var displayMessage = "Sys.ArgumentTypeException: ";
     if (message) {
@@ -728,11 +692,7 @@ Error.argumentUndefined = function Error$argumentUndefined(paramName, message) {
     /// <param name="paramName" type="String" optional="true" mayBeNull="true"></param>
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "paramName", type: String, mayBeNull: true, optional: true},
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
 
     var displayMessage = "Sys.ArgumentUndefinedException: " + (message ? message : Sys.Res.argumentUndefined);
     if (paramName) {
@@ -748,10 +708,7 @@ Error.format = function Error$format(message) {
     /// <summary locid="M:J#Error.format" />
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     var displayMessage = "Sys.FormatException: " + (message ? message : Sys.Res.format);
     var err = Error.create(displayMessage, {name: 'Sys.FormatException'});
     err.popStackFrame();
@@ -762,10 +719,7 @@ Error.invalidOperation = function Error$invalidOperation(message) {
     /// <summary locid="M:J#Error.invalidOperation" />
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     var displayMessage = "Sys.InvalidOperationException: " + (message ? message : Sys.Res.invalidOperation);
 
     var err = Error.create(displayMessage, {name: 'Sys.InvalidOperationException'});
@@ -777,10 +731,7 @@ Error.notImplemented = function Error$notImplemented(message) {
     /// <summary locid="M:J#Error.notImplemented" />
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     var displayMessage = "Sys.NotImplementedException: " + (message ? message : Sys.Res.notImplemented);
 
     var err = Error.create(displayMessage, {name: 'Sys.NotImplementedException'});
@@ -792,10 +743,7 @@ Error.parameterCount = function Error$parameterCount(message) {
     /// <summary locid="M:J#Error.parameterCount" />
     /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "message", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
 
     var displayMessage = "Sys.ParameterCountException: " + (message ? message : Sys.Res.parameterCount);
     var err = Error.create(displayMessage, {name: 'Sys.ParameterCountException'});
@@ -850,10 +798,7 @@ Object.getType = function Object$getType(instance) {
     /// <summary locid="M:J#Object.getType" />
     /// <param name="instance"></param>
     /// <returns type="Type"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "instance"}
-    ]);
-    if (e) throw e;
+    
     var ctor = instance.constructor;
     if (!ctor || (typeof(ctor) !== "function") || !ctor.__typeName || (ctor.__typeName === 'Object')) {
         return Object;
@@ -865,10 +810,7 @@ Object.getTypeName = function Object$getTypeName(instance) {
     /// <summary locid="M:J#Object.getTypeName" />
     /// <param name="instance"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "instance"}
-    ]);
-    if (e) throw e;
+    
     return Object.getType(instance).getName();
 }
 String.__typeName = 'String';
@@ -878,10 +820,7 @@ String.prototype.endsWith = function String$endsWith(suffix) {
     /// <summary locid="M:J#String.endsWith" />
     /// <param name="suffix" type="String"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "suffix", type: String}
-    ]);
-    if (e) throw e;
+    
     return (this.substr(this.length - suffix.length) === suffix);
 }
 
@@ -889,10 +828,7 @@ String.prototype.startsWith = function String$startsWith(prefix) {
     /// <summary locid="M:J#String.startsWith" />
     /// <param name="prefix" type="String"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "prefix", type: String}
-    ]);
-    if (e) throw e;
+    
     return (this.substr(0, prefix.length) === prefix);
 }
 
@@ -922,11 +858,7 @@ String.format = function String$format(format, args) {
     /// <param name="format" type="String"></param>
     /// <param name="args" parameterArray="true" mayBeNull="true"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "format", type: String},
-        {name: "args", mayBeNull: true, parameterArray: true}
-    ]);
-    if (e) throw e;
+    
     return String._toFormattedString(false, arguments);
 }
 
@@ -997,10 +929,7 @@ Boolean.parse = function Boolean$parse(value) {
     /// <summary locid="M:J#Boolean.parse" />
     /// <param name="value" type="String"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "value", type: String}
-    ], false);
-    if (e) throw e;
+    
     var v = value.trim().toLowerCase();
     if (v === 'false') return false;
     if (v === 'true') return true;
@@ -1034,12 +963,7 @@ Type.prototype.callBaseMethod = function Type$callBaseMethod(instance, name, bas
     /// <param name="name" type="String"></param>
     /// <param name="baseArguments" type="Array" optional="true" mayBeNull="true" elementMayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "instance"},
-        {name: "name", type: String},
-        {name: "baseArguments", type: Array, mayBeNull: true, optional: true, elementMayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     var baseMethod = Sys._getBaseMethod(this, instance, name);
     if (!baseMethod) throw Error.invalidOperation(String.format(Sys.Res.methodNotFound, name));
     if (!baseArguments) {
@@ -1055,11 +979,7 @@ Type.prototype.getBaseMethod = function Type$getBaseMethod(instance, name) {
     /// <param name="instance"></param>
     /// <param name="name" type="String"></param>
     /// <returns type="Function" mayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "instance"},
-        {name: "name", type: String}
-    ]);
-    if (e) throw e;
+    
     return Sys._getBaseMethod(this, instance, name);
 }
 
@@ -1102,10 +1022,7 @@ Type.prototype.implementsInterface = function Type$implementsInterface(interface
     /// <summary locid="M:J#Type.implementsInterface" />
     /// <param name="interfaceType" type="Type"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "interfaceType", type: Type}
-    ]);
-    if (e) throw e;
+    
     this.resolveInheritance();
 
     var interfaceName = interfaceType.getName();
@@ -1137,10 +1054,7 @@ Type.prototype.inheritsFrom = function Type$inheritsFrom(parentType) {
     /// <summary locid="M:J#Type.inheritsFrom" />
     /// <param name="parentType" type="Type"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "parentType", type: Type}
-    ]);
-    if (e) throw e;
+    
     this.resolveInheritance();
     return Sys._inheritsFrom(this, parentType);
 }
@@ -1165,11 +1079,7 @@ Type.prototype.initializeBase = function Type$initializeBase(instance, baseArgum
     /// <param name="instance"></param>
     /// <param name="baseArguments" type="Array" optional="true" mayBeNull="true" elementMayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "instance"},
-        {name: "baseArguments", type: Array, mayBeNull: true, optional: true, elementMayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if (!Sys._isInstanceOfType(this, instance)) throw Error.argumentType('instance', Object.getType(instance), this);
 
     this.resolveInheritance();
@@ -1189,10 +1099,7 @@ Type.prototype.isImplementedBy = function Type$isImplementedBy(instance) {
     /// <summary locid="M:J#Type.isImplementedBy" />
     /// <param name="instance" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "instance", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if (typeof(instance) === "undefined" || instance === null) return false;
 
     var instanceType = Object.getType(instance);
@@ -1203,10 +1110,7 @@ Type.prototype.isInstanceOfType = function Type$isInstanceOfType(instance) {
     /// <summary locid="M:J#Type.isInstanceOfType" />
     /// <param name="instance" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "instance", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     return Sys._isInstanceOfType(this, instance);
 }
 
@@ -1216,12 +1120,7 @@ Type.prototype.registerClass = function Type$registerClass(typeName, baseType, i
     /// <param name="baseType" type="Type" optional="true" mayBeNull="true"></param>
     /// <param name="interfaceTypes" parameterArray="true" type="Type"></param>
     /// <returns type="Type"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "typeName", type: String},
-        {name: "baseType", type: Type, mayBeNull: true, optional: true},
-        {name: "interfaceTypes", type: Type, parameterArray: true}
-    ]);
-    if (e) throw e;
+    
     if (!Type.__fullyQualifiedIdentifierRegExp.test(typeName)) throw Error.argument('typeName', Sys.Res.notATypeName);
     var parsedName;
     try {
@@ -1267,11 +1166,7 @@ Sys.registerComponent = function Sys$registerComponent(type, options) {
     /// <summary locid="M:J#Sys.registerComponent" />
     /// <param name="type" type="Function"></param>
     /// <param name="options" type="Object" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "type", type: Function},
-        {name: "options", type: Object, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     var typeName = type.getName();
     var isControlOrBehavior = Sys.UI && (Sys._inheritsFrom(type, Sys.UI.Control) || Sys._inheritsFrom(type, Sys.UI.Behavior));
     var name = (options && options.name);
@@ -1345,10 +1240,7 @@ Sys._getCreate = function _getCreate(type, isControlOrBehavior, options, isjQuer
 Sys.registerPlugin = function Sys$registerPlugin(pluginInfo) {
     /// <summary locid="M:J#Sys.registerPlugin" />
     /// <param name="pluginInfo" type="Object"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "pluginInfo", type: Object}
-    ]);
-    if (e) throw e;
+    
     var name = pluginInfo.name;
     Sys.plugins[name] = merge(Sys.plugins[name], pluginInfo);
     Sys[name] = pluginInfo.plugin;
@@ -1406,10 +1298,7 @@ Type.prototype.registerInterface = function Type$registerInterface(typeName) {
     /// <summary locid="M:J#Type.registerInterface" />
     /// <param name="typeName" type="String"></param>
     /// <returns type="Type"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "typeName", type: String}
-    ]);
-    if (e) throw e;
+    
     if (!Type.__fullyQualifiedIdentifierRegExp.test(typeName)) throw Error.argument('typeName', Sys.Res.notATypeName);
     var parsedName;
     try {
@@ -1460,10 +1349,7 @@ Type.isClass = function Type$isClass(type) {
     /// <summary locid="M:J#Type.isClass" />
     /// <param name="type" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "type", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if ((typeof(type) === 'undefined') || (type === null)) return false;
     return !!type.__class;
 }
@@ -1472,10 +1358,7 @@ Type.isInterface = function Type$isInterface(type) {
     /// <summary locid="M:J#Type.isInterface" />
     /// <param name="type" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "type", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if ((typeof(type) === 'undefined') || (type === null)) return false;
     return !!type.__interface;
 }
@@ -1484,10 +1367,7 @@ Type.isNamespace = function Type$isNamespace(object) {
     /// <summary locid="M:J#Type.isNamespace" />
     /// <param name="object" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "object", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if ((typeof(object) === 'undefined') || (object === null)) return false;
     return !!object.__namespace;
 }
@@ -1497,11 +1377,7 @@ Type.parse = function Type$parse(typeName, ns) {
     /// <param name="typeName" type="String" mayBeNull="true"></param>
     /// <param name="ns" optional="true" mayBeNull="true"></param>
     /// <returns type="Type" mayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "typeName", type: String, mayBeNull: true},
-        {name: "ns", mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     var fn;
     if (ns) {
         fn = Sys.__upperCaseTypes[ns.getName().toUpperCase() + '.' + typeName.toUpperCase()];
@@ -1523,10 +1399,7 @@ Type.parse = function Type$parse(typeName, ns) {
 Type.registerNamespace = function Type$registerNamespace(namespacePath) {
     /// <summary locid="M:J#Type.registerNamespace" />
     /// <param name="namespacePath" type="String"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "namespacePath", type: String}
-    ]);
-    if (e) throw e;
+    
     Type._registerNamespace(namespacePath);
 }
 Type._registerNamespace = function Type$_registerNamespace(namespacePath) {
@@ -1663,11 +1536,7 @@ Array.add = Array.enqueue = function Array$enqueue(array, item) {
     /// <summary locid="M:J#Array.enqueue" />
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <param name="item" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true},
-        {name: "item", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
 
     array[array.length] = item;
 }
@@ -1676,11 +1545,7 @@ Array.addRange = function Array$addRange(array, items) {
     /// <summary locid="M:J#Array.addRange" />
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <param name="items" type="Array" elementMayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true},
-        {name: "items", type: Array, elementMayBeNull: true}
-    ]);
-    if (e) throw e;
+    
 
     array.push.apply(array, items);
 }
@@ -1688,10 +1553,7 @@ Array.addRange = function Array$addRange(array, items) {
 Array.clear = function Array$clear(array) {
     /// <summary locid="M:J#Array.clear" />
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     array.length = 0;
 }
 
@@ -1699,10 +1561,7 @@ Array.clone = function Array$clone(array) {
     /// <summary locid="M:J#Array.clone" />
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <returns type="Array" elementMayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if (array.length === 1) {
         return [array[0]];
     }
@@ -1716,11 +1575,7 @@ Array.contains = function Array$contains(array, item) {
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <param name="item" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true},
-        {name: "item", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     return (indexOf(array, item) >= 0);
 }
 
@@ -1728,10 +1583,7 @@ Array.dequeue = function Array$dequeue(array) {
     /// <summary locid="M:J#Array.dequeue" />
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <returns mayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     return array.shift();
 }
 
@@ -1740,12 +1592,7 @@ Array.forEach = function Array$forEach(array, method, instance) {
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <param name="method" type="Function"></param>
     /// <param name="instance" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true},
-        {name: "method", type: Function},
-        {name: "instance", mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     for (var i = 0, l = array.length; i < l; i++) {
         var elt = array[i];
         if (typeof(elt) !== 'undefined') method.call(instance, elt, i, array);
@@ -1758,12 +1605,7 @@ Array.indexOf = function Array$indexOf(array, item, start) {
     /// <param name="item" optional="true" mayBeNull="true"></param>
     /// <param name="start" optional="true" mayBeNull="true"></param>
     /// <returns type="Number"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true},
-        {name: "item", mayBeNull: true, optional: true},
-        {name: "start", mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     return indexOf(array, item, start);
 }
 
@@ -1772,12 +1614,7 @@ Array.insert = function Array$insert(array, index, item) {
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <param name="index" mayBeNull="true"></param>
     /// <param name="item" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true},
-        {name: "index", mayBeNull: true},
-        {name: "item", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     array.splice(index, 0, item);
 }
 
@@ -1785,10 +1622,7 @@ Array.parse = function Array$parse(value) {
     /// <summary locid="M:J#Array.parse" />
     /// <param name="value" type="String" mayBeNull="true"></param>
     /// <returns type="Array" elementMayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "value", type: String, mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if (!value) return [];
     var v = window.eval("(" + value + ")");
     if (!Array.isInstanceOfType(v)) throw Error.argument('value', Sys.Res.arrayParseBadFormat);
@@ -1800,11 +1634,7 @@ Array.remove = function Array$remove(array, item) {
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <param name="item" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true},
-        {name: "item", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     var index = indexOf(array, item);
     if (index >= 0) {
         array.splice(index, 1);
@@ -1816,11 +1646,7 @@ Array.removeAt = function Array$removeAt(array, index) {
     /// <summary locid="M:J#Array.removeAt" />
     /// <param name="array" type="Array" elementMayBeNull="true"></param>
     /// <param name="index" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "array", type: Array, elementMayBeNull: true},
-        {name: "index", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     array.splice(index, 1);
 }
 
@@ -1877,10 +1703,7 @@ Sys.IDisposable.registerInterface('Sys.IDisposable');
 Sys.StringBuilder = function Sys$StringBuilder(initialText) {
     /// <summary locid="M:J#Sys.StringBuilder.#ctor" />
     /// <param name="initialText" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "initialText", mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     this._parts = (typeof(initialText) !== 'undefined' && initialText !== null && initialText !== '') ?
         [initialText.toString()] : [];
     this._value = {};
@@ -1892,10 +1715,7 @@ Sys.StringBuilder = function Sys$StringBuilder(initialText) {
         /// <summary locid="M:J#Sys.StringBuilder.append" />
         /// <param name="text" mayBeNull="true"></param>
         /// <returns type="Sys.StringBuilder"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "text", mayBeNull: true}
-        ]);
-        if (e) throw e;
+        
         this._parts.push(text);
         return this;
     }
@@ -1904,10 +1724,7 @@ Sys.StringBuilder = function Sys$StringBuilder(initialText) {
         /// <summary locid="M:J#Sys.StringBuilder.appendLine" />
         /// <param name="text" optional="true" mayBeNull="true"></param>
         /// <returns type="Sys.StringBuilder"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "text", mayBeNull: true, optional: true}
-        ]);
-        if (e) throw e;
+        
         this._parts.push(
             ((typeof(text) === 'undefined') || (text === null) || (text === '')) ?
             '\r\n' : (text + '\r\n'));
@@ -1936,10 +1753,7 @@ Sys.StringBuilder = function Sys$StringBuilder(initialText) {
         /// <summary locid="M:J#Sys.StringBuilder.toString" />
         /// <param name="separator" type="String" optional="true" mayBeNull="true"></param>
         /// <returns type="String"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "separator", type: String, mayBeNull: true, optional: true}
-        ]);
-        if (e) throw e;
+        
         separator = separator || '';
         var parts = this._parts;
         if (this._len !== parts.length) {
@@ -2030,8 +1844,7 @@ Sys.CancelEventArgs = function Sys$CancelEventArgs() {
         return this._cancel;
     }
     function Sys$CancelEventArgs$set_cancel(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Boolean}]);
-        if (e) throw e;
+        
         this._cancel = value;
     }
 Sys.CancelEventArgs.prototype = {
@@ -2079,12 +1892,7 @@ Sys._Debug = function Sys$_Debug() {
         /// <param name="condition" type="Boolean"></param>
         /// <param name="message" type="String" optional="true" mayBeNull="true"></param>
         /// <param name="displayCaller" type="Boolean" optional="true" mayBeNull="true"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "condition", type: Boolean},
-            {name: "message", type: String, mayBeNull: true, optional: true},
-            {name: "displayCaller", type: Boolean, mayBeNull: true, optional: true}
-        ]);
-        if (e) throw e;
+        
         if (!condition) {
             message = (displayCaller && this.assert.caller) ?
                 String.format(Sys.Res.assertFailedCaller, message, this.assert.caller) :
@@ -2108,10 +1916,7 @@ Sys._Debug = function Sys$_Debug() {
     function Sys$_Debug$fail(message) {
         /// <summary locid="M:J#Sys.Debug.fail" />
         /// <param name="message" type="String" mayBeNull="true"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "message", type: String, mayBeNull: true}
-        ]);
-        if (e) throw e;
+        
         this._appendConsole(message);
 
         if (Sys.Browser.hasDebuggerStatement) {
@@ -2122,10 +1927,7 @@ Sys._Debug = function Sys$_Debug() {
     function Sys$_Debug$trace(text) {
         /// <summary locid="M:J#Sys.Debug.trace" />
         /// <param name="text"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "text"}
-        ]);
-        if (e) throw e;
+        
         this._appendConsole(text);
         this._appendTrace(text);
     }
@@ -2134,11 +1936,7 @@ Sys._Debug = function Sys$_Debug() {
         /// <summary locid="M:J#Sys.Debug.traceDump" />
         /// <param name="object" mayBeNull="true"></param>
         /// <param name="name" type="String" mayBeNull="true" optional="true"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "object", mayBeNull: true},
-            {name: "name", type: String, mayBeNull: true, optional: true}
-        ]);
-        if (e) throw e;
+        
         var text = this._traceDump(object, name, true);
     }
 
@@ -2223,11 +2021,7 @@ function Sys$Enum$parse(value, ignoreCase) {
     /// <param name="value" type="String"></param>
     /// <param name="ignoreCase" type="Boolean" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "value", type: String},
-        {name: "ignoreCase", type: Boolean, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     var values, parsed, val;
     if (ignoreCase) {
         values = this.__lowerCaseValues;
@@ -2266,10 +2060,7 @@ function Sys$Enum$toString(value) {
     /// <summary locid="M:J#Sys.Enum.toString" />
     /// <param name="value" optional="true" mayBeNull="true"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "value", mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     if ((typeof(value) === 'undefined') || (value === null)) return this.__string;
     if ((typeof(value) != 'number') || ((value % 1) !== 0)) throw Error.argumentType('value', Object.getType(value), this);
     var values = this.prototype;
@@ -2314,11 +2105,7 @@ Type.prototype.registerEnum = function Type$registerEnum(name, flags) {
     /// <summary locid="M:J#Sys.UI.LineType.#ctor" />
     /// <param name="name" type="String"></param>
     /// <param name="flags" type="Boolean" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "name", type: String},
-        {name: "flags", type: Boolean, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     if (!Type.__fullyQualifiedIdentifierRegExp.test(name)) throw Error.argument('name', Sys.Res.notATypeName);
     var parsedName;
     try {
@@ -2353,10 +2140,7 @@ Type.isEnum = function Type$isEnum(type) {
     /// <summary locid="M:J#Type.isEnum" />
     /// <param name="type" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "type", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if ((typeof(type) === 'undefined') || (type === null)) return false;
     return !!type.__enum;
 }
@@ -2365,10 +2149,7 @@ Type.isFlags = function Type$isFlags(type) {
     /// <summary locid="M:J#Type.isFlags" />
     /// <param name="type" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "type", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     if ((typeof(type) === 'undefined') || (type === null)) return false;
     return !!type.__flags;
 }
@@ -2385,14 +2166,7 @@ Sys.CollectionChange = function Sys$CollectionChange(action, newItems, newStarti
     /// <field name="newStartingIndex" type="Number" integer="true" locid="F:J#Sys.CollectionChange.newStartingIndex"></field>
     /// <field name="oldItems" type="Array" mayBeNull="true" elementMayBeNull="true" locid="F:J#Sys.CollectionChange.oldItems"></field>
     /// <field name="oldStartingIndex" type="Number" integer="true" locid="F:J#Sys.CollectionChange.oldStartingIndex"></field>
-    var e = Function._validateParams(arguments, [
-        {name: "action", type: Sys.NotifyCollectionChangedAction},
-        {name: "newItems", mayBeNull: true, optional: true},
-        {name: "newStartingIndex", type: Number, mayBeNull: true, integer: true, optional: true},
-        {name: "oldItems", mayBeNull: true, optional: true},
-        {name: "oldStartingIndex", type: Number, mayBeNull: true, integer: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     this.action = action;
     if (newItems) {
         if (!(newItems instanceof Array)) {
@@ -2437,10 +2211,7 @@ Sys.NotifyCollectionChangedAction.registerEnum('Sys.NotifyCollectionChangedActio
 Sys.NotifyCollectionChangedEventArgs = function Sys$NotifyCollectionChangedEventArgs(changes) {
     /// <summary locid="M:J#Sys.NotifyCollectionChangedEventArgs.#ctor" />
     /// <param name="changes" type="Array" elementType="Sys.CollectionChange"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "changes", type: Array, elementType: Sys.CollectionChange}
-    ]);
-    if (e) throw e;
+    
     this._changes = changes;
     Sys.NotifyCollectionChangedEventArgs.initializeBase(this);
 }
@@ -2464,10 +2235,7 @@ Sys.Observer.makeObservable = function Sys$Observer$makeObservable(target) {
     /// <summary locid="M:J#Sys.Observer.makeObservable" />
     /// <param name="target" mayBeNull="false"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "target"}
-    ]);
-    if (e) throw e;
+    
     var isArray = target instanceof Array,
         o = Sys.Observer;
     Sys.Observer._ensureObservable(target);
@@ -2503,12 +2271,7 @@ Sys.Observer.addEventHandler = function Sys$Observer$addEventHandler(target, eve
     /// <param name="target"></param>
     /// <param name="eventName" type="String"></param>
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"},
-        {name: "eventName", type: String},
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     Sys.Observer._addEventHandler(target, eventName, handler);
 }
@@ -2522,12 +2285,7 @@ Sys.Observer.removeEventHandler = function Sys$Observer$removeEventHandler(targe
     /// <param name="target"></param>
     /// <param name="eventName" type="String"></param>
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"},
-        {name: "eventName", type: String},
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     Sys.Observer._removeEventHandler(target, eventName, handler);
 }
@@ -2535,11 +2293,7 @@ Sys.Observer.clearEventHandlers = function Sys$Observer$clearEventHandlers(targe
     /// <summary locid="M:J#Sys.Observer.clearEventHandlers" />
     /// <param name="target"></param>
     /// <param name="eventName" type="String" mayBeNull="true" optional="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"},
-        {name: "eventName", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     Sys.Observer._getContext(target, true).events._removeHandlers(eventName);
 }
@@ -2548,12 +2302,7 @@ Sys.Observer.raiseEvent = function Sys$Observer$raiseEvent(target, eventName, ev
     /// <param name="target"></param>
     /// <param name="eventName" type="String"></param>
     /// <param name="eventArgs" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"},
-        {name: "eventName", type: String},
-        {name: "eventArgs", mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     var ctx = Sys.Observer._getContext(target);
     if (!ctx) return;
@@ -2566,11 +2315,7 @@ Sys.Observer.addPropertyChanged = function Sys$Observer$addPropertyChanged(targe
     /// <summary locid="M:J#Sys.Observer.addPropertyChanged" />
     /// <param name="target" mayBeNull="false"></param>
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"},
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     Sys.Observer._addEventHandler(target, "propertyChanged", handler);
 }
@@ -2578,31 +2323,21 @@ Sys.Observer.removePropertyChanged = function Sys$Observer$removePropertyChanged
     /// <summary locid="M:J#Sys.Observer.removePropertyChanged" />
     /// <param name="target" mayBeNull="false"></param>
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"},
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     Sys.Observer._removeEventHandler(target, "propertyChanged", handler);
 }
 Sys.Observer.beginUpdate = function Sys$Observer$beginUpdate(target) {
     /// <summary locid="M:J#Sys.Observer.beginUpdate" />
     /// <param name="target" mayBeNull="false"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     Sys.Observer._getContext(target, true).updating = true;
 }
 Sys.Observer.endUpdate = function Sys$Observer$endUpdate(target) {
     /// <summary locid="M:J#Sys.Observer.endUpdate" />
     /// <param name="target" mayBeNull="false"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     var ctx = Sys.Observer._getContext(target);
     if (!ctx || !ctx.updating) return;
@@ -2622,10 +2357,7 @@ Sys.Observer.isUpdating = function Sys$Observer$isUpdating(target) {
     /// <summary locid="M:J#Sys.Observer.isUpdating" />
     /// <param name="target" mayBeNull="false"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "target"}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     var ctx = Sys.Observer._getContext(target);
     return ctx ? ctx.updating : false;
@@ -2677,12 +2409,7 @@ Sys.Observer.setValue = function Sys$Observer$setValue(target, propertyName, val
     /// <param name="target" mayBeNull="false"></param>
     /// <param name="propertyName" type="String"></param>
     /// <param name="value" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"},
-        {name: "propertyName", type: String},
-        {name: "value", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._ensureObservable(target);
     Sys.Observer._setValue(target, propertyName, value);
 }
@@ -2697,22 +2424,14 @@ Sys.Observer.addCollectionChanged = function Sys$Observer$addCollectionChanged(t
     /// <summary locid="M:J#Sys.Observer.addCollectionChanged" />
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target", type: Array, elementMayBeNull: true},
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._addEventHandler(target, "collectionChanged", handler);
 }
 Sys.Observer.removeCollectionChanged = function Sys$Observer$removeCollectionChanged(target, handler) {
     /// <summary locid="M:J#Sys.Observer.removeCollectionChanged" />
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target", type: Array, elementMayBeNull: true},
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     Sys.Observer._removeEventHandler(target, "collectionChanged", handler);
 }
 Sys.Observer._collectionChange = function Sys$Observer$_collectionChange(target, change) {
@@ -2736,11 +2455,7 @@ Sys.Observer.add = function Sys$Observer$add(target, item) {
     /// <summary locid="M:J#Sys.Observer.add" />
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
     /// <param name="item" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target", type: Array, elementMayBeNull: true},
-        {name: "item", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     var change = new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.add, [item], target.length);
     Array.add(target, item);
     Sys.Observer._collectionChange(target, change);
@@ -2749,11 +2464,7 @@ Sys.Observer.addRange = function Sys$Observer$addRange(target, items) {
     /// <summary locid="M:J#Sys.Observer.addRange" />
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
     /// <param name="items" type="Array" elementMayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target", type: Array, elementMayBeNull: true},
-        {name: "items", type: Array, elementMayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     var change = new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.add, items, target.length);
     Array.addRange(target, items);
     Sys.Observer._collectionChange(target, change);
@@ -2761,10 +2472,7 @@ Sys.Observer.addRange = function Sys$Observer$addRange(target, items) {
 Sys.Observer.clear = function Sys$Observer$clear(target) {
     /// <summary locid="M:J#Sys.Observer.clear" />
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target", type: Array, elementMayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     var oldItems = Array.clone(target);
     Array.clear(target);
     Sys.Observer._collectionChange(target, new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.reset, null, -1, oldItems, 0));
@@ -2774,12 +2482,7 @@ Sys.Observer.insert = function Sys$Observer$insert(target, index, item) {
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
     /// <param name="index" type="Number" integer="true"></param>
     /// <param name="item" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target", type: Array, elementMayBeNull: true},
-        {name: "index", type: Number, integer: true},
-        {name: "item", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     Array.insert(target, index, item);
     Sys.Observer._collectionChange(target, new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.add, [item], index));
 }
@@ -2788,11 +2491,7 @@ Sys.Observer.remove = function Sys$Observer$remove(target, item) {
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
     /// <param name="item" mayBeNull="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "target", type: Array, elementMayBeNull: true},
-        {name: "item", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     var index = Array.indexOf(target, item);
     if (index !== -1) {
         Array.remove(target, item);
@@ -2805,11 +2504,7 @@ Sys.Observer.removeAt = function Sys$Observer$removeAt(target, index) {
     /// <summary locid="M:J#Sys.Observer.removeAt" />
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
     /// <param name="index" type="Number" integer="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target", type: Array, elementMayBeNull: true},
-        {name: "index", type: Number, integer: true}
-    ]);
-    if (e) throw e;
+    
     if ((index > -1) && (index < target.length)) {
         var item = target[index];
         Array.removeAt(target, index);
@@ -2835,33 +2530,21 @@ Sys.Observer._observeMethods = {
         /// <summary locid="M:J#Sys.Observer.raiseCollectionChanged" />
         /// <param name="eventName" type="String"></param>
         /// <param name="handler" type="Function"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "eventName", type: String},
-            {name: "handler", type: Function}
-        ]);
-        if (e) throw e;
+        
         Sys.Observer._addEventHandler(this, eventName, handler);
     },
     removeEventHandler: function(eventName, handler) {
         /// <summary locid="M:J#Sys.Observer.raiseCollectionChanged" />
         /// <param name="eventName" type="String"></param>
         /// <param name="handler" type="Function"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "eventName", type: String},
-            {name: "handler", type: Function}
-        ]);
-        if (e) throw e;
+        
         Sys.Observer._removeEventHandler(this, eventName, handler);
     },
     clearEventHandlers: function(eventName) {
         /// <summary locid="M:J#Sys.Observer.raiseCollectionChanged" />
         /// <param name="target"></param>
         /// <param name="eventName" type="String" mayBeNull="true" optional="true"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "target"},
-            {name: "eventName", type: String, mayBeNull: true, optional: true}
-        ]);
-        if (e) throw e;
+        
         Sys.Observer._getContext(this, true).events._removeHandlers(eventName);
     },
     get_isUpdating: function() {
@@ -2881,11 +2564,7 @@ Sys.Observer._observeMethods = {
         /// <summary locid="M:J#Sys.Observer.raiseCollectionChanged" />
         /// <param name="name" type="String"></param>
         /// <param name="value" mayBeNull="true"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "name", type: String},
-            {name: "value", mayBeNull: true}
-        ]);
-        if (e) throw e;
+        
         Sys.Observer._setValue(this, name, value);
     },
     raiseEvent: function(eventName, eventArgs) {
@@ -3143,11 +2822,7 @@ Date.parseLocale = function Date$parseLocale(value, formats) {
     /// <param name="value" type="String"></param>
     /// <param name="formats" parameterArray="true" optional="true" mayBeNull="true"></param>
     /// <returns type="Date"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "value", type: String},
-        {name: "formats", mayBeNull: true, optional: true, parameterArray: true}
-    ]);
-    if (e) throw e;
+    
     return Date._parse(value, Sys.CultureInfo.CurrentCulture, arguments);
 }
 
@@ -3156,11 +2831,7 @@ Date.parseInvariant = function Date$parseInvariant(value, formats) {
     /// <param name="value" type="String"></param>
     /// <param name="formats" parameterArray="true" optional="true" mayBeNull="true"></param>
     /// <returns type="Date"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "value", type: String},
-        {name: "formats", mayBeNull: true, optional: true, parameterArray: true}
-    ]);
-    if (e) throw e;
+    
     return Date._parse(value, Sys.CultureInfo.InvariantCulture, arguments);
 }
 
@@ -3338,10 +3009,7 @@ Date.prototype.format = function Date$format(format) {
     /// <summary locid="M:J#Date.format" />
     /// <param name="format" type="String"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "format", type: String}
-    ]);
-    if (e) throw e;
+    
     return this._toFormattedString(format, Sys.CultureInfo.InvariantCulture);
 }
 
@@ -3349,10 +3017,7 @@ Date.prototype.localeFormat = function Date$localeFormat(format) {
     /// <summary locid="M:J#Date.localeFormat" />
     /// <param name="format" type="String"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "format", type: String}
-    ]);
-    if (e) throw e;
+    
     return this._toFormattedString(format, Sys.CultureInfo.CurrentCulture);
 }
 
@@ -3566,31 +3231,21 @@ String.localeFormat = function String$localeFormat(format, args) {
     /// <param name="format" type="String"></param>
     /// <param name="args" parameterArray="true" mayBeNull="true"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "format", type: String},
-        {name: "args", mayBeNull: true, parameterArray: true}
-    ]);
-    if (e) throw e;
+    
     return String._toFormattedString(true, arguments);
 }
 Number.parseLocale = function Number$parseLocale(value) {
     /// <summary locid="M:J#Number.parseLocale" />
     /// <param name="value" type="String"></param>
     /// <returns type="Number"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "value", type: String}
-    ], false);
-    if (e) throw e;
+    
     return Number._parse(value, Sys.CultureInfo.CurrentCulture);
 }
 Number.parseInvariant = function Number$parseInvariant(value) {
     /// <summary locid="M:J#Number.parseInvariant" />
     /// <param name="value" type="String"></param>
     /// <returns type="Number"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "value", type: String}
-    ], false);
-    if (e) throw e;
+    
     return Number._parse(value, Sys.CultureInfo.InvariantCulture);
 }
 Number._parse = function Number$_parse(value, cultureInfo) {
@@ -3696,20 +3351,14 @@ Number.prototype.format = function Number$format(format) {
     /// <summary locid="M:J#Number.format" />
     /// <param name="format" type="String"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "format", type: String}
-    ]);
-    if (e) throw e;
+    
     return this._toFormattedString(format, Sys.CultureInfo.InvariantCulture);
 }
 Number.prototype.localeFormat = function Number$localeFormat(format) {
     /// <summary locid="M:J#Number.localeFormat" />
     /// <param name="format" type="String"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "format", type: String}
-    ]);
-    if (e) throw e;
+    
     return this._toFormattedString(format, Sys.CultureInfo.CurrentCulture);
 }
 Number.prototype._toFormattedString = function Number$_toFormattedString(format, cultureInfo) {
@@ -3912,12 +3561,7 @@ Sys.CultureInfo = function Sys$CultureInfo(name, numberFormat, dateTimeFormat) {
     /// <param name="name" type="String"></param>
     /// <param name="numberFormat" type="Object"></param>
     /// <param name="dateTimeFormat" type="Object"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "name", type: String},
-        {name: "numberFormat", type: Object},
-        {name: "dateTimeFormat", type: Object}
-    ]);
-    if (e) throw e;
+    
     this.name = name;
     this.numberFormat = numberFormat;
     this.dateTimeFormat = dateTimeFormat;
@@ -4197,10 +3841,7 @@ Sys.Serialization.JavaScriptSerializer.serialize = function Sys$Serialization$Ja
     /// <summary locid="M:J#Sys.Serialization.JavaScriptSerializer.serialize" />
     /// <param name="object" mayBeNull="true"></param>
     /// <returns type="String"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "object", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     var stringBuilder = new Sys.StringBuilder();
     Sys.Serialization.JavaScriptSerializer._serializeWithBuilder(object, stringBuilder, false);
     return stringBuilder.toString();
@@ -4211,11 +3852,7 @@ Sys.Serialization.JavaScriptSerializer.deserialize = function Sys$Serialization$
     /// <param name="data" type="String"></param>
     /// <param name="secure" type="Boolean" optional="true" mayBeNull="true"></param>
     /// <returns></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "data", type: String},
-        {name: "secure", type: Boolean, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     if (!data.length) throw Error.argument('data', Sys.Res.cannotDeserializeEmptyString);
     var er, esc = Sys.Serialization.JavaScriptSerializer._esc;
     try {    
@@ -4249,11 +3886,7 @@ Sys.EventHandlerList = function Sys$EventHandlerList() {
         /// <summary locid="M:J#Sys.EventHandlerList.addHandler" />
         /// <param name="id" type="String"></param>
         /// <param name="handler" type="Function"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "id", type: String},
-            {name: "handler", type: Function}
-        ]);
-        if (e) throw e;
+        
         this._addHandler(id, handler);
     }
     function Sys$EventHandlerList$_removeHandler(id, handler) {
@@ -4275,21 +3908,14 @@ Sys.EventHandlerList = function Sys$EventHandlerList() {
         /// <summary locid="M:J#Sys.EventHandlerList.removeHandler" />
         /// <param name="id" type="String"></param>
         /// <param name="handler" type="Function"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "id", type: String},
-            {name: "handler", type: Function}
-        ]);
-        if (e) throw e;
+        
         this._removeHandler(id, handler);
     }
     function Sys$EventHandlerList$getHandler(id) {
         /// <summary locid="M:J#Sys.EventHandlerList.getHandler" />
         /// <param name="id" type="String"></param>
         /// <returns type="Function"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "id", type: String}
-        ]);
-        if (e) throw e;
+        
         var evt = this._getEvent(id);
         if (!evt || (evt.length === 0)) return null;
         evt = Array.clone(evt);
@@ -4321,12 +3947,7 @@ Sys.CommandEventArgs = function Sys$CommandEventArgs(commandName, commandArgumen
     /// <param name="commandName" type="String"></param>
     /// <param name="commandArgument" mayBeNull="true"></param>
     /// <param name="commandSource" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "commandName", type: String},
-        {name: "commandArgument", mayBeNull: true},
-        {name: "commandSource", mayBeNull: true}
-    ]);
-    if (e) throw e;
+    
     Sys.CommandEventArgs.initializeBase(this);
     this._commandName = commandName;
     this._commandArgument = commandArgument;
@@ -4368,13 +3989,11 @@ Sys.INotifyPropertyChange = function Sys$INotifyPropertyChange() {
 
     function Sys$INotifyPropertyChange$add_propertyChanged(handler) {
     /// <summary locid="E:J#Sys.INotifyPropertyChange.propertyChanged" />
-    var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-    if (e) throw e;
+    
         throw Error.notImplemented();
     }
     function Sys$INotifyPropertyChange$remove_propertyChanged(handler) {
-    var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-    if (e) throw e;
+    
         throw Error.notImplemented();
     }
 Sys.INotifyPropertyChange.prototype = {
@@ -4385,10 +4004,7 @@ Sys.INotifyPropertyChange.registerInterface('Sys.INotifyPropertyChange');
 Sys.PropertyChangedEventArgs = function Sys$PropertyChangedEventArgs(propertyName) {
     /// <summary locid="M:J#Sys.PropertyChangedEventArgs.#ctor" />
     /// <param name="propertyName" type="String"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "propertyName", type: String}
-    ]);
-    if (e) throw e;
+    
     Sys.PropertyChangedEventArgs.initializeBase(this);
     this._propertyName = propertyName;
 }
@@ -4409,13 +4025,11 @@ Sys.INotifyDisposing = function Sys$INotifyDisposing() {
 
     function Sys$INotifyDisposing$add_disposing(handler) {
     /// <summary locid="E:J#Sys.INotifyDisposing.disposing" />
-    var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-    if (e) throw e;
+    
         throw Error.notImplemented();
     }
     function Sys$INotifyDisposing$remove_disposing(handler) {
-    var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-    if (e) throw e;
+    
         throw Error.notImplemented();
     }
 Sys.INotifyDisposing.prototype = {
@@ -4441,8 +4055,7 @@ Sys.Component = function Sys$Component() {
         return this._id || null;
     }
     function Sys$Component$set_id(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: String}]);
-        if (e) throw e;
+        
         if (this._idSet) throw Error.invalidOperation(Sys.Res.componentCantSetIdTwice);
         this._idSet = true;
         var oldId = this.get_id();
@@ -4461,24 +4074,20 @@ Sys.Component = function Sys$Component() {
     }
     function Sys$Component$add_disposing(handler) {
         /// <summary locid="E:J#Sys.Component.disposing" />
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._addHandler("disposing", handler);
     }
     function Sys$Component$remove_disposing(handler) {
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._removeHandler("disposing", handler);
     }
     function Sys$Component$add_propertyChanged(handler) {
         /// <summary locid="E:J#Sys.Component.propertyChanged" />
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._addHandler("propertyChanged", handler);
     }
     function Sys$Component$remove_propertyChanged(handler) {
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._removeHandler("propertyChanged", handler);
     }
     function Sys$Component$_addHandler(eventName, handler) {
@@ -4507,10 +4116,7 @@ Sys.Component = function Sys$Component() {
     function Sys$Component$raisePropertyChanged(propertyName) {
         /// <summary locid="M:J#Sys.Component.raisePropertyChanged" />
         /// <param name="propertyName" type="String"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "propertyName", type: String}
-        ]);
-        if (e) throw e;
+        
         Sys.Observer.raisePropertyChanged(this, propertyName);
     }
     function Sys$Component$updated() {
@@ -4541,11 +4147,7 @@ Sys.Component._setProperties = function Sys$Component$_setProperties(target, pro
     /// <summary locid="M:J#Sys.Component._setProperties" />
     /// <param name="target"></param>
     /// <param name="properties"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "target"},
-        {name: "properties"}
-    ]);
-    if (e) throw e;
+    
     var current;
     var targetType = Object.getType(target);
     var isObject = (targetType === Object) || (targetType === Sys.UI.DomElement);
@@ -4605,14 +4207,7 @@ $create = Sys.Component.create = function Sys$Component$create(type, properties,
     /// <param name="references" optional="true" mayBeNull="true"></param>
     /// <param name="element" domElement="true" optional="true" mayBeNull="true"></param>
     /// <returns type="Object"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "type", type: Type},
-        {name: "properties", mayBeNull: true, optional: true},
-        {name: "events", mayBeNull: true, optional: true},
-        {name: "references", mayBeNull: true, optional: true},
-        {name: "element", mayBeNull: true, domElement: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     if (type.inheritsFrom(Sys.UI.Behavior) || type.inheritsFrom(Sys.UI.Control)) {
         if (!element) throw Error.argument('element', Sys.Res.createNoDom);
     }
@@ -4750,11 +4345,7 @@ Sys.UI.Point = function Sys$UI$Point(x, y) {
     /// <param name="y" type="Number" integer="true"></param>
     /// <field name="x" type="Number" integer="true" locid="F:J#Sys.UI.Point.x"></field>
     /// <field name="y" type="Number" integer="true" locid="F:J#Sys.UI.Point.y"></field>
-    var e = Function._validateParams(arguments, [
-        {name: "x", type: Number, integer: true},
-        {name: "y", type: Number, integer: true}
-    ]);
-    if (e) throw e;
+    
     this.x = x;
     this.y = y;
 }
@@ -4769,13 +4360,7 @@ Sys.UI.Bounds = function Sys$UI$Bounds(x, y, width, height) {
     /// <field name="y" type="Number" integer="true" locid="F:J#Sys.UI.Bounds.y"></field>
     /// <field name="width" type="Number" integer="true" locid="F:J#Sys.UI.Bounds.width"></field>
     /// <field name="height" type="Number" integer="true" locid="F:J#Sys.UI.Bounds.height"></field>
-    var e = Function._validateParams(arguments, [
-        {name: "x", type: Number, integer: true},
-        {name: "y", type: Number, integer: true},
-        {name: "width", type: Number, integer: true},
-        {name: "height", type: Number, integer: true}
-    ]);
-    if (e) throw e;
+    
     this.x = x;
     this.y = y;
     this.height = height;
@@ -4799,10 +4384,7 @@ Sys.UI.DomEvent = function Sys$UI$DomEvent(eventObject) {
     /// <field name="shiftKey" type="Boolean" locid="F:J#Sys.UI.DomEvent.shiftKey"></field>
     /// <field name="target" locid="F:J#Sys.UI.DomEvent.target"></field>
     /// <field name="type" type="String" locid="F:J#Sys.UI.DomEvent.type"></field>
-    var e = Function._validateParams(arguments, [
-        {name: "eventObject"}
-    ]);
-    if (e) throw e;
+    
     var ev = eventObject;
     var etype = this.type = ev.type.toLowerCase();
     this.rawEvent = ev;
@@ -4876,13 +4458,7 @@ $addHandler = Sys.UI.DomEvent.addHandler = function Sys$UI$DomEvent$addHandler(e
     /// <param name="eventName" type="String"></param>
     /// <param name="handler" type="Function"></param>
     /// <param name="autoRemove" type="Boolean" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "elements"},
-        {name: "eventName", type: String},
-        {name: "handler", type: Function},
-        {name: "autoRemove", type: Boolean, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     if (eventName === "error") throw Error.invalidOperation(Sys.Res.addHandlerCantBeUsedForError);
     Sys._queryAll(elements, function(element) {
         if (!element._events) {
@@ -4932,13 +4508,7 @@ $addHandlers = Sys.UI.DomEvent.addHandlers = function Sys$UI$DomEvent$addHandler
     /// <param name="events" type="Object"></param>
     /// <param name="handlerOwner" optional="true" mayBeNull="true"></param>
     /// <param name="autoRemove" type="Boolean" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "elements"},
-        {name: "events", type: Object},
-        {name: "handlerOwner", mayBeNull: true, optional: true},
-        {name: "autoRemove", type: Boolean, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     Sys._queryAll(elements, function(element) {
         for (var name in events) {
             var handler = events[name];
@@ -4966,10 +4536,7 @@ Sys.registerPlugin({
 $clearHandlers = Sys.UI.DomEvent.clearHandlers = function Sys$UI$DomEvent$clearHandlers(elements) {
     /// <summary locid="M:J#Sys.UI.DomEvent.clearHandlers" />
     /// <param name="elements"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "elements"}
-    ]);
-    if (e) throw e;
+    
     Sys._queryAll(elements, function(element) {
         Sys.UI.DomEvent._clearHandlers(element, false);
     });
@@ -5010,12 +4577,7 @@ $removeHandler = Sys.UI.DomEvent.removeHandler = function Sys$UI$DomEvent$remove
     /// <param name="elements"></param>
     /// <param name="eventName" type="String"></param>
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "elements"},
-        {name: "eventName", type: String},
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     Sys.UI.DomEvent._removeHandler(elements, eventName, handler);
 }
 Sys.UI.DomEvent._removeHandler = function Sys$UI$DomEvent$_removeHandler(elements, eventName, handler) {
@@ -5126,11 +4688,7 @@ Sys.UI.DomElement.addCssClass = function Sys$UI$DomElement$addCssClass(element, 
     /// <summary locid="M:J#Sys.UI.DomElement.addCssClass" />
     /// <param name="element" domElement="true"></param>
     /// <param name="className" type="String"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "className", type: String}
-    ]);
-    if (e) throw e;
+    
     if (!Sys.UI.DomElement.containsCssClass(element, className)) {
         if (element.className === '') {
             element.className = className;
@@ -5146,11 +4704,7 @@ Sys.UI.DomElement.containsCssClass = function Sys$UI$DomElement$containsCssClass
     /// <param name="element" domElement="true"></param>
     /// <param name="className" type="String"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "className", type: String}
-    ]);
-    if (e) throw e;
+    
     return Array.contains(element.className.split(' '), className);
 }
 
@@ -5158,10 +4712,7 @@ Sys.UI.DomElement.getBounds = function Sys$UI$DomElement$getBounds(element) {
     /// <summary locid="M:J#Sys.UI.DomElement.getBounds" />
     /// <param name="element" domElement="true"></param>
     /// <returns type="Sys.UI.Bounds"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true}
-    ]);
-    if (e) throw e;
+    
     var offset = Sys.UI.DomElement.getLocation(element);
 
     return new Sys.UI.Bounds(offset.x, offset.y, element.offsetWidth || 0, element.offsetHeight || 0);
@@ -5172,11 +4723,7 @@ $get = Sys.UI.DomElement.getElementById = function Sys$UI$DomElement$getElementB
     /// <param name="id" type="String"></param>
     /// <param name="element" domElement="true" optional="true" mayBeNull="true"></param>
     /// <returns domElement="true" mayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "id", type: String},
-        {name: "element", mayBeNull: true, domElement: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     return Sys.get("#" + id, element || null);
 }
 
@@ -5185,10 +4732,7 @@ if (document.documentElement.getBoundingClientRect) {
         /// <summary locid="M:J#Sys.UI.DomElement.getLocation" />
         /// <param name="element" domElement="true"></param>
         /// <returns type="Sys.UI.Point"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "element", domElement: true}
-        ]);
-        if (e) throw e;
+        
         if (element.self || element.nodeType === 9 || 
             (element === document.documentElement) || 
             (element.parentNode === element.ownerDocument.documentElement)) { 
@@ -5236,10 +4780,7 @@ else if (isBrowser("Safari")) {
         /// <summary locid="M:J#Sys.UI.DomElement.getLocation" />
         /// <param name="element" domElement="true"></param>
         /// <returns type="Sys.UI.Point"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "element", domElement: true}
-        ]);
-        if (e) throw e;
+        
         if ((element.window && (element.window === element)) || element.nodeType === 9) return new Sys.UI.Point(0,0);
 
         var offsetX = 0, offsetY = 0,
@@ -5287,10 +4828,7 @@ else {
         /// <summary locid="M:J#Sys.UI.DomElement.getLocation" />
         /// <param name="element" domElement="true"></param>
         /// <returns type="Sys.UI.Point"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "element", domElement: true}
-        ]);
-        if (e) throw e;
+        
         if ((element.window && (element.window === element)) || element.nodeType === 9) return new Sys.UI.Point(0,0);
 
         var offsetX = 0, offsetY = 0,
@@ -5350,10 +4888,7 @@ Sys.UI.DomElement.isDomElement = function Sys$UI$DomElement$isDomElement(obj) {
     /// <summary locid="M:J#Sys.UI.DomElement.isDomElement" />
     /// <param name="obj"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "obj"}
-    ]);
-    if (e) throw e;
+    
     return Sys._isDomElement(obj);
 }
 
@@ -5361,11 +4896,7 @@ Sys.UI.DomElement.removeCssClass = function Sys$UI$DomElement$removeCssClass(ele
     /// <summary locid="M:J#Sys.UI.DomElement.removeCssClass" />
     /// <param name="element" domElement="true"></param>
     /// <param name="className" type="String"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "className", type: String}
-    ]);
-    if (e) throw e;
+    
     var currentClassName = ' ' + element.className + ' ';
     var index = currentClassName.indexOf(' ' + className + ' ');
     if (index >= 0) {
@@ -5379,11 +4910,7 @@ Sys.UI.DomElement.resolveElement = function Sys$UI$DomElement$resolveElement(ele
     /// <param name="elementOrElementId" mayBeNull="true"></param>
     /// <param name="containerElement" domElement="true" optional="true" mayBeNull="true"></param>
     /// <returns domElement="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "elementOrElementId", mayBeNull: true},
-        {name: "containerElement", mayBeNull: true, domElement: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     var el = elementOrElementId;
     if (!el) return null;
     if (typeof(el) === "string") {
@@ -5402,11 +4929,7 @@ Sys.UI.DomElement.raiseBubbleEvent = function Sys$UI$DomElement$raiseBubbleEvent
     /// <summary locid="M:J#Sys.UI.DomElement.raiseBubbleEvent" />
     /// <param name="source" domElement="true"></param>
     /// <param name="args" type="Sys.EventArgs"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "source", domElement: true},
-        {name: "args", type: Sys.EventArgs}
-    ]);
-    if (e) throw e;
+    
     var target = source;
     while (target) {
         var control = target.control;
@@ -5436,12 +4959,7 @@ Sys.UI.DomElement.setLocation = function Sys$UI$DomElement$setLocation(element, 
     /// <param name="element" domElement="true"></param>
     /// <param name="x" type="Number" integer="true"></param>
     /// <param name="y" type="Number" integer="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "x", type: Number, integer: true},
-        {name: "y", type: Number, integer: true}
-    ]);
-    if (e) throw e;
+    
     var style = element.style;
     style.position = 'absolute';
     style.left = x + "px";
@@ -5452,11 +4970,7 @@ Sys.UI.DomElement.toggleCssClass = function Sys$UI$DomElement$toggleCssClass(ele
     /// <summary locid="M:J#Sys.UI.DomElement.toggleCssClass" />
     /// <param name="element" domElement="true"></param>
     /// <param name="className" type="String"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "className", type: String}
-    ]);
-    if (e) throw e;
+    
     if (Sys.UI.DomElement.containsCssClass(element, className)) {
         Sys.UI.DomElement.removeCssClass(element, className);
     }
@@ -5469,10 +4983,7 @@ Sys.UI.DomElement.getVisibilityMode = function Sys$UI$DomElement$getVisibilityMo
     /// <summary locid="M:J#Sys.UI.DomElement.getVisibilityMode" />
     /// <param name="element" domElement="true"></param>
     /// <returns type="Sys.UI.VisibilityMode"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true}
-    ]);
-    if (e) throw e;
+    
     return (element._visibilityMode === Sys.UI.VisibilityMode.hide) ?
         Sys.UI.VisibilityMode.hide :
         Sys.UI.VisibilityMode.collapse;
@@ -5481,11 +4992,7 @@ Sys.UI.DomElement.setVisibilityMode = function Sys$UI$DomElement$setVisibilityMo
     /// <summary locid="M:J#Sys.UI.DomElement.setVisibilityMode" />
     /// <param name="element" domElement="true"></param>
     /// <param name="value" type="Sys.UI.VisibilityMode"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "value", type: Sys.UI.VisibilityMode}
-    ]);
-    if (e) throw e;
+    
     Sys.UI.DomElement._ensureOldDisplayMode(element);
     if (element._visibilityMode !== value) {
         element._visibilityMode = value;
@@ -5505,10 +5012,7 @@ Sys.UI.DomElement.getVisible = function Sys$UI$DomElement$getVisible(element) {
     /// <summary locid="M:J#Sys.UI.DomElement.getVisible" />
     /// <param name="element" domElement="true"></param>
     /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true}
-    ]);
-    if (e) throw e;
+    
     var style = element.currentStyle || Sys.UI.DomElement._getCurrentStyle(element);
     if (!style) return true;
     return (style.visibility !== 'hidden') && (style.display !== 'none');
@@ -5517,11 +5021,7 @@ Sys.UI.DomElement.setVisible = function Sys$UI$DomElement$setVisible(element, va
     /// <summary locid="M:J#Sys.UI.DomElement.setVisible" />
     /// <param name="element" domElement="true"></param>
     /// <param name="value" type="Boolean"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "value", type: Boolean}
-    ]);
-    if (e) throw e;
+    
     if (value !== Sys.UI.DomElement.getVisible(element)) {
         Sys.UI.DomElement._ensureOldDisplayMode(element);
         element.style.visibility = value ? 'visible' : 'hidden';
@@ -5540,13 +5040,7 @@ Sys.UI.DomElement.setCommand = function Sys$UI$DomElement$setCommand(commandSour
     /// <param name="commandName" type="String" mayBeNull="true"></param>
     /// <param name="commandArgument" mayBeNull="true" optional="true"></param>
     /// <param name="commandTarget" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "commandSource"},
-        {name: "commandName", type: String, mayBeNull: true},
-        {name: "commandArgument", mayBeNull: true, optional: true},
-        {name: "commandTarget", mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     Sys.UI.DomEvent.addHandler(commandSource, 'click', function() {
         var source = commandTarget || this;
         Sys.UI.DomElement.raiseBubbleEvent(source, new Sys.CommandEventArgs(commandName, commandArgument, this)); 
@@ -5646,29 +5140,20 @@ Sys.IContainer = function Sys$IContainer() {
     function Sys$IContainer$addComponent(component) {
         /// <summary locid="M:J#Sys.IContainer.addComponent" />
         /// <param name="component" type="Sys.Component"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "component", type: Sys.Component}
-        ]);
-        if (e) throw e;
+        
         throw Error.notImplemented();
     }
     function Sys$IContainer$removeComponent(component) {
         /// <summary locid="M:J#Sys.IContainer.removeComponent" />
         /// <param name="component" type="Sys.Component"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "component", type: Sys.Component}
-        ]);
-        if (e) throw e;
+        
         throw Error.notImplemented();
     }
     function Sys$IContainer$findComponent(id) {
         /// <summary locid="M:J#Sys.IContainer.findComponent" />
         /// <param name="id" type="String"></param>
         /// <returns type="Sys.Component"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "id", type: String}
-        ]);
-        if (e) throw e;
+        
         throw Error.notImplemented();
     }
     function Sys$IContainer$getComponents() {
@@ -5689,11 +5174,7 @@ Sys.ApplicationLoadEventArgs = function Sys$ApplicationLoadEventArgs(components,
     /// <summary locid="M:J#Sys.ApplicationLoadEventArgs.#ctor" />
     /// <param name="components" type="Array" elementType="Sys.Component"></param>
     /// <param name="isPartialLoad" type="Boolean"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "components", type: Array, elementType: Sys.Component},
-        {name: "isPartialLoad", type: Boolean}
-    ]);
-    if (e) throw e;
+    
     Sys.ApplicationLoadEventArgs.initializeBase(this);
     this._components = components;
     this._isPartialLoad = isPartialLoad;
@@ -5741,8 +5222,7 @@ Sys._Application = function Sys$_Application() {
     }
     function Sys$_Application$add_init(handler) {
         /// <summary locid="E:J#Sys.Application.init" />
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         if (this._initialized) {
             handler(this, Sys.EventArgs.Empty);
         }
@@ -5751,39 +5231,31 @@ Sys._Application = function Sys$_Application() {
         }
     }
     function Sys$_Application$remove_init(handler) {
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._removeHandler("init", handler);
     }
     function Sys$_Application$add_load(handler) {
         /// <summary locid="E:J#Sys.Application.load" />
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._addHandler("load", handler);
     }
     function Sys$_Application$remove_load(handler) {
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._removeHandler("load", handler);
     }
     function Sys$_Application$add_unload(handler) {
         /// <summary locid="E:J#Sys.Application.unload" />
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._addHandler("unload", handler);
     }
     function Sys$_Application$remove_unload(handler) {
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         this._removeHandler("unload", handler);
     }
     function Sys$_Application$addComponent(component) {
         /// <summary locid="M:J#Sys.Application.addComponent" />
         /// <param name="component" type="Sys.Component"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "component", type: Sys.Component}
-        ]);
-        if (e) throw e;
+        
         var id = component.get_id();
         if (!id) throw Error.invalidOperation(Sys.Res.cantAddWithoutId);
         if (typeof(this._components[id]) !== 'undefined') throw Error.invalidOperation(String.format(Sys.Res.appDuplicateComponent, id));
@@ -5840,11 +5312,7 @@ Sys._Application = function Sys$_Application() {
         /// <summary locid="M:J#Sys._Application.disposeElement" />
         /// <param name="element"></param>
         /// <param name="childNodesOnly" type="Boolean"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "element"},
-            {name: "childNodesOnly", type: Boolean}
-        ]);
-        if (e) throw e;
+        
         if (element.nodeType === 1) {
             var d, c, i, list,
                 allElements = element.getElementsByTagName("*"),
@@ -5920,11 +5388,7 @@ Sys._Application = function Sys$_Application() {
         /// <param name="id" type="String"></param>
         /// <param name="parent" optional="true" mayBeNull="true"></param>
         /// <returns type="Sys.Component" mayBeNull="true"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "id", type: String},
-            {name: "parent", mayBeNull: true, optional: true}
-        ]);
-        if (e) throw e;
+        
         return (parent ?
             ((Sys.IContainer.isInstanceOfType(parent)) ?
                 parent.findComponent(id) :
@@ -5978,10 +5442,7 @@ Sys._Application = function Sys$_Application() {
     function Sys$_Application$registerDisposableObject(object) {
         /// <summary locid="M:J#Sys.Application.registerDisposableObject" />
         /// <param name="object" type="Sys.IDisposable"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "object", type: Sys.IDisposable}
-        ]);
-        if (e) throw e;
+        
         if (!this._disposing) {
             var objects = this._disposableObjects,
                 i = objects.length;
@@ -6003,20 +5464,14 @@ Sys._Application = function Sys$_Application() {
     function Sys$_Application$removeComponent(component) {
         /// <summary locid="M:J#Sys.Application.removeComponent" />
         /// <param name="component" type="Sys.Component"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "component", type: Sys.Component}
-        ]);
-        if (e) throw e;
+        
         var id = component.get_id();
         if (id) delete this._components[id];
     }
     function Sys$_Application$unregisterDisposableObject(object) {
         /// <summary locid="M:J#Sys.Application.unregisterDisposableObject" />
         /// <param name="object" type="Sys.IDisposable"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "object", type: Sys.IDisposable}
-        ]);
-        if (e) throw e;
+        
         if (!this._disposing) {
             var i = object.__msdisposeindex;
             if (typeof(i) === "number") {
@@ -6136,10 +5591,7 @@ Sys.onReady(function() {
 Sys.UI.Behavior = function Sys$UI$Behavior(element) {
     /// <summary locid="M:J#Sys.UI.Behavior.#ctor" />
     /// <param name="element" domElement="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true}
-    ]);
-    if (e) throw e;
+    
     Sys.UI.Behavior.initializeBase(this);
     this._element = element;
     var behaviors = (element._behaviors = element._behaviors || []);
@@ -6170,8 +5622,7 @@ Sys.UI.Behavior = function Sys$UI$Behavior(element) {
         return name;
     }
     function Sys$UI$Behavior$set_name(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: String}]);
-        if (e) throw e;
+        
         if ((value === '') || (value.charAt(0) === ' ') || (value.charAt(value.length - 1) === ' '))
             throw Error.argument('value', Sys.Res.invalidId);
         if (typeof(this._element[value]) !== 'undefined')
@@ -6215,11 +5666,7 @@ Sys.UI.Behavior.getBehaviorByName = function Sys$UI$Behavior$getBehaviorByName(e
     /// <param name="element" domElement="true"></param>
     /// <param name="name" type="String"></param>
     /// <returns type="Sys.UI.Behavior" mayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "name", type: String}
-    ]);
-    if (e) throw e;
+    
     var b = element[name];
     return (b && Sys.UI.Behavior.isInstanceOfType(b)) ? b : null;
 }
@@ -6228,10 +5675,7 @@ Sys.UI.Behavior.getBehaviors = function Sys$UI$Behavior$getBehaviors(element) {
     /// <summary locid="M:J#Sys.UI.Behavior.getBehaviors" />
     /// <param name="element" domElement="true"></param>
     /// <returns type="Array" elementType="Sys.UI.Behavior"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true}
-    ]);
-    if (e) throw e;
+    
     if (!element._behaviors) return [];
     return Array.clone(element._behaviors);
 }
@@ -6241,11 +5685,7 @@ Sys.UI.Behavior.getBehaviorsByType = function Sys$UI$Behavior$getBehaviorsByType
     /// <param name="element" domElement="true"></param>
     /// <param name="type" type="Type"></param>
     /// <returns type="Array" elementType="Sys.UI.Behavior"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true},
-        {name: "type", type: Type}
-    ]);
-    if (e) throw e;
+    
     var behaviors = element._behaviors;
     var results = [];
     if (behaviors) {
@@ -6276,10 +5716,7 @@ Sys.UI.VisibilityMode.registerEnum("Sys.UI.VisibilityMode");
 Sys.UI.Control = function Sys$UI$Control(element) {
     /// <summary locid="M:J#Sys.UI.Control.#ctor" />
     /// <param name="element" domElement="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "element", domElement: true}
-    ]);
-    if (e) throw e;
+    
     if (typeof(element.control) !== 'undefined') throw Error.invalidOperation(Sys.Res.controlAlreadyDefined);
     Sys.UI.Control.initializeBase(this);
 
@@ -6319,8 +5756,7 @@ Sys.UI.Control = function Sys$UI$Control(element) {
         return null;
     }
     function Sys$UI$Control$set_parent(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Sys.UI.Control}]);
-        if (e) throw e;
+        
         if (!this._element) throw Error.invalidOperation(Sys.Res.cantBeCalledAfterDispose);
         var parents = [this];
         var current = value;
@@ -6343,8 +5779,7 @@ Sys.UI.Control = function Sys$UI$Control(element) {
         return Sys.UI.DomElement.getVisibilityMode(this._element);
     }
     function Sys$UI$Control$set_visibilityMode(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Sys.UI.VisibilityMode}]);
-        if (e) throw e;
+        
         if (!this._element) throw Error.invalidOperation(Sys.Res.cantBeCalledAfterDispose);
         Sys.UI.DomElement.setVisibilityMode(this._element, value);
     }
@@ -6355,18 +5790,14 @@ Sys.UI.Control = function Sys$UI$Control(element) {
         return Sys.UI.DomElement.getVisible(this._element);
     }
     function Sys$UI$Control$set_visible(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Boolean}]);
-        if (e) throw e;
+        
         if (!this._element) throw Error.invalidOperation(Sys.Res.cantBeCalledAfterDispose);
         Sys.UI.DomElement.setVisible(this._element, value)
     }
     function Sys$UI$Control$addCssClass(className) {
         /// <summary locid="M:J#Sys.UI.Control.addCssClass" />
         /// <param name="className" type="String"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "className", type: String}
-        ]);
-        if (e) throw e;
+        
         if (!this._element) throw Error.invalidOperation(Sys.Res.cantBeCalledAfterDispose);
         Sys.UI.DomElement.addCssClass(this._element, className);
     }
@@ -6383,22 +5814,14 @@ Sys.UI.Control = function Sys$UI$Control(element) {
         /// <param name="source"></param>
         /// <param name="args" type="Sys.EventArgs"></param>
         /// <returns type="Boolean"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "source"},
-            {name: "args", type: Sys.EventArgs}
-        ]);
-        if (e) throw e;
+        
         return false;
     }
     function Sys$UI$Control$raiseBubbleEvent(source, args) {
         /// <summary locid="M:J#Sys.UI.Control.raiseBubbleEvent" />
         /// <param name="source"></param>
         /// <param name="args" type="Sys.EventArgs"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "source"},
-            {name: "args", type: Sys.EventArgs}
-        ]);
-        if (e) throw e;
+        
         this._raiseBubbleEvent(source, args);
     }
     function Sys$UI$Control$_raiseBubbleEvent(source, args) {
@@ -6413,20 +5836,14 @@ Sys.UI.Control = function Sys$UI$Control(element) {
     function Sys$UI$Control$removeCssClass(className) {
         /// <summary locid="M:J#Sys.UI.Control.removeCssClass" />
         /// <param name="className" type="String"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "className", type: String}
-        ]);
-        if (e) throw e;
+        
         if (!this._element) throw Error.invalidOperation(Sys.Res.cantBeCalledAfterDispose);
         Sys.UI.DomElement.removeCssClass(this._element, className);
     }
     function Sys$UI$Control$toggleCssClass(className) {
         /// <summary locid="M:J#Sys.UI.Control.toggleCssClass" />
         /// <param name="className" type="String"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "className", type: String}
-        ]);
-        if (e) throw e;
+        
         if (!this._element) throw Error.invalidOperation(Sys.Res.cantBeCalledAfterDispose);
         Sys.UI.DomElement.toggleCssClass(this._element, className);
     }
@@ -6460,10 +5877,7 @@ Sys.UI.Control.registerClass('Sys.UI.Control', Sys.Component);
 Sys.HistoryEventArgs = function Sys$HistoryEventArgs(state) {
     /// <summary locid="M:J#Sys.HistoryEventArgs.#ctor" />
     /// <param name="state" type="Object"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "state", type: Object}
-    ]);
-    if (e) throw e;
+    
     Sys.HistoryEventArgs.initializeBase(this);
     this._state = state;
 }
@@ -6543,20 +5957,14 @@ Sys._Application.prototype.set_enableHistory = function Sys$_Application$set_ena
 Sys._Application.prototype.add_navigate = function Sys$_Application$add_navigate(handler) {
     /// <summary locid="E:J#Sys.Application.navigate" />
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     this._addHandler("navigate", handler);
 };
 
 Sys._Application.prototype.remove_navigate = function Sys$_Application$remove_navigate(handler) {
     /// <summary locid="M:J#Sys._Application.remove_navigate" />
     /// <param name="handler" type="Function"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "handler", type: Function}
-    ]);
-    if (e) throw e;
+    
     this._removeHandler("navigate", handler);
 };
 
@@ -6564,11 +5972,7 @@ Sys._Application.prototype.addHistoryPoint = function Sys$_Application$addHistor
     /// <summary locid="M:J#Sys.Application.addHistoryPoint" />
     /// <param name="state" type="Object"></param>
     /// <param name="title" type="String" optional="true" mayBeNull="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "state", type: Object},
-        {name: "title", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     if (!this._enableHistory) throw Error.invalidOperation(Sys.Res.historyCannotAddHistoryPointWithHistoryDisabled);
     for (var n in state) {
         var v = state[n];
@@ -6600,11 +6004,7 @@ Sys._Application.prototype.setServerId = function Sys$_Application$setServerId(c
     /// <summary locid="M:J#Sys.Application.setServerId" />
     /// <param name="clientId" type="String"></param>
     /// <param name="uniqueId" type="String"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "clientId", type: String},
-        {name: "uniqueId", type: String}
-    ]);
-    if (e) throw e;
+    
     this._clientId = clientId;
     this._uniqueId = uniqueId;
 };
@@ -6612,10 +6012,7 @@ Sys._Application.prototype.setServerId = function Sys$_Application$setServerId(c
 Sys._Application.prototype.setServerState = function Sys$_Application$setServerState(value) {
     /// <summary locid="M:J#Sys.Application.setServerState" />
     /// <param name="value" type="String"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "value", type: String}
-    ]);
-    if (e) throw e;
+    
     this._ensureHistory();
     this._state.__s = value;
     this._updateHiddenField(value);
@@ -6947,10 +6344,7 @@ Sys.Net.WebRequestExecutor = function Sys$Net$WebRequestExecutor() {
     function Sys$Net$WebRequestExecutor$getResponseHeader(header) {
         /// <summary locid="M:J#Sys.Net.WebRequestExecutor.getResponseHeader" />
         /// <param name="header" type="String"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "header", type: String}
-        ]);
-        if (e) throw e;
+        
         throw Error.notImplemented();
     }
     function Sys$Net$WebRequestExecutor$getAllResponseHeaders() {
@@ -6979,10 +6373,7 @@ Sys.Net.WebRequestExecutor.registerClass('Sys.Net.WebRequestExecutor');
 Sys.Net.XMLDOM = function Sys$Net$XMLDOM(markup) {
     /// <summary locid="M:J#Sys.Net.XMLDOM.#ctor" />
     /// <param name="markup" type="String"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "markup", type: String}
-    ]);
-    if (e) throw e;
+    
     if (!window.DOMParser) {
         var progIDs = [ 'Msxml2.DOMDocument.3.0', 'Msxml2.DOMDocument' ];
         for (var i = 0, l = progIDs.length; i < l; i++) {
@@ -7141,10 +6532,7 @@ Sys.Net.XMLHttpExecutor = function Sys$Net$XMLHttpExecutor() {
         /// <summary locid="M:J#Sys.Net.XMLHttpExecutor.getResponseHeader" />
         /// <param name="header" type="String"></param>
         /// <returns type="String"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "header", type: String}
-        ]);
-        if (e) throw e;
+        
         if (!this._responseAvailable) {
             throw Error.invalidOperation(String.format(Sys.Res.cannotCallBeforeResponse, 'getResponseHeader'));
         }
@@ -7299,25 +6687,21 @@ Sys.Net._WebRequestManager = function Sys$Net$_WebRequestManager() {
 
     function Sys$Net$_WebRequestManager$add_invokingRequest(handler) {
         /// <summary locid="E:J#Sys.Net.WebRequestManager.invokingRequest" />
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         Sys.Observer.addEventHandler(this, "invokingRequest", handler);
     }
     function Sys$Net$_WebRequestManager$remove_invokingRequest(handler) {
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         Sys.Observer.removeEventHandler(this, "invokingRequest", handler);
     }
 
     function Sys$Net$_WebRequestManager$add_completedRequest(handler) {
         /// <summary locid="E:J#Sys.Net.WebRequestManager.completedRequest" />
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         Sys.Observer.addEventHandler(this, "completedRequest", handler);
     }
     function Sys$Net$_WebRequestManager$remove_completedRequest(handler) {
-        var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-        if (e) throw e;
+        
         Sys.Observer.removeEventHandler(this, "completedRequest", handler);
     }
     function Sys$Net$_WebRequestManager$get_defaultTimeout() {
@@ -7326,8 +6710,7 @@ Sys.Net._WebRequestManager = function Sys$Net$_WebRequestManager() {
         return this._defaultTimeout;
     }
     function Sys$Net$_WebRequestManager$set_defaultTimeout(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Number}]);
-        if (e) throw e;
+        
         if (value < 0) {
             throw Error.argumentOutOfRange("value", value, Sys.Res.invalidTimeout);
         }
@@ -7341,18 +6724,14 @@ Sys.Net._WebRequestManager = function Sys$Net$_WebRequestManager() {
         return this._defaultExecutorType;
     }
     function Sys$Net$_WebRequestManager$set_defaultExecutorType(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: String}]);
-        if (e) throw e;
+        
         this._defaultExecutorType = value;
     }
 
     function Sys$Net$_WebRequestManager$executeRequest(webRequest) {
         /// <summary locid="M:J#Sys.Net.WebRequestManager.executeRequest" />
         /// <param name="webRequest" type="Sys.Net.WebRequest"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "webRequest", type: Sys.Net.WebRequest}
-        ]);
-        if (e) throw e;
+        
         var executor = webRequest.get_executor();
         if (!executor) {
 
@@ -7400,10 +6779,7 @@ Sys.Net.WebRequestManager = new Sys.Net._WebRequestManager();
 Sys.Net.NetworkRequestEventArgs = function Sys$Net$NetworkRequestEventArgs(webRequest) {
     /// <summary locid="M:J#Sys.Net.NetworkRequestEventArgs.#ctor" />
     /// <param name="webRequest" type="Sys.Net.WebRequest"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "webRequest", type: Sys.Net.WebRequest}
-    ]);
-    if (e) throw e;
+    
     Sys.Net.NetworkRequestEventArgs.initializeBase(this);
     this._webRequest = webRequest;
 }
@@ -7436,23 +6812,18 @@ Sys.Net.WebRequest = function Sys$Net$WebRequest() {
 
     function Sys$Net$WebRequest$add_completed(handler) {
     /// <summary locid="E:J#Sys.Net.WebRequest.completed" />
-    var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-    if (e) throw e;
+    
         Sys.Observer.addEventHandler(this, "completed", handler);
     }
     function Sys$Net$WebRequest$remove_completed(handler) {
-    var e = Function._validateParams(arguments, [{name: "handler", type: Function}]);
-    if (e) throw e;
+    
         Sys.Observer.removeEventHandler(this, "completed", handler);
     }
 
     function Sys$Net$WebRequest$completed(eventArgs) {
         /// <summary locid="M:J#Sys.Net.WebRequest.completed" />
         /// <param name="eventArgs" type="Sys.EventArgs"></param>
-        var e = Function._validateParams(arguments, [
-            {name: "eventArgs", type: Sys.EventArgs}
-        ]);
-        if (e) throw e;
+        
         function raise(source, sender, eventName) {
             var handler = Sys.Observer._getContext(source, true).events.getHandler(eventName);
             if (handler) {
@@ -7470,8 +6841,7 @@ Sys.Net.WebRequest = function Sys$Net$WebRequest() {
         return this._url;
     }
     function Sys$Net$WebRequest$set_url(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: String}]);
-        if (e) throw e;
+        
         this._url = value;
     }
 
@@ -7493,8 +6863,7 @@ Sys.Net.WebRequest = function Sys$Net$WebRequest() {
         return this._httpVerb;
     }
     function Sys$Net$WebRequest$set_httpVerb(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: String}]);
-        if (e) throw e;
+        
         if (value.length === 0) {
             throw Error.argument('value', Sys.Res.invalidHttpVerb);
         }
@@ -7508,8 +6877,7 @@ Sys.Net.WebRequest = function Sys$Net$WebRequest() {
         return this._body;
     }
     function Sys$Net$WebRequest$set_body(value) {
-        var e = Function._validateParams(arguments, [{name: "value", mayBeNull: true}]);
-        if (e) throw e;
+        
         this._body = value;
     }
 
@@ -7519,8 +6887,7 @@ Sys.Net.WebRequest = function Sys$Net$WebRequest() {
         return this._userContext;
     }
     function Sys$Net$WebRequest$set_userContext(value) {
-        var e = Function._validateParams(arguments, [{name: "value", mayBeNull: true}]);
-        if (e) throw e;
+        
         this._userContext = value;
     }
 
@@ -7530,8 +6897,7 @@ Sys.Net.WebRequest = function Sys$Net$WebRequest() {
         return this._executor;
     }
     function Sys$Net$WebRequest$set_executor(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Sys.Net.WebRequestExecutor}]);
-        if (e) throw e;
+        
         if (this._executor !== null && this._executor.get_started()) {
             throw Error.invalidOperation(Sys.Res.setExecutorAfterActive);
         }
@@ -7549,8 +6915,7 @@ Sys.Net.WebRequest = function Sys$Net$WebRequest() {
         return this._timeout;
     }
     function Sys$Net$WebRequest$set_timeout(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Number}]);
-        if (e) throw e;
+        
         if (value < 0) {
             throw Error.argumentOutOfRange("value", value, Sys.Res.invalidTimeout);
         }
@@ -7702,8 +7067,7 @@ Sys.Net.WebServiceProxy = function Sys$Net$WebServiceProxy() {
         return this._timeout || 0;
     }
     function Sys$Net$WebServiceProxy$set_timeout(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Number}]);
-        if (e) throw e;
+        
         if (value < 0) {
             throw Error.argumentOutOfRange('value', value, Sys.Res.invalidTimeout);
         }
@@ -7715,8 +7079,7 @@ Sys.Net.WebServiceProxy = function Sys$Net$WebServiceProxy() {
         return (typeof(this._userContext) === "undefined") ? null : this._userContext;
     }
     function Sys$Net$WebServiceProxy$set_defaultUserContext(value) {
-        var e = Function._validateParams(arguments, [{name: "value", mayBeNull: true}]);
-        if (e) throw e;
+        
         this._userContext = value;
     }
     function Sys$Net$WebServiceProxy$get_defaultSucceededCallback() {
@@ -7725,8 +7088,7 @@ Sys.Net.WebServiceProxy = function Sys$Net$WebServiceProxy() {
         return this._succeeded || null;
     }
     function Sys$Net$WebServiceProxy$set_defaultSucceededCallback(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Function, mayBeNull: true}]);
-        if (e) throw e;
+        
         this._succeeded = value;
     }
     function Sys$Net$WebServiceProxy$get_defaultFailedCallback() {
@@ -7735,8 +7097,7 @@ Sys.Net.WebServiceProxy = function Sys$Net$WebServiceProxy() {
         return this._failed || null;
     }
     function Sys$Net$WebServiceProxy$set_defaultFailedCallback(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Function, mayBeNull: true}]);
-        if (e) throw e;
+        
         this._failed = value;
     }
     function Sys$Net$WebServiceProxy$get_enableJsonp() {
@@ -7745,8 +7106,7 @@ Sys.Net.WebServiceProxy = function Sys$Net$WebServiceProxy() {
         return !!this._jsonp;
     }
     function Sys$Net$WebServiceProxy$set_enableJsonp(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: Boolean}]);
-        if (e) throw e;
+        
         this._jsonp = value;
     }
     function Sys$Net$WebServiceProxy$get_path() {
@@ -7755,8 +7115,7 @@ Sys.Net.WebServiceProxy = function Sys$Net$WebServiceProxy() {
         return this._path || null;
     }
     function Sys$Net$WebServiceProxy$set_path(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: String}]);
-        if (e) throw e;
+        
         this._path = value;
     }
     function Sys$Net$WebServiceProxy$get_jsonpCallbackParameter() {
@@ -7765,8 +7124,7 @@ Sys.Net.WebServiceProxy = function Sys$Net$WebServiceProxy() {
         return this._callbackParameter || "callback";
     }
     function Sys$Net$WebServiceProxy$set_jsonpCallbackParameter(value) {
-        var e = Function._validateParams(arguments, [{name: "value", type: String}]);
-        if (e) throw e;
+        
         this._callbackParameter = value;
     }
     function Sys$Net$WebServiceProxy$_invoke(servicePath, methodName, useGet, params, onSuccess, onFailure, userContext) {
@@ -7779,16 +7137,7 @@ Sys.Net.WebServiceProxy = function Sys$Net$WebServiceProxy() {
         /// <param name="onFailure" type="Function" mayBeNull="true" optional="true"></param>
         /// <param name="userContext" mayBeNull="true" optional="true"></param>
         /// <returns type="Sys.Net.WebRequest" mayBeNull="true"></returns>
-        var e = Function._validateParams(arguments, [
-            {name: "servicePath", type: String},
-            {name: "methodName", type: String},
-            {name: "useGet", type: Boolean},
-            {name: "params"},
-            {name: "onSuccess", type: Function, mayBeNull: true, optional: true},
-            {name: "onFailure", type: Function, mayBeNull: true, optional: true},
-            {name: "userContext", mayBeNull: true, optional: true}
-        ]);
-        if (e) throw e;
+        
 
         onSuccess = onSuccess || this.get_defaultSucceededCallback();
         onFailure = onFailure || this.get_defaultFailedCallback();
@@ -7827,19 +7176,7 @@ Sys.Net.WebServiceProxy.invoke = function Sys$Net$WebServiceProxy$invoke(service
     /// <param name="enableJsonp" type="Boolean" optional="true" mayBeNull="true"></param>
     /// <param name="jsonpCallbackParameter" type="String" optional="true" mayBeNull="true"></param>
     /// <returns type="Sys.Net.WebRequest" mayBeNull="true"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "servicePath", type: String},
-        {name: "methodName", type: String, mayBeNull: true, optional: true},
-        {name: "useGet", type: Boolean, mayBeNull: true, optional: true},
-        {name: "params", mayBeNull: true, optional: true},
-        {name: "onSuccess", type: Function, mayBeNull: true, optional: true},
-        {name: "onFailure", type: Function, mayBeNull: true, optional: true},
-        {name: "userContext", mayBeNull: true, optional: true},
-        {name: "timeout", type: Number, mayBeNull: true, optional: true},
-        {name: "enableJsonp", type: Boolean, mayBeNull: true, optional: true},
-        {name: "jsonpCallbackParameter", type: String, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     var schemeHost = (enableJsonp !== false) ? Sys.Net.WebServiceProxy._xdomain.exec(servicePath) : null,
         tempCallback, jsonp = schemeHost && (schemeHost.length === 3) && 
             ((schemeHost[1] !== location.protocol) || (schemeHost[2] !== location.host));
@@ -8033,14 +7370,7 @@ Sys.Net.WebServiceError = function Sys$Net$WebServiceError(timedOut, message, st
     /// <param name="stackTrace" type="String" mayBeNull="true" optional="true"></param>
     /// <param name="exceptionType" type="String" mayBeNull="true" optional="true"></param>
     /// <param name="errorObject" type="Object" mayBeNull="true" optional="true"></param>
-    var e = Function._validateParams(arguments, [
-        {name: "timedOut", type: Boolean},
-        {name: "message", type: String, mayBeNull: true},
-        {name: "stackTrace", type: String, mayBeNull: true, optional: true},
-        {name: "exceptionType", type: String, mayBeNull: true, optional: true},
-        {name: "errorObject", type: Object, mayBeNull: true, optional: true}
-    ]);
-    if (e) throw e;
+    
     this._timedOut = timedOut;
     this._message = message;
     this._stackTrace = stackTrace;
