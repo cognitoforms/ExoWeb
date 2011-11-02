@@ -292,11 +292,11 @@
 						catch (err) { }
 					}
 					if (!cleared) {
-						var child = startNode || container.firstChild, nextChild = child.nextSibling;
+						var child = startNode || container.firstChild, nextChild;
 						while (child && child !== endNode) {
+							nextChild = child.nextSibling;
 							container.removeChild(child);
 							child = nextChild;
-							nextChild = child.nextSibling;
 						}
 					}
 					if (placeholder) {
