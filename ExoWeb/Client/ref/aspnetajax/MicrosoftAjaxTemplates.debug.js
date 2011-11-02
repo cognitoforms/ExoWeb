@@ -15,6 +15,7 @@
 		var merge = Sys._merge,
 	foreach = Sys._foreach,
 	forIn = Sys._forIn,
+	indexOf = Sys._indexOf,
 	isBrowser = Sys._isBrowser;
 
 		function serialize(obj) {
@@ -2549,30 +2550,213 @@ false);
 			if (this._isActive()) {
 				this._changing = true;
 
-				var template = this._ensureTemplate(this._getTemplate());
-				template._ensureCompiled();
-	
-				var templateUsesDollarIndex = /with\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
+				// Determine if the changes contain an add event that occurs before a remove event which preceeds it in the array.
+				// i.e.: array = [0, 1], add 2 at index 2, then remove at index 0, resulting in [1, 2]
+				var containsAddBeforePrecedingRemove = changes.some(function(evt, i) {
+					return evt.action === Sys.NotifyCollectionChangedAction.add && changes.some(function(other, j) {
+						return j > i && other.action === Sys.NotifyCollectionChangedAction.remove && other.oldStartingIndex <= evt.newStartingIndex;
+					});
+				});
 
-				// Do a full update if the template depends on the rendering index.
-				if (templateUsesDollarIndex) {
+				// If an add event occurs before a remove which preceeds it in the array, then fall back to a non-optimal refresh.
+				if (containsAddBeforePrecedingRemove) {
 					this.refresh();
+				}
+				else {
+					// Determine if the template uses the $index argument by inspecting the compiled template code.
+					var template = this._ensureTemplate(this._getTemplate());
+					template._ensureCompiled();
+					var templateUsesDollarIndex = /with\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
+	
+					if (templateUsesDollarIndex) {
+						var dollarIndices = this._contexts.map(function(item, index) { return index; });
+						foreach(changes, function(evt) {
+							var i, arr, start, len, item, idx;
+							if (evt.oldItems && evt.oldItems.length > 0) {
+								arr = evt.oldItems;
+								start = evt.oldStartingIndex;
+								len = arr.length;
+	
+								for (i = 0; i < len; i++) {
+									dollarIndices[start + i] = arr[i];
+								}
+								for (i = start + len; i < dollarIndices.length; i++) {
+									item = dollarIndices[i];
+									if (item instanceof Array) {
+										if (item[0] === item[1] - len) {
+											dollarIndices[i] = i;
+										}
+										else {
+											item[1] = item[1] - len;
+										}
+									}
+									else if (item.constructor === Number) {
+										dollarIndices[i] = [item, item - len];
+									}
+								}
+							}
+							else if (evt.newItems && evt.newItems.length > 0) {
+								arr = evt.newItems;
+								start = evt.newStartingIndex;
+								len = arr.length;
+	
+								for (i = 0; i < dollarIndices.length; i++) {
+									item = dollarIndices[i];
+									if (item instanceof Array && item[1] >= start) {
+										if (item[0] === item[1] + len) {
+											dollarIndices[i] = i;
+										}
+										else {
+											item[1] = item[1] + len;
+										}
+									}
+									else if (item.constructor === Number && item >= start) {
+										dollarIndices[i] = [item, item + len];
+									}
+								}
+								for (i = 0; i < len; i++) {
+									item = arr[i];
+									idx = indexOf(dollarIndices, item);
+									if (idx >= 0) {
+										if (start + i === idx) {
+											dollarIndices[idx] = idx;
+										}
+										else {
+											dollarIndices[idx] = [idx, start + i];
+										}
+									}
+								}
+							}
+						});
+	
+						// Delete the data items in the index array used to detect that an item has moved.
+						for (var i = 0; i < dollarIndices.length; i++) {
+							var item = dollarIndices[i];
+							if (!(item instanceof Array) && item.constructor !== Number) {
+								dollarIndices[i] = null;
+							}
+						}
+	
+						var _this = this;
+						foreach(changes, function(evt) {
+							var i, arr, start, len, item, renderStart = null, renderLen = null, disposeStart = null, disposeLen = null;
+							if (evt.oldItems && evt.oldItems.length > 0) {
+								arr = evt.oldItems;
+								start = evt.oldStartingIndex;
+								len = arr.length;
+								disposeStart = start;
+								disposeLen = len;
+	
+								// Delete the index in the array so that it will be consistent with data as it is rendered on the page.
+								for (i = start; i < len; i++) {
+									delete dollarIndices[i];
+								}
+	
+								// Find following items who's index has changed (and would match the target with this insertion) and mark them for disposal.
+								for (i = start + len; i < dollarIndices.length; i++) {
+									item = dollarIndices[i];
+									if (item instanceof Array && i - len === item[1]) {
+										disposeLen += 1;
+										if (renderStart === null) {
+											renderStart = i - len;
+											renderLen = 1;
+										}
+										else {
+											renderLen += 1;
+										}
+										dollarIndices[i - len] = i - len;
+										delete dollarIndices[i];
 									}
 									else {
-					var _this = this;
-					foreach(changes, function(evt) {
-						if (evt.oldItems && evt.oldItems.length > 0) {
-							_this._clearContainers(_this._placeholders, evt.oldStartingIndex, evt.oldItems.length);
-							_this._contexts.splice(evt.oldStartingIndex, evt.oldItems.length);
+										break;
+									}
+								}
+	
+								// Dispose of removed items.
+								_this._clearContainers(_this._placeholders, disposeStart, disposeLen);
+								_this._contexts.splice(disposeStart, disposeLen);
+	
+								// Refresh existing content for following items who's index has changed.
+								if (renderStart != null) {
+									// Inject contexts for new items.
+									for (i = 0; i < renderLen; i++) {
+										_this._contexts.splice(renderStart + i, 0, null);
+									}
+	
+									_this.refresh(renderStart, renderLen);
+								}
 							}
-
-						if (evt.newItems && evt.newItems.length > 0) {
-							for (var i = 0, len = evt.newItems.length; i < len; i++) {
-								_this._contexts.splice(evt.newStartingIndex + i, 0, null);
+							else if (evt.newItems && evt.newItems.length > 0) {
+								arr = evt.newItems;
+								start = evt.newStartingIndex;
+								len = arr.length;
+								renderStart = start;
+								renderLen = len;
+	
+								// Find following items who's index has changed (and would match the target with this insertion) and mark them for disposal.
+								for (i = start; i < dollarIndices.length; i++) {
+									// Skip over indices that have been removed from the rendered content, which can happen temporarily when resequencing occurs.
+									if (!dollarIndices.hasOwnProperty(i)) {
+										continue;
+									}
+	
+									item = dollarIndices[i];
+									if (item instanceof Array && i + len === item[1]) {
+										renderLen += 1;
+										if (disposeStart === null) {
+											disposeStart = i;
+											disposeLen = 1;
+										}
+										else {
+											disposeLen += 1;
+										}
+										dollarIndices[i] = i;
+									}
+									else {
+										break;
+									}
+								}
+	
+								// Dispose of existing content for following items who's index has changed.
+								if (disposeStart != null) {
+									_this._clearContainers(_this._placeholders, disposeStart, disposeLen);
+								}
+	
+								// Inject contexts for new items.
+								for (i = 0; i < len; i++) {
+									dollarIndices.splice(start + i, 0, start + i);
+									_this._contexts.splice(start + i, 0, null);
+								}
+	
+								// Render new items.
+								_this.refresh(renderStart, renderLen);
 							}
-							_this.refresh(evt.newStartingIndex, evt.newItems.length)
-						}
-					});
+						});
+					}
+					else {
+						var _this = this;
+						foreach(changes, function(evt) {
+							var i, arr, start, len;
+							if (evt.oldItems && evt.oldItems.length > 0) {
+								arr = evt.oldItems;
+								start = evt.oldStartingIndex;
+								len = arr.length;
+	
+								_this._clearContainers(_this._placeholders, start, len);
+								_this._contexts.splice(start, len);
+							}
+							else if (evt.newItems && evt.newItems.length > 0) {
+								arr = evt.newItems;
+								start = evt.newStartingIndex;
+								len = arr.length;
+	
+								for (i = 0; i < len; i++) {
+									_this._contexts.splice(start + i, 0, null);
+								}
+								_this.refresh(start, len)
+							}
+						});
+					}
 				}
 			}
 			else {
