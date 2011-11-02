@@ -114,10 +114,10 @@ function ensureIntercepting() {
 				}
 				if (!cleared) {
 					var child = startNode || container.firstChild, nextChild;
-					while (child && child !== endNode) {
+					while (child) {
 						nextChild = child.nextSibling;
 						container.removeChild(child);
-						child = nextChild;
+						child = nextChild === endNode ? null : nextChild;
 					}
 				}
 				if (placeholder) {
