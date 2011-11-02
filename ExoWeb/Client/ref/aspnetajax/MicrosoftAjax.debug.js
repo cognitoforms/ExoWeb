@@ -2630,6 +2630,13 @@ Sys.Observer._arrayMethods = {
         /// <param name="item" mayBeNull="true"></param>
         Sys.Observer.insert(this, index, item);
     },
+	insertRange: function(index, items) {
+		/// <summary locid="M:J#Sys.Observer.insertRange" />
+		/// <param name="target" type="Array" elementMayBeNull="true"></param>
+		/// <param name="index" type="Array" elementMayBeNull="true"></param>
+		/// <param name="items" type="Array" elementMayBeNull="true"></param>
+		Sys.Observer.insertRange(this, index, items);
+	},
     remove: function(item) {
         /// <summary locid="M:J#Sys.Observer.raiseCollectionChanged" />
         /// <param name="item" mayBeNull="true"></param>
@@ -2639,8 +2646,15 @@ Sys.Observer._arrayMethods = {
     removeAt: function(index) {
         /// <summary locid="M:J#Sys.Observer.raiseCollectionChanged" />
         /// <param name="index" type="Number" integer="true"></param>
-        Sys.Observer.removeAt(this, index);
+        return Sys.Observer.removeAt(this, index);
     },
+	removeRange: function(start, count) {
+		/// <summary locid="M:J#Sys.Observer.removeRange" />
+		/// <param name="target" type="Array" elementMayBeNull="true"></param>
+		/// <param name="start" type="Array" elementMayBeNull="true"></param>
+		/// <param name="count" type="Array" elementMayBeNull="true"></param>
+		return Sys.Observer.removeRange(this, start, count);
+	},
     raiseCollectionChanged: function(changes) {
         /// <summary locid="M:J#Sys.Observer.raiseCollectionChanged" />
         /// <param name="changes" type="Array" elementType="Sys.CollectionChange"></param>

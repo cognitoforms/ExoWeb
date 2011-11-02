@@ -2551,23 +2551,22 @@ false);
 
 				var template = this._ensureTemplate(this._getTemplate());
 				template._ensureCompiled();
-
+	
 				var templateUsesDollarIndex = /with\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
 
 				// Do a full update if the template depends on the rendering index.
 				if (templateUsesDollarIndex) {
 					this.refresh();
-				} else {
+									}
+									else {
 					var _this = this;
 					foreach(changes, function(evt) {
 						if (evt.oldItems && evt.oldItems.length > 0) {
-							// TODO: accurately dispose of contexts
 							_this._clearContainers(_this._placeholders, evt.oldStartingIndex, evt.oldItems.length);
 							_this._contexts.splice(evt.oldStartingIndex, evt.oldItems.length);
-						}
+							}
 
 						if (evt.newItems && evt.newItems.length > 0) {
-							// TODO: accurately include new contexts
 							for (var i = 0, len = evt.newItems.length; i < len; i++) {
 								_this._contexts.splice(evt.newStartingIndex + i, 0, null);
 							}
@@ -2832,11 +2831,11 @@ false);
 					catch (err) { }
 				}
 				if (!cleared) {
-					var child = startNode || container.firstChild, nextChild = child.nextSibling;
-					while (child && child !== endNode) {
-						container.removeChild(child);
-						child = nextChild;
+					var child = startNode || container.firstChild, nextChild;
+					while (child) {
 						nextChild = child.nextSibling;
+						container.removeChild(child);
+						child = nextChild === endNode ? null : nextChild;
 					}
 				}
 				if (placeholder) {
