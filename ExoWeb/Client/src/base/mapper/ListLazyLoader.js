@@ -153,7 +153,7 @@ function listLoad(list, propName, callback, thisPtr) {
 }
 
 ListLazyLoader.mixin({
-	load: listLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(list) { return [list]; } /*, debug: true, debugLabel: "ListLazyLoader"*/ })
+	load: listLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: 0 })
 });
 
 (function() {

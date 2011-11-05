@@ -7,7 +7,7 @@ function typeLoad(mtype, propName, callback, thisPtr) {
 }
 
 TypeLazyLoader.mixin({
-	load: typeLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(mtype) { return [mtype]; } })
+	load: typeLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: 0 })
 });
 
 (function() {

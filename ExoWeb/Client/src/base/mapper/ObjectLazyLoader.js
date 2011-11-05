@@ -68,7 +68,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 }
 
 ObjectLazyLoader.mixin({
-	load: objLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: function(obj) { return [obj]; } })
+	load: objLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: 0 })
 });
 
 (function() {

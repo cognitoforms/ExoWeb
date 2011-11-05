@@ -2,10 +2,18 @@
 ///////////////////////////////////////
 var jasmine = require("../../jasmine");
 var jasmineConsole = require("../../jasmine.console");
+
 var arrays = require("../../../src/base/core/Array");
+forEach = arrays.forEach;
+
 var functions = require("../../../src/base/core/Function");
 
 ExoWeb = {};
+ExoWeb.registerActivity = function() { };
+
+var functor = require("../../../src/base/core/Functor");
+Functor = ExoWeb.Functor;
+//ExoWeb.Functor = Functor = functor.Functor;
 
 var config = require("../../../src/base/core/Config");
 ExoWeb.config = config.config;
@@ -364,6 +372,188 @@ describe("after", function() {
 		fn("bob");
 		expect(text).toBe("hello to bob from mars");
 	});
+});
+
+describe("dontDoubleUp", function() {
+
+	var source = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"];
+	var target = ["d", "e", "r", "k", "u", "t", "s", "c", "n", "b", "z", "v", "h", "q", "w", "x", "m", "o", "y", "i", "j", "a", "l", "g", "p", "f"];
+
+	function lookup(c, sourceArg, targetArg) {
+		var i, result, sourceArray, targetArray;
+		sourceArray = sourceArg || source;
+		targetArray = targetArg || target;
+		if (c.length === 1) {
+			result = targetArray[sourceArray.indexOf(c)];
+		}
+		else {
+			result = [];
+			for (i = 0; i < c.length; i++) {
+				result.push(targetArray[sourceArray.indexOf(c[i])]);
+			}
+		}
+		return result;
+	}
+
+	function testDontDoubleUp(options) {
+		var callbacks = [];
+
+		var spyOn = {
+			fn: function() {
+				callbacks.push({ key: arguments[0], fn: arguments[options.callbackArg] });
+			}
+		};
+
+		var implementation = jasmine.spyOn(spyOn, "fn").andCallThrough();
+		var proxy = implementation.dontDoubleUp(options);
+
+		return {
+			implementation: implementation,
+			proxy: proxy,
+			add: function() {
+				var args = Array.prototype.slice.call(arguments);
+				var spy = jasmine.jasmine.createSpy();
+				args.splice(options.callbackArg, 0, spy);
+				proxy.apply(this, args);
+				return spy;
+			},
+			flush: function(results) {
+				for (var i = 0, len = callbacks.length; i < len; i++) {
+					var cb = callbacks.shift();
+					var args;
+					if (results) {
+						args = results[cb.key];
+					}
+					else {
+						args = lookup(cb.key);
+					}
+					cb.fn.apply(this, args);
+				}
+			},
+			reset: function(newOptions) {
+				callbacks.length = 0;
+				implementation.reset();
+				proxy = implementation.dontDoubleUp(newOptions || options);
+			}
+		};
+	}
+
+	var dictionary = "";
+
+	it("has no effect if the proxy function is called with different arguments", function() {
+
+		var test = testDontDoubleUp({ callbackArg: 1 });
+
+		var abc = test.add("abc");
+		var def = test.add("def");
+
+		test.flush();
+
+		// tests with different keys will result in the implementation being called multiple times
+		expect(test.implementation.callCount).toBe(2);
+		expect(abc.callCount).toBe(1);
+		expect(abc).toHaveBeenCalledWith(lookup("a"), lookup("b"), lookup("c"));
+		expect(def.callCount).toBe(1);
+		expect(def).toHaveBeenCalledWith(lookup("d"), lookup("e"), lookup("f"));
+
+	});
+
+	it("ensures that the same function is not called more than once with the same arguments", function() {
+	
+		var test = testDontDoubleUp({ callbackArg: 1 });
+
+		var test1 = test.add("test");
+		var test2 = test.add("test");
+
+		test.flush();
+
+		expect(test.implementation.callCount).toBe(1);
+		expect(test1.callCount).toBe(1);
+		expect(test1).toHaveBeenCalledWith(lookup("t"), lookup("e"), lookup("s"), lookup("t"));
+		expect(test2.callCount).toBe(1);
+		expect(test2).toHaveBeenCalledWith(lookup("t"), lookup("e"), lookup("s"), lookup("t"));
+
+	});
+	
+	it("throws an error when an invalid partitioned argument is specified", function() {
+		expect(function() { (function() { }).dontDoubleUp({ groupBy: 0, partitionedArg: 1 })(true, false); }).toThrow("The partitioned argument must be an array.");
+		expect(function() { (function() { }).dontDoubleUp({ groupBy: 0, partitionedArg: 1 })(true, [0, 1, 2]); }).toThrow("Invalid partitionedArg option.");
+	});
+
+	it("allows for grouping arguments to be specified and only groups calls that use identical values for those arguments", function() {
+	
+		var test = testDontDoubleUp({ callbackArg: 2, groupBy: [0] });
+
+		var test1 = test.add("test", 5);
+		var test2 = test.add("test", 2);
+
+		test.flush();
+
+		expect(test.implementation.callCount).toBe(1);
+		expect(test1.callCount).toBe(1);
+		expect(test1).toHaveBeenCalledWith(lookup("t"), lookup("e"), lookup("s"), lookup("t"));
+		expect(test2.callCount).toBe(1);
+		expect(test2).toHaveBeenCalledWith(lookup("t"), lookup("e"), lookup("s"), lookup("t"));
+
+	});
+	
+	it("allows for partitioning one of the arguments so that calls that include some of the same arguments as a call in progress can share the same result", function() {
+	
+		var test = testDontDoubleUp({ callbackArg: 2, groupBy: 1, partitionedArg: 1 });
+
+		var abc = test.add("abc", ["a", "b", "c"]);
+		var a = test.add("a", ["a"]);
+		var b = test.add("b", ["b"]);
+		var c = test.add("c", ["c"]);
+
+		test.flush({ "abc": lookup("abc"), "a": lookup("abc"), "b": lookup("abc"), "c": lookup("abc") });
+
+		expect(test.implementation.callCount).toBe(1);
+		expect(abc.callCount).toBe(1);
+		expect(abc).toHaveBeenCalledWith(lookup("a"), lookup("b"), lookup("c"));
+		expect(a.callCount).toBe(1);
+		expect(a).toHaveBeenCalledWith(lookup("a"), lookup("b"), lookup("c"));
+		expect(b.callCount).toBe(1);
+		expect(b).toHaveBeenCalledWith(lookup("a"), lookup("b"), lookup("c"));
+		expect(c.callCount).toBe(1);
+		expect(c).toHaveBeenCalledWith(lookup("a"), lookup("b"), lookup("c"));
+
+	});
+	
+	it("allows for filtering the results when partitioned", function() {
+
+		function filter(originalInput, partitionedInput, output) {
+			var word = partitionedInput[1];
+			for (var i = 0; i < output.length; i++) {
+				var outputItem = output[i];
+				var inputItem = lookup(outputItem, target, source);
+				if (word.indexOf(inputItem) < 0) {
+					output.splice(i--, 1);
+				}
+			}
+		}
+
+		var test = testDontDoubleUp({ callbackArg: 2, groupBy: 1, partitionedArg: 1, partitionedFilter: filter });
+		
+		var abc = test.add("abc", ["a", "b", "c"]);
+		var a = test.add("a", ["a"]);
+		var b = test.add("b", ["b"]);
+		var c = test.add("c", ["c"]);
+		
+		test.flush({ "abc": lookup("abc"), "a": lookup("abc"), "b": lookup("abc"), "c": lookup("abc") });
+
+		expect(test.implementation.callCount).toBe(1);
+		expect(abc.callCount).toBe(1);
+		expect(abc).toHaveBeenCalledWith(lookup("a"), lookup("b"), lookup("c"));
+		expect(a.callCount).toBe(1);
+		expect(a).toHaveBeenCalledWith(lookup("a"));
+		expect(b.callCount).toBe(1);
+		expect(b).toHaveBeenCalledWith(lookup("b"));
+		expect(c.callCount).toBe(1);
+		expect(c).toHaveBeenCalledWith(lookup("c"));
+
+	});
+
 });
 
 // Run Tests

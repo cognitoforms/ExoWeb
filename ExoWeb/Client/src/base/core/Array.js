@@ -6,6 +6,10 @@ function contains(arr, elt, from) {
 	return arr.indexOf(elt, from) > -1 ? true : false;
 }
 
+function copy(arr) {
+	return Array.prototype.slice.call(arr);
+}
+
 // Filters out duplicate items from the given array.
 /////////////////////////////////////////////////////
 function distinct(arr) {
@@ -346,7 +350,7 @@ function update(arr, target, trackEvents) {
 if (!Array.prototype.addRange)
 	Array.prototype.addRange = function(items) { addRange(this, items); };
 if (!Array.prototype.copy)
-	Array.prototype.copy = function() { return Array.prototype.splice.apply([], [0, 0].concat(this)); };
+	Array.prototype.copy = function() { return copy(this); };
 if (!Array.prototype.clear)
 	Array.prototype.clear = function () { this.length = 0; };
 if (!Array.prototype.contains)

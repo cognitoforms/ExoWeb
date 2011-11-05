@@ -30,81 +30,176 @@ Function.prototype.mixin = function mixin(methods, object) {
 Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 	var proceed = this;
 	var calls = [];
-
+	
+	// Is the function already being called with the same arguments?
 	return function dontDoubleUp() {
-		// is the function already being called with the same arguments?
+		var i, ilen, j, jlen, origCallback, origThisPtr, partitionedArg, partitionedArgIdx, groupBy, callsInProgress, call, shouldJoinCall, otherPartitionedArg, partitionedInCall, joinArgIdx, args;
+	
+		// Make a copy of the invocation arguments.	
+		args = Array.prototype.slice.call(arguments);
 
-		var origCallback;
-		var origThisPtr;
-
+		// Extract callback and thisPtr arguments, if they exist.
 		if (options.callbackArg < arguments.length) {
 			origCallback = arguments[options.callbackArg];
 		}
-
 		if (options.thisPtrArg < arguments.length) {
 			origThisPtr = arguments[options.thisPtrArg];
 		}
 
-		// determine what values to use to group callers
-		var groupBy;
+		// Determine what arguments can be partitioned into separate calls
+		if (options.partitionedArg !== null && options.partitionedArg !== undefined) {
+			partitionedArg = arguments[options.partitionedArg];
+			if (!(partitionedArg instanceof Array)) {
+				throw "The partitioned argument must be an array.";
+			}
 
-		if (options.groupBy) {
-			groupBy = options.groupBy.apply(this, arguments);
+			partitionedArgIdx = -1;
+		}
+
+		// Determine what values to use to group callers
+		groupBy = [];
+		if (options.groupBy && options.groupBy instanceof Array) {
+			for (i = 0, ilen = options.groupBy.length; i < ilen; i++) {
+				if (partitionedArg !== undefined && options.groupBy[i] === options.partitionedArg) {
+					partitionedArgIdx = groupBy.length;
+				}
+				groupBy.push(arguments[options.groupBy[i]]);
+			}
+		}
+		else if (options.groupBy !== null && options.groupBy !== undefined) {
+			groupBy.push(arguments[options.groupBy]);
+			if (options.groupBy === options.partitionedArg) {
+				partitionedArgIdx = 0;
+			}
 		}
 		else {
-			groupBy = [this];
-			for (var i = 0; i < arguments.length; ++i) {
+			for (i = 0, ilen = arguments.length; i < ilen; ++i) {
 				if (i !== options.callbackArg && i !== options.thisPtrArg) {
+					if (partitionedArg !== undefined && i === options.partitionedArg) {
+						partitionedArgIdx = groupBy.length;
+					}
 					groupBy.push(arguments[i]);
 				}
 			}
 		}
 
-		// is this call already in progress?
-		var callInProgress, call;
+		// Verify that the the partitioned argument is part of the grouping.
+		if (partitionedArgIdx === -1) {
+			throw "Invalid partitionedArg option.";
+		}
 
-		for (var c = 0; !callInProgress && c < calls.length; ++c) {
-			call = calls[c];
+		// Is this call already in progress?
+		callsInProgress = [];
+		for (i = 0, ilen = calls.length; (partitionedArg === undefined || partitionedArg.length > 0) && i < ilen; i++) {
+			call = calls[i];
 
 			// TODO: handle optional params better
 			if (groupBy.length != call.groupBy.length) {
 				continue;
 			}
 
-			callInProgress = call;
-			for (var j = 0; j < groupBy.length; ++j) {
-				if (groupBy[j] !== call.groupBy[j]) {
-					callInProgress = null;
-					break;
+			// Only join calls together if they were called on the same object.
+			shouldJoinCall = this === call.context;
+
+			// Make sure all of the arguments match.
+			for (j = 0, jlen = groupBy.length; shouldJoinCall && j < jlen; j++) {
+				if (j === partitionedArgIdx) {	
+					// Attempt to find items in partitioned argument that are in progress and remove them
+					shouldJoinCall = call.groupBy[j].some(function(p) {
+						return partitionedArg.indexOf(p) >= 0;
+					});
 				}
+				else if (groupBy[j] !== call.groupBy[j]) {
+					shouldJoinCall = false;
+				}
+			}
+
+			if (shouldJoinCall) {
+
+				partitionedInCall = [];
+
+				// Remove partitioned args that will be satisfied by the call in progress.
+				if (partitionedArg !== undefined) {
+					otherPartitionedArg = call.groupBy[partitionedArgIdx];
+					for (j = 0, jlen = otherPartitionedArg.length; j < jlen; j++) {
+						joinArgIdx = partitionedArg.indexOf(otherPartitionedArg[j]);
+						if (joinArgIdx >= 0) {
+							partitionedInCall.push(otherPartitionedArg[j]);
+							partitionedArg.splice(joinArgIdx, 1);
+						}
+					}
+				}
+
+				callsInProgress.push({ call: call, partitioned: partitionedInCall });
+
 			}
 		}
 
-		if (!callInProgress) {
+		if (callsInProgress.length === 0 || (partitionedArg !== undefined && partitionedArg.length > 0)) {
+
 			// track the next call that is about to be made
-			call = { callback: Functor(), groupBy: groupBy };
+			call = { callback: Functor(), groupBy: groupBy, context: this };
+			
 			calls.push(call);
 
 			// make sure the original callback is invoked and that cleanup occurs
 			call.callback.add(function() {
-				Array.remove(calls, call);
+				if (calls.indexOf(call) < 0) {
+					throw "Call not found.";
+				}
+				calls.remove(call);
 				if (origCallback) {
 					origCallback.apply(origThisPtr || this, arguments);
 				}
 			});
 
+			// Copy the args
+			newArgs = args.slice();
+
+			// use remaining partitioned args if in effect
+			if (partitionedArg !== undefined && partitionedArg.length > 0) {
+				newArgs[options.partitionedArg] = partitionedArg;
+			}
+
 			// pass the new callback to the inner function
-			var args = Array.prototype.slice.call(arguments);
-			args[options.callbackArg] = call.callback;
-			proceed.apply(this, args);
+			newArgs[options.callbackArg] = call.callback;
+
+			call.args = newArgs;
+
+			proceed.apply(this, newArgs);
+
 		}
-		else if (origCallback) {
+
+		if (callsInProgress.length > 0 && origCallback) {
+		
 			// wait for the original call to complete
-			var batch = Batch.suspendCurrent("dontDoubleUp");
-			callInProgress.callback.add(function() {
-				ExoWeb.Batch.resume(batch);
-				origCallback.apply(origThisPtr || this, arguments);
+			forEach(callsInProgress, function(call) {
+
+				var invocationArgs;
+
+				if (options.partitionedFilter) {
+					invocationArgs = args.slice();
+					invocationArgs[options.partitionedArg] = call.partitioned;
+					invocationArgs[options.callbackArg] = origCallback;
+				}
+
+				call.call.callback.add(function() {
+
+					var callbackArgs;
+
+					if (options.partitionedFilter) {
+						callbackArgs = Array.prototype.slice.call(arguments);
+						options.partitionedFilter.call(origThisPtr || this, call.args, invocationArgs, callbackArgs);
+					}
+					else {
+						callbackArgs = arguments;
+					}
+
+					origCallback.apply(origThisPtr || this, callbackArgs);
+
+				});
 			});
+
 		}
 	};
 };
