@@ -12,15 +12,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var config = {
 		// General debug setting that can encompose the purpose of other more focused settings.
+		// Determines whether parts of the framework attempt to handle errors and throw more descriptive errors.
 		debug: false,
 
 		// Indicates that signal should use window.setTimeout when invoking callbacks. This is
 		// done in order to get around problems with browser complaining about long-running script.
 		signalTimeout: false,
-
-		// "Debugging" signal means that signal will not attempt to handle errors that occur
-		// as a result of invoking callbacks, which can aid in troubleshooting errors.
-		signalDebug: false,
 
 		// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 		individualQueryLoading: false,
@@ -1456,7 +1453,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._genCallback(callback, thisPtr, executeImmediately);
 		},
 		_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
-			if (ExoWeb.config.signalDebug === true || ExoWeb.config.debug === true) {
+			if (ExoWeb.config.debug === true) {
 				doCallback.apply(this, arguments);
 			}
 			else {
@@ -3884,31 +3881,42 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 
-			function Type$addRule$fn(obj, prop, fn) {
-				try {
-					prop.get_containingType().get_model().beginValidation();
-					rule._isExecuting = true;						
-					ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+			function Type$addRule$_fn(obj, prop, fn) {
+				if (prop.get_isStatic() === true) {
+					Array.forEach(jstype.meta.known(), function (obj) {
+						if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+							fn.call(rule, obj);
+							obj.meta.markRuleExecuted(rule);
+						}
+					});
+				}
+				else {
+					fn.call(rule, obj);
+					obj.meta.markRuleExecuted(rule);
+				}
+			}
 
-					if (prop.get_isStatic() === true) {
-						Array.forEach(jstype.meta.known(), function (obj) {
-							if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
-								fn.call(rule, obj);
-								obj.meta.markRuleExecuted(rule);
-							}
-						});
-					}
-					else {
-						fn.call(rule, obj);
-						obj.meta.markRuleExecuted(rule);
-					}
-				}
-				catch (err) {
-					ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
-				}
-				finally {
+			function Type$addRule$fn(obj, prop, fn) {
+				if (ExoWeb.config.debug === true) {
+					prop.get_containingType().get_model().beginValidation();
+					rule._isExecuting = true;
+					Type$addRule$_fn.apply(this, arguments);
 					rule._isExecuting = false;
 					prop.get_containingType().get_model().endValidation();
+				}
+				else {
+					try {
+						prop.get_containingType().get_model().beginValidation();
+						rule._isExecuting = true;
+						Type$addRule$_fn.apply(this, arguments);
+					}
+					catch (err) {
+						ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
+					}
+					finally {
+						rule._isExecuting = false;
+						prop.get_containingType().get_model().endValidation();
+					}
 				}
 			}
 
@@ -6373,16 +6381,22 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// Execute for existing instances if their initialization state allows it.
 					mtype.known().forEach(function (obj) {
 						if (this.canExecute(obj, null, true)) {
-							try {
+							if (ExoWeb.config.debug === true) {
 								this._isExecuting = true;
-								//ExoWeb.trace.log("rule", "executing rule '{0}' when initialized", [rule]);
 								this.execute(obj);
-							}
-							catch (err) {
-								ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [this, err]);
-							}
-							finally {
 								this._isExecuting = false;
+							}
+							else {
+								try {
+									this._isExecuting = true;
+									this.execute(obj);
+								}
+								catch (err) {
+									ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [this, err]);
+								}
+								finally {
+									this._isExecuting = false;
+								}
 							}
 						}
 					}, this);
@@ -12273,80 +12287,51 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this.renderStart(true);
 		},
 		render: function Content$render() {
-			if (this._element === undefined || this._element === null) {
-				contentControlsRendering--;
-				return;
+			// Failing to empty content before rendering can result in invalid content since rendering 
+			// content is not necessarily in order because of waiting on external templates.
+			$(this._element).empty();
+
+			// ripped off from dataview
+			var pctx = this.get_templateContext();
+			var container = this.get_element();
+			var data = this._data;
+			var list = data;
+			var len;
+			if ((data === null) || (typeof (data) === "undefined")) {
+				len = 0;
+			}
+			else if (!(data instanceof Array)) {
+				list = [data];
+				len = 1;
+			}
+			else {
+				len = data.length;
+			}
+			this._contexts = new Array(len);
+			for (var i = 0; i < len; i++) {
+				var item = list[i];
+				var itemTemplate = this.getTemplate(item);
+
+				// get custom classes from template
+				var classes = $(itemTemplate.get_element()).attr("class");
+				if (classes) {
+					classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
+				}
+
+				this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+
+				// copy custom classes from template to content control
+				if (classes) {
+					$(container).addClass(classes);
+				}
 			}
 
-			//						ExoWeb.trace.log(['ui', "templates"], "render() proceeding after all templates are loaded");
-
-			var renderArgs = new Sys.Data.DataEventArgs(this._data);
-			Sys.Observer.raiseEvent(this, "rendering", renderArgs);
-
-			this._isRendered = false;
-
-			try {
-				// Failing to empty content before rendering can result in invalid content since rendering 
-				// content is not necessarily in order because of waiting on external templates.
-				$(this._element).empty();
-
-				// ripped off from dataview
-				var pctx = this.get_templateContext();
-				var container = this.get_element();
-				var data = this._data;
-				var list = data;
-				var len;
-				if ((data === null) || (typeof (data) === "undefined")) {
-					len = 0;
+			// necessary in order to render components found within the template (like a nested dataview)
+			for (var j = 0, l = this._contexts.length; j < l; j++) {
+				var ctx = this._contexts[j];
+				if (ctx) {
+					ctx.initializeComponents();
 				}
-				else if (!(data instanceof Array)) {
-					list = [data];
-					len = 1;
-				}
-				else {
-					len = data.length;
-				}
-				this._contexts = new Array(len);
-				for (var i = 0; i < len; i++) {
-					var item = list[i];
-					var itemTemplate = this.getTemplate(item);
-
-					// get custom classes from template
-					var classes = $(itemTemplate.get_element()).attr("class");
-					if (classes) {
-						classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
-					}
-
-					this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
-
-					// copy custom classes from template to content control
-					if (classes) {
-						$(container).addClass(classes);
-					}
-				}
-
-				// necessary in order to render components found within the template (like a nested dataview)
-				for (var j = 0, l = this._contexts.length; j < l; j++) {
-					var ctx = this._contexts[j];
-					if (ctx) {
-						ctx.initializeComponents();
-					}
-				}
-
-				this._isRendered = true;
-				Sys.Observer.raiseEvent(this, "rendered", renderArgs);
-			}
-			catch (e) {
-				if (this._isRendered !== true) {
-					Sys.Observer.raiseEvent(this, "error", e);
-					ExoWeb.trace.logError("content", "An error occurred while rendering content: {0}", e);
-				}
-				else {
-					throw e;
-				}
-			}
-			finally {
-				contentControlsRendering--;
 			}
 		},
 		renderStart: function Content$renderStart(force) {
@@ -12354,7 +12339,46 @@ Type.registerNamespace("ExoWeb.DotNet");
 				//					ExoWeb.trace.log(['ui', "templates"], "render({0})", [force === true ? "force" : ""]);
 
 				contentControlsRendering++;
-				externalTemplatesSignal.waitForAll(this.render, this);
+
+				externalTemplatesSignal.waitForAll(function() {
+					if (this._element === undefined || this._element === null) {
+						contentControlsRendering--;
+						return;
+					}
+
+					//						ExoWeb.trace.log(['ui', "templates"], "render() proceeding after all templates are loaded");
+
+					var renderArgs = new Sys.Data.DataEventArgs(this._data);
+					Sys.Observer.raiseEvent(this, "rendering", renderArgs);
+
+					this._isRendered = false;
+		
+					if (ExoWeb.config.debug === true) {
+						this.render();
+						this._isRendered = true;
+						Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+						contentControlsRendering--;
+					}
+					else {
+						try {
+							this.render();
+							this._isRendered = true;
+							Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+						}
+						catch (e) {
+							if (this._isRendered !== true) {
+								Sys.Observer.raiseEvent(this, "error", e);
+								ExoWeb.trace.logError("content", "An error occurred while rendering content: {0}", e);
+							}
+							else {
+								throw e;
+							}
+						}
+						finally {
+							contentControlsRendering--;
+						}
+					}
+				}, this);
 			}
 		},
 		initialize: function Content$initialize() {

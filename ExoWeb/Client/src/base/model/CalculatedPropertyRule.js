@@ -67,16 +67,22 @@ function CalculatedPropertyRule(mtype, options, ctype) {
 				// Execute for existing instances if their initialization state allows it.
 				mtype.known().forEach(function (obj) {
 					if (this.canExecute(obj, null, true)) {
-						try {
+						if (ExoWeb.config.debug === true) {
 							this._isExecuting = true;
-							//ExoWeb.trace.log("rule", "executing rule '{0}' when initialized", [rule]);
 							this.execute(obj);
-						}
-						catch (err) {
-							ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [this, err]);
-						}
-						finally {
 							this._isExecuting = false;
+						}
+						else {
+							try {
+								this._isExecuting = true;
+								this.execute(obj);
+							}
+							catch (err) {
+								ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [this, err]);
+							}
+							finally {
+								this._isExecuting = false;
+							}
 						}
 					}
 				}, this);

@@ -502,31 +502,42 @@ Type.prototype = {
 			}
 		}
 
-		function Type$addRule$fn(obj, prop, fn) {
-			try {
-				prop.get_containingType().get_model().beginValidation();
-				rule._isExecuting = true;						
-				ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+		function Type$addRule$_fn(obj, prop, fn) {
+			if (prop.get_isStatic() === true) {
+				Array.forEach(jstype.meta.known(), function (obj) {
+					if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
+						fn.call(rule, obj);
+						obj.meta.markRuleExecuted(rule);
+					}
+				});
+			}
+			else {
+				fn.call(rule, obj);
+				obj.meta.markRuleExecuted(rule);
+			}
+		}
 
-				if (prop.get_isStatic() === true) {
-					Array.forEach(jstype.meta.known(), function (obj) {
-						if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
-							fn.call(rule, obj);
-							obj.meta.markRuleExecuted(rule);
-						}
-					});
-				}
-				else {
-					fn.call(rule, obj);
-					obj.meta.markRuleExecuted(rule);
-				}
-			}
-			catch (err) {
-				ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
-			}
-			finally {
+		function Type$addRule$fn(obj, prop, fn) {
+			if (ExoWeb.config.debug === true) {
+				prop.get_containingType().get_model().beginValidation();
+				rule._isExecuting = true;
+				Type$addRule$_fn.apply(this, arguments);
 				rule._isExecuting = false;
 				prop.get_containingType().get_model().endValidation();
+			}
+			else {
+				try {
+					prop.get_containingType().get_model().beginValidation();
+					rule._isExecuting = true;
+					Type$addRule$_fn.apply(this, arguments);
+				}
+				catch (err) {
+					ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
+				}
+				finally {
+					rule._isExecuting = false;
+					prop.get_containingType().get_model().endValidation();
+				}
 			}
 		}
 

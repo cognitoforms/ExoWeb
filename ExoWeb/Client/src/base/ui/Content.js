@@ -129,80 +129,51 @@ Content.prototype = {
 		this.renderStart(true);
 	},
 	render: function Content$render() {
-		if (this._element === undefined || this._element === null) {
-			contentControlsRendering--;
-			return;
+		// Failing to empty content before rendering can result in invalid content since rendering 
+		// content is not necessarily in order because of waiting on external templates.
+		$(this._element).empty();
+
+		// ripped off from dataview
+		var pctx = this.get_templateContext();
+		var container = this.get_element();
+		var data = this._data;
+		var list = data;
+		var len;
+		if ((data === null) || (typeof (data) === "undefined")) {
+			len = 0;
+		}
+		else if (!(data instanceof Array)) {
+			list = [data];
+			len = 1;
+		}
+		else {
+			len = data.length;
+		}
+		this._contexts = new Array(len);
+		for (var i = 0; i < len; i++) {
+			var item = list[i];
+			var itemTemplate = this.getTemplate(item);
+
+			// get custom classes from template
+			var classes = $(itemTemplate.get_element()).attr("class");
+			if (classes) {
+				classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
+			}
+
+			this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
+
+			// copy custom classes from template to content control
+			if (classes) {
+				$(container).addClass(classes);
+			}
 		}
 
-		//						ExoWeb.trace.log(['ui', "templates"], "render() proceeding after all templates are loaded");
-
-		var renderArgs = new Sys.Data.DataEventArgs(this._data);
-		Sys.Observer.raiseEvent(this, "rendering", renderArgs);
-
-		this._isRendered = false;
-
-		try {
-			// Failing to empty content before rendering can result in invalid content since rendering 
-			// content is not necessarily in order because of waiting on external templates.
-			$(this._element).empty();
-
-			// ripped off from dataview
-			var pctx = this.get_templateContext();
-			var container = this.get_element();
-			var data = this._data;
-			var list = data;
-			var len;
-			if ((data === null) || (typeof (data) === "undefined")) {
-				len = 0;
+		// necessary in order to render components found within the template (like a nested dataview)
+		for (var j = 0, l = this._contexts.length; j < l; j++) {
+			var ctx = this._contexts[j];
+			if (ctx) {
+				ctx.initializeComponents();
 			}
-			else if (!(data instanceof Array)) {
-				list = [data];
-				len = 1;
-			}
-			else {
-				len = data.length;
-			}
-			this._contexts = new Array(len);
-			for (var i = 0; i < len; i++) {
-				var item = list[i];
-				var itemTemplate = this.getTemplate(item);
-
-				// get custom classes from template
-				var classes = $(itemTemplate.get_element()).attr("class");
-				if (classes) {
-					classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
-				}
-
-				this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
-
-				// copy custom classes from template to content control
-				if (classes) {
-					$(container).addClass(classes);
-				}
-			}
-
-			// necessary in order to render components found within the template (like a nested dataview)
-			for (var j = 0, l = this._contexts.length; j < l; j++) {
-				var ctx = this._contexts[j];
-				if (ctx) {
-					ctx.initializeComponents();
-				}
-			}
-
-			this._isRendered = true;
-			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
-		}
-		catch (e) {
-			if (this._isRendered !== true) {
-				Sys.Observer.raiseEvent(this, "error", e);
-				ExoWeb.trace.logError("content", "An error occurred while rendering content: {0}", e);
-			}
-			else {
-				throw e;
-			}
-		}
-		finally {
-			contentControlsRendering--;
 		}
 	},
 	renderStart: function Content$renderStart(force) {
@@ -210,7 +181,46 @@ Content.prototype = {
 			//					ExoWeb.trace.log(['ui', "templates"], "render({0})", [force === true ? "force" : ""]);
 
 			contentControlsRendering++;
-			externalTemplatesSignal.waitForAll(this.render, this);
+
+			externalTemplatesSignal.waitForAll(function() {
+				if (this._element === undefined || this._element === null) {
+					contentControlsRendering--;
+					return;
+				}
+
+				//						ExoWeb.trace.log(['ui', "templates"], "render() proceeding after all templates are loaded");
+
+				var renderArgs = new Sys.Data.DataEventArgs(this._data);
+				Sys.Observer.raiseEvent(this, "rendering", renderArgs);
+
+				this._isRendered = false;
+		
+				if (ExoWeb.config.debug === true) {
+					this.render();
+					this._isRendered = true;
+					Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+					contentControlsRendering--;
+				}
+				else {
+					try {
+						this.render();
+						this._isRendered = true;
+						Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+					}
+					catch (e) {
+						if (this._isRendered !== true) {
+							Sys.Observer.raiseEvent(this, "error", e);
+							ExoWeb.trace.logError("content", "An error occurred while rendering content: {0}", e);
+						}
+						else {
+							throw e;
+						}
+					}
+					finally {
+						contentControlsRendering--;
+					}
+				}
+			}, this);
 		}
 	},
 	initialize: function Content$initialize() {

@@ -55,7 +55,7 @@ Signal.mixin({
 		return this._genCallback(callback, thisPtr, executeImmediately);
 	},
 	_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
-		if (ExoWeb.config.signalDebug === true || ExoWeb.config.debug === true) {
+		if (ExoWeb.config.debug === true) {
 			doCallback.apply(this, arguments);
 		}
 		else {
