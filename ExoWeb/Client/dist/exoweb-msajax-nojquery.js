@@ -312,10 +312,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 					if (calls.indexOf(call) < 0) {
 						throw "Call not found.";
 					}
-					calls.remove(call);
 					if (origCallback) {
 						origCallback.apply(origThisPtr || this, arguments);
 					}
+					calls.remove(call);
 				});
 
 				// Copy the args
