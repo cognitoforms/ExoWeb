@@ -357,7 +357,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						if (options.partitionedFilter) {
 							callbackArgs = Array.prototype.slice.call(arguments);
-							options.partitionedFilter.call(origThisPtr || this, call.args, invocationArgs, callbackArgs);
+							options.partitionedFilter.call(origThisPtr || this, call.call.args, invocationArgs, callbackArgs);
 						}
 						else {
 							callbackArgs = arguments;
