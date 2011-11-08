@@ -3124,11 +3124,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		if (tokens.steps.length === 1) {
 			var name = tokens.steps[0].property;
-			if (lazyLoadTypes) {
+			if (callback) {
 				if (!LazyLoader.isLoaded(type)) {
-					LazyLoader.load(type, null, function() {
-						callback.call(thisPtr || this, type.property(name, true));
-					});
+					if (lazyLoadTypes) {
+						LazyLoader.load(type, null, function() {
+							callback.call(thisPtr || this, type.property(name, true));
+						});
+					}
+					else {
+						$extend(type._fullName, function() {
+							callback.call(thisPtr || this, type.property(name, true));
+						});
+					}
 				}
 				else {
 					callback.call(thisPtr || this, type.property(name, true));
@@ -3139,7 +3146,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		}
 		else {
-			return new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+			if (callback) {
+				new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+			}
+			else {
+				return new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+			}
 		}
 	};
 
@@ -4682,7 +4694,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// initialize optional arguments
 		var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
 		var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
-		var allowAsync = !!(lazyLoadTypes && callback);
 
 		// process each step in the path either synchronously or asynchronously depending on arguments
 		var processStep = function PropertyChain$processStep() {
@@ -4725,14 +4736,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				// if asynchronous processing was allowed, invoke the callback
-				if (allowAsync) {
+				if (callback && callback instanceof Function) {
 					callback(chain);
 				}
 			}
 			else {
 				// process the next step in the path, first ensuring that the type is loaded if lazy loading is allowed
-				if (allowAsync && !LazyLoader.isLoaded(type)) {
-					LazyLoader.load(type, null, processStep);
+				if (callback && !LazyLoader.isLoaded(type)) {
+					if (lazyLoadTypes) {
+						LazyLoader.load(type, null, processStep);
+					}
+					else {
+						$extend(type._fullName, processStep);
+					}
 				}
 				else {
 					processStep();
@@ -5610,7 +5626,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				targetInput.set_dependsOnInit(true);
 			inputs.push(targetInput);
 
-			Model.property(rule._allowedValuesPath, rule.prop.get_containingType(), true, function(chain) {
+			Model.property(rule._allowedValuesPath, rule.prop.get_containingType(), false, function(chain) {
 				rule._allowedValuesProperty = chain;
 
 				var allowedValuesInput = new RuleInput(rule._allowedValuesProperty);

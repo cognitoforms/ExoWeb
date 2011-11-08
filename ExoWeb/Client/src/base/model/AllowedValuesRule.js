@@ -34,7 +34,7 @@ AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType, mtype
 			targetInput.set_dependsOnInit(true);
 		inputs.push(targetInput);
 
-		Model.property(rule._allowedValuesPath, rule.prop.get_containingType(), true, function(chain) {
+		Model.property(rule._allowedValuesPath, rule.prop.get_containingType(), false, function(chain) {
 			rule._allowedValuesProperty = chain;
 
 			var allowedValuesInput = new RuleInput(rule._allowedValuesProperty);

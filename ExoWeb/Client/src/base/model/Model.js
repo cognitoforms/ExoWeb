@@ -92,11 +92,18 @@ Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callba
 
 	if (tokens.steps.length === 1) {
 		var name = tokens.steps[0].property;
-		if (lazyLoadTypes) {
+		if (callback) {
 			if (!LazyLoader.isLoaded(type)) {
-				LazyLoader.load(type, null, function() {
-					callback.call(thisPtr || this, type.property(name, true));
-				});
+				if (lazyLoadTypes) {
+					LazyLoader.load(type, null, function() {
+						callback.call(thisPtr || this, type.property(name, true));
+					});
+				}
+				else {
+					$extend(type._fullName, function() {
+						callback.call(thisPtr || this, type.property(name, true));
+					});
+				}
 			}
 			else {
 				callback.call(thisPtr || this, type.property(name, true));
@@ -107,7 +114,12 @@ Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callba
 		}
 	}
 	else {
-		return new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+		if (callback) {
+			new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+		}
+		else {
+			return new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+		}
 	}
 };
 

@@ -15,7 +15,6 @@ function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
 	// initialize optional arguments
 	var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
 	var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
-	var allowAsync = !!(lazyLoadTypes && callback);
 
 	// process each step in the path either synchronously or asynchronously depending on arguments
 	var processStep = function PropertyChain$processStep() {
@@ -58,14 +57,19 @@ function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
 			}
 
 			// if asynchronous processing was allowed, invoke the callback
-			if (allowAsync) {
+			if (callback && callback instanceof Function) {
 				callback(chain);
 			}
 		}
 		else {
 			// process the next step in the path, first ensuring that the type is loaded if lazy loading is allowed
-			if (allowAsync && !LazyLoader.isLoaded(type)) {
-				LazyLoader.load(type, null, processStep);
+			if (callback && !LazyLoader.isLoaded(type)) {
+				if (lazyLoadTypes) {
+					LazyLoader.load(type, null, processStep);
+				}
+				else {
+					$extend(type._fullName, processStep);
+				}
 			}
 			else {
 				processStep();
