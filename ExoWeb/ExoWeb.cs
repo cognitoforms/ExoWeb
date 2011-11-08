@@ -256,15 +256,15 @@ namespace ExoWeb
 				}
 
 				// Perform initialization while capturing changes
-				using (initChanges = GraphContext.Current.BeginTransaction())
+				initChanges = GraphContext.Current.Transaction((initChangesTxn) =>
 				{
 					// Prevent property change rules from running until after initialization
-					using (new GraphEventScope())
+					new GraphEventScope().CaptureDisposalException((scope) =>
 					{
 						init.DynamicInvoke(parameters);
-					}
-					initChanges.Commit();
-				}
+					});
+					initChangesTxn.Commit();
+				});
 			}
 
 			// Execute the queries
