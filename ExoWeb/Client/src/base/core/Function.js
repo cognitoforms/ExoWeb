@@ -35,7 +35,7 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 	return function dontDoubleUp() {
 		var i, ilen, j, jlen, origCallback, origThisPtr, partitionedArg, partitionedArgIdx, groupBy, callsInProgress, call, shouldJoinCall, otherPartitionedArg, partitionedInCall, joinArgIdx, args;
 	
-		// Make a copy of the invocation arguments.	
+		// Make a copy of the invocation arguments.
 		args = Array.prototype.slice.call(arguments);
 
 		// Extract callback and thisPtr arguments, if they exist.
@@ -52,6 +52,9 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 			if (!(partitionedArg instanceof Array)) {
 				throw "The partitioned argument must be an array.";
 			}
+
+			// Create a copy of the argument.
+			partitionedArg = partitionedArg.copy();
 
 			partitionedArgIdx = -1;
 		}
