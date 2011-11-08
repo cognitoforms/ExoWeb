@@ -3088,9 +3088,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Retrieve the javascript type by name.
 			type = Model.getJsType(typeName, true);
 
-			// If the type is not found then the path must be bad.
+			// Handle non-existant or non-loaded type.
 			if (!type) {
-				if (lazyLoadTypes) {
+				if (callback) {
 					// Retry when type is loaded
 					$extend(typeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
 					return;
