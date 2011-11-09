@@ -7551,15 +7551,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return true;
 		});
 
+		var typesJson = {};
+
 		// If some (or all) of the types are currently cached, go ahead and call the success function.
 		if (cachedTypes.length > 0) {
-			var json = {};
-
 			cachedTypes.forEach(function(type) {
-				json[type] = ExoWeb.cache(type).types[type];
+				typesJson[type] = ExoWeb.cache(type).types[type];
 			});
-
-			callback.call(thisPtr || this, true, json);
 		}
 
 		if (typesToLoad.length > 0) {
@@ -7567,31 +7565,34 @@ Type.registerNamespace("ExoWeb.DotNet");
 				function typeProviderSuccess(result) {
 					ExoWeb.Batch.resume(batch);
 
-					for (var type in result.types) {
-						if (result.types.hasOwnProperty(type)) {
-							// construct a json object, with the cachehash, for cacheing
-							var json = { cacheHash: ExoWeb.cacheHash, types: {} };
+					var resultsJson = result.types;
 
-							// extract the type definition
-							json.types[type] = result.types[type];
+					// Add the resulting json and cache each type.
+					eachProp(resultsJson, function(type) {
 
-							// cache the type
-							ExoWeb.cache(type, json);
-						}
-					}
+						// construct a json object, with the cachehash, for cacheing
+						var json = { cacheHash: ExoWeb.cacheHash, types: {} };
 
-					if (callback) {
-						callback.call(thisPtr || this, true, result.types);
-					}
+						// extract the type definition
+						json.types[type] = typesJson[type] = resultsJson[type];
+
+						// cache the type
+						ExoWeb.cache(type, json);
+
+					});
+
+					callback.call(thisPtr || this, true, typesJson);
 				},
 				function typeProviderFailure() {
 					ExoWeb.Batch.resume(batch);
-					if (callback) {
-						var args = copy(arguments);
-						args.splice(0, 0, false);
-						callback.apply(thisPtr || this, args);
-					}
+
+					var args = copy(arguments);
+					args.splice(0, 0, false);
+					callback.apply(thisPtr || this, args);
 				});
+		}
+		else {
+			callback.call(thisPtr || this, true, typesJson);
 		}
 	}
 
