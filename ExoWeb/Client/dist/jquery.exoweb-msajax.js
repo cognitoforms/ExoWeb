@@ -294,9 +294,9 @@
 					if (!cleared) {
 						var child = startNode || container.firstChild, nextChild;
 						while (child) {
-							nextChild = child.nextSibling;
+							nextChild = child === endNode ? null : child.nextSibling;
 							container.removeChild(child);
-							child = nextChild === endNode ? null : nextChild;
+							child = nextChild;
 						}
 					}
 					if (placeholder) {
