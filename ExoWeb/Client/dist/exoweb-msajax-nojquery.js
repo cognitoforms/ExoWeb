@@ -10874,7 +10874,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
 						instances: this.options.instances,
 						conditions: this.options.conditions,
-						types: this.options.types,
+						types: this.options.types && this.options.types instanceof Array ? null : this.options.types,
 						changes: this.options.changes,
 						source: "init"
 					});
@@ -11356,7 +11356,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		// Exit immediately if no model or types are pending
-		if (!(pendingOptions.model || pendingOptions.types || pendingOptions.instances || pendingOptions.conditions || pendingOptions.changes)) {
+		if (!(pendingOptions.model || (pendingOptions.types && !(pendingOptions.types instanceof Array)) || pendingOptions.instances || pendingOptions.conditions || pendingOptions.changes)) {
 			if (window.context && pendingOptions.init) {
 
 				// Context has already been created, so perform initialization and remove it so that we don't double-up
@@ -11382,6 +11382,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Create a context if needed
 		window.context = window.context || new Context();
+
+		// Perform initialization once the context is ready
+		if (currentOptions.contextReady || currentOptions.extendContext || currentOptions.domReady || !activated)
+			window.context.addModelReady(modelReadyHandler(currentOptions.contextReady, currentOptions.extendContext, currentOptions.domReady));
 	
 		// Perform initialization
 		if (currentOptions.init)
@@ -11396,10 +11400,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			instances: currentOptions.instances,
 			serverinfo: currentOptions.serverinfo
 		});
-
-		// Perform initialization once the context is ready
-		if (currentOptions.contextReady || currentOptions.extendContext || currentOptions.domReady || !activated)
-			window.context.addModelReady(modelReadyHandler(currentOptions.contextReady, currentOptions.extendContext, currentOptions.domReady));
 	};
 
 	// #endregion

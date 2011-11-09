@@ -102,7 +102,7 @@ ContextQuery.mixin({
 				var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
 					instances: this.options.instances,
 					conditions: this.options.conditions,
-					types: this.options.types,
+					types: this.options.types && this.options.types instanceof Array ? null : this.options.types,
 					changes: this.options.changes,
 					source: "init"
 				});
