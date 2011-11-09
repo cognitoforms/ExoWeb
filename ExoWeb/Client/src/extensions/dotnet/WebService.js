@@ -107,14 +107,19 @@ ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, owne
 	}, onSuccess, onFailure);
 });
 
-ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(type, onSuccess, onFailure) {
-	var data = { type: type, config: ExoWeb.DotNet.config};
-	
-	if (ExoWeb.cacheHash) {
-		data.cachehash = ExoWeb.cacheHash;
-	}
+ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(types, onSuccess, onFailure) {
+	if (types.length === 1) {
+		var data = { type: types[0], config: ExoWeb.DotNet.config};
 
-	Sys.Net.WebServiceProxy.invoke(getPath(), "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
+		if (ExoWeb.cacheHash) {
+			data.cachehash = ExoWeb.cacheHash;
+		}
+
+		Sys.Net.WebServiceProxy.invoke(getPath(), "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
+	}
+	else {
+		request({ types: types }, onSuccess, onFailure);
+	}
 });
 
 var loggingError = false;

@@ -91,6 +91,53 @@ ContextQuery.mixin({
 			callback.call(thisPtr || this);
 		},
 
+	// Only fetch the types if they are not embedded. If the types are
+	// embedded then fetching the types from server will cause a signal to
+	// be created that will never be processed.
+	///////////////////////////////////////////////////////////////////////////////
+		function ContextQuery$fetchTypes(callback, thisPtr) {
+			var typesToLoad = [], model = this.context.model.meta, instances = this.options.instances;
+
+			// Include types for all instances in instance payload
+			if (instances && (!this.options.types || this.options.types instanceof Array)) {
+				eachProp(this.options.instances, function(t) {
+					// Add the type of the instances.
+					var mtype = model.type(t);
+					if (!mtype || !LazyLoader.isLoaded(mtype)) {
+						typesToLoad.push(t);
+					}
+				}, this);
+			}
+
+			// Load all types specified in types portion of query
+			if (this.options.types && this.options.types instanceof Array) {
+				this.options.types
+					.map(function(t) {
+						return t.from || t;
+					}).filter(function(t) {
+						// Exclude types that are already loaded
+						var mtype = model.type(t);
+						return !model || !LazyLoader.isLoaded(mtype);
+					}).forEach(function(t) {
+						if (!typesToLoad.contains(t)) {
+							typesToLoad.push(t);
+						}
+					});
+			}
+
+			// Fetch types in a single batch request
+			fetchTypes(model, typesToLoad);
+
+			// Fetch additional types based on model queries and paths
+			if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
+				ExoWeb.eachProp(this.options.model, function (varName, query) {
+					fetchQueryTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
+				}, this);
+			}
+
+			callback.call(thisPtr || this);
+		},
+
 	// Process embedded data as if it had been recieved from the server in
 	// the form of a web service response. This should enable flicker-free
 	// page loads by embedded data, changes, etc.
@@ -305,20 +352,6 @@ ContextQuery.mixin({
 			callback.call(thisPtr || this);
 		},
 
-	// Only fetch the types if they are not embedded. If the types are
-	// embedded then fetching the types from server will cause a signal to
-	// be created that will never be processed.
-	///////////////////////////////////////////////////////////////////////////////
-		function ContextQuery$fetchPathTypes(callback, thisPtr) {
-			if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
-				ExoWeb.eachProp(this.options.model, function (varName, query) {
-					fetchTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
-				}, this);
-			}
-
-			callback.call(thisPtr || this);
-		},
-
 	// Process instances data for queries as they finish loading.
 	///////////////////////////////////////////////////////////////////////////////
 		function ContextQuery$processResults(callback, thisPtr) {
@@ -415,46 +448,6 @@ ContextQuery.mixin({
 						}
 					}, this);
 				}, this, true);
-			}
-
-			callback.call(thisPtr || this);
-		},
-
-	// Load type data from query.
-	///////////////////////////////////////////////////////////////////////////////
-		function ContextQuery$fetchTypes(callback, thisPtr) {
-			// load types if they are in array format.  This is for the full server/client model of ExoWeb
-			// to load the types and isntance data async
-			if (this.options.types && this.options.types instanceof Array) {
-				// allow specifying types and paths apart from instance data
-				for (var i = 0; i < this.options.types.length; i++) {
-					var typeQuery = this.options.types[i];
-
-					// store the paths for later use
-					typeQuery.normalized = ExoWeb.Model.PathTokens.normalizePaths(typeQuery.include);
-					ObjectLazyLoader.addPaths(typeQuery.from, typeQuery.normalized);
-
-					fetchTypes(this.context.model.meta, typeQuery.from, typeQuery.normalized, allSignals.pending(null, this, true));
-
-					var staticPaths = typeQuery.include ? typeQuery.include.filter(function (p) { return !p.startsWith("this."); }) : null;
-
-					if (staticPaths && staticPaths.length > 0) {
-						objectProvider(typeQuery.from, null, staticPaths, false, null,
-							allSignals.pending(function context$objects$callback(result) {
-								// load the json. this may happen asynchronously to increment the signal just in case
-								objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function () {
-									if (result.conditions) {
-										conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
-									}
-								}), this);
-							}, this, true),
-							allSignals.orPending(function context$objects$callback(error) {
-								ExoWeb.trace.logError("objectInit",
-									"Failed to load {query.from}({query.ids}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-									{ query: typeQuery, error: error });
-							}, this, true), this);
-					}
-				}
 			}
 
 			callback.call(thisPtr || this);

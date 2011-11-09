@@ -3,7 +3,11 @@ function TypeLazyLoader() {
 
 function typeLoad(mtype, propName, callback, thisPtr) {
 //				ExoWeb.trace.log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
-	fetchType(mtype.get_model(), mtype.get_fullName(), callback, thisPtr);
+	fetchTypes(mtype.get_model(), [mtype.get_fullName()], function(jstypes) {
+		if (callback && callback instanceof Function) {
+			callback(jstypes[0]);
+		}
+	}, thisPtr);
 }
 
 TypeLazyLoader.mixin({

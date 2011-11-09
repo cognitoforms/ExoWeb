@@ -7526,46 +7526,84 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region TypeProvider
 	//////////////////////////////////////////////////
 
-	var typeProviderFn = function typeProviderFn(type, onSuccess, onFailure) {
+	var typeProviderFn = function typeProviderFn(types, onSuccess, onFailure) {
 		throw "Type provider has not been implemented.  Call ExoWeb.Mapper.setTypeProvider(fn);";
 	};
 
-	function typeProvider(type, onSuccess, onFailure, thisPtr) {
-		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
-			thisPtr = onFailure;
-			onFailure = null;
-		}
-
+	function typeProviderImpl(types, callback, thisPtr) {
 		var batch = ExoWeb.Batch.suspendCurrent("typeProvider");
 
-		var cachedType = ExoWeb.cache(type);
-		if (cachedType) {
-			if (ExoWeb.cacheHash && cachedType.cacheHash !== ExoWeb.cacheHash) {
+		var typesToLoad = copy(types);
+		var cachedTypes = [];
+		purge(typesToLoad, function(type) {
+			var cachedType = ExoWeb.cache(type);
+
+			if (!cachedType) {
+				return false;
+			}
+			else if (ExoWeb.cacheHash && cachedType.cacheHash !== ExoWeb.cacheHash) {
 				// the cached type definition is out of date, so remove it and continue
 				ExoWeb.cache(type, null);
+				return false;
 			}
-			else {
-				// the cached type definition is current, so use it and return early
-				onSuccess.call(thisPtr || this, cachedType);
-				return;
-			}
+
+			cachedTypes.push(type);
+			return true;
+		});
+
+		// If some (or all) of the types are currently cached, go ahead and call the success function.
+		if (cachedTypes.length > 0) {
+			var json = {};
+
+			cachedTypes.forEach(function(type) {
+				json[type] = ExoWeb.cache(type).types[type];
+			});
+
+			callback.call(thisPtr || this, true, json);
 		}
 
-		typeProviderFn.call(this, type,
-			function typeProviderSuccess() {
-				ExoWeb.Batch.resume(batch);
+		if (typesToLoad.length > 0) {
+			typeProviderFn.call(this, typesToLoad,
+				function typeProviderSuccess(result) {
+					ExoWeb.Batch.resume(batch);
 
-				// add cache hash and cache type definition
-				arguments[0].cacheHash = ExoWeb.cacheHash;
-				ExoWeb.cache(type, arguments[0]);
+					for (var type in result.types) {
+						if (result.types.hasOwnProperty(type)) {
+							// construct a json object, with the cachehash, for cacheing
+							var json = { cacheHash: ExoWeb.cacheHash, types: {} };
 
-				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
-			},
-			function typeProviderFailure() {
-				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(thisPtr || this, arguments);
-			});
+							// extract the type definition
+							json.types[type] = result.types[type];
+
+							// cache the type
+							ExoWeb.cache(type, json);
+						}
+					}
+
+					if (callback) {
+						callback.call(thisPtr || this, true, result.types);
+					}
+				},
+				function typeProviderFailure() {
+					ExoWeb.Batch.resume(batch);
+					if (callback) {
+						var args = copy(arguments);
+						args.splice(0, 0, false);
+						callback.apply(thisPtr || this, args);
+					}
+				});
+		}
 	}
+
+	function deleteTypeJson(originalArgs, invocationArgs, callbackArgs) {
+		// If type request was handled by another caller, then assume that typesFromJson will be called
+		if (callbackArgs[0]) {
+			callbackArgs.splice(1, 1, {}, callbackArgs[1]);
+		}
+	}
+
+	var typeProvider = typeProviderImpl.dontDoubleUp({ callbackArg: 1, partitionedArg: 0, partitionedFilter: deleteTypeJson });
+
 	ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 		typeProviderFn = fn;
 	};
@@ -9577,8 +9615,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var mtype = model.type(typeName);
 
 		if (!mtype) {
-			fetchType(model, typeName, function(jstype) {
-				callback.apply(thisPtr || this, [jstype]);
+			fetchTypes(model, [typeName], function(jstypes) {
+				callback.apply(thisPtr || this, jstype);
 			});
 		}
 		else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
@@ -9683,7 +9721,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// if this type has never been seen, go and fetch it and resume later
 		if (!mtype) {
-			fetchType(model, typeName, function() {
+			fetchTypes(model, [typeName], function() {
 				objectFromJson(model, typeName, id, json, callback);
 			});
 			return;
@@ -9858,8 +9896,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// Type
 			var propType = propJson.type;
-			if (propJson.type.endsWith("[]"))
-			{
+			if (propJson.type.endsWith("[]")) {
 				propType = propType.toString().substring(0, propType.length - 2);
 				propJson.isList = true;
 			}
@@ -10052,54 +10089,151 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return obj;
 	}
 
+	function onTypeLoaded(model, typeName) {
+		var mtype = model.type(typeName);
+		mtype.eachBaseType(function(mtype) {
+			if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+				ExoWeb.trace.throwAndLog("typeLoad", "Base type " + mtype._fullName + " is not loaded.");
+			}
+		});
+		TypeLazyLoader.unregister(mtype);
+		raiseExtensions(mtype);
+		return mtype;
+	}
+
 	///////////////////////////////////////////////////////////////////////////////
-	function fetchTypeImpl(model, typeName, callback, thisPtr) {
-		var signal = new ExoWeb.Signal("fetchType(" + typeName + ")");
+	function fetchTypesImpl(model, typeNames, callback, thisPtr) {
+		var signal = new ExoWeb.Signal("fetchTypes(" + typeNames.join(",") + ")");
 
 		var errorObj;
 
-		function success(result) {
-			// load type(s)
-			typesFromJson(model, result.types);
+		var typesPending = typeNames.copy(), typesLoaded = [];
 
-			// ensure base classes are loaded too
-			model.type(typeName).eachBaseType(function(mtype) {
-				if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-					ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
+		function complete(success, types, otherTypes) {
+			var baseTypesToFetch = [], loadedTypes = [], baseTypeDependencies = {}, loadableTypes = [];
+
+			if (success) {
+				typesFromJson(model, types);
+
+				// Update types that have been loaded.  This needs to be persisted since
+				// this function can recurse and arguments are not persisted.
+				eachProp(types, function(prop) { typesLoaded.push(prop); });
+				if (otherTypes) {
+					eachProp(otherTypes, function(prop) { typesLoaded.push(prop); });
 				}
-			});
-		}
 
-		// Handle an error response.  Loading should
-		// *NOT* continue as if the type is available.
-		function error(error) {
-			errorObj = error;
+				// Extract the types that can be loaded since they have no pending base types
+				purge(typesPending, function(typeName) {
+					var mtype, pendingBaseType = false;
+
+					// In the absense of recursion this will be equivalent to enumerating
+					// the properties of the "types" and "otherTypes" arguments.
+					if (typesLoaded.contains(typeName)) {
+						mtype = model.type(typeName);
+						if (mtype) {
+							if (LazyLoader.isLoaded(mtype)) {
+								loadedTypes.push(mtype._fullName);
+							}
+							else {
+								// find base types that are not loaded
+								mtype.eachBaseType(function(baseType) {
+									// Don't raise the loaded event until the base types are marked as loaded (or about to be marked as loaded in this pass)
+									if (!LazyLoader.isLoaded(baseType)) {
+										// Base type will be loaded in this pass
+										if (typeNames.contains(baseType._fullName) && types.hasOwnProperty(baseType._fullName)) {
+											if (baseTypeDependencies.hasOwnProperty(typeName)) {
+												baseTypeDependencies[typeName].splice(0, 0, baseType._fullName);
+											}
+											else {
+												baseTypeDependencies[typeName] = [baseType._fullName];
+											}
+										}
+										else {
+											pendingBaseType = true;
+											if (!baseTypesToFetch.contains(baseType._fullName)) {
+												baseTypesToFetch.push(baseType._fullName);
+											}
+										}
+									}
+								});
+	
+								if (!pendingBaseType) {
+									loadableTypes.push(typeName);
+									return true;
+								}
+							}
+						}
+					}
+				});
+
+				// Remove types that have already been marked as loaded
+				loadedTypes.forEach(function(typeName) {
+					typesPending.remove(typeName);
+				});
+
+				// Raise loaded event on types that can be marked as loaded
+				while(loadableTypes.length > 0) {
+					var typeName = loadableTypes.shift();
+					if (baseTypeDependencies.hasOwnProperty(typeName)) {
+						// Remove dependencies from array and map
+						var deps = baseTypeDependencies[typeName];
+						delete baseTypeDependencies[typeName];
+						deps.forEach(function(t) {
+							loadableTypes.remove(t);
+							delete baseTypeDependencies[t];
+						});
+
+						// Splice the types back into the beginning of the array in the correct order.
+						var spliceArgs = deps;
+						spliceArgs.push(typeName);
+						spliceArgs.splice(0, 0, 0, 0);
+						Array.prototype.splice.apply(loadableTypes, spliceArgs);
+					}
+					else {
+						typesPending.remove(typeName);
+						onTypeLoaded(model, typeName);
+					}
+				}
+
+				// Fetch any pending base types
+				if (baseTypesToFetch.length > 0) {
+					// TODO: need to notify dontDoubleUp that these types are
+					// now part of the partitioned argument for the call.
+					typesPending.addRange(baseTypesToFetch);
+
+					// Make a recursive request for base types.
+					typeProvider(baseTypesToFetch, signal.pending(complete, null, true));
+				}
+			}
+			// Handle an error response.  Loading should
+			// *NOT* continue as if the type is available.
+			else {
+				errorObj = types;
+			}
 		}
 
 		// request the type and handle the response
-		typeProvider(typeName, signal.pending(success), signal.orPending(error));
+		typeProvider(typeNames, signal.pending(complete, null, true));
 
 		// after properties and base class are loaded, then return results
 		signal.waitForAll(function() {
 			if (errorObj !== undefined) {
 				ExoWeb.trace.throwAndLog("typeInit",
-					"Failed to load {typeName} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-					{ typeName: typeName, error: errorObj });
+					"Failed to load {typeNames} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+					{ typeNames: typeNames.join(","), error: errorObj });
 			}
 
-			var mtype = model.type(typeName);
-			TypeLazyLoader.unregister(mtype);
-
-			raiseExtensions(mtype);
-
-			// done
 			if (callback && callback instanceof Function) {
-				callback.call(thisPtr || this, mtype.get_jstype());
+				callback.call(thisPtr || this, typeNames.map(function(typeName) { return model.type(typeName).get_jstype(); }));
 			}
-		});
+		}, null, true);
 	}
 
-	var fetchType = fetchTypeImpl.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3 });
+	function moveTypeResults(originalArgs, invocationArgs, callbackArgs) {
+		callbackArgs[0] = invocationArgs[1].map(function(typeName) { return invocationArgs[0].type(typeName).get_jstype(); });
+	}
+
+	var fetchTypes = fetchTypesImpl.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, partitionedArg: 1, partitionedFilter: moveTypeResults });
 
 	function fetchPathTypes(model, jstype, path, callback) {
 		var step = Array.dequeue(path.steps);
@@ -10124,7 +10258,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// if this type has never been seen, go and fetch it and resume later
 				if (!mtype) {
 					Array.insert(path.steps, 0, step);
-					fetchType(model, step.cast, function() {
+					fetchTypes(model, [step.cast], function() {
 						fetchPathTypes(model, jstype, path, callback);
 					});
 					return;
@@ -10136,8 +10270,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// if property's type isn't load it, then fetch it
 			if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-				fetchType(model, mtype.get_fullName(), function(jstype) {
-					fetchPathTypes(model, jstype, path, callback);
+				fetchTypes(model, [mtype.get_fullName()], function(jstypes) {
+					fetchPathTypes(model, jstypes[0], path, callback);
 				});
 
 				// path walking will resume with callback
@@ -10156,7 +10290,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	}
 
-	function fetchTypes(model, typeName, paths, callback) {
+	function fetchQueryTypes(model, typeName, paths, callback) {
 		var signal = new ExoWeb.Signal("fetchTypes");
 
 		function rootTypeLoaded(jstype) {
@@ -10174,7 +10308,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						if (step.cast) {
 							mtype = model.type(step.cast);
 							if (!mtype) {
-								fetchType(model, step.cast, signal.pending(function() {
+								fetchTypes(model, [step.cast], signal.pending(function() {
 									mtype = model.type(step.cast);
 									fetchRootTypePaths();
 								}));
@@ -10204,7 +10338,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						if (!mtype) {
 							// first time type has been seen, fetch it
-							fetchType(model, typeName, signal.pending(fetchStaticPathTypes));
+							fetchTypes(model, [typeName], signal.pending(function(jstypes) {
+								fetchStaticPathTypes(jstypes[0]);
+							}));
 						}
 						else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 							// lazy load type and continue walking the path
@@ -10221,7 +10357,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// load root type, then load types referenced in paths
 		var rootType = model.type(typeName);
 		if (!rootType) {
-			fetchType(model, typeName, signal.pending(rootTypeLoaded));
+			var _typeName = typeName;
+			fetchTypes(model, [typeName], signal.pending(function(jstypes) {
+				rootTypeLoaded(jstypes[0]);
+			}));
 		}
 		else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
 			ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
@@ -10363,7 +10502,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	function typeLoad(mtype, propName, callback, thisPtr) {
 //				ExoWeb.trace.log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
-		fetchType(mtype.get_model(), mtype.get_fullName(), callback, thisPtr);
+		fetchTypes(mtype.get_model(), [mtype.get_fullName()], function(jstypes) {
+			if (callback && callback instanceof Function) {
+				callback(jstypes[0]);
+			}
+		}, thisPtr);
 	}
 
 	TypeLazyLoader.mixin({
@@ -10863,6 +11006,53 @@ Type.registerNamespace("ExoWeb.DotNet");
 				callback.call(thisPtr || this);
 			},
 
+		// Only fetch the types if they are not embedded. If the types are
+		// embedded then fetching the types from server will cause a signal to
+		// be created that will never be processed.
+		///////////////////////////////////////////////////////////////////////////////
+			function ContextQuery$fetchTypes(callback, thisPtr) {
+				var typesToLoad = [], model = this.context.model.meta, instances = this.options.instances;
+
+				// Include types for all instances in instance payload
+				if (instances && (!this.options.types || this.options.types instanceof Array)) {
+					eachProp(this.options.instances, function(t) {
+						// Add the type of the instances.
+						var mtype = model.type(t);
+						if (!mtype || !LazyLoader.isLoaded(mtype)) {
+							typesToLoad.push(t);
+						}
+					}, this);
+				}
+
+				// Load all types specified in types portion of query
+				if (this.options.types && this.options.types instanceof Array) {
+					this.options.types
+						.map(function(t) {
+							return t.from || t;
+						}).filter(function(t) {
+							// Exclude types that are already loaded
+							var mtype = model.type(t);
+							return !model || !LazyLoader.isLoaded(mtype);
+						}).forEach(function(t) {
+							if (!typesToLoad.contains(t)) {
+								typesToLoad.push(t);
+							}
+						});
+				}
+
+				// Fetch types in a single batch request
+				fetchTypes(model, typesToLoad);
+
+				// Fetch additional types based on model queries and paths
+				if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
+						fetchQueryTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
+					}, this);
+				}
+
+				callback.call(thisPtr || this);
+			},
+
 		// Process embedded data as if it had been recieved from the server in
 		// the form of a web service response. This should enable flicker-free
 		// page loads by embedded data, changes, etc.
@@ -11077,20 +11267,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				callback.call(thisPtr || this);
 			},
 
-		// Only fetch the types if they are not embedded. If the types are
-		// embedded then fetching the types from server will cause a signal to
-		// be created that will never be processed.
-		///////////////////////////////////////////////////////////////////////////////
-			function ContextQuery$fetchPathTypes(callback, thisPtr) {
-				if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
-					ExoWeb.eachProp(this.options.model, function (varName, query) {
-						fetchTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
-					}, this);
-				}
-
-				callback.call(thisPtr || this);
-			},
-
 		// Process instances data for queries as they finish loading.
 		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$processResults(callback, thisPtr) {
@@ -11187,46 +11363,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 							}
 						}, this);
 					}, this, true);
-				}
-
-				callback.call(thisPtr || this);
-			},
-
-		// Load type data from query.
-		///////////////////////////////////////////////////////////////////////////////
-			function ContextQuery$fetchTypes(callback, thisPtr) {
-				// load types if they are in array format.  This is for the full server/client model of ExoWeb
-				// to load the types and isntance data async
-				if (this.options.types && this.options.types instanceof Array) {
-					// allow specifying types and paths apart from instance data
-					for (var i = 0; i < this.options.types.length; i++) {
-						var typeQuery = this.options.types[i];
-
-						// store the paths for later use
-						typeQuery.normalized = ExoWeb.Model.PathTokens.normalizePaths(typeQuery.include);
-						ObjectLazyLoader.addPaths(typeQuery.from, typeQuery.normalized);
-
-						fetchTypes(this.context.model.meta, typeQuery.from, typeQuery.normalized, allSignals.pending(null, this, true));
-
-						var staticPaths = typeQuery.include ? typeQuery.include.filter(function (p) { return !p.startsWith("this."); }) : null;
-
-						if (staticPaths && staticPaths.length > 0) {
-							objectProvider(typeQuery.from, null, staticPaths, false, null,
-								allSignals.pending(function context$objects$callback(result) {
-									// load the json. this may happen asynchronously to increment the signal just in case
-									objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function () {
-										if (result.conditions) {
-											conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
-										}
-									}), this);
-								}, this, true),
-								allSignals.orPending(function context$objects$callback(error) {
-									ExoWeb.trace.logError("objectInit",
-										"Failed to load {query.from}({query.ids}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-										{ query: typeQuery, error: error });
-								}, this, true), this);
-						}
-					}
 				}
 
 				callback.call(thisPtr || this);
@@ -14212,14 +14348,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}, onSuccess, onFailure);
 	});
 
-	ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(type, onSuccess, onFailure) {
-		var data = { type: type, config: ExoWeb.DotNet.config};
-	
-		if (ExoWeb.cacheHash) {
-			data.cachehash = ExoWeb.cacheHash;
-		}
+	ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(types, onSuccess, onFailure) {
+		if (types.length === 1) {
+			var data = { type: types[0], config: ExoWeb.DotNet.config};
 
-		Sys.Net.WebServiceProxy.invoke(getPath(), "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
+			if (ExoWeb.cacheHash) {
+				data.cachehash = ExoWeb.cacheHash;
+			}
+
+			Sys.Net.WebServiceProxy.invoke(getPath(), "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
+		}
+		else {
+			request({ types: types }, onSuccess, onFailure);
+		}
 	});
 
 	var loggingError = false;
