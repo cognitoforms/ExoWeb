@@ -529,7 +529,7 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 								// Don't raise the loaded event until the base types are marked as loaded (or about to be marked as loaded in this pass)
 								if (!LazyLoader.isLoaded(baseType)) {
 									// Base type will be loaded in this pass
-									if (typeNames.contains(baseType._fullName) && types.hasOwnProperty(baseType._fullName)) {
+									if (typeNames.contains(baseType._fullName) && typesLoaded.contains(baseType._fullName)) {
 										if (baseTypeDependencies.hasOwnProperty(typeName)) {
 											baseTypeDependencies[typeName].splice(0, 0, baseType._fullName);
 										}
