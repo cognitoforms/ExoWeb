@@ -169,21 +169,11 @@ namespace ExoWeb
 			// Load data based on the specified queries
 			if (Queries != null)
 			{
+				// Record changes while processing queries
 				if (forLoad)
-				{
-					// Record changes while processing queries
-					using (var changes = response.Changes != null ? response.Changes.Append() : GraphContext.Current.BeginTransaction())
-					{
-						ProcessQueryInstances(response, forLoad);
-
-						// Commit the new changes, if any
-						changes.Commit();
-					}
-				}
+					(response.Changes ?? new GraphTransaction()).Record(() => ProcessQueryInstances(response, forLoad));
 				else
-				{
 					ProcessQueryInstances(response, forLoad);
-				}
 			}
 		}
 
@@ -219,12 +209,7 @@ namespace ExoWeb
 
 			// Otherwise, just raise events
 			else
-			{
-				using (response.Changes = context.BeginTransaction())
-				{
-					RaiseEvents(response, null);
-				}
-			}	
+				response.Changes = new GraphTransaction().Record(() => RaiseEvents(response, null));
 		}
 	
 		/// <summary>

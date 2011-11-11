@@ -41,6 +41,10 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Jurassic, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Dependencies\Jurassic.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -97,6 +101,22 @@
     </Compile>
     <Compile Include="ServiceRequest.cs" />
     <Compile Include="ServiceResponse.cs" />
+    <Compile Include="Templates\Adapter.cs" />
+    <Compile Include="Templates\Attribute.cs" />
+    <Compile Include="Templates\Binding.cs" />
+    <Compile Include="Templates\Block.cs" />
+    <Compile Include="Templates\Control.cs" />
+    <Compile Include="Templates\Content.cs" />
+    <Compile Include="Templates\Behavior.cs" />
+    <Compile Include="Templates\Html.cs" />
+    <Compile Include="Templates\ModelInstance.cs" />
+    <Compile Include="Templates\ToggleGroup.cs" />
+    <Compile Include="Templates\Toggle.cs" />
+    <Compile Include="Templates\DataView.cs" />
+    <Compile Include="Templates\Element.cs" />
+    <Compile Include="Templates\Page.cs" />
+    <Compile Include="Templates\Render.cs" />
+    <Compile Include="Templates\Template.cs" />
     <Compile Include="ViewScope.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -239,6 +259,8 @@
     <Content Include="Client\src\extensions\jquery-msajax\MsAjax.js" />
     <Content Include="Client\src\extensions\jquery-msajax\Selectors.js" />
     <Content Include="Client\src\extensions\jquery-msajax\Validation.js" />
+    <Content Include="Dependencies\Jurassic.dll" />
+    <Content Include="Dependencies\Jurassic.pdb" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Client\PreRake.bat" />

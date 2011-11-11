@@ -256,14 +256,10 @@ namespace ExoWeb
 				}
 
 				// Perform initialization while capturing changes
-				initChanges = GraphContext.Current.Transaction((initChangesTxn) =>
+				initChanges = new GraphTransaction().Record(() =>
 				{
 					// Prevent property change rules from running until after initialization
-					new GraphEventScope().CaptureDisposalException((scope) =>
-					{
-						init.DynamicInvoke(parameters);
-					});
-					initChangesTxn.Commit();
+					GraphEventScope.Perform(() => init.DynamicInvoke(parameters));
 				});
 			}
 
@@ -289,8 +285,24 @@ namespace ExoWeb
 			foreach (var q in response.Model.Values)
 				q.ReducePaths();
 
+			// Track the current model roots to support server template rendering
+			foreach (var root in response.Model)
+				Templates.Page.Current.Model[root.Key] = root.Value.Roots;
+
 			// Return the response
 			return "<script type=\"text/javascript\">$exoweb(" + FixJsonDates(ToJson(typeof(ServiceResponse), response)) + ");</script>";
+		}
+
+		/// <summary>
+		/// Loads the specified templates and emits the script logic register them for use on the client while also making them available for server rendering.
+		/// </summary>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static string LoadTemplates(params string[] paths)
+		{
+			Templates.Page.Current.Templates.AddRange(paths.SelectMany(p => Templates.Template.Load(System.Web.HttpContext.Current.Server.MapPath(p))));
+			var urls = paths.Select(p => p.StartsWith("~") ? System.Web.VirtualPathUtility.ToAbsolute(p) : p).Select(p => p + (p.Contains("?") ? "&" : "?") + "cachehash=" + ExoWeb.CacheHash);
+			return "<script type=\"text/javascript\">$exoweb(function () {" + urls.Aggregate("", (js, url) => js + "ExoWeb.UI.Template.load(\"" + url + "\"); ") + "});</script>";
 		}
 
 		/// <summary>
