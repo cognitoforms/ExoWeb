@@ -37,6 +37,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Jurassic, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\ExoWeb\Dependencies\Jurassic.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -66,12 +69,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ExoWebTest.cs" />
+    <Compile Include="JavascriptTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Shadow Include="Test References\ExoWeb.accessor" />
-  </ItemGroup>
-  <ItemGroup>
+    <ProjectReference Include="..\..\ExoGraph\ExoGraph.UnitTest\ExoGraph.UnitTest.csproj">
+      <Project>{943D65C3-5E48-4771-8BA8-A8494C0FFB32}</Project>
+      <Name>ExoGraph.UnitTest</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\ExoGraph\ExoGraph\ExoGraph.csproj">
       <Project>{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}</Project>
       <Name>ExoGraph</Name>

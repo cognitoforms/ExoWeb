@@ -18,12 +18,17 @@ namespace ExoWeb.Templates
 
 		public object Value { get; private set; }
 
+		internal bool IsList
+		{
+			get { return Property is GraphReferenceProperty && ((GraphReferenceProperty)Property).IsList; }
+		}
+
 		public object Evaluate(string expression)
 		{
 			switch (expression)
 			{
 				case "isList":
-					return Property is GraphReferenceProperty && ((GraphReferenceProperty)Property).IsList;
+					return IsList;
 				case "target":
 					break;
 				case "propertyPath":

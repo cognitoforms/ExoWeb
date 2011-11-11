@@ -5,8 +5,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb", "ExoWeb\ExoWeb.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoGraph", "..\ExoGraph\ExoGraph\ExoGraph.csproj", "{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests", "ExoWeb.UnitTests\ExoWeb.UnitTests.csproj", "{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.DataAnnotations", "ExoWeb.DataAnnotations\ExoWeb.DataAnnotations.csproj", "{662948BC-59DA-4771-949F-C5327BF35518}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{90A77934-FEB7-4A62-8E47-58C1A973D26B}"
@@ -18,9 +16,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoRule", "..\ExoRule\ExoRule\ExoRule.csproj", "{B67D2642-A41A-42B2-8454-78ABA257008F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests", "ExoWeb.UnitTests\ExoWeb.UnitTests.csproj", "{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests.Server", "ExoWeb.UnitTests.Server\ExoWeb.UnitTests.Server.csproj", "{390E2A10-D560-4DF0-8342-B1B686F74189}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoGraph.UnitTest", "..\ExoGraph\ExoGraph.UnitTest\ExoGraph.UnitTest.csproj", "{943D65C3-5E48-4771-8BA8-A8494C0FFB32}"
+EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
-		SccNumberOfProjects = 6
+		SccNumberOfProjects = 8
 		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
 		SccTeamFoundationServer = http://vc3-cae-tfs-01.vc3.com:8080/tfs/defaultcollection
 		SccLocalPath0 = .
@@ -30,15 +34,21 @@ Global
 		SccProjectUniqueName2 = ExoWeb\\ExoWeb.csproj
 		SccProjectName2 = ExoWeb
 		SccLocalPath2 = ExoWeb
-		SccProjectUniqueName3 = ExoWeb.UnitTests\\ExoWeb.UnitTests.csproj
-		SccProjectName3 = ExoWeb.UnitTests
-		SccLocalPath3 = ExoWeb.UnitTests
-		SccProjectUniqueName4 = ExoWeb.DataAnnotations\\ExoWeb.DataAnnotations.csproj
-		SccProjectName4 = ExoWeb.DataAnnotations
-		SccLocalPath4 = ExoWeb.DataAnnotations
-		SccProjectUniqueName5 = ..\\ExoRule\\ExoRule\\ExoRule.csproj
-		SccProjectName5 = ../ExoRule/ExoRule
-		SccLocalPath5 = ..\\ExoRule\\ExoRule
+		SccProjectUniqueName3 = ExoWeb.DataAnnotations\\ExoWeb.DataAnnotations.csproj
+		SccProjectName3 = ExoWeb.DataAnnotations
+		SccLocalPath3 = ExoWeb.DataAnnotations
+		SccProjectUniqueName4 = ..\\ExoRule\\ExoRule\\ExoRule.csproj
+		SccProjectName4 = ../ExoRule/ExoRule
+		SccLocalPath4 = ..\\ExoRule\\ExoRule
+		SccProjectUniqueName5 = ExoWeb.UnitTests.Server\\ExoWeb.UnitTests.Server.csproj
+		SccProjectName5 = ExoWeb.UnitTests.Server
+		SccLocalPath5 = ExoWeb.UnitTests.Server
+		SccProjectUniqueName6 = ..\\ExoGraph\\ExoGraph.UnitTest\\ExoGraph.UnitTest.csproj
+		SccProjectName6 = ../ExoGraph/ExoGraph.UnitTest
+		SccLocalPath6 = ..\\ExoGraph\\ExoGraph.UnitTest
+		SccProjectUniqueName7 = ExoWeb.UnitTests\\ExoWeb.UnitTests.csproj
+		SccProjectName7 = ExoWeb.UnitTests
+		SccLocalPath7 = ExoWeb.UnitTests
 	EndGlobalSection
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = ExoWeb.vsmdi
@@ -72,16 +82,6 @@ Global
 		{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}.Release|x86.ActiveCfg = Release|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|x86.ActiveCfg = Release|Any CPU
 		{662948BC-59DA-4771-949F-C5327BF35518}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{662948BC-59DA-4771-949F-C5327BF35518}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{662948BC-59DA-4771-949F-C5327BF35518}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
@@ -102,6 +102,36 @@ Global
 		{B67D2642-A41A-42B2-8454-78ABA257008F}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{B67D2642-A41A-42B2-8454-78ABA257008F}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{B67D2642-A41A-42B2-8454-78ABA257008F}.Release|x86.ActiveCfg = Release|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}.Release|x86.ActiveCfg = Release|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Release|Any CPU.Build.0 = Release|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{390E2A10-D560-4DF0-8342-B1B686F74189}.Release|x86.ActiveCfg = Release|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Release|Any CPU.Build.0 = Release|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{943D65C3-5E48-4771-8BA8-A8494C0FFB32}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

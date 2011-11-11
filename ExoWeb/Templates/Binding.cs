@@ -176,10 +176,19 @@ namespace ExoWeb.Templates
 				try
 				{
 					var engine = new ScriptEngine();
-					string js = Expression;
-					if (page.Context as GraphInstance != null)
-						js = js.Replace("$dataItem.meta.id", "'" + ((GraphInstance)page.Context).Id + "'");
-					return engine.Evaluate<string>(js);
+
+					object dataItem;
+
+					if (page.Context is GraphInstance)
+						dataItem = new JavaScript.Entity(engine, (GraphInstance)page.Context);
+					else if (page.Context is Adapter)
+						dataItem = new JavaScript.Entity(engine, (GraphInstance)page.Context);
+					else
+						dataItem = page.Context;
+
+					engine.SetGlobalValue("$dataItem", dataItem);
+					
+					return engine.Evaluate(Expression);
 				}
 				catch
 				{
