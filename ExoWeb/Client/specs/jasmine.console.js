@@ -93,7 +93,7 @@ Reporter.prototype.reportSpecResults = function(spec) {
 				console.log("passed: " + result.message);
 			}
 			else {
-				console.log("FAILED:  " + result.message);
+				console.error("FAILED:  " + result.message);
 
 				if (result.trace.stack) {
 					console.log(result.trace.stack);
