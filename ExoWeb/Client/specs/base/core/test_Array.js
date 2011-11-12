@@ -293,136 +293,181 @@ describe("update", function() {
 	};
 
 	it("turns a single added item into an insert", function() {
-		var target = [0, 1, 2, 3];
-		var source = [0, 1, 2, 3, 4];
+		var source = [0, 1, 2, 3];
+		var target = [0, 1, 2, 3, 4];
 
 		var insert = jasmine.spyOn(spies, "insert").andCallThrough();
-		target.insert = insert;
+		source.insert = insert;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(insert).toHaveBeenCalledWith(4, 4);
 		
-		target = [0, 1, 3, 4];
-		target.insert = insert;
+		source = [0, 1, 3, 4];
+		source.insert = insert;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(insert).toHaveBeenCalledWith(2, 2);
 
-		target = [1, 2, 3, 4];
-		target.insert = insert;
+		source = [1, 2, 3, 4];
+		source.insert = insert;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(insert).toHaveBeenCalledWith(0, 0);
 	});
 
 	it("turns multiple added items into a single insertRange", function() {
-		var target = [2, 3, 4];
-		var source = [0, 1, 2, 3, 4];
+		var source = [2, 3, 4];
+		var target = [0, 1, 2, 3, 4];
 
 		var insertRange = jasmine.spyOn(spies, "insertRange").andCallThrough();
-		target.insertRange = insertRange;
+		source.insertRange = insertRange;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(insertRange).toHaveBeenCalledWith(0, [0, 1]);
-		
-		target = [0, 1, 4];
-		target.insertRange = insertRange;
 
-		update(target, source);
-		arrayEquals(target, source);
+		source = [0, 1, 4];
+		source.insertRange = insertRange;
+
+		update(source, target);
+		arrayEquals(source, target);
 		expect(insertRange).toHaveBeenCalledWith(2, [2, 3]);
 
-		target = [0, 1, 2];
-		target.insertRange = insertRange;
+		source = [0, 1, 2];
+		source.insertRange = insertRange;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(insertRange).toHaveBeenCalledWith(3, [3, 4]);
 	});
 
 	it("turns a single removed item into a removeAt", function() {
-		var target = [0, 1, 2, 3, 4];
-		var source = [1, 2, 3, 4];
+		var source = [0, 1, 2, 3, 4];
+		var target = [1, 2, 3, 4];
 
 		var removeAt = jasmine.spyOn(spies, "removeAt").andCallThrough();
-		target.removeAt = removeAt;
+		source.removeAt = removeAt;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(removeAt).toHaveBeenCalledWith(0);
 
-		target = [0, 1, 2, 3, 4];
-		target.removeAt = removeAt;
-		source = [0, 1, 2, 3];
+		source = [0, 1, 2, 3, 4];
+		source.removeAt = removeAt;
+		target = [0, 1, 2, 3];
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(removeAt).toHaveBeenCalledWith(4);
 
-		target = [0, 1, 2, 3, 4];
-		target.removeAt = removeAt;
-		source = [0, 1, 3, 4];
+		source = [0, 1, 2, 3, 4];
+		source.removeAt = removeAt;
+		target = [0, 1, 3, 4];
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(removeAt).toHaveBeenCalledWith(2);
 	});
 
 	it("turns multiple removed items into a removeRange", function() {
-		var target = [0, 1, 2, 3, 4];
-		var source = [2, 3, 4];
+		var source = [0, 1, 2, 3, 4];
+		var target = [2, 3, 4];
 
 		var removeRange = jasmine.spyOn(spies, "removeRange").andCallThrough();
-		target.removeRange = removeRange;
+		source.removeRange = removeRange;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(removeRange).toHaveBeenCalledWith(0, 2);
 
-		target = [0, 1, 2, 3, 4];
-		target.removeRange = removeRange;
-		source = [0, 1, 2];
+		source = [0, 1, 2, 3, 4];
+		source.removeRange = removeRange;
+		target = [0, 1, 2];
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(removeRange).toHaveBeenCalledWith(3, 2);
 
-		target = [0, 1, 2, 3, 4];
-		target.removeRange = removeRange;
-		source = [0, 1, 4];
+		source = [0, 1, 2, 3, 4];
+		source.removeRange = removeRange;
+		target = [0, 1, 4];
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(removeRange).toHaveBeenCalledWith(2, 2);
 	});
 
 	it("turns a changed item into a removeAt and insert", function() {
-		var target = [0, 1, 2];
-		var source = [0, 1, 3];
+		var source = [0, 1, 2];
+		var target = [0, 1, 3];
 
 		var removeAt = jasmine.spyOn(spies, "removeAt").andCallThrough();
+		source.removeAt = removeAt;
 		var insert = jasmine.spyOn(spies, "insert").andCallThrough();
-		target.removeAt = removeAt;
-		target.insert = insert;
+		source.insert = insert;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(removeAt).toHaveBeenCalledWith(2);
 		expect(insert).toHaveBeenCalledWith(2, 3);
 
-		target = [0, 1, 2];
-		source = [-1, 1, 2];
-		target.removeAt = removeAt;
-		target.insert = insert;
+		source = [0, 1, 2];
+		target = [-1, 1, 2];
+		source.removeAt = removeAt;
+		source.insert = insert;
 
-		update(target, source);
-		arrayEquals(target, source);
+		update(source, target);
+		arrayEquals(source, target);
 		expect(removeAt).toHaveBeenCalledWith(0);
 		expect(insert).toHaveBeenCalledWith(0, -1);
+	});
+
+	it("turns a swap into an add and a remove", function() {
+		var source = [6, 4];
+		var target = [4, 6];
+
+		update(source, target);
+		arrayEquals(source, target);
+	});
+
+	it("turns entirely unmatched arrays into a removeRange and insertRange", function() {
+		var source = [0, 1, 2, 3];
+		var target = [4, 5, 6];
+
+		var removeRange = jasmine.spyOn(spies, "removeRange").andCallThrough();
+		source.removeRange = removeRange;
+		var insertRange = jasmine.spyOn(spies, "insertRange").andCallThrough();
+		source.insertRange = insertRange;
+
+		update(source, target);
+		arrayEquals(source, target);
+		expect(removeRange).toHaveBeenCalledWith(0, 4);
+		expect(insertRange).toHaveBeenCalledWith(0, [4, 5, 6]);
+	});
+
+	it("handles miscellaneous combinations of add and remove in arrays with varying degrees of divergences", function() {
+		var source = [6, 7, 8, 2, 4, 6];
+		var target = [4, 6, 7, 8];
+		update(source, target);
+		arrayEquals(source, target);
+
+		source = [6, 2, 4];
+		target = [4, 6];
+		update(source, target);
+		arrayEquals(source, target);
+
+		source = [1, 7, 5, 6];
+		target = [1, 2, 3, 4, 5, 6];
+		update(source, target);
+		arrayEquals(source, target);
+
+		source = [0, 1, 5, 6];
+		target = [1, 2, 3, 4, 5, 6];
+		update(source, target);
+		arrayEquals(source, target);
 	});
 });
 

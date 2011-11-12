@@ -159,6 +159,42 @@ function mapToArray(arr, callback, thisPtr) {
 	return result;
 }
 
+function observableSplice(arr, events, index, removeCount, addItems) {
+	var removedArray, removedItem;
+
+	if (removeCount) {
+		if (removeCount > 1 && arr.removeRange) {
+			removedArray = arr.removeRange(index, removeCount);
+		}
+		else if (removeCount === 1 && arr.removeAt) {
+			removedItem = arr.removeAt(index);
+		}
+		else {
+			removedArray = arr.splice(index, removeCount);
+		}
+	
+		if (events) {
+			events.push({ type: "remove", index: index, items: removedArray || [removedItem] });
+		}
+	}
+
+	if (addItems.length > 0) {
+		if (addItems.length > 1 && arr.insertRange) {
+			arr.insertRange(index, addItems);
+		}
+		else if (addItems.length === 1 && arr.insert) {
+			arr.insert(index, addItems[0]);
+		}
+		else {
+			insertRange(arr, index, addItems);
+		}
+
+		if (events) {
+			events.push({ type: "add", index: index, items: addItems });
+		}
+	}
+}
+
 function peek(arr) {
 	var peekVal = arr.pop();
 	arr.push(peekVal);
@@ -251,98 +287,34 @@ function some(arr, callback, thisPtr) {
 }
 
 function update(arr, target, trackEvents) {
-	var removeAt = null, removeCount = null, events;
+	var source = arr, events = trackEvents ? [] : null, pointer = 0, srcSeek = 0, tgtSeek = 0;
 
-	if (trackEvents) {
-		events = [];
-	}
-
-	function flushRemoval() {
-		if (removeAt !== null) {
-			var removedArray, removedItem;
-			if (removeCount > 1 && arr.removeRange) {
-				removedArray = arr.removeRange(removeAt, removeCount);
-			}
-			else if (removeCount === 1 && arr.removeAt) {
-				removedItem = arr.removeAt(removeAt);
+	while (srcSeek < source.length) {
+		if (source[srcSeek] === target[tgtSeek]) {
+			if (pointer === srcSeek && pointer === tgtSeek) {
+				// items match, so advance
+				pointer = srcSeek = tgtSeek = pointer + 1;
 			}
 			else {
-				removedArray = arr.splice(removeAt, removeCount);
-			}
+				// remove range from source and add range from target
+				observableSplice(source, events, pointer, srcSeek - pointer, target.slice(pointer, tgtSeek));
 
-			if (trackEvents) {
-				events.push({ type: "remove", index: removeAt, items: removedArray || [removedItem] });
+				// reset to index follow target seek location since arrays match up to that point
+				pointer = srcSeek = tgtSeek = tgtSeek + 1;
 			}
-
-			removeAt = removeCount = null;
 		}
-	}
-
-	// remove items not in target
-	for (var i = 0, len = arr.length; i < len; i++) {
-		var item = arr[i];
-		if (indexOf(target, item) < 0) {
-			if (removeAt != null) {
-				removeCount++;
-			}
-			else {
-				removeAt = i;
-				removeCount = 1;
-			}
+		else if (tgtSeek >= target.length) {
+			// reached the end of the target array, so advance the src pointer and test again
+			tgtSeek = pointer;
+			srcSeek += 1;
 		}
 		else {
-			if (removeCount) {
-				i -= removeCount;
-			}
-			flushRemoval();
+			// advance to the next target item to test
+			tgtSeek += 1;
 		}
 	}
 
-	flushRemoval();
-
-	var addAt = null, addItems = null;
-	function flushAdd() {
-		if (addAt !== null) {
-			if (addItems.length > 1 && arr.insertRange) {
-				arr.insertRange(addAt, addItems);
-			}
-			else if (addItems.length === 1 && arr.insert) {
-				arr.insert(addAt, addItems[0]);
-			}
-			else {
-				insertRange(arr, addAt, addItems);
-			}
-			
-			if (trackEvents) {
-				events.push({ type: "add", index: addAt, items: addItems });
-			}
-
-			addAt = addItems = null;
-		}
-	}
-
-	for (var j = 0, k = 0, len = target.length; j < len; j++) {
-		var targetItem = target[j];
-		var item = arr[k];
-		if (targetItem != item) {
-			if (addItems != null) {
-				addItems.push(targetItem);
-			}
-			else {
-				addAt = k;
-				addItems = [targetItem];
-			}
-		}
-		else {
-			if (addItems !== null) {
-				k += addItems.length;
-			}
-			flushAdd();
-			k++;
-		}
-	}
-
-	flushAdd();
+	observableSplice(source, events, pointer, srcSeek - pointer, target.slice(pointer, Math.max(tgtSeek, target.length)));
 
 	return events;
 }
