@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {
 	/// <summary>
 	/// Represents an attached template control, such as dataview or content.

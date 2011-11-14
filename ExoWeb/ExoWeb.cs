@@ -300,7 +300,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static string LoadTemplates(params string[] paths)
 		{
-			Templates.Page.Current.Templates.AddRange(paths.SelectMany(p => Templates.Template.Load(System.Web.HttpContext.Current.Server.MapPath(p))));
+			Templates.Page.Current.Templates.AddRange(paths.SelectMany(p => Templates.Page.Current.LoadTemplates(System.Web.HttpContext.Current.Server.MapPath(p))));
 			var urls = paths.Select(p => p.StartsWith("~") ? System.Web.VirtualPathUtility.ToAbsolute(p) : p).Select(p => p + (p.Contains("?") ? "&" : "?") + "cachehash=" + ExoWeb.CacheHash);
 			return "<script type=\"text/javascript\">$exoweb(function () {" + urls.Aggregate("", (js, url) => js + "ExoWeb.UI.Template.load(\"" + url + "\"); ") + "});</script>";
 		}

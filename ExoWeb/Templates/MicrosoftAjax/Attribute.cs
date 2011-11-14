@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {
 	/// <summary>
 	/// Represents an attribute of an HTML element that may be bound.

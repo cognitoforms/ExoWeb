@@ -6,7 +6,7 @@ using ExoGraph;
 using ExoRule.Validation;
 using System.Collections;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {
 	/// <summary>
 	/// Represents a dataview control for rendering repeated content using templates.

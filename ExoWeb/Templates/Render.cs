@@ -15,7 +15,7 @@ namespace ExoWeb.Templates
 				throw new ApplicationException("Only literal content may be specified when using the Render control to render templates server-side.");
 
 			// Parse and render the template
-			Template.Parse(((System.Web.UI.LiteralControl)Controls[0]).Text).Render(ExoPage.Current, writer);
+			ExoPage.Current.Parse(((System.Web.UI.LiteralControl)Controls[0]).Text).Render(ExoPage.Current, writer);
 		}
 	}
 }

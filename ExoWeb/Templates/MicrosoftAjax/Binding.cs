@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using ExoGraph;
 using Jurassic;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {	
 	/// <summary>
 	/// Represents a one or two-way binding expression.
@@ -145,8 +145,8 @@ namespace ExoWeb.Templates
 					return instance.GetReference((GraphReferenceProperty)source);
 			}
 
-			if (context is Templates.Adapter && steps.Count() == 1)
-				return ((Templates.Adapter)context).Evaluate(steps[0]);
+			if (context is MicrosoftAjax.Adapter && steps.Count() == 1)
+				return ((MicrosoftAjax.Adapter)context).Evaluate(steps[0]);
 
 			return null;
 		}
@@ -236,7 +236,7 @@ namespace ExoWeb.Templates
 			internal override object Evaluate(Page page, out GraphProperty source)
 			{
 				var data = EvaluatePath(page, out source);
-				return new Templates.Adapter(source, data);
+				return new MicrosoftAjax.Adapter(source, data);
 			}
 		}
 

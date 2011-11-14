@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using ExoGraph;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {
 	/// <summary>
 	/// Represents an HTML element containing bound attributes or element content.

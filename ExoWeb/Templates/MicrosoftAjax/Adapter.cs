@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using ExoGraph;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {
 	internal class Adapter
 	{

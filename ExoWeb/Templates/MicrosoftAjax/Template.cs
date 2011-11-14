@@ -4,13 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using System.IO;
+using PageBase = ExoWeb.Templates.Page;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {
 	/// <summary>
 	/// Represents a reusuable template for rendering databound HTML markup and controls.
 	/// </summary>
-	public class Template : Control
+	public class Template : Control, ITemplate
 	{
 		static Dictionary<string, IEnumerable<Template>> templates = new Dictionary<string, IEnumerable<Template>>();
 		static Dictionary<string, FileSystemWatcher> watchers = new Dictionary<string, FileSystemWatcher>();
@@ -23,7 +24,7 @@ namespace ExoWeb.Templates
 
 		public bool? IsList { get; internal set; }
 
-		public static Template Parse(string template)
+		public static new Template Parse(string template)
 		{
 			return new Template() { Markup = template, Blocks = Block.Parse(template) };
 		}
@@ -60,6 +61,16 @@ namespace ExoWeb.Templates
 		public override string ToString()
 		{
 			return String.Format(@"<{0} isadapter=""{1}"" islist=""{2}"" datatype=""{3}"" />", Tag, IsAdapter, IsList, DataType);
+		}
+
+		/// <summary>
+		/// Implements the <see cref="ITemplate.Render"/> method by delegating the to internal instance method.
+		/// </summary>
+		/// <param name="page"></param>
+		/// <param name="writer"></param>
+		void ITemplate.Render(PageBase page, System.Web.UI.HtmlTextWriter writer)
+		{
+			Render((Page)page, writer);
 		}
 	}
 }

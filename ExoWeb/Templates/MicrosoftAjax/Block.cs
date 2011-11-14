@@ -6,7 +6,7 @@ using System.Xml;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {
 	/// <summary>
 	/// Represents a block of markup in a template, which could be a bound element, control, or just plain text markup.

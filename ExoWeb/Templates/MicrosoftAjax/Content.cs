@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using ExoGraph;
 
-namespace ExoWeb.Templates
+namespace ExoWeb.Templates.MicrosoftAjax
 {
 	/// <summary>
 	/// Represents a content control for rendering strongly-typed content using a contextually selected template.
@@ -36,7 +36,7 @@ namespace ExoWeb.Templates
 			}
 
 			// Find the appropriate template
-			var template = page.Templates.FirstOrDefault(
+			var template = page.Templates.OfType<Template>().FirstOrDefault(
 				t =>
 				{
 					// First ensure the template tags match
