@@ -104,6 +104,7 @@
     <Compile Include="Templates\ITemplate.cs" />
     <Compile Include="Templates\JavaScript\Adapter.cs" />
     <Compile Include="Templates\JavaScript\EntityFactory.cs" />
+    <Compile Include="Templates\JavaScript\Wrapper.cs" />
     <Compile Include="Templates\MicrosoftAjax\Adapter.cs" />
     <Compile Include="Templates\MicrosoftAjax\Attribute.cs" />
     <Compile Include="Templates\MicrosoftAjax\Binding.cs" />
@@ -123,7 +124,7 @@
     <Compile Include="Templates\Page.cs" />
     <Compile Include="Templates\Render.cs" />
     <Compile Include="Templates\MicrosoftAjax\Template.cs" />
-    <Compile Include="UnitTests\EntityAccessor.cs" />
+    <Compile Include="UnitTests\Accessors.cs" />
     <Compile Include="ViewScope.cs" />
   </ItemGroup>
   <ItemGroup>

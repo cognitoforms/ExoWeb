@@ -10,19 +10,22 @@ using TemplateAdapter = ExoWeb.Templates.MicrosoftAjax.Adapter;
 
 namespace ExoWeb.Templates.JavaScript
 {
-	class Adapter : ObjectInstance
+	class Adapter : Wrapper<TemplateAdapter>
 	{
-		TemplateAdapter templateAdapter;
-
 		internal Adapter(ScriptEngine engine, TemplateAdapter templateAdapter)
-			: base(engine, engine.Object.InstancePrototype)
+			: base(templateAdapter, engine, engine.Object.InstancePrototype)
 		{
-			this.templateAdapter = templateAdapter;
 		}
 
 		protected override object GetMissingPropertyValue(string jsPropertyName)
 		{
-			return "woohoo!";
+			switch(jsPropertyName)
+			{
+				case "isList":
+					return LazyDefineMethod(jsPropertyName, adapter => adapter.IsList );
+			}
+
+			return base.GetMissingPropertyValue(jsPropertyName);
 		}
 	}
 }

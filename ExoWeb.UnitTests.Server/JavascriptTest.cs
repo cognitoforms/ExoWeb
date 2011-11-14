@@ -32,8 +32,8 @@ namespace ExoWeb.UnitTests.Server
 				Description = "abc123"
 			};
 
-			TestExpression(data, "$data.meta.id", ((IGraphInstance)data).Instance.Id);
-			TestExpression(data, "$data.get_User().meta.id", ((IGraphInstance)data.User).Instance.Id);
+			TestEntityExpression(data, "$data.meta.id", ((IGraphInstance)data).Instance.Id);
+			TestEntityExpression(data, "$data.get_User().meta.id", ((IGraphInstance)data.User).Instance.Id);
 		}
 
 		[TestMethod]
@@ -44,7 +44,7 @@ namespace ExoWeb.UnitTests.Server
 				Description = "abc123"
 			};
 
-			TestExpression(data, "$data.get_Description()", data.Description);
+			TestEntityExpression(data, "$data.get_Description()", data.Description);
 		}
 
 		[TestMethod]
@@ -55,7 +55,7 @@ namespace ExoWeb.UnitTests.Server
 				User = new User { UserName = "some_user" }
 			};
 
-			TestExpression(data, "$data.get_User().get_UserName()", data.User.UserName);
+			TestEntityExpression(data, "$data.get_User().get_UserName()", data.User.UserName);
 		}
 
 		[TestMethod]
@@ -66,7 +66,7 @@ namespace ExoWeb.UnitTests.Server
 				Description = "abc123"
 			};
 
-			TestException(data, "$data.set_Description('newvalue')", e => true);
+			TestEntityException(data, "$data.set_Description('newvalue')", e => true);
 		}
 
 		[TestMethod]
@@ -77,7 +77,7 @@ namespace ExoWeb.UnitTests.Server
 				Description = "abc123"
 			};
 
-			TestException(data, "$data.Description", e => true);
+			TestEntityException(data, "$data.Description", e => true);
 		}
 
 		[TestMethod]
@@ -88,7 +88,7 @@ namespace ExoWeb.UnitTests.Server
 				Description = "abc123"
 			};
 
-			TestException(data, "$data.get_UNKNOWN('newvalue')", e => e.GetType().Name == "InvalidPropertyException");
+			TestEntityException(data, "$data.get_UNKNOWN('newvalue')", e => e.GetType().Name == "InvalidPropertyException");
 		}
 
 		[TestMethod]
@@ -101,36 +101,60 @@ namespace ExoWeb.UnitTests.Server
 			};
 
 			// value property function
-			TestExpression(data, "$data.get_Description === $data.get_Description", true);
+			TestEntityExpression(data, "$data.get_Description === $data.get_Description", true);
 
 			// reference property function
-			TestExpression(data, "$data.get_User === $data.get_User", true);
+			TestEntityExpression(data, "$data.get_User === $data.get_User", true);
 
 			// reference property valye
-			TestExpression(data, "$data.get_User() === $data.get_User()", true);
+			TestEntityExpression(data, "$data.get_User() === $data.get_User()", true);
 
 			// meta property
-			TestExpression(data, "$data.meta === $data.meta", true);
+			TestEntityExpression(data, "$data.meta === $data.meta", true);
+		}
+
+
+		[TestMethod]
+		public void TestAdapterIsList()
+		{
+			// single hop - item
+			TestAdapterExpression(new Request(), "User", "$data.isList()", false);
+
+			// single hop - list
+			TestAdapterExpression(new Category(), "ChildCategories", "$data.isList()", true);
+
+			// multi hop - list
+			// broken: TestAdapterExpression(new Request(), "Category.ChildCategories", "$data.isList()", true);
 		}
 		#endregion
 
 		#region Helpers
-		void TestExpression<T>(IGraphInstance data, string javascript, T expectedResult)
+		void TestExpression<T>(Func<ScriptEngine, object> dataFactory, string javascript, T expectedResult)
 		{
 			var engine = new Jurassic.ScriptEngine();
 			engine.ForceStrictMode = true;
 
-			engine.SetGlobalValue("$data", EntityAccessor.CreateEntity(engine, data));
+			engine.SetGlobalValue("$data", dataFactory(engine));
 			var result = engine.Evaluate<T>(javascript);
-			
+
 			Assert.AreEqual(expectedResult, result, javascript + " ---> " + expectedResult);
 		}
 
-		void TestException(IGraphInstance data, string javascript, Predicate<Exception> expected)
+		void TestAdapterExpression<T>(IGraphInstance data, string propertyName, string javascript, T expectedResult)
+		{
+			TestExpression(engine => Accessors.CreateAdapter(engine, data, propertyName), javascript, expectedResult);
+		}
+
+		void TestEntityExpression<T>(IGraphInstance data, string javascript, T expectedResult)
+		{
+			TestExpression(engine => Accessors.CreateEntity(engine, data), javascript, expectedResult);
+		}
+
+		void TestEntityException(IGraphInstance data, string javascript, Predicate<Exception> expected)
 		{
 			var engine = new Jurassic.ScriptEngine();
 			engine.ForceStrictMode = true;
-			engine.SetGlobalValue("$data", EntityAccessor.CreateEntity(engine, data));
+			engine.SetGlobalValue("$data", Accessors.CreateEntity(engine, data));
 
 			try
 			{

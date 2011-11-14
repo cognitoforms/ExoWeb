@@ -8,32 +8,24 @@ using Jurassic;
 
 namespace ExoWeb.Templates.JavaScript
 {
-	internal class Entity : ObjectInstance
+	internal class Entity : Wrapper<GraphInstance>
 	{
 		const string GetterPrefix = "get_";
 		const string SetterPrefix = "set_";
 
-		GraphInstance instance;
 		EntityFactory factory;
 
 		internal Entity(ScriptEngine engine, GraphInstance instance, EntityFactory factory)
-			: base(engine, engine.Object.InstancePrototype)
+			: base(instance, engine, engine.Object.InstancePrototype)
 		{
-			this.instance = instance;
 			this.factory = factory;
-		}
-
-		protected object LazyDefineProperty(string propertyName, object value)
-		{
-			DefineProperty(propertyName, new PropertyDescriptor(value, PropertyAttributes.Sealed), true);
-			return value;
 		}
 
 		protected override object GetMissingPropertyValue(string jsPropertyName)
 		{
 			// special meta property
 			if (jsPropertyName == "meta")
-				return LazyDefineProperty("meta", new Meta(Engine, instance));
+				return LazyDefineProperty("meta", new Meta(Engine, RealObject));
 
 			// handle model properties
 			string modelPropertyName;
@@ -45,67 +37,34 @@ namespace ExoWeb.Templates.JavaScript
 			else
 				throw new InvalidOperationException("Only property get accessors are supported on model objects: " + jsPropertyName);
 
-			GraphProperty property = instance.Type.Properties[modelPropertyName];
+			GraphProperty property = RealObject.Type.Properties[modelPropertyName];
 
 			if (property == null)
-				throw new InvalidPropertyException(instance.Type, modelPropertyName);
+				throw new InvalidPropertyException(RealObject.Type, modelPropertyName);
 
-			if(property is GraphValueProperty)
-				return LazyDefineProperty(jsPropertyName, new ValuePropertyGetter(Engine, (GraphValueProperty)property));
-
-			else if (((GraphReferenceProperty)property).IsList)
-				throw new NotImplementedException("List properties are not implemented"); //return null; //new ArrayInstance(Engine, instance.GetList((GraphReferenceProperty)property).Select(i => new ModelInstance(Engine, i)).ToArray());
-
-			return LazyDefineProperty(jsPropertyName, new ReferencePropertyGetter(Engine, (GraphReferenceProperty)property, factory));
-		}
-
-		/// <summary>
-		/// Function for property getter of value-typed properties
-		/// </summary>
-		class ValuePropertyGetter : FunctionInstance
-		{
-			GraphValueProperty property;
-
-			public ValuePropertyGetter(ScriptEngine engine, GraphValueProperty property)
-				: base(engine, engine.Object.InstancePrototype)
+			if (property is GraphValueProperty)
 			{
-				this.property = property;
+				// optimization: cast outside of delegate
+				GraphValueProperty valueProperty = (GraphValueProperty)property;
+
+				return LazyDefineMethod(jsPropertyName, instance => instance.GetValue(valueProperty));
 			}
 
-			public override object CallLateBound(object thisObject, params object[] arguments)
-			{
-				Entity mi = (Entity)thisObject;
+			GraphReferenceProperty refProperty = (GraphReferenceProperty)property;
+			if (refProperty.IsList)
+				throw new NotImplementedException("List properties are not implemented");
 
-				return mi.instance.GetValue(property);
-			}
-		}
+			return LazyDefineMethod(jsPropertyName,
+				instance =>
+				{
+					GraphInstance result = instance.GetReference(refProperty);
 
-		/// <summary>
-		/// Function for property getter of reference-typed properties
-		/// </summary>
-		class ReferencePropertyGetter : FunctionInstance
-		{
-			GraphReferenceProperty property;
-			EntityFactory factory;
+					if (result == null)
+						return null;
 
-			public ReferencePropertyGetter(ScriptEngine engine, GraphReferenceProperty property, EntityFactory factory)
-				: base(engine, engine.Object.InstancePrototype)
-			{
-				this.property = property;
-				this.factory = factory;
-			}
-
-			public override object CallLateBound(object thisObject, params object[] arguments)
-			{
-				Entity mi = (Entity)thisObject;
-
-				GraphInstance result = mi.instance.GetReference(property);
-
-				if (result == null)
-					return null;
-
-				return factory.GetEntity(result);
-			}
+					return factory.GetEntity(result);
+				}
+			);
 		}
 	}
 }
