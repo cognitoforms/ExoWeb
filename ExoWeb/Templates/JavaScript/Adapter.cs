@@ -6,7 +6,7 @@ using Jurassic;
 using Jurassic.Library;
 using ExoGraph;
 using ExoRule;
-using TemplateAdapter = ExoWeb.Templates.Adapter;
+using TemplateAdapter = ExoWeb.Templates.MicrosoftAjax.Adapter;
 
 namespace ExoWeb.Templates.JavaScript
 {

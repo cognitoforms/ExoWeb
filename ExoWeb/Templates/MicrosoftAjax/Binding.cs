@@ -180,9 +180,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					object dataItem;
 
 					if (page.Context is GraphInstance)
-						dataItem = new JavaScript.Entity(engine, (GraphInstance)page.Context);
-					else if (page.Context is Adapter)
-						dataItem = new JavaScript.Entity(engine, (GraphInstance)page.Context);
+					{
+						JavaScript.EntityFactory factory = new JavaScript.EntityFactory(engine);
+						dataItem = factory.GetEntity((GraphInstance)page.Context);
+					}
+					else if (page.Context is MicrosoftAjax.Adapter)
+						dataItem = new JavaScript.Adapter(engine, (MicrosoftAjax.Adapter)page.Context);
 					else
 						dataItem = page.Context;
 

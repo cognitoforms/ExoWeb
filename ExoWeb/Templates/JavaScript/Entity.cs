@@ -14,25 +14,26 @@ namespace ExoWeb.Templates.JavaScript
 		const string SetterPrefix = "set_";
 
 		GraphInstance instance;
-		Meta meta;
+		EntityFactory factory;
 
-		internal Entity(ScriptEngine engine, GraphInstance instance)
+		internal Entity(ScriptEngine engine, GraphInstance instance, EntityFactory factory)
 			: base(engine, engine.Object.InstancePrototype)
 		{
 			this.instance = instance;
+			this.factory = factory;
+		}
 
+		protected object LazyDefineProperty(string propertyName, object value)
+		{
+			DefineProperty(propertyName, new PropertyDescriptor(value, PropertyAttributes.Sealed), true);
+			return value;
 		}
 
 		protected override object GetMissingPropertyValue(string jsPropertyName)
 		{
 			// special meta property
 			if (jsPropertyName == "meta")
-			{
-				if (meta == null)
-					meta = new Meta(Engine, instance);
-
-				return meta;
-			}
+				return LazyDefineProperty("meta", new Meta(Engine, instance));
 
 			// handle model properties
 			string modelPropertyName;
@@ -50,23 +51,23 @@ namespace ExoWeb.Templates.JavaScript
 				throw new InvalidPropertyException(instance.Type, modelPropertyName);
 
 			if(property is GraphValueProperty)
-				return new ValuePropertyGetter(Engine, (GraphValueProperty)property);
+				return LazyDefineProperty(jsPropertyName, new ValuePropertyGetter(Engine, (GraphValueProperty)property));
 
 			else if (((GraphReferenceProperty)property).IsList)
 				throw new NotImplementedException("List properties are not implemented"); //return null; //new ArrayInstance(Engine, instance.GetList((GraphReferenceProperty)property).Select(i => new ModelInstance(Engine, i)).ToArray());
 
-			return new ReferencePropertyGetter(Engine, (GraphReferenceProperty)property);
+			return LazyDefineProperty(jsPropertyName, new ReferencePropertyGetter(Engine, (GraphReferenceProperty)property, factory));
 		}
 
 		/// <summary>
 		/// Function for property getter of value-typed properties
 		/// </summary>
-		class ValuePropertyGetter : ClrFunction
+		class ValuePropertyGetter : FunctionInstance
 		{
 			GraphValueProperty property;
 
 			public ValuePropertyGetter(ScriptEngine engine, GraphValueProperty property)
-				: base(engine.Function, property.Name, engine.Object.InstancePrototype)
+				: base(engine, engine.Object.InstancePrototype)
 			{
 				this.property = property;
 			}
@@ -82,14 +83,16 @@ namespace ExoWeb.Templates.JavaScript
 		/// <summary>
 		/// Function for property getter of reference-typed properties
 		/// </summary>
-		class ReferencePropertyGetter : ClrFunction
+		class ReferencePropertyGetter : FunctionInstance
 		{
 			GraphReferenceProperty property;
+			EntityFactory factory;
 
-			public ReferencePropertyGetter(ScriptEngine engine, GraphReferenceProperty property)
-				: base(engine.Function, property.Name, engine.Object.InstancePrototype)
+			public ReferencePropertyGetter(ScriptEngine engine, GraphReferenceProperty property, EntityFactory factory)
+				: base(engine, engine.Object.InstancePrototype)
 			{
 				this.property = property;
+				this.factory = factory;
 			}
 
 			public override object CallLateBound(object thisObject, params object[] arguments)
@@ -101,7 +104,7 @@ namespace ExoWeb.Templates.JavaScript
 				if (result == null)
 					return null;
 
-				return new Entity(Engine, result);
+				return factory.GetEntity(result);
 			}
 		}
 	}

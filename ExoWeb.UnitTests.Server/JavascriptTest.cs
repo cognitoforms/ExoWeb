@@ -90,6 +90,28 @@ namespace ExoWeb.UnitTests.Server
 
 			TestException(data, "$data.get_UNKNOWN('newvalue')", e => e.GetType().Name == "InvalidPropertyException");
 		}
+
+		[TestMethod]
+		public void TestEntityPropertyEquality()
+		{
+			var data = new Request
+			{
+				Description = "abc123",
+				User = new User { UserName = "auser" }
+			};
+
+			// value property function
+			TestExpression(data, "$data.get_Description === $data.get_Description", true);
+
+			// reference property function
+			TestExpression(data, "$data.get_User === $data.get_User", true);
+
+			// reference property valye
+			TestExpression(data, "$data.get_User() === $data.get_User()", true);
+
+			// meta property
+			TestExpression(data, "$data.meta === $data.meta", true);
+		}
 		#endregion
 
 		#region Helpers
@@ -97,8 +119,8 @@ namespace ExoWeb.UnitTests.Server
 		{
 			var engine = new Jurassic.ScriptEngine();
 			engine.ForceStrictMode = true;
-			
-			engine.SetGlobalValue("$data", NewModelInstance(engine, data));
+
+			engine.SetGlobalValue("$data", EntityAccessor.CreateEntity(engine, data));
 			var result = engine.Evaluate<T>(javascript);
 			
 			Assert.AreEqual(expectedResult, result, javascript + " ---> " + expectedResult);
@@ -108,7 +130,7 @@ namespace ExoWeb.UnitTests.Server
 		{
 			var engine = new Jurassic.ScriptEngine();
 			engine.ForceStrictMode = true;
-			engine.SetGlobalValue("$data", NewModelInstance(engine, data));
+			engine.SetGlobalValue("$data", EntityAccessor.CreateEntity(engine, data));
 
 			try
 			{
@@ -120,12 +142,6 @@ namespace ExoWeb.UnitTests.Server
 				Assert.IsTrue(expected(error), "An error was expected but not '" + error.Message + "': " + javascript);
 				return;
 			}
-		}
-
-		static ObjectInstance NewModelInstance(ScriptEngine engine, IGraphInstance instance)
-		{
-			ConstructorInfo ctor = Type.GetType("ExoWeb.Templates.JavaScript.Entity, ExoWeb").GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { typeof(ScriptEngine), typeof(GraphInstance) }, null);
-			return (ObjectInstance)ctor.Invoke(new object[] {engine, instance.Instance});
 		}
 		#endregion
 	}
