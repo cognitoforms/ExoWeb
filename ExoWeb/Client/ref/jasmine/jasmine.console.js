@@ -60,7 +60,7 @@ Reporter.prototype.reportSuiteResults = function(suite) {
 
 Reporter.prototype.reportSpecStarting = function(spec) {
 	if (this.isFirstEncounter(spec.suite) && (!spec.suite.parentSuite || this.isFirstEncounter(spec.suite.parentSuite))) {
-		console.log("\r\n" + (spec.suite.parentSuite ? spec.suite.parentSuite.description : spec.suite.description));
+		console.log("\r\nSuite: \"" + (spec.suite.parentSuite ? spec.suite.parentSuite.description : spec.suite.description) + "\"");
 		console.log("=============================================");
 	}
 	else {

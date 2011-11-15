@@ -69,6 +69,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ExoWebTest.cs" />
+    <Compile Include="Jasmine\View.cs" />
+    <Compile Include="Jasmine\Model.cs" />
+    <Compile Include="Jasmine\Mapper.cs" />
+    <Compile Include="Jasmine\Core.cs" />
+    <Compile Include="Jasmine\JasmineTest.cs" />
     <Compile Include="JavascriptTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -85,6 +90,11 @@
       <Project>{4B14422C-751C-42AE-832A-B474A4AD0D95}</Project>
       <Name>ExoWeb</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
