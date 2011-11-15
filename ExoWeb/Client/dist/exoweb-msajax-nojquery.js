@@ -376,17 +376,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var proceed = this;
 		var cache = {};
 
+		var keygen = (options && options.key) || function(arg) { return arg; };
+
 		return function cached() {
-			var key = options.key.apply(this, arguments);
-
-			var result = cache[key];
-
-			if (result === undefined) {
-				result = proceed.apply(this, arguments);
-				cache[key] = result;
-			}
-
-			return result;
+			var key = keygen.apply(this, arguments);
+			return cache.hasOwnProperty(key) ? cache[key] : (cache[key] = proceed.apply(this, arguments));
 		};
 	};
 
@@ -1870,13 +1864,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
 	}
 
-	var compileFilterFunction = Transform$compileFilterFunction.cached({ key: function(filter) { return filter; } });
+	var compileFilterFunction = Transform$compileFilterFunction.cached();
 
 	function Transform$compileGroupsFunction(groups) {
 		return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
 	}
 
-	var compileGroupsFunction = Transform$compileGroupsFunction.cached({ key: function(groups) { return groups; } });
+	var compileGroupsFunction = Transform$compileGroupsFunction.cached();
 
 	function Transform$compileOrderingFunction(ordering) {
 		var orderings = [];
@@ -1923,7 +1917,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		};
 	}
 
-	var compileOrderingFunction = Transform$compileOrderingFunction.cached({ key: function(ordering) { return ordering; } });
+	var compileOrderingFunction = Transform$compileOrderingFunction.cached();
 
 	Transform.mixin({
 		_next: function Transform$_next(fn, args, output) {
@@ -2935,7 +2929,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return $format(convertTemplate, obj);
 			}
 		});
-	}).cached({ key: function(convertTemplate) { return convertTemplate; } });
+	}).cached();
 
 	Format.mixin({
 		getPaths: function() {

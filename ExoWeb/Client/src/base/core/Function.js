@@ -211,17 +211,11 @@ Function.prototype.cached = function Function$cached(options) {
 	var proceed = this;
 	var cache = {};
 
+	var keygen = (options && options.key) || function(arg) { return arg; };
+
 	return function cached() {
-		var key = options.key.apply(this, arguments);
-
-		var result = cache[key];
-
-		if (result === undefined) {
-			result = proceed.apply(this, arguments);
-			cache[key] = result;
-		}
-
-		return result;
+		var key = keygen.apply(this, arguments);
+		return cache.hasOwnProperty(key) ? cache[key] : (cache[key] = proceed.apply(this, arguments));
 	};
 };
 

@@ -25,13 +25,13 @@ function Transform$compileFilterFunction(filter) {
 	return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
 }
 
-var compileFilterFunction = Transform$compileFilterFunction.cached({ key: function(filter) { return filter; } });
+var compileFilterFunction = Transform$compileFilterFunction.cached();
 
 function Transform$compileGroupsFunction(groups) {
 	return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
 }
 
-var compileGroupsFunction = Transform$compileGroupsFunction.cached({ key: function(groups) { return groups; } });
+var compileGroupsFunction = Transform$compileGroupsFunction.cached();
 
 function Transform$compileOrderingFunction(ordering) {
 	var orderings = [];
@@ -78,7 +78,7 @@ function Transform$compileOrderingFunction(ordering) {
 	};
 }
 
-var compileOrderingFunction = Transform$compileOrderingFunction.cached({ key: function(ordering) { return ordering; } });
+var compileOrderingFunction = Transform$compileOrderingFunction.cached();
 
 Transform.mixin({
 	_next: function Transform$_next(fn, args, output) {

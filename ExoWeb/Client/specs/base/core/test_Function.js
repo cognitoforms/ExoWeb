@@ -38,11 +38,6 @@ var expect = jasmine.expect;
 
 // Test Suites
 ///////////////////////////////////////
-describe("dontDoubleUp", function() {
-	it("ensures that a function is only called once with a set of arguments", function() {
-		
-	});
-});
 
 describe("cached", function() {
 	it("stores the value of an operation so that it is performed only once", function() {
@@ -51,12 +46,25 @@ describe("cached", function() {
 		var toLower = (function(str) {
 			numCalls++;
 			return str.toLowerCase();
-		}).cached({ key: function(str) { return str; } });
+		}).cached();
 
 		expect(toLower("TEST")).toBe("test");
 		expect(numCalls).toBe(1);
 
 		expect(toLower("TEST")).toBe("test");
+		expect(numCalls).toBe(1);
+
+		numCalls = 0;
+
+		var toLowerWithLog = (function(message, str) {
+			numCalls++;
+			return str.toLowerCase();
+		}).cached({ key: function(message, str) { return str; } });
+
+		expect(toLowerWithLog("Calling for the first time.", "TEST")).toBe("test");
+		expect(numCalls).toBe(1);
+
+		expect(toLowerWithLog("Calling for the seccond time.", "TEST")).toBe("test");
 		expect(numCalls).toBe(1);
 	});
 });

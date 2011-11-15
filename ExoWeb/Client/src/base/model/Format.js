@@ -24,7 +24,7 @@ Format.fromTemplate = (function Format$fromTemplate(convertTemplate) {
 			return $format(convertTemplate, obj);
 		}
 	});
-}).cached({ key: function(convertTemplate) { return convertTemplate; } });
+}).cached();
 
 Format.mixin({
 	getPaths: function() {
