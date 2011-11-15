@@ -1,10 +1,8 @@
-﻿using ExoWeb;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using ExoWeb.Templates;
+﻿using System;
 using System.IO;
 using System.Linq;
+using ExoWeb.Templates.MicrosoftAjax;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ExoWeb.UnitTests.Server
 {
