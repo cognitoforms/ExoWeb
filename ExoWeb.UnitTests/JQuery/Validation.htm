@@ -11,14 +11,10 @@
 		<script src="../Common/Scripts/QUnit/qunit.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/Microsoft/MicrosoftAjax.debug.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb-msajax.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.model.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.mapper.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.jquery.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.ui.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.view.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb-mock.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/jquery.exoweb-msajax.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/mock-driver.js" type="text/javascript"></script>
 		<script src="ChangeSet.js" type="text/javascript"></script>
 		
@@ -33,14 +29,10 @@
     		$extend("Dealer", function(type) { type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}"); });
     		$extend("OwnerLocation", function(type) { type.formats.$label = ExoWeb.Model.Format.fromTemplate("{Name}"); });
 
-    		var context = ExoWeb.context({
+    		$exoweb({
     			model: {
     				driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"] }
     			}
-    		});
-
-    		context.ready(function() {
-    			Sys.Application.activateElement(document.documentElement);
     		});
 
     		var valFn = jQuery.fn.val;

@@ -8,16 +8,12 @@
 		<script src="../Common/Scripts/QUnit/qunit.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/Microsoft/MicrosoftAjax.debug.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb-msajax.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.model.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.mapper.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.view.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.ui.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb-mock.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/mock-driver.js" type="text/javascript"></script>
 		<script type="text/javascript">
-			var context = ExoWeb.context({ model: { driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} } });
+			$exoweb({ model: { driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} } });
 
 			setupTest("test1", { description: "Simple Chain Tests", expect: 5 }, function(chain) {
 				equals(3, chain.all().length, "Chain is 3-parts (\"Owner.Location.Address\").");
@@ -122,16 +118,17 @@
 
 			timeoutTests(2000);
 
-			context.ready(function() {
-				var chain = context.model.driver.meta.type.property("Owner.Location.Address");
-
-				executeTest("test1", chain);
-				executeTest("test2", chain);
-				executeTest("test3", chain);
-				executeTest("test4", chain);
-				executeTest("test5", chain);
-				executeTest("test6");
-			
+			$exoweb({
+				contextReady: function() {
+					var chain = context.model.driver.meta.type.property("Owner.Location.Address");
+	
+					executeTest("test1", chain);
+					executeTest("test2", chain);
+					executeTest("test3", chain);
+					executeTest("test4", chain);
+					executeTest("test5", chain);
+					executeTest("test6");
+				}
 			});
 
 			function renderComplete() {

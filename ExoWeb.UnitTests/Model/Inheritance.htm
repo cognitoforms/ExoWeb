@@ -8,10 +8,8 @@
 		<script src="../Common/Scripts/QUnit/qunit.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/Microsoft/MicrosoftAjax.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.model.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.mapper.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.mock.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb-msajax.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb-mock.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/mock-driver.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
 		<script type="text/javascript">
@@ -25,7 +23,7 @@
 				type.formats.longDesc = ExoWeb.Model.Format.fromTemplate("<UsedCar> {Name} with {MilesDriven} miles");
 			});
 
-			var context = ExoWeb.context({
+			$exoweb({
 				model: {
 					driver: { id: "1", from: "Driver" },
 					dealer: { id: "1", from: "Dealer" },
@@ -88,13 +86,15 @@
 				equals(Bar.meta.get(bar.meta.id), bar, "Should be able to retrieve instance of sub type by id.");
 			});
 
-			context.ready(function() {
-				executeTest("polymorphic loading");
-				executeTest("object pool and sub classes");
-				executeTest("instanceof operator");
-				executeTest("type members");
-				executeTest("formats");
-				executeTest("newId");
+			$exoweb({
+				contextReady: function() {
+					executeTest("polymorphic loading");
+					executeTest("object pool and sub classes");
+					executeTest("instanceof operator");
+					executeTest("type members");
+					executeTest("formats");
+					executeTest("newId");
+				}
 			});
 		</script>
 	</head>

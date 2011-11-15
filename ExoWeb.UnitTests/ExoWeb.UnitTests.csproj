@@ -96,8 +96,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
-    <Folder Include="Common\Scripts\ExoWeb\" />
-    <Folder Include="Common\Scripts\Microsoft\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" />
@@ -128,7 +126,7 @@
     </VisualStudio>
   </ProjectExtensions>
   <PropertyGroup>
-    <PreBuildEvent>xcopy /Y $(SolutionDir)\ExoWeb\Client\dist\* $(ProjectDir)\Common\Scripts\ExoWeb\
-xcopy /Y $(SolutionDir)\ExoWeb\Client\ref\aspnetajax\* $(ProjectDir)\Common\Scripts\Microsoft\</PreBuildEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
   </PropertyGroup>
 </Project>
