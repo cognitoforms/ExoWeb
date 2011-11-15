@@ -152,6 +152,8 @@
     <Content Include="Client\ref\aspnetajax\MicrosoftAjaxWebForms.debug.js" />
     <Content Include="Client\ref\jshint\jshint.js" />
     <Content Include="Client\ref\jsmin\jsmin.exe" />
+    <Content Include="Client\ref\qunit\qunit.ext.js" />
+    <Content Include="Client\ref\qunit\qunit.js" />
     <Content Include="Client\runjshint.js" />
     <Content Include="Client\specs\base\core\test_Array.js" />
     <Content Include="Client\specs\base\core\test_Date.js" />
@@ -172,8 +174,8 @@
     <Content Include="Client\specs\base\model\test_Formats.js" />
     <Content Include="Client\specs\base\model\test_PathTokens.js" />
     <Content Include="Client\specs\base\view\test_Binding.js" />
-    <Content Include="Client\specs\jasmine.console.js" />
-    <Content Include="Client\specs\jasmine.js" />
+    <Content Include="Client\ref\jasmine\jasmine.console.js" />
+    <Content Include="Client\ref\jasmine\jasmine.js" />
     <Content Include="Client\src\base\core\Activity.js" />
     <Content Include="Client\src\base\core\Array.js" />
     <Content Include="Client\src\base\core\Batch.js" />

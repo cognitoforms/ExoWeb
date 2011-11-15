@@ -62,10 +62,8 @@
   <ItemGroup>
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2-vsdoc.js" />
     <Content Include="Common\Scripts\mock-driver.js" />
-    <Content Include="Common\Scripts\QUnit\qunit.ext.js" />
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2.js" />
     <Content Include="Common\Styles\qunit.css" />
-    <Content Include="Common\Scripts\QUnit\qunit.js" />
     <Content Include="Core\Batch.htm" />
     <Content Include="Core\Copy.htm" />
     <Content Include="Core\Observers.htm" />

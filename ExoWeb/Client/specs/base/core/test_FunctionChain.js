@@ -3,8 +3,8 @@ ExoWeb = {};
 
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../jasmine");
-var jasmineConsole = require("../../jasmine.console");
+var jasmine = require("../../../ref/jasmine/jasmine");
+var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
 jasmine.jasmine.debug = true;
 
