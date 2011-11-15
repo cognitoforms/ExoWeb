@@ -10,8 +10,11 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{90A77934-FEB7-4A62-8E47-58C1A973D26B}"
 	ProjectSection(SolutionItems) = preProject
 		ExoWeb.vsmdi = ExoWeb.vsmdi
+		Dependencies\WatiN\net20\Interop.SHDocVw.dll = Dependencies\WatiN\net20\Interop.SHDocVw.dll
 		Local.testsettings = Local.testsettings
+		Dependencies\WatiN\net20\Microsoft.mshtml.dll = Dependencies\WatiN\net20\Microsoft.mshtml.dll
 		TraceAndTestImpact.testsettings = TraceAndTestImpact.testsettings
+		Dependencies\WatiN\net20\WatiN.Core.dll = Dependencies\WatiN\net20\WatiN.Core.dll
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoRule", "..\ExoRule\ExoRule\ExoRule.csproj", "{B67D2642-A41A-42B2-8454-78ABA257008F}"

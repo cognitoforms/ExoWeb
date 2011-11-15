@@ -37,8 +37,17 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Interop.SHDocVw">
+      <HintPath>..\Dependencies\WatiN\net20\Interop.SHDocVw.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
     <Reference Include="Jurassic, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\ExoWeb\Dependencies\Jurassic.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.mshtml, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <SpecificVersion>False</SpecificVersion>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+      <HintPath>..\Dependencies\WatiN\net20\Microsoft.mshtml.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="System" />
@@ -61,6 +70,9 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
+    <Reference Include="WatiN.Core">
+      <HintPath>..\Dependencies\WatiN\net20\WatiN.Core.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <CodeAnalysisDependentAssemblyPaths Condition=" '$(VS100COMNTOOLS)' != '' " Include="$(VS100COMNTOOLS)..\IDE\PrivateAssemblies">
@@ -69,13 +81,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ExoWebTest.cs" />
-    <Compile Include="Jasmine\View.cs" />
-    <Compile Include="Jasmine\Model.cs" />
-    <Compile Include="Jasmine\Mapper.cs" />
-    <Compile Include="Jasmine\Core.cs" />
+    <Compile Include="Jasmine\Jasmine_View.cs" />
+    <Compile Include="Jasmine\Jasmine_Model.cs" />
+    <Compile Include="Jasmine\Jasmine_Mapper.cs" />
+    <Compile Include="Jasmine\Jasmine_Core.cs" />
     <Compile Include="Jasmine\JasmineTest.cs" />
     <Compile Include="JavascriptTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QUnit\QUnit_Core.cs" />
+    <Compile Include="QUnit\QUnitTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ExoGraph\ExoGraph.UnitTest\ExoGraph.UnitTest.csproj">
@@ -96,6 +110,7 @@
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
