@@ -34,7 +34,7 @@ namespace ExoWeb.Templates.JavaScript
 		{
 			if (jsPropertyName.StartsWith("get_"))
 			{
-				var property = typeof(T).GetProperty(jsPropertyName.Substring(4), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+				var property = typeof(T).GetProperty(jsPropertyName.Substring(4), System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
 				if (property != null)
 					return LazyDefineMethod(jsPropertyName, item => property.GetValue(item, null));
 			}

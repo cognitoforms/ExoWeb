@@ -101,6 +101,7 @@
     </Compile>
     <Compile Include="ServiceRequest.cs" />
     <Compile Include="ServiceResponse.cs" />
+    <Compile Include="Templates\Context.cs" />
     <Compile Include="Templates\IBindable.cs" />
     <Compile Include="Templates\ITemplate.cs" />
     <Compile Include="Templates\JavaScript\AdapterWrapper.cs" />

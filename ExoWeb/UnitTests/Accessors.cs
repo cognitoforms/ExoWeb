@@ -20,9 +20,10 @@ namespace ExoWeb.UnitTests
 
 		public static object CreateAdapter(ScriptEngine engine, IGraphInstance instance, string propertyName)
 		{
-			GraphInstance source;
-			GraphProperty property;
-			return new AdapterWrapper(engine, (Adapter)new Binding.AdapterExtension("{@ " + propertyName + "}").Evaluate(new AjaxPage() { Context = instance.Instance }, out source, out property));
+			return null;
+			//GraphInstance source;
+			//GraphProperty property;
+			//return new AdapterWrapper(engine, (Adapter)new Binding.AdapterExtension("{@ " + propertyName + "}").Evaluate(new AjaxPage() { Context = instance.Instance }, out source, out property));
 		}
 	}
 }

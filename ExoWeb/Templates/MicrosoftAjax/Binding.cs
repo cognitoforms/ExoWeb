@@ -106,29 +106,24 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				{
 					var engine = new ScriptEngine();
 
-					object dataItem;
+					object dataItem = page.Context.DataItem;
 
-					if (page.Context is GraphInstance)
+					if (dataItem is GraphInstance)
 					{
 						JavaScript.EntityWrapperFactory factory = new JavaScript.EntityWrapperFactory(engine);
-						dataItem = factory.GetEntity((GraphInstance)page.Context);
+						dataItem = factory.GetEntity((GraphInstance)dataItem);
 					}
-					else if (page.Context is Templates.Adapter)
-						dataItem = new JavaScript.AdapterWrapper(engine, (Adapter)page.Context);
-					else if (page.Context is Templates.OptionAdapter)
-						dataItem = new JavaScript.OptionAdapterWrapper(engine, (OptionAdapter)page.Context);
-					else
-						dataItem = page.Context;
+					else if (dataItem is Templates.Adapter)
+						dataItem = new JavaScript.AdapterWrapper(engine, (Adapter)dataItem);
+					else if (dataItem is Templates.OptionAdapter)
+						dataItem = new JavaScript.OptionAdapterWrapper(engine, (OptionAdapter)dataItem);
 
 					// Establish the $dataItem global variable
 					engine.SetGlobalValue("$dataItem", dataItem);
 
 					// Create globals for an control-specific variables
-					if (page.Variables != null)
-					{
-						foreach (var variable in page.Variables)
-							engine.SetGlobalValue(variable.Key, variable.Value);
-					}
+					foreach (var variable in page.Context.Variables)
+						engine.SetGlobalValue(variable.Key, variable.Value);
 					
 					return engine.Evaluate(Expression);
 				}

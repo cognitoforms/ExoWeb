@@ -37,7 +37,8 @@
 	<select class="sys-template" sys:value="{ binding systemValue }"
 		sys:attach="dataview" dataview:data="{ binding options }">
 		<option sys:if="{{ $index == 0 }}" value="">-- select --</option>
-		<option sys:value="{ binding systemValue }">{ binding displayValue }</option>
+		<option sys:if="{{ $dataItem.get_selected() }}" selected="selected" sys:value="{ binding systemValue }">{ binding displayValue }</option>
+		<option sys:if="{{ !$dataItem.get_selected() }}" sys:value="{ binding systemValue }">{ binding displayValue }</option>
 	</select>
 </span>
 
@@ -112,6 +113,14 @@
 
 <!-- string, html editor -->
 <span template:name="field html" template:datatype="ExoWeb.View.Adapter" adapter:datatype="String"
+
+	class="sys-template" sys:attach="template" template:for=".text span, .html1 span, span.html1, .html2 span, span.html2" template:if="$data.isType(String)">
+	<textarea sys:id="html1" sys:value="{ binding displayValue }"
+		sys:cols="{{ !!$dataItem.get_htmlCols ? $dataItem.get_htmlCols() : 60 }}"
+		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : 4 }}"></textarea>
+</span>
+
+<span template:name="field text" template:datatype="ExoWeb.View.Adapter" adapter:datatype="String"
 
 	class="sys-template" sys:attach="template" template:for=".text span, .html1 span, span.html1, .html2 span, span.html2" template:if="$data.isType(String)">
 	<textarea sys:id="html1" sys:value="{ binding displayValue }"

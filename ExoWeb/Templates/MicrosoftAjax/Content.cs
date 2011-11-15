@@ -32,6 +32,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			GraphProperty property;
 			GraphInstance source;
 			var data = Data.Evaluate(page, out source, out property);
+			var realData = data is Adapter ? ((Adapter)data).RawValue : data;
 
 			// Output the original template if data is not available
 			if (data == null)
@@ -56,12 +57,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					if (!String.IsNullOrEmpty(t.DataType))
 					{
 						// Entity
-						if (data is GraphInstance)
+						if (realData is GraphInstance)
 						{
 							// Verify the type matches if it is not the base type
 							if (t.DataType != "ExoWeb.Model.Entity")
 							{
-								var type = ((GraphInstance)data).Type;
+								var type = ((GraphInstance)realData).Type;
 								while (type != null && type.Name != t.DataType)
 									type = type.BaseType;
 								if (type == null)
@@ -70,7 +71,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						}
 
 						// List
-						else if (data is IEnumerable<GraphInstance>)
+						else if (realData is IEnumerable<GraphInstance>)
 						{
 
 						}
@@ -78,7 +79,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						// Value
 						else
 						{
-							string type = JsonConverter.GetJsonValueType(data.GetType());
+							string type = JsonConverter.GetJsonValueType(realData.GetType());
 							if (type != null)
 							{
 								if (type != t.DataType)
@@ -108,10 +109,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				return;
 			}
 
-			var parentContext = page.Context;
-			page.Context = data;
-			template.Render(page, writer);
-			page.Context = parentContext;
+			// Render the template inside a new template context
+			using (page.BeginContext(data, null))
+			{
+				template.Render(page, writer);
+			}
 		}
 
 		public override string ToString()

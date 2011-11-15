@@ -11,8 +11,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// </summary>
 	internal class AjaxPage : Page
 	{
-		public IEnumerable<KeyValuePair<string, object>> Variables { get; set; }
-
 		public override ITemplate Parse(string template)
 		{
 			return Template.Parse(template);

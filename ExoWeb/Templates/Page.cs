@@ -14,13 +14,14 @@ namespace ExoWeb.Templates
 		{
 			Templates = new List<ITemplate>();
 			Model = new Dictionary<string, IEnumerable<GraphInstance>>();
+			BeginContext(null, null);
 		}
 
 		public List<ITemplate> Templates { get; private set; }
 
 		public Dictionary<string, IEnumerable<GraphInstance>> Model { get; private set; }
 
-		public object Context { get; set; }
+		public Context Context { get; private set; }
 
 		public static Page Current
 		{
@@ -31,6 +32,26 @@ namespace ExoWeb.Templates
 					HttpContext.Current.Items["ExoWeb.Page"] = page = new MicrosoftAjax.AjaxPage();
 				return page;
 			}
+		}
+
+		/// <summary>
+		/// Begins a new template context as a child of the current context. 
+		/// </summary>
+		/// <param name="dataItem"></param>
+		/// <param name="variables"></param>
+		/// <returns></returns>
+		public Context BeginContext(object dataItem, IEnumerable<KeyValuePair<string, object>> variables)
+		{
+			return Context = new Context() { Page = this, DataItem = dataItem, Variables = variables ?? Context.NoVariables, ParentContext = Context };
+		}
+
+		/// <summary>
+		/// Ends the current template context.
+		/// </summary>
+		public void EndContext()
+		{
+			if (Context != null)
+				Context = Context.ParentContext;
 		}
 
 		public abstract ITemplate Parse(string template);
@@ -50,7 +71,7 @@ namespace ExoWeb.Templates
 
 			// Return the current context if a path was not specified
 			if (String.IsNullOrEmpty(path))
-				return Context;
+				return Context.DataItem;
 
 			// Assume the binding path represents a property path separated by periods
 			var steps = path.Split('.').ToList();
@@ -59,8 +80,8 @@ namespace ExoWeb.Templates
 			if (steps[0] == "window")
 				steps.RemoveAt(0);
 
-			// Default the context to the current page context
-			var context = Context;
+			// Default the context to the current template context data item
+			var context = Context.DataItem;
 
 			// First see if the binding expression represents a model level source
 			if (steps.Count > 2 && steps[0] == "context" && steps[1] == "model")

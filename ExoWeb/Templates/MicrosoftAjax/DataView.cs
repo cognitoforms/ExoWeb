@@ -49,21 +49,18 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			var list = data is IEnumerable ? (IEnumerable)data : new object[] { data };
 
 			// Process the template for each list item
-			var parentContext = page.Context;
-			var variables = page.Variables;
 			var index = 0;
 			foreach (var item in list)
 			{
-				page.Variables = new Dictionary<string, object>() { {"$index", index++} };
-				writer.Write("<!--item-->");
-				page.Context = item;
-				foreach (var block in Blocks)
-					block.Render(page, writer);
-				writer.Write("<!--/item-->");
-				page.Variables = null;
+				// Begin a new template context
+				using (page.BeginContext(item, new Dictionary<string, object>() { { "$index", index++ } }))
+				{
+					writer.Write("<!--item-->");
+					foreach (var block in Blocks)
+						block.Render(page, writer);
+					writer.Write("<!--/item-->");
+				}
 			}
-			page.Context = parentContext;
-			page.Variables = variables;
 
 			RenderEndTag(page, writer);
 		}
