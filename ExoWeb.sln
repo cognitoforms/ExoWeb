@@ -16,7 +16,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoRule", "..\ExoRule\ExoRule\ExoRule.csproj", "{B67D2642-A41A-42B2-8454-78ABA257008F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests", "ExoWeb.UnitTests\ExoWeb.UnitTests.csproj", "{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests.QUnit", "ExoWeb.UnitTests.QUnit\ExoWeb.UnitTests.QUnit.csproj", "{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests.Server", "ExoWeb.UnitTests.Server\ExoWeb.UnitTests.Server.csproj", "{390E2A10-D560-4DF0-8342-B1B686F74189}"
 EndProject
@@ -46,9 +46,9 @@ Global
 		SccProjectUniqueName6 = ..\\ExoGraph\\ExoGraph.UnitTest\\ExoGraph.UnitTest.csproj
 		SccProjectName6 = ../ExoGraph/ExoGraph.UnitTest
 		SccLocalPath6 = ..\\ExoGraph\\ExoGraph.UnitTest
-		SccProjectUniqueName7 = ExoWeb.UnitTests\\ExoWeb.UnitTests.csproj
-		SccProjectName7 = ExoWeb.UnitTests
-		SccLocalPath7 = ExoWeb.UnitTests
+		SccProjectUniqueName7 = ExoWeb.UnitTests.QUnit\\ExoWeb.UnitTests.QUnit.csproj
+		SccProjectName7 = ExoWeb.UnitTests.QUnit
+		SccLocalPath7 = ExoWeb.UnitTests.QUnit
 	EndGlobalSection
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = ExoWeb.vsmdi
