@@ -101,11 +101,13 @@
     </Compile>
     <Compile Include="ServiceRequest.cs" />
     <Compile Include="ServiceResponse.cs" />
+    <Compile Include="Templates\IBindable.cs" />
     <Compile Include="Templates\ITemplate.cs" />
-    <Compile Include="Templates\JavaScript\Adapter.cs" />
-    <Compile Include="Templates\JavaScript\EntityFactory.cs" />
+    <Compile Include="Templates\JavaScript\AdapterWrapper.cs" />
+    <Compile Include="Templates\JavaScript\OptionAdapterWrapper.cs" />
+    <Compile Include="Templates\JavaScript\EntityWrapperFactory.cs" />
     <Compile Include="Templates\JavaScript\Wrapper.cs" />
-    <Compile Include="Templates\MicrosoftAjax\Adapter.cs" />
+    <Compile Include="Templates\Adapter.cs" />
     <Compile Include="Templates\MicrosoftAjax\Attribute.cs" />
     <Compile Include="Templates\MicrosoftAjax\Binding.cs" />
     <Compile Include="Templates\MicrosoftAjax\Block.cs" />
@@ -115,8 +117,9 @@
     <Compile Include="Templates\MicrosoftAjax\Html.cs" />
     <Compile Include="Templates\JavaScript\InvalidPropertyException.cs" />
     <Compile Include="Templates\JavaScript\Meta.cs" />
-    <Compile Include="Templates\JavaScript\Entity.cs" />
-    <Compile Include="Templates\MicrosoftAjax\Page.cs" />
+    <Compile Include="Templates\JavaScript\EntityWrapper.cs" />
+    <Compile Include="Templates\OptionAdapter.cs" />
+    <Compile Include="Templates\MicrosoftAjax\AjaxPage.cs" />
     <Compile Include="Templates\MicrosoftAjax\ToggleGroup.cs" />
     <Compile Include="Templates\MicrosoftAjax\Toggle.cs" />
     <Compile Include="Templates\MicrosoftAjax\DataView.cs" />

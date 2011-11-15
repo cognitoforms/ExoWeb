@@ -11,7 +11,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// <summary>
 	/// Represents a block of markup in a template, which could be a bound element, control, or just plain text markup.
 	/// </summary>
-	public class Block
+	class Block
 	{
 		#region Html Entity Mapping
 
@@ -190,6 +190,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 									control = new Template()
 									{
+										Attributes = GetAttributes(child, "sys:attach", "sys:if", "template:for", "template:if", "template:name", "template:datatype", "adapter:islist", "adapter:datatype"),
 										Name = child.GetAttribute("template:name").Split(' '),
 										IsList = child.HasAttribute("adapter:islist") ? child.GetAttribute("adapter:islist") == "true" : (bool?)null,
 										IsAdapter = isAdapter,
@@ -201,7 +202,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 								case "dataview":
 									control = new DataView()
 									{
-										Data = child.HasAttribute("dataview:data") ? Binding.Parse(child.GetAttribute("dataview:data")) : null
+										Attributes = GetAttributes(child, "sys:attach", "sys:if", "dataview:data"),
+										Data = GetBinding(child, "dataview:data")
 									};
 									break;
 
@@ -209,7 +211,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 								case "content":
 									control = new Content()
 									{
-										Data = child.HasAttribute("content:data") ? Binding.Parse(child.GetAttribute("content:data")) : null,
+										Attributes = GetAttributes(child, "sys:attach", "sys:if", "content:data", "content:template"),
+										Data = GetBinding(child, "content:data"),
 										Template = child.GetAttribute("content:template").Split(' ')
 									};
 									break;
@@ -243,6 +246,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							control.Blocks = ParseElement(child);
 							control.Tag = child.Name;
 							control.Markup = child.OuterXml;
+							control.If = GetBinding(child, "sys:if");
 
 							// Add the control
 							blocks.Add(control);
@@ -258,17 +262,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							blocks.Add(new Element()
 							{
 								Markup = isClosed ? child.OuterXml : GetElementMarkup(child),
-								Attributes = child.Attributes.Cast<XmlAttribute>().Select(a =>
-									new Attribute()
-									{
-										Name = a.Name,
-										Value = a.Value,
-										Binding = a.Value.Trim().StartsWith("{") && a.Value.Trim().EndsWith("}") ? Binding.Parse(a.Value.Trim()) : null
-									})
-									.ToList(),
+								Attributes = GetAttributes(child, "sys:if"),
 								Tag = child.Name,
 								IsClosed = isClosed,
-								Binding = child.InnerXml.Trim().StartsWith("{") && child.InnerXml.Trim().EndsWith("}") ? Binding.Parse(child.InnerXml.Trim()) : null
+								Binding = child.InnerXml.Trim().StartsWith("{") && child.InnerXml.Trim().EndsWith("}") ? Binding.Parse(child.InnerXml.Trim()) : null,
+								If = child.HasAttribute("sys:if") ? Binding.Parse(child.GetAttribute("sys:if")) : null
 							});
 
 							// Process child nodes, if the element content is not bound
@@ -327,6 +325,25 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return blocks;
 		}
 
+		static Binding GetBinding(XmlElement child, string attributeName)
+		{
+			return child.HasAttribute(attributeName) ? Binding.Parse(child.GetAttribute(attributeName)) : null;
+		}
+
+		static List<Attribute> GetAttributes(XmlElement child, params string[] exceptions)
+		{
+			return child.Attributes
+				.Cast<XmlAttribute>()
+				.Where(a => exceptions == null || !exceptions.Contains(a.Name))
+				.Select(a => new Attribute()
+					{
+						Name = a.Name,
+						Value = a.Name.ToLower() == "class" ? a.Value.Replace("sys-template", "") : a.Value,
+						Binding = a.Value.Trim().StartsWith("{") && a.Value.Trim().EndsWith("}") ? Binding.Parse(a.Value.Trim()) : null
+					})
+				.ToList();
+		}
+
 		/// <summary>
 		/// Gets the markup for the start element tag.
 		/// </summary>
@@ -351,7 +368,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// </summary>
 		/// <param name="page"></param>
 		/// <param name="writer"></param>
-		internal virtual void Render(Page page, TextWriter writer)
+		internal virtual void Render(AjaxPage page, TextWriter writer)
 		{
 			writer.Write(Markup);
 		}

@@ -5,6 +5,8 @@ using System.Text;
 using ExoGraph;
 using ExoWeb.Templates.JavaScript;
 using Jurassic;
+using ExoWeb.Templates.MicrosoftAjax;
+using ExoWeb.Templates;
 
 namespace ExoWeb.UnitTests
 {
@@ -12,15 +14,15 @@ namespace ExoWeb.UnitTests
 	{
 		public static object CreateEntity(ScriptEngine engine, IGraphInstance instance)
 		{
-			EntityFactory factory = new EntityFactory(engine);
+			EntityWrapperFactory factory = new EntityWrapperFactory(engine);
 			return factory.GetEntity(instance.Instance);
 		}
 
 		public static object CreateAdapter(ScriptEngine engine, IGraphInstance instance, string propertyName)
 		{
-			GraphProperty property = instance.Instance.Type.Properties[propertyName];
-			Templates.MicrosoftAjax.Adapter templateAdapter = new Templates.MicrosoftAjax.Adapter(property, instance.Instance[property]);
-			return new Adapter(engine, templateAdapter);
+			GraphInstance source;
+			GraphProperty property;
+			return new AdapterWrapper(engine, (Adapter)new Binding.AdapterExtension("{@ " + propertyName + "}").Evaluate(new AjaxPage() { Context = instance.Instance }, out source, out property));
 		}
 	}
 }

@@ -8,7 +8,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// <summary>
 	/// Represents an attribute of an HTML element that may be bound.
 	/// </summary>
-	public class Attribute
+	internal class Attribute
 	{
 		public string Name { get; internal set; }
 

@@ -9,7 +9,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// <summary>
 	/// Represents an HTML element containing bound attributes or element content.
 	/// </summary>
-	public class Element : Block
+	internal class Element : Block
 	{
 		public string Tag { get; internal set; }
 
@@ -17,41 +17,73 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public Binding Binding { get; internal set; }
 
+		public Binding If { get; internal set; }
+
 		public bool IsClosed { get; internal set; }
 
-		internal override void Render(Page page, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, System.IO.TextWriter writer)
 		{
-			writer.Write("<" + Tag);
+			// Exit immediately if the element is conditionally hidden
+			if (If != null && If.Evaluate(page) as bool? == false)
+				return;
 
-			// Attributes
-			foreach (var attribute in Attributes)
-			{
-				writer.Write(" " + attribute.Name + "=\"");
-				GraphProperty source;
-				var data = attribute.Binding != null ? attribute.Binding.Evaluate(page, out source) : null;
-				if (data != null)
-					writer.Write(data);
-				else
-					writer.Write(attribute.Value);
-				writer.Write("\"");
-			}
+			RenderStartTag(page, writer);
 
 			// Element Binding
 			if (Binding != null)
 			{
-				writer.Write(">");
-				GraphProperty source;
-				var data = Binding.Evaluate(page, out source);
+				var data = Binding.Evaluate(page);
 				if (data != null)
 					writer.Write(data);
 				else
 					writer.Write(Binding.Expression);
-				writer.Write("</" + Tag + ">");
+				RenderEndTag(page, writer);
 			}
-			else if (IsClosed)
+		}
+
+		protected void RenderStartTag(AjaxPage page, System.IO.TextWriter writer)
+		{
+			// Immediately abort if no tag name
+			if (Tag == null)
+				return;
+
+			// Open Tag
+			writer.Write("<" + Tag);
+
+			// Attributes
+			if (Attributes != null)
+			{
+				foreach (var attribute in Attributes)
+				{
+					var data = attribute.Binding != null ? attribute.Binding.Evaluate(page) : null;
+					if (data != null)
+					{
+						writer.Write(" " + (attribute.Name.StartsWith("sys:") ? attribute.Name.Substring(4) : attribute.Name) + "=\"");
+						writer.Write(data);
+					}
+					else
+					{
+						writer.Write(" " + attribute.Name + "=\"");
+						writer.Write(attribute.Value);
+					}
+					writer.Write("\"");
+				}
+			}
+
+			// Close Tag
+			if (IsClosed && Binding == null)
 				writer.Write(" />");
 			else
 				writer.Write(">");
+		}
+
+		protected void RenderEndTag(AjaxPage page, System.IO.TextWriter writer)
+		{
+			// Immediately abort if no tag name
+			if (Tag == null)
+				return;
+
+			writer.Write("</" + Tag + ">");
 		}
 
 		public override string ToString()

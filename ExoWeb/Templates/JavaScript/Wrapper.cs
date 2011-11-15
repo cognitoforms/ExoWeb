@@ -24,7 +24,24 @@ namespace ExoWeb.Templates.JavaScript
 		/// The object being wrapped
 		/// </summary>
 		protected T RealObject { get; private set; }
-		
+
+		/// <summary>
+		/// Automatically expose declared property getters.
+		/// </summary>
+		/// <param name="jsPropertyName"></param>
+		/// <returns></returns>
+		protected override object GetMissingPropertyValue(string jsPropertyName)
+		{
+			if (jsPropertyName.StartsWith("get_"))
+			{
+				var property = typeof(T).GetProperty(jsPropertyName.Substring(4), System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+				if (property != null)
+					return LazyDefineMethod(jsPropertyName, item => property.GetValue(item, null));
+			}
+
+			return base.GetMissingPropertyValue(jsPropertyName);
+		}
+
 		/// <summary>
 		/// Call from GetMissingPropertyValue() to define a property
 		/// </summary>

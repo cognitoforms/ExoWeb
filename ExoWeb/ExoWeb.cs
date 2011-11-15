@@ -846,7 +846,6 @@ namespace ExoWeb
 						{
 							if (condition.Message != condition.Type.Message)
 								json.Set("message", condition.Message);
-
 							json.Set("targets", condition.Targets);
 						},
 						json => { throw new NotSupportedException("Condition cannot be deserialized."); }),
@@ -856,7 +855,6 @@ namespace ExoWeb
 						(conditionTarget, json) =>
 						{
 							json.Set("instance", conditionTarget.Target);
-
 							json.Set("properties", conditionTarget.Properties);
 						},
 						json => { throw new NotSupportedException("ConditionTarget cannot be deserialized."); }),
@@ -866,9 +864,7 @@ namespace ExoWeb
 						(rule, json) =>
 						{
 							json.Set("type", "allowedValues");
-
 							json.Set("property", rule.Property.Name);
-
 							json.Set("source", rule.IsStaticSource ? rule.Source : "this." + rule.Source);
 						},
 						json => { throw new NotSupportedException("AllowedValuesRule cannot be deserialized."); }),
@@ -878,46 +874,69 @@ namespace ExoWeb
 						(rule, json) =>
 						{
 							json.Set("type", "compare");
-
 							json.Set("property", rule.Property.Name);
-
-							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
-
 							json.Set("compareOperator", rule.CompareOperator.ToString());
+							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
 						},
 						json => { throw new NotSupportedException("CompareRule cannot be deserialized."); }),
-
-					// RequiredIfRule
-					new JsonConverter<RequiredIfRule>(
-						(rule, json) =>
-						{
-							json.Set("type", "requiredIf");
-
-							json.Set("property", rule.Property.Name);
-
-							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
-
-							json.Set("compareOperator", rule.CompareOperator.ToString());
-
-							json.Set("compareValue", rule.CompareValue);
-						},
-						json => { throw new NotSupportedException("RequiredIfRule cannot be deserialized."); }),
 
 					// ListLengthRule
 					new JsonConverter<ListLengthRule>(
 						(rule, json) =>
 						{
 							json.Set("type", "listLength");
-
 							json.Set("property", rule.Property.Name);
-
 							json.Set("compareOperator", rule.CompareOperator.ToString());
-
-							json.Set("compareSource", rule.CompareLengthSourceIsStatic ? rule.CompareLengthSource : "this." + rule.CompareLengthSource);
-
+							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
 							json.Set("staticLength", rule.StaticLength.ToString());
 						},
 						json => { throw new NotSupportedException("ListLengthRule cannot be deserialized."); }),
+
+					// RangeRule
+					new JsonConverter<RangeRule>(
+						(rule, json) =>
+						{
+							json.Set("type", "range");
+							json.Set("property", rule.Property.Name);
+							json.Set("min", rule.Minimum);
+							json.Set("max", rule.Maximum);
+						},
+						json => { throw new NotSupportedException("RangeRule cannot be deserialized."); }),
+
+					// RequiredRule
+					new JsonConverter<RequiredRule>(
+						(rule, json) =>
+						{
+							json.Set("type", "required");
+							json.Set("property", rule.Property.Name);
+						},
+						json => { throw new NotSupportedException("RequiredRule cannot be deserialized."); }),
+
+					// RequiredIfRule
+					new JsonConverter<RequiredIfRule>(
+						(rule, json) =>
+						{
+							json.Set("type", "requiredIf");
+							json.Set("property", rule.Property.Name);
+							json.Set("compareOperator", rule.CompareOperator.ToString());
+							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
+							json.Set("compareValue", rule.CompareValue);
+						},
+						json => { throw new NotSupportedException("RequiredIfRule cannot be deserialized."); }),
+
+					// StringLengthRule
+					new JsonConverter<StringLengthRule>(
+						(rule, json) =>
+						{
+							json.Set("type", "stringLength");
+							json.Set("property", rule.Property.Name);
+							if (rule.Minimum > 0)
+								json.Set("min", rule.Minimum);
+							if (rule.Maximum > 0)
+								json.Set("max", rule.Maximum);
+						},
+						json => { throw new NotSupportedException("StringLengthRule cannot be deserialized."); }),
+
 			});
 
 			// Cache the method info of the deserialize method

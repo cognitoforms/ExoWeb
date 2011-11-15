@@ -11,26 +11,26 @@ namespace ExoWeb.Templates.JavaScript
 	/// Factory should be used to create all Entities to limit the number of extra objects created and
 	/// as a way to implement object equality
 	/// </summary>
-	internal class EntityFactory
+	internal class EntityWrapperFactory
 	{
 		ScriptEngine engine;
-		IDictionary<string, Entity> entities = new Dictionary<string,Entity>();
+		IDictionary<string, EntityWrapper> entities = new Dictionary<string,EntityWrapper>();
 
-		public EntityFactory(ScriptEngine engine)
+		public EntityWrapperFactory(ScriptEngine engine)
 		{
 			this.engine = engine;
 		}
 
-		public Entity GetEntity(GraphInstance instance)
+		public EntityWrapper GetEntity(GraphInstance instance)
 		{
 			string key = instance.Type.Name + "|" + instance.Id;
 
-			Entity entity;
+			EntityWrapper entity;
 
 			if (entities.TryGetValue(key, out entity))
 				return entity;
 
-			entity = new Entity(engine, instance, this);
+			entity = new EntityWrapper(engine, instance, this);
 			entities.Add(key, entity);
 
 			return entity;

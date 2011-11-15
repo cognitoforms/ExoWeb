@@ -8,7 +8,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// <summary>
 	/// Represents a toggle group control for conditionally rendering groups of content.
 	/// </summary>
-	public class ToggleGroup : Control
+	internal class ToggleGroup : Control
 	{
 
 	}

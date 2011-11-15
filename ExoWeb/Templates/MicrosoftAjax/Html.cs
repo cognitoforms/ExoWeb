@@ -8,7 +8,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// <summary>
 	/// Represents an html control for rendering unescaped literal html content.
 	/// </summary>
-	public class Html : Control
+	internal class Html : Control
 	{
 
 	}

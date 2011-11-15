@@ -4,14 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using System.IO;
-using PageBase = ExoWeb.Templates.Page;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {
 	/// <summary>
 	/// Represents a reusuable template for rendering databound HTML markup and controls.
 	/// </summary>
-	public class Template : Control, ITemplate
+	internal class Template : Control, ITemplate
 	{
 		static Dictionary<string, IEnumerable<Template>> templates = new Dictionary<string, IEnumerable<Template>>();
 		static Dictionary<string, FileSystemWatcher> watchers = new Dictionary<string, FileSystemWatcher>();
@@ -48,6 +47,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				{
 					var watcher = new FileSystemWatcher(directory);
 					watcher.Changed += (s, e) => templates.Remove(e.FullPath.ToLower());
+					watcher.EnableRaisingEvents = true;
 					watchers[directory] = watcher;
 				}
 				return t;
@@ -68,9 +68,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// </summary>
 		/// <param name="page"></param>
 		/// <param name="writer"></param>
-		void ITemplate.Render(PageBase page, System.Web.UI.HtmlTextWriter writer)
+		void ITemplate.Render(Page page, System.Web.UI.HtmlTextWriter writer)
 		{
-			Render((Page)page, writer);
+			Render((AjaxPage)page, writer);
 		}
 	}
 }

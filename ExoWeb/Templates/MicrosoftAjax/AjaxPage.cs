@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using PageBase = ExoWeb.Templates.Page;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {
@@ -10,8 +9,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// Microsoft AJAX specific implementation of <see cref="ExoWeb.Templates.Page"/> that supports
 	/// parsing and loading templates using the Microsoft AJAX syntax.
 	/// </summary>
-	internal class Page : PageBase
+	internal class AjaxPage : Page
 	{
+		public IEnumerable<KeyValuePair<string, object>> Variables { get; set; }
+
 		public override ITemplate Parse(string template)
 		{
 			return Template.Parse(template);

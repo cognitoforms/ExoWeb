@@ -9,14 +9,18 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// <summary>
 	/// Represents a content control for rendering strongly-typed content using a contextually selected template.
 	/// </summary>
-	public class Content : Control
+	internal class Content : Control
 	{
 		public Binding Data { get; internal set; }
 
 		public string[] Template { get; internal set; }
 
-		internal override void Render(Page page, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, System.IO.TextWriter writer)
 		{
+			// Exit immediately if the element is conditionally hidden
+			if (If != null && If.Evaluate(page) as bool? == false)
+				return;
+
 			// Output the original template if data source was not specified
 			if (Data == null)
 			{
@@ -25,8 +29,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			// Get the data associated with the data view
-			GraphProperty source;
-			var data = Data.Evaluate(page, out source);
+			GraphProperty property;
+			GraphInstance source;
+			var data = Data.Evaluate(page, out source, out property);
 
 			// Output the original template if data is not available
 			if (data == null)
@@ -83,7 +88,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					}
 
 					// Check whether the template is specific to lists
-					if (t.IsList != null && source is GraphReferenceProperty && t.IsList != ((GraphReferenceProperty)source).IsList)
+					if (t.IsList != null && property is GraphReferenceProperty && t.IsList != ((GraphReferenceProperty)property).IsList)
 						return false;
 
 					// Finally, verify that the template names match sufficiently

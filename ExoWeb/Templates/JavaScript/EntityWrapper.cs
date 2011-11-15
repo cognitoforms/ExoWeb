@@ -8,14 +8,14 @@ using Jurassic;
 
 namespace ExoWeb.Templates.JavaScript
 {
-	internal class Entity : Wrapper<GraphInstance>
+	internal class EntityWrapper : Wrapper<GraphInstance>
 	{
 		const string GetterPrefix = "get_";
 		const string SetterPrefix = "set_";
 
-		EntityFactory factory;
+		EntityWrapperFactory factory;
 
-		internal Entity(ScriptEngine engine, GraphInstance instance, EntityFactory factory)
+		internal EntityWrapper(ScriptEngine engine, GraphInstance instance, EntityWrapperFactory factory)
 			: base(instance, engine, engine.Object.InstancePrototype)
 		{
 			this.factory = factory;

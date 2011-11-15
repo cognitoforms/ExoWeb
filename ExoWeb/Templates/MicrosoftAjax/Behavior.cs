@@ -8,7 +8,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// <summary>
 	/// Represents a behavior control for attaching dynamic behavior to an element.
 	/// </summary>
-	public class Behavior : Control
+	internal class Behavior : Control
 	{
 
 	}
