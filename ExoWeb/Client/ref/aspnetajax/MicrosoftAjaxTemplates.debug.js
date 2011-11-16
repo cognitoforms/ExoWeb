@@ -2566,7 +2566,7 @@ false);
 					// Determine if the template uses the $index argument by inspecting the compiled template code.
 					var template = this._ensureTemplate(this._getTemplate());
 					template._ensureCompiled();
-					var templateUsesDollarIndex = /with\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
+					var templateUsesDollarIndex = /with\s*\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
 	
 					if (templateUsesDollarIndex) {
 						this.refresh();
