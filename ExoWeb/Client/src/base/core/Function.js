@@ -153,7 +153,16 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 				if (origCallback) {
 					origCallback.apply(origThisPtr || this, arguments);
 				}
-				calls.remove(call);
+				if (options.memoize === true) {
+					call.complete = true;
+					call.response = {
+						thisPtr: this,
+						args: Array.prototype.slice.call(arguments)
+					};
+				}
+				else {
+					calls.remove(call);
+				}
 			});
 
 			// Copy the args
@@ -186,21 +195,32 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 					invocationArgs[options.callbackArg] = origCallback;
 				}
 
-				call.call.callback.add(function() {
+				var callbackArgs;
 
-					var callbackArgs;
-
+				if (call.call.complete === true) {
 					if (options.partitionedFilter) {
-						callbackArgs = Array.prototype.slice.call(arguments);
+						callbackArgs = Array.prototype.slice.call(call.call.response.args);
 						options.partitionedFilter.call(origThisPtr || this, call.call.args, invocationArgs, callbackArgs);
 					}
 					else {
-						callbackArgs = arguments;
+						callbackArgs = call.call.response.args;
 					}
 
-					origCallback.apply(origThisPtr || this, callbackArgs);
-
-				});
+					origCallback.apply(origThisPtr || call.call.response.thisPtr, callbackArgs);
+				}
+				else {
+					call.call.callback.add(function() {
+						if (options.partitionedFilter) {
+							callbackArgs = Array.prototype.slice.call(arguments);
+							options.partitionedFilter.call(origThisPtr || this, call.call.args, invocationArgs, callbackArgs);
+						}
+						else {
+							callbackArgs = arguments;
+						}
+	
+						origCallback.apply(origThisPtr || this, callbackArgs);
+					});
+				}
 			});
 
 		}

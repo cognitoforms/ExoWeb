@@ -318,7 +318,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 					if (origCallback) {
 						origCallback.apply(origThisPtr || this, arguments);
 					}
-					calls.remove(call);
+					if (options.memoize === true) {
+						call.complete = true;
+						call.response = {
+							thisPtr: this,
+							args: Array.prototype.slice.call(arguments)
+						};
+					}
+					else {
+						calls.remove(call);
+					}
 				});
 
 				// Copy the args
@@ -351,21 +360,32 @@ Type.registerNamespace("ExoWeb.DotNet");
 						invocationArgs[options.callbackArg] = origCallback;
 					}
 
-					call.call.callback.add(function() {
+					var callbackArgs;
 
-						var callbackArgs;
-
+					if (call.call.complete === true) {
 						if (options.partitionedFilter) {
-							callbackArgs = Array.prototype.slice.call(arguments);
+							callbackArgs = Array.prototype.slice.call(call.call.response.args);
 							options.partitionedFilter.call(origThisPtr || this, call.call.args, invocationArgs, callbackArgs);
 						}
 						else {
-							callbackArgs = arguments;
+							callbackArgs = call.call.response.args;
 						}
 
-						origCallback.apply(origThisPtr || this, callbackArgs);
-
-					});
+						origCallback.apply(origThisPtr || call.call.response.thisPtr, callbackArgs);
+					}
+					else {
+						call.call.callback.add(function() {
+							if (options.partitionedFilter) {
+								callbackArgs = Array.prototype.slice.call(arguments);
+								options.partitionedFilter.call(origThisPtr || this, call.call.args, invocationArgs, callbackArgs);
+							}
+							else {
+								callbackArgs = arguments;
+							}
+	
+							origCallback.apply(origThisPtr || this, callbackArgs);
+						});
+					}
 				});
 
 			}
@@ -7569,7 +7589,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	}
 
-	var typeProvider = typeProviderImpl.dontDoubleUp({ callbackArg: 1, partitionedArg: 0, partitionedFilter: deleteTypeJson });
+	var typeProvider = typeProviderImpl.dontDoubleUp({ callbackArg: 1, partitionedArg: 0, partitionedFilter: deleteTypeJson, memoize: true });
 
 	ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 		typeProviderFn = fn;
@@ -9856,6 +9876,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// get model type. it may have already been created for lazy loading	
 		var mtype = getType(model, typeName, json.baseType, true);
+
+		if (mtype.get_originForNewProperties() === "client") {
+			ExoWeb.trace.throwAndLog("typeInit", "type \"{0}\" has already been loaded", mtype._fullName);
+		}
 
 		// define properties
 		for (var propName in json.properties) {

@@ -279,6 +279,10 @@ function typeFromJson(model, typeName, json) {
 	// get model type. it may have already been created for lazy loading	
 	var mtype = getType(model, typeName, json.baseType, true);
 
+	if (mtype.get_originForNewProperties() === "client") {
+		ExoWeb.trace.throwAndLog("typeInit", "type \"{0}\" has already been loaded", mtype._fullName);
+	}
+
 	// define properties
 	for (var propName in json.properties) {
 		var propJson = json.properties[propName];

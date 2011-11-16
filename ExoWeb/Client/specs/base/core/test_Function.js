@@ -527,7 +527,7 @@ describe("dontDoubleUp", function() {
 		expect(c).toHaveBeenCalledWith(lookup("a"), lookup("b"), lookup("c"));
 
 	});
-	
+
 	it("allows for filtering the results when partitioned", function() {
 
 		function filter(originalInput, partitionedInput, output) {
@@ -560,6 +560,81 @@ describe("dontDoubleUp", function() {
 		expect(c.callCount).toBe(1);
 		expect(c).toHaveBeenCalledWith(lookup("c"));
 
+	});
+
+	it("memoizes values for non-partitioned functions if enabled", function() {
+		var numCalls = 0;
+
+		var fn = (function(arg, callback) {
+			numCalls++;
+			callback(lookup(arg).join(","));
+		}).dontDoubleUp({ callbackArg: 1, memoize: true });
+
+		var result1;
+		fn("abc", function(r) {
+			result1 = r;
+		});
+
+		var result2;
+		fn("abc", function(r) {
+			result2 = r;
+		});
+
+		expect(numCalls).toBe(1);
+		expect(result1).toBe(lookup("abc").join(","));
+		expect(result2).toBe(lookup("abc").join(","));
+	});
+
+	it("memoizes values for partitioned functions if enabled", function() {
+		var numCalls = 0;
+
+		function mapResults(originalInput, partitionedInput, output) {
+			var results = output[0];
+			var additional = output[1] = {};
+			var args = originalInput[0];
+			for (var i = 0; i < args.length; i++) {
+				var arg = args[i];
+				var code = arg.charCodeAt(0);
+				additional[code] = results[code];
+				delete results[code];
+			}
+		}
+
+		var fn = (function(args, callback) {
+			numCalls++;
+			var results = {};
+			for (var i = 0; i < args.length; i++) {
+				var arg = args[i];
+				results[arg.charCodeAt(0)] = lookup(arg);
+			}
+			callback(results);
+		}).dontDoubleUp({ callbackArg: 1, partitionedArg: 0, partitionedFilter: mapResults, memoize: true });
+
+		var result1, additional1;
+		fn(["a", "b", "c"], function(r, s) {
+			result1 = r;
+			additional1 = s;
+		});
+		
+		expect(numCalls).toBe(1);
+		expect(result1[97]).toBe(lookup("a"));
+		expect(result1[98]).toBe(lookup("b"));
+		expect(result1[99]).toBe(lookup("c"));
+		expect(additional1).toBe(undefined);
+
+		var result2, additional2;
+		fn(["a", "b", "c"], function(r, s) {
+			result2 = r;
+			additional2 = s;
+		});
+
+		expect(numCalls).toBe(1);
+		expect(result2[97]).toBe(undefined);
+		expect(result2[98]).toBe(undefined);
+		expect(result2[99]).toBe(undefined);
+		expect(additional2[97]).toBe(lookup("a"));
+		expect(additional2[98]).toBe(lookup("b"));
+		expect(additional2[99]).toBe(lookup("c"));
 	});
 
 });

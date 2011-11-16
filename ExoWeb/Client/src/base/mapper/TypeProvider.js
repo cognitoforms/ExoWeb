@@ -75,7 +75,7 @@ function deleteTypeJson(originalArgs, invocationArgs, callbackArgs) {
 	}
 }
 
-var typeProvider = typeProviderImpl.dontDoubleUp({ callbackArg: 1, partitionedArg: 0, partitionedFilter: deleteTypeJson });
+var typeProvider = typeProviderImpl.dontDoubleUp({ callbackArg: 1, partitionedArg: 0, partitionedFilter: deleteTypeJson, memoize: true });
 
 ExoWeb.Mapper.setTypeProvider = function setTypeProvider(fn) {
 	typeProviderFn = fn;
