@@ -41,17 +41,18 @@
 			timeoutTests(2000);
 			
 			function renderComplete() {
-				console.log("render complete");
-
 				executeTest("test1");
 				executeTest("test2");
 				executeTest("test3");
 			}
 			
+			$(function() {
+				Sys.Application.activateElement(document.documentElement);
+			});
+
 		</script>
 	</head>
-	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView"
-		xmlns:content="javascript:ExoWeb.UI.Content" xmlns:template="javascript:ExoWeb.UI.Template" sys:activate="*">
+	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" sys:activate="*">
 		
 		<!-- QUnit Display -->
 		<h1 id="qunit-header">Test Results:</h1>
