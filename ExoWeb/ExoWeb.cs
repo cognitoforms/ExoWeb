@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using ExoGraph;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -9,11 +8,7 @@ using System.Web.Script.Serialization;
 using ExoRule.Validation;
 using ExoRule;
 using System.Collections;
-using System.Runtime.Serialization;
-using System.Collections.Specialized;
 using ExoWeb.Templates;
-using System.Web;
-using System.Web.Mvc;
 using System.IO;
 
 namespace ExoWeb
