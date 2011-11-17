@@ -11,6 +11,10 @@ using ExoRule;
 using System.Collections;
 using System.Runtime.Serialization;
 using System.Collections.Specialized;
+using ExoWeb.Templates;
+using System.Web;
+using System.Web.Mvc;
+using System.IO;
 
 namespace ExoWeb
 {
@@ -24,7 +28,8 @@ namespace ExoWeb
 		static HashSet<Type> serializableTypes;
 		static MethodInfo deserialize;
 		static long minJsonTicks = new DateTime(0x7b2, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
-
+		static MethodInfo createHtmlString = Type.GetType("System.Web.Mvc.MvcHtmlString, System.Web.Mvc") != null ?
+			Type.GetType("System.Web.Mvc.MvcHtmlString, System.Web.Mvc").GetMethod("Create", BindingFlags.Static | BindingFlags.Public, null, new Type[] { typeof(string) }, null) : null;
 
 		#endregion
 
@@ -34,6 +39,13 @@ namespace ExoWeb
 		{
 			Adapter = new ServiceAdapter();
 			InitializeSerialization();
+			var assembly = Assembly.LoadWithPartialName("System.Web.Mvc");
+			if (assembly != null)
+			{
+				var type = assembly.GetType("System.Web.Mvc.MvcHtmlString");
+				if (type != null)
+					createHtmlString = type.GetMethod("Create", BindingFlags.Static | BindingFlags.Public, null, new Type[] { typeof(string) }, null);
+			}
 		}
 
 		#endregion
@@ -132,7 +144,7 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="query"></param>
 		/// <returns></returns>
-		public static string Model(object query)
+		public static object Model(object query)
 		{
 			return Model(query, (Delegate)null);
 		}
@@ -145,7 +157,7 @@ namespace ExoWeb
 		/// <param name="query"></param>
 		/// <param name="init"></param>
 		/// <returns></returns>
-		public static string Model<T>(object query, Action<T> init)
+		public static object Model<T>(object query, Action<T> init)
 		{
 			return Model(query, (Delegate)init);
 		}
@@ -159,7 +171,7 @@ namespace ExoWeb
 		/// <param name="query"></param>
 		/// <param name="init"></param>
 		/// <returns></returns>
-		public static string Model<T1, T2>(object query, Action<T1, T2> init)
+		public static object Model<T1, T2>(object query, Action<T1, T2> init)
 		{
 			return Model(query, (Delegate)init);
 		}
@@ -174,7 +186,7 @@ namespace ExoWeb
 		/// <param name="query"></param>
 		/// <param name="init"></param>
 		/// <returns></returns>
-		public static string Model<T1, T2, T3>(object query, Action<T1, T2, T3> init)
+		public static object Model<T1, T2, T3>(object query, Action<T1, T2, T3> init)
 		{
 			return Model(query, (Delegate)init);
 		}
@@ -190,7 +202,7 @@ namespace ExoWeb
 		/// <param name="query"></param>
 		/// <param name="init"></param>
 		/// <returns></returns>
-		public static string Model<T1, T2, T3, T4>(object query, Action<T1, T2, T3, T4> init)
+		public static object Model<T1, T2, T3, T4>(object query, Action<T1, T2, T3, T4> init)
 		{
 			return Model(query, (Delegate)init);
 		}
@@ -202,7 +214,7 @@ namespace ExoWeb
 		/// <param name="query"></param>
 		/// <param name="init"></param>
 		/// <returns></returns>
-		static string Model(object query, Delegate init)
+		static object Model(object query, Delegate init)
 		{
 			// Get the roots for each query
 			var roots = new List<KeyValuePair<string, ServiceRequest.Query>>();
@@ -290,7 +302,7 @@ namespace ExoWeb
 				Templates.Page.Current.Model[root.Key] = root.Value.Roots;
 
 			// Return the response
-			return "<script type=\"text/javascript\">$exoweb(" + FixJsonDates(ToJson(typeof(ServiceResponse), response)) + ");</script>";
+			return GetHtmlString("<script type=\"text/javascript\">$exoweb(" + FixJsonDates(ToJson(typeof(ServiceResponse), response)) + ");</script>");
 		}
 
 		/// <summary>
@@ -298,11 +310,42 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="paths"></param>
 		/// <returns></returns>
-		public static string LoadTemplates(params string[] paths)
+		public static object LoadTemplates(params string[] paths)
 		{
 			Templates.Page.Current.Templates.AddRange(paths.SelectMany(p => Templates.Page.Current.LoadTemplates(System.Web.HttpContext.Current.Server.MapPath(p))));
 			var urls = paths.Select(p => p.StartsWith("~") ? System.Web.VirtualPathUtility.ToAbsolute(p) : p).Select(p => p + (p.Contains("?") ? "&" : "?") + "cachehash=" + ExoWeb.CacheHash);
-			return "<script type=\"text/javascript\">$exoweb(function () {" + urls.Aggregate("", (js, url) => js + "ExoWeb.UI.Template.load(\"" + url + "\"); ") + "});</script>";
+			return GetHtmlString("<script type=\"text/javascript\">$exoweb(function () {" + urls.Aggregate("", (js, url) => js + "ExoWeb.UI.Template.load(\"" + url + "\"); ") + "});</script>");
+		}
+
+		/// <summary>
+		/// Renders the specified template using the current model and loaded templates.
+		/// </summary>
+		/// <param name="template"></param>
+		/// <returns>
+		/// The HTML result of the rendering process, either as <see cref="string"/> or
+		/// <see cref="IHtmlString"/> if MVC assemblies are available.
+		/// </returns>
+		public static object Render(Func<object, object> template)
+		{
+			var markup = template(null).ToString();
+			using (var writer = new StringWriter())
+			{
+				Page.Current.Parse(markup).Render(Page.Current, writer);
+				return GetHtmlString(writer.ToString()); 
+
+			}
+		}
+
+		/// <summary>
+		/// Attempts to coerce a string into an IHtmlString for use in MVC applications.
+		/// Since ExoWeb currently targets .NET 3.5, this method attempts to call a .NET 4.0 
+		/// method via reflection but gracefully degrades by returning the original string.
+		/// </summary>
+		/// <param name="value"></param>
+		/// <returns></returns>
+		static object GetHtmlString(string value)
+		{
+			return createHtmlString != null ? createHtmlString.Invoke(null, new object[] { value }) : value;
 		}
 
 		/// <summary>

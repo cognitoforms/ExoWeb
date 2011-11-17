@@ -17,6 +17,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		static Regex entityParser = new Regex(@"\&(?<entity>[A-Za-z]+)\;", RegexOptions.Compiled);
 		static Regex ampParser = new Regex(@"\&(?!\#\d+\;)");
+		static Regex xmlnsParser = new Regex(@"\sxmlns\:\w+=\"".*?\""");
 
 		static Dictionary<string, string> entities = new Dictionary<string, string>() 
 		{
@@ -190,11 +191,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 									control = new Template()
 									{
-										Attributes = GetAttributes(child, "sys:attach", "sys:if", "template:for", "template:if", "template:name", "template:datatype", "adapter:islist", "adapter:datatype"),
+										Attributes = GetAttributes(child, "class", "sys:attach", "sys:if", "template:for", "template:if", "template:name", "template:datatype", "adapter:islist", "adapter:datatype"),
 										Name = child.GetAttribute("template:name").Split(' '),
 										IsList = child.HasAttribute("adapter:islist") ? child.GetAttribute("adapter:islist") == "true" : (bool?)null,
 										IsAdapter = isAdapter,
-										DataType = isAdapter ? child.GetAttribute("adapter:datatype") : child.GetAttribute("template:datatype")
+										DataType = isAdapter ? child.GetAttribute("adapter:datatype") : child.GetAttribute("template:datatype"),
+										Class = child.GetAttribute("class").Split(' ').Where(c => c != "" && c.ToLower() != "sys-template").ToArray()
 									};
 									break;
 
@@ -245,7 +247,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							// Process the controls child blocks
 							control.Blocks = ParseElement(child);
 							control.Tag = child.Name;
-							control.Markup = child.OuterXml;
+							control.Markup = GetMarkup(child);
 							control.If = GetBinding(child, "sys:if");
 
 							// Add the control
@@ -261,7 +263,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							// Add the bound element
 							blocks.Add(new Element()
 							{
-								Markup = isClosed ? child.OuterXml : GetElementMarkup(child),
+								Markup = isClosed ? GetMarkup(child) : GetElementMarkup(child),
 								Attributes = GetAttributes(child, "sys:if"),
 								Tag = child.Name,
 								IsClosed = isClosed,
@@ -285,7 +287,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 							// Add the entire element as a block if it only contains literal content
 							if (children.Count == 0 || (children.Count == 1 && children.First().GetType() == typeof(Block)))
-								blocks.Add(new Block() { Markup = child.OuterXml });
+								blocks.Add(new Block() { Markup = GetMarkup(child) });
 
 							// Otherwise, process the child blocks
 							else
@@ -299,7 +301,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 					// Literal content
 					case XmlNodeType.Text:
-						blocks.Add(new Block() { Markup = node.InnerXml });
+						blocks.Add(new Block() { Markup = GetMarkup(node) });
 						break;
 				}
 			}
@@ -325,6 +327,16 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return blocks;
 		}
 
+		/// <summary>
+		/// Gets the HTML markup for the specified <see cref="XmlNode"/>.
+		/// </summary>
+		/// <param name="node"></param>
+		/// <returns></returns>
+		static string GetMarkup(XmlNode node)
+		{
+			return xmlnsParser.Replace(node.OuterXml, "");
+		}
+
 		static Binding GetBinding(XmlElement child, string attributeName)
 		{
 			return child.HasAttribute(attributeName) ? Binding.Parse(child.GetAttribute(attributeName)) : null;
@@ -338,7 +350,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				.Select(a => new Attribute()
 					{
 						Name = a.Name,
-						Value = a.Name.ToLower() == "class" ? a.Value.Replace("sys-template", "") : a.Value,
+						Value = a.Name.ToLower() == "class" ? a.Value.Replace("sys-template", "").Trim() : a.Value,
 						Binding = a.Value.Trim().StartsWith("{") && a.Value.Trim().EndsWith("}") ? Binding.Parse(a.Value.Trim()) : null
 					})
 				.ToList();

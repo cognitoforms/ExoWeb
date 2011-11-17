@@ -22,7 +22,7 @@ namespace ExoWeb.Templates
 		{
 			get
 			{
-				return Parent.GetDisplayFormat(RawValue);
+				return Adapter.GetDisplayFormat(RawValue, null);
 			}
 		}
 

@@ -124,12 +124,13 @@ namespace ExoWeb.Templates
 
 				// Evaluate the last step along the path
 				property = source.Type.Properties[steps.Last()];
+				if (property == null)
+					return null;
 				if (property is GraphValueProperty)
 					return source.GetValue((GraphValueProperty)property);
-				else if (((GraphReferenceProperty)property).IsList)
+				if (((GraphReferenceProperty)property).IsList)
 					return source.GetList((GraphReferenceProperty)property);
-				else
-					return source.GetReference((GraphReferenceProperty)property);
+				return source.GetReference((GraphReferenceProperty)property);
 			}
 
 			// IBindable

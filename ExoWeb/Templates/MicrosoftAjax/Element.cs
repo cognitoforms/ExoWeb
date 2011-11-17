@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using ExoGraph;
+using System.Web;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {
@@ -43,6 +44,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		protected void RenderStartTag(AjaxPage page, System.IO.TextWriter writer)
 		{
+			RenderStartTag(page, writer, null);
+		}
+
+		protected void RenderStartTag(AjaxPage page, System.IO.TextWriter writer, Func<IEnumerable<KeyValuePair<string, object>>, IEnumerable<KeyValuePair<string, object>>> attributeTransform)
+		{
 			// Immediately abort if no tag name
 			if (Tag == null)
 				return;
@@ -51,28 +57,49 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			writer.Write("<" + Tag);
 
 			// Attributes
-			if (Attributes != null)
-			{
-				foreach (var attribute in Attributes)
+			string innerHtml = null;
+			var attributes = (Attributes ?? new List<Attribute>())
+				.Select(attribute =>
 				{
 					var data = attribute.Binding != null ? attribute.Binding.Evaluate(page) : null;
 					if (data != null)
-					{
-						writer.Write(" " + (attribute.Name.StartsWith("sys:") ? attribute.Name.Substring(4) : attribute.Name) + "=\"");
-						writer.Write(data);
-					}
+						return new KeyValuePair<string, object>((attribute.Name.StartsWith("sys:") ? attribute.Name.Substring(4).ToLower() : attribute.Name.ToLower()), data);
 					else
-					{
-						writer.Write(" " + attribute.Name + "=\"");
-						writer.Write(attribute.Value);
-					}
-					writer.Write("\"");
-				}
-			}
+						return new KeyValuePair<string, object>(attribute.Name.ToLower(), attribute.Value);
+
+				})
+				.Where(attribute =>
+				{
+					if (attribute.Value == null)
+						return false;
+					var html = attribute.Value.ToString();
+					if (attribute.Key == "sys:innerhtml")
+						innerHtml = html;
+					else if (attribute.Key == "sys:innertext")
+						innerHtml = HttpUtility.HtmlEncode(html);
+					else
+						return true;
+					return false;
+				});
+
+			// Transform the attributes if necessary
+			if (attributeTransform != null)
+				attributes = attributeTransform(attributes);
+
+			// Write the attributes to the output stream
+			foreach (var attribute in attributes)
+				writer.Write(" " + attribute.Key + "=\"" + HttpUtility.HtmlEncode(attribute.Value.ToString()) + "\"");
 
 			// Close Tag
 			if (IsClosed && Binding == null)
-				writer.Write(" />");
+			{
+				if (innerHtml != null)
+					writer.Write(">" + innerHtml + "</" + Tag + ">");
+				else
+					writer.Write(" />");
+			}
+			else if (innerHtml != null)
+				writer.Write(">" + innerHtml);
 			else
 				writer.Write(">");
 		}

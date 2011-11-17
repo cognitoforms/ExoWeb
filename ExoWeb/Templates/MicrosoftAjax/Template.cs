@@ -23,6 +23,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public bool? IsList { get; internal set; }
 
+		public string[] Class { get; internal set; }
+
 		public static new Template Parse(string template)
 		{
 			return new Template() { Markup = template, Blocks = Block.Parse(template) };
@@ -63,12 +65,22 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return String.Format(@"<{0} isadapter=""{1}"" islist=""{2}"" datatype=""{3}"" />", Tag, IsAdapter, IsList, DataType);
 		}
 
+		internal override void Render(AjaxPage page, TextWriter writer)
+		{
+			// Exit immediately if the element is conditionally hidden
+			if (If != null && If.Evaluate(page) as bool? == false)
+				return;
+
+			foreach (var block in Blocks)
+				block.Render(page, writer);
+		}
+
 		/// <summary>
 		/// Implements the <see cref="ITemplate.Render"/> method by delegating the to internal instance method.
 		/// </summary>
 		/// <param name="page"></param>
 		/// <param name="writer"></param>
-		void ITemplate.Render(Page page, System.Web.UI.HtmlTextWriter writer)
+		void ITemplate.Render(Page page, System.IO.TextWriter writer)
 		{
 			Render((AjaxPage)page, writer);
 		}

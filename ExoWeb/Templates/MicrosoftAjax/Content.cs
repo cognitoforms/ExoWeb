@@ -35,7 +35,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			var realData = data is Adapter ? ((Adapter)data).RawValue : data;
 
 			// Output the original template if data is not available
-			if (data == null)
+			if (realData == null)
 			{
 				writer.Write(Markup);
 				return;
@@ -109,11 +109,39 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				return;
 			}
 
+			// Render the original content start tag
+			RenderStartTag(page, writer, attributes => template.Class.Length > 0 ? MergeAttributes(attributes, template) : attributes);
+
 			// Render the template inside a new template context
 			using (page.BeginContext(data, null))
 			{
 				template.Render(page, writer);
 			}
+
+			// Render the original content end tag
+			RenderEndTag(page, writer);
+		}
+
+		/// <summary>
+		/// Merges the set of attributes defined on the content tag with attributes from the target template.
+		/// </summary>
+		/// <param name="attributes"></param>
+		/// <param name="template"></param>
+		/// <returns></returns>
+		IEnumerable<KeyValuePair<string, object>> MergeAttributes(IEnumerable<KeyValuePair<string, object>> attributes, Template template)
+		{
+			bool classFound = false;
+			foreach (var attribute in attributes)
+			{
+				if (attribute.Key == "class")
+				{
+					classFound = true;
+					yield return new KeyValuePair<string, object>(attribute.Key, String.Join(" ", attribute.Value.ToString().Split(' ').Union(template.Class).ToArray()));
+				}
+				yield return attribute;
+			}
+			if (!classFound)
+				yield return new KeyValuePair<string, object>("class", String.Join(" ", template.Class));
 		}
 
 		public override string ToString()

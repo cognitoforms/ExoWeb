@@ -14,11 +14,13 @@ namespace ExoWeb.Templates
 		string label;
 		IEnumerable<OptionAdapter> options;
 
-		internal Adapter(GraphInstance source, GraphProperty property, object value)
+		internal Adapter(GraphInstance source, GraphProperty property, object value, string format, string label)
 		{
 			this.Source = source;
 			this.Property = property;
 			this.RawValue = value;
+			this.Format = format;
+			this.Label = label ?? property.Label;
 		}
 
 		public GraphInstance Source { get; private set; }
@@ -27,6 +29,10 @@ namespace ExoWeb.Templates
 
 		public object RawValue { get; private set; }
 
+		public string Format { get; private set; }
+
+		public string Label { get; private set; }
+
 		public object DisplayValue
 		{
 			get
@@ -34,14 +40,21 @@ namespace ExoWeb.Templates
 				if (RawValue == null)
 					return null;
 				if (RawValue is IEnumerable && !(RawValue is String))
-					return ((IEnumerable)RawValue).Cast<object>().Select(i => GetDisplayFormat(i));
-				return GetDisplayFormat(RawValue);
+					return ((IEnumerable)RawValue).Cast<object>().Select(i => GetDisplayFormat(i, Format));
+				return GetDisplayFormat(RawValue, Format);
 			}
 		}
 
-		internal string GetDisplayFormat(object instance)
+		internal static string GetDisplayFormat(object value, string format)
 		{
-			return instance.ToString();
+			if (value is GraphInstance)
+			{
+				var type = ((GraphInstance)value).Type;
+				var property = (type.Properties["Label"] ?? type.Properties["Name"] ?? type.Properties["Text"] ?? type.Properties["Description"]) as GraphValueProperty;
+				if (property != null && property.PropertyType == typeof(string))
+					return (string)((GraphInstance)value).GetValue(property);
+			}
+			return value != null ? value.ToString() : "";
 		}
 
 		public object SystemValue
@@ -61,18 +74,6 @@ namespace ExoWeb.Templates
 		internal string GetSystemFormat(GraphInstance instance)
 		{
 			return instance.Id;
-		}
-
-		public string Label
-		{
-			get
-			{
-				return label ?? Property.Label;
-			}
-			set
-			{
-				this.label = value;
-			}
 		}
 
 		public IEnumerable<OptionAdapter> Options

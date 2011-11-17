@@ -21,7 +21,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		static Regex oneWayExp = new Regex(@"^\{\{.+\}\}$");
 		static Regex twoWayExp = new Regex(@"^\{\s*(binding|\~).*\}$");
 		static Regex adapterExp = new Regex(@"^\{\s*(\@|\#).+\}$");
-		static Regex expressionParser = new Regex(@"^\{\s*(?<name>\S*?)\s+((?<default>[^,=]+)|(?<param>[^,=]+)\s*\=\s*(?<value>[^,=]+)\s*)(,(?<attr>[^,=]+)\s*\=\s*(?<value>[^,=]+)\s*)*?\}$", RegexOptions.Compiled);
+		static Regex expressionParser = new Regex(@"^\{\s*(?<name>\S*?)\s+((?<default>[^,=]+)|(?<param>[^,=]+)\s*\=\s*(?<value>[^,=]+)\s*)(,(?<param>[^,=]+)\s*\=\s*(?<value>[^,=]+)\s*)*?\}$", RegexOptions.Compiled);
 
 		internal Binding(string expression)
 		{
@@ -151,7 +151,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 			internal override object Evaluate(AjaxPage page, out GraphInstance source, out GraphProperty property)
 			{
-				return page.EvaluatePath(Path, out source, out property);
+				var path = Path;
+				string sourcePath;
+				if (Parameters.TryGetValue("source", out sourcePath) && sourcePath.Length > 0)
+					path = sourcePath + "." + path;
+				return page.EvaluatePath(path, out source, out property);
 			}
 		}
 
@@ -164,16 +168,27 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// </summary>
 		internal class AdapterExtension : Binding
 		{
+			string format;
+			string label;
+
 			internal AdapterExtension(string expression)
 				: base(expression)
 			{
 				ParseExpression();
+				Parameters.TryGetValue("format", out format);
+				Parameters.TryGetValue("label", out label);
 			}
 
 			internal override object Evaluate(AjaxPage page, out GraphInstance source, out GraphProperty property)
 			{
 				var data = page.EvaluatePath(Path, out source, out property);
-				return new Adapter(source, property, data);
+				if (property == null)
+					return null;
+				
+				if (Extension == "#")
+					return Adapter.GetDisplayFormat(data, format);
+				else
+					return new Adapter(source, property, data, format, label);
 			}
 		}
 

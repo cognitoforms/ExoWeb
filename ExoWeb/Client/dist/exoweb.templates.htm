@@ -1,4 +1,4 @@
-﻿<!-- readonly -->
+﻿<!-- readonly html -->
 <span template:name="readonly html" template:datatype="ExoWeb.View.Adapter"
 
 	class="sys-template" sys:attach="template" template:for=".readonly.html span, span.readonly.html">
@@ -8,8 +8,8 @@
 <!-- readonly -->
 <span template:name="readonly" template:datatype="ExoWeb.View.Adapter"
 	
-	class="sys-template" sys:attach="template" template:for=".readonly span, span.readonly">
-	<span sys:innerText="{ binding displayValue }"></span>
+	class="sys-template" sys:attach="template" template:for=".readonly span, span.readonly">asd
+	{ binding displayValue }
 </span>
 
 <!-- field editors -->
@@ -165,7 +165,7 @@
 <tr>
 	<td template:name="grid readonly html" template:datatype="ExoWeb.View.Adapter"
 	
-		class="sys-template field" sys:attach="template" content:template="field" template:for="table.grid tr td.readonly.html">
+		class="sys-template field" sys:attach="template" template:for="table.grid tr td.readonly.html">
 		<span sys:innerHTML="{ binding displayValue }"></span>
 	</td>
 	<td template:name="grid readonly" template:datatype="ExoWeb.View.Adapter"
