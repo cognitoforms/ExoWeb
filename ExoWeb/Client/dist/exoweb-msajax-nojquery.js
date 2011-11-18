@@ -9603,7 +9603,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		if (!mtype) {
 			fetchTypes(model, [typeName], function(jstypes) {
-				callback.apply(thisPtr || this, jstype);
+				callback.apply(thisPtr || this, jstypes);
 			});
 		}
 		else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
