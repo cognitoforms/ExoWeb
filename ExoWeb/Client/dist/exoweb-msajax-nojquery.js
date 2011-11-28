@@ -14111,6 +14111,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// invoke the method implementation
 			targetChangedImpl.apply(this, [force]);
+		
+			if (this._disposed) return;
 
 			// Set _lastTarget=false on other radio buttons in the group, since they only 
 			// remember the last target that was recieved when an event fires and radio button
@@ -14133,6 +14135,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// invoke the method implementation
 			sourceChangedImpl.apply(this, [force]);
+
+			if (this._disposed) return;
 
 			// Remove checked attribute from other radio buttons in the group that are currently checked.
 			if (Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]") && !this._lastSource) {
