@@ -128,8 +128,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public string Markup { get; internal set; }
 
-		public Binding If { get; internal set; }
-
 		/// <summary>
 		/// Parses and returns the blocks represented by the specified template markup.
 		/// </summary>
@@ -276,26 +274,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							// Process child nodes, if the element content is not bound
 							if (!isClosed)
 							{
-								var childElementList = ParseElement(child);
-
-								//loop over the list and add the If statement to all block elements
-								foreach (var currChildElement in childElementList)
-								{
-									if (currChildElement.GetType() == typeof(Block))
-									{
-										if (currChildElement.If == null)
-										{
-											currChildElement.If = child.HasAttribute("sys:if") ? Binding.Parse(child.GetAttribute("sys:if")) : null;
-										}
-									}
-								}
-
-								blocks.AddRange(childElementList);
-								blocks.Add(new Block() 
-								{ 
-									Markup = "</" + child.Name + ">",
-									If = child.HasAttribute("sys:if") ? Binding.Parse(child.GetAttribute("sys:if")) : null
-								});
+								blocks.AddRange(ParseElement(child));
+								blocks.Add(new Block() { Markup = "</" + child.Name + ">" });
 							}
 						}
 
@@ -336,18 +316,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						literal = blocks[i];
 					else
 					{
-						//if there is a conditional display, do not move the adjacent block
-						//because you do not want end tags to be removed from rendering
-						if (blocks[i].If != null)
-						{
-							literal = null;
-						}
-						else
-						{
-							//combine the adjacent blocks
-							literal.Markup = blocks[i].Markup + literal.Markup;
-							blocks.RemoveAt(i);
-						}
+						literal.Markup = blocks[i].Markup + literal.Markup;
+						blocks.RemoveAt(i);
 					}
 				}
 				else
@@ -412,10 +382,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <param name="writer"></param>
 		internal virtual void Render(AjaxPage page, TextWriter writer)
 		{
-			// Exit immediately if the element is conditionally hidden
-			if (If != null && If.Evaluate(page) as bool? == false)
-				return;
-
 			writer.Write(Markup);
 		}
 	}
