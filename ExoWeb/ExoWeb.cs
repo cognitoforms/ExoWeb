@@ -766,7 +766,8 @@ namespace ExoWeb
 						(instance, json) => { throw new NotSupportedException("GraphEvent cannot be serialized."); },
 						(json) =>
 						{
-							switch (json.Get<string>("type"))
+							string eventName = json.Get<string>("type");
+							switch (eventName)
 							{
 								case "ValueChange" : return deserializeValueChangeEvent(json);
 								case "ReferenceChange" : return deserializeReferenceChangeEvent(json);
@@ -775,7 +776,7 @@ namespace ExoWeb
 								case "InitExisting" : return deserializeInitExistingEvent(json);
 								case "Delete" : return deserializeDeleteEvent(json);
 							}
-							return null;
+							throw new NotSupportedException(eventName + " cannot be deserialized.");;
 						}),
 
 					// Graph Value Change Event
