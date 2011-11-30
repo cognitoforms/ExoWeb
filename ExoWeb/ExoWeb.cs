@@ -776,7 +776,7 @@ namespace ExoWeb
 								case "InitExisting" : return deserializeInitExistingEvent(json);
 								case "Delete" : return deserializeDeleteEvent(json);
 							}
-							throw new NotSupportedException(eventName + " cannot be deserialized.");;
+							throw new NotSupportedException(eventName + " event cannot be deserialized.");;
 						}),
 
 					// Graph Value Change Event
