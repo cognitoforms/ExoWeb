@@ -110,7 +110,19 @@ Adapter.prototype = {
 		var fmt = fmtMethod.call(this);
 
 		if (fmt) {
-			Array.forEach(fmt.getPaths(), callback, thisPtr || this);
+			var paths;
+
+			if (fmtName === "display" && (this._propertyChain.get_isEntityType() || this._propertyChain.get_isEntityListType()) && fmt === ExoWeb.Model.Entity.formats.$display) {
+				var jstype = this._propertyChain.get_jstype();
+				paths = ["Name", "Label", "Text"].filter(function(prop) {
+					return jstype.hasOwnProperty("$" + prop);
+				});
+			}
+			else {
+				paths = fmt.getPaths();
+			}
+
+			Array.forEach(paths, callback, thisPtr || this);
 		}
 	},
 	_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val, fmtName) {
