@@ -1455,18 +1455,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		_genCallback: function Signal$_genCallback(callback, thisPtr, executeImmediately) {
-			if (callback) {
-				var signal = this;
-				return function Signal$_genCallback$result() {
-					signal._doCallback("pending", thisPtr || this, function Signal$_genCallback$fn() {
+			var signal = this, called = false;
+			return function Signal$_genCallback$result() {
+				signal._doCallback("pending", thisPtr || this, function Signal$_genCallback$fn() {
+					if (called) {
+						ExoWeb.trace.throwAndLog("signal", "({0}) signal callback was called more than once.", [signal._debugLabel]);
+					}
+					called = true;
+					if (callback) {
 						callback.apply(this, arguments);
-						signal.oneDone();
-					}, arguments, executeImmediately);
-				};
-			}
-			else {
-				return this._oneDoneFn;
-			}
+					}
+					signal.oneDone();
+				}, arguments, executeImmediately);
+			};
 		},
 		waitForAll: function Signal$waitForAll(callback, thisPtr, executeImmediately) {
 			if (!callback) {
