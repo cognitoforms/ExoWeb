@@ -497,12 +497,11 @@ function onTypeLoaded(model, typeName) {
 ///////////////////////////////////////////////////////////////////////////////
 function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 	var signal = new ExoWeb.Signal("fetchTypes(" + typeNames.join(",") + ")");
-
-	var errorObj;
+	signal.pending();
 
 	var typesPending = typeNames.copy(), typesLoaded = [];
 
-	function complete(success, types, otherTypes) {
+	function typesFetched(success, types, otherTypes) {
 		var baseTypesToFetch = [], loadedTypes = [], baseTypeDependencies = {}, loadableTypes = [];
 
 		if (success) {
@@ -533,7 +532,7 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 								// Don't raise the loaded event until the base types are marked as loaded (or about to be marked as loaded in this pass)
 								if (!LazyLoader.isLoaded(baseType)) {
 									// Base type will be loaded in this pass
-									if (typeNames.contains(baseType._fullName) && typesLoaded.contains(baseType._fullName)) {
+									if (typesLoaded.contains(baseType._fullName)) {
 										if (baseTypeDependencies.hasOwnProperty(typeName)) {
 											baseTypeDependencies[typeName].splice(0, 0, baseType._fullName);
 										}
@@ -543,7 +542,7 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 									}
 									else {
 										pendingBaseType = true;
-										if (!baseTypesToFetch.contains(baseType._fullName)) {
+										if (!baseTypesToFetch.contains(baseType._fullName) && !typesPending.contains(baseType._fullName)) {
 											baseTypesToFetch.push(baseType._fullName);
 										}
 									}
@@ -595,31 +594,26 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 				typesPending.addRange(baseTypesToFetch);
 
 				// Make a recursive request for base types.
-				typeProvider(baseTypesToFetch, signal.pending(complete, null, true));
+				typeProvider(baseTypesToFetch, typesFetched);
+			}
+			else if (typesPending.length === 0 && signal.isActive()) {
+				signal.oneDone();
+				if (callback && callback instanceof Function) {
+					callback.call(thisPtr || this, typeNames.map(function(typeName) { return model.type(typeName).get_jstype(); }));
+				}
 			}
 		}
 		// Handle an error response.  Loading should
 		// *NOT* continue as if the type is available.
 		else {
-			errorObj = types;
+			ExoWeb.trace.throwAndLog("typeInit",
+				"Failed to load {typeNames} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
+				{ typeNames: typeNames.join(","), error: types });
 		}
 	}
 
-	// request the type and handle the response
-	typeProvider(typeNames, signal.pending(complete, null, true));
-
-	// after properties and base class are loaded, then return results
-	signal.waitForAll(function() {
-		if (errorObj !== undefined) {
-			ExoWeb.trace.throwAndLog("typeInit",
-				"Failed to load {typeNames} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-				{ typeNames: typeNames.join(","), error: errorObj });
-		}
-
-		if (callback && callback instanceof Function) {
-			callback.call(thisPtr || this, typeNames.map(function(typeName) { return model.type(typeName).get_jstype(); }));
-		}
-	}, null, true);
+	// request the types
+	typeProvider(typeNames, typesFetched);
 }
 
 function moveTypeResults(originalArgs, invocationArgs, callbackArgs) {
