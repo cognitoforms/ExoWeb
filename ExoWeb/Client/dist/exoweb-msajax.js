@@ -14485,10 +14485,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 					nodes = this._contexts[i].nodes;
 					processElements(nodes, "deleted");
 					if (count) {
-						if (i === start) {
+						if (!startNode) {
 							startNode = nodes[0];
 						}
-						if (i === len - 1) {
+						if (nodes.length > 0) {
 							endNode = nodes[nodes.length - 1];
 						}
 					}
@@ -14496,7 +14496,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 				for (i = 0, len = placeholders.length; i < len; i++) {
 					var ph = placeholders[i],
 					container = ph ? ph.parentNode : this.get_element();
-					this._clearContainer(container, ph, startNode, endNode, true);
+					if (!count || (startNode && endNode)) {
+						this._clearContainer(container, ph, startNode, endNode, true);
+					}
 				}
 				for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
 					var ctx = this._contexts[i];
