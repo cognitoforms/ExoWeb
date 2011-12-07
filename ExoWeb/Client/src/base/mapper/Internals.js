@@ -597,10 +597,8 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 				typeProvider(baseTypesToFetch, typesFetched);
 			}
 			else if (typesPending.length === 0 && signal.isActive()) {
+				// COMPLETE!!!
 				signal.oneDone();
-				if (callback && callback instanceof Function) {
-					callback.call(thisPtr || this, typeNames.map(function(typeName) { return model.type(typeName).get_jstype(); }));
-				}
 			}
 		}
 		// Handle an error response.  Loading should
@@ -614,6 +612,12 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 
 	// request the types
 	typeProvider(typeNames, typesFetched);
+
+	signal.waitForAll(function() {
+		if (callback && callback instanceof Function) {
+			callback.call(thisPtr || this, typeNames.map(function(typeName) { return model.type(typeName).get_jstype(); }));
+		}
+	});
 }
 
 function moveTypeResults(originalArgs, invocationArgs, callbackArgs) {

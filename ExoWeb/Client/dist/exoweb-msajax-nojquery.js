@@ -10199,10 +10199,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 					typeProvider(baseTypesToFetch, typesFetched);
 				}
 				else if (typesPending.length === 0 && signal.isActive()) {
+					// COMPLETE!!!
 					signal.oneDone();
-					if (callback && callback instanceof Function) {
-						callback.call(thisPtr || this, typeNames.map(function(typeName) { return model.type(typeName).get_jstype(); }));
-					}
 				}
 			}
 			// Handle an error response.  Loading should
@@ -10216,6 +10214,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// request the types
 		typeProvider(typeNames, typesFetched);
+
+		signal.waitForAll(function() {
+			if (callback && callback instanceof Function) {
+				callback.call(thisPtr || this, typeNames.map(function(typeName) { return model.type(typeName).get_jstype(); }));
+			}
+		});
 	}
 
 	function moveTypeResults(originalArgs, invocationArgs, callbackArgs) {
@@ -11000,7 +11004,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// be created that will never be processed.
 		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$fetchTypes(callback, thisPtr) {
-				var typesToLoad = [], model = this.context.model.meta, instances = this.options.instances;
+				var typesToLoad = [], model = this.context.model.meta, instances = this.options.instances, signal = new ExoWeb.Signal("ContextQuery$fetchTypes");
 
 				// Include types for all instances in instance payload
 				if (instances && (!this.options.types || this.options.types instanceof Array)) {
@@ -11030,16 +11034,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				// Fetch types in a single batch request
-				fetchTypes(model, typesToLoad);
+				fetchTypes(model, typesToLoad, signal.pending(), this);
 
-				// Fetch additional types based on model queries and paths
-				if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
-					ExoWeb.eachProp(this.options.model, function (varName, query) {
-						fetchQueryTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
-					}, this);
-				}
+				signal.waitForAll(function() {
+					// Fetch additional types based on model queries and paths
+					if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
+						ExoWeb.eachProp(this.options.model, function (varName, query) {
+							fetchQueryTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
+						}, this);
+					}
 
-				callback.call(thisPtr || this);
+					callback.call(thisPtr || this);
+				}, this);
 			},
 
 		// Process embedded data as if it had been recieved from the server in

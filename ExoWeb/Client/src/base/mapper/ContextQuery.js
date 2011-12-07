@@ -96,7 +96,7 @@ ContextQuery.mixin({
 	// be created that will never be processed.
 	///////////////////////////////////////////////////////////////////////////////
 		function ContextQuery$fetchTypes(callback, thisPtr) {
-			var typesToLoad = [], model = this.context.model.meta, instances = this.options.instances;
+			var typesToLoad = [], model = this.context.model.meta, instances = this.options.instances, signal = new ExoWeb.Signal("ContextQuery$fetchTypes");
 
 			// Include types for all instances in instance payload
 			if (instances && (!this.options.types || this.options.types instanceof Array)) {
@@ -126,16 +126,18 @@ ContextQuery.mixin({
 			}
 
 			// Fetch types in a single batch request
-			fetchTypes(model, typesToLoad);
+			fetchTypes(model, typesToLoad, signal.pending(), this);
 
-			// Fetch additional types based on model queries and paths
-			if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
-				ExoWeb.eachProp(this.options.model, function (varName, query) {
-					fetchQueryTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
-				}, this);
-			}
+			signal.waitForAll(function() {
+				// Fetch additional types based on model queries and paths
+				if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
+						fetchQueryTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
+					}, this);
+				}
 
-			callback.call(thisPtr || this);
+				callback.call(thisPtr || this);
+			}, this);
 		},
 
 	// Process embedded data as if it had been recieved from the server in
