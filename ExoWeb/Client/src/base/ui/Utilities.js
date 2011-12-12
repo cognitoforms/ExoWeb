@@ -104,6 +104,10 @@ function getParentContext(options/*{ target, subcontainer, index, level, dataTyp
 		// up the dom (since the element will probably not be present in the dom)
 		if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
 			container = target.get_templateContext().containerElement;
+			
+			if (container.control instanceof Toggle)
+				container = Sys.UI.Template.findContext(container).containerElement;
+			
 			if (options.target && options.target.tagName) {
 				subcontainer = getTemplateSubContainer(options.target);
 			}
