@@ -11721,7 +11721,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			$(this._element).empty();
 
 			if (pctx.dataItem) {
-				this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx);
+				this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, pctx.index, null, pctx);
 				this._context.initializeComponents();
 			}
 
