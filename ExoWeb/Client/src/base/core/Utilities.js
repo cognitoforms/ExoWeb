@@ -70,6 +70,7 @@ function getValue(target, property) {
 	}
 	else {
 		if ((isObject(target) && property in target) ||
+			Object.prototype.hasOwnProperty.call(target, property) ||
 			(target.constructor === String && /^[0-9]+$/.test(property) && parseInt(property, 10) < target.length)) {
 			value = target[property];
 			if (value === undefined) {

@@ -35,6 +35,11 @@
 			test("where function w/context", function() {
 				same($transform([mh, bm, pg, jd, sg, ag]).where(function(item) { return item != this; }, jd), [mh, bm, pg, sg, ag]);
 			});
+			
+			test("where w/$item", function() {
+				same($transform(["Apple", "Orange", "Banana"]).where("$item !== 'Banana'"), ["Apple", "Orange"]);
+				same($transform(["Apple", "Orange", "Banana"]).where("$item.length > 5"), ["Orange", "Banana"]);
+			});
 
 			test("orderBy single", function() {
 				same($transform([mh, bm, pg, jd]).orderBy("LastName"), [jd, pg, mh, bm]);

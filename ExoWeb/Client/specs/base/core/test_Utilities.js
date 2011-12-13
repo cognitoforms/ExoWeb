@@ -9,6 +9,7 @@ global.window = {};
 global.ExoWeb = global.window.ExoWeb = {};
 
 var utilities = require("../../../src/base/core/Utilities");
+var getValue = ExoWeb.getValue;
 var $format = global.window.$format;
 var isNullOrUndefined = utilities.isNullOrUndefined;
 
@@ -45,6 +46,30 @@ describe("$format", function() {
 
 	it("if single array argument is passed it uses the array as arguments", function() {
 		expect($format("{0}-{0}", ["ABC"])).toBe("ABC-ABC");
+	});
+});
+
+describe("getValue", function() {
+	it("returns the value of the given property of the given object", function() {
+		expect(getValue("foo", 0)).toBe("f");
+		expect(getValue("foo", "length")).toBe(3);
+	});
+	
+	it("uses getter methods", function() {
+		var o = new Object();
+		o.get_TheMeaningOfLife = function() { return 42; };
+		expect(getValue(o, "TheMeaningOfLife")).toBe(42);
+	});
+
+	it("returns undefined if a property doesn't exist", function() {
+		var o = new Object();
+		expect(getValue(o, "foo")).toBe(undefined);
+	});
+
+	it("returns null if a property exists but is undefined", function() {
+		var o = new Object();
+		o.foo = undefined;
+		expect(getValue(o, "foo")).toBe(null);
 	});
 });
 

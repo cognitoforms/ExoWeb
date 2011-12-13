@@ -1,5 +1,5 @@
-function Transform(root) {
-	this.array = root;
+function Transform(array) {
+	this._array = array;
 }
 
 function Transform$compileFilterFunction(filter) {
@@ -12,7 +12,7 @@ function Transform$compileFilterFunction(filter) {
 		}
 
 		if (name === "$item") {
-			return "";
+			return more ? "" : name;
 		}
 
 		if (more.length > 0) {
@@ -82,20 +82,21 @@ function Transform$compileOrderingFunction(ordering) {
 
 var compileOrderingFunction = Transform$compileOrderingFunction.cached();
 
+function makeTransform(array, priorTransform, fn, args) {
+	Function.mixin(Transform.prototype, array);
+	array._prior = priorTransform;
+	array._transform = { fn: fn, args: args };
+	return array;
+}
+
 Transform.mixin({
-	_next: function Transform$_next(fn, args, output) {
-		Function.mixin(Transform.prototype, output);
-		output.prior = this;
-		output.transform = { fn: fn, args: args };
-		return output;
-	},
 	input: function Transform$input() {
-		return this.array || this;
+		return this._array || this;
 	},
 	where: function Transform$where(filter, thisPtr) {
 		var filterFn = filter instanceof Function ? filter : compileFilterFunction(filter);
 		var output = this.input().filter(filterFn, thisPtr);
-		return this._next(this.where, arguments, output);
+		return makeTransform(output, this, this.where, arguments);
 	},
 	groupBy: function Transform$groupBy(groups, thisPtr) {
 		if (!(groups instanceof Function)) {
@@ -123,19 +124,21 @@ Transform.mixin({
 				output.push({ group: groupKey, items: [item] });
 			}
 		}
-		return this._next(this.groupBy, arguments, output);
+
+		return makeTransform(output, this, this.groupBy, arguments);
 	},
 	orderBy: function Transform$orderBy(ordering, thisPtr) {
 		var sortFn = ordering instanceof Function ? ordering : compileOrderingFunction(ordering);
 		var output = this.input().copy().sort(thisPtr ? sortFn.bind(thisPtr) : sortFn);
-		return this._next(this.orderBy, arguments, output);
+		return makeTransform(output, this, this.orderBy, arguments);
 	},
-	// Watches for changes on the root input into the transform
-	// and raises observable change events on this item as the 
-	// results change.
 	live: function Transform$live() {
+		// Watches for changes on the root input into the transform
+		// and raises observable change events on this item as the 
+		// results change.
+
 		var chain = [];
-		for (var step = this; step; step = step.prior) {
+		for (var step = this; step; step = step._prior) {
 			Array.insert(chain, 0, step);
 		}
 
@@ -155,7 +158,7 @@ Transform.mixin({
 
 			for (var i = 1; i < chain.length; ++i) {
 				var step = chain[i];
-				newResult = step.transform.fn.apply(newResult, step.transform.args);
+				newResult = step._transform.fn.apply(newResult, step._transform.args);
 			}
 
 			// apply the changes to the output.
@@ -166,7 +169,7 @@ Transform.mixin({
 			output.endUpdate();
 		});
 
-		return this._next(this.live, arguments, output);
+		return makeTransform(output, this, this.live, arguments);
 	}
 });
 
