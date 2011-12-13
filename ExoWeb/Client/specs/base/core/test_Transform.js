@@ -12,6 +12,7 @@ global.ExoWeb = {};
 var typeChecking = require("../../../src/base/core/TypeChecking");
 var isObject = global.isObject = typeChecking.isObject;
 
+var functions = require("../../../src/base/core/Array");
 var functions = require("../../../src/base/core/Function");
 var utilities = require("../../../src/base/core/Utilities");
 global.evalPath = ExoWeb.evalPath;

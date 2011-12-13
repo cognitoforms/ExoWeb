@@ -1996,21 +1996,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			var input = this.input();
-			var output = new Array(input.length);
-
-			// make new array
-			var len = input.length;
-			for (var i = 0; i < len; i++) {
-				output[i] = input[i];
-			}
-
-			// sort array in place
-			if (!thisPtr) {
-				output.sort(ordering);
-			}
-			else {
-				output.sort(function() { return ordering.apply(thisPtr, arguments); });
-			}
+			var output = input.copy().sort(thisPtr ? ordering.bind(thisPtr) : ordering);
 
 			return this._next(this.orderBy, arguments, output);
 		},
