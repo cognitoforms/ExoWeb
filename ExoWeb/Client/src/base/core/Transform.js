@@ -93,13 +93,8 @@ Transform.mixin({
 		return this.array || this;
 	},
 	where: function Transform$where(filter, thisPtr) {
-		if (!(filter instanceof Function)) {
-			filter = compileFilterFunction(filter);
-		}
-
-		var input = this.input();
-		var output = input.filter(filter, thisPtr);
-
+		var filterFn = filter instanceof Function ? filter : compileFilterFunction(filter);
+		var output = this.input().filter(filterFn, thisPtr);
 		return this._next(this.where, arguments, output);
 	},
 	groupBy: function Transform$groupBy(groups, thisPtr) {
@@ -131,13 +126,8 @@ Transform.mixin({
 		return this._next(this.groupBy, arguments, output);
 	},
 	orderBy: function Transform$orderBy(ordering, thisPtr) {
-		if (!(ordering instanceof Function)) {
-			ordering = compileOrderingFunction(ordering);
-		}
-
-		var input = this.input();
-		var output = input.copy().sort(thisPtr ? ordering.bind(thisPtr) : ordering);
-
+		var sortFn = ordering instanceof Function ? ordering : compileOrderingFunction(ordering);
+		var output = this.input().copy().sort(thisPtr ? sortFn.bind(thisPtr) : sortFn);
 		return this._next(this.orderBy, arguments, output);
 	},
 	// Watches for changes on the root input into the transform
