@@ -18,45 +18,62 @@
 			var pg = { FirstName: "Pete", LastName: "Gindhart", Grade: "02" };
 			var sg = { FirstName: "Sam", LastName: "Gindhart", Grade: "02" };
 			var ag = { FirstName: "Albert", LastName: "Gindhart", Grade: "02" };
-			var jd = { FirstName: "John", LastName: "Doe", Grade: null };	
-		
-			test("Simple Grouping", function() {
+			var jd = { FirstName: "John", LastName: "Doe", Grade: null };
+			
+			test("where expression", function() {
+				same($transform([mh, bm, pg, jd, sg, ag]).where("LastName == 'Gindhart'"), [pg, sg, ag]);
+				same($transform([mh, bm, pg, jd, sg, ag]).where("LastName !== 'Gindhart'"), [mh, bm, jd]);
+				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade !== null"), [mh, bm, pg, sg, ag]);
+				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == null"), [jd]);
+				same($transform([mh, bm, pg, jd, sg, ag]).where("$item.LastName != 'Doe'"), [mh, bm, pg, sg, ag]);
+			});
+			
+			test("where function", function() {
+				same($transform([mh, bm, pg, jd, sg, ag]).where(function(item) { return item.LastName != "Gindhart"; }), [mh, bm, jd]);
+			});
+			
+			test("where function w/context", function() {
+				same($transform([mh, bm, pg, jd, sg, ag]).where(function(item) { return item != this; }, jd), [mh, bm, pg, sg, ag]);
+			});
+
+			test("orderBy single", function() {
+				same($transform([mh, bm, pg, jd]).orderBy("LastName"), [jd, pg, mh, bm]);
+				same($transform([mh, bm, pg, jd]).orderBy("LastName asc"), [jd, pg, mh, bm]);
+				same($transform([mh, bm, pg, jd]).orderBy("LastName desc"), [bm, mh, pg, jd]);
+			});
+
+			test("orderBy multiple", function() {
+				same($transform([mh, bm, pg, jd, sg, ag]).orderBy("LastName, FirstName"), [jd, ag, pg, sg, mh, bm]);
+				same($transform([mh, bm, pg, jd, sg, ag]).orderBy("LastName, FirstName desc"), [jd, sg, pg, ag, mh, bm]);
+			});
+
+			test("orderBy w/null", function() {
+				same($transform([mh, bm, null, pg, jd]).orderBy("LastName desc"), [null, bm, mh, pg, jd]);
+				same($transform([mh, bm, null, pg, jd]).orderBy("null LastName desc"), [null, bm, mh, pg, jd]);
+				same($transform([mh, bm, null, pg, jd]).orderBy("LastName desc null"), [bm, mh, pg, jd, null]);
+				same($transform([mh, bm, null, pg, jd]).orderBy("LastName null"), [jd, pg, mh, bm, null]);
+			});
+
+			test("orderBy function", function() {
+				same($transform([jd, mh, pg, bm, sg, ag]).orderBy(function(a, b) {
+					var a = parseInt(a.Grade, 10), b = parseInt(b.Grade, 10);
+					if (isNaN(a)) { a = -1; }
+					if (isNaN(b)) { b = -1; }
+					return a > b ? -1 : (a < b ? 1 : 0);
+				}), [pg, sg, ag, mh, bm, jd]);
+			});
+
+			test("orderBy function w/context", function() {
+				same($transform([mh, bm, pg, jd, sg, ag]).orderBy(function(a, b) { return a === this ? 1 : (b === this ? -1 : 0); }, jd), [mh, bm, pg, sg, ag, jd]);
+				same($transform([mh, bm, pg, jd, sg, ag]).orderBy(function(a, b) { return a === this ? -1 : (b === this ? 1 : 0); }, jd), [jd, mh, bm, pg, sg, ag]);
+			});
+
+			test("groupBy function", function() {
 				var list = ["Apple", "Orange", "Banana", "Artichoke"];
 				var grouped = $transform(list).groupBy(function(item) { return item[0]; });
 				equals(3, grouped.length, "should result in three groups.");
 			});
 
-			test("order by 'LastName'", function() {
-				same($transform([mh, bm, pg, jd]).orderBy("LastName"), [jd, pg, mh, bm]);
-			});
-
-			test("order by 'LastName asc'", function() {
-				same($transform([mh, bm, pg, jd]).orderBy("LastName asc"), [jd, pg, mh, bm]);
-			});
-
-			test("order by 'LastName desc'", function() {
-				same($transform([mh, bm, pg, jd]).orderBy("LastName desc"), [bm, mh, pg, jd]);
-			});
-
-			test("order by 'LastName desc' w/ nulls", function() {
-				same($transform([mh, bm, null, pg, jd]).orderBy("LastName desc"), [null, bm, mh, pg, jd]);
-			});
-
-			test("order by 'null LastName desc'", function() {
-				same($transform([mh, bm, null, pg, jd]).orderBy("null LastName desc"), [null, bm, mh, pg, jd]);
-			});
-
-			test("order by 'LastName desc null'", function() {
-				same($transform([mh, bm, null, pg, jd]).orderBy("LastName desc null"), [bm, mh, pg, jd, null]);
-			});
-
-			test("order by 'LastName, FirstName'", function() {
-				same($transform([mh, bm, pg, jd, sg, ag]).orderBy("LastName, FirstName"), [jd, ag, pg, sg, mh, bm]);
-			});
-
-			test("order by 'LastName, FirstName desc'", function() {
-				same($transform([mh, bm, pg, jd, sg, ag]).orderBy("LastName, FirstName desc"), [jd, sg, pg, ag, mh, bm]);
-			});
 		</script>
 	</head>
 	<body>

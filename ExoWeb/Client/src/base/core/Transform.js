@@ -35,13 +35,15 @@ var compileGroupsFunction = Transform$compileGroupsFunction.cached();
 
 function Transform$compileOrderingFunction(ordering) {
 	var orderings = [];
-	var parser = / *([a-z0-9_.]+)( +null)?( +(asc|desc))?( +null)? *(,|$)/gi;
+	var parser = /\s*([a-z0-9_.]+)(\s+null)?(\s+(asc|desc))?(\s+null)? *(,|$)/gi;
 
 	ordering.replace(parser, function(match, path, nullsFirst, ws, dir, nullsLast) {
+		var isNullsFirst = (nullsFirst !== undefined && nullsFirst !== null && nullsFirst.length > 0);
+		var isNullsLast = (nullsLast !== undefined && nullsLast !== null && nullsLast.length > 0);
 		orderings.push({
 			path: path,
 			ab: dir === "desc" ? 1 : -1,
-			nulls: (nullsLast !== undefined && nullsLast !== null && nullsLast.length > 0) ? 1 : -1
+			nulls: isNullsLast || (!ws && isNullsFirst) ? 1 : -1
 		});
 	});
 
