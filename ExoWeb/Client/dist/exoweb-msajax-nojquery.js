@@ -1957,18 +1957,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				filter = compileFilterFunction(filter);
 			}
 
-			var output = [];
-
 			var input = this.input();
-
-			var len = input.length;
-			for (var i = 0; i < len; ++i) {
-				var item = input[i];
-
-				if (filter.apply(thisPtr || item, [item, i])) {
-					output.push(item);
-				}
-			}
+			var output = input.filter(filter, thisPtr);
 
 			return this._next(this.where, arguments, output);
 		},
