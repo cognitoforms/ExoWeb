@@ -104,15 +104,25 @@ Binding.mixin({
 	},
 
 	_transform: function(value) {
-		if (!this._options.transform || !value)
+		// pass the value through if no transform is specified
+		if (!this._options.transform)
 			return value;
 
-		if (!this._transformFn) {
-			this._transformFn = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
-		}
+		if (value) {
+			if (!this._transformFn) {
+				// generate the transform function
+				this._transformFn = new Function("list", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
+			}
 
-		// transform the original list using the given options
-		return this._transformFn(value, this._isTargetElement ? this._target : this._target.get_element(), this._templateContext.index, this._templateContext.dataItem);
+			// transform the original list using the given options
+			var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
+
+			if (transformResult.live !== Transform.prototype.live) {
+				ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", and \"groupBy\".");
+			}
+
+			return transformResult.live();
+		}
 	},
 
 	// Functions that deal with responding to changes, asynchronous loading,
@@ -125,7 +135,7 @@ Binding.mixin({
 		}, null, null, this);
 	},
 
-	_update: function(value, newItems, oldItems) {
+	_update: function(value, oldItems, newItems) {
 		if (this._isDisposed === true) {
 			return;
 		}
@@ -137,7 +147,7 @@ Binding.mixin({
 		}
 
 		// if the value is an array and we will transform the value or require paths, then watch for collection change events
-		if (value && value instanceof Array && (this._options.required || this._options.transform)) {
+		if (value && value instanceof Array && this._options.required) {
 			this._value = value;
 			Sys.Observer.makeObservable(value);
 			Sys.Observer.addCollectionChanged(value, this._collectionChangedHandler);
@@ -145,46 +155,58 @@ Binding.mixin({
 
 		// If additional paths are required then load them before invoking the callback.
 		if (this._options.required) {
-
-			// Unwatch require path for items that are no longer relevant.
-			forEach(oldItems, function(item) {
-				Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
-			}, this);
-
-			if (value) {
-				// Load required paths, then manipulate the source value and update the target.
-				this._require(value, function() {
-					if (this._isDisposed === true) {
-						return;
-					}
-	
-					// Watch require path for new items.
-					forEach(newItems, function(item) {
-						Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
-					}, this);
-	
-					this._queue(this._ifNull(this._format(this._transform(value))));
-				});
-			}
-			else {
+			this._updateWatchedItems(value, oldItems, newItems, function() {
 				this._queue(this._ifNull(this._format(this._transform(value))));
-			}
+			});
 		}
 		else {
 			this._queue(this._ifNull(this._format(this._transform(value))));
 		}
 	},
+	
+	_updateWatchedItems: function(value, oldItems, newItems, callback) {
+		// Unwatch require path for items that are no longer relevant.
+		if (oldItems) {
+			oldItems.forEach(function(item) {
+				Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
+			}, this);
+		}
+
+		if (value) {
+			// Load required paths, then manipulate the source value and update the target.
+			this._require(value, function() {
+				if (this._isDisposed === true) {
+					return;
+				}
+
+				if (newItems) {
+					// Watch require path for new items.
+					forEach(newItems, function(item) {
+						Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
+					}, this);
+				}
+
+				if (callback) {
+					callback.call(this);
+				}
+			});
+		}
+		else if (callback) {
+			callback.call(this);
+		}
+	},
 
 	_collectionChanged: function(items, evt) {
 		// In the case of an array-valued source, respond to a collection change that is raised for the source value.
-		// Optimization: short circuit mapping of changes based on whether there are required paths.
-		this._update(items,
-			this._options.required ? evt.get_changes().mapToArray(function(change) { return change.newItems || []; }) : [],
-			this._options.required ? evt.get_changes().mapToArray(function(change) { return change.oldItems || []; }) : []);
+		if (this._options.required) {
+			var oldItems = evt.get_changes().mapToArray(function(change) { return change.oldItems || []; });
+			var newItems = evt.get_changes().mapToArray(function(change) { return change.newItems || []; });
+			this._updateWatchedItems(items, oldItems, newItems);
+		}
 	},
 
 	_watchedItemPathChanged: function(sender, args) {
-		this._update(this._sourcePathResult, [], []);
+		this._update(this._sourcePathResult);
 	},
 
 	_sourcePathChanged: function() {
@@ -192,8 +214,11 @@ Binding.mixin({
 		var prevSourcePathResult = this._sourcePathResult;
 		this._sourcePathResult = evalPath(this._source, this._sourcePath);
 
-		// Respond to a change that occurs at any point along the source path.
-		this._update(this._sourcePathResult, ensureArray(this._sourcePathResult), ensureArray(prevSourcePathResult));
+		// if the value is the same (which will commonly happen when the source is an array) then there is no need to update
+		if (prevSourcePathResult !== this._sourcePathResult) {
+			// Respond to a change that occurs at any point along the source path.
+			this._update(this._sourcePathResult, ensureArray(prevSourcePathResult), ensureArray(this._sourcePathResult));
+		}
 	},
 
 	_evalSuccess: function(result, message) {
@@ -203,7 +228,7 @@ Binding.mixin({
 
 		this._sourcePathResult = result;
 
-		this._update(result, ensureArray(result), []);
+		this._update(result, null, ensureArray(result));
 	},
 
 	_evalFailure: function(err) {

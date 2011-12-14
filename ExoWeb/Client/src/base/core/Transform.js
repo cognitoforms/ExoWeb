@@ -1,8 +1,15 @@
 function Transform(array) {
+	if (array === null || array === undefined) {
+		ExoWeb.trace.throwAndLog("transform", "Transform input is required.");
+	}
+	if (!(array instanceof Array)) {
+		ExoWeb.trace.throwAndLog("transform", "Transform input must be an array.");
+	}
+
 	this._array = array;
 }
 
-function Transform$compileFilterFunction(filter) {
+var compileFilterFunction = (function Transform$compileFilterFunction(filter) {
 	var parser = /(([a-z_$][0-9a-z_$]*)([.]?))|(('([^']|\')*')|("([^"]|\")*"))/gi;
 	var skipWords = ["true", "false", "$index", "null"];
 
@@ -23,17 +30,13 @@ function Transform$compileFilterFunction(filter) {
 	});
 
 	return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
-}
+}).cached();
 
-var compileFilterFunction = Transform$compileFilterFunction.cached();
-
-function Transform$compileGroupsFunction(groups) {
+var compileGroupsFunction = (function Transform$compileGroupsFunction(groups) {
 	return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
-}
+}).cached();
 
-var compileGroupsFunction = Transform$compileGroupsFunction.cached();
-
-function Transform$compileOrderingFunction(ordering) {
+var compileOrderingFunction = (function Transform$compileOrderingFunction(ordering) {
 	var orderings = [];
 	var parser = /\s*([a-z0-9_.]+)(\s+null)?(\s+(asc|desc))?(\s+null)? *(,|$)/gi;
 
@@ -78,15 +81,35 @@ function Transform$compileOrderingFunction(ordering) {
 
 		return 0;
 	};
-}
-
-var compileOrderingFunction = Transform$compileOrderingFunction.cached();
+}).cached();
 
 function makeTransform(array, priorTransform, fn, args) {
 	Function.mixin(Transform.prototype, array);
 	array._prior = priorTransform;
 	array._transform = { fn: fn, args: args };
 	return array;
+}
+
+function updateTransformGroupItems(oldList, newList, nesting) {
+	var i, oldGroup, newGroup, oldItems, newItems;
+	if (nesting === 0) {
+		// when nesting is zero the items are no longer groups themselves.
+		update(oldList, newList);
+	}
+	else {
+		// recursively update items as groups
+		for (i = 0; i < newList.length; i++) {
+			newGroup = newList[i];
+			oldGroup = oldList.filter(function(g) { return g.group === newGroup.group; })[0];
+			if (oldGroup) {
+				updateTransformGroupItems(oldGroup.items, newGroup.items, nesting - 1);
+			}
+		}
+		// Update at the group level
+		update(oldList, newList, false, function (a, b) {
+			return a && b && a.group === b.group;
+		});
+	}
 }
 
 Transform.mixin({
@@ -99,17 +122,14 @@ Transform.mixin({
 		return makeTransform(output, this, this.where, arguments);
 	},
 	groupBy: function Transform$groupBy(groups, thisPtr) {
-		if (!(groups instanceof Function)) {
-			groups = compileGroupsFunction(groups);
-		}
+		var groupFn = groups instanceof Function ? groups : compileGroupsFunction(groups);
 
 		var output = [];
-
 		var input = this.input();
 		var len = input.length;
 		for (var i = 0; i < len; i++) {
 			var item = input[i];
-			var groupKey = groups.apply(thisPtr || item, [item, i]);
+			var groupKey = groupFn.apply(thisPtr || item, [item, i]);
 
 			var group = null;
 			for (var g = 0; g < output.length; ++g) {
@@ -137,25 +157,30 @@ Transform.mixin({
 		// and raises observable change events on this item as the 
 		// results change.
 
+		// make a copy of the transform data and make it observable
+		var output = this.copy();
+		Sys.Observer.makeObservable(output);
+
+		// determine the set of transform steps
+		// also determine the level of group nesting and make each group's items collection observable
 		var chain = [];
+		var groupCount = 0;
+		var observableSource = output;
 		for (var step = this; step; step = step._prior) {
-			Array.insert(chain, 0, step);
-		}
-
-		// make a new observable array
-		var input = this.input();
-		var output = Sys.Observer.makeObservable(new Array(input.length));
-
-		var len = input.length;
-		for (var i = 0; i < len; i++) {
-			output[i] = input[i];
+			chain.splice(0, 0, step);
+			if (step._transform && step._transform.fn === Transform.prototype.groupBy) {
+				groupCount++;
+				// make each group's items collection observable
+				observableSource.forEach(function(item) { Sys.Observer.makeObservable(item.items); });
+				// the new observable source is all of the items collections of the current observable source
+				observableSource = observableSource.mapToArray(function(item) { return item.items; });
+			}
 		}
 
 		// watch for changes to root input and rerun transform chain as needed
 		Sys.Observer.addCollectionChanged(chain[0].input(), function Transform$live$collectionChanged() {
 			// re-run the transform on the newly changed input
 			var newResult = $transform(chain[0].input());
-
 			for (var i = 1; i < chain.length; ++i) {
 				var step = chain[i];
 				newResult = step._transform.fn.apply(newResult, step._transform.args);
@@ -164,12 +189,16 @@ Transform.mixin({
 			// apply the changes to the output.
 			// must use the original list so that the events can be seen
 			output.beginUpdate();
-			output.clear();
-			Array.addRange(output, newResult);
+			if (groupCount > 0) {
+				updateTransformGroupItems(output, newResult, groupCount);
+			}
+			else {
+				update(output, newResult);
+			}
 			output.endUpdate();
 		});
 
-		return makeTransform(output, this, this.live, arguments);
+		return output;
 	}
 });
 

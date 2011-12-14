@@ -79,6 +79,129 @@
 				equals(3, grouped.length, "should result in three groups.");
 			});
 
+			test("live", function() {
+				var list = ["Apple", "Orange", "Banana", "Artichoke"];
+				Sys.Observer.makeObservable(list);
+				var transform = $transform(list);
+
+				var where = transform.where("$item[0] !== 'A'");
+				same(where, ["Orange", "Banana"]);
+
+				var ordered = transform.orderBy("length desc");
+				same(ordered, ["Artichoke", "Orange", "Banana", "Apple"]);
+
+				var grouped = transform.groupBy(function(item) { return item[0]; });
+				equals(grouped.length, 3, "should result in three groups");
+
+				function liveAsserts(live, original) {
+					ok(original !== live, "live returns a copy of the current transform's output");
+					same(live, original, "live array is not equivelent with input, but should contain the same data");
+					equals(live.where, undefined, "live is terminal, does not return a transform but a copy of the transformed array");
+				}
+
+				// Make transform results live and make assertions about the output
+				var whereLive = where.live();
+				liveAsserts(whereLive, where);
+				var orderedLive = ordered.live();
+				liveAsserts(orderedLive, ordered);
+				var groupedLive = grouped.live();
+				liveAsserts(groupedLive, grouped);
+
+				// Basic assertions about the results after performing various operations
+				list.remove("Banana");
+				equals(grouped.length, 3, "non-live grouped output should not be affected");
+				equals(groupedLive.length, 2, "should be two groups after array update");
+				same(ordered, ["Artichoke", "Orange", "Banana", "Apple"], "non-live ordered output should not be affected");
+				same(orderedLive, ["Artichoke", "Orange", "Apple"], "item should be removed from live ordered output");
+				same(where, ["Orange", "Banana"], "non-live where output should not be affected");
+				same(whereLive, ["Orange"], "item should be removed from live where output");
+				list.add("Banana");
+
+				list.insert(0, "Raspberry");
+				equals(grouped.length, 3, "non-live grouped output should not be affected");
+				equals(groupedLive.length, 4, "should be four groups after array update");
+				same(ordered, ["Artichoke", "Orange", "Banana", "Apple"], "non-live ordered output should not be affected");
+				same(orderedLive, ["Raspberry", "Artichoke", "Orange", "Banana", "Apple"], "item should be added to live ordered output");
+				same(where, ["Orange", "Banana"], "non-live where output should not be affected");
+				same(whereLive, ["Raspberry", "Orange", "Banana"], "item should be added to live where output");
+				list.remove("Raspberry");
+
+				// Perform assertions about events raised on existing transform results
+				var orderedChanges = [];
+				Sys.Observer.addCollectionChanged(orderedLive, function(sender, args) { orderedChanges.addRange(args.get_changes()); });
+
+				var whereChanges = [];
+				Sys.Observer.addCollectionChanged(whereLive, function(sender, args) { whereChanges.addRange(args.get_changes()); });
+
+				var groupedChanges = [];
+				Sys.Observer.addCollectionChanged(groupedLive, function(sender, args) { groupedChanges.addRange(args.get_changes()); });
+
+				list.insert(0, "Tangerine");
+				equals(orderedChanges.length, 1, "should only be one change");
+				equals(orderedChanges[0].oldItems, undefined, "Should be no removed items");
+				equals(orderedChanges[0].newItems.length, 1, "Should be one new item");
+				equals(orderedChanges[0].newStartingIndex, 0, "Should be inserted before 'Artichoke'");
+				equals(whereChanges.length, 1, "should only be one change");
+				equals(whereChanges[0].oldItems, undefined, "Should be no removed items");
+				equals(whereChanges[0].newItems.length, 1, "Should be one new item");
+				equals(whereChanges[0].newStartingIndex, 0, "Should be inserted before 'Artichoke'");
+				equals(groupedChanges.length, 1, "should only be one change");
+				equals(groupedChanges[0].oldItems, undefined, "Should be no removed items");
+				equals(groupedChanges[0].newItems.length, 1, "Should be one new item");
+				equals(groupedChanges[0].newStartingIndex, 0, "Should be inserted before 'Artichoke'");
+				list.remove("Tangerine");
+
+				groupedChanges = [];
+
+				var groupItemChanges = [];
+				Sys.Observer.addCollectionChanged(groupedLive.filter(function(g) { return g.group === "A"; })[0].items, function(sender, args) { groupItemChanges.addRange(args.get_changes()); });
+
+				list.add("Apricot");
+				equals(groupedChanges.length, 0, "should be no changes to groups");
+				equals(groupItemChanges.length, 1, "should be one change to the 'A' group's items");
+				equals(groupItemChanges[0].oldItems, undefined, "should be no removed items");
+				equals(groupItemChanges[0].newItems.length, 1, "should be one added item");
+				equals(groupItemChanges[0].newStartingIndex, 2, "should be added at index 2");
+				equals(groupItemChanges[0].newItems[0], "Apricot", "should be apricot");
+				list.remove("Apricot");
+
+				// Test multiple levels of grouping
+				list = ["Apple", "Orange", "Banana", "Artichoke", "Raspberry", "Tangerine", "Apricot"];
+				Sys.Observer.makeObservable(list);
+				groupedLive = $transform(list).groupBy(function(item) { return item[0]; }).orderBy("group").groupBy(function(item) { return item.group.charCodeAt(0) % 2 === 0 ? "even" : "odd"; }).orderBy("group desc").live();
+				groupedChanges = [];
+				Sys.Observer.addCollectionChanged(groupedLive, function(sender, args) { groupedChanges.addRange(args.get_changes()); });
+				groupItemChanges = [];
+				var groupSubItemChanges = [];
+				groupedLive.forEach(function(group) {
+					Sys.Observer.addCollectionChanged(group.items, function(sender, args) { groupItemChanges.addRange(args.get_changes()); });
+					group.items.forEach(function(subGroup) {
+						Sys.Observer.addCollectionChanged(subGroup.items, function(sender, args) { groupSubItemChanges.addRange(args.get_changes()); });
+					});
+				});
+				list.add("Cantelope");
+				equals(groupedChanges.length, 0, "should be no changes to groups");
+				equals(groupItemChanges.length, 1, "should be one change to the 'odd' group's items");
+				equals(groupItemChanges[0].oldItems, undefined, "should be no removed items");
+				equals(groupItemChanges[0].newItems.length, 1, "should be one added item");
+				equals(groupItemChanges[0].newStartingIndex, 1, "should be added at index 1");
+				equals(groupItemChanges[0].newItems[0].group, 'C', "should be a new 'C' sub-group");
+				same(groupItemChanges[0].newItems[0].items, ["Cantelope"], "items should contain the new item");
+				equals(groupSubItemChanges.length, 0, "should be no changes to sub-items since a new sub-group was added");
+				groupedChanges = [];
+				groupItemChanges = [];
+				groupSubItemChanges = [];
+				list.add("Olive");
+				equals(groupedChanges.length, 0, "should be no changes to groups");
+				equals(groupItemChanges.length, 0, "should be no changes to items since the groups already exist");
+				equals(groupSubItemChanges.length, 1, "should be one change to the 'O' group's items");
+				equals(groupSubItemChanges[0].oldItems, undefined, "should be no removed items");
+				equals(groupSubItemChanges[0].newItems.length, 1, "should be one added item");
+				equals(groupSubItemChanges[0].newStartingIndex, 1, "should be added at index 1");
+				var group = groupedLive.filter(function(g) { return g.group === "odd"; })[0].items.filter(function(g) { return g.group === 'O'; })[0];
+				same(group.items, ["Orange", "Olive"], "items should contain the new item");
+			});
+
 		</script>
 	</head>
 	<body>

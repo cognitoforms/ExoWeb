@@ -44,10 +44,13 @@ var functions = require("../../../src/base/core/Function");
 var arrays = require("../../../src/base/core/Array");
 var binding = require("../../../src/base/view/Binding");
 var evalWrapper = require("../../../src/base/core/EvalWrapper");
+var trace = require("../../../src/base/core/Trace");
 var transform = require("../../../src/base/core/Transform");
 var typeChecking = require("../../../src/base/core/typeChecking");
 var utilities = require("../../../src/base/core/Utilities");
 var batch = require("../../../src/base/core/Batch");
+
+global.Transform = transform.Transform;
 
 var getValue = global.getValue = ExoWeb.getValue;
 var evalPath = global.evalPath = ExoWeb.evalPath;
@@ -182,27 +185,6 @@ describe("Transform option", function() {
 			expect(list[1].val).toBe(4);
 		});
 
-		it("watches for array changes to the source path result and cleans up if the source value changes", function() {
-			var addCollectionChangedSpy = jasmine.spyOn(Sys.Observer, "addCollectionChanged").andCallThrough();
-			var removeCollectionChangedSpy = jasmine.spyOn(Sys.Observer, "removeCollectionChanged").andCallThrough();
-
-			var value = [{ val: 2 }, { val: 3 }, { val: 4 }];
-			var source = { value: value };
-			this.evalResult = value;
-
-			var binding = new Binding({ index: 0, dataItem: source }, source, "value", { get_element: function() { } }, "value", { transform: "where('val>2')" });
-
-			expect(addCollectionChangedSpy).toHaveBeenCalledWith(value, binding._collectionChangedHandler);
-			
-			var newValue = [{ val: 0 }];
-
-			this.evalResult = newValue;
-			source.value = newValue;
-			binding._sourcePathChangedHandler();
-			expect(removeCollectionChangedSpy).toHaveBeenCalledWith(value, binding._collectionChangedHandler);
-			expect(addCollectionChangedSpy).toHaveBeenCalledWith(newValue, binding._collectionChangedHandler);
-		});
-
 	});
 
 });
@@ -279,27 +261,6 @@ describe("Required option", function() {
 			expect(setTargetSpy).toHaveBeenCalledWith(value);
 		});
 
-		it("watches for array changes to the source path result and cleans up if the source value changes", function() {
-			var addCollectionChangedSpy = jasmine.spyOn(Sys.Observer, "addCollectionChanged").andCallThrough();
-			var removeCollectionChangedSpy = jasmine.spyOn(Sys.Observer, "removeCollectionChanged").andCallThrough();
-
-			var value = [{ val: 2 }, { val: 3 }, { val: 4 }];
-			var source = { value: value };
-			this.evalResult = value;
-
-			var binding = new Binding({ index: 0, dataItem: source }, source, "value", { get_element: function() { } }, "value", { required: "val" });
-
-			expect(addCollectionChangedSpy).toHaveBeenCalledWith(value, binding._collectionChangedHandler);
-
-			var newValue = [{ val: 0 }];
-
-			this.evalResult = newValue;
-			source.value = newValue;
-			binding._sourcePathChangedHandler();
-			expect(removeCollectionChangedSpy).toHaveBeenCalledWith(value, binding._collectionChangedHandler);
-			expect(addCollectionChangedSpy).toHaveBeenCalledWith(newValue, binding._collectionChangedHandler);
-		});
-
 		it("watches for changes to the required path", function() {
 			var handlers = [];
 			var addPathChangedSpy = jasmine.spyOn(Sys.Observer, "addPathChanged").andCallFake(function(source, path, handler) {
@@ -364,7 +325,6 @@ describe("Required option", function() {
 
 			expect(removePathChangedSpy).toHaveBeenCalledWith(removed, "val", binding._watchedItemPathChangedHandler);
 			expect(addPathChangedSpy).toHaveBeenCalledWith(added, "val", binding._watchedItemPathChangedHandler, true);
-			expect(setTargetSpy).toHaveBeenCalledWith(value);
 		});
 
 	});

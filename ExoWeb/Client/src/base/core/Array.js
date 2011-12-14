@@ -286,11 +286,11 @@ function some(arr, callback, thisPtr) {
 	return false;
 }
 
-function update(arr, target, trackEvents) {
-	var source = arr, events = trackEvents ? [] : null, pointer = 0, srcSeek = 0, tgtSeek = 0;
+function update(arr, target/*, trackEvents, equalityFn*/) {
+	var source = arr, trackEvents = arguments[2], events = trackEvents ? [] : null, pointer = 0, srcSeek = 0, tgtSeek = 0, equalityFn = arguments[3];
 
 	while (srcSeek < source.length) {
-		if (source[srcSeek] === target[tgtSeek]) {
+		if ((!equalityFn && source[srcSeek] === target[tgtSeek]) || (equalityFn && equalityFn(source[srcSeek], target[tgtSeek]) === true)) {
 			if (pointer === srcSeek && pointer === tgtSeek) {
 				// items match, so advance
 				pointer = srcSeek = tgtSeek = pointer + 1;

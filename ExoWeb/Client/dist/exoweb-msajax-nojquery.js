@@ -835,11 +835,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return false;
 	}
 
-	function update(arr, target, trackEvents) {
-		var source = arr, events = trackEvents ? [] : null, pointer = 0, srcSeek = 0, tgtSeek = 0;
+	function update(arr, target/*, trackEvents, equalityFn*/) {
+		var source = arr, trackEvents = arguments[2], events = trackEvents ? [] : null, pointer = 0, srcSeek = 0, tgtSeek = 0, equalityFn = arguments[3];
 
 		while (srcSeek < source.length) {
-			if (source[srcSeek] === target[tgtSeek]) {
+			if ((!equalityFn && source[srcSeek] === target[tgtSeek]) || (equalityFn && equalityFn(source[srcSeek], target[tgtSeek]) === true)) {
 				if (pointer === srcSeek && pointer === tgtSeek) {
 					// items match, so advance
 					pointer = srcSeek = tgtSeek = pointer + 1;
@@ -1859,10 +1859,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	function Transform(array) {
+		if (array === null || array === undefined) {
+			ExoWeb.trace.throwAndLog("transform", "Transform input is required.");
+		}
+		if (!(array instanceof Array)) {
+			ExoWeb.trace.throwAndLog("transform", "Transform input must be an array.");
+		}
+
 		this._array = array;
 	}
 
-	function Transform$compileFilterFunction(filter) {
+	var compileFilterFunction = (function Transform$compileFilterFunction(filter) {
 		var parser = /(([a-z_$][0-9a-z_$]*)([.]?))|(('([^']|\')*')|("([^"]|\")*"))/gi;
 		var skipWords = ["true", "false", "$index", "null"];
 
@@ -1883,17 +1890,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		});
 
 		return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
-	}
+	}).cached();
 
-	var compileFilterFunction = Transform$compileFilterFunction.cached();
-
-	function Transform$compileGroupsFunction(groups) {
+	var compileGroupsFunction = (function Transform$compileGroupsFunction(groups) {
 		return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
-	}
+	}).cached();
 
-	var compileGroupsFunction = Transform$compileGroupsFunction.cached();
-
-	function Transform$compileOrderingFunction(ordering) {
+	var compileOrderingFunction = (function Transform$compileOrderingFunction(ordering) {
 		var orderings = [];
 		var parser = /\s*([a-z0-9_.]+)(\s+null)?(\s+(asc|desc))?(\s+null)? *(,|$)/gi;
 
@@ -1938,15 +1941,35 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return 0;
 		};
-	}
-
-	var compileOrderingFunction = Transform$compileOrderingFunction.cached();
+	}).cached();
 
 	function makeTransform(array, priorTransform, fn, args) {
 		Function.mixin(Transform.prototype, array);
 		array._prior = priorTransform;
 		array._transform = { fn: fn, args: args };
 		return array;
+	}
+
+	function updateTransformGroupItems(oldList, newList, nesting) {
+		var i, oldGroup, newGroup, oldItems, newItems;
+		if (nesting === 0) {
+			// when nesting is zero the items are no longer groups themselves.
+			update(oldList, newList);
+		}
+		else {
+			// recursively update items as groups
+			for (i = 0; i < newList.length; i++) {
+				newGroup = newList[i];
+				oldGroup = oldList.filter(function(g) { return g.group === newGroup.group; })[0];
+				if (oldGroup) {
+					updateTransformGroupItems(oldGroup.items, newGroup.items, nesting - 1);
+				}
+			}
+			// Update at the group level
+			update(oldList, newList, false, function (a, b) {
+				return a && b && a.group === b.group;
+			});
+		}
 	}
 
 	Transform.mixin({
@@ -1959,17 +1982,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return makeTransform(output, this, this.where, arguments);
 		},
 		groupBy: function Transform$groupBy(groups, thisPtr) {
-			if (!(groups instanceof Function)) {
-				groups = compileGroupsFunction(groups);
-			}
+			var groupFn = groups instanceof Function ? groups : compileGroupsFunction(groups);
 
 			var output = [];
-
 			var input = this.input();
 			var len = input.length;
 			for (var i = 0; i < len; i++) {
 				var item = input[i];
-				var groupKey = groups.apply(thisPtr || item, [item, i]);
+				var groupKey = groupFn.apply(thisPtr || item, [item, i]);
 
 				var group = null;
 				for (var g = 0; g < output.length; ++g) {
@@ -1997,25 +2017,30 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// and raises observable change events on this item as the 
 			// results change.
 
+			// make a copy of the transform data and make it observable
+			var output = this.copy();
+			Sys.Observer.makeObservable(output);
+
+			// determine the set of transform steps
+			// also determine the level of group nesting and make each group's items collection observable
 			var chain = [];
+			var groupCount = 0;
+			var observableSource = output;
 			for (var step = this; step; step = step._prior) {
-				Array.insert(chain, 0, step);
-			}
-
-			// make a new observable array
-			var input = this.input();
-			var output = Sys.Observer.makeObservable(new Array(input.length));
-
-			var len = input.length;
-			for (var i = 0; i < len; i++) {
-				output[i] = input[i];
+				chain.splice(0, 0, step);
+				if (step._transform && step._transform.fn === Transform.prototype.groupBy) {
+					groupCount++;
+					// make each group's items collection observable
+					observableSource.forEach(function(item) { Sys.Observer.makeObservable(item.items); });
+					// the new observable source is all of the items collections of the current observable source
+					observableSource = observableSource.mapToArray(function(item) { return item.items; });
+				}
 			}
 
 			// watch for changes to root input and rerun transform chain as needed
 			Sys.Observer.addCollectionChanged(chain[0].input(), function Transform$live$collectionChanged() {
 				// re-run the transform on the newly changed input
 				var newResult = $transform(chain[0].input());
-
 				for (var i = 1; i < chain.length; ++i) {
 					var step = chain[i];
 					newResult = step._transform.fn.apply(newResult, step._transform.args);
@@ -2024,12 +2049,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// apply the changes to the output.
 				// must use the original list so that the events can be seen
 				output.beginUpdate();
-				output.clear();
-				Array.addRange(output, newResult);
+				if (groupCount > 0) {
+					updateTransformGroupItems(output, newResult, groupCount);
+				}
+				else {
+					update(output, newResult);
+				}
 				output.endUpdate();
 			});
 
-			return makeTransform(output, this, this.live, arguments);
+			return output;
 		}
 	});
 
@@ -13210,15 +13239,25 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		_transform: function(value) {
-			if (!this._options.transform || !value)
+			// pass the value through if no transform is specified
+			if (!this._options.transform)
 				return value;
 
-			if (!this._transformFn) {
-				this._transformFn = new Function("list", "$element", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
-			}
+			if (value) {
+				if (!this._transformFn) {
+					// generate the transform function
+					this._transformFn = new Function("list", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
+				}
 
-			// transform the original list using the given options
-			return this._transformFn(value, this._isTargetElement ? this._target : this._target.get_element(), this._templateContext.index, this._templateContext.dataItem);
+				// transform the original list using the given options
+				var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
+
+				if (transformResult.live !== Transform.prototype.live) {
+					ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", and \"groupBy\".");
+				}
+
+				return transformResult.live();
+			}
 		},
 
 		// Functions that deal with responding to changes, asynchronous loading,
@@ -13231,7 +13270,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}, null, null, this);
 		},
 
-		_update: function(value, newItems, oldItems) {
+		_update: function(value, oldItems, newItems) {
 			if (this._isDisposed === true) {
 				return;
 			}
@@ -13243,7 +13282,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// if the value is an array and we will transform the value or require paths, then watch for collection change events
-			if (value && value instanceof Array && (this._options.required || this._options.transform)) {
+			if (value && value instanceof Array && this._options.required) {
 				this._value = value;
 				Sys.Observer.makeObservable(value);
 				Sys.Observer.addCollectionChanged(value, this._collectionChangedHandler);
@@ -13251,46 +13290,58 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// If additional paths are required then load them before invoking the callback.
 			if (this._options.required) {
-
-				// Unwatch require path for items that are no longer relevant.
-				forEach(oldItems, function(item) {
-					Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
-				}, this);
-
-				if (value) {
-					// Load required paths, then manipulate the source value and update the target.
-					this._require(value, function() {
-						if (this._isDisposed === true) {
-							return;
-						}
-	
-						// Watch require path for new items.
-						forEach(newItems, function(item) {
-							Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
-						}, this);
-	
-						this._queue(this._ifNull(this._format(this._transform(value))));
-					});
-				}
-				else {
+				this._updateWatchedItems(value, oldItems, newItems, function() {
 					this._queue(this._ifNull(this._format(this._transform(value))));
-				}
+				});
 			}
 			else {
 				this._queue(this._ifNull(this._format(this._transform(value))));
 			}
 		},
+	
+		_updateWatchedItems: function(value, oldItems, newItems, callback) {
+			// Unwatch require path for items that are no longer relevant.
+			if (oldItems) {
+				oldItems.forEach(function(item) {
+					Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
+				}, this);
+			}
+
+			if (value) {
+				// Load required paths, then manipulate the source value and update the target.
+				this._require(value, function() {
+					if (this._isDisposed === true) {
+						return;
+					}
+
+					if (newItems) {
+						// Watch require path for new items.
+						forEach(newItems, function(item) {
+							Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
+						}, this);
+					}
+
+					if (callback) {
+						callback.call(this);
+					}
+				});
+			}
+			else if (callback) {
+				callback.call(this);
+			}
+		},
 
 		_collectionChanged: function(items, evt) {
 			// In the case of an array-valued source, respond to a collection change that is raised for the source value.
-			// Optimization: short circuit mapping of changes based on whether there are required paths.
-			this._update(items,
-				this._options.required ? evt.get_changes().mapToArray(function(change) { return change.newItems || []; }) : [],
-				this._options.required ? evt.get_changes().mapToArray(function(change) { return change.oldItems || []; }) : []);
+			if (this._options.required) {
+				var oldItems = evt.get_changes().mapToArray(function(change) { return change.oldItems || []; });
+				var newItems = evt.get_changes().mapToArray(function(change) { return change.newItems || []; });
+				this._updateWatchedItems(items, oldItems, newItems);
+			}
 		},
 
 		_watchedItemPathChanged: function(sender, args) {
-			this._update(this._sourcePathResult, [], []);
+			this._update(this._sourcePathResult);
 		},
 
 		_sourcePathChanged: function() {
@@ -13298,8 +13349,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var prevSourcePathResult = this._sourcePathResult;
 			this._sourcePathResult = evalPath(this._source, this._sourcePath);
 
-			// Respond to a change that occurs at any point along the source path.
-			this._update(this._sourcePathResult, ensureArray(this._sourcePathResult), ensureArray(prevSourcePathResult));
+			// if the value is the same (which will commonly happen when the source is an array) then there is no need to update
+			if (prevSourcePathResult !== this._sourcePathResult) {
+				// Respond to a change that occurs at any point along the source path.
+				this._update(this._sourcePathResult, ensureArray(prevSourcePathResult), ensureArray(this._sourcePathResult));
+			}
 		},
 
 		_evalSuccess: function(result, message) {
@@ -13309,7 +13363,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			this._sourcePathResult = result;
 
-			this._update(result, ensureArray(result), []);
+			this._update(result, null, ensureArray(result));
 		},
 
 		_evalFailure: function(err) {

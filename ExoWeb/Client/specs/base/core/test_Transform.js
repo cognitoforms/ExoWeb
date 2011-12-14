@@ -14,6 +14,7 @@ var isObject = global.isObject = typeChecking.isObject;
 
 var functions = require("../../../src/base/core/Array");
 var functions = require("../../../src/base/core/Function");
+var trace = require("../../../src/base/core/Trace");
 var utilities = require("../../../src/base/core/Utilities");
 global.evalPath = ExoWeb.evalPath;
 var transform = require("../../../src/base/core/Transform");
@@ -50,6 +51,20 @@ function getName(i) {
 
 // Test Suites
 ///////////////////////////////////////
+describe("constructor", function() {
+	it("throws an error if no array is given", function() {
+		expect(function() {
+			$transform();
+		}).toThrow("Transform input is required.");
+	});
+
+	it("throws an error if a non-array input is given", function() {
+		expect(function() {
+			$transform("foo");
+		}).toThrow("Transform input must be an array.");
+	});
+});
+
 describe("orderBy", function() {
 	beforeEach(function() {
 		this.list = [
