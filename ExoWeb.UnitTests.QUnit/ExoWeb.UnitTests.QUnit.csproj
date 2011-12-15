@@ -60,6 +60,26 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Common\Model\instances.js" />
+    <Content Include="Common\Model\types.js" />
+    <Content Include="Common\Resources\ArnoldSchwarzenegger.jpg" />
+    <Content Include="Common\Resources\BatmanAndRobin.jpg" />
+    <Content Include="Common\Resources\BillMurray.jpg" />
+    <Content Include="Common\Resources\CateBlanchett.jpg" />
+    <Content Include="Common\Resources\ChrisODonnell.jpg" />
+    <Content Include="Common\Resources\DanAckroyd.jpg" />
+    <Content Include="Common\Resources\GeorgeClooney.jpg" />
+    <Content Include="Common\Resources\Ghostbusters.jpg" />
+    <Content Include="Common\Resources\HaroldRamis.jpg" />
+    <Content Include="Common\Resources\JoelSchumacher.jpg" />
+    <Content Include="Common\Resources\MatthewMacfadyen.jpg" />
+    <Content Include="Common\Resources\RidleyScott.jpg" />
+    <Content Include="Common\Resources\RobinHood.jpg" />
+    <Content Include="Common\Resources\RussellCrowe.jpg" />
+    <Content Include="Common\Resources\SigourneyWeaver.jpg" />
+    <Content Include="Common\Resources\TheGladiator.jpg" />
+    <Content Include="Common\Resources\TheMatrix.jpg" />
+    <Content Include="Common\Resources\UmaThurman.jpg" />
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2-vsdoc.js" />
     <Content Include="Common\Scripts\mock-driver.js" />
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2.js" />
@@ -84,6 +104,7 @@
     <Content Include="UI\DataViewPartial.htm" />
     <Content Include="UI\Helpers.htm" />
     <Content Include="UI\Controls.htm" />
+    <Content Include="UI\ServerRenderWithLinking.htm" />
     <Content Include="View\Adapter.htm" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>

@@ -20,7 +20,7 @@
 				return $transform(Employee.meta.known()).where(function(obj) {return obj.get_HireDate() <= this.get_DateCreated();}, this);
 			}
 			
-			setupTest("list-property", { description: "list property", expect: 5 }, function() {
+			defineTest("list-property", { description: "list property", expect: 5 }, function() {
 				//Driver.$AllowedSalesPersons.init(context.model.driver, []);
 				var list = context.model.driver.get_AllowedSalesPersons();
 				
@@ -45,7 +45,7 @@
 				same(getAllowedSalesPersons.apply(context.model.driver), list, "calculated property should have the correct values in it");
 			});
 
-			setupTest("list-property-default-values", { description: "list property default values should not be modified", expect: 1 }, function() {
+			defineTest("list-property-default-values", { description: "list property default values should not be modified", expect: 1 }, function() {
 				var o1 = new CarOwner();
 				o1.get_InactiveDrivers().add(context.model.driver);
 
@@ -53,7 +53,7 @@
 				equals(o2.get_InactiveDrivers().length, 0, "Inactive drivers for a new owner should be empty.");
 			});
 
-			setupTest("inheritance", { description: "inheritance", expect: 1 }, function() {
+			defineTest("inheritance", { description: "inheritance", expect: 1 }, function() {
 				ok(context.model.driver.get_Age, "Driver should have age property via Person");
 			});
 

@@ -84,7 +84,7 @@
 		<script type="text/javascript">
 			$exoweb({ model: { dependant: { id: "1", from: "MyApp.Dependant", and: ["Core.Person.All"] }} });
 
-			setupTest("test1", { description: "Simple Type Loading Tests", expect: 6 }, function() {
+			defineTest("test1", { description: "Simple Type Loading Tests", expect: 6 }, function() {
 				ok(context.model.meta.type("MyApp.Person"), "Type should be retrievable via \"type\" method.");
 				ok(MyApp.Person.meta, "Type should be retrievable directly from namespace objects.")
 				ok(context.model.meta.type("MyApp.Person") === MyApp.Person.meta, "Two methods should yield equivelent results.");
@@ -94,7 +94,7 @@
 				ok(MyApp.Person.meta.get, "Type should have a get method for retrieving instances.")
 			});
 
-			setupTest("test2", { description: "Property Chain Type Cast Tests", expect: 2 }, function() {
+			defineTest("test2", { description: "Property Chain Type Cast Tests", expect: 2 }, function() {
 				var personType = ExoWeb.Model.Model.getJsType("MyApp.Person");
 				var addressChain = ExoWeb.Model.Model.property("this<MyApp.LegalGuardian>.Address", personType);
 				ok(addressChain, "Property Chain should be able to handle a cast expression involving a namespace.");
@@ -102,7 +102,7 @@
 					"Property Chain should be able to retrieve a value involving a cast expression and namespace.");
 			});
 
-			setupTest("test3", { description: "Static Property of Namespaced Type", expect: 2 }, function() {
+			defineTest("test3", { description: "Static Property of Namespaced Type", expect: 2 }, function() {
 				ok(Core.Person.get_All().length === 2, "All list should have two entries.");
 				ok(ExoWeb.Model.Model.property("Core.Person.All").value().length === 2, "Using the property method should yield the same result.");
 			});

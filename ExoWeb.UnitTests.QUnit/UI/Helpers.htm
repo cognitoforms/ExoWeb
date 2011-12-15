@@ -17,26 +17,26 @@
 
 			// reference the immediate parent dataview's data when that dataview is bound to a single object
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			setupTest("test1", { description: "$parentContextData - Single hop with lone objects bound to parent dataview", expect: 2 }, function(result) {
+			defineTest("test1", { description: "$parentContextData - Single hop with lone objects bound to parent dataview", expect: 2 }, function(result) {
 				ok(result, "Result should be defined.");
 				ok(result instanceof Dealer, "Result should be a Dealer");
 			});
 			
 			// reference an ancestor dataview's data when that dataview is bound to a single object
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			setupTest("test2", { description: "$parentContextData - Double hop with lone objects bound to parent dataview", expect: 2 }, function(result) {
+			defineTest("test2", { description: "$parentContextData - Double hop with lone objects bound to parent dataview", expect: 2 }, function(result) {
 				ok(result, "Result should be defined");
 				ok(result instanceof Driver, "Result should be a Driver");
 			});
 
 			// reference the immediate parent dataview's data when the parent dataview is bound to a list (i.e.: list index)
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			setupTest("test3-0", { description: "$parentContextData - Single hop with list of objects bound to parent dataview - 1", expect: 3 }, function(result) {
+			defineTest("test3-0", { description: "$parentContextData - Single hop with list of objects bound to parent dataview - 1", expect: 3 }, function(result) {
 				ok(result, "Result should be defined");
 				ok(result.meta.type == OwnerLocation.meta, "Result should be an OwnerLocation");
 				equals(result.meta.id, 1, "Result's id should be 1");
 			});
-			setupTest("test3-1", { description: "$parentContextData - Single hop with list of objects bound to parent dataview - 2", expect: 3 }, function(result) {
+			defineTest("test3-1", { description: "$parentContextData - Single hop with list of objects bound to parent dataview - 2", expect: 3 }, function(result) {
 				ok(result, "Result2 should be defined");
 				ok(result.meta.type == OwnerLocation.meta, "Result should be an OwnerLocation");
 				equals(result.meta.id, 2, "Result's id should be 2");

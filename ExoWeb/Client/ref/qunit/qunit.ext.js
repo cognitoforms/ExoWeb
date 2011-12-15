@@ -1,5 +1,5 @@
 ﻿; (function() {
-	var pendingTests = {};
+	var pendingTests = [];
 	var executingTestsSignal = new ExoWeb.Signal("all pending tests signal");
 
 	var log = ExoWeb.trace.log;
@@ -15,14 +15,14 @@
 		}
 	}
 
-	function setupTest(name, optionsOrCallback, callbackOrNone) {
+	function defineTest(name, optionsOrCallback, callbackOrNone) {
 		// usage is test setup
 		log("tests", "{0}: setup", [name]);
 
 		var options = optionsOrCallback;
-		var callback = callbackOrNone;
+		var callback = callbackOrNone || options.fn;
 
-		if (arguments.length == 2) {
+		if (arguments.length == 2 && !callback && optionsOrCallback instanceof Function) {
 			log("tests", "{0}: only two args provided, no options", [name]);
 			callback = optionsOrCallback;
 			options = {};
@@ -33,32 +33,50 @@
 		var scopeCallback = scopeSignal.pending();
 
 		// create a function to be invoked when the test is ready to be executed
-		var pending = pendingTests[name] = function() {
-			log("tests", "{0}: invoked, waiting for scope", [name]);
+		var pending = {
+			name: name,
+			fn: function(args, whenDone) {
+				log("tests", "{0}: invoked, waiting for scope", [name]);
+	
+				// wait until the test is in scope if it isn't already
+				scopeSignal.waitForAll(function() {
+					log("tests", "{0}: registered", [name]);
+	
+					// notify qunit that the test is starting back up
+					start();
+	
+					try {
+						log("tests", "{0}: applying callback", [name]);
+	
+						if (options.setUp) {
+							options.setUp();
+						}
+						else if (options.setup) {
+							options.setup();
+						}
+	
+						// invoke the test callback
+						callback.apply(this, args);
+	
+						if (options.tearDown) {
+							options.tearDown();
+						}
 
-			// store the arguments of the execution callback so that they can be applied later
-			var invocationArguments = arguments;
-
-			// wait until the test is in scope if it isn't already
-			scopeSignal.waitForAll(function() {
-				log("tests", "{0}: registered", [name]);
-
-				// notify qunit that the test is starting back up
-				start();
-
-				try {
-					log("tests", "{0}: applying callback", [name]);
-
-					// invoke the test callback
-					callback.apply(this, invocationArguments);
-				}
-				catch (e) {
-					// log the error and provide a meaningful failure for qunit
-					log("tests", "ERROR: {0}", [e]);
-					ok(false, e);
-				}
-			});
+						if (whenDone && whenDone instanceof Function) {
+							whenDone();
+						}
+					}
+					catch (e) {
+						// log the error and provide a meaningful failure for qunit
+						log("tests", "ERROR: {0}", [e]);
+						ok(false, e);
+					}
+				});
+			}
 		};
+
+		pendingTests.push(pending);
+		pendingTests[name] = pending;
 
 		log("tests", "{0}: queuing test", [name]);
 
@@ -77,9 +95,9 @@
 		});
 	}
 
-	window.setupTest = setupTest;
+	window.defineTest = defineTest;
 
-	function executeTest(name) {
+	function _executeTest(name, args, callback) {
 		// register a pending test execution signal
 		var onComplete = executingTestsSignal.pending();
 
@@ -87,31 +105,53 @@
 		log("tests", "{0}: execute", [name]);
 
 		// look for the test in the cache
-		var pending = pendingTests[name];
 
-		var args = Array.prototype.slice.call(arguments, 1);
+		var pending = pendingTests[name];
 
 		if (pending) {
 			log("tests", "{0}: calling test", [name]);
 
 			// invoke the test callback
-			pending.apply(this, args);
+			pending.fn.call(this, args, callback);
 		}
 		else {
 			console.warn("(UT) test not found: " + name);
 		}
 
 		// delete the test from the cache
+		pendingTests.splice(pendingTests.indexOf(pending), 1);
 		delete pendingTests[name];
 
 		// notify that the pending test is complete
 		onComplete.call(this);
+
+		if (callback && callback instanceof Function) {
+			callback();
+		}
+	}
+	
+	function executeTest(name) {
+		var args = Array.prototype.slice.call(arguments, 1);
+
+		_executeTest(name, args);
 
 		// pass the argument through
 		return args;
 	}
 
 	window.executeTest = executeTest;
+
+
+	function executeAllTests() {
+		function _executeNextTest() {
+			if (pendingTests.length > 0) {
+				_executeTest(pendingTests[0].name, [], _executeNextTest);
+			}
+		}
+		_executeNextTest();
+	}
+
+	window.executeAllTests = executeAllTests;
 
 	function timeoutTests(timeout) {
 		window.setTimeout(function() {

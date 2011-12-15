@@ -1,0 +1,213 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+	<head>
+		<title>Server-side rendering with client-side linking</title>
+		<link href="../Common/Styles/qunit.css" type="text/css" rel="stylesheet" />
+		<style type="text/css">
+			.sys-template {display:none;}
+			.server {border-left:1px solid Blue; padding-left:5px;}
+			div.roles {clear:both;}
+			img.role-photo {float:left; margin:5px 5px 5px 0;}
+			div.actor-bio {padding:0 15px; margin:5px 0; font-style:italic; font-size:small; border-left:1px solid #555;}
+			div.actor-name.role-lead {font-weight:bold;}
+		</style>
+
+		<script src="../Common/Scripts/JQuery/jquery-1.3.2.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/QUnit/qunit.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/Microsoft/MicrosoftAjax.debug.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/ExoWeb/exoweb-msajax.js" type="text/javascript"></script>
+		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
+
+		<script type="text/javascript" src="../Common/Model/types.js"></script>
+		<script type="text/javascript" src="../Common/Model/instances.js"></script>
+		<script type="text/javascript">
+
+			defineTest("initial", {
+				description: "initial rendered state",
+				expect: 8,
+				fn: function() {
+					equals($("#client").find(".photo").length, 2, "should start out with 2 images");
+					equals($("#client").find(".roles:last-child > div.actor-name").length, 4, "should be 4 roles for Batman and Robin");
+					equals($("#client").find(".actor-bio:visible").length, 1, "Should be 1 visible actor bio.");
+					equals($("#client").find(".actor-bio:visible")[0].innerText, "Russell Ira Crowe (born 7 April 1964) is a New Zealander Australian actor...", "Bio should be Russell Crow's bio.");
+					equals($("#server").find(".photo.server").length, 2, "should start out with 2 (server-rendered) images");
+					equals($("#server").find(".roles:last-child.server > div.actor-name.server").length, 4, "should be 4 (server-rendered) roles for Batman and Robin");
+					equals($("#server").find(".actor-bio:visible").length, 1, "Should be 1 visible actor bio.");
+					equals($("#server").find(".actor-bio:visible")[0].innerText, "Russell Ira Crowe (born 7 April 1964) is a New Zealander Australian actor...", "Bio should be Russell Crow's bio.");
+				}
+			});
+
+			defineTest("addRole", {
+				description: "verify updated content after adding a role",
+				expect: 2,
+				setUp: function() {
+					Sys.Application.linkElement(document.getElementById("server"), document.getElementById("_t0"));
+					Movie.meta.get("batman_and_robin").get_Roles().add(new Role({ Actor: Actor.meta.get("russell_crowe"), Name: "Bane", Order: 9999, Star: false }));
+				},
+				fn: function() {
+					equals($("#client").find(".roles:last-child > div.actor-name").length, 5, "should now be 5 roles");
+					equals($("#server").find(".roles:last-child > div.actor-name").length, 5, "should now be 5 roles");
+				}
+			});
+
+			defineTest("addMovie", {
+				description: "verify updated content after adding a movie",
+				expect: 3,
+				setUp: function() {
+					context.model.movies.add(Movie.meta.get("ghostbusters"));
+				},
+				fn:  function() {
+					equals($("#client").find(".photo").length, 3, "should now be 3 images");
+					equals($("#server").find(".photo").length, 3, "should start out with 3 images");
+					equals($("#server").find(".photo.server").length, 2, "should now be 2 server-rendered images");
+				}
+			});
+
+			defineTest("changeViaModel", {
+				description: "verify updated image src after changing the poster",
+				expect: 4,
+				setUp: function() {
+					Movie.meta.get("robin_hood").set_Title("The Gladiator - Pt. 2");
+					Movie.meta.get("robin_hood").set_PosterUrl("../Common/Resources/RobinHood.jpg");
+				},
+				fn: function() {
+					equals($("#client").find("input[type=text]")[0].value, "The Gladiator - Pt. 2", "title should be updated");
+					equals($("#client").find(".photo")[0].getAttribute("src"), "../Common/Resources/RobinHood.jpg", "image src should be updated");
+					equals($("#server").find("input[type=text]")[0].value, "The Gladiator - Pt. 2", "title should be updated");
+					equals($("#server").find(".photo")[0].getAttribute("src"), "../Common/Resources/RobinHood.jpg", "image src should be updated");
+				}
+			});
+
+			defineTest("changeViaUI", {
+				description: "verify two way binding of title",
+				expect: 2, 
+				setUp: function() {
+					var el = $("#server").find("input[type=text][value='The Gladiator - Pt. 2']").val("Robin Hood")[0];
+					if (el.fireEvent) { el.fireEvent("onchange"); }
+					else if (el.dispatchEvent) {
+						var evt = document.createEvent("MutationEvents");
+						evt.initEvent("change", false, true);
+						el.dispatchEvent(evt);
+					}
+				},
+				fn: function() {
+					equals(context.model.movies[0].get_Title(), "Robin Hood", "title should be updated in model");
+					equals($("#client").find("input[type=text][value='Robin Hood']").length, 1, "title should be updated in DOM");
+				}
+			});
+
+			timeoutTests(2000);
+
+			ExoWeb.config.debug = true;
+
+			$exoweb({
+				model: {
+					movies: {
+						from: "Movie",
+						ids: ["robin_hood", "batman_and_robin"]
+					}
+				},
+				contextReady: function() {
+					Movie.meta.get("robin_hood").set_PosterUrl("../Common/Resources/TheMatrix.jpg");
+				},
+				domReady: function() {
+					executeAllTests();
+				}
+			});
+
+		</script>
+
+		<script type="text/javascript">
+
+//			$(function() {
+//			});
+
+		</script>
+	</head>
+	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" xmlns:content="javascript:ExoWeb.UI.Content"
+		xmlns:toggle="javascript:ExoWeb.UI.Toggle" xmlns:template="javascript:ExoWeb.UI.Template" sys:activate="*">
+		
+		<!-- QUnit Display -->
+		<h1 id="qunit-header">Test Results:</h1>
+		<h2 id="qunit-banner"></h2>
+		<h2 id="qunit-userAgent"></h2>
+		<ol id="qunit-tests"></ol>
+
+		<div id="_t0" class="sys-template">
+			<img class="photo" sys:src="{binding PosterUrl}" height="50" />
+			<input type="text" sys:value="{# Title}" />
+			<div class="roles" sys:attach="content" content:data="{binding Roles}"></div>
+		</div>
+		<table id="content">
+			<tbody>
+				<tr>
+					<td valign="top" width="300">
+						<div id="client" class="sys-template" sys:attach="dataview" dataview:data="{~ context.model.movies, source=window }">
+							<img class="photo" sys:src="{binding PosterUrl}" height="50" />
+							<input type="text" sys:value="{# Title}" />
+							<div class="roles" sys:attach="content" content:data="{binding Roles}"></div>
+						</div>
+					</td>
+					<td valign="top" width="300">
+						<div id="server" class="sys-ignore" data-sys-attach="dataview" data-dataview-data="{~ context.model.movies, source=window }">
+							<!--item-->
+							<img class="server photo" data-sys-src="{binding PosterUrl}" height="50" src="http://ia.media-imdb.com/images/M/MV5BMjEzNjg1NTg2NV5BMl5BanBnXkFtZTYwNjY3MzQ5._V1._SX320.jpg">
+							<input type="text" class="server" data-sys-value="{# Title}" value="The Matrix" />
+							<div class="server roles" data-sys-attach="content" data-content-data="{binding Roles}">
+								<!--item _t1-->
+								<div class="server actor-name role-lead">Russell Crowe</div>
+								<div class="server" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render">
+									<div class="actor-bio" data-sys-innerhtml="{binding Actor.BioPreview}">Russell Ira Crowe (born 7 April 1964) is a New Zealander Australian actor...</div>
+								</div>
+								<!--/item-->
+
+								<!--item _t1-->
+								<div class="server actor-name">Cate Blanchett</div>
+								<!--/item-->
+
+								<!--item _t1-->
+								<div class="server actor-name">Matthew Macfadyen</div>
+								<!--/item-->
+
+								<!--item _t1-->
+								<div class="server actor-name">Max von Sydow</div>
+								<!--/item-->
+							</div>
+							<!--/item-->
+
+							<!--item-->
+							<img class="server photo" data-sys-src="{binding PosterUrl}" height="50" src="http://ia.media-imdb.com/images/M/MV5BMjE3NzcyNzM4MF5BMl5BanBnXkFtZTYwNDA3Mzk4._V1._SX320.jpg">
+							<input type="text" class="server" data-sys-value="{# Title}" value="Batman &amp; Robin" />
+							<div class="server roles" data-sys-attach="content" data-content-data="{binding Roles}">
+								<!--item _t1-->
+								<div class="server actor-name">Arnold Schwarzenegger</div>
+								<!--/item-->
+
+								<!--item _t1-->
+								<div class="server actor-name role-lead">George Clooney</div>
+								<!--/item-->
+
+								<!--item _t1-->
+								<div class="server actor-name">Chris O'Donnell</div>
+								<!--/item-->
+
+								<!--item _t1-->
+								<div class="server actor-name">Uma Thurman</div>
+								<!--/item-->
+							</div>
+							<!--/item-->
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<div id="_t1" class="sys-template" sys:attach="template" template:datatype="Role">
+			<div class="actor-name" sys:class-role-lead="{{ $dataItem.get_Lead() }}">{{ $dataItem.get_Actor().get_Person().get_FirstName() + " " + $dataItem.get_Actor().get_Person().get_LastName() }}</div>
+			<div class="sys-template" sys:attach="toggle" toggle:on="{binding Actor.BioPreview}" toggle:action="render">
+				<div class="actor-bio">{binding Actor.BioPreview}</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -60,7 +60,7 @@
     			}
     		};
 
-    		setupTest("test1", { description: "Driver Name Required" }, function(sender, args) {
+    		defineTest("test1", { description: "Driver Name Required" }, function(sender, args) {
 	    		var $el = $(".driver-name input");
 
     			var issues = null;
@@ -75,7 +75,7 @@
     			equals(issues.length, 0, "Element should have zero issues");
     		});
 
-    		setupTest("test2", { description: "Phone Number Format" }, function(sender, args) {
+    		defineTest("test2", { description: "Phone Number Format" }, function(sender, args) {
     			var $el = $(".driver-phone input");
 
     			var issues = null;

@@ -28,13 +28,13 @@
 		</script>
 		<script type="text/javascript">
 
-			setupTest("test1", { description: "span", expect: 1 }, function() {
+			defineTest("test1", { description: "span", expect: 1 }, function() {
 				equals($("#1-content1").children(":first-child").text(), "span", "checking template label");
 			});
-			setupTest("test2", { description: "div", expect: 1 }, function() {
+			defineTest("test2", { description: "div", expect: 1 }, function() {
 				equals($("#2-content1").children(":first-child").text(), "div", "checking template label");
 			});
-			setupTest("test3", { description: "div.border", expect: 1 }, function() {
+			defineTest("test3", { description: "div.border", expect: 1 }, function() {
 				equals($("#3-content1").children(":first-child").text(), "div.border", "checking template label");
 			});
 

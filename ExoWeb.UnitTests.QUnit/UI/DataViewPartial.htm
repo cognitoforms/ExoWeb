@@ -31,14 +31,14 @@
 		</script>
 		<script type="text/javascript">
 
-			setupTest("Body #1 does partial update", { description: "span", expect: 4 }, function() {
+			defineTest("Body #1 does partial update", { description: "span", expect: 4 }, function() {
 				equals($("table.transactions").find("tbody:nth-child(2) tr:first-child td:first-child").text(), "2", "checking rendering index");
 				equals($("table.transactions").find("tbody:nth-child(2) tr:first-child td:last-child").text(), "-400", "checking rendering index");
 				equals($("table.transactions").find("tbody:nth-child(2) tr:last-child td:first-child").text(), "1", "checking rendering index");
 				equals($("table.transactions").find("tbody:nth-child(2) tr:last-child td:last-child").text(), "1000000", "checking rendering index");
 			});
 
-			setupTest("Body #2 does not do partial update", { description: "span", expect: 4 }, function() {
+			defineTest("Body #2 does not do partial update", { description: "span", expect: 4 }, function() {
 				equals($("table.transactions").find("tbody:nth-child(6) tr:first-child td:first-child").text(), "1", "checking rendering index");
 				equals($("table.transactions").find("tbody:nth-child(6) tr:first-child td:last-child").text(), "-400", "checking rendering index");
 				equals($("table.transactions").find("tbody:nth-child(6) tr:last-child td:first-child").text(), "2", "checking rendering index");

@@ -31,12 +31,12 @@
 				}
 			});
 
-			setupTest("polymorphic loading", { expect: 2 }, function() {
+			defineTest("polymorphic loading", { expect: 2 }, function() {
 				ok(typeof (UsedCar) == "function", "UsedCar type should be loaded b/c instance of that type was fetched");
 				ok(context.model.usedCar instanceof UsedCar, "context.model.usedCar should be of type UsedCar even though base type was fetched");
 			});
 
-			setupTest("object pool and sub classes", { expect: 5 }, function() {
+			defineTest("object pool and sub classes", { expect: 5 }, function() {
 				ok(UsedCar.meta.get("200"), "UsedCar(200) should be in UsedCar pool");
 				ok(Car.meta.get("200"), "UsedCar(200) should be in base class pool (Car)");
 				ok(Product.meta.get("200"), "UsedCar(200) should be in base class pool (Product)");
@@ -45,7 +45,7 @@
 				ok((new Product("200")) instanceof UsedCar, "new Product(200) should be of type UsedCar");
 			});
 
-			setupTest("instanceof operator", { expect: 4 }, function() {
+			defineTest("instanceof operator", { expect: 4 }, function() {
 				ok(context.model.driver instanceof Driver, "instance of type");
 				ok(context.model.driver instanceof Person, "instance of basetype");
 
@@ -54,7 +54,7 @@
 				ok(!(context.model.driver instanceof Dealer), "not instance of unrelated type");
 			});
 
-			setupTest("type members", { expect: 5 }, function() {					
+			defineTest("type members", { expect: 5 }, function() {					
 				ok(context.model.driver.get_Cars(), "property on final type (execute)");
 				ok(context.model.driver.get_Name, "property on base type (exists)");
 				ok(context.model.driver.get_Name(), "property on base type (execute)");
@@ -63,7 +63,7 @@
 				ok(context.model.usedCar.get_Name(), "property on base type (double hop, execute)");
 			});
 
-			setupTest("formats", { expect: 5 }, function() {
+			defineTest("formats", { expect: 5 }, function() {
 				ok(UsedCar.formats.shortDesc === Product.formats.shortDesc, "UsedCar inherits shortDesc from base class");
 				ok(Car.formats.shortDesc === Product.formats.shortDesc, "Car inherits shortDesc from base class");
 
@@ -73,7 +73,7 @@
 				ok(context.model.usedCar.toString("longDesc").startsWith("<UsedCar>"), "toString() should use inherited formats");
 			});
 
-			setupTest("newId", { expect: 3 }, function() {
+			defineTest("newId", { expect: 3 }, function() {
 				context.model.meta.addType("Foo");
 				context.model.meta.addType("Bar", Foo.meta);
 

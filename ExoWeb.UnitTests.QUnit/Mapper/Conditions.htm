@@ -31,7 +31,7 @@
 
 			$exoweb({ model: { driver: { id: "1", from: "Driver" } } });
 
-			setupTest("test1", { description: "Condition Types Available On Client", expect: 11 }, function() {
+			defineTest("test1", { description: "Condition Types Available On Client", expect: 11 }, function() {
 				ok(ExoWeb.Model.ConditionType.get("Person.NameRequired"), "Condition type should exist");
 				ok(ExoWeb.Model.ConditionType.get("Person.NameLength"), "Condition type should exist");
 				ok(ExoWeb.Model.ConditionType.get("Person.PhoneNumberRequired"), "Condition type should exist");
@@ -45,14 +45,14 @@
 				ok(ExoWeb.Model.ConditionType.get("CarOwner.LocationAllowedValues"), "Condition type should exist");
 			});
 
-			setupTest("test2", { description: "Conditions Sent From Server" }, function() {
+			defineTest("test2", { description: "Conditions Sent From Server" }, function() {
 				var employee = Employee.meta.get("103");
 				equals(employee.meta.conditions().length, 1, "Should have 1 condition from the server");
 				employee.set_Name("Test");
 				equals(employee.meta.conditions().length, 0, "Should have 0 conditions after setting value");
 			});
 
-			setupTest("test3", { description: "Conditions Caused by Rules on the Client" }, function() {
+			defineTest("test3", { description: "Conditions Caused by Rules on the Client" }, function() {
 				function changeValue(obj, property, value, callback) {
 					var original = ExoWeb.getValue(obj, property);
 					Sys.Observer.setValue(obj, property, value);
@@ -74,7 +74,7 @@
 				equals(context.model.driver.meta.conditions().length, 0, "Should have 0 conditions");
 			});
 
-			setupTest("test4", { description: "Conditions Caused by Roundtrip", expect: 0 }, function() {
+			defineTest("test4", { description: "Conditions Caused by Roundtrip", expect: 0 }, function() {
 				
 			});
 			

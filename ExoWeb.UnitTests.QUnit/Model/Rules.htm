@@ -16,14 +16,14 @@
 		<script type="text/javascript">
 			$exoweb({ model: { driver: { id: "1", from: "Driver" } } });
 
-			setupTest("allowed-values-basic", { description: "Basic Allowed Values Tests", expect: 2 }, function() {
+			defineTest("allowed-values-basic", { description: "Basic Allowed Values Tests", expect: 2 }, function() {
 				var rule = Driver.$Cars.rule(ExoWeb.Model.Rule.allowedValues);
 				ok(rule, "Rule can be retrieved via Property.rule(type)");
 				same(context.model.driver.get_Dealer().get_AvailableCars(), rule.values(context.model.driver),
 					"Allowed values rule \"values\" function should return the referenced property value.");
 			});
 
-			setupTest("compare-number-gte", { description: "Compare Rule (number greater than or equal to)", expect: 4 }, function () {
+			defineTest("compare-number-gte", { description: "Compare Rule (number greater than or equal to)", expect: 4 }, function () {
 				var rule = Driver.$MilesDriven.rule(ExoWeb.Model.Rule.compare);
 
 				equals(rule.err.get_message(), "Miles Driven must be greater than equal to Miles Driven Quota", "Check message text");
@@ -38,7 +38,7 @@
 				ok(!rule.satisfies(context.model.driver), "Comparison should NOT be valid: less than");
 			});
 
-			setupTest("compare-conditions", { description: "Compare Rule Attached Conditions", expect: 6 }, function () {
+			defineTest("compare-conditions", { description: "Compare Rule Attached Conditions", expect: 6 }, function () {
 				var rule = Driver.$DateCreated.rule(ExoWeb.Model.Rule.compare);
 				ok(rule, "Rule can be retrieved via Property.rule(type)");
 
@@ -58,7 +58,7 @@
 				equals(context.model.driver.meta.conditions(Driver.$DateCreated).length, 0, "Condition should not be attached for null source value");
 			});
 
-			setupTest("requiredIf-list", { description: "RequiredIf Rule (list)", expect: 6 }, function () {
+			defineTest("requiredIf-list", { description: "RequiredIf Rule (list)", expect: 6 }, function () {
 				var rule = Driver.$PrimaryCar.rule(ExoWeb.Model.Rule.requiredIf);
 
 				context.model.driver.set_PrimaryCar(null);
@@ -77,7 +77,7 @@
 				ok(rule.satisfies(context.model.driver), "Rule is satisfied: Primary Car has a value");
 			});
 
-			setupTest("requiredIf-number-gt", { description: "RequiredIf Rule (number greater than)", expect: 7 }, function () {
+			defineTest("requiredIf-number-gt", { description: "RequiredIf Rule (number greater than)", expect: 7 }, function () {
 				var rule = Driver.$RetirementGoalDate.rule(ExoWeb.Model.Rule.requiredIf);
 
 				ok(!rule.required(context.model.driver), "Retirement Goal Date is NOT required: Miles Driven is less than 200,000");
@@ -97,7 +97,7 @@
 				ok(rule.satisfies(context.model.driver), "Rule is satisfied: Retirement Goal Date has a value");
 			});
 
-			setupTest("compare-logic", { description: "Compare Logic" }, function () {
+			defineTest("compare-logic", { description: "Compare Logic" }, function () {
 				var ops = ["Equal", "NotEqual", "GreaterThan", "GreaterThanEqual", "LessThan", "LessThanEqual" ];
 
 				function compare(val1, val2, expect) {
@@ -128,7 +128,7 @@
 				return $format("Driver \"{Name}\" owned by \"{Owner.Name}\".", this);
 			}
 
-			setupTest("rule-force-execution", { description: "Forcing Execution of a Rule's Properties", expect: 4 }, function() {
+			defineTest("rule-force-execution", { description: "Forcing Execution of a Rule's Properties", expect: 4 }, function() {
 				equals(context.model.driver.get_Description(), calculateDriverDescription.call(context.model.driver), "Property should have been calculated");
 
 				hasRunDriverDescription = false;

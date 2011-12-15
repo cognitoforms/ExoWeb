@@ -15,7 +15,7 @@
 		<script type="text/javascript">
 			$exoweb({ model: { driver: { id: "1", from: "Driver", and: ["this.Owner.Location.Address.State", "this.Cars", "this.Dealer", "this.Dealer.AvailableCars"]} } });
 
-			setupTest("test1", { description: "Simple Chain Tests", expect: 5 }, function(chain) {
+			defineTest("test1", { description: "Simple Chain Tests", expect: 5 }, function(chain) {
 				equals(3, chain.all().length, "Chain is 3-parts (\"Owner.Location.Address\").");
 				ok(chain instanceof ExoWeb.Model.PropertyChain, "chain is of type PropertyChain.");
 
@@ -25,17 +25,17 @@
 				equals("Address", addressProp.get_name(), "lastProperty() result name is \"Address\".");
 			});
 
-			setupTest("test2", { description: "Value Tests", expect: 1 }, function(chain) {
+			defineTest("test2", { description: "Value Tests", expect: 1 }, function(chain) {
 				var address = chain.value(context.model.driver);
 				ok(address instanceof LocationAddress, "Value is of type Address.");
 			});
 
-			setupTest("test3", { description: "Target Tests", expect: 1 }, function(chain) {
+			defineTest("test3", { description: "Target Tests", expect: 1 }, function(chain) {
 				var loc = chain.lastTarget(context.model.driver);
 				ok(loc instanceof OwnerLocation, "Target is an OwnerLocation.");
 			});
 
-			setupTest("test4", { description: "Extend Chain Tests", expect: 3 }, function(chain) {
+			defineTest("test4", { description: "Extend Chain Tests", expect: 3 }, function(chain) {
 				var address = chain.value(context.model.driver);
 				ok(address instanceof LocationAddress, "address is a LocationAddress");
 
@@ -47,7 +47,7 @@
 				equals(String, abbrev.constructor, "Abbreviation should return a string.");
 			});
 
-			setupTest("test5", { description: "Equality Tests" }, function(chain) {
+			defineTest("test5", { description: "Equality Tests" }, function(chain) {
 				var props = [
 					{ label: "Person.$Name", value: Person.$Name },
 					{ label: "Driver.$Name", value: Driver.$Name },
@@ -78,7 +78,7 @@
 				ok(chain1.equals(chain2), "Properties should be equal: ExoWeb.Model.Model.property(\"this.Driver.Name\", Car), ExoWeb.Model.Model.property(\"this.Driver.Name\", NewCar)");
 			});
 
-			setupTest("test6", { description: "Property Chain Each Method" }, function() {
+			defineTest("test6", { description: "Property Chain Each Method" }, function() {
 				var numEach = 0;
 
 				ExoWeb.Model.Model.property("this.PrimaryCar<UsedCar>.Mileage", Driver.meta)
@@ -92,7 +92,7 @@
 				equals(numEach, 1, "Each should apply to the driver's car since it is of type NewCar");
 			});
 
-			setupTest("test7", { description: "Argument Assertions for Property Get and Set" }, function() {
+			defineTest("test7", { description: "Argument Assertions for Property Get and Set" }, function() {
 				var errorThrown = false;
 				try {
 					CarOwner.$Name.value(context.model.driver);
@@ -108,11 +108,11 @@
 				ok(errorThrown, "Should not be able to set value for CarOwner.$Name from a driver, even though it has a \"Name\" property");
 			});
 
-			setupTest("test8", { description: "Testing toggles via list.length (check in function)", expect: 1 }, function() {
+			defineTest("test8", { description: "Testing toggles via list.length (check in function)", expect: 1 }, function() {
 				equals($("#toggleCardDivFunction1").css("display"), "none");
 			});
 
-			setupTest("test9", { description: "Testing toggles via list.length property", expect: 1 }, function() {
+			defineTest("test9", { description: "Testing toggles via list.length property", expect: 1 }, function() {
 				equals($("#toggleCardDivProperty1").css("display"), "none");
 			});
 

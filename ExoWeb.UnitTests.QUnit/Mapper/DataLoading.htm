@@ -33,7 +33,7 @@
 
 			$exoweb({ model: { driver: { id: "1", from: "Driver", and: ["this.PrimaryCar.OriginalOwner", "this.Dealer.AvailableCars" ] }} });
 
-			setupTest("test1", { description: "All relevant properties for items in a list should be loaded when list is lazy loaded." }, function () {
+			defineTest("test1", { description: "All relevant properties for items in a list should be loaded when list is lazy loaded." }, function () {
 				var undefined;
 
 				ok(ExoWeb.Model.LazyLoader.isLoaded(context.model.driver.get_PrimaryCar()), "Primary Car property should be loaded.");
