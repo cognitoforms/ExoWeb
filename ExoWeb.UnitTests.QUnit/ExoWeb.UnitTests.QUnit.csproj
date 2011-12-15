@@ -103,7 +103,6 @@
     <Content Include="Model\Types.htm" />
     <Content Include="UI\DataViewPartial.htm" />
     <Content Include="UI\Helpers.htm" />
-    <Content Include="UI\Controls.htm" />
     <Content Include="UI\ServerRenderWithLinking.htm" />
     <Content Include="View\Adapter.htm" />
     <Content Include="Web.config">
