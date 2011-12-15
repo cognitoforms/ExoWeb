@@ -61,6 +61,7 @@ $exoweb({
 			ghostbuster_dr_egon_spengler: ["harold_ramis", "Dr. Egon Spengler", 3, true, false]
 		},
 		Director: {
+			static: { All: ["ridley_scott", "joel_schumacher", "ivan_reitman"] },
 			ridley_scott: ["ridley_scott", ["robin_hood"]],
 			joel_schumacher: ["joel_schumacher", ["batman_and_robin"]],
 			ivan_reitman: ["ivan_reitman", ["ghostbusters"]]

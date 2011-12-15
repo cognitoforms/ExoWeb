@@ -17,6 +17,26 @@ $exoweb({
 				Director: { index: 5, type: "Director" },
 				Roles: { index: 6, type: "Role", isList: true },
 				PosterUrl: { index: 7, type: "String" }
+			},
+			conditionTypes: {
+				"Movie.Genres.AllowedValues": {
+					category: "Error",
+					message: "Genres is not in the list of allowed values.",
+					rule: {
+						property: "Genres",
+						source: "Genre.All",
+						type: "allowedValues"
+					}
+				},
+				"Movie.Director.AllowedValues": {
+					category: "Error",
+					message: "Director is not in the list of allowed values.",
+					rule: {
+						property: "Director",
+						source: "Director.All",
+						type: "allowedValues"
+					}
+				}
 			}
 		},
 		Person: {
@@ -55,4 +75,8 @@ $exoweb({
 			}
 		}
 	}
+});
+
+$extend("Director", function() {
+	Director.formats.$display = ExoWeb.Model.Format.fromTemplate("{Person.FirstName} {Person.LastName}");
 });
