@@ -59,7 +59,7 @@ namespace ExoWeb
 
 						// Invoke the request and output the response
 						context.Response.ContentType = "application/json";
-						context.Response.Write(ExoWeb.FixJsonDates(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke())));
+						context.Response.Write(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke()));
 
 						break;
 

@@ -297,7 +297,7 @@ namespace ExoWeb
 				Templates.Page.Current.Model[root.Key] = root.Value.Roots;
 
 			// Return the response
-			return GetHtmlString("<script type=\"text/javascript\">$exoweb(" + FixJsonDates(ToJson(typeof(ServiceResponse), response)) + ");</script>");
+			return GetHtmlString("<script type=\"text/javascript\">$exoweb(" + ToJson(typeof(ServiceResponse), response) + ");</script>");
 		}
 
 		/// <summary>
@@ -559,7 +559,7 @@ namespace ExoWeb
 			serializableTypes.Add(type);
 		}
 
-		internal static string FixJsonDates(string json)
+		private static string FixJsonDates(string json)
 		{
 			return dateRegex.Replace(json,
 				(match) =>
@@ -578,7 +578,7 @@ namespace ExoWeb
 		public static string ProcessRequest(string json)
 		{
 			ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
-			return ExoWeb.FixJsonDates(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke()));
+			return ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke());
 		}
 
 		public static void RegisterForSerialization(Assembly assembly)
@@ -1021,7 +1021,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static string ToJson(Type type, object value)
 		{
-			return serializer.Serialize(value);
+			return FixJsonDates(serializer.Serialize(value));
 		}
 
 		#endregion
