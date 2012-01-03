@@ -2481,14 +2481,14 @@ Sys.Observer.insertRange = function Sys$Observer$insertRange(target, index, item
     Array.prototype.splice.apply(target, spliceArgs);
     Sys.Observer._collectionChange(target, change);
 }
-Sys.Observer.removeRange = function Sys$Observer$addRange(target, start, count) {
+Sys.Observer.removeRange = function Sys$Observer$removeRange(target, start, count) {
     /// <summary locid="M:J#Sys.Observer.removeRange" />
     /// <param name="target" type="Array" elementMayBeNull="true"></param>
     /// <param name="start" type="Array" elementMayBeNull="true"></param>
     /// <param name="count" type="Array" elementMayBeNull="true"></param>
     
     var items = target.splice(start, count);
-    var change = new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.remove, null, -1, items, count);
+    var change = new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.remove, null, -1, items, start);
     Sys.Observer._collectionChange(target, change);
 	return items;
 }
