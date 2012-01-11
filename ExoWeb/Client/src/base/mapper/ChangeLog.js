@@ -39,9 +39,9 @@ ChangeLog.mixin({
 	addTruncated: function (fn, filter, once) {
 		this._addEvent("truncated", fn, filter, once);
 	},
-	checkpoint: function (title) {
+	checkpoint: function (title, code) {
 		if (this._activeSet && this._sets.some(function (s) { return s.changes().length > 0; })) {
-			return this._activeSet.checkpoint(title);
+			return this._activeSet.checkpoint(title, code);
 		}
 	},
 	count: function (filter, thisPtr) {

@@ -205,10 +205,26 @@ describe("ChangeLog.truncate", function() {
 		expect(this.log.sets()[1].source()).toBe("client");
 		expect(this.log.sets()[1].changes().length).toBe(0);
 	});
+});
+
+describe("ChangeLog.checkpoint", function() {
+	beforeEach(setup);
 
 	it("accepts an optional title", function () {
 		var checkpoint = this.log.checkpoint("title");
-		expect(this.log.sets()[1].changes()[1].title).toBe("title");
+		expect(this.log.sets()
+				.mapToArray(function(set) { return set.changes(); })
+				.filter(function(c) { return c.type === "Checkpoint" && c.code === checkpoint })[0].title
+			).toBe("title");
+	});
+
+	it("accepts an optional code", function () {
+		var checkpoint = this.log.checkpoint("title", "abcdef");
+		expect(checkpoint).toBe("abcdef");
+		expect(this.log.sets()
+				.mapToArray(function(set) { return set.changes(); })
+				.filter(function(c) { return c.type === "Checkpoint" && c.title === "title" })[0].code
+			).toBe(checkpoint);
 	});
 });
 

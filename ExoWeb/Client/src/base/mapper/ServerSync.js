@@ -336,14 +336,14 @@ ServerSync.mixin({
 	// General events methods
 	///////////////////////////////////////////////////////////////////////
 	_raiseBeginEvents: function (method, args) {
-		this._raiseEvent("requestBegin", [this, args]);
 		this._raiseEvent(method + "Begin", [this, args]);
+		this._raiseEvent("requestBegin", [this, args]);
 	},
 	_raiseEndEvents: function (method, result, args) {
-		this._raiseEvent("requestEnd", [this, args]);
+		this._raiseEvent(method + result, [this, args]);
 		this._raiseEvent("request" + result, [this, args]);
 		this._raiseEvent(method + "End", [this, args]);
-		this._raiseEvent(method + result, [this, args]);
+		this._raiseEvent("requestEnd", [this, args]);
 	},
 	addRequestBegin: function (handler) {
 		this._addEvent("requestBegin", handler);
@@ -365,7 +365,10 @@ ServerSync.mixin({
 
 		Sys.Observer.setValue(this, "PendingServerEvent", true);
 
-		var args = { eventTarget: obj, eventName: name, eventRaised: event, includeAllChanges: includeAllChanges };
+		// Checkpoint the log to ensure that we only truncate changes that were saved.
+		var checkpoint = this._changeLog.checkpoint("server event " + name + " " + Date.formats.DateTime.convert(new Date()));
+
+		var args = { type: "raiseServerEvent", eventTarget: obj, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
 		this._raiseBeginEvents("raiseServerEvent", args);
 
 		// if no event object is provided then use an empty object
@@ -385,9 +388,6 @@ ServerSync.mixin({
 				event[key] = toExoGraph(arg, this._translator);
 			}
 		}
-
-		// Checkpoint the log to ensure that we only truncate changes that were saved.
-		var checkpoint = this._changeLog.checkpoint("server event " + name + " " + Date.formats.DateTime.convert(new Date()));
 
 		eventProvider(
 			name,
@@ -469,7 +469,7 @@ ServerSync.mixin({
 
 		Sys.Observer.setValue(this, "PendingRoundtrip", true);
 
-		var args = {};
+		var args = { type: "roundtrip" };
 		this._raiseBeginEvents("roundtrip", args);
 
 		var mtype = root ? root.meta.type || root.meta : null;
@@ -539,11 +539,11 @@ ServerSync.mixin({
 
 		Sys.Observer.setValue(this, "PendingSave", true);
 
-		var args = { root: root };
-		this._raiseBeginEvents("save", args);
-
 		// Checkpoint the log to ensure that we only truncate changes that were saved.
 		var checkpoint = this._changeLog.checkpoint("save " + Date.formats.DateTime.convert(new Date()));
+
+		var args = { type: "save", root: root, checkpoint: checkpoint };
+		this._raiseBeginEvents("save", args);
 
 		saveProvider(
 			toExoGraph(root, this._translator),
