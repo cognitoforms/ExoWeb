@@ -109,11 +109,11 @@ ExoWeb.trace = {
 		var result = [];
 
 		// process the callees until the end of the stack or until the depth limit is reached
-		for (var f = arguments.callee, depth = 0, _f = null; f && depth < 25; _f = f, f = f.arguments.callee.caller, depth++) {
+		for (var f = arguments.callee, depth = 0, _f = null; f && depth < 25; _f = f, f = f && f.arguments ? f.arguments.callee.caller : null, depth++) {
 
 			// format the function name and arguments
 			var name = parseFunctionName(f);
-			var args = Array.prototype.slice.call(f.arguments).map(formatArgument).join(", ");
+			var args = f && f.arguments ? Array.prototype.slice.call(f.arguments).map(formatArgument).join(", ") : "";
 
 			// append the new item
 			result.push(name + "(" + args + ")");
