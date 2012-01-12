@@ -196,7 +196,34 @@ ChangeLog.mixin({
 			var saveChanges = changes.filter(function (c, i) { return c.type === "Save"; });
 			var numSaveChanges = saveChanges.length;
 			if (numSaveChanges > 0) {
-				this.truncate(checkpoint, serverSync.canSave, serverSync);
+				// Create a dictionary of old ids to new ids for each type encountered in the save changes
+				var instancesSaved = {};
+				saveChanges.forEach(function(change) {
+					if (change.idChanges) {
+						change.idChanges.forEach(function(idChange) {
+							var map = instancesSaved[idChange.type];
+							if (!map) {
+								map = instancesSaved[idChange.type] = {};
+							}
+							map[idChange.oldId] = idChange.newId;
+						});
+					}
+				});
+
+				this.truncate(checkpoint, function(change) {
+					var remove = serverSync.canSave(change);
+					if (remove) {
+						// Account for new instances that are allowed to be saved but weren't actually saved
+						if (change.instance) {
+							var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
+							// Type/id combination doesn't show up in map of old ids to new ids, so don't remove the change from the log
+							if (!instancesSaved[change.instance.type] || !instancesSaved[change.instance.type][serverOldId]) {
+								remove = false;
+							}
+						}
+					}
+					return remove;
+				});
 
 				// Update affected scope queries
 				saveChanges.forEach(function (change) {
