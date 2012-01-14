@@ -198,12 +198,14 @@ describe("ChangeLog.truncate", function() {
 
 		// Checkpoint should be gone in this case since nothing precedes it.
 		expect(numRemoved).toBe(3);
-		
-		expect(this.log.sets().length).toBe(2);
-		expect(this.log.sets()[0].source()).toBe("test3");
-		expect(this.log.sets()[0].changes().length).toBe(2);
-		expect(this.log.sets()[1].source()).toBe("client");
-		expect(this.log.sets()[1].changes().length).toBe(0);
+
+		expect(this.log.sets().length).toBe(3);
+		expect(this.log.sets()[0].source()).toBe("test2");
+		expect(this.log.sets()[0].changes().length).toBe(1);
+		expect(this.log.sets()[1].source()).toBe("test3");
+		expect(this.log.sets()[1].changes().length).toBe(2);
+		expect(this.log.sets()[2].source()).toBe("client");
+		expect(this.log.sets()[2].changes().length).toBe(0);
 	});
 });
 

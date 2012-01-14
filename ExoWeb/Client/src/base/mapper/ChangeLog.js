@@ -124,7 +124,7 @@ ChangeLog.mixin({
 			numRemoved += this._sets[i].truncate(checkpoint, filter, thisPtr);
 
 			// If all changes have been removed (or all but the given checkpoint) then discard the set
-			if (this._sets[i].changes().length === 0 || (this._sets[i].changes().length === 1 && foundCheckpoint === true)) {
+			if (this._sets[i].changes().length === 0) {
 				this._sets.splice(i--, 1);
 				if (this._sets[i] === this._activeSet) {
 					this._activeSet = null;
@@ -196,52 +196,42 @@ ChangeLog.mixin({
 			var saveChanges = changes.filter(function (c, i) { return c.type === "Save"; });
 			var numSaveChanges = saveChanges.length;
 			if (numSaveChanges > 0) {
-				// Create a dictionary of old ids to new ids for each type encountered in the save changes
-				var instancesSaved = {};
-				saveChanges.forEach(function(change) {
-					if (change.idChanges) {
-						change.idChanges.forEach(function(idChange) {
-							var map = instancesSaved[idChange.type];
-							if (!map) {
-								map = instancesSaved[idChange.type] = {};
-							}
-							map[idChange.oldId] = idChange.newId;
-						});
-					}
-				});
+				// Collect all of the id changes in the response. Multiple saves could occur.
+				var idChanges = saveChanges.mapToArray(function(change) { return change.idChanges || []; });
 
+				// Create a list of new instances that were saved. Use a typed identifier form since the id stored
+				// in changes in the change log will be a server id rather than client id (if there is a distinction)
+				// and using the typed identifier approach allows for a straightforward search of the array.
+				var newInstancesSaved = idChanges.map(function(idChange) { return idChange.type + "|" + idChange.oldId; });
+
+				// Truncate changes that we believe were actually saved based on the response
 				this.truncate(checkpoint, function(change) {
-					var remove = serverSync.canSave(change);
-					if (remove) {
-						// Account for new instances that are allowed to be saved but weren't actually saved
-						if (change.instance) {
-							var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
-							// Type/id combination doesn't show up in map of old ids to new ids, so don't remove the change from the log
-							if (!instancesSaved[change.instance.type] || !instancesSaved[change.instance.type][serverOldId]) {
-								remove = false;
-							}
-						}
-					}
-					return remove;
+					var couldHaveBeenSaved, isNewObjectNotYetSaved;
+
+					// Determine if the change could have been saved in the first place
+					couldHaveBeenSaved = serverSync.canSave(change);
+
+					// Determine if the change targets a new object that has not been saved
+					isNewObjectNotYetSaved = change.instance && change.instance.isNew && !newInstancesSaved.contains(change.instance.type + "|" + change.instance.id);
+
+					// Return a value indicating whether or not the change should be removed
+					return couldHaveBeenSaved && !isNewObjectNotYetSaved;
 				});
 
 				// Update affected scope queries
-				saveChanges.forEach(function (change) {
-					if (!change.idChanges) return;
-					change.idChanges.forEach(function (idChange) {
-						var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
-						if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
-							var serverOldId = idChange.oldId;
-							var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
-								serverSync._translator.reverse(idChange.type, serverOldId) :
-								idChange.oldId;
-							serverSync._scopeQueries.forEach(function (query) {
-								query.ids = query.ids.map(function (id) {
-									return (id === clientOldId) ? idChange.newId : id;
-								}, this);
+				idChanges.forEach(function (idChange) {
+					var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
+					if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+						var serverOldId = idChange.oldId;
+						var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
+							serverSync._translator.reverse(idChange.type, serverOldId) :
+							idChange.oldId;
+						serverSync._scopeQueries.forEach(function (query) {
+							query.ids = query.ids.map(function (id) {
+								return (id === clientOldId) ? idChange.newId : id;
 							}, this);
-						}
-					}, this);
+						}, this);
+					}
 				}, this);
 			}
 
@@ -439,7 +429,7 @@ ChangeLog.mixin({
 				change.added.forEach(function (item) {
 					tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(before, function (itemType) {
 						var itemObj = fromExoGraph(item, serverSync._translator, true);
-						if (list.indexOf(itemObj) < 0) {
+						if (!list.contains(itemObj)) {
 							list.add(itemObj);
 						}
 					}, after)), this, true);
