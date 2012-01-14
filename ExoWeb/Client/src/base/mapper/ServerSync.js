@@ -160,6 +160,10 @@ ServerSync.mixin({
 	// Enable/disable save & related functions
 	///////////////////////////////////////////////////////////////////////
 	enableSave: function ServerSync$enableSave(obj) {
+		if (!(obj instanceof ExoWeb.Model.Entity)) {
+			ExoWeb.trace.throwAndLog("server", "Can only enableSave on entity objects.");
+		}
+
 		if (Array.contains(this._objectsExcludedFromSave, obj)) {
 			Array.remove(this._objectsExcludedFromSave, obj);
 			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
@@ -167,6 +171,10 @@ ServerSync.mixin({
 		}
 	},
 	disableSave: function ServerSync$disableSave(obj) {
+		if (!(obj instanceof ExoWeb.Model.Entity)) {
+			ExoWeb.trace.throwAndLog("server", "Can only disableSave on entity objects.");
+		}
+
 		if (!Array.contains(this._objectsExcludedFromSave, obj)) {
 			this._objectsExcludedFromSave.push(obj);
 			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");

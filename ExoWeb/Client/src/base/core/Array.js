@@ -2,8 +2,8 @@ function addRange(arr, items) {
 	Array.prototype.push.apply(arr, items);
 }
 
-function contains(arr, elt, from) {
-	return arr.indexOf(elt, from) > -1 ? true : false;
+function contains(arr, item, from) {
+	return arr.indexOf(item, from) >= 0;
 }
 
 function copy(arr) {
