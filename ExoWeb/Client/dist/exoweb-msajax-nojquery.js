@@ -1964,6 +1964,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (oldGroup) {
 					updateTransformGroupItems(oldGroup.items, newGroup.items, nesting - 1);
 				}
+				else {
+					Sys.Observer.makeObservable(newGroup.items);
+				}
 			}
 			// Update at the group level
 			update(oldList, newList, false, function (a, b) {
@@ -12879,7 +12882,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		/// </param>
 		/// <returns type="Object" />
 
-		var target = options.target, effectiveLevel = options.level || 1, container, subcontainer = options.subcontainer, i = 0, searching = true, context, data;
+		var target = options.target, effectiveLevel = options.level || 1, container, subcontainer = options.subcontainer, i = 0, searching = true, data;
 
 		if (target.control && (target.control instanceof Sys.UI.DataView || target.control instanceof ExoWeb.UI.Content)) {
 			target = target.control;
@@ -12895,15 +12898,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// if we are starting out with a dataview then look at the parent context rather than walking 
 			// up the dom (since the element will probably not be present in the dom)
 			if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
-				context = target.get_templateContext();
-
-				// If the control's context is the global context, then exit here with a custom result
-				if (context._global === true) {
-					return { data: null, global: true, container: document.documentElement, subcontainer: target.get_element() };
-				}
-
-				container = context.containerElement;
-
+				container = target.get_templateContext().containerElement;
+			
 				if (container.control instanceof Toggle)
 					container = Sys.UI.Template.findContext(container).containerElement;
 			

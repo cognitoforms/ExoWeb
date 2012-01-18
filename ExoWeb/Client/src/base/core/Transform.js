@@ -104,6 +104,9 @@ function updateTransformGroupItems(oldList, newList, nesting) {
 			if (oldGroup) {
 				updateTransformGroupItems(oldGroup.items, newGroup.items, nesting - 1);
 			}
+			else {
+				Sys.Observer.makeObservable(newGroup.items);
+			}
 		}
 		// Update at the group level
 		update(oldList, newList, false, function (a, b) {
