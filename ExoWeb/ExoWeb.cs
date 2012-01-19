@@ -618,7 +618,7 @@ namespace ExoWeb
 
 		static void InitializeSerialization()
 		{
-			serializer = new JavaScriptSerializer();
+			serializer = new JavaScriptSerializer() { MaxJsonLength = Int32.MaxValue };
 			serializableTypes = new HashSet<Type>();
 
 			// Register converters for types implementing IJsonSerializable or that have DataContract attributes
