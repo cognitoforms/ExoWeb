@@ -11710,7 +11710,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		//////////////////////////////////////////////////////////
 		do_show: function Toggle$do_show() {
 			$(this.get_element()).show();
-			this._stateClass("on");
+			this.set_state("on");
 
 			// visibility has changed so raise event
 			if (this._visible === undefined || this._visible === false) {
@@ -11721,7 +11721,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		do_hide: function Toggle$do_hide() {
 			$(this.get_element()).hide();
-			this._stateClass("off");
+			this.set_state("off");
 
 			// visibility has changed so raise event
 			if (this._visible === undefined || this._visible === true) {
@@ -11729,6 +11729,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			this._visible = false;
+		},
+		add_on: function Toggle$add_on(handler) {
+			this._addHandler("on", handler);
+		},
+		remove_on: function Toggle$remove_on(handler) {
+			this._removeHandler("on", handler);
+		},
+		add_off: function Toggle$add_off(handler) {
+			this._addHandler("off", handler);
+		},
+		remove_off: function Toggle$remove_off(handler) {
+			this._removeHandler("off", handler);
 		},
 		add_shown: function Toggle$add_shown(handler) {
 			this._addHandler("shown", handler);
@@ -11750,11 +11762,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		//////////////////////////////////////////////////////////
 		do_enable: function Toggle$do_enable() {
 			$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().removeAttr("disabled");
-			this._stateClass("on");
+			this.set_state("on");
 		},
 		do_disable: function Toggle$do_disable() {
 			$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().attr("disabled", "disabled");
-			this._stateClass("off");
+			this.set_state("off");
 		},
 
 		// Render/Destroy
@@ -11774,7 +11786,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var renderArgs = new Sys.Data.DataEventArgs(pctx.dataItem);
 			Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
-			this._stateClass("on");
+			this.set_state("on");
 			$(this._element).empty();
 
 			if (pctx.dataItem) {
@@ -11788,7 +11800,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var renderArgs = new Sys.Data.DataEventArgs();
 			Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
-			this._stateClass("off");
+			this.set_state("off");
 			$(this._element).empty();
 
 			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
@@ -11813,7 +11825,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		
 			if(!$el.is("."+this._class)) {
 				$el.addClass(this._class);
-				this._stateClass("on");
+				this.set_state("on");
 				Sys.Observer.raiseEvent(this, "classAdded");
 			}
 		},
@@ -11822,7 +11834,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		
 			if($el.is("."+this._class)) {
 				$el.removeClass(this._class);
-				this._stateClass("off");
+				this.set_state("off");
 				Sys.Observer.raiseEvent(this, "classRemoved");
 			}
 		},
@@ -11894,7 +11906,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		set_class: function Toggle$set_class(value) {
 			this._class = value;
-			if(!this._action)
+			if (!this._action)
 				this._action = "addClass";
 			this.execute();
 		},
@@ -11924,7 +11936,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				this.execute();
 			}
-			else if(this._when && this._when instanceof Function) {
+			else if (this._when && this._when instanceof Function) {
 				this._on = value;
 				this.execute();
 			}
@@ -11961,6 +11973,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		set_groupName: function Toggle$set_groupName(value) {
 			this._groupName = value;
+		},
+
+		get_state: function Toggle$get_state() {
+			return this._state;
+		},
+		set_state: function Toggle$set_state(value) {
+			this._state = value;
+			this._stateClass(value);
+			Sys.Observer.raiseEvent(this, value);
 		},
 
 		get_equals: function Toggle$get_equals() {
@@ -12046,30 +12067,30 @@ Type.registerNamespace("ExoWeb.DotNet");
 		_toggleAdded: function ToggleGroup$_toggleAdded(idx, elem) {
 			if (elem.control.get_groupName() === this._name && !Array.contains(this._children, elem)) {
 				this._children.push(elem);
-			
-				if ($(elem).is(":visible")) {
+
+				if (elem.control.get_state() === "on") {
 					this._add(elem);
 				}
 
-				elem.control.add_shown(this._shownHandler);
-				elem.control.add_hidden(this._hiddenHandler);
+				elem.control.add_on(this._onHandler);
+				elem.control.add_off(this._offHandler);
 			}
 		},
 		_toggleRemoved: function ToggleGroup$_toggleRemoved(idx, elem) {
 			if (Array.contains(this._children, elem)) {
-				elem.control.remove_shown(this._shownHandler);
-				elem.control.remove_hidden(this._hiddenHandler);
+				elem.control.remove_on(this._onHandler);
+				elem.control.remove_off(this._offHandler);
 
 				this._remove(elem);
 				this._children.remove(elem);
 				this._execute();
 			}
 		},
-		_toggleShown: function ToggleGroup$_toggleShown(sender) {
+		_toggleOn: function ToggleGroup$_toggleOn(sender) {
 			this._add(sender.get_element());
 			this._execute();
 		},
-		_toggleHidden: function ToggleGroup$_toggleHidden(sender) {
+		_toggleOff: function ToggleGroup$_toggleOff(sender) {
 			this._remove(sender.get_element());
 			this._execute();
 		},
@@ -12092,8 +12113,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._children = [];
 			this._visible = [];
 
-			this._shownHandler = this._toggleShown.bind(this);
-			this._hiddenHandler = this._toggleHidden.bind(this);
+			this._onHandler = this._toggleOn.bind(this);
+			this._offHandler = this._toggleOff.bind(this);
 
 			$(":toggle", this._element).ever(this._toggleAdded.bind(this), this._toggleRemoved.bind(this));
 
@@ -12882,7 +12903,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		/// </param>
 		/// <returns type="Object" />
 
-		var target = options.target, effectiveLevel = options.level || 1, container, subcontainer = options.subcontainer, i = 0, searching = true, data;
+		var target = options.target, effectiveLevel = options.level || 1, container, subcontainer = options.subcontainer, i = 0, searching = true, context, data;
 
 		if (target.control && (target.control instanceof Sys.UI.DataView || target.control instanceof ExoWeb.UI.Content)) {
 			target = target.control;
@@ -12898,8 +12919,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// if we are starting out with a dataview then look at the parent context rather than walking 
 			// up the dom (since the element will probably not be present in the dom)
 			if (!container && (target instanceof Sys.UI.DataView || target instanceof ExoWeb.UI.Content)) {
-				container = target.get_templateContext().containerElement;
-			
+				context = target.get_templateContext();
+
+				// If the control's context is the global context, then exit here with a custom result
+				if (context._global === true) {
+					return { data: null, global: true, container: document.documentElement, subcontainer: target.get_element() };
+				}
+
+				container = context.containerElement;
+
 				if (container.control instanceof Toggle)
 					container = Sys.UI.Template.findContext(container).containerElement;
 			

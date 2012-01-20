@@ -10,7 +10,7 @@ Toggle.mixin({
 	//////////////////////////////////////////////////////////
 	do_show: function Toggle$do_show() {
 		$(this.get_element()).show();
-		this._stateClass("on");
+		this.set_state("on");
 
 		// visibility has changed so raise event
 		if (this._visible === undefined || this._visible === false) {
@@ -21,7 +21,7 @@ Toggle.mixin({
 	},
 	do_hide: function Toggle$do_hide() {
 		$(this.get_element()).hide();
-		this._stateClass("off");
+		this.set_state("off");
 
 		// visibility has changed so raise event
 		if (this._visible === undefined || this._visible === true) {
@@ -29,6 +29,18 @@ Toggle.mixin({
 		}
 
 		this._visible = false;
+	},
+	add_on: function Toggle$add_on(handler) {
+		this._addHandler("on", handler);
+	},
+	remove_on: function Toggle$remove_on(handler) {
+		this._removeHandler("on", handler);
+	},
+	add_off: function Toggle$add_off(handler) {
+		this._addHandler("off", handler);
+	},
+	remove_off: function Toggle$remove_off(handler) {
+		this._removeHandler("off", handler);
 	},
 	add_shown: function Toggle$add_shown(handler) {
 		this._addHandler("shown", handler);
@@ -50,11 +62,11 @@ Toggle.mixin({
 	//////////////////////////////////////////////////////////
 	do_enable: function Toggle$do_enable() {
 		$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().removeAttr("disabled");
-		this._stateClass("on");
+		this.set_state("on");
 	},
 	do_disable: function Toggle$do_disable() {
 		$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().attr("disabled", "disabled");
-		this._stateClass("off");
+		this.set_state("off");
 	},
 
 	// Render/Destroy
@@ -74,7 +86,7 @@ Toggle.mixin({
 		var renderArgs = new Sys.Data.DataEventArgs(pctx.dataItem);
 		Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
-		this._stateClass("on");
+		this.set_state("on");
 		$(this._element).empty();
 
 		if (pctx.dataItem) {
@@ -88,7 +100,7 @@ Toggle.mixin({
 		var renderArgs = new Sys.Data.DataEventArgs();
 		Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
-		this._stateClass("off");
+		this.set_state("off");
 		$(this._element).empty();
 
 		Sys.Observer.raiseEvent(this, "rendered", renderArgs);
@@ -113,7 +125,7 @@ Toggle.mixin({
 		
 		if(!$el.is("."+this._class)) {
 			$el.addClass(this._class);
-			this._stateClass("on");
+			this.set_state("on");
 			Sys.Observer.raiseEvent(this, "classAdded");
 		}
 	},
@@ -122,7 +134,7 @@ Toggle.mixin({
 		
 		if($el.is("."+this._class)) {
 			$el.removeClass(this._class);
-			this._stateClass("off");
+			this.set_state("off");
 			Sys.Observer.raiseEvent(this, "classRemoved");
 		}
 	},
@@ -194,7 +206,7 @@ Toggle.mixin({
 	},
 	set_class: function Toggle$set_class(value) {
 		this._class = value;
-		if(!this._action)
+		if (!this._action)
 			this._action = "addClass";
 		this.execute();
 	},
@@ -224,7 +236,7 @@ Toggle.mixin({
 
 			this.execute();
 		}
-		else if(this._when && this._when instanceof Function) {
+		else if (this._when && this._when instanceof Function) {
 			this._on = value;
 			this.execute();
 		}
@@ -261,6 +273,15 @@ Toggle.mixin({
 	},
 	set_groupName: function Toggle$set_groupName(value) {
 		this._groupName = value;
+	},
+
+	get_state: function Toggle$get_state() {
+		return this._state;
+	},
+	set_state: function Toggle$set_state(value) {
+		this._state = value;
+		this._stateClass(value);
+		Sys.Observer.raiseEvent(this, value);
 	},
 
 	get_equals: function Toggle$get_equals() {

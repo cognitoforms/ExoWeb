@@ -14,30 +14,30 @@ ToggleGroup.mixin({
 	_toggleAdded: function ToggleGroup$_toggleAdded(idx, elem) {
 		if (elem.control.get_groupName() === this._name && !Array.contains(this._children, elem)) {
 			this._children.push(elem);
-			
-			if ($(elem).is(":visible")) {
+
+			if (elem.control.get_state() === "on") {
 				this._add(elem);
 			}
 
-			elem.control.add_shown(this._shownHandler);
-			elem.control.add_hidden(this._hiddenHandler);
+			elem.control.add_on(this._onHandler);
+			elem.control.add_off(this._offHandler);
 		}
 	},
 	_toggleRemoved: function ToggleGroup$_toggleRemoved(idx, elem) {
 		if (Array.contains(this._children, elem)) {
-			elem.control.remove_shown(this._shownHandler);
-			elem.control.remove_hidden(this._hiddenHandler);
+			elem.control.remove_on(this._onHandler);
+			elem.control.remove_off(this._offHandler);
 
 			this._remove(elem);
 			this._children.remove(elem);
 			this._execute();
 		}
 	},
-	_toggleShown: function ToggleGroup$_toggleShown(sender) {
+	_toggleOn: function ToggleGroup$_toggleOn(sender) {
 		this._add(sender.get_element());
 		this._execute();
 	},
-	_toggleHidden: function ToggleGroup$_toggleHidden(sender) {
+	_toggleOff: function ToggleGroup$_toggleOff(sender) {
 		this._remove(sender.get_element());
 		this._execute();
 	},
@@ -60,8 +60,8 @@ ToggleGroup.mixin({
 		this._children = [];
 		this._visible = [];
 
-		this._shownHandler = this._toggleShown.bind(this);
-		this._hiddenHandler = this._toggleHidden.bind(this);
+		this._onHandler = this._toggleOn.bind(this);
+		this._offHandler = this._toggleOff.bind(this);
 
 		$(":toggle", this._element).ever(this._toggleAdded.bind(this), this._toggleRemoved.bind(this));
 
