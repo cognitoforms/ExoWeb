@@ -661,7 +661,7 @@ namespace ExoWeb
 				(json) => new GraphInitEvent.InitExisting(json.Get<GraphInstance>("instance"));
 
 			// Deserialize Delete Event
-			Func<Json, GraphDeleteEvent> deserializeDeleteEvent = (json) => new GraphDeleteEvent(json.Get<GraphInstance>("instance"));
+			Func<Json, GraphDeleteEvent> deserializeDeleteEvent = (json) => new GraphDeleteEvent(json.Get<GraphInstance>("instance"), json.Get<bool>("isPendingDelete"));
 
 			// Construct Graph Instance
 			var createGraphInstance = typeof(GraphInstance).GetConstructor(
@@ -712,6 +712,10 @@ namespace ExoWeb
 						// IsStatic
 						if (property.IsStatic)
 							json.Set("isStatic", true);
+
+						// IsPersisted
+						if (!property.IsPersisted && !property.IsStatic)
+							json.Set("isPersisted", false);
 
 						// Index
 						int index = 0;
@@ -839,6 +843,7 @@ namespace ExoWeb
 						{
 							json.Set("type", "Delete");
 							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
+							json.Set("isPendingDelete", graphEvent.IsPendingDelete);
 						},
 						deserializeDeleteEvent),
 														
@@ -848,19 +853,12 @@ namespace ExoWeb
 						{
 							json.Set("type", "Save");
 							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
-							json.Set("idChanges", graphEvent.IdChanges);
+							json.Set("added", graphEvent.Added.Select(instance => new Dictionary<string, string>() 
+								{ { "type", instance.Type.Name }, { "oldId", instance.OriginalId }, { "newId", instance.Id } }));
+							json.Set("modified", graphEvent.Modified);
+							json.Set("deleted", graphEvent.Deleted);
 						},
 						json => { throw new NotSupportedException("GraphSaveEvent cannot be deserialized."); }),
-																					
-					// Id Change
-					new JsonConverter<GraphSaveEvent.IdChange>(
-						(change, json) =>
-						{
-							json.Set("type", change.Type.Name);
-							json.Set("oldId", change.OldId);
-							json.Set("newId", change.NewId);
-						},
-						json => { throw new NotSupportedException("GraphSaveEvent.IdChange cannot be deserialized."); }),
 
 					// Condition Type
 					new JsonConverter<ConditionType>(

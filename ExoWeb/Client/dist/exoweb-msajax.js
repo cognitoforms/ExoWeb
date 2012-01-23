@@ -8458,7 +8458,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var numSaveChanges = saveChanges.length;
 				if (numSaveChanges > 0) {
 					// Collect all of the id changes in the response. Multiple saves could occur.
-					var idChanges = saveChanges.mapToArray(function(change) { return change.idChanges || []; });
+					var idChanges = saveChanges.mapToArray(function(change) { return change.added || []; });
 
 					// Create a list of new instances that were saved. Use a typed identifier form since the id stored
 					// in changes in the change log will be a server id rather than client id (if there is a distinction)
@@ -8541,10 +8541,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		applySaveChange: function (change, serverSync, before, after) {
-			if (!change.idChanges)
+			if (!change.added)
 				return;
 
-			change.idChanges.forEach(function (idChange, idChangeIndex) {
+			change.added.forEach(function (idChange, idChangeIndex) {
 				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function (jstype) {
 					var serverOldId = idChange.oldId;
 					var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
