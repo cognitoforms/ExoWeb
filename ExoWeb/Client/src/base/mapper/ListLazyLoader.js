@@ -6,7 +6,9 @@ function listLoad(list, propName, callback, thisPtr) {
 
 	var model = list._ownerProperty.get_containingType().get_model();
 	var ownerId = list._ownerId;
-	var ownerType = list._ownerProperty.get_containingType().get_fullName();
+	var containingType = list._ownerProperty.get_containingType();
+	var owner = ownerId === STATIC_ID ? containingType.get_jstype() : containingType.get(ownerId);
+	var ownerType = owner.meta.type.get_fullName();
 	var prop = list._ownerProperty;
 	var propIndex = list._ownerProperty.get_index();
 	var propName = list._ownerProperty.get_name();
@@ -114,11 +116,6 @@ function listLoad(list, propName, callback, thisPtr) {
 			}
 		}
 
-		// get the list owner type (static) or entity (non-static)
-		var owner = ownerId === STATIC_ID ?
-			propType.get_jstype() :
-			getObject(model, ownerType, ownerId, null);
-
 		// remove list from json and process the json.  there may be
 		// instance data returned for the objects in the list
 		if (ExoWeb.Model.LazyLoader.isLoaded(owner)) {
@@ -138,8 +135,7 @@ function listLoad(list, propName, callback, thisPtr) {
 
 			ExoWeb.Batch.end(batch);
 			callback.call(thisPtr || this, list);
-
-		}
+		};
 
 		objectsFromJson(model, objectJson, function() {
 			if (conditionsJson) {
