@@ -8465,6 +8465,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// and using the typed identifier approach allows for a straightforward search of the array.
 					var newInstancesSaved = idChanges.map(function(idChange) { return idChange.type + "|" + idChange.oldId; });
 
+					// Determine that the target of a change is a new instance
+					var instanceIsNew = function(change) {
+						var obj = fromExoGraph(change.instance, serverSync._translator);
+						return obj && obj.meta.isNew;
+					};
+
 					// Truncate changes that we believe were actually saved based on the response
 					this.truncate(checkpoint, function(change) {
 						var couldHaveBeenSaved, isNewObjectNotYetSaved;
@@ -8473,7 +8479,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						couldHaveBeenSaved = serverSync.canSave(change);
 
 						// Determine if the change targets a new object that has not been saved
-						isNewObjectNotYetSaved = change.instance && change.instance.isNew && !newInstancesSaved.contains(change.instance.type + "|" + change.instance.id);
+						isNewObjectNotYetSaved = change.instance && (change.instance.isNew || instanceIsNew(change)) && !newInstancesSaved.contains(change.instance.type + "|" + change.instance.id);
 
 						// Return a value indicating whether or not the change should be removed
 						return couldHaveBeenSaved && !isNewObjectNotYetSaved;
