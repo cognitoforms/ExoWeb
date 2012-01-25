@@ -416,7 +416,10 @@ namespace ExoWeb
 				}
 
 				// Graph method
-				GraphMethod method = instance.Type.Methods[eventName];
+				GraphMethod method = null;
+				for(var t = instance.Type; t != null && method == null; t = t.BaseType)
+					method = t.Methods[eventName];
+
 				if (method != null)
 					return new GraphMethodEvent(instance, method, json.Get<Json>("event"), Include);
 
