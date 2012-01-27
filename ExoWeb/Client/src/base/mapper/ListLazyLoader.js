@@ -8,7 +8,7 @@ function listLoad(list, propName, callback, thisPtr) {
 	var ownerId = list._ownerId;
 	var containingType = list._ownerProperty.get_containingType();
 	var owner = ownerId === STATIC_ID ? containingType.get_jstype() : containingType.get(ownerId);
-	var ownerType = owner.meta.type.get_fullName();
+	var ownerType = ownerId === STATIC_ID ? owner.meta.get_fullName() : owner.meta.type.get_fullName();
 	var prop = list._ownerProperty;
 	var propIndex = list._ownerProperty.get_index();
 	var propName = list._ownerProperty.get_name();
