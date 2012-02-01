@@ -330,8 +330,9 @@ jQuery.fn.ever = function jQuery$ever(opts) {
 		// The selector that was specified on the query
 		querySelector = this.selector,
 
-		// The jQuery object that the action may be immediately performed for
-		immediate = this,
+		// The jQuery objects that the action may be immediately performed for
+		boundImmediate,
+		addedImmediate,
 
 		// The options the will be used to add handlers
 		options;
@@ -364,8 +365,18 @@ jQuery.fn.ever = function jQuery$ever(opts) {
 			options.context = queryContext;
 		}
 		// Filter the immediate object if it will be used to invoke immediately (added/bound)
-		if (options.selector && (options.added || options.bound)) {
-			immediate = immediate.find(options.selector);
+		if (options.added) {
+			addedImmediate = this;
+			if (options.selector) {
+				addedImmediate = addedImmediate.find(options.selector);
+			}
+		}
+		if (options.bound) {
+			boundImmediate = this;
+			if (options.selector) {
+				boundImmediate = boundImmediate.find(options.selector);
+			}
+			boundImmediate = boundImmediate.filter(":bound");
 		}
 		// Merge the query selector with the options selector
 		if (querySelector) {
@@ -379,15 +390,20 @@ jQuery.fn.ever = function jQuery$ever(opts) {
 		else if (!options.selector) {
 			ExoWeb.trace.throwAndLog("ever", "Ever requires a selector");
 		}
-		if (options.source && !(options.added || options.deleted)) {
-			ExoWeb.trace.logWarning("ever", "The source option only applies to added and deleted handlers");
+		if (options.source) {
+			if (!(options.added || options.deleted)) {
+				ExoWeb.trace.logWarning("ever", "The source option only applies to added and deleted handlers");
+			}
+			if (options.source !== "template" && options.source !== "updatePanel") {
+				ExoWeb.trace.logWarning("ever", "Unexpected source \"" + options.source + "\"");
+			}
 		}
 	}
 
 	// Add ever handlers
 	if (options.added) {
-		if (immediate.length > 0) {
-			immediate.each(options.added);
+		if (addedImmediate.length > 0) {
+			addedImmediate.each(options.added);
 		}
 		addEverHandler(options.context, options.selector, "added", options.source, options.added);
 	}
@@ -395,8 +411,8 @@ jQuery.fn.ever = function jQuery$ever(opts) {
 		addEverHandler(options.context, options.selector, "deleted", options.source, options.deleted);
 	}
 	if (options.bound) {
-		if (immediate.length > 0) {
-			immediate.filter(":bound").each(options.bound);
+		if (boundImmediate.length > 0) {
+			boundImmediate.each(options.bound);
 		}
 		addEverHandler(options.context, options.selector, "bound", options.source, options.bound);
 	}
