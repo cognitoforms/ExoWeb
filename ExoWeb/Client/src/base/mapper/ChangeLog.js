@@ -353,8 +353,9 @@ ChangeLog.mixin({
 				// Otherwise, log an error.
 				else {
 					ExoWeb.trace.logWarning("server",
-						"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
-						idChange);
+						"Cannot apply id change on type \"{0}\" since old id \"{1}\" was not found.",
+						idChange.type,
+						idChange.oldId);
 				}
 			}, after), this);
 		}, this);
@@ -404,12 +405,13 @@ ChangeLog.mixin({
 				if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
 
 					// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
-					newValue = Date.formats.$json.convertBack(newValue);
+					dateRegex.lastIndex = 0;
+					newValue = new Date(newValue.replace(dateRegex, dateRegexReplace));
 
 					//now that we have the value set for the date.
 					//if the underlying property datatype is actually a date and not a datetime
 					//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-					if (property.get_format() === Date.formats.ShortDate) {
+					if (property.get_format() && !hasTimeFormat.test(property.get_format())) {
 						var serverOffset = serverSync.get_ServerTimezoneOffset();
 						var localOffset = -(new Date().getTimezoneOffset() / 60);
 						newValue.addHours(serverOffset - localOffset);

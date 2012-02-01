@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using ExoGraph;
+using System.Collections;
+using ExoWeb.Templates.JavaScript;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {
@@ -13,36 +15,101 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	{
 		public Binding Data { get; internal set; }
 
-		public string[] Template { get; internal set; }
+		public Binding Template { get; internal set; }
 
-		internal override void Render(AjaxPage page, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
 		{
 			// Exit immediately if the element is conditionally hidden
-			if (If != null && If.Evaluate(page) as bool? == false)
-				return;
+			AttributeBinding ifBinding = null;
+			if (If != null)
+			{
+				ifBinding = If.Evaluate(page);
+
+				if (!ifBinding.IsValid)
+				{
+					Abort(page, templateNames, writer);
+					return;
+				}
+				else if (!JavaScriptHelpers.IsTruthy(ifBinding.Value))
+					return;
+			}
 
 			// Output the original template if data source was not specified
 			if (Data == null)
 			{
-				writer.Write(Markup);
+				Abort(page, templateNames, writer);
 				return;
 			}
 
-			// Get the data associated with the data view
-			GraphProperty property;
-			GraphInstance source;
-			var data = Data.Evaluate(page, out source, out property);
-			var realData = data is Adapter ? ((Adapter)data).RawValue : data;
+			// Get the data associated with the content control
+			var dataBinding = Data.Evaluate(page);
+			var templateBinding = Template != null ? Template.Evaluate(page) : null;
 
-			// Output the original template if data is not available
-			if (realData == null)
+			// Output the original template if the data binding expression could not be evaluated
+			if (!dataBinding.IsValid || (templateBinding != null && !templateBinding.IsValid))
 			{
-				writer.Write(Markup);
+				Abort(page, templateNames, writer);
 				return;
 			}
 
+			// Just render an empty content element if the data is null
+			if (dataBinding.Value == null)
+			{
+				RenderStartTag(page, writer, ifBinding, dataBinding);
+				RenderEndTag(writer);
+				return;
+			}
+
+			// Get the binding data
+			var data = dataBinding.Value;
+			var isAdapter = data is Adapter;
+			var realData = isAdapter ? ((Adapter)data).RawValue : data;
+			var property = dataBinding.Property;
+			var referenceType = realData is GraphInstance ? ((GraphInstance)realData).Type :
+								property is GraphReferenceProperty ? ((GraphReferenceProperty)property).PropertyType : null;
+			var valueType = realData != null && !(realData is GraphInstance || realData is IEnumerable<GraphInstance>) ? realData.GetType() :
+							property is GraphValueProperty ?  ((GraphValueProperty)property).PropertyType : null;
+			var isList = (property != null && property.IsList) || (realData is IEnumerable && !(realData is string));
+
+			// Evaluate content:template binding to get this content control's declare template(s)
+			var templates = templateBinding != null && templateBinding.DisplayValue != null ? templateBinding.DisplayValue.Split(' ') : new string[0];
+
+			// Join in the ContentTemplateNames value (sys:content-template) and the context's template names
+			templates = templateNames.Concat(templates).Concat(ContentTemplateNames).Distinct().ToArray();
+
+			// Find the correct template
+			var template = FindTemplate(page, isAdapter, referenceType, valueType, isList, templates);
+
+			// Output the original template if a matching template could not be found
+			if (template == null)
+			{
+				writer.Write(string.Format("<!-- A template could not be found matching the specified criteria (TagName={0}, Adapter={1}, Type={2}{3}, IsList={4}, Names='{5}') -->", Tag, isAdapter, referenceType, valueType, isList, string.Join(", ", templates)));
+				Abort(page, templateNames, writer);
+				return;
+			}
+
+			// Render the inline template for top level dataviews
+			var isTopLevel = page.IsTopLevel;
+			page.IsTopLevel = false;
+
+			// Render the original content start tag
+			RenderStartTag(page, writer, attributes => template.Class.Length > 0 ? MergeClassName(attributes, template) : attributes, ifBinding, dataBinding, templateBinding);
+
+			// Render the template inside a new template context
+			using (page.BeginContext(data, null))
+			{
+				template.Render(page, templates.Where(t => !template.Name.Contains(t)).Concat(template.ContentTemplateNames), writer);
+			}
+
+			// Render the original content end tag
+			RenderEndTag(writer);
+			page.IsTopLevel = isTopLevel;
+		}
+
+		Template FindTemplate(AjaxPage page, bool isAdapter, GraphType entityType, Type valueType, bool isList, string[] names)
+		{
 			// Find the appropriate template
-			var template = page.Templates.OfType<Template>().FirstOrDefault(
+			return page.Templates.OfType<Template>().Reverse().FirstOrDefault(
 				t =>
 				{
 					// First ensure the template tags match
@@ -50,76 +117,59 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						return false;
 
 					// Then see if the template is for adapter bindings
-					if (data is Adapter != t.IsAdapter)
+					if (isAdapter != t.IsAdapter)
 						return false;
 
 					// Then verify the datatypes
 					if (!String.IsNullOrEmpty(t.DataType))
 					{
-						// Entity
-						if (realData is GraphInstance)
+						// Reference
+						if (entityType != null)
 						{
 							// Verify the type matches if it is not the base type
-							if (t.DataType != "ExoWeb.Model.Entity")
-							{
-								var type = ((GraphInstance)realData).Type;
-								while (type != null && type.Name != t.DataType)
-									type = type.BaseType;
-								if (type == null)
-									return false;
-							}
-						}
-
-						// List
-						else if (realData is IEnumerable<GraphInstance>)
-						{
-
+							var type = entityType;
+							while (type != null && type.Name != t.DataType)
+								type = type.BaseType;
+							if (type == null)
+								return false;
 						}
 
 						// Value
 						else
 						{
-							string type = JsonConverter.GetJsonValueType(realData.GetType());
-							if (type != null)
-							{
-								if (type != t.DataType)
-									return false;
-							}
+							string type = JsonConverter.GetJsonValueType(valueType);
+
+							// Use "Array" as the type name for template matching for value types that are IEnumerable and not string.
+							// JsonConverter is primarily used for serialization of instance data and so the type returned will be
+							// the declared type of the property. Currently value type arrays are not fully supported but can be
+							// represented as "Object" for minimal functionality. For template matching we really want "Array" instead,
+							// since even in the case of custom serialization the value would be deserialized as an Array client-side
+							// and so if used in template matching the type name would be "Array".
+							if ((type == null || type == "Object") && valueType is IEnumerable)
+								type = "Array";
+
+							if (type == null || type != t.DataType)
+								return false;
 						}
 					}
 
+					// Check whether the template is specific to references
+					if (t.IsReference != null && t.IsReference != (entityType != null))
+						return false;
+
 					// Check whether the template is specific to lists
-					if (t.IsList != null && property is GraphReferenceProperty && t.IsList != ((GraphReferenceProperty)property).IsList)
+					if (t.IsList != null && t.IsList != isList)
 						return false;
 
 					// Finally, verify that the template names match sufficiently
 					foreach (var name in t.Name)
 					{
-						if (!Template.Contains(name))
+						if (!names.Contains(name))
 							return false;
 					}
 
 					return true;
 				});
-
-			// Output the original template if a matching template could not be found
-			if (template == null)
-			{
-				writer.Write(Markup);
-				return;
-			}
-
-			// Render the original content start tag
-			RenderStartTag(page, writer, attributes => template.Class.Length > 0 ? MergeAttributes(attributes, template) : attributes);
-
-			// Render the template inside a new template context
-			using (page.BeginContext(data, null))
-			{
-				template.Render(page, writer);
-			}
-
-			// Render the original content end tag
-			RenderEndTag(page, writer);
 		}
 
 		/// <summary>
@@ -128,20 +178,14 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <param name="attributes"></param>
 		/// <param name="template"></param>
 		/// <returns></returns>
-		IEnumerable<KeyValuePair<string, object>> MergeAttributes(IEnumerable<KeyValuePair<string, object>> attributes, Template template)
+		IEnumerable<AttributeBinding> MergeClassName(IEnumerable<AttributeBinding> attributes, Template template)
 		{
-			bool classFound = false;
-			foreach (var attribute in attributes)
+			return MergeAttribute(attributes, "class", value =>
 			{
-				if (attribute.Key == "class")
-				{
-					classFound = true;
-					yield return new KeyValuePair<string, object>(attribute.Key, String.Join(" ", attribute.Value.ToString().Split(' ').Union(template.Class).ToArray()));
-				}
-				yield return attribute;
-			}
-			if (!classFound)
-				yield return new KeyValuePair<string, object>("class", String.Join(" ", template.Class));
+				foreach(string className in template.Class)
+					value = AttributeHelper.EnsureClassName(value, className);
+				return value;
+			});
 		}
 
 		public override string ToString()

@@ -205,7 +205,7 @@ ObjectMeta.mixin({
 				obj = ConditionType.get(obj);
 
 			if (!obj)
-				throw obj + " not found";
+				throw new Error(obj + " not found");
 
 			filter = function (target, args) {
 				if (args.condition._type === obj) {

@@ -14,11 +14,14 @@
 		<script type="text/javascript">
 			$exoweb({ model: { driver: { id: "1", from: "Driver", and: ["this.PrimaryCar.OriginalOwner", "this.Dealer.AvailableCars", "this.SalesPerson", "this.AllowedSalesPersons" ] }} });
 
-			defineTest("test1", { description: "Adapter values (raw, system, display) refresh when path is changed" }, function (flags, callback) {
-				ok(flags.rawValueChanged, "Raw value should broadcast change when the path changes");
-				ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
-				ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
-				callback();
+			defineTest("test1", {
+				description: "Adapter values (raw, system, display) refresh when path is changed" },
+				fn: function (flags, callback) {
+					ok(flags.rawValueChanged, "Raw value should broadcast change when the path changes");
+					ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
+					ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
+					callback();
+				}
 			});
 
 			defineTest("test2", { description: "Adapter formatted values (display, system) refresh based on changes to properties relevant to the format.", expect: 2 }, function ( flags, callback) {
@@ -57,12 +60,10 @@
 
 			timeoutTests(2000);
 
-			function prepareTest(thisName, nextName, prepFn) { }
-
 			$exoweb({
 				contextReady: function () {
-					var setupList = [];
-	
+					executeAllTests();
+
 					setupList[0] = function (callback) {
 						var adapter = new ExoWeb.View.Adapter(context.model.driver, "Dealer", null, null, {});
 						adapter.ready(function AdapterReady() {
@@ -244,15 +245,6 @@
 					};
 	
 					Dealer.formats.$display = ExoWeb.Model.Format.fromTemplate("{AvailableCars}");
-	
-					function next() {
-						var setup = Array.dequeue(setupList);
-						if (setup) {
-							setup(next);
-						}
-					}
-	
-					next();
 				}
 			});
 		</script>

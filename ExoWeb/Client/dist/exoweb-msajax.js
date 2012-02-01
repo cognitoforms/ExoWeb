@@ -19,6 +19,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// done in order to get around problems with browser complaining about long-running script.
 		signalTimeout: false,
 
+		// The maximum number of pending signals to execute as a batch.
+		// By default this is null, which means that no maximum is enforced.
+		signalMaxBatchSize: null,
+
 		// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 		individualQueryLoading: false,
 
@@ -115,7 +119,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 		else if (arguments.length === 1) {
 			if (!isInteger(min)) {
-				throw "Minimum argument must be an integer.";
+				throw new Error("Minimum argument must be an integer.");
 			}
 
 			if (min < 0) {
@@ -127,13 +131,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		}
 		else if (!isInteger(min)) {
-			throw "Minimum argument must be an integer.";
+			throw new Error("Minimum argument must be an integer.");
 		}
 		else if (!isInteger(max)) {
-			throw "Maximum argument must be an integer.";
+			throw new Error("Maximum argument must be an integer.");
 		}
 		else if (min >= max) {
-			throw "Minimum argument must be less than maximum argument.";
+			throw new Error("Minimum argument must be less than maximum argument.");
 		}
 
 		return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -143,10 +147,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	function randomText(len) {
 		if (arguments.length === 0) {
-			throw "Length argument is required.";
+			throw new Error("Length argument is required.");
 		}
 		else if (!isNatural(len)) {
-			throw "Length argument must be a natural number.";
+			throw new Error("Length argument must be a natural number.");
 		}
 
 		var result = "";
@@ -215,7 +219,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (options.partitionedArg !== null && options.partitionedArg !== undefined) {
 				partitionedArg = arguments[options.partitionedArg];
 				if (!(partitionedArg instanceof Array)) {
-					throw "The partitioned argument must be an array.";
+					throw new Error("The partitioned argument must be an array.");
 				}
 
 				// Create a copy of the argument.
@@ -253,7 +257,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// Verify that the the partitioned argument is part of the grouping.
 			if (partitionedArgIdx === -1) {
-				throw "Invalid partitionedArg option.";
+				throw new Error("Invalid partitionedArg option.");
 			}
 
 			// Is this call already in progress?
@@ -313,7 +317,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// make sure the original callback is invoked and that cleanup occurs
 				call.callback.add(function() {
 					if (calls.indexOf(call) < 0) {
-						throw "Call not found.";
+						throw new Error("Call not found.");
 					}
 					if (origCallback) {
 						origCallback.apply(origThisPtr || this, arguments);
@@ -541,6 +545,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			fn.apply(this, arguments);
 		};
 	}
+
+	function callArgument(arg) {
+		arg.call();
+	};
 
 	// #endregion
 
@@ -1041,7 +1049,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		throwAndLog: function trace$throwAndLog(category, message, args) {
 			ExoWeb.trace.logError(category, message, args);
 
-			throw $format(message, args);
+			throw new Error($format(message, args));
 		},
 		getCallStack: function getCallStack() {
 			var result = [];
@@ -1089,8 +1097,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return "\"" + arg + "\"";
 			}
 			else {
-				var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
-				return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
+				return arg.format ? arg.format() : (arg.toString ? arg.toString() : "~unknown");
 			}
 		}
 		catch (e) {
@@ -1396,6 +1403,24 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._debugLabel = debugLabel;
 	}
 
+	var setupCallbacks = function setupCallbacks() {
+		window.setTimeout(function () {
+			var callbacks, maxBatch = isNumber(ExoWeb.config.signalMaxBatchSize) ? ExoWeb.config.signalMaxBatchSize : null;
+			if (maxBatch && pendingSignalTimeouts.length > maxBatch) {
+				// Exceeds max batch size, so only invoke the max number and delay the rest
+				callbacks = pendingSignalTimeouts.splice(0, maxBatch);
+				setupCallbacks();
+			}
+			else {
+				// No max batch, or does not exceed size, so call all pending callbacks
+				callbacks = pendingSignalTimeouts;
+				pendingSignalTimeouts = null;
+			}
+			// Call each callback in order
+			callbacks.forEach(callArgument);
+		}, 1);
+	};
+
 	function doCallback(name, thisPtr, callback, args, executeImmediately) {
 		if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
 			var batch = Batch.suspendCurrent("_doCallback");
@@ -1414,13 +1439,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			});
 
 			if (setup) {
-				window.setTimeout(function () {
-					var callbacks = pendingSignalTimeouts;
-					pendingSignalTimeouts = null;
-					callbacks.forEach(function (cb) {
-						cb();
-					});
-				}, 1);
+				setupCallbacks();
 			}
 		}
 		else {
@@ -1518,14 +1537,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				// Ensure that there is either no filter or the filter passes.
 				if (!item.filter || item.filter.apply(this, arguments) === true) {
-					// Call the handler function.
-					item.fn.apply(this, arguments);
-
 					// If handler is set to execute once,
-					// remove the handler after calling.
+					// remove the handler before calling.
 					if (item.once === true) {
 						funcs.splice(i--, 1);
 					}
+
+					// Call the handler function.
+					item.fn.apply(this, arguments);
 				}
 			}
 		};
@@ -2119,42 +2138,42 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	function evalPath(obj, path, nullValue, undefinedValue) {
-		var steps = path.split(".");
+		var i, name, steps = path.split("."), source, value = obj;
 
-		if (obj === null) {
+		if (value === null) {
 			return arguments.length >= 3 ? nullValue : null;
 		}
-		if (obj === undefined) {
+		if (value === undefined) {
 			return arguments.length >= 4 ? undefinedValue : undefined;
 		}
 
-		for (var i = 0; i < steps.length; ++i) {
-			var name = steps[i];
-			obj = ExoWeb.getValue(obj, name);
+		for (i = 0; i < steps.length; ++i) {
+			name = steps[i];
+			source = value;
+			value = ExoWeb.getValue(source, name);
 
-			if (obj === null) {
+			if (value === null) {
 				return arguments.length >= 3 ? nullValue : null;
 			}
-			if (obj === undefined) {
+			if (value === undefined) {
 				return arguments.length >= 4 ? undefinedValue : undefined;
 			}
 		}
 
-		if (obj === null) {
+		if (value === null) {
 			return arguments.length >= 3 ? nullValue : null;
 		}
-		if (obj === undefined) {
+		if (value === undefined) {
 			return arguments.length >= 4 ? undefinedValue : undefined;
 		}
 
-		return obj;
+		return value;
 	}
 
 	ExoWeb.evalPath = evalPath;
 
 	function getLastTarget(target, propertyPath) {
-		var path = propertyPath;
-		var finalTarget = target;
+		var i, path = propertyPath, finalTarget = target;
 
 		if (path.constructor == String) {
 			path = path.split(".");
@@ -2163,7 +2182,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			ExoWeb.trace.throwAndLog(["$lastTarget", "core"], "invalid parameter propertyPath");
 		}
 
-		for (var i = 0; i < path.length - 1; i++) {
+		for (i = 0; i < path.length - 1; i++) {
 			if (finalTarget) {
 				finalTarget = ExoWeb.getValue(finalTarget, path[i]);
 			}
@@ -2207,32 +2226,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ExoWeb.getValue = getValue;
 
-	var ctorProviders = ExoWeb._ctorProviders = {};
-
-	function addCtorProvider(type, provider) {
-		var key;
-
-		// given type is a string, then use it as the dictionary key
-		if (ExoWeb.isType(type, String)) {
-			key = type;
-		}
-		// given type is a function, then parse the name
-		else if (ExoWeb.isType(type, Function)) {
-			key = parseFunctionName(type);
-		}
-		/* TODO
-		else {
-		}*/
-
-		/* TODO
-		if (!ExoWeb.isType(provider, Function)) {
-		}*/
-
-		if (key !== undefined && key !== null) {
-			ctorProviders[key] = provider;
-		}
-	}
-
 	function getCtor(type) {
 
 		// Only return a value if the argument is defined
@@ -2252,17 +2245,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// evaluate the path
 					ctor = evalPath(window, type);
-				}
-				else {
-					// Look for a registered provider for the argument's type.
-					// TODO:  account for inheritance when determining provider?
-					var providerKey = parseFunctionName(type.constructor);
-					var provider = ctorProviders[providerKey];
-
-					if (provider !== undefined && provider !== null) {
-						// invoke the provider to obtain the constructor
-						ctor = provider(type);
-					}
 				}
 
 				// warn (and implicitly return undefined) if the result is not a javascript function
@@ -2297,7 +2279,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ExoWeb.isType = isType;
 
 	function eachProp(obj, callback, thisPtr) {
-		for (var prop in obj) {
+		var prop;
+		for (prop in obj) {
 			if (obj.hasOwnProperty(prop)) {
 				if (callback.apply(thisPtr || this, [prop, obj[prop]]) === false) {
 					break;
@@ -2319,42 +2302,27 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ExoWeb.objectToArray = objectToArray;
 
 	function $format(str, values) {
-		if (!values) return str;
+		var source = null, arrayMode = false;
 
-		var source = null,
-			arrayMode = false;
+		if (!values) return str;
 
 		if (arguments.length > 2) {
 			// use arguments passed to function as array
 			source = Array.prototype.slice.call(arguments, 1);
-			arrayMode = true;
 		}
 		else {
-			source = values;
-			if (values && values instanceof Array) {
-				// if the values are already an array there is no need to transform
-				// them into an array later on, in fact this would be unexpected behavior
-				arrayMode = true;
-			}
+			source = !(values instanceof Array) ? [values] : values
 		}
 
-		return str.replace(/\{([a-z0-9_.]+)\}/ig, function $format$token(match, expr) {
-			// Attempt to determine that single arg was passed, but
-			// "arguments mode" was intended based on the format string.
-			if (arrayMode === false && expr === "0") {
-				var allOneIndex = true;
-				str.replace(/\{([a-z0-9_.]+)\}/ig, function $format$token(match, expr) {
-					if (expr !== "0") {
-						allOneIndex = false;
-					}
-				});
-				if (allOneIndex === true) {
-					source = [values];
-					arrayMode = true;
-				}
+		return str.replace(/\{([0-9]+)\}/ig, function $format$token(match, indexStr) {
+			var index = parseInt(indexStr, 10);
+			var result = source[index];
+
+			if (result !== null && result !== undefined && result.constructor !== String) {
+				result = result.toString();
 			}
 
-			return evalPath(source, expr, "", match).toString();
+			return result;
 		});
 	}
 
@@ -2388,6 +2356,28 @@ Type.registerNamespace("ExoWeb.DotNet");
 		ms = ms / 24;
 		this.days = Math.floor(ms);
 	}
+
+	TimeSpan.mixin({
+		toString: function TimeSpan$toString() {
+			var num;
+			var label;
+
+			if (this.totalHours < 1) {
+				num = Math.round(this.totalMinutes);
+				label = "minute";
+			}
+			else if (this.totalDays < 1) {
+				num = Math.round(this.totalHours * 100) / 100;
+				label = "hour";
+			}
+			else {
+				num = Math.round(this.totalDays * 100) / 100;
+				label = "day";
+			}
+
+			return num == 1 ? (num + " " + label) : (num + " " + label + "s");
+		}
+	});
 
 	window.TimeSpan = TimeSpan;
 
@@ -2935,35 +2925,132 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._paths = options.paths;
 		this._convert = options.convert;
 		this._convertBack = options.convertBack;
+		this._compile = options.compile;
 		this._description = options.description;
 		this._nullString = options.nullString || "";
 		this._undefinedString = options.undefinedString || "";
 	}
 
-	Format.fromTemplate = (function Format$fromTemplate(convertTemplate) {
-		var paths = [];
-		convertTemplate.replace(/\{([a-z0-9_.]+)\}/ig, function(match, expr) {
-			paths.push(expr);
-			return expr;
-		});
+	var formatTemplateParser = /\[([a-z_][a-z0-9_.]*)(\:(.+?))?\]/ig;
+	var metaPathParser = /^(.*\.|)meta(\..*|)$/;
+
+	Format.fromTemplate = function Format$fromTemplate(type, template) {
 
 		return new Format({
-			paths: paths,
+
+			compile: function compile() {
+
+				if (!this._tokens) {
+					this._paths = [];
+					this._tokens = [];
+
+					// Replace escaped \, [ or ] characters with placeholders
+					template = template.replace(/\\\\/g, '\u0000').replace(/\\\[/g, '\u0001').replace(/\\\]/g, '\u0002');
+					var index = 0;
+					formatTemplateParser.lastIndex = 0;
+					var match = formatTemplateParser.exec(template);
+
+					// Process each token match
+					while (match) {
+						var path = match[1];
+						var propertyPath = path;
+
+						// See if the path represents a property path in the model
+						var defaultFormat = null;
+						try {
+							// Detect property path followed by ".meta..."
+							propertyPath = propertyPath.replace(metaPathParser, "$1");
+							var isMetaPath = propertyPath.length > 0 && propertyPath.length < path.length;
+							var allowFormat = !isMetaPath;
+							if (isMetaPath) {
+								propertyPath = propertyPath.substring(0, propertyPath.length - 1);
+							}
+
+							// If a property path remains, then attempt to find a default format and paths for the format
+							if (propertyPath) {
+								var property = Model.property("this." + propertyPath, type);
+								if (property) {
+									// Only allow formats for a property path that is not followed by ".meta..."
+									if (allowFormat) {
+										// Determine the default property format
+										defaultFormat = property.get_format();
+		
+										// If the path references one or more entity properties, include paths for the property format. Otherwise, just add the path.
+										var lastIndex = formatTemplateParser.lastIndex;
+										if (defaultFormat && defaultFormat.constructor === Format && defaultFormat !== this && defaultFormat.getPaths().length > 0)
+											this._paths.addRange(defaultFormat.getPaths().map(function(p) { return propertyPath + "." + p; }));
+										else
+											this._paths.push(propertyPath);
+										formatTemplateParser.lastIndex = lastIndex;
+									}
+									// Formats are not allowed, so just add the path
+									else {
+										this._paths.push(propertyPath);
+									}
+								}
+							}
+						}
+						catch (e) { }
+
+						// Create a token for the current match, including the prefix, path and format
+						this._tokens.push({
+							prefix: template.substring(index, formatTemplateParser.lastIndex - match[0].length).replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']'),
+							path: path,
+							format: match[3] ? match[3].replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']') : defaultFormat
+						});
+
+						// Track the last index and find the next match
+						index = formatTemplateParser.lastIndex;
+						match = formatTemplateParser.exec(template);
+					}
+
+					// Capture any trailing literal text as a token without a path
+					if (index < template.length) {
+						this._tokens.push({
+							prefix: template.substring(index).replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']')
+						});
+					}
+				}
+			},
+
 			convert: function convert(obj) {
 				if (obj === null || obj === undefined) {
 					return "";
 				}
 
-				return $format(convertTemplate, obj);
+				// Ensure the format has been compiled
+				this._compile();
+
+				var result = "";
+				for (var index = 0; index < this._tokens.length; index++) {
+					var token = this._tokens[index];
+					if (token.prefix)
+						result = result + token.prefix;
+					if (token.path) {
+						var value = evalPath(obj, token.path, "", token.path);
+						if (value === undefined || value === null)
+							value = "";
+						else if (token.format) {
+							if (token.format.constructor === String) {
+								token.format = getFormat(value.constructor, token.format);
+							}
+							value = token.format.convert(value);
+						}
+						result = result + value;
+					}
+				}
+				return result;
 			}
 		});
-	}).cached();
+	};
 
 	Format.mixin({
-		getPaths: function() {
+		getPaths: function () {
+			if (this._compile)
+				this._compile();
 			return this._paths || [];
 		},
-		convert: function(val) {
+		convert: function (val) {
 			if (val === undefined) {
 				return this._undefinedString;
 			}
@@ -2982,7 +3069,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return this._convert(val);
 		},
-		convertBack: function(val) {
+		convertBack: function (val) {
 			if (val === null || val == this._nullString) {
 				return null;
 			}
@@ -3012,8 +3099,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 				else {
 					return new FormatError(this._description ?
-								"{value} must be formatted as " + this._description :
-								"{value} is not properly formatted",
+								"{0} must be formatted as " + this._description :
+								"{0} is not properly formatted",
 								val);
 				}
 			}
@@ -3158,8 +3245,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				delete window[key];
 			}
 		},
-		addType: function Model$addType(name, base, origin) {
-			var type = new Type(this, name, base, origin);
+		addType: function Model$addType(name, base, origin, format) {
+			var type = new Type(this, name, base, origin, format);
 			this._types[name] = type;
 			return type;
 		},
@@ -3264,7 +3351,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					return;
 				}
 				else {
-					throw Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+					throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
 				}
 			}
 		}
@@ -3300,7 +3387,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	Entity.mixin({
 		init: function Entity$init(/*[properties] or [propName, propValue] */) {
-			forEachProperty(getProperties.apply(this, arguments), function(name, value) {
+			forEachProperty(getProperties.apply(this, arguments), function (name, value) {
 				var prop = this.meta.type.property(name, true);
 
 				if (!prop) {
@@ -3312,7 +3399,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}, this);
 		},
 		set: function Entity$set(/*[properties] or [propName, propValue] */) {
-			forEachProperty(getProperties.apply(this, arguments), function(name, value) {
+			forEachProperty(getProperties.apply(this, arguments), function (name, value) {
 				this._accessor("set", name).call(this, value);
 			}, this);
 		},
@@ -3328,54 +3415,31 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return fn;
 		},
-		toString: function Entity$toString(formatName) {
-			var format;
-
-			if (formatName) {
-				format = this.constructor.formats[formatName];
-
-				if (!format) {
-					ExoWeb.trace.throwAndLog(["formatting"], "Invalid format: {0}", arguments);
-				}
+		toString: function Entity$toString(format) {
+			if (format) {
+				format = getFormat(this.constructor, format);
 			}
 			else {
-				format = this.constructor.formats.$display || this.constructor.formats.$system;
+				format = this.meta.type.get_format();
 			}
 
-			return format.convert(this);
+			if (format)
+				return format.convert(this);
+			else
+				return Entity.toIdString(this);
 		}
 	});
 
-	Entity.formats = {
-		$system: new Format({
-			undefinedString: "",
-			nullString: "",
-			convert: function(obj) {
-				return obj.meta.type.toIdString(obj.meta.id);
-			},
-			convertBack: function(str) {
-				// indicates "no value", which is distinct from "no selection"
-				var ids = str.split("|");
-				var jstype = Model.getJsType(ids[0]);
-				if (jstype && jstype.meta) {
-					return jstype.meta.get(ids[1]);
-				}
-			}
-		}),
-		$display: new Format({
-			convert: function(obj) {
-				if (obj.get_Label)
-					return obj.get_Label();
+	// Gets the typed string id suitable for roundtripping via fromIdString
+	Entity.toIdString = function Entity$toIdString(obj) {
+		return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
+	};
 
-				if (obj.get_Name)
-					return obj.get_Name();
-
-				if (obj.get_Text)
-					return obj.get_Text();
-
-				return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
-			}
-		})
+	// Gets or loads the entity with the specified typed string id
+	Entity.fromIdString = function Entity$fromIdString(id) {
+		var ids = id.split("|");
+		var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
+		return jstype.meta.get(ids[1]);
 	};
 
 	ExoWeb.Model.Entity = Entity;
@@ -3396,7 +3460,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._pool = {};
 		this._legacyPool = {};
 		this._counter = 0;
-		this._properties = {};
+		this._properties = {}; 
 		this._instanceProperties = {};
 		this._staticProperties = {};
 		this._model = model;
@@ -3406,7 +3470,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// generate class and constructor
 		var jstype = Model.getJsType(name, true);
 
-		if (jstype) {
+		if (jstype) { 
 			ExoWeb.trace.throwAndLog(["model"], "'{1}' has already been declared", arguments);
 		}
 
@@ -3448,11 +3512,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		disableConstruction = false;
 
 		this._jstype.prototype.constructor = this._jstype;
-
-		// formats
-		var formats = function() { };
-		formats.prototype = baseJsType.formats;
-		this._jstype.formats = new formats();
 
 		// helpers
 		jstype.meta = this;
@@ -3547,11 +3606,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._addEvent("initExisting", handler, obj ? equals(obj) : null, once);
 			return this;
 		},
-		toIdString: function Type$toIdString(id) {
-			if (id) {
-				return $format("{0}|{1}", [this.get_fullName(), id]);
-			}
-		},
 		newId: function Type$newId() {
 			// Get the next id for this type's heirarchy.
 			for (var nextId, type = this; type; type = type.baseType) {
@@ -3585,7 +3639,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			Sys.Observer.makeObservable(obj);
 
 			for (var t = this; t; t = t.baseType) {
-				if (t._pool.hasOwnProperty(key)){
+				if (t._pool.hasOwnProperty(key)) {
 					ExoWeb.trace.throwAndLog("model", "Object \"{0}|{1}\" has already been registered.", [this.get_fullName(), id]);
 				}
 
@@ -3664,17 +3718,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return list;
 		},
-		addPropertyAdded: function(handler) {
+		addPropertyAdded: function (handler) {
 			this._addEvent("propertyAdded", handler);
 		},
 		addProperty: function Type$addProperty(def) {
 			var format = def.format;
 			if (format && format.constructor === String) {
-				format = def.type.formats[format];
-
-				if (!format) {
-					ExoWeb.trace.throwAndLog("model", "Cannot create property {0}.{1} because there is not a '{2}' format defined for {3}", [this._fullName, def.name, def.format, def.type]);
-				}
+				format = getFormat(def.type, format);
 			}
 
 			var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic, def.index);
@@ -3689,7 +3739,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					mtype._jstype[shortcutName] = prop;
 				}
 
-				mtype.derivedTypes.forEach(function(t) {
+				mtype.derivedTypes.forEach(function (t) {
 					genPropertyShortcut(t, false);
 				});
 			}
@@ -3700,11 +3750,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// its sub types don't need to be iterated over each time the constructor is called.
 			if (!prop.get_isStatic()) {
 				if (prop.get_isList()) {
-					this._initNewProps.push({ property: prop, valueFn: function() { return []; } });
+					this._initNewProps.push({ property: prop, valueFn: function () { return []; } });
 
 					if (prop.get_origin() !== "server") {
-						this._initExistingProps.push({ property: prop, valueFn: function() { return []; } });
-						Array.forEach(this.known(), function(obj) {
+						this._initExistingProps.push({ property: prop, valueFn: function () { return []; } });
+						Array.forEach(this.known(), function (obj) {
 							prop.init(obj, []);
 						});
 					}
@@ -3713,7 +3763,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// Previously only server-origin properties were inited in an attempt to allow
 					// calculations of client-origin properties to run when accessed. However, since
 					// rules attempt to run when registered this is no longer necessary.
-					this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
+					this._initNewProps.push({ property: prop, valueFn: function () { return undefined; } });
 				}
 			}
 			// initially client-based static list properties when added
@@ -3740,36 +3790,34 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 
-			this._raiseEvent("propertyAdded", [this, { property: prop }]);
+			this._raiseEvent("propertyAdded", [this, { property: prop}]);
 
 			return prop;
 		},
 		addMethod: function Type$addMethod(def) {
-			this._jstype.prototype[def.name] = function () 
-			{
+			this._jstype.prototype[def.name] = function () {
 				// Detect the optional success and failure callback delegates
 				var onSuccess;
 				var onFail;
-				var paths = null;					
+				var paths = null;
 
-				if (arguments.length > 1)
-				{
-					onSuccess = arguments[arguments.length-2];
+				if (arguments.length > 1) {
+					onSuccess = arguments[arguments.length - 2];
 					if (onSuccess instanceof Function) {
-						onFail = arguments[arguments.length-1];
+						onFail = arguments[arguments.length - 1];
 					}
 					else {
-						onSuccess = arguments[arguments.length-1];
-					}						
+						onSuccess = arguments[arguments.length - 1];
+					}
 				}
 				else if (arguments.length > 0)
-					onSuccess = arguments[arguments.length-1];
+					onSuccess = arguments[arguments.length - 1];
 
 				if (!onSuccess instanceof Function)
 					onSuccess = undefined;
 
-				var onSuccessFn = function(result) {
-					if(onSuccess !== undefined) {
+				var onSuccessFn = function (result) {
+					if (onSuccess !== undefined) {
 						onSuccess(result.event);
 					}
 				};
@@ -3779,8 +3827,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				if (argCount >= 1 && argCount <= 2 && arguments[0] instanceof Object &&
 						((argCount == 1 && (def.parameters.length != 1 || firstArgCouldBeParameterSet)) ||
-						((argCount == 2 && (def.parameters.length != 2 || (firstArgCouldBeParameterSet && arguments[1] instanceof Array))))))
-				{
+						((argCount == 2 && (def.parameters.length != 2 || (firstArgCouldBeParameterSet && arguments[1] instanceof Array)))))) {
 
 					// Invoke the server event
 					context.server.raiseServerEvent(def.name, this, arguments[0], false, onSuccessFn, onFail, argCount == 2 ? arguments[1] : null);
@@ -3805,12 +3852,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			};
 		},
 		_makeGetter: function Type$_makeGetter(receiver, fn, skipTypeCheck) {
-			return function() {
+			return function () {
 				return fn.call(receiver, this, skipTypeCheck);
 			};
 		},
 		_makeSetter: function Type$_makeSetter(prop) {
-			var setter = function(val) {
+			var setter = function (val) {
 				if (prop.isInited(this))
 					prop._setter(this, val, true);
 				else
@@ -3833,6 +3880,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		get_model: function Type$get_model() {
 			return this._model;
+		},
+		get_format: function Type$get_format() {
+			return this._format ? this._format : (this.baseType ? this.baseType.get_format() : undefined);
+		},
+		set_format: function Type$set_format(value) {
+			if (value && value.constructor == String)
+				value = getFormat(this.get_jstype(), value);
+			this._format = value;
 		},
 		get_fullName: function Type$get_fullName() {
 			return this._fullName;
@@ -3872,7 +3927,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 			function Type$addRule$changed(sender, args) {
-				if (args.wasInited && (rule.canExecute  ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
+				if (args.wasInited && (rule.canExecute ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
 					Type$addRule$fn(sender, args.property, rule.execute);
 				}
 			}
@@ -3943,7 +3998,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (input.get_dependsOnChange()) {
 					prop.addChanged(isSameType ?
 						Type$addRule$changed :
-						function(sender, args) {
+						function (sender, args) {
 							if (sender instanceof jstype) {
 								Type$addRule$changed.apply(this, arguments);
 							}
@@ -3954,7 +4009,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (input.get_dependsOnInit()) {
 					prop.addChanged(isSameType ?
 						Type$addRule$init :
-						function(sender, args) {
+						function (sender, args) {
 							if (sender instanceof jstype) {
 								Type$addRule$init.apply(this, arguments);
 							}
@@ -3965,7 +4020,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (input.get_dependsOnGet()) {
 					prop.addGet(isSameType ?
 						Type$addRule$get :
-						function(obj, prop, value, isInited) {
+						function (obj, prop, value, isInited) {
 							if (obj instanceof jstype) {
 								Type$addRule$get.apply(this, arguments);
 							}
@@ -4001,8 +4056,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 						if (rule.isAsync) {
 							// run rule asynchronously, and then pickup running next rules afterwards
 							var _this = this;
-//									ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-							rule.execute(obj, function() {
+							//									ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+							rule.execute(obj, function () {
 								rule._isExecuting = false;
 								obj.meta.markRuleExecuted(rule);
 								_this.executeRules(obj, rules, callback, i + 1);
@@ -4011,7 +4066,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						}
 						else {
 							try {
-//										ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+								//										ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
 								rule.execute(obj);
 								obj.meta.markRuleExecuted(rule);
 							}
@@ -4059,7 +4114,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		isSubclassOf: function Type$isSubclassOf(mtype) {
 			var result = false;
 
-			this.eachBaseType(function(baseType) {
+			this.eachBaseType(function (baseType) {
 				if (baseType === mtype) {
 					result = true;
 					return false;
@@ -4192,6 +4247,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._index;
 		},
 		get_format: function Property$get_format() {
+			if (!this._format) {
+				if (this._jstype.meta instanceof ExoWeb.Model.Type)
+					this._format = this._jstype.meta.get_format(); // Default to type-level formats for entity types
+				else
+					this._format = getFormat(this._jstype, "G"); // Default to general format for non-entity type
+			}
 			return this._format;
 		},
 		format: function (val) {
@@ -5321,7 +5382,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					obj = ConditionType.get(obj);
 
 				if (!obj)
-					throw obj + " not found";
+					throw new Error(obj + " not found");
 
 				filter = function (target, args) {
 					if (args.condition._type === obj) {
@@ -6204,6 +6265,54 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
+	// #region StringFormatRule
+	//////////////////////////////////////////////////
+
+	function StringFormatRule(mtype, options, ctype, callback, thisPtr) {
+		this.prop = mtype.property(options.property, true);
+		var properties = [ this.prop ];
+
+		if (!ctype) {
+			ctype = Rule.ensureError("stringFormat", this.prop);
+		}
+	 
+		this.ctype = ctype; 
+	 
+		this.description = options.description; 
+		this.expression = new RegExp(options.expression);
+		this.reformat = options.reformat;
+
+		this.err = new Condition(ctype, $format("{0} must be formatted as {1}.", [this.prop.get_label(), this.description]), properties, this);
+	 
+		Rule.register(this, properties, false, mtype, callback, thisPtr);
+	}
+
+	StringFormatRule.prototype = {
+		execute: function (obj) {
+			var val = this.prop.value(obj);
+			var isValid = true;
+			if (val && val != "") {
+				this.expression.lastIndex = 0;
+				isValid = this.expression.test(val);
+				if (isValid && this.reformat) {
+					this.expression.lastIndex = 0;
+					this.prop.value(obj, val.replace(this.expression, this.reformat));
+				}
+			}
+			obj.meta.conditionIf(this.err, !isValid);
+		},
+		toString: function () {
+			return $format("{0}.{1} formatted as {2}",
+				[this.prop.get_containingType().get_fullName(),
+				this.prop.get_name(),
+				this.description]);
+		}
+	};
+
+	Rule.stringFormat = StringFormatRule;
+
+	// #endregion
+
 	// #region ListLengthRule
 	//////////////////////////////////////////////////
 
@@ -6786,7 +6895,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	FormatError.mixin({
 		createCondition: function FormatError$createCondition(origin, prop) {
 			return new Condition(formatConditionType,
-				$format(this.get_message(), { value: prop.get_label() }),
+				$format(this.get_message(), prop.get_label()),
 				[prop],
 				origin);
 		},
@@ -6805,302 +6914,46 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Formats
+	// #region FormatProvider
 	//////////////////////////////////////////////////
 
-	Number.formats = {};
-	String.formats = {};
-	Date.formats = {};
-	TimeSpan.formats = {};
-	Boolean.formats = {};
-	Object.formats = {};
-	Array.formats = {};
+	var formatProvider = function formatProvider(type, format) {
+		throw new Error("Format provider has not been implemented.  Call ExoWeb.Model.setFormatProvider(fn);");
+	};
 
-	//TODO: number formatting include commas
-	Number.formats.Integer = new Format({
-		description: "#,###",
-		convert: function(val) {
-			return Math.round(val).toString();
-		},
-		convertBack: function(str) {
-			if (!/^([-\+])?(\d+)?\,?(\d+)?\,?(\d+)?\,?(\d+)$/.test(str)) {
-				throw new Error("invalid format");
-			}
+	function getFormat(type, format) {
 
-			return parseInt(str, 10);
-		}
-	});
+		// return null if a format specifier was not provided
+		if (!format || format === '')
+			return null;
 
-	Number.formats.Float = new Format({
-		description: "#,###.#",
-		convert: function(val) {
-			return val.toString();
-		},
-		convertBack: function(str) {
-			if (!/^\s*([-\+])?(\d+)?\,?(\d+)?\,?(\d+)?\,?(\d+)?(\.(\d\d*))?\s*$/.test(str)) {
-				throw new Error("invalid format");
-			}
-			var valString = str.replace(/,/g, "");
-			var val = parseFloat(valString);
-			if (isNaN(val)) {
-				throw new Error("invalid format");
-			}
-			return val;
-		}
-	});
+		// initialize format cache
+		if (!type._formats)
+			type._formats = {};
 
-	Number.formats.Percent = new Format({
-		description: "##.#%",
-		convert: function(val) {
-			return (val * 100).toPrecision(3).toString() + " %";
-		}
-	});
+		// first see if the requested format is cached
+		var f = type._formats[format];
+		if (f)
+			return f;
 
-	Number.formats.Currency = new Format({
-		description: "$#,###.##",
-		convert: function(val) {
-			var valString = val.toFixed(2).toString().replace(/\B(?=(?:\d{3})+(?!\d))/g, ",");
-			return "$" + valString;
-		},
-		convertBack: function(str) {
-			var valString = str.replace(/[\$,]/g, "");
-			if (!/^\s*([-\+])?(\d+)?\,?(\d+)?\,?(\d+)?\,?(\d+)?(\.(\d){0,2})?\s*$/.test(valString)) {
-				 throw new Error("invalid format");
-			}
+		// then see if it is an entity type
+		if (type.meta && type.meta instanceof Type)
+			type._formats[format] = f = Format.fromTemplate(type, format);
 
-			var val = parseFloat(valString);
+		// otherwise, call the format provider to create a new format
+		else
+			type._formats[format] = f = formatProvider(type, format);
 
-			return val;
-		}
-	});
+		return f;
+	}
 
-	Number.formats.$system = Number.formats.Float;
+	function setFormatProvider(fn) {
+		formatProvider = fn;
+	};
 
-	String.formats.Phone = new Format({
-		description: "###-###-#### x####",
-		convertBack: function(str) {
-			if (!/^\s*\(?([1-9][0-9][0-9])\)?[ -]?([0-9]{3})-?([0-9]{4})( ?x[0-9]{1,8})?\s*$/.test(str)) {
-				throw new Error("invalid format");
-			}
+	ExoWeb.Model.getFormat = getFormat;
 
-			return str;
-		}
-	});
 
-	String.formats.PhoneAreaCodeOptional = new Format({
-		description: "###-###-#### x#### or ###-#### x####",
-		convertBack: function(str) {
-			if (!/^\s*\(?([1-9][0-9][0-9])\)?[ -]?([0-9]{3})-?([0-9]{4})( ?x[0-9]{1,8})?\s*$/.test(str) &&
-				!/^\s*([0-9]{3})-?([0-9]{4})( ?x[0-9]{1,8})?\s*$/.test(str)) {
-				throw new Error("invalid format");
-			}
-
-			return str;
-		}
-	});
-
-	String.formats.Email = new Format({
-		description: "name@address.com",
-		convertBack: function(str) {
-			// based on RFC 2822 token definitions for valid email and RFC 1035 tokens for domain names:
-			if (!/^\s*([a-zA-Z0-9\!\#\$\%\&\'\*\+\-\/\=\?\^_\`\{\|\}\~]+(\.[a-zA-Z0-9\!\#\$\%\&\'\*\+\-\/\=\?\^_\`\{\|\}\~]+)*@([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*\.[a-zA-Z]{2,6}|([0-9]{1,3}(\.[0-9]{1,3}){3})))\s*$/.test(str)) {
-				throw new Error("invalid format");
-			}
-
-			return str;
-		}
-	});
-
-	String.formats.ZipCode = new Format({
-		description: "##### or #####-####",
-		convertBack: function(str){
-			if(!/^\s*(\d{5})(-\d{4})?\s*$/.test(str)){
-				throw new Error("invalid format");
-			}
-
-			return str;
-		}
-	});
-
-	String.formats.$system = String.formats.$display = new Format({
-		convertBack: function(val) {
-			return val ? $.trim(val) : val;
-		}
-	});
-
-	Boolean.formats.YesNo = new Format({
-		convert: function(val) { return val ? "Yes" : "No"; },
-		convertBack: function(str) { return str.toLowerCase() == "yes"; }
-	});
-
-	Boolean.formats.TrueFalse = new Format({
-		convert: function(val) { return val ? "true" : "false"; },
-		convertBack: function(str) {
-			if (str.toLowerCase() == "true") {
-				return true;
-			}
-			else if (str.toLowerCase() == "false") {
-				return false;
-			}
-		}
-	});
-
-	Boolean.formats.$system = Boolean.formats.TrueFalse;
-	Boolean.formats.$display = Boolean.formats.YesNo;
-
-	Date.formats.DateTime = new Format({
-		description: "mm/dd/yyyy hh:mm AM/PM",
-		convert: function(val) {
-			return val.format("MM/dd/yyyy h:mm tt");
-		},
-		convertBack: function(str) {
-			var val = Date.parse(str);
-
-			if (val !== null) {
-				return new Date(val);
-			}
-
-			throw new Error("invalid date");
-		}
-	});
-
-	Date.formats.ShortDate = new Format({
-		description: "mm/dd/yyyy",
-		convert: function(val) {
-			return val.format("M/d/yyyy");
-		},
-		convertBack: function(str) {
-			var val = Date._parseExact(str, Sys.CultureInfo.InvariantCulture.dateTimeFormat.ShortDatePattern, Sys.CultureInfo.InvariantCulture);
-
-			if (val !== null) {
-				return val;
-			}
-
-			if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str.trim())) {
-				throw new FormatError("{value} is not a valid date", str);
-			}
-			else {
-				throw new Error("invalid date");
-			}
-		}
-	});
-
-	Date.formats.Time = new Format({
-		description: "HH:MM AM/PM",
-		convert: function(val) {
-			return val.format("h:mm tt");
-		},
-		convertBack: function(str) {
-			var parser = /^(1[0-2]|0?[1-9]):([0-5][0-9]) *(AM?|(PM?))$/i;
-
-			var parts = str.match(parser);
-
-			if (!parts) {
-				throw new Error("invalid time");
-			}
-
-			// build new date, start with current data and overwite the time component
-			var val = new Date();
-
-			// hours
-			if (parts[4]) {
-				val.setHours((parseInt(parts[1], 10) % 12) + 12);  // PM
-			}
-			else {
-				val.setHours(parseInt(parts[1], 10) % 12);  // AM
-			}
-
-			// minutes
-			val.setMinutes(parseInt(parts[2], 10));
-
-			// keep the rest of the time component clean
-			val.setSeconds(0);
-			val.setMilliseconds(0);
-
-			return val;
-		}
-	});
-
-	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
-	var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
-
-	// Format that converts from a date to a JSON string
-	// (using JSON.stringify) and then converts back to a date.
-	Date.formats.$json = new ExoWeb.Model.Format({
-		convert: function(obj) {
-			return JSON.stringify(obj);
-		},
-		convertBack: function(str) {
-			dateRegex.lastIndex = 0;
-			str = str.replace(dateRegex, dateRegexReplace);
-			return new Date(str);
-		}
-	});
-
-	Date.formats.$system = Date.formats.DateTime;
-	Date.formats.$display = Date.formats.DateTime;
-
-	TimeSpan.formats.Meeting = new ExoWeb.Model.Format({
-		convert: function(val) {
-			var num;
-			var label;
-
-			if (val.totalHours < 1) {
-				num = Math.round(val.totalMinutes);
-				label = "minute";
-			}
-			else if (val.totalDays < 1) {
-				num = Math.round(val.totalHours * 100) / 100;
-				label = "hour";
-			}
-			else {
-				num = Math.round(val.totalDays * 100) / 100;
-				label = "day";
-			}
-
-			return num == 1 ? (num + " " + label) : (num + " " + label + "s");
-		},
-		convertBack: function(str) {
-			var parser = /^([0-9]+(\.[0-9]+)?) *(m((inute)?s)?|h((our)?s?)|hr|d((ay)?s)?)$/i;
-
-			var parts = str.match(parser);
-
-			if (!parts) {
-				throw new Error("invalid format");
-			}
-
-			var num = parseFloat(parts[1]);
-			var ms;
-
-			if (parts[3].startsWith("m")) {
-				ms = num * 60 * 1000;
-			}
-			else if (parts[3].startsWith("h")) {
-				ms = num * 60 * 60 * 1000;
-			}
-			else if (parts[3].startsWith("d")) {
-				ms = num * 24 * 60 * 60 * 1000;
-			}
-
-			return new TimeSpan(ms);
-		}
-	});
-
-	TimeSpan.formats.$display = TimeSpan.formats.Meeting;
-	TimeSpan.formats.$system = TimeSpan.formats.Meeting;  // TODO: implement Exact format
-
-	Array.formats.$display = new ExoWeb.Model.Format({
-		convert: function (val) {
-			if (!val)
-				return "";
-
-			var builder = [];
-			for (var i = 0; i < val.length; ++i)
-				builder.push(val[i].toString());
-
-			return builder.join(", ");
-		}
-	});
 	// #endregion
 
 	// #region LazyLoader
@@ -7426,7 +7279,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	var objectProviderFn = function objectProviderFn(type, ids, paths, inScope, changes, onSuccess, onFailure) {
-		throw "Object provider has not been implemented.  Call ExoWeb.Mapper.setObjectProvider(fn);";
+		throw new Error("Object provider has not been implemented.  Call ExoWeb.Mapper.setObjectProvider(fn);");
 	};
 
 	function objectProvider(type, ids, paths, inScope, changes, onSuccess, onFailure, thisPtr) {
@@ -7471,7 +7324,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
-		throw "Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);";
+		throw new Error("Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);");
 	};
 
 	function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
@@ -7521,7 +7374,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	var typeProviderFn = function typeProviderFn(types, onSuccess, onFailure) {
-		throw "Type provider has not been implemented.  Call ExoWeb.Mapper.setTypeProvider(fn);";
+		throw new Error("Type provider has not been implemented.  Call ExoWeb.Mapper.setTypeProvider(fn);");
 	};
 
 	function typeProviderImpl(types, callback, thisPtr) {
@@ -7609,7 +7462,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	var listProviderFn = function listProvider(ownerType, ownerId, paths, changes, onSuccess, onFailure) {
-		throw "List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);";
+		throw new Error("List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);");
 	};
 
 	function listProvider(ownerType, ownerId, listProp, otherProps, changes, onSuccess, onFailure, thisPtr) {
@@ -7666,7 +7519,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
-		throw "Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);";
+		throw new Error("Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);");
 	};
 
 	function roundtripProvider(type, id, paths, changes, onSuccess, onFailure, thisPtr) {
@@ -7712,7 +7565,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	var saveProviderFn = function saveProviderFn(root, changes, onSuccess, onFailure) {
-		throw "Save provider has not been implemented.  Call ExoWeb.Mapper.setSaveProvider(fn);";
+		throw new Error("Save provider has not been implemented.  Call ExoWeb.Mapper.setSaveProvider(fn);");
 	};
 
 	function saveProvider(root, changes, onSuccess, onFailure, thisPtr) {
@@ -7758,7 +7611,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	var eventProviderFn = function eventProviderFn(eventType, instance, event, paths, changes, onSuccess, onFailure) {
-		throw "Event provider has not been implemented.  Call ExoWeb.Mapper.setEventProvider(fn);";
+		throw new Error("Event provider has not been implemented.  Call ExoWeb.Mapper.setEventProvider(fn);");
 	};
 
 	function eventProvider(eventType, instance, event, paths, changes, onSuccess, onFailure, thisPtr) {
@@ -7922,24 +7775,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region Translation
 	//////////////////////////////////////////////////
 
-	ExoWeb.Model.Entity.formats.$load = new ExoWeb.Model.Format({
-		convert: function(obj) {
-			return obj.meta.type.toIdString(obj.meta.id);
-		},
-		convertBack: function(val) {
-			var ids = val.split("|");
-			var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
-			var obj = jstype.meta.get(ids[1]);
+	// Gets or loads the entity with the specified typed string id
+	Entity.fromIdString = function Entity$fromIdString(id) {
+		var ids = id.split("|");
+		var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
+		var obj = jstype.meta.get(ids[1]);
 
-			if (!obj) {
-				obj = new jstype(ids[1]);
-				ObjectLazyLoader.register(obj);
-//					ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), ids[1]]);
-			}
-
-			return obj;
+		if (!obj) {
+			obj = new jstype(ids[1]);
+			ObjectLazyLoader.register(obj);
 		}
-	});
+
+		return obj;
+	};
 
 	function toExoGraph(val, translator) {
 		if (val === undefined || val === null)
@@ -8083,7 +7931,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (this._filters && this._filters.objectUnregistered && this._filters.objectUnregistered(obj) !== true)
 				return;
 
-			ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {type.fullName}({id})", obj.meta);
+			ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {0}({1})", obj.meta.type.fullName, obj.meta.id);
 		},
 		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 			if (this._filters && this._filters.propertyChanged && this._filters.propertyChanged(obj, property, newValue, oldValue) !== true)
@@ -8614,8 +8462,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// Otherwise, log an error.
 					else {
 						ExoWeb.trace.logWarning("server",
-							"Cannot apply id change on type \"{type}\" since old id \"{oldId}\" was not found.",
-							idChange);
+							"Cannot apply id change on type \"{0}\" since old id \"{1}\" was not found.",
+							idChange.type,
+							idChange.oldId);
 					}
 				}, after), this);
 			}, this);
@@ -8665,12 +8514,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 					if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
 
 						// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
-						newValue = Date.formats.$json.convertBack(newValue);
+						dateRegex.lastIndex = 0;
+						newValue = new Date(newValue.replace(dateRegex, dateRegexReplace));
 
 						//now that we have the value set for the date.
 						//if the underlying property datatype is actually a date and not a datetime
 						//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-						if (property.get_format() === Date.formats.ShortDate) {
+						if (property.get_format() && !hasTimeFormat.test(property.get_format())) {
 							var serverOffset = serverSync.get_ServerTimezoneOffset();
 							var localOffset = -(new Date().getTimezoneOffset() / 60);
 							newValue.addHours(serverOffset - localOffset);
@@ -8767,13 +8617,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 				ExoWeb.trace.throwAndLog("Error in transaction log processing: unmatched begin and end applying changes.");
 		};
 
-		var isCapturingChanges = false;
+		var isCapturingChanges;
 		this.isCapturingChanges = function ServerSync$isCapturingChanges() {
-			return isCapturingChanges;
+			return isCapturingChanges === true;
 		};
 		this.beginCapturingChanges = function ServerSync$beginCapturingChanges() {
-			isCapturingChanges = true;
-			startChangeSet.call(this, "client");
+			if (!isCapturingChanges) {
+				isCapturingChanges = true;
+				startChangeSet.call(this, "client");
+			}
 		};
 
 		this.ignoreChanges = function(before, callback, after, thisPtr) {
@@ -8801,7 +8653,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		model.addObjectRegistered(function(obj) {
 			// if an existing object is registered then register for lazy loading
-			if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges && !applyingChanges) {
+			if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges === true && !applyingChanges) {
 				ObjectLazyLoader.register(obj);
 				//ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
 			}
@@ -9101,7 +8953,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			Sys.Observer.setValue(this, "PendingServerEvent", true);
 
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
-			var checkpoint = this._changeLog.checkpoint("server event " + name + " " + Date.formats.DateTime.convert(new Date()));
+			var checkpoint = this._changeLog.checkpoint("server event " + name + " " + (new Date()).format("d"));
 
 			var args = { type: "raiseServerEvent", eventTarget: obj, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
 			this._raiseBeginEvents("raiseServerEvent", args);
@@ -9275,7 +9127,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			Sys.Observer.setValue(this, "PendingSave", true);
 
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
-			var checkpoint = this._changeLog.checkpoint("save " + Date.formats.DateTime.convert(new Date()));
+			var checkpoint = this._changeLog.checkpoint("save " + (new Date()).format("d"));
 
 			var args = { type: "save", root: root, checkpoint: checkpoint };
 			this._raiseBeginEvents("save", args);
@@ -9364,8 +9216,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var depth = 0;
 
 			try {
-				//					ExoWeb.trace.log("server", "ServerSync.rollback() >> {0}", steps);
-
 				this.beginApplyingChanges();
 
 				var signal = new ExoWeb.Signal("ServerSync.rollback");
@@ -9399,7 +9249,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				processNextChange.call(this);
 
 				signal.waitForAll(function () {
-					//						ExoWeb.trace.log("server", "done rolling back {0} changes", [steps]);
 					this.endApplyingChanges();
 
 					if (callback && callback instanceof Function) {
@@ -9415,16 +9264,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-			//				ExoWeb.trace.log("server", "rollbackValChange", change.instance);
-
 			var obj = fromExoGraph(change.instance, this._translator);
 
 			Sys.Observer.setValue(obj, change.property, change.oldValue);
 			callback();
 		},
 		rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-			//				ExoWeb.trace.log("server", "rollbackRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
-
 			var obj = fromExoGraph(change.instance, this._translator);
 			var ref = fromExoGraph(change.oldValue, this._translator);
 
@@ -9432,12 +9277,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			callback();
 		},
 		rollbackInitChange: function ServerSync$rollbackInitChange(change, callback) {
-			//				ExoWeb.trace.log("server", "rollbackInitChange: Type = {type}, Id = {id}", change.instance);
-
 			delete change.instance;
-
 			//TODO: need to remove from the translator
-
 			callback();
 		},
 		rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
@@ -9636,6 +9477,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	var STATIC_ID = "static";
+	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
+	var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
+	var hasTimeFormat = /[hHmts]/;
 
 	function ensureJsType(model, typeName, callback, thisPtr) {
 		var mtype = model.type(typeName);
@@ -9644,23 +9488,23 @@ Type.registerNamespace("ExoWeb.DotNet");
 			fetchTypes(model, [typeName], function(jstypes) {
 				callback.apply(thisPtr || this, jstypes);
 			});
-		}
+		} 
 		else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 			ExoWeb.Model.LazyLoader.load(mtype, null, function(jstype) {
 				callback.apply(thisPtr || this, [jstype]);
-			});
+			}); 
 		}
 		else {
 			callback.apply(thisPtr || this, [mtype.get_jstype()]);
 		}
-	}
+	}  
 
 	function conditionsFromJson(model, json, callback, thisPtr) {
 		var signal = new Signal("conditionsFromJson");
 
 		for (var code in json) {
 			conditionFromJson(model, code, json[code], signal.pending());
-		}
+		} 
 
 		signal.waitForAll(function() {
 			if (callback && callback instanceof Function) {
@@ -9867,12 +9711,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 								if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
 
 									// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
-									propData = Date.formats.$json.convertBack(propData);
+									dateRegex.lastIndex = 0;
+									propData = new Date(propData.replace(dateRegex, dateRegexReplace));
 
 									//now that we have the value set for the date.
 									//if the underlying property datatype is actually a date and not a datetime
 									//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-									if (prop.get_format() === Date.formats.ShortDate) {
+									if (prop.get_format() && !hasTimeFormat.test(prop.get_format())) {
 										var serverOffset = model._server.get_ServerTimezoneOffset();
 										var localOffset = -(new Date().getTimezoneOffset() / 60);
 										propData.addHours(serverOffset - localOffset);
@@ -9916,6 +9761,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// get model type. it may have already been created for lazy loading	
 		var mtype = getType(model, typeName, json.baseType, true);
 
+		// set the default type format
+		if (json.format) {
+			mtype.set_format(getFormat(mtype.get_jstype(), json.format));
+		}
+
 		if (mtype.get_originForNewProperties() === "client") {
 			ExoWeb.trace.throwAndLog("typeInit", "type \"{0}\" has already been loaded", mtype._fullName);
 		}
@@ -9933,11 +9783,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			propType = getJsType(model, propType);
 
 			// Format
-			var format = (propJson.format && propType.formats) ? propType.formats[propJson.format] : null;
+			var format = getFormat(propType, propJson.format);
 
 			// Add the property
 			var prop = mtype.addProperty({ name: propName, type: propType, isList: propJson.isList, label: propJson.label, format: format, isStatic: propJson.isStatic, index: propJson.index });
-
 
 			// setup static properties for lazy loading
 			if (propJson.isStatic) {
@@ -10242,8 +10091,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// *NOT* continue as if the type is available.
 			else {
 				ExoWeb.trace.throwAndLog("typeInit",
-					"Failed to load {typeNames} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-					{ typeNames: typeNames.join(","), error: types });
+					"Failed to load {0} (HTTP: {1}, Timeout: {2})",
+					typeNames.join(","),
+					types._statusCode,
+					types._timedOut);
 			}
 		}
 
@@ -10414,7 +10265,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		function tryRestoreDate(obj, key) {
 			var val = obj[key];
 			if (val && val.constructor === String && dateRegex.test(val)) {
-				obj[key] = Date.formats.$json.convertBack(val);
+				dateRegex.lastIndex = 0;
+				obj[key] = new Date(val.replace(dateRegex, dateRegexReplace));
 			}
 		}
 
@@ -10875,61 +10727,72 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region Context
 	//////////////////////////////////////////////////
 
-	var allSignals = new ExoWeb.Signal("createContext allSignals");
+	// Signal to keep track of any ongoing context initialization
+	var allSignals = new ExoWeb.Signal("Context : allSignals");
 
 	ExoWeb.registerActivity(function() {
 		return allSignals.isActive();
 	});
 
 	function Context() {
-		var model = new ExoWeb.Model.Model();
-
-		this.model = { meta: model };
-		this.server = new ServerSync(model);
-
-		// start capturing changes prior to processing any model query
-		this._addEvent("beforeModel", this.server.beginCapturingChanges.bind(this.server), null, true);
+		this.model = { meta: new ExoWeb.Model.Model() };
+		this.server = new ServerSync(this.model.meta);
 	}
 
 	Context.mixin(ExoWeb.Functor.eventing);
 
+	var numberOfPendingQueries;
+
 	Context.mixin({
-		isModelReady: function() {
-			var result = false;
+		addReady: function Context$addReady(callback, thisPtr) {
+			var queriesAreComplete = numberOfPendingQueries === 0;
 
-			eachProp(this.model, function(prop, val) {
-				if (prop != "meta") {
-					result = true;
-					return false;
-				}
-			}, this);
+			this._addEvent("ready", thisPtr ? callback.bind(thisPtr) : callback, null, true);
 
-			return result;
-		},
-		addModelReady: function Context$ready(callback, thisPtr) {
-			this._addEvent("modelReady", thisPtr ? callback.bind(thisPtr) : callback, null, true);
-
-			// Raise event immediately if there are currently models. Subscribers
-			// will not actually be called until signals have subsided.
-			if (this.isModelReady())
-				this.onModelReady();
-		},
-		onModelReady: function () {
-			// Indicate that one or more model queries are ready for consumption
-			allSignals.waitForAll(function() {
-				this._raiseEvent("modelReady");
-			}, this);
-		},
-		onBeforeModel: function () {
-			this._raiseEvent("beforeModel");
+			// Simulate the event being raised immediately if a query or queries have already completed
+			if (queriesAreComplete) {
+				// Subscribers will not actually be called until signals have subsided
+				allSignals.waitForAll(function() {
+					this._raiseEvent("ready");
+				}, this);
+			}
 		}
 	});
 
-	function Context$query(options) {
-		var contextQuery = new ContextQuery(this, options);
+	function ensureContext() {
+		if (!window.context) {
+			window.context = new Context();
+		}
+		else if (!(window.context instanceof Context)) {
+			ExoWeb.trace.throwAndLog("context", "The window object has a context property that is not a valid context.");
+		}
+		return window.context;
+	}
 
-		// if there is a model option, when the query is finished executing the model ready fn will be called
-		contextQuery.execute(options.model ? this.onModelReady.bind(this) : null);
+	Context.ready = function Context$ready(context) {
+		numberOfPendingQueries--;
+
+		var queriesAreComplete = numberOfPendingQueries === 0;
+
+		if (queriesAreComplete) {
+			// Indicate that one or more model queries are ready for consumption
+			allSignals.waitForAll(function() {
+				context._raiseEvent("ready");
+			});
+		}
+	};
+
+	Context.query = function Context$query(context, options) {
+		var queriesHaveBegunOrCompleted = numberOfPendingQueries !== undefined;
+		if (!queriesHaveBegunOrCompleted) {
+			numberOfPendingQueries = 0;
+		}
+		numberOfPendingQueries++;
+
+		// Execute the query and fire the ready event when complete
+		(new ContextQuery(context, options)).execute(function() {
+			Context.ready(context);
+		});
 	}
 
 	// #endregion
@@ -10962,6 +10825,31 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (this.options.serverinfo)
 					this.context.server.set_ServerInfo(this.options.serverinfo);
 
+				// If the allSignals signal is not active, then set up a fake pending callback in
+				// order to ensure that the context is not "loaded" prior to models being initilized.
+				if (!allSignals.isActive()) {
+					this._predictiveModelPending = allSignals.pending(null, this, true);
+				}
+
+				// Setup lazy loading on the context object to control lazy evaluation.
+				// Loading is considered complete at the same point model.ready() fires.
+				ExoWeb.Model.LazyLoader.register(this.context, {
+					load: function context$load(obj, propName, callback, thisPtr) {
+						//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
+
+						// objects are already loading so just queue up the calls
+						allSignals.waitForAll(function context$load$callback() {
+							//ExoWeb.trace.log(["context", "lazyLoad"], "raising createContext.ready()");
+
+							ExoWeb.Model.LazyLoader.unregister(obj, this);
+
+							if (callback && callback instanceof Function) {
+								callback.call(thisPtr || this);
+							}
+						}, this, true);
+					}
+				});
+
 				callback.call(thisPtr || this);
 			},
 
@@ -10969,7 +10857,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$initModels(callback, thisPtr) {
 				if (this.options.model) {
-					this.context.onBeforeModel();
+					// Start capturing changes prior to processing any model query
+					this.context.server.beginCapturingChanges();
 					ExoWeb.trace.log("context", "Running init step for model queries.");
 					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						// Assert that the necessary properties are provided
@@ -10980,7 +10869,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						// common initial setup of state for all model queries
 						this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName), isArray: false };
-						allSignals.pending(null, this, true);
+
+						if (this._predictiveModelPending) {
+							delete this._predictiveModelPending;
+						}
+						else {
+							allSignals.pending(null, this, true);
+						}
 
 						// normalize id(s) property and determine whether the result should be an array
 						if (query.hasOwnProperty("ids") && !(query.ids instanceof Array)) {
@@ -11025,6 +10920,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 							}
 						}
 					}, this);
+				}
+
+				// Undo predictive pending "callback" set up before models were processed.
+				if (this._predictiveModelPending) {
+					delete this._predictiveModelPending;
+					allSignals.oneDone();
 				}
 
 				callback.call(thisPtr || this);
@@ -11247,8 +11148,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 										}, this, true),
 										this.state[varName].signal.orPending(function context$objects$callback(error) {
 											ExoWeb.trace.logError("objectInit",
-												"Failed to load {query.from}({query.ids}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-												{ query: query, error: error });
+												"Failed to load {0}({1}) (HTTP: {3}, Timeout: {4})",
+												query.from,
+												query.ids,
+												error._statusCode,
+												error._timedOut);
 										}, this, true), this);
 								}
 							}, this);
@@ -11281,8 +11185,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 									}, this, true),
 									allSignals.orPending(function context$objects$callback(error) {
 										ExoWeb.trace.logError("objectInit",
-											"Failed to load {query.from}({query.ids}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-											{ query: query, error: error });
+											"Failed to load {0}({1}) (HTTP: {2}, Timeout: {3})",
+											query.from,
+											query.ids,
+											error._statusCode,
+											error._timedOut);
 									}, this, true)
 								);
 							}
@@ -11409,30 +11316,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				callback.call(thisPtr || this);
 			},
 
-		// Setup lazy loading on the context object to control lazy evaluation.
-		// Loading is considered complete at the same point model.ready() fires.
-		///////////////////////////////////////////////////////////////////////////////
-			function ContextQuery$registerLazyLoader(callback, thisPtr) {
-				ExoWeb.Model.LazyLoader.register(this.context, {
-					load: function context$load(obj, propName, callback, thisPtr) {
-						//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
-
-						// objects are already loading so just queue up the calls
-						allSignals.waitForAll(function context$load$callback() {
-							//ExoWeb.trace.log(["context", "lazyLoad"], "raising createContext.ready()");
-
-							ExoWeb.Model.LazyLoader.unregister(obj, this);
-
-							if (callback && callback instanceof Function) {
-								callback.call(thisPtr || this);
-							}
-						}, this, true);
-					}
-				});
-
-				callback.call(thisPtr || this);
-			},
-
 		// Final cleanup step. Allow rules to run initially, end the batch,
 		// and allow the server sync to start capturing existing objects in
 		// order to attach a lazy loader.
@@ -11455,31 +11338,33 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region ExoWeb
 	//////////////////////////////////////////////////
 
+	// Don't activate the DOM automatically, instead delay until after context initialization
 	Sys.activateDom = false;
 
 	// Object constant to signal to mapper to create a new instance rather than load one
-	window.$newId = function() { return "$newId"; };
+	var $newId = function $newId() {
+		return "$newId";
+	};
+
+	window.$newId = $newId;
 
 	// Indicates whether or not the DOM has been activated
 	var activated = false;
 
-	// The (combined) set of options that are pending
-	// execution. Options will stack up until something
-	// is encountered that triggers loading to occur.
-	var pendingOptions;
-
-	function modelReadyHandler(contextReady, extendContext, domReady) {
+	var modelReadyHandler = function modelReadyHandler(contextReady, extendContext, domReady) {
 		return function () {
 			var readySignal = new Signal();
-		
-			if (extendContext)
+
+			if (extendContext) {
 				extendContext(window.context, readySignal.pending());
+			}
 
-			readySignal.waitForAll(function() {
-				if (contextReady)
+			readySignal.waitForAll(function modelReadyHandler$signalReady() {
+				if (contextReady) {
 					contextReady(window.context);
+				}
 
-				$(function() {
+				$(function modelReadyHandler$documentReady() {
 					// Activate the document if this is the first context to load
 					if (!activated) {
 						activated = true;
@@ -11487,82 +11372,105 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 
 					// Invoke dom ready notifications
-					if (domReady)
+					if (domReady) {
 						domReady(window.context);
+					}
 				});
 			});
 		};
-	}
+	};
+
+	// The (combined) set of options that are pending execution
+	// Options will stack up until something is encountered that triggers loading to occur
+	var pendingOptions = null;
+
+	var updatePendingOptionsWith = function updatePendingOptionsWith(newOptions) {
+		if (pendingOptions !== null) {
+			pendingOptions.init = mergeFunctions(pendingOptions.init, newOptions.init);
+			pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, newOptions.extendContext, { async: true, callbackIndex: 1 });
+			pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
+			pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
+			pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
+			pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, newOptions.model) : newOptions.model;
+			pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
+			pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
+			pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
+			pendingOptions.serverinfo = pendingOptions.serverinfo ? $.extend(pendingOptions.serverinfo, newOptions.serverinfo) : newOptions.serverinfo;
+		}
+		else {
+			pendingOptions = newOptions;
+		}
+	};
+
+	var flushPendingOptions = function flushPendingOptions() {
+		var includesEmbeddedData, executingOptions, init, contextReady, extendContext, domReady;
+
+		includesEmbeddedData = pendingOptions.model ||
+			(pendingOptions.types && !(pendingOptions.types instanceof Array)) ||
+			pendingOptions.instances ||
+			pendingOptions.conditions ||
+			pendingOptions.changes;
+
+		if (includesEmbeddedData) {
+			executingOptions = pendingOptions;
+			pendingOptions = null;
+
+			window.context = ensureContext();
+
+			// Perform context initialization when the model is ready
+			if (executingOptions.contextReady || executingOptions.extendContext || executingOptions.domReady || !activated) {
+				window.context.addReady(modelReadyHandler(executingOptions.contextReady, executingOptions.extendContext, executingOptions.domReady));
+			}
+
+			// Perform initialization immediately
+			if (executingOptions.init) {
+				executingOptions.init(window.context);
+			}
+
+			// Start the new query
+			Context.query(window.context, {
+				model: executingOptions.model,
+				types: executingOptions.types,
+				changes: executingOptions.changes,
+				conditions: executingOptions.conditions,
+				instances: executingOptions.instances,
+				serverinfo: executingOptions.serverinfo
+			});
+		}
+		else if (window.context) {
+			if (!(window.context instanceof Context)) {
+				ExoWeb.trace.throwAndLog("context", "The window object has a context property that is not a valid context.");
+			}
+
+			if (pendingOptions.init) {
+				// Context has already been created, so perform initialization and remove it so that we don't double-up
+				init = pendingOptions.init;
+				pendingOptions.init = null;
+				init(window.context);
+			}
+
+			if (pendingOptions.contextReady || pendingOptions.extendContext || pendingOptions.domReady) {
+				contextReady = pendingOptions.contextReady;
+				extendContext = pendingOptions.extendContext;
+				domReady = pendingOptions.domReady;
+				pendingOptions.contextReady = pendingOptions.extendContext = pendingOptions.domReady = null;
+				window.context.addReady(modelReadyHandler(contextReady, extendContext, domReady));
+			}
+		}
+	};
 
 	// Global method for initializing ExoWeb on a page
-	window.$exoweb = function (options) {
-		// Support initialization function as parameter
-		if (options instanceof Function)
-			options = { init: options };
-
-		if (!pendingOptions)
-			// No pending options to merge
-			pendingOptions = options;
-		else {
-			// Merge options as necessary
-			pendingOptions.init = mergeFunctions(pendingOptions.init, options.init);
-			pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, options.extendContext, { async: true, callbackIndex: 1 });
-			pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, options.contextReady);
-			pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, options.domReady);
-			pendingOptions.types = pendingOptions.types ? (options.types ? pendingOptions.types.concat(options.types) : pendingOptions.types) : options.types;
-			pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, options.model) : options.model;
-			pendingOptions.changes = pendingOptions.changes ? (options.changes ? pendingOptions.changes.concat(options.changes) : pendingOptions.changes) : options.changes;
-			pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, options.conditions) : options.conditions;
-			pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, options.instances) : options.instances;
-			pendingOptions.serverinfo = pendingOptions.serverinfo ? $.extend(pendingOptions.serverinfo, options.serverinfo) : options.serverinfo;
+	var $exoweb = function $exoweb(newOptions) {
+		// Support initialization function argument
+		if (newOptions instanceof Function) {
+			newOptions = { init: newOptions };
 		}
 
-		// Exit immediately if no model or types are pending
-		if (!(pendingOptions.model || (pendingOptions.types && !(pendingOptions.types instanceof Array)) || pendingOptions.instances || pendingOptions.conditions || pendingOptions.changes)) {
-			if (window.context && pendingOptions.init) {
-
-				// Context has already been created, so perform initialization and remove it so that we don't double-up
-				pendingOptions.init(window.context);
-				pendingOptions.init = null;
-			}
-
-			if (window.context && window.context.isModelReady() &&
-				(pendingOptions.contextReady || pendingOptions.extendContext || pendingOptions.domReady)) {
-
-				// The context is already ready, so invoke handlers and remove so that we don't double-up
-				window.context.addModelReady(modelReadyHandler(pendingOptions.contextReady, pendingOptions.extendContext, pendingOptions.domReady));
-				pendingOptions.contextReady = null;
-				pendingOptions.extendContext = null;
-				pendingOptions.domReady = null;
-			}
-
-			return;
-		}
-
-		var currentOptions = pendingOptions;
-		pendingOptions = null;
-
-		// Create a context if needed
-		window.context = window.context || new Context();
-
-		// Perform initialization once the context is ready
-		if (currentOptions.contextReady || currentOptions.extendContext || currentOptions.domReady || !activated)
-			window.context.addModelReady(modelReadyHandler(currentOptions.contextReady, currentOptions.extendContext, currentOptions.domReady));
-	
-		// Perform initialization
-		if (currentOptions.init)
-			currentOptions.init(window.context);
-
-		// Start the new query
-		Context$query.call(window.context, {
-			model: currentOptions.model,
-			types: currentOptions.types,
-			changes: currentOptions.changes,
-			conditions: currentOptions.conditions,
-			instances: currentOptions.instances,
-			serverinfo: currentOptions.serverinfo
-		});
+		updatePendingOptionsWith(newOptions);
+		flushPendingOptions();
 	};
+
+	window.$exoweb = $exoweb;
 
 	// #endregion
 
@@ -11701,7 +11609,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	function Toggle(element) {
+
+		// Default action is show
+		this._action = "show";
+
 		Toggle.initializeBase(this, [element]);
+
 	}
 
 	var Toggle_allowedActions = ["show", "hide", "enable", "disable", "render", "dispose", "addClass", "removeClass"];
@@ -11773,17 +11686,42 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Render/Destroy
 		//////////////////////////////////////////////////////////
+		link_render: function Toggle$link_render() {
+			this._context = null;
+
+			if ((this._action === "render" && $(this._element).is(".toggle-on")) || (this._action === "dispose" && $(this._element).is(".toggle-off"))) {
+				var pctx = this.get_templateContext();
+
+				var newContext = new Sys.UI.TemplateContext();
+				newContext.data = pctx.dataItem;
+				newContext.components = [];
+				newContext.nodes = [];
+				newContext.dataItem = pctx.dataItem;
+				newContext.index = 0;
+				newContext.parentContext = pctx;
+				newContext.containerElement = this.get_element();
+				newContext.template = this._getTemplate();
+				newContext.template._ensureCompiled();
+				this._context = newContext;
+
+				Sys.Application._linkContexts(pctx, this, pctx.dataItem, this.get_element(), newContext, this._contentTemplate);
+
+				newContext.initializeComponents();
+				newContext._onInstantiated(null, true);
+			}
+		},
 		init_render: function Toggle$init_render() {
-			if (!$(this._element).is(".sys-template")) {
+			if (!this._template && !$(this._element).is(".sys-template")) {
 				ExoWeb.trace.throwAndLog(["ui", "toggle"], "When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
 			}
 
 			this._template = new Sys.UI.Template(this._element);
+			this._template._ensureCompiled();
 			$(this._element).empty();
 			$(this._element).removeClass("sys-template");
 		},
 		do_render: function Toggle$do_render() {
-			var pctx = Sys.UI.Template.findContext(this._element);
+			var pctx = this.get_templateContext();
 
 			var renderArgs = new Sys.Data.DataEventArgs(pctx.dataItem);
 			Sys.Observer.raiseEvent(this, "rendering", renderArgs);
@@ -11791,10 +11729,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this.set_state("on");
 			$(this._element).empty();
 
-			if (pctx.dataItem) {
-				this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, pctx.index, null, pctx);
-				this._context.initializeComponents();
-			}
+			var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
+			context.initializeComponents();
 
 			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 		},
@@ -11870,6 +11806,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Render/Dispose
 		//////////////////////////////////////////////////////////
+		link_dispose: Toggle.prototype.link_render,
 		init_dispose: Toggle.prototype.init_render,
 		undo_render: Toggle.prototype.do_dispose,
 		undo_dispose: Toggle.prototype.do_render,
@@ -11881,6 +11818,27 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	Toggle.mixin({
+		_generatesContext: function Toggle$_generatesContext() {
+			return this._action === "render" || this._action === "dispose";
+		},
+		_getTemplate: function Toggle$_getTemplate() {
+			return this._template;
+		},
+		_setTemplate: function Toggle$_setTemplate(value) {
+			this._template = value;
+		},
+
+		get_templateContext: function Content$get_templateContext() {
+			/// <value mayBeNull="false" type="Sys.UI.TemplateContext" locid="P:J#ExoWeb.UI.Toggle.templateContext"></value>
+			if (!this._parentContext) {
+				this._parentContext = Sys.UI.Template.findContext(this._element);
+			}
+			return this._parentContext;
+		},
+		set_templateContext: function Context$set_templateContext(value) {
+			this._parentContext = value;
+		},
+
 		get_action: function Toggle$get_action() {
 			/// <summary>
 			/// The value that determines what the control should
@@ -11992,6 +11950,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var onType = Object.prototype.toString.call(this._on);
 
 				if (this.get_strictMode() === true) {
+					if (this._on.constructor !== Boolean)
+						ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:on should be a value of type Boolean.");
+
 					return this._on;
 				}
 				else if (onType === "[object Array]") {
@@ -12003,7 +11964,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 			else if (this._when instanceof Function) {
-				return !!this._when(this._on);
+				var result = this._when(this._on);
+				if (this.get_strictMode() === true) {
+					if (result === null || result === undefined || result.constructor !== Boolean)
+						ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:when function should return a value of type Boolean.");
+					return result;
+				}
+				else {
+					return !!result;
+				}
 			}
 			else {
 				return this._on === this._when;
@@ -12023,18 +11992,31 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this[(this.get_equals() === true ? "do_" : "undo_") + this._action].call(this);
 			}
 		},
+		addContentTemplate: function Toggle$addContentTemplate(tmpl) {
+			if (this._action !== "render" && this._action !== "dispose" && this.get_templateContext() === Sys.Application._context) {
+				throw Error.invalidOperation("invalidSysContentTemplate");
+			}
+			Sys.UI.IContentTemplateConsumer.prototype.addContentTemplate.apply(this, arguments);
+		},
 		initialize: function Toggle$initialize() {
 			Toggle.callBaseMethod(this, "initialize");
 
-			this._element._exowebtoggle = this;
-
-			// Perform custom init logic for the action
-			var actionInit = this["init_" + this._action];
-			if (actionInit) {
-				actionInit.call(this);
+			if (this.get_isLinkPending()) {
+				// Perform custom init logic for the action
+				var actionLink = this["link_" + this._action];
+				if (actionLink) {
+					actionLink.call(this);
+				}
 			}
-
-			this.execute();
+			else {
+				// Perform custom init logic for the action
+				var actionInit = this["init_" + this._action];
+				if (actionInit) {
+					actionInit.call(this);
+				}
+	
+				this.execute();
+			}
 		},
 		_stateClass: function(state)
 		{
@@ -12046,7 +12028,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	ExoWeb.UI.Toggle = Toggle;
-	Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control);
+	Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control, Sys.UI.ITemplateContextConsumer, Sys.UI.IContentTemplateConsumer);
 
 	// #endregion
 
@@ -12133,38 +12115,46 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	function Template(element) {
-		/// <summary>
+		/// <summary locid="M:J#ExoWeb.UI.Template.#ctor">
 		/// In addition to defining template markup, also defines rules that are used
 		/// to determine if it should be chosen as the template for a given element
 		/// based on a CSS selector as well as a javascript filter that is evaluated 
 		/// against the element in question.
 		/// </summary>
-		///
-		/// <example>
-		///		<div sys:attach="template" template:for="table.inputform tr" template:if="<some condition>"></div>
-		/// </example>
-
+		/// <param name="element"></param>
 		Template.initializeBase(this, [element]);
 	}
 
-	Template.prototype = {
-		// CSS Selectors
-		///////////////////////////////////////////////////////////////////////////
-		get_for: function() {
-			return this._for;
-		},
-		set_for: function(value) {
-			this._for = value;
-		},
-		matches: function(e) {
-			if (this._for === undefined) {
-				return true;
-			}
+	var allTemplates = {};
 
-			return $(e).is(this._for);
+	Template.prototype = {
+
+		get_name: function Template$get_name() {
+			/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.name"></value>
+			return this._name;
+		},
+		set_name: function Template$set_name(value) {
+			this._name = value;
+		},
+
+		get_nameArray: function Template$get_nameArray() {
+			/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.nameArray"></value>
+			if (this._name && !this._nameArray) {
+				this._nameArray = this._name.trim().split(/\s+/);
+			}
+			return this._nameArray;
+		},
+
+		get_kind: function Template$get_kind() {
+			/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.kind"></value>
+			return this._kind;
+		},
+		set_kind: function Template$set_kind(value) {
+			this._kind = value;
 		},
 
 		get_dataType: function Template$get_dataType() {
+			/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.dataType"></value>
 			return this._dataType;
 		},
 		set_dataType: function Template$set_dataType(value) {
@@ -12176,65 +12166,168 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._dataType = value;
 			}
 		},
-		get_dataTypeCtor: function Template$set_dataType() {
-			// lazy evaluate the actual constructor
+
+		get_dataTypeCtor: function Template$get_dataTypeCtor() {
+			/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.dataTypeCtor"></value>
 			if (!this._dataTypeCtor && ExoWeb.isType(this._dataType, String)) {
+				// lazy evaluate the actual constructor
 				this._dataTypeCtor = ExoWeb.getCtor(this._dataType);
 			}
 			return this._dataTypeCtor;
 		},
-		isType: function Template$isType(obj) {
-			// Don't return a value if a data type has not been specified.
-			if (this._dataType === undefined || this._dataType === null) {
-				return;
-			}
 
-			return ExoWeb.isType(obj, this.get_dataTypeCtor());
+		get_isReference: function Template$get_isReference() {
+			/// <value mayBeNull="true" type="Boolean" locid="P:J#ExoWeb.UI.Template.isReference"></value>
+			return this._isReference;
 		},
-
-		// Arbitrary JavaScript
-		///////////////////////////////////////////////////////////////////////////
-		get_if: function() {
-			return this._if;
-		},
-		set_if: function(value) {
-			this._if = value;
-		},
-		satisfies: function(element, data) {
-			// return true by default if no filter
-			var result = true;
-
-			if (this._if) {
-				if (!this._ifFn) {
-					try {
-						// turn arbitrary javascript code into function
-						this._ifFn = new Function("$data", "$container", "return " + this._if + ";");
-					}
-					catch (compileError) {
-						ExoWeb.trace.throwAndLog(["ui", "templates"], "Compiling statement \"" + this._if + "\" causes the following error: " + compileError);
-					}
+		set_isReference: function Template$set_isReference(value) {
+			if (value && value.constructor === String) {
+				var str = value.toLowerCase().trim();
+				if (str === "true") {
+					value = true;
 				}
-
-				if (this._ifFn) {
-					try {
-						result = this._ifFn.apply(this, [data, element]);
-					}
-					catch (executeError) {
-						ExoWeb.trace.logWarning(["ui", "templates"], "Executing statement \"" + this._if + "\" causes the following error: " + executeError);
-						result = false;
-					}
+				else if (str === "false") {
+					value = false;
+				}
+				else {
+					this._isReferenceText = value;
+					value = null;
 				}
 			}
-
-			return result;
+			this._isReference = value;
 		},
 
-		test: function(element, data) {
-			// determines if the given element matches this template
-			return this.matches(element) && this.satisfies(element, data);
+		get_isList: function Template$get_isList() {
+			/// <value mayBeNull="true" type="Boolean" locid="P:J#ExoWeb.UI.Template.isList"></value>
+			return this._isList;
+		},
+		set_isList: function Template$set_isList(value) {
+			if (value && value.constructor === String) {
+				var str = value.toLowerCase().trim();
+				if (str === "true") {
+					value = true;
+				}
+				else if (str === "false") {
+					value = false;
+				}
+				else {
+					this._isListText = value;
+					value = null;
+				}
+			}
+			this._isList = value;
+		},
+
+		get_aspects: function Template$get_aspects() {
+			/// <value mayBeNull="true" type="Boolean" locid="P:J#ExoWeb.UI.Template.aspects"></value>
+			if (!this._aspects) {
+				var aspects = this._aspects = {};
+				if (this._isList !== null && this._isList !== undefined) {
+					aspects.isList = this._isList;
+				}
+				if (this._isReference !== null && this._isReference !== undefined) {
+					aspects.isReference = this._isReference;
+				}
+				if (this.get_dataType() !== null && this.get_dataType() !== undefined) {
+					aspects.dataType = this.get_dataTypeCtor();
+				}
+			}
+			return this._aspects;
+		},
+
+		isCorrectKind: function Template$isCorrectKind(obj) {
+			/// <summary locid="M:J#ExoWeb.UI.Template.isCorrectKind">
+			/// Determines whether the given object is of the correct kind
+			/// for the template, if a kind is specified.
+			/// </summary>
+			/// <param name="obj" optional="false" mayBeNull="false"></param>
+			/// <returns type="Boolean"></returns>
+			if (obj instanceof ExoWeb.View.Adapter) {
+				return this._kind === "@";
+			}
+			else {
+				return this._kind === undefined;
+			}
+		},
+
+		_namesSatisfiedBy: function Template$_namesSatisfiedBy(names) {
+			/// <summary locid="M:J#ExoWeb.UI.Template._namesSatisfiedBy">
+			/// Determines whether the given names collection satisifes all
+			/// required template names.
+			/// </summary>
+			/// <param name="names" type="Array" optional="false" mayBeNull="false"></param>
+			/// <returns type="Boolean"></returns>
+			return !this.get_nameArray() || !this.get_nameArray().some(function(n) { return !names.contains(n); });
+		},
+
+		_aspectsSatisfiedBy: function Template$_aspectsSatisfiedBy(aspects) {
+			/// <summary locid="M:J#ExoWeb.UI.Template._aspectsSatisfiedBy">
+			/// Determines whether the given data satisfies special aspects
+			/// required by the template.
+			/// </summary>
+			/// <param name="aspects" type="Array" optional="false" mayBeNull="false"></param>
+			/// <returns type="Boolean"></returns>
+			var satisfied = true;
+			eachProp(this.get_aspects(), function(name, value) {
+				if (!aspects.hasOwnProperty(name) || (value === null || value === undefined) || (name !== "dataType" && aspects[name] !== value) || (name === "dataType" && aspects[name] !== value && !(aspects[name] && aspects[name].meta && aspects[name].meta.isSubclassOf(value.meta)))) {
+					return (satisfied = false);
+				}
+			});
+			return satisfied;
+		},
+
+		matches: function Template$matches(data, names) {
+			/// <summary locid="M:J#ExoWeb.UI.Template.matches">
+			/// Determines whether the given data and name array match the template.
+			/// </summary>
+			/// <param name="data" optional="false" mayBeNull="false"></param>
+			/// <param name="names" type="Array" optional="false" mayBeNull="false"></param>
+			/// <returns type="Boolean"></returns>
+			if (this._namesSatisfiedBy(names)) {
+				var aspects;
+				if (data && data.aspects && data.aspects instanceof Function) {
+					aspects = data.aspects();
+				}
+				else {
+					aspects = {
+						isList: (data && data instanceof Array),
+						isReference: (data && data instanceof ExoWeb.Model.Entity),
+						dataType: (function(obj) {
+								if (obj === null || obj === undefined) {
+									return null;
+								}
+								else if (obj instanceof ExoWeb.Model.Entity) {
+									return obj.meta.type.get_jstype();
+								}
+								else if (obj instanceof Array) {
+									return Array;
+								}
+								else if (obj instanceof Object) {
+									return Object;
+								}
+								else {
+									return obj.constructor;
+								}
+							}) (data)
+					};
+				}
+				return this._aspectsSatisfiedBy(aspects);
+			}
+		},
+
+		toString: function() {
+			return $format("<{0} name=\"{1}\" kind=\"{2}\" datatype=\"{3}\" isreference=\"{4}\" islist=\"{5}\" />",
+				this._element.tagName.toLowerCase(),
+				this._name || "",
+				this._kind || "",
+				this._dataType || "",
+				isNullOrUndefined(this._isReference) ? "" : this._isReference,
+				isNullOrUndefined(this._isList) ? "" : this._isList
+			);
 		},
 
 		initialize: function() {
+			/// <summary locid="M:J#ExoWeb.UI.Template.initialize" />
 			Template.callBaseMethod(this, "initialize");
 
 			// add a class that can be used to search for templates 
@@ -12242,53 +12335,54 @@ Type.registerNamespace("ExoWeb.DotNet");
 			$(this.get_element()).addClass("exoweb-template").hide();
 
 			if (this.get_element().control.constructor !== String) {
-				allTemplates.push(this.get_element());
+				var el = this.get_element();
+				var tagName = el.tagName.toLowerCase();
+				var cache = allTemplates[tagName];
+				if (!cache) {
+					cache = allTemplates[tagName] = [];
+				}
+				cache.push(el);
 			}
 		}
+
 	};
 
-	var allTemplates = [];
-
-	Template.find = function Template$find(element, data) {
-		/// <summary>
-		/// Finds the first field template with a selector and filter that
-		/// match the given element and returns the template.
+	function findTemplate(tagName, data, names) {
+		/// <summary locid="M:J#ExoWeb.UI.Template.find">
+		/// Finds the first field template that match the given data and names and returns the template.
 		/// </summary>
-
-		ExoWeb.trace.log(["templates"],
-			"attempt to find match for element = {0}{1}, data = {2}",
-			[element.tagName, element.className ? "." + element.className : "", data]);
+		ExoWeb.trace.log(["templates"], "attempt to find template match for names = {0}, data = {1}", [names.join(","), data]);
 
 		if (data === undefined || data === null) {
 			ExoWeb.trace.logWarning("templates", "Attempting to find template for {0} data.", [data === undefined ? "undefined" : "null"]);
 		}
 
-		for (var t = allTemplates.length - 1; t >= 0; t--) {
-			var tmpl = allTemplates[t];
-
-			if (tmpl.control instanceof Template) {
-				var isType = tmpl.control.isType(data);
-				if ((isType === undefined || isType === true) && tmpl.control.test(element, data)) {
-//						ExoWeb.trace.log(["templates"], "TEMPLATE MATCHES!: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
-					return tmpl;
-				}
-				else {
-//						ExoWeb.trace.log(["templates"], "template does not match: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
+		var cache;
+		if (cache = allTemplates[tagName]) {
+			for (var t = cache.length - 1; t >= 0; t--) {
+				var tmplEl = cache[t];
+				var tmpl = tmplEl.control;
+	
+				if (tmpl instanceof Template) {
+					var isCorrectKind = tmpl.isCorrectKind(data);
+					if ((isCorrectKind === undefined || isCorrectKind === true) && tmpl.matches(data, names)) {
+						return tmplEl;
+					}
 				}
 			}
 		}
 
 		return null;
-	};
+	}
 
-	// bookkeeping for Template.load()...
-	// consider wrapper object to clean up after templates are loaded?
+	// bookkeeping for Template.load
+	// TODO: consider wrapper object to clean up after templates are loaded?
 	var templateCount = 0;
 	var externalTemplatesSignal = new ExoWeb.Signal("external templates");
 	var lastTemplateRequestSignal;
 
 	Template.load = function Template$load(path, options) {
-		/// <summary>
+		/// <summary locid="M:J#ExoWeb.UI.Template.load">
 		/// Loads external templates into the page.
 		/// </summary>
 
@@ -12300,17 +12394,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
 		var callback = externalTemplatesSignal.pending(signal.pending(function (elem) {
 			//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
-
-			// Store the number of templates before activating this element.
-			var originalTemplateCount = allTemplates.length;
-
 			// Activate template controls within the response.
 			Sys.Application.activateElement(elem);
-
-			// No new templates were created.
-			if (originalTemplateCount === allTemplates.length) {
-				ExoWeb.trace.logWarning("ui", "Templates for request \"{0}\" from path \"{1}\" yields no templates.", [id, path]);
-			}
 		}));
 
 		$(function ($) {
@@ -12351,7 +12436,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ExoWeb.UI.Template = Template;
-	Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
+	Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control, Sys.UI.IContentTemplateConsumer);
 
 	// #endregion
 
@@ -12359,7 +12444,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	function Content(element) {
-		/// <summary>
+		/// <summary locid="M:J#ExoWeb.UI.Content.#ctor">
 		/// Finds its matching template and renders using the provided data as the 
 		/// binding context.  It can be used as a "field control", using part of the 
 		/// context data to select the appropriate control template.  Another common 
@@ -12367,10 +12452,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		/// as in the example where an objects meta type determines how it is 
 		/// displayed in the UI.
 		/// </summary>
-		/// <example>
-		///		<div sys:attach="content" content:data="{{ somedata }}"></div>
-		/// </example>
-
+		/// <param name="element"></param>
 		Content.initializeBase(this, [element]);
 	}
 
@@ -12385,43 +12467,42 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	Content.prototype = {
-		getTemplate: function Content$getTemplate(data) {
-			var tmpl = Template.find(this._element, data);
 
-			if (!tmpl) {
-				ExoWeb.trace.throwAndLog(["ui", "templates"], "This content region does not match any available templates. Data={0}, Element={1}.{2}", [data, this._element.tagName, this._element.className]);
-			}
-
-			if (!Sys.UI.Template.isInstanceOfType(tmpl)) {
-				tmpl = new Sys.UI.Template(tmpl);
-			}
-
-			return tmpl;
+		get_template: function Content$get_template() {
+			/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Content.template"></value>
+			return this._template;
 		},
+		set_template: function (value) {
+			this._template = value;
+		},
+
 		get_data: function Content$get_data() {
+			/// <value mayBeNull="false" locid="P:J#ExoWeb.UI.Content.data"></value>
 			return this._data;
 		},
 		set_data: function Content$set_data(value) {
-			// Force rendering to occur if we previously had a value and now do not.
-			var force = ((value === undefined || value === null) && (this._data !== undefined && this._data !== null));
+			var removedData = ((value === undefined || value === null) && (this._data !== undefined && this._data !== null));
 
-			// Remove old change handler if applicable.
 			if (this._data && this._changeHandler) {
+				// Remove old change handler if applicable.
 				Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
 				this._changedHandler = null;
 			}
 
 			this._data = value;
 
-			// Watch for changes to an array.
 			if (value instanceof Array) {
+				// Watch for changes to an array.
 				this._changedHandler = this._collectionChanged.bind(this);
 				Sys.Observer.addCollectionChanged(value, this._changedHandler);
 			}
 
-			this.renderStart(force);
+			// Force rendering to occur if we previously had a value and now do not.
+			this.update(removedData);
 		},
+
 		get_disabled: function Content$get_disabled() {
+			/// <value mayBeNull="false" type="Boolean" locid="P:J#ExoWeb.UI.Content.disabled"></value>
 			return this._disabled === undefined ? false : !!this._disabled;
 		},
 		set_disabled: function Content$set_disabled(value) {
@@ -12431,7 +12512,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				newValue = value;
 			}
 			else if (value.constructor === String) {
-				newValue = Boolean.formats.TrueFalse.convertBack(value);
+				newValue = value.toLowerCase() == "true" ? true : (value.toLowerCase() == "false" ? false : undefined);
 			}
 			else {
 				ExoWeb.trace.throwAndLog(["ui", "content"], "Invalid value for property \"disabled\": {0}.", [value]);
@@ -12441,129 +12522,205 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._disabled = newValue;
 
 			if (oldValue === true && newValue === false) {
-				this.renderStart();
+				this.update();
 			}
 		},
+
 		get_contexts: function Content$get_contexts() {
-			return this._contexts;
+			/// <value mayBeNull="false" type="Array" locid="P:J#ExoWeb.UI.Content.contexts"></value>
+			return [this._context];
 		},
+
 		get_templateContext: function Content$get_templateContext() {
+			/// <value mayBeNull="false" type="Sys.UI.TemplateContext" locid="P:J#ExoWeb.UI.Content.templateContext"></value>
 			if (!this._parentContext) {
 				this._parentContext = Sys.UI.Template.findContext(this._element);
 			}
 			return this._parentContext;
 		},
-		_canRender: function Content$_canRender(force) {
-			// Ensure that the control is initialized, has an element, and the "data" property has been set.
-			// Scenario 1:  The set_data method may be called before the control has been initialized.
-			// Scenario 2:  If a lazy markup extension is used to set the "data" property then a callback could set the 
-			//				property value when the element is undefined, possibly because of template re-rendering.
-			// Scenario 3:  If a lazy markup extension is used to set the "data" property then it may not have a value when initialized.
-			// Also check that the control has not been disabled.
-
-			return ((this._data !== undefined && this._data !== null) || force === true) &&
-				!!this._initialized && this._element !== undefined && this._element !== null && !this.get_disabled();
+		set_templateContext: function Context$set_templateContext(value) {
+			this._parentContext = value;
 		},
+
+		get_isRendered: function Context$get_isRendered() {
+			/// <value mayBeNull="false" type="Boolean" locid="P:J#ExoWeb.UI.Content.isRendered"></value>
+			return this._isRendered;
+		},
+
 		add_rendering: function Content$add_rendering(handler) {
+			/// <summary locid="E:J#ExoWeb.UI.Content.rendering" />
 			this._addHandler("rendering", handler);
 		},
 		remove_rendering: function Content$remove_rendering(handler) {
 			this._removeHandler("rendering", handler);
 		},
+
 		add_rendered: function Content$add_rendered(handler) {
+			/// <summary locid="E:J#ExoWeb.UI.Content.rendered" />
 			this._addHandler("rendered", handler);
 		},
 		remove_rendered: function Content$remove_rendered(handler) {
 			this._removeHandler("rendered", handler);
 		},
+
 		add_error: function (handler) {
+			/// <summary locid="E:J#ExoWeb.UI.Content.error" />
 			this._addHandler("error", handler);
 		},
 		remove_error: function (handler) {
 			this._removeHandler("error", handler);
 		},
-		get_isRendered: function () {
-			return this._isRendered;
+
+		_collectionChanged: function (sender, args) {
+			this.update(true);
 		},
-		_collectionChanged: function(sender, args) {
-			this.renderStart(true);
+
+		_initializeResults: function Content$_initializeResults() {
+			if (this._context) {
+				this._context.initializeComponents();
+			}
 		},
-		render: function Content$render() {
+
+		_generatesContext: function Content$_generatesContext() {
+			return true;
+		},
+
+		_findTemplate: function Content$_findTemplate() {
+			/// <summary locid="M:J#ExoWeb.UI.Content._findTemplate">
+			/// Find the first matching template for the content control.
+			/// </summary>
+			var tmplNames;
+			if (this._contentTemplate) {
+				tmplNames = this._contentTemplate;
+			}
+			if (this._template) {
+				if (tmplNames) {
+					tmplNames += " ";
+					tmplNames += this._template;
+				}
+				else {
+					tmplNames = this._template;
+				}
+			}
+
+			var tmplEl = findTemplate(this._element.tagName.toLowerCase(), this._data, tmplNames ? tmplNames.trim().split(/\s+/) : []);
+
+			if (!tmplEl) {
+				ExoWeb.trace.throwAndLog(["ui", "templates"], "This content region does not match any available templates. Tag={0}, Data={1}, Template={2}", [this._element.tagName.toLowerCase(), this._data, tmplNames || ""]);
+			}
+
+			return tmplEl;
+		},
+
+		_canRender: function Content$_canRender(force) {
+			/// <summary locid="M:J#ExoWeb.UI.Content._canRender">
+			/// Ensure that the control is initialized, has an element, and the "data" property has been set.
+			/// 1) The set_data method may be called before the control has been initialized.
+			/// 2) If a lazy markup extension is used to set the "data" property then a callback could set the 
+			/// property value when the element is undefined, possibly because of template re-rendering.
+			/// 3) If a lazy markup extension is used to set the "data" property then it may not have a value when initialized.
+			/// Also check that the control has not been disabled.
+			/// </summary>
+
+			return ((this._data !== undefined && this._data !== null) || force === true) &&
+				!!this._initialized && this._element !== undefined && this._element !== null && !this.get_disabled();
+		},
+
+		_getResultingTemplateNames: function Content$_getResultingTemplateNames(tmplEl) {
+			// use sys:content-template (on content control) and content:template
+			var contentTemplateNames;
+			if (this._contentTemplate) {
+				contentTemplateNames = this._contentTemplate;
+				if (this._template) {
+					contentTemplateNames += " " + this._template;
+				}
+			}
+			else if (this._template) {
+				contentTemplateNames = this._template;
+			}
+			else {
+				contentTemplateNames = "";
+			}
+
+			var contentTemplate = contentTemplateNames.trim().split(/\s+/).distinct();
+
+			// Remove names matched by the template
+			if (contentTemplate.length > 0) {
+				var tmplNames = tmplEl.control.get_nameArray();
+				if (tmplNames) {
+					purge(contentTemplate, function(name) {
+						return tmplNames.indexOf(name) >= 0;
+					});
+				}
+			}
+
+			// Add sys:content-template defined on the template element
+			if (tmplEl.control._contentTemplate) {
+				contentTemplate.addRange(tmplEl.control._contentTemplate.trim().split(/\s+/));
+			}
+
+			return contentTemplate;
+		},
+
+		_render: function Content$_render() {
+			/// <summary locid="M:J#ExoWeb.UI.Content._render">
+			/// Render the content template into the container element.
+			/// </summary>
+
 			// Failing to empty content before rendering can result in invalid content since rendering 
 			// content is not necessarily in order because of waiting on external templates.
 			$(this._element).empty();
 
-			// ripped off from dataview
-			var pctx = this.get_templateContext();
+			var parentContext = this.get_templateContext();
 			var container = this.get_element();
-			var data = this._data;
-			var list = data;
-			var len;
-			if ((data === null) || (typeof (data) === "undefined")) {
-				len = 0;
-			}
-			else if (!(data instanceof Array)) {
-				list = [data];
-				len = 1;
-			}
-			else {
-				len = data.length;
-			}
-			this._contexts = new Array(len);
-			for (var i = 0; i < len; i++) {
-				var item = list[i];
-				var itemTemplate = this.getTemplate(item);
+			this._context = null;
 
-				// get custom classes from template
-				var classes = $(itemTemplate.get_element()).attr("class");
-				if (classes) {
-					classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
-				}
+			var tmplEl = this._findTemplate();
+			var template = new Sys.UI.Template(tmplEl);
 
-				this._contexts[i] = itemTemplate.instantiateIn(container, data, item, i, null, pctx);
-
-				// copy custom classes from template to content control
-				if (classes) {
-					$(container).addClass(classes);
-				}
+			// get custom classes from template
+			var classes = $(tmplEl).attr("class");
+			if (classes) {
+				classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
+				$(container).addClass(classes);
 			}
 
-			// necessary in order to render components found within the template (like a nested dataview)
-			for (var j = 0, l = this._contexts.length; j < l; j++) {
-				var ctx = this._contexts[j];
-				if (ctx) {
-					ctx.initializeComponents();
-				}
-			}
+			// Get the list of template names applicable to the control's children
+			var contentTemplate = this._getResultingTemplateNames(tmplEl);
+
+			this._context = template.instantiateIn(container, this._data, this._data, 0, null, parentContext, contentTemplate.join(" "));
+
+			this._initializeResults();
 		},
-		renderStart: function Content$renderStart(force) {
-			if (this._canRender(force)) {
-				//					ExoWeb.trace.log(['ui', "templates"], "render({0})", [force === true ? "force" : ""]);
 
+		_renderStart: function Content$_renderStart(force) {
+			/// <summary locid="M:J#ExoWeb.UI.Content._renderStart">
+			/// Start the rendering process. There may be a delay if external templates
+			/// have not yet finished loading.
+			/// </summary>
+			if (this._canRender(force)) {
 				contentControlsRendering++;
 
-				externalTemplatesSignal.waitForAll(function() {
+				externalTemplatesSignal.waitForAll(function () {
 					if (this._element === undefined || this._element === null) {
 						contentControlsRendering--;
 						return;
 					}
 
-					//						ExoWeb.trace.log(['ui', "templates"], "render() proceeding after all templates are loaded");
-
 					var renderArgs = new Sys.Data.DataEventArgs(this._data);
 					Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
 					this._isRendered = false;
-		
+
 					if (ExoWeb.config.debug === true) {
-						this.render();
+						this._render();
 						this._isRendered = true;
 						Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 						contentControlsRendering--;
 					}
 					else {
 						try {
-							this.render();
+							this._render();
 							this._isRendered = true;
 							Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 						}
@@ -12583,11 +12740,60 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}, this);
 			}
 		},
-		initialize: function Content$initialize() {
-			Content.callBaseMethod(this, "initialize");
 
-			// marker attribute used by helper methods to identify as a content control
-			this._element._exowebcontent = this;
+		link: function Content$link() {
+			/// <summary locid="M:J#ExoWeb.UI.Content.link" />
+			externalTemplatesSignal.waitForAll(function () {
+				this._isRendered = true;
+				this._context = null;
+
+				var pctx = this.get_templateContext();
+				var tmplEl = this._findTemplate();
+
+				var newContext = new Sys.UI.TemplateContext();
+				newContext.data = this._data;
+				newContext.components = [];
+				newContext.nodes = [];
+				newContext.dataItem = this._data;
+				newContext.index = 0;
+				newContext.parentContext = pctx;
+				newContext.containerElement = this.get_element();
+				newContext.template = new Sys.UI.Template(tmplEl);
+				newContext.template._ensureCompiled();
+
+				this._context = newContext;
+
+				// Get the list of template names applicable to the control's children
+				var contentTemplate = this._getResultingTemplateNames(tmplEl);
+
+				var element = this.get_element();
+				Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
+
+				for (var i = 0; i < element.childNodes.length; i++) {
+					newContext.nodes.push(element.childNodes[i]);
+				}
+
+				newContext._onInstantiated(null, true);
+				this._initializeResults();
+
+				ExoWeb.UI.Content.callBaseMethod(this, 'link');
+			}, this);
+		},
+
+		update: function Content$update(force) {
+			if (this._canRender(force)) {
+				if (this.get_isLinkPending()) {
+					this.link();
+				}
+				else {
+					this._renderStart(force);
+				}
+			}
+		},
+
+		initialize: function Content$initialize() {
+			/// <summary locid="M:J#ExoWeb.UI.Content.initialize" />
+			Content.callBaseMethod(this, "initialize");
 
 			if ($(this._element).is(".sys-template")) {
 				if ($(this._element).children().length > 0) {
@@ -12599,13 +12805,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 						"No need to mark a content control with the \"sys-template\" class.");
 				}
 			}
-
-			this.renderStart();
+			this.update();
 		}
+
 	};
 
 	ExoWeb.UI.Content = Content;
-	Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control);
+	Content.registerClass("ExoWeb.UI.Content", Sys.UI.Control, Sys.UI.ITemplateContextConsumer, Sys.UI.IContentTemplateConsumer);
 
 	// #endregion
 
@@ -12671,7 +12877,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._url = value;
 		},
 		get_path: function Html$get_path() {
-			return $format(this.get_url(), this.get_source());
+			var source = this.get_source();
+			var url = this.get_url();
+			if (source instanceof ExoWeb.Model.Entity) {
+				url = source.toString(url);
+			}
+			return $format(url, source);
 		},
 		initialize: function Html$initialize() {
 			Html.callBaseMethod(this, "initialize");
@@ -12686,7 +12897,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				$(element).removeClass(loadingClass);
 
 				if (status != "success" && status != "notmodified") {
-					ExoWeb.trace.throwAndLog("ui", "Failed to load html: status = {status}", { status: status, response: response });
+					ExoWeb.trace.throwAndLog("ui", "Failed to load html: status = {0}", status);
 				}
 			});
 		}
@@ -12820,8 +13031,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var element = childElement;
 
 		function isDataViewOrContent(el) {
-			return element.parentNode._exowebcontent ||
-				(element.parentNode._msajaxtemplate && !element.parentNode._exowebtoggle);
+			return (el.control && el.control instanceof Sys.UI.DataView) ||
+				(el.control && el.control instanceof ExoWeb.UI.Content);
 		}
 
 		// find the first parent that has an attached ASP.NET Ajax dataview or ExoWeb content control (ignore toggle)
@@ -13060,12 +13271,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return prefix + s;
 	};
 
-	// call jQuery.ever to make sure it intercepts template rendering since
-	// we know the ASP.NET AJAX templates script is loaded at this point
-	if (jQuery.fn.ever) {
-		jQuery.fn.ever.call();
-	}
-
 	// #endregion
 
 	// #region AdapterMarkupExtension
@@ -13073,8 +13278,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	Sys.Application.registerMarkupExtension("@",
 		function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
-//				ExoWeb.trace.log(["@", "markupExt"], "@ " + (properties.$default || "(no path)") + " (evaluating)");
-
 			if (properties.required) {
 				ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter markup extension does not support the \"required\" property.");
 			}
@@ -13082,10 +13285,33 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var path = properties.path || properties.$default;
 			delete properties.$default;
 
-			var adapter = new Adapter(properties.source || templateContext.dataItem, path, properties.systemFormat, properties.displayFormat, properties);
+			var source;
+			if (properties.source) {
+				source = properties.source;
+				delete properties.source;
+			}
+			else {
+				source = templateContext.dataItem;
+			}
+
+			var adapter;
+			if (!path) {
+				if (!(source instanceof Adapter)) {
+					throw new Error("No path was specified for the \"@\" markup extension, and the source is not an adapter.");
+				}
+				for (var prop in properties) {
+					if (properties.hasOwnProperty(prop) && prop !== "isLinkPending") {
+						throw new Error("Additional adapter properties cannot be specified when deferring to another adapter (no path specified). Found property \"" + prop + "\".");
+					}
+				}
+				adapter = source;
+			}
+			else {
+				adapter = new Adapter(source, path, properties.format, properties);
+				templateContext.components.push(adapter);
+			}
 
 			adapter.ready(function AdapterReady() {
-//					ExoWeb.trace.log(["@", "markupExt"], "@ " + (adapter._propertyPath || "(no path)") + "  <.>");
 				Sys.Observer.setValue(component, targetProperty, adapter);
 				if (component.add_disposing) {
 					component.add_disposing(function() {
@@ -13093,8 +13319,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 					});
 				}
 			});
-
-			templateContext.components.push(adapter);
 		}, false);
 
 	// #endregion
@@ -13124,7 +13348,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				element = component;
 			}
 
-			var adapter = new Adapter(options.source || templateContext.dataItem, options.path, options.systemFormat, options.displayFormat, properties);
+			var adapter = new Adapter(options.source || templateContext.dataItem, options.path, options.format, properties);
 			options.source = adapter;
 			options.path = element.nodeName == "SELECT" ? "systemValue" : "displayValue";
 
@@ -13198,7 +13422,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._source = source;
 		this._sourcePath = sourcePath;
 		this._target = target;
-		this._targetPath = targetPath;
+
+		var pathLower = targetPath ? targetPath.toLowerCase() : targetPath;
+		if (pathLower === "innertext") {
+			this._targetPath = "innerText";
+		}
+		else if (pathLower === "innerhtml") {
+			this._targetPath = "innerHTML";
+		}
+		else {
+			this._targetPath = targetPath;
+		}
+
 		this._options = options || {};
 
 		this._isTargetElement = Sys.UI.DomElement.isDomElement(target);
@@ -13289,8 +13524,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		_format: function(value) {
 			// attempt to format the source value used the named format
-			if (value && this._options.format && value.constructor.formats && value.constructor.formats[this._options.format]) {
-				return value.constructor.formats[this._options.format].convert(value);
+			if (value && this._options.format) {
+				return getFormat(value.constructor, this._options.format).convert(value);
 			}
 
 			return value;
@@ -13495,7 +13730,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region Adapter
 	//////////////////////////////////////////////////
 
-	function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
+	function Adapter(target, propertyPath, format, options) {
 		Adapter.initializeBase(this);
 
 		this._target = target instanceof OptionAdapter ? target.get_rawValue() : target;
@@ -13506,7 +13741,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		if (options.optionsTransform) {
 			if (options.optionsTransform.indexOf("groupBy(") >= 0) {
-				ExoWeb.trace.throwAndLog(["@", "markupExt"], "optionsTransform does not support grouping");
+				ExoWeb.trace.throwAndLog(["@", "markupExt"], "The optionsTransform property does not support grouping");
 			}
 			this._optionsTransform = options.optionsTransform;
 		}
@@ -13515,12 +13750,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._allowedValuesMayBeNull = options.allowedValuesMayBeNull;
 		}
 
-		// Track state for system and display formats, including the format and bad value.
-		this._systemState = { FormatName: systemFormat, Format: undefined, BadValue: undefined };
-		this._displayState = { FormatName: displayFormat, Format: undefined, BadValue: undefined };
-
 		// Initialize the property chain.
 		this._initPropertyChain();
+
+		// Determine the display format to use
+		this._format = format ? getFormat(this._propertyChain.get_jstype(), format) : this._propertyChain.get_format();
 
 		// Load the object this adapter is bound to and then load allowed values.
 		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath,
@@ -13576,61 +13810,45 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// get the property chain for this adapter starting at the source object
 			this._propertyChain = sourceObject.meta.property(this._propertyPath);
 			if (!this._propertyChain) {
-				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{p}\" could not be found.", { p: this._propertyPath });
+				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{0}\" could not be found.", this._propertyPath);
 			}
 
-			// If the target is an adapter, prepend it's property chain.  Can't simply concatenate paths
-			// since the child path could be instance-dependent (i.e. the paren't value is a subtype).
+			// If the target is an adapter, prepend its property chain.  Cannot simply concatenate paths
+			// since the child path could be instance-dependent (i.e. the parents value is a subtype).
 			if (this._target instanceof Adapter) {
 				this._propertyChain.prepend(this._target.get_propertyChain());
 				this._parentAdapter = this._target;
 				this._target = this._target.get_target();
 			}
 		},
-		_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val, fmtName) {
-			var signal = new ExoWeb.Signal("Adapter." + fmtName + "Value");
-			if (val !== undefined && val !== null) {
-				this._doForFormatPaths(val, fmtName, function (path) {
-					ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
-				});
-			}
+		_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val) {
+			var signal = new ExoWeb.Signal("Adapter.displayValue");
+			this._doForFormatPaths(val, function (path) {
+				ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
+			});
 			signal.waitForAll(function () {
-				Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
+				Sys.Observer.raisePropertyChanged(this, "displayValue");
+				Sys.Observer.raisePropertyChanged(this, "systemValue");
 			}, this);
 		},
-		_doForFormatPaths: function Adapter$_doForFormatPaths(val, fmtName, callback, thisPtr) {
-			if (val === undefined || val === null) {
+		_doForFormatPaths: function Adapter$_doForFormatPaths(val, callback, thisPtr) {
+			if (val === undefined || val === null || !this._format) {
 				return;
 			}
 
-			var fmtMethod = this["get_" + fmtName + "Format"];
-			var fmt = fmtMethod.call(this);
-
 			if (fmt) {
-				var paths;
-
-				if (fmtName === "display" && (this._propertyChain.get_isEntityType() || this._propertyChain.get_isEntityListType()) && fmt === ExoWeb.Model.Entity.formats.$display) {
-					var jstype = this._propertyChain.get_jstype();
-					paths = ["Name", "Label", "Text"].filter(function(prop) {
-						return jstype.hasOwnProperty("$" + prop);
-					});
-				}
-				else {
-					paths = fmt.getPaths();
-				}
-
-				Array.forEach(paths, callback, thisPtr || this);
+				Array.forEach(this._format.getPaths(), callback, thisPtr || this);
 			}
 		},
-		_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val, fmtName) {
-			this._doForFormatPaths(val, fmtName, function (path) {
-				var fn = this._formatSubscribers[fmtName + "|" + path];
+		_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val) {
+			this._doForFormatPaths(val, function (path) {
+				var fn = this._formatSubscribers[path];
 				Sys.Observer.removePathChanged(val, path, fn);
 			});
 		},
-		_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val, fmtName) {
-			this._doForFormatPaths(val, fmtName, function (path) {
-				var fn = this._formatSubscribers[fmtName + "|" + path] = this._loadForFormatAndRaiseChange.bind(this).prependArguments(val, fmtName);
+		_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val) {
+			this._doForFormatPaths(val, function (path) {
+				var fn = this._formatSubscribers[path] = this._loadForFormatAndRaiseChange.bind(this).prependArguments(val);
 				Sys.Observer.addPathChanged(val, path, fn);
 			});
 		},
@@ -13648,17 +13866,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// set up initial watching of format paths
 				if (this._propertyChain.lastTarget(this._target)) {
 					var rawValue = this._propertyChain.value(this._target);
-					this._subscribeToFormatChanges(rawValue, "system");
-					this._subscribeToFormatChanges(rawValue, "display");
+					this._subscribeToFormatChanges(rawValue);
 				}
 
 				// when the value changes resubscribe
 				this._propertyChain.addChanged(function (sender, args) {
-					_this._unsubscribeFromFormatChanges(args.oldValue, "system");
-					_this._unsubscribeFromFormatChanges(args.oldValue, "display");
-
-					_this._subscribeToFormatChanges(args.newValue, "system");
-					_this._subscribeToFormatChanges(args.newValue, "display");
+					_this._unsubscribeFromFormatChanges(args.oldValue);
+					_this._subscribeToFormatChanges(args.newValue);
 				}, this._target);
 
 				this._observable = true;
@@ -13677,11 +13891,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				Sys.Observer.raisePropertyChanged(_this, "rawValue");
 			});
 
-			// raise system value changed event
-			this._loadForFormatAndRaiseChange(rawValue, "system");
-
-			// raise display value changed event
-			this._loadForFormatAndRaiseChange(rawValue, "display");
+			// raise value changed event
+			this._loadForFormatAndRaiseChange(rawValue);
 
 			// Raise change on options representing the old and new value in the event that the property 
 			// has be changed by non-UI code or another UI component.  This will result in double raising 
@@ -13721,54 +13932,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 			Sys.Observer.raisePropertyChanged(this, "allowedValues");
 			Sys.Observer.raisePropertyChanged(this, "options");
 		},
-		_getFormattedValue: function Adapter$_getFormattedValue(formatName) {
-			this._ensureObservable();
-
-			var state = this["_" + formatName + "State"];
-
-			if (state) {
-				// if a "bad value" exists then return it rather than the actual value
-				if (state.BadValue !== undefined) {
-					return state.BadValue;
-				}
-
-				var rawValue = this.get_rawValue();
-
-				var formatMethod = this["get_" + formatName + "Format"];
-				if (formatMethod) {
-					var format = formatMethod.call(this);
-					if (format) {
-						if (rawValue instanceof Array) {
-							return rawValue.map(function (value) { return format.convert(value); });
-						}
-						else {
-							return format.convert(rawValue);
-						}
-					}
-					else {
-						return rawValue;
-					}
-				}
-			}
-		},
-		_setFormattedValue: function Adapter$_setFormattedValue(formatName, value) {
-			var state = this["_" + formatName + "State"];
-
-			var format;
-			var formatMethod = this["get_" + formatName + "Format"];
-			if (formatMethod) {
-				format = formatMethod.call(this);
-			}
-
-			var converted = format ? format.convertBack(value) : value;
-
+		_setValue: function Adapter$_setValue(value) {
 			var prop = this._propertyChain;
 			var meta = prop.lastTarget(this._target).meta;
 
 			meta.clearConditions(this);
 
-			if (converted instanceof ExoWeb.Model.FormatError) {
-				this._condition = converted.createCondition(this, prop.lastProperty());
+			if (value instanceof ExoWeb.Model.FormatError) {
+				this._condition = value.createCondition(this, prop.lastProperty());
 
 				meta.conditionIf(this._condition, true);
 
@@ -13779,15 +13950,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// run the rules to preserve the order of conditions
 				else {
 					// store the "bad value" since the actual value will be different
-					state.BadValue = value;
+					this._badValue = value;
 					meta.executeRules(prop);
 				}
 			}
 			else {
-				var changed = prop.value(this._target) !== converted;
+				var changed = prop.value(this._target) !== value;
 
-				if (state.BadValue !== undefined) {
-					delete state.BadValue;
+				if (this._badValue !== undefined) {
+					delete this._badValue;
 					delete this._condition;
 
 					// force rules to run again in order to trigger validation events
@@ -13796,7 +13967,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 				}
 
-				this.set_rawValue(converted, changed);
+				this.set_rawValue(value, changed);
 			}
 		},
 
@@ -13868,8 +14039,27 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return false;
 		},
+		aspects: function Adapter$aspects() {
+			if (!this._aspects) {
+				this._aspects = {
+					"isList": this.get_isList(),
+					"isReference": this.get_isEntity() || this.get_isEntityList(),
+					"dataType": this.get_dataType()
+				};
+			}
+			return this._aspects;
+		},
 		get_isList: function Adapter$get_isList() {
 			return this._propertyChain.get_isList();
+		},
+		get_isEntity: function Adapter$get_isEntity() {
+			return this._propertyChain.get_isEntityType();
+		},
+		get_isEntityList: function Adapter$get_isEntityList() {
+			return this._propertyChain.get_isEntityListType();
+		},
+		get_isStatic: function Adapter$get_isStatic() {
+			return this._propertyChain.get_isStatic();
 		},
 		get_target: function Adapter$get_target() {
 			return this._target;
@@ -13879,6 +14069,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		get_propertyChain: function Adapter$get_propertyChain() {
 			return this._propertyChain;
+		},
+		get_format: function Adapter$get_format() {
+			return this._format;
+		},
+		get_dataType: function Adapter$get_dataType() {
+			return this._propertyChain.get_jstype();
 		},
 		get_label: function Adapter$get_label() {
 			// if no label is specified then use the property label
@@ -14017,11 +14213,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 			else {
 				if (selected) {
-					var value = (this.get_systemFormat()) ? this.get_systemFormat().convert(obj) : obj;
-					this.set_systemValue(value);
+					this.set_rawValue(obj);
 				}
 				else {
-					this.set_systemValue(null);
+					this.set_rawValue(null);
 				}
 			}
 		},
@@ -14047,45 +14242,68 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 		},
-		get_systemFormat: function Adapter$get_systemFormat() {
-			if (!this._systemState.Format) {
-				var jstype = this._propertyChain.get_jstype();
-
-				if (this._systemState.FormatName) {
-					this._systemState.Format = jstype.formats[this._systemState.FormatName];
+		get_systemValue: function Adapter$get_systemValue() {
+			var rawValue = this.get_rawValue();
+			if (this.get_isEntity()) {
+				return rawValue ? Entity.toIdString(rawValue) : "";
+			}
+			else if (this.isType(Boolean)) {
+				if (rawValue === true) {
+					return "true";
 				}
-				else if (!(this._systemState.Format = this._propertyChain.get_format())) {
-					this._systemState.Format = jstype.formats.$system || jstype.formats.$display;
+				else if (rawValue === false) {
+					return "false";
+				}
+				else {
+					return "";
 				}
 			}
-
-			return this._systemState.Format;
-		},
-		get_systemValue: function Adapter$get_systemValue() {
-			return this._getFormattedValue("system");
+			else {
+				ExoWeb.trace.logWarning(["@", "markupExt"], "Possible incorrect usage of systemValue for a type that is not supported");
+				return rawValue ? rawValue.toString() : "";
+			}
 		},
 		set_systemValue: function Adapter$set_systemValue(value) {
-			this._setFormattedValue("system", value);
-		},
-		get_displayFormat: function Adapter$get_displayFormat() {
-			if (!this._displayState.Format) {
-				var jstype = this._propertyChain.get_jstype();
-
-				if (this._displayState.FormatName) {
-					this._displayState.Format = jstype.formats[this._displayState.FormatName];
+			if (this.get_isEntity()) {
+				this._setValue(value ? Entity.fromIdString(value) : null);
+			}
+			else if (this.isType(Boolean)) {
+				if (value === "true") {
+					this._setValue(true);
 				}
-				else if (!(this._displayState.Format = this._propertyChain.get_format())) {
-					this._displayState.Format = jstype.formats.$display || jstype.formats.$system;
+				else if (value === "false") {
+					this._setValue(false);
+				}
+				else {
+					this._setValue(null);
 				}
 			}
-
-			return this._displayState.Format;
+			else {
+				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Cannot set systemValue property of Adapters for non-entity types.");
+			}
 		},
 		get_displayValue: function Adapter$get_displayValue() {
-			return this._getFormattedValue("display");
+			var rawValue = this.get_rawValue();
+			if (this._format) {
+				if (rawValue instanceof Array) {
+					return rawValue.map(function (value) { return this._format.convert(value); }, this).join(", ");
+				}
+				else {
+					return this._format.convert(rawValue);
+				}
+			}
+			else {
+				return rawValue;
+			}
 		},
 		set_displayValue: function Adapter$set_displayValue(value) {
-			this._setFormattedValue("display", value);
+			if (this.get_isEntity()) {
+				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Cannot set displayValue property of Adapters for entity types.");
+			}
+			else {
+				value = this._format ? this._format.convertBack(value) : value;
+				this._setValue(value);
+			}
 		},
 
 		// Used to register validating and validated events through the adapter as if binding directly to an Entity
@@ -14130,23 +14348,25 @@ Type.registerNamespace("ExoWeb.DotNet");
 	OptionAdapter.prototype = {
 		// Internal book-keeping and setup methods
 		///////////////////////////////////////////////////////////////////////
-		_loadForFormatAndRaiseChange: function OptionAdapter$_loadForFormatAndRaiseChange(val, fmtName) {
+		_loadForFormatAndRaiseChange: function OptionAdapter$_loadForFormatAndRaiseChange(val) {
 			if (val === undefined || val === null) {
-				Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
+				Sys.Observer.raisePropertyChanged(this, "displayValue");
+				Sys.Observer.raisePropertyChanged(this, "systemValue");
 				return;
 			}
 
-			var signal = new ExoWeb.Signal("OptionAdapter." + fmtName + "Value");
-			this._parent._doForFormatPaths(val, fmtName, function(path) {
+			var signal = new ExoWeb.Signal("OptionAdapter.displayValue");
+			this._parent._doForFormatPaths(val, function (path) {
 				ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 			}, this);
-			signal.waitForAll(function() {
-				Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
+			signal.waitForAll(function () {
+				Sys.Observer.raisePropertyChanged(this, "displayValue");
+				Sys.Observer.raisePropertyChanged(this, "systemValue");
 			}, this);
 		},
-		_subscribeToFormatChanges: function OptionAdapter$_subscribeToFormatChanges(val, fmtName) {
-			this._parent._doForFormatPaths(val, fmtName, function(path) {
-				Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.bind(this).prependArguments(val, fmtName));
+		_subscribeToFormatChanges: function OptionAdapter$_subscribeToFormatChanges(val) {
+			this._parent._doForFormatPaths(val, function (path) {
+				Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.bind(this).prependArguments(val));
 			}, this);
 		},
 		_ensureObservable: function OptionAdapter$_ensureObservable() {
@@ -14154,8 +14374,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				Sys.Observer.makeObservable(this);
 
 				// set up initial watching of format paths
-				this._subscribeToFormatChanges(this._obj, "system");
-				this._subscribeToFormatChanges(this._obj, "display");
+				this._subscribeToFormatChanges(this._obj);
 
 				this._observable = true;
 			}
@@ -14170,12 +14389,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._obj;
 		},
 		get_displayValue: function OptionAdapter$get_displayValue() {
-			var format = this._parent.get_displayFormat();
+			var format = this._parent._format;
 			return format ? format.convert(this._obj) : this._obj;
 		},
 		get_systemValue: function OptionAdapter$get_systemValue() {
-			var format = this._parent.get_systemFormat();
-			return format ? format.convert(this._obj) : this._obj;
+			if (this._obj === null || this._obj === undefined) {
+				return "";
+			}
+			else {
+				return this._parent.get_isEntity() ? Entity.toIdString(this._obj) : this._obj.toString();
+			}
 		},
 		get_selected: function OptionAdapter$get_selected() {
 			return this._parent.get_selected(this._obj);
@@ -14270,7 +14493,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			else {
 				this._dirty = true;
 				if (this._isActive()) {
-					this.refresh();
+					if (this.get_isLinkPending()) {
+						this.link();
+					}
+					else {
+						this.refresh();
+					}
 					this.raisePropertyChanged("data");
 				}
 				else {
@@ -14502,10 +14730,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region MsAjax
+	// #region Helpers
 	//////////////////////////////////////////////////
 
-	jQuery.fn.control = function (propName, propValue) {
+	jQuery.fn.control = function jQuery$control(propName, propValue) {
 		if (arguments.length === 0) {
 			return this.get(0).control;
 		}
@@ -14513,15 +14741,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this.get(0).control["get_" + propName]();
 		}
 		else {
-			this.each(function (index, element) {
+			this.each(function jQuery$control$one(index, element) {
 				this.control["set_" + propName](propValue);
 			});
 		}
 	};
 
-	jQuery.fn.commands = function (commands) {
+	jQuery.fn.commands = function jQuery$commands(commands) {
 		var control = this.control();
-		control.add_command(function (sender, args) {
+		control.add_command(function jQuery$commands$command(sender, args) {
 			var handler = commands[args.get_commandName()];
 			if (handler) {
 				handler(sender, args);
@@ -14529,32 +14757,109 @@ Type.registerNamespace("ExoWeb.DotNet");
 		});
 	};
 
-	var everRegs = { added: [], deleted: [] };
+	// Gets all Sys.Bindings for an element
+	jQuery.fn.liveBindings = function jQuery$liveBindings() {
+		var bindings = [];
+		this.each(function jQuery$liveBindings$one() {
+			if (this.__msajaxbindings)
+				Array.addRange(bindings, this.__msajaxbindings);
+		});
+		return bindings;
+	};
 
-	function processElements(els, action) {
-		var regs = everRegs[action];
+	// #endregion
 
-		for (var e = 0; e < els.length; ++e) {
-			var el = els[e];
+	// #region Ever
+	//////////////////////////////////////////////////
 
-			// Ingore text nodes
-			if (el.nodeType && el.nodeType !== 3) {
-				var $el = $(el);
+	// Cache lists of ever handlers by type
+	var everHandlers = { added: [], deleted: [], bound: [], unbound: [] };
 
-				for (var i = 0; i < regs.length; ++i) {
-					var reg = regs[i];
+	var processElements = function processElements(container, els, action, source) {
+		// Determine if the input is an array
+		var isArr = ExoWeb.isArray(els),
 
-					// test root
-					if ($el.is(reg.selector))
-						reg.action.apply(el, [0, el]);
+			// The number of elements to process
+			numEls = isArr ? els.length : 1,
 
-					// test children
-					$el.find(reg.selector).each(reg.action);
+			// Cache of handlers for the action in question
+			actionHandlers,
+
+			// Handlers that are applicable to this call
+			handlers,
+
+			// The number of cached handlers
+			numHandlers,
+
+			// Determines whether to search children for matches
+			doSearch,
+
+			// Element iteration index variable
+			i = 0,
+
+			// Element iteration item variable
+			el,
+
+			// Optimization: cache the jQuery object for the element
+			$el,
+
+			// Handler iteration index variable
+			j,
+
+			// Handler iteration item variable
+			handler;
+
+		if (numEls === 0) {
+			return;
+		}
+
+		actionHandlers = everHandlers[action];
+
+		// Filter based on source and context
+		handlers = actionHandlers.filter(function(handler) {
+			// If a handler source is specified then filter by the source
+			return (!handler.source || handler.source === source) &&
+				// If a handler context is specified then see if it contains the given container, or equals if children were passed in
+				(!handler.context || (isArr && handler.context === container) || jQuery.contains(handler.context, container));
+		});
+
+		numHandlers = handlers.length;
+
+		if (numHandlers === 0) {
+			return;
+		}
+
+		// Only perform descendent search for added/deleted actions, since this
+		// doesn't make sense for bound/unbound, which are specific to an element.
+		doSearch = action === "added" || action === "deleted";
+
+		i = -1;
+		while (++i < numEls) {
+			el = isArr ? els[i] : els;
+
+			// Only process elements
+			if (el.nodeType === 1) {
+				j = 0;
+				$el = jQuery(el);
+
+				while (j < numHandlers) {
+					handler = handlers[j++];
+
+					// Test root
+					if ($el.is(handler.selector)) {
+						handler.action.apply(el, [0, el]);
+					}
+
+					if (doSearch && el.children.length > 0) {
+						// Test children
+						$el.find(handler.selector).each(handler.action);
+					}
 				}
 			}
 		}
-	}
+	};
 
+	var interceptingBound = false;
 	var interceptingTemplates = false;
 	var interceptingWebForms = false;
 	var interceptingToggle = false;
@@ -14562,22 +14867,55 @@ Type.registerNamespace("ExoWeb.DotNet");
 	var partialPageLoadOccurred = false;
 
 	function ensureIntercepting() {
+		if (!interceptingBound && window.Sys && Sys.Binding && Sys.UI && Sys.UI.TemplateContext) {
+			var addBinding = Sys.Binding.prototype._addBinding;
+			if (!addBinding) {
+				throw new Error("Could not find Binding._addBinding method to override.");
+			}
+			Sys.Binding.prototype._addBinding = function addBinding$wrap(element) {
+				addBinding.apply(this, arguments);
+				var ctx = this._templateContext;
+				if (ctx._completed && ctx._completed.length > 0) {
+					ctx.add_instantiated(function addBinding$contextInstantiated() {
+						processElements(element, element, "bound");
+					});
+				}
+				else {
+					processElements(element, element, "bound");
+				}
+			};
+			var disposeBindings = Sys.Binding._disposeBindings;
+			if (!disposeBindings) {
+				throw new Error("Could not find Binding._disposeBindings method to override.");
+			}
+			Sys.Binding._disposeBindings = function disposeBindings$wrap() {
+				disposeBindings.apply(this, arguments);
+				processElements(this, this, "unbound");
+			};
+			interceptingBound = true;
+		}
+
 		if (!interceptingTemplates && window.Sys && Sys.UI && Sys.UI.Template) {
 			var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
-			Sys.UI.Template.prototype.instantiateIn = function (containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
+			if (!instantiateInBase) {
+				throw new Error("Could not find Template.instantiateIn method to override.");
+			}
+			Sys.UI.Template.prototype.instantiateIn = function instantiateIn$wrap() {
 				var context = instantiateInBase.apply(this, arguments);
-
-				processElements(context.nodes, "added");
+				if (context.nodes.length > 0) {
+					processElements(context.containerElement, context.nodes, "added", "template");
+				}
 				return context;
 			};
-
 			// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
 			// dispose is too late because the nodes will have been cleared out.
-			Sys.UI.DataView.prototype._clearContainers = function (placeholders, start, count) {
+			Sys.UI.DataView.prototype._clearContainers = function _clearContainers$override(placeholders, start, count) {
 				var i, len, nodes, startNode, endNode;
 				for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
 					nodes = this._contexts[i].nodes;
-					processElements(nodes, "deleted");
+					if (nodes.length > 0) {
+						processElements(context.containerElement, nodes, "deleted", "template");
+					}
 					if (count) {
 						if (!startNode) {
 							startNode = nodes[0];
@@ -14589,7 +14927,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 				for (i = 0, len = placeholders.length; i < len; i++) {
 					var ph = placeholders[i],
-					container = ph ? ph.parentNode : this.get_element();
+						container = ph ? ph.parentNode : this.get_element();
 					if (!count || (startNode && endNode)) {
 						this._clearContainer(container, ph, startNode, endNode, true);
 					}
@@ -14600,7 +14938,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					ctx.dispose();
 				}
 			};
-			Sys.UI.DataView.prototype._clearContainer = function (container, placeholder, startNode, endNode, suppressEvent) {
+			Sys.UI.DataView.prototype._clearContainer = function _clearContainer$override(container, placeholder, startNode, endNode, suppressEvent) {
 				var count = placeholder ? placeholder.__msajaxphcount : -1;
 				if ((count > -1) && placeholder) placeholder.__msajaxphcount = 0;
 				if (count < 0) {
@@ -14608,7 +14946,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 						container.removeChild(placeholder);
 					}
 					if (!suppressEvent) {
-						processElements(container.childNodes, "deleted");
+						if (container.childNodes.length > 0) {
+							processElements(container, container.childNodes, "deleted", "template");
+						}
 					}
 					if (!startNode) {
 						Sys.Application.disposeElement(container, true);
@@ -14625,6 +14965,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						var child = startNode || container.firstChild, nextChild;
 						while (child) {
 							nextChild = child === endNode ? null : child.nextSibling;
+							Sys.Application.disposeElement(child, false);
 							container.removeChild(child);
 							child = nextChild;
 						}
@@ -14643,145 +14984,205 @@ Type.registerNamespace("ExoWeb.DotNet");
 					start = i - count;
 					for (i = 0; i < count; i++) {
 						var element = children[start];
-						processElements([element], "deleted");
+						processElements(element, element, "deleted", "template");
 						Sys.Application.disposeElement(element, false);
 						container.removeChild(element);
 					}
 				}
 			};
-
 			interceptingTemplates = true;
 		}
 
 		if (!interceptingWebForms && window.Sys && Sys.WebForms && Sys.WebForms.PageRequestManager) {
-			Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function (sender, evt) {
+			Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function PageRequestManager$ever_deleted(sender, evt) {
 				partialPageLoadOccurred = true;
-				processElements(evt.get_panelsUpdating(), "deleted");
+				var updating = evt.get_panelsUpdating();
+				if (updating.length > 0) {
+					processElements(null, updating, "deleted", "updatePanel");
+				}
 			});
-
-			Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function (sender, evt) {
+			Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function PageRequestManager$ever_added(sender, evt) {
 				// Only process elements for update panels that were added if we have actually done a partial update.
 				// This is needed so that the "ever" handler is not called twice when a panel is added to the page on first page load.
 				if (partialPageLoadOccurred) {
-					processElements(evt.get_panelsCreated(), "added");
+					var created = evt.get_panelsCreated();
+					if (created.length > 0) {
+						processElements(null, created, "added", "updatePanel");
+					}
 				}
 
-				processElements(evt.get_panelsUpdated(), "added");
+				var updated = evt.get_panelsUpdated();
+				if (updated.length > 0) {
+					processElements(null, updated, "added", "updatePanel");
+				}
 			});
 			interceptingWebForms = true;
 		}
-	
+
 		if (!interceptingToggle && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Toggle) {
 			var undoRender = ExoWeb.UI.Toggle.prototype.undo_render;
-			ExoWeb.UI.Toggle.prototype.undo_render = function () {
-				processElements($(this._element).children().get(), "deleted");
+			if (!undoRender) {
+				throw new Error("Could not find Toggle.undo_render method to override.");
+			}
+			ExoWeb.UI.Toggle.prototype.undo_render = function Toggle$undo_render$wrap() {
+				var children = this._element.children;
+				if (children.length > 0) {
+					processElements(this._element, children, "deleted", "template");
+				}
 				undoRender.apply(this, arguments);
 			};
-
 			var toggleDispose = ExoWeb.UI.Toggle.prototype.do_dispose;
-			ExoWeb.UI.Toggle.prototype.do_dispose = function () {
-				processElements($(this._element).children().get(), "deleted");
+			if (!toggleDispose) {
+				throw new Error("Could not find Toggle.do_dispose method to override.");
+			}
+			ExoWeb.UI.Toggle.prototype.do_dispose = function Toggle$do_dispose$wrap() {
+				var children = this._element.children;
+				if (children.length > 0) {
+					processElements(this._element, children, "deleted", "template");
+				}
 				toggleDispose.apply(this, arguments);
 			};
-
 			interceptingToggle = true;
 		}
 
 		if (!interceptingContent && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
-			var render = ExoWeb.UI.Content.prototype.render;
-			ExoWeb.UI.Content.prototype.render = function () {
-				if(this._element)
-					processElements($(this._element).children().get(), "deleted");
-			
-				render.apply(this, arguments);
+			var _render = ExoWeb.UI.Content.prototype._render;
+			if (!_render) {
+				throw new Error("Could not find Content._render method to override.");
+			}
+			ExoWeb.UI.Content.prototype._render = function Content$_render$wrap() {
+				if (this._element) {
+					var children = this._element.children;
+					if (children.length > 0) {
+						processElements(this._element, children, "deleted", "template");
+					}
+				}
+				_render.apply(this, arguments);
 			};
-
 			interceptingContent = true;
 		}
 	}
 
-	// matches elements as they are dynamically added to the DOM
-	jQuery.fn.ever = function (added, deleted) {
+	var rootContext = jQuery("body").context;
 
-		// If the function is called in any way other than as a method on the 
-		// jQuery object, then intercept and return early.
-		if (!(this instanceof jQuery)) {
-			ensureIntercepting();
-			return;
-		}
-
-		// apply now
-		this.each(added);
-
-		var selector = this.selector;
-
-		// and then watch for dom changes
-		if (added) {
-			var addedReg = null;
-			for (var a = 0, aLen = everRegs.added.length; a < aLen; ++a) {
-				var regA = everRegs.added[a];
-				if (regA.selector === selector) {
-					addedReg = regA;
-					break;
-				}
-			}
-
-			if (!addedReg) {
-				addedReg = { selector: selector, action: added };
-				everRegs.added.push(addedReg);
-			}
-			else if (addedReg.action.add) {
-				addedReg.action.add(added);
-			}
-			else {
-				var addedPrev = addedReg.action;
-				addedReg.action = ExoWeb.Functor();
-				addedReg.action.add(addedPrev);
-				addedReg.action.add(added);
+	var addEverHandler = function addEverHandler(context, selector, type, source, action) {
+		var handlers, i, len, handler, existingHandler, existingFn;
+		i = 0;
+		handlers = everHandlers[type];
+		len = handlers.length;
+		while (i < len) {
+			existingHandler = handlers[i++];
+			if (existingHandler.context === context && existingHandler.source === source && existingHandler.selector === selector) {
+				handler = existingHandler;
+				break;
 			}
 		}
-
-		if (deleted) {
-			var deletedReg = null;
-			for (var d = 0, dLen = everRegs.deleted.length; d < dLen; ++d) {
-				var regD = everRegs.deleted[d];
-				if (regD.selector === selector) {
-					deletedReg = regD;
-					break;
-				}
+		if (!handler) {
+			handler = { selector: selector, action: action };
+			if (context) {
+				handler.context = context;
 			}
-
-			if (!deletedReg) {
-				deletedReg = { selector: selector, action: deleted };
-				everRegs.deleted.push(deletedReg);
-			}
-			else if (deletedReg.action.add) {
-				deletedReg.action.add(deleted);
-			}
-			else {
-				var deletedPrev = deletedReg.action;
-				deletedReg.action = ExoWeb.Functor();
-				deletedReg.action.add(deletedPrev);
-				deletedReg.action.add(deleted);
-			}
+			handlers.push(handler);
 		}
-
-		ensureIntercepting();
-
-		// really shouldn't chain calls b/c only elements
-		// currently in the DOM would be affected.
-		return null;
+		else if (handler.action.add) {
+			handler.action.add(action);
+		}
+		else {
+			existingFn = handler.action;
+			handler.action = ExoWeb.Functor();
+			handler.action.add(existingFn);
+			handler.action.add(action);
+		}
 	};
 
-	// Gets all Sys.Bindings for an element
-	jQuery.fn.liveBindings = function () {
-		var bindings = [];
-		this.each(function () {
-			if (this.__msajaxbindings)
-				Array.addRange(bindings, this.__msajaxbindings);
-		});
+	// Matches elements as they are dynamically added to the DOM
+	jQuery.fn.ever = function jQuery$ever(opts) {
 
-		return bindings;
+		// The non-selector context that was passed into this jQuery object
+		var queryContext,
+
+			// The selector that was specified on the query
+			querySelector = this.selector,
+
+			// The jQuery object that the action may be immediately performed for
+			immediate = this,
+
+			// The options the will be used to add handlers
+			options;
+
+		// Optimization: only make a record of the context if it's not the root context
+		if (this.context !== rootContext) {
+			queryContext = this.context;
+		}
+
+		// Handle legacy form
+		if (typeof (opts) === "function") {
+			options = {
+				context: queryContext,
+				selector: querySelector,
+				added: opts,
+				deleted: arguments[1]
+			};
+		}
+		// Use options argument directly
+		else {
+			options = opts;
+			// Detect non-supported options
+			for (var opt in options) {
+				if (options.hasOwnProperty(opt) && !/^(selector|source|added|deleted|bound|unbound)$/.test(opt)) {
+					ExoWeb.trace.logWarning("ever", "Unexpected option \"" + opt + "\"");
+				}
+			}
+			// Set the context if it was specified
+			if (queryContext) {
+				options.context = queryContext;
+			}
+			// Filter the immediate object if it will be used to invoke immediately (added/bound)
+			if (options.selector && (options.added || options.bound)) {
+				immediate = immediate.find(options.selector);
+			}
+			// Merge the query selector with the options selector
+			if (querySelector) {
+				if (options.selector) {
+					options.selector = querySelector.split(",").map(function(s) { return s + " " + options.selector; }).join(", ");
+				}
+				else {
+					options.selector = querySelector;
+				}
+			}
+			else if (!options.selector) {
+				ExoWeb.trace.throwAndLog("ever", "Ever requires a selector");
+			}
+			if (options.source && !(options.added || options.deleted)) {
+				ExoWeb.trace.logWarning("ever", "The source option only applies to added and deleted handlers");
+			}
+		}
+
+		// Add ever handlers
+		if (options.added) {
+			if (immediate.length > 0) {
+				immediate.each(options.added);
+			}
+			addEverHandler(options.context, options.selector, "added", options.source, options.added);
+		}
+		if (options.deleted) {
+			addEverHandler(options.context, options.selector, "deleted", options.source, options.deleted);
+		}
+		if (options.bound) {
+			if (immediate.length > 0) {
+				immediate.filter(":bound").each(options.bound);
+			}
+			addEverHandler(options.context, options.selector, "bound", options.source, options.bound);
+		}
+		if (options.unbound) {
+			addEverHandler(options.context, options.selector, "unbound", options.source, options.unbound);
+		}
+
+		// Ensure that code is being overriden to call ever handlers where appropriate
+		ensureIntercepting();
+
+		// Really shouldn't chain calls b/c only elements currently in the DOM would be affected
+		return null;
 	};
 
 	// #endregion
@@ -14798,8 +15199,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		path = path.substring(0, idx + 1);
 	}
 
-	var fmt = window.location.port ? "{protocol}//{hostname}:{port}" : "{protocol}//{hostname}";
-	var host = $format(fmt, window.location);
+	var fmt = window.location.port ? "{0}//{1}:{2}" : "{0}//{1}";
+	var host = $format(fmt, window.location.protocol, window.location.hostname, window.location.port);
 
 	function getPath() {
 		return host + (ExoWeb.DotNet.config.appRoot || path) + "ExoWeb.axd";
@@ -14937,5 +15338,128 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	});
 
+	// #endregion
+
+	// #region FormatProvider
+	//////////////////////////////////////////////////
+
+	setFormatProvider(function FormatProvider(type, format) {
+
+		// Date
+		if (type === Date) {
+			// Add support for g and G that are not natively supported by the MSAJAX framework
+			if (format === "g")
+				format = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "t");
+			else if (format === "G")
+				format = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "T");
+
+			return new Format({
+				description: "",
+				convert: function (val) {
+					return val.localeFormat(format);
+				},
+				convertBack: function (str) {
+					var date = Date.parseLocale(str, format);
+					if (date === null)
+						throw new Error("Invalid date format");
+					return date;
+				}
+			});
+		}
+
+		// Number
+		if (type === Number) {
+			var isCurrency = format.match(/[$c]+/i);
+			var isPercentage = format.match(/[%p]+/i);
+
+			return new Format({
+				description: "",
+				convert: function (val) {
+					// Default to browser formatting for general format
+					if (format.toLowerCase() === "g")
+						return val.toString();
+
+					// Otherwise, use the localized format
+					return val.localeFormat(format);
+				},
+				convertBack: function (str) {
+					// Handle use of () to denote negative numbers
+					var sign = 1;
+					if (str.match(/^\(.*\)$/)) {
+						str = str.substring(1, str.length - 1);
+						sign = -1;
+					}
+					var result;
+
+					// Remove currency symbols before parsing
+					if (isCurrency)
+						result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
+
+					// Remove percentage symbols before parsing and divide by 100
+					else if (isPercentage)
+						result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
+
+					// Just parse a simple number
+					else
+						result = Number.parseLocale(str) * sign;
+
+					if (isNaN(result))
+						throw new Error("Invalid format");
+
+					return result;
+				}
+			});
+		}
+
+		// Boolean
+		if (type === Boolean) {
+			// Format strings used for true, false, and null (or undefined) values
+			var trueFormat, falseFormat, nullFormat;
+
+			if (format && format.toLowerCase() === "g") {
+				trueFormat = "True";
+				falseFormat = "False";
+				nullFormat = ""
+			}
+			else {
+				var formats = format.split(';');
+				trueFormat = formats.length > 0 ? formats[0] : "";
+				falseFormat = formats.length > 1 ? formats[1] : "";
+				nullFormat = formats.length > 2 ? formats[2] : "";
+			}
+
+			return new Format({
+				description: "",
+				convert: function (val) {
+					if (val === true) 
+						return trueFormat;
+					else if (val === false)
+						return falseFormat;
+					else
+						return nullFormat;
+				},
+				convertBack: function (str) {
+					if (str.toLowerCase() === trueFormat.toLowerCase())
+						return true;
+					else if (str.toLowerCase() === falseFormat.toLowerCase())
+						return false;
+					else
+						return null;
+				}
+			});
+		}
+
+		// Default
+		return new Format({
+			description: "",
+			convert: function (val) {
+				return val.toString();
+			},
+			convertBack: function (str) {
+				return str;
+			}
+		});
+
+	});
 	// #endregion
 })();

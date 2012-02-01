@@ -1,18 +1,25 @@
 $exoweb({
 	types: {
-		Genre: {
+		NamedItem: {
+			format: "[Name]",
 			properties: {
-				All: { type: "Genre", isStatic: true, isList: true },
 				Name: { index: 0, type: "String" }
 			}
 		},
+		Genre: {
+			baseType: "NamedItem",
+			properties: {
+				All: { type: "Genre", isStatic: true, isList: true }
+			}
+		},
 		Movie: {
+			baseType: "NamedItem",
+			format: "[Name] ([Year])",
 			properties: {
 				All: { type: "Movie", isStatic: true, isList: true },
-				Title: { index: 0, type: "String" },
 				Year: { index: 1, type: "Number" },
 				Rated: { index: 2, type: "String" },
-				Released: { index: 3, type: "Date" },
+				Released: { index: 3, type: "Date", format: "d" },
 				Genres: { index: 4, type: "Genre", isList: true },
 				Director: { index: 5, type: "Director" },
 				Roles: { index: 6, type: "Role", isList: true },
@@ -40,6 +47,7 @@ $exoweb({
 			}
 		},
 		Person: {
+			format: "[FirstName] [LastName]",
 			properties: {
 				All: { type: "Person", isStatic: true, isList: true },
 				FirstName: { index: 0, type: "String" },
@@ -50,6 +58,7 @@ $exoweb({
 			}
 		},
 		Director: {
+			format: "[Person.FirstName] [Person.LastName]",
 			properties: {
 				All: { type: "Director", isStatic: true, isList: true },
 				Person: { index: 0, type: "Person" },
@@ -57,6 +66,7 @@ $exoweb({
 			}
 		},
 		Actor: {
+			format: "[Person]",
 			properties: {
 				All: { type: "Actor", isStatic: true, isList: true },
 				Person: { index: 0, type: "Person" },
@@ -66,17 +76,15 @@ $exoweb({
 			}
 		},
 		Role: {
+			format: "[Actor] played [Name] in [Movie]",
 			properties: {
 				Actor: { index: 0, type: "Actor" },
-				Name: { index: 1, type: "String" },
-				Order: { index: 2, type: "Number" },
-				Star: { index: 3, type: "Boolean" },
-				Lead: { index: 4, type: "Boolean" }
+				Movie: { index: 1, type: "Movie" },
+				Name: { index: 2, type: "String" },
+				Order: { index: 3, type: "Number" },
+				Star: { index: 4, type: "Boolean" },
+				Lead: { index: 5, type: "Boolean" }
 			}
 		}
 	}
-});
-
-$extend("Director", function() {
-	Director.formats.$display = ExoWeb.Model.Format.fromTemplate("{Person.FirstName} {Person.LastName}");
 });

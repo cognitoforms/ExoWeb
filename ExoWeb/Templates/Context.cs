@@ -14,6 +14,8 @@ namespace ExoWeb.Templates
 
 		internal Page Page { get; set; }
 
+		public int? Index { get; internal set; }
+
 		public object DataItem { get; internal set; }
 
 		public IEnumerable<KeyValuePair<string, object>> Variables { get; internal set; }

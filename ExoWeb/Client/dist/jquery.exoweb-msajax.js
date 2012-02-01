@@ -174,10 +174,10 @@
 
 	// #endregion
 
-	// #region MsAjax
+	// #region Helpers
 	//////////////////////////////////////////////////
 
-	jQuery.fn.control = function (propName, propValue) {
+	jQuery.fn.control = function jQuery$control(propName, propValue) {
 		if (arguments.length === 0) {
 			return this.get(0).control;
 		}
@@ -185,15 +185,15 @@
 			return this.get(0).control["get_" + propName]();
 		}
 		else {
-			this.each(function (index, element) {
+			this.each(function jQuery$control$one(index, element) {
 				this.control["set_" + propName](propValue);
 			});
 		}
 	};
 
-	jQuery.fn.commands = function (commands) {
+	jQuery.fn.commands = function jQuery$commands(commands) {
 		var control = this.control();
-		control.add_command(function (sender, args) {
+		control.add_command(function jQuery$commands$command(sender, args) {
 			var handler = commands[args.get_commandName()];
 			if (handler) {
 				handler(sender, args);
@@ -201,32 +201,109 @@
 		});
 	};
 
-	var everRegs = { added: [], deleted: [] };
+	// Gets all Sys.Bindings for an element
+	jQuery.fn.liveBindings = function jQuery$liveBindings() {
+		var bindings = [];
+		this.each(function jQuery$liveBindings$one() {
+			if (this.__msajaxbindings)
+				Array.addRange(bindings, this.__msajaxbindings);
+		});
+		return bindings;
+	};
 
-	function processElements(els, action) {
-		var regs = everRegs[action];
+	// #endregion
 
-		for (var e = 0; e < els.length; ++e) {
-			var el = els[e];
+	// #region Ever
+	//////////////////////////////////////////////////
 
-			// Ingore text nodes
-			if (el.nodeType && el.nodeType !== 3) {
-				var $el = $(el);
+	// Cache lists of ever handlers by type
+	var everHandlers = { added: [], deleted: [], bound: [], unbound: [] };
 
-				for (var i = 0; i < regs.length; ++i) {
-					var reg = regs[i];
+	var processElements = function processElements(container, els, action, source) {
+		// Determine if the input is an array
+		var isArr = ExoWeb.isArray(els),
 
-					// test root
-					if ($el.is(reg.selector))
-						reg.action.apply(el, [0, el]);
+			// The number of elements to process
+			numEls = isArr ? els.length : 1,
 
-					// test children
-					$el.find(reg.selector).each(reg.action);
+			// Cache of handlers for the action in question
+			actionHandlers,
+
+			// Handlers that are applicable to this call
+			handlers,
+
+			// The number of cached handlers
+			numHandlers,
+
+			// Determines whether to search children for matches
+			doSearch,
+
+			// Element iteration index variable
+			i = 0,
+
+			// Element iteration item variable
+			el,
+
+			// Optimization: cache the jQuery object for the element
+			$el,
+
+			// Handler iteration index variable
+			j,
+
+			// Handler iteration item variable
+			handler;
+
+		if (numEls === 0) {
+			return;
+		}
+
+		actionHandlers = everHandlers[action];
+
+		// Filter based on source and context
+		handlers = actionHandlers.filter(function(handler) {
+			// If a handler source is specified then filter by the source
+			return (!handler.source || handler.source === source) &&
+				// If a handler context is specified then see if it contains the given container, or equals if children were passed in
+				(!handler.context || (isArr && handler.context === container) || jQuery.contains(handler.context, container));
+		});
+
+		numHandlers = handlers.length;
+
+		if (numHandlers === 0) {
+			return;
+		}
+
+		// Only perform descendent search for added/deleted actions, since this
+		// doesn't make sense for bound/unbound, which are specific to an element.
+		doSearch = action === "added" || action === "deleted";
+
+		i = -1;
+		while (++i < numEls) {
+			el = isArr ? els[i] : els;
+
+			// Only process elements
+			if (el.nodeType === 1) {
+				j = 0;
+				$el = jQuery(el);
+
+				while (j < numHandlers) {
+					handler = handlers[j++];
+
+					// Test root
+					if ($el.is(handler.selector)) {
+						handler.action.apply(el, [0, el]);
+					}
+
+					if (doSearch && el.children.length > 0) {
+						// Test children
+						$el.find(handler.selector).each(handler.action);
+					}
 				}
 			}
 		}
-	}
+	};
 
+	var interceptingBound = false;
 	var interceptingTemplates = false;
 	var interceptingWebForms = false;
 	var interceptingToggle = false;
@@ -234,22 +311,55 @@
 	var partialPageLoadOccurred = false;
 
 	function ensureIntercepting() {
+		if (!interceptingBound && window.Sys && Sys.Binding && Sys.UI && Sys.UI.TemplateContext) {
+			var addBinding = Sys.Binding.prototype._addBinding;
+			if (!addBinding) {
+				throw new Error("Could not find Binding._addBinding method to override.");
+			}
+			Sys.Binding.prototype._addBinding = function addBinding$wrap(element) {
+				addBinding.apply(this, arguments);
+				var ctx = this._templateContext;
+				if (ctx._completed && ctx._completed.length > 0) {
+					ctx.add_instantiated(function addBinding$contextInstantiated() {
+						processElements(element, element, "bound");
+					});
+				}
+				else {
+					processElements(element, element, "bound");
+				}
+			};
+			var disposeBindings = Sys.Binding._disposeBindings;
+			if (!disposeBindings) {
+				throw new Error("Could not find Binding._disposeBindings method to override.");
+			}
+			Sys.Binding._disposeBindings = function disposeBindings$wrap() {
+				disposeBindings.apply(this, arguments);
+				processElements(this, this, "unbound");
+			};
+			interceptingBound = true;
+		}
+
 		if (!interceptingTemplates && window.Sys && Sys.UI && Sys.UI.Template) {
 			var instantiateInBase = Sys.UI.Template.prototype.instantiateIn;
-			Sys.UI.Template.prototype.instantiateIn = function (containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
+			if (!instantiateInBase) {
+				throw new Error("Could not find Template.instantiateIn method to override.");
+			}
+			Sys.UI.Template.prototype.instantiateIn = function instantiateIn$wrap() {
 				var context = instantiateInBase.apply(this, arguments);
-
-				processElements(context.nodes, "added");
+				if (context.nodes.length > 0) {
+					processElements(context.containerElement, context.nodes, "added", "template");
+				}
 				return context;
 			};
-
 			// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
 			// dispose is too late because the nodes will have been cleared out.
-			Sys.UI.DataView.prototype._clearContainers = function (placeholders, start, count) {
+			Sys.UI.DataView.prototype._clearContainers = function _clearContainers$override(placeholders, start, count) {
 				var i, len, nodes, startNode, endNode;
 				for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
 					nodes = this._contexts[i].nodes;
-					processElements(nodes, "deleted");
+					if (nodes.length > 0) {
+						processElements(context.containerElement, nodes, "deleted", "template");
+					}
 					if (count) {
 						if (!startNode) {
 							startNode = nodes[0];
@@ -261,7 +371,7 @@
 				}
 				for (i = 0, len = placeholders.length; i < len; i++) {
 					var ph = placeholders[i],
-					container = ph ? ph.parentNode : this.get_element();
+						container = ph ? ph.parentNode : this.get_element();
 					if (!count || (startNode && endNode)) {
 						this._clearContainer(container, ph, startNode, endNode, true);
 					}
@@ -272,7 +382,7 @@
 					ctx.dispose();
 				}
 			};
-			Sys.UI.DataView.prototype._clearContainer = function (container, placeholder, startNode, endNode, suppressEvent) {
+			Sys.UI.DataView.prototype._clearContainer = function _clearContainer$override(container, placeholder, startNode, endNode, suppressEvent) {
 				var count = placeholder ? placeholder.__msajaxphcount : -1;
 				if ((count > -1) && placeholder) placeholder.__msajaxphcount = 0;
 				if (count < 0) {
@@ -280,7 +390,9 @@
 						container.removeChild(placeholder);
 					}
 					if (!suppressEvent) {
-						processElements(container.childNodes, "deleted");
+						if (container.childNodes.length > 0) {
+							processElements(container, container.childNodes, "deleted", "template");
+						}
 					}
 					if (!startNode) {
 						Sys.Application.disposeElement(container, true);
@@ -297,6 +409,7 @@
 						var child = startNode || container.firstChild, nextChild;
 						while (child) {
 							nextChild = child === endNode ? null : child.nextSibling;
+							Sys.Application.disposeElement(child, false);
 							container.removeChild(child);
 							child = nextChild;
 						}
@@ -315,145 +428,205 @@
 					start = i - count;
 					for (i = 0; i < count; i++) {
 						var element = children[start];
-						processElements([element], "deleted");
+						processElements(element, element, "deleted", "template");
 						Sys.Application.disposeElement(element, false);
 						container.removeChild(element);
 					}
 				}
 			};
-
 			interceptingTemplates = true;
 		}
 
 		if (!interceptingWebForms && window.Sys && Sys.WebForms && Sys.WebForms.PageRequestManager) {
-			Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function (sender, evt) {
+			Sys.WebForms.PageRequestManager.getInstance().add_pageLoading(function PageRequestManager$ever_deleted(sender, evt) {
 				partialPageLoadOccurred = true;
-				processElements(evt.get_panelsUpdating(), "deleted");
+				var updating = evt.get_panelsUpdating();
+				if (updating.length > 0) {
+					processElements(null, updating, "deleted", "updatePanel");
+				}
 			});
-
-			Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function (sender, evt) {
+			Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(function PageRequestManager$ever_added(sender, evt) {
 				// Only process elements for update panels that were added if we have actually done a partial update.
 				// This is needed so that the "ever" handler is not called twice when a panel is added to the page on first page load.
 				if (partialPageLoadOccurred) {
-					processElements(evt.get_panelsCreated(), "added");
+					var created = evt.get_panelsCreated();
+					if (created.length > 0) {
+						processElements(null, created, "added", "updatePanel");
+					}
 				}
 
-				processElements(evt.get_panelsUpdated(), "added");
+				var updated = evt.get_panelsUpdated();
+				if (updated.length > 0) {
+					processElements(null, updated, "added", "updatePanel");
+				}
 			});
 			interceptingWebForms = true;
 		}
-	
+
 		if (!interceptingToggle && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Toggle) {
 			var undoRender = ExoWeb.UI.Toggle.prototype.undo_render;
-			ExoWeb.UI.Toggle.prototype.undo_render = function () {
-				processElements($(this._element).children().get(), "deleted");
+			if (!undoRender) {
+				throw new Error("Could not find Toggle.undo_render method to override.");
+			}
+			ExoWeb.UI.Toggle.prototype.undo_render = function Toggle$undo_render$wrap() {
+				var children = this._element.children;
+				if (children.length > 0) {
+					processElements(this._element, children, "deleted", "template");
+				}
 				undoRender.apply(this, arguments);
 			};
-
 			var toggleDispose = ExoWeb.UI.Toggle.prototype.do_dispose;
-			ExoWeb.UI.Toggle.prototype.do_dispose = function () {
-				processElements($(this._element).children().get(), "deleted");
+			if (!toggleDispose) {
+				throw new Error("Could not find Toggle.do_dispose method to override.");
+			}
+			ExoWeb.UI.Toggle.prototype.do_dispose = function Toggle$do_dispose$wrap() {
+				var children = this._element.children;
+				if (children.length > 0) {
+					processElements(this._element, children, "deleted", "template");
+				}
 				toggleDispose.apply(this, arguments);
 			};
-
 			interceptingToggle = true;
 		}
 
 		if (!interceptingContent && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
-			var render = ExoWeb.UI.Content.prototype.render;
-			ExoWeb.UI.Content.prototype.render = function () {
-				if(this._element)
-					processElements($(this._element).children().get(), "deleted");
-			
-				render.apply(this, arguments);
+			var _render = ExoWeb.UI.Content.prototype._render;
+			if (!_render) {
+				throw new Error("Could not find Content._render method to override.");
+			}
+			ExoWeb.UI.Content.prototype._render = function Content$_render$wrap() {
+				if (this._element) {
+					var children = this._element.children;
+					if (children.length > 0) {
+						processElements(this._element, children, "deleted", "template");
+					}
+				}
+				_render.apply(this, arguments);
 			};
-
 			interceptingContent = true;
 		}
 	}
 
-	// matches elements as they are dynamically added to the DOM
-	jQuery.fn.ever = function (added, deleted) {
+	var rootContext = jQuery("body").context;
 
-		// If the function is called in any way other than as a method on the 
-		// jQuery object, then intercept and return early.
-		if (!(this instanceof jQuery)) {
-			ensureIntercepting();
-			return;
-		}
-
-		// apply now
-		this.each(added);
-
-		var selector = this.selector;
-
-		// and then watch for dom changes
-		if (added) {
-			var addedReg = null;
-			for (var a = 0, aLen = everRegs.added.length; a < aLen; ++a) {
-				var regA = everRegs.added[a];
-				if (regA.selector === selector) {
-					addedReg = regA;
-					break;
-				}
-			}
-
-			if (!addedReg) {
-				addedReg = { selector: selector, action: added };
-				everRegs.added.push(addedReg);
-			}
-			else if (addedReg.action.add) {
-				addedReg.action.add(added);
-			}
-			else {
-				var addedPrev = addedReg.action;
-				addedReg.action = ExoWeb.Functor();
-				addedReg.action.add(addedPrev);
-				addedReg.action.add(added);
+	var addEverHandler = function addEverHandler(context, selector, type, source, action) {
+		var handlers, i, len, handler, existingHandler, existingFn;
+		i = 0;
+		handlers = everHandlers[type];
+		len = handlers.length;
+		while (i < len) {
+			existingHandler = handlers[i++];
+			if (existingHandler.context === context && existingHandler.source === source && existingHandler.selector === selector) {
+				handler = existingHandler;
+				break;
 			}
 		}
-
-		if (deleted) {
-			var deletedReg = null;
-			for (var d = 0, dLen = everRegs.deleted.length; d < dLen; ++d) {
-				var regD = everRegs.deleted[d];
-				if (regD.selector === selector) {
-					deletedReg = regD;
-					break;
-				}
+		if (!handler) {
+			handler = { selector: selector, action: action };
+			if (context) {
+				handler.context = context;
 			}
-
-			if (!deletedReg) {
-				deletedReg = { selector: selector, action: deleted };
-				everRegs.deleted.push(deletedReg);
-			}
-			else if (deletedReg.action.add) {
-				deletedReg.action.add(deleted);
-			}
-			else {
-				var deletedPrev = deletedReg.action;
-				deletedReg.action = ExoWeb.Functor();
-				deletedReg.action.add(deletedPrev);
-				deletedReg.action.add(deleted);
-			}
+			handlers.push(handler);
 		}
-
-		ensureIntercepting();
-
-		// really shouldn't chain calls b/c only elements
-		// currently in the DOM would be affected.
-		return null;
+		else if (handler.action.add) {
+			handler.action.add(action);
+		}
+		else {
+			existingFn = handler.action;
+			handler.action = ExoWeb.Functor();
+			handler.action.add(existingFn);
+			handler.action.add(action);
+		}
 	};
 
-	// Gets all Sys.Bindings for an element
-	jQuery.fn.liveBindings = function () {
-		var bindings = [];
-		this.each(function () {
-			if (this.__msajaxbindings)
-				Array.addRange(bindings, this.__msajaxbindings);
-		});
+	// Matches elements as they are dynamically added to the DOM
+	jQuery.fn.ever = function jQuery$ever(opts) {
 
-		return bindings;
+		// The non-selector context that was passed into this jQuery object
+		var queryContext,
+
+			// The selector that was specified on the query
+			querySelector = this.selector,
+
+			// The jQuery object that the action may be immediately performed for
+			immediate = this,
+
+			// The options the will be used to add handlers
+			options;
+
+		// Optimization: only make a record of the context if it's not the root context
+		if (this.context !== rootContext) {
+			queryContext = this.context;
+		}
+
+		// Handle legacy form
+		if (typeof (opts) === "function") {
+			options = {
+				context: queryContext,
+				selector: querySelector,
+				added: opts,
+				deleted: arguments[1]
+			};
+		}
+		// Use options argument directly
+		else {
+			options = opts;
+			// Detect non-supported options
+			for (var opt in options) {
+				if (options.hasOwnProperty(opt) && !/^(selector|source|added|deleted|bound|unbound)$/.test(opt)) {
+					ExoWeb.trace.logWarning("ever", "Unexpected option \"" + opt + "\"");
+				}
+			}
+			// Set the context if it was specified
+			if (queryContext) {
+				options.context = queryContext;
+			}
+			// Filter the immediate object if it will be used to invoke immediately (added/bound)
+			if (options.selector && (options.added || options.bound)) {
+				immediate = immediate.find(options.selector);
+			}
+			// Merge the query selector with the options selector
+			if (querySelector) {
+				if (options.selector) {
+					options.selector = querySelector.split(",").map(function(s) { return s + " " + options.selector; }).join(", ");
+				}
+				else {
+					options.selector = querySelector;
+				}
+			}
+			else if (!options.selector) {
+				ExoWeb.trace.throwAndLog("ever", "Ever requires a selector");
+			}
+			if (options.source && !(options.added || options.deleted)) {
+				ExoWeb.trace.logWarning("ever", "The source option only applies to added and deleted handlers");
+			}
+		}
+
+		// Add ever handlers
+		if (options.added) {
+			if (immediate.length > 0) {
+				immediate.each(options.added);
+			}
+			addEverHandler(options.context, options.selector, "added", options.source, options.added);
+		}
+		if (options.deleted) {
+			addEverHandler(options.context, options.selector, "deleted", options.source, options.deleted);
+		}
+		if (options.bound) {
+			if (immediate.length > 0) {
+				immediate.filter(":bound").each(options.bound);
+			}
+			addEverHandler(options.context, options.selector, "bound", options.source, options.bound);
+		}
+		if (options.unbound) {
+			addEverHandler(options.context, options.selector, "unbound", options.source, options.unbound);
+		}
+
+		// Ensure that code is being overriden to call ever handlers where appropriate
+		ensureIntercepting();
+
+		// Really shouldn't chain calls b/c only elements currently in the DOM would be affected
+		return null;
 	};
 
 	// #endregion

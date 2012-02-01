@@ -11,9 +11,25 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// </summary>
 	internal class AjaxPage : Page
 	{
+		internal bool IsTopLevel { get; set; }
+
+		int nextControlId;
+		internal string NextControlId
+		{
+			get
+			{
+				return "exo" + nextControlId++;
+			}
+		}
+
 		public override ITemplate Parse(string template)
 		{
 			return Template.Parse(template);
+		}
+
+		public override IEnumerable<ITemplate> ParseTemplates(string template)
+		{
+			return Block.Parse(template).OfType<ITemplate>();
 		}
 
 		public override IEnumerable<ITemplate> LoadTemplates(string path)

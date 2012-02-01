@@ -13,9 +13,9 @@ namespace ExoWeb.Templates.JavaScript
 		const string GetterPrefix = "get_";
 		const string SetterPrefix = "set_";
 
-		EntityWrapperFactory factory;
+		Marshaler factory;
 
-		internal EntityWrapper(ScriptEngine engine, GraphInstance instance, EntityWrapperFactory factory)
+		internal EntityWrapper(ScriptEngine engine, GraphInstance instance, Marshaler factory)
 			: base(instance, engine, engine.Object.InstancePrototype)
 		{
 			this.factory = factory;
@@ -51,20 +51,26 @@ namespace ExoWeb.Templates.JavaScript
 			}
 
 			GraphReferenceProperty refProperty = (GraphReferenceProperty)property;
-			if (refProperty.IsList)
-				throw new NotImplementedException("List properties are not implemented");
 
-			return LazyDefineMethod(jsPropertyName,
-				instance =>
+			if (refProperty.IsList)
+			{
+				return LazyDefineMethod(jsPropertyName, instance =>
+				{
+					return factory.Wrap(instance.GetList(refProperty));
+				});
+			}
+			else
+			{
+				return LazyDefineMethod(jsPropertyName, instance =>
 				{
 					GraphInstance result = instance.GetReference(refProperty);
 
 					if (result == null)
 						return null;
 
-					return factory.GetEntity(result);
-				}
-			);
+					return factory.Wrap(result);
+				});
+			}
 		}
 	}
 }

@@ -16,6 +16,28 @@ function TimeSpan(ms) {
 	this.days = Math.floor(ms);
 }
 
+TimeSpan.mixin({
+	toString: function TimeSpan$toString() {
+		var num;
+		var label;
+
+		if (this.totalHours < 1) {
+			num = Math.round(this.totalMinutes);
+			label = "minute";
+		}
+		else if (this.totalDays < 1) {
+			num = Math.round(this.totalHours * 100) / 100;
+			label = "hour";
+		}
+		else {
+			num = Math.round(this.totalDays * 100) / 100;
+			label = "day";
+		}
+
+		return num == 1 ? (num + " " + label) : (num + " " + label + "s");
+	}
+});
+
 window.TimeSpan = TimeSpan;
 
 Date.mixin({

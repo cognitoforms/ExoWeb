@@ -11,7 +11,12 @@ if (JSHINT.errors && JSHINT.errors.length > 0) {
 	console.log(JSHINT.errors.length + " errors occurred:");
 }
 
-JSHINT.errors.forEach(function(err) {
-	if (!err) return;
-	console.log(err.line + ": " + err.reason);
-});
+if (JSHINT.errors.length === 0) {
+	console.log("PASSED!");
+}
+else {
+	JSHINT.errors.forEach(function(err) {
+		if (!err) return;
+		console.log(err.line + ": " + err.reason);
+	});
+}

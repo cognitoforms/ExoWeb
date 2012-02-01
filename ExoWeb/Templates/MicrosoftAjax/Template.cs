@@ -23,11 +23,13 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public bool? IsList { get; internal set; }
 
+		public bool? IsReference { get; internal set; }
+
 		public string[] Class { get; internal set; }
 
 		public static new Template Parse(string template)
 		{
-			return new Template() { Markup = template, Blocks = Block.Parse(template) };
+			return new Template() { Markup = template, Blocks = Block.Parse(template), ContentTemplateNames = new string[0] };
 		}
 
 		/// <summary>
@@ -62,17 +64,13 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <returns></returns>
 		public override string ToString()
 		{
-			return String.Format(@"<{0} isadapter=""{1}"" islist=""{2}"" datatype=""{3}"" />", Tag, IsAdapter, IsList, DataType);
+			return String.Format(@"<{0} isadapter=""{1}"" islist=""{2}"" isreference=""{3}"" datatype=""{4}"" name=""{5}"" />", Tag, IsAdapter, IsList, IsReference, DataType, string.Join(", ", Name));
 		}
 
-		internal override void Render(AjaxPage page, TextWriter writer)
+		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, TextWriter writer)
 		{
-			// Exit immediately if the element is conditionally hidden
-			if (If != null && If.Evaluate(page) as bool? == false)
-				return;
-
 			foreach (var block in Blocks)
-				block.Render(page, writer);
+				block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
 		}
 
 		/// <summary>
@@ -82,7 +80,19 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <param name="writer"></param>
 		void ITemplate.Render(Page page, System.IO.TextWriter writer)
 		{
-			Render((AjaxPage)page, writer);
+			var ajaxPage = (AjaxPage)page;
+			ajaxPage.IsTopLevel = true;
+
+			// Add sys-ignore class to root level controls before rendering the inline template
+			foreach (var control in Blocks.OfType<Control>())
+			{
+				var classAttribute = control.Attributes.FirstOrDefault(a => a.Name == "class");
+				if (classAttribute != null)
+					classAttribute.Value = (string.IsNullOrEmpty(classAttribute.Value) ? "" : classAttribute.Value + " ") + "sys-ignore";
+				else
+					control.Attributes.Add(new Attribute() { Name = "class", Value = "sys-ignore" });
+			}
+			Render((AjaxPage)page, new string[0], writer);
 		}
 	}
 }

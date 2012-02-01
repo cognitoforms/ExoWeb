@@ -27,6 +27,7 @@ var not = functions.not;
 var bind = functions.bind;
 var before = functions.before;
 var after = functions.after;
+var callArgument = functions.callArgument;
 
 jasmine.jasmine.debug = true;
 
@@ -637,6 +638,17 @@ describe("dontDoubleUp", function() {
 		expect(additional2[99]).toBe(lookup("c"));
 	});
 
+});
+
+describe("callArgument", function() {
+	it("calls the 'call' member function of the first argument when called", function() {
+		var spyOn = { fn: function() { } };
+		var fn = jasmine.spyOn(spyOn, "fn").andCallThrough();
+		var fns = [fn];
+		expect(fn).not.toHaveBeenCalled();
+		fns.forEach(callArgument);
+		expect(fn).toHaveBeenCalled();
+	});
 });
 
 // Run Tests

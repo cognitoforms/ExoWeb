@@ -40,13 +40,15 @@ function ServerSync(model) {
 			ExoWeb.trace.throwAndLog("Error in transaction log processing: unmatched begin and end applying changes.");
 	};
 
-	var isCapturingChanges = false;
+	var isCapturingChanges;
 	this.isCapturingChanges = function ServerSync$isCapturingChanges() {
-		return isCapturingChanges;
+		return isCapturingChanges === true;
 	};
 	this.beginCapturingChanges = function ServerSync$beginCapturingChanges() {
-		isCapturingChanges = true;
-		startChangeSet.call(this, "client");
+		if (!isCapturingChanges) {
+			isCapturingChanges = true;
+			startChangeSet.call(this, "client");
+		}
 	};
 
 	this.ignoreChanges = function(before, callback, after, thisPtr) {
@@ -74,7 +76,7 @@ function ServerSync(model) {
 
 	model.addObjectRegistered(function(obj) {
 		// if an existing object is registered then register for lazy loading
-		if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges && !applyingChanges) {
+		if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges === true && !applyingChanges) {
 			ObjectLazyLoader.register(obj);
 			//ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
 		}
@@ -374,7 +376,7 @@ ServerSync.mixin({
 		Sys.Observer.setValue(this, "PendingServerEvent", true);
 
 		// Checkpoint the log to ensure that we only truncate changes that were saved.
-		var checkpoint = this._changeLog.checkpoint("server event " + name + " " + Date.formats.DateTime.convert(new Date()));
+		var checkpoint = this._changeLog.checkpoint("server event " + name + " " + (new Date()).format("d"));
 
 		var args = { type: "raiseServerEvent", eventTarget: obj, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
 		this._raiseBeginEvents("raiseServerEvent", args);
@@ -548,7 +550,7 @@ ServerSync.mixin({
 		Sys.Observer.setValue(this, "PendingSave", true);
 
 		// Checkpoint the log to ensure that we only truncate changes that were saved.
-		var checkpoint = this._changeLog.checkpoint("save " + Date.formats.DateTime.convert(new Date()));
+		var checkpoint = this._changeLog.checkpoint("save " + (new Date()).format("d"));
 
 		var args = { type: "save", root: root, checkpoint: checkpoint };
 		this._raiseBeginEvents("save", args);
@@ -637,8 +639,6 @@ ServerSync.mixin({
 		var depth = 0;
 
 		try {
-			//					ExoWeb.trace.log("server", "ServerSync.rollback() >> {0}", steps);
-
 			this.beginApplyingChanges();
 
 			var signal = new ExoWeb.Signal("ServerSync.rollback");
@@ -672,7 +672,6 @@ ServerSync.mixin({
 			processNextChange.call(this);
 
 			signal.waitForAll(function () {
-				//						ExoWeb.trace.log("server", "done rolling back {0} changes", [steps]);
 				this.endApplyingChanges();
 
 				if (callback && callback instanceof Function) {
@@ -688,16 +687,12 @@ ServerSync.mixin({
 		}
 	},
 	rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-		//				ExoWeb.trace.log("server", "rollbackValChange", change.instance);
-
 		var obj = fromExoGraph(change.instance, this._translator);
 
 		Sys.Observer.setValue(obj, change.property, change.oldValue);
 		callback();
 	},
 	rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-		//				ExoWeb.trace.log("server", "rollbackRefChange: Type = {instance.type}, Id = {instance.id}, Property = {property}", change);
-
 		var obj = fromExoGraph(change.instance, this._translator);
 		var ref = fromExoGraph(change.oldValue, this._translator);
 
@@ -705,12 +700,8 @@ ServerSync.mixin({
 		callback();
 	},
 	rollbackInitChange: function ServerSync$rollbackInitChange(change, callback) {
-		//				ExoWeb.trace.log("server", "rollbackInitChange: Type = {type}, Id = {id}", change.instance);
-
 		delete change.instance;
-
 		//TODO: need to remove from the translator
-
 		callback();
 	},
 	rollbackListChange: function ServerSync$rollbackListChange(change, callback) {

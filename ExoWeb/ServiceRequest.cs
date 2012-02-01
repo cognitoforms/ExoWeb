@@ -12,12 +12,6 @@ namespace ExoWeb
 {
 	public class ServiceRequest : IJsonSerializable
 	{
-		#region Fields
-
-		GraphContext context = GraphContext.Current;
-
-		#endregion
-
 		#region Constructors
 
 		ServiceRequest()

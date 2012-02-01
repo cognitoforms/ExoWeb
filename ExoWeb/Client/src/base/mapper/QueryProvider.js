@@ -1,5 +1,5 @@
 var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
-	throw "Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);";
+	throw new Error("Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);");
 };
 
 function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {

@@ -77,13 +77,14 @@ end
 		RequiredIfRule
 		RequiredIfExpressionsRule
 		StringLengthRule
+		StringFormatRule
 		ListLengthRule
 		CalculatedPropertyRule
 		ConditionTypeSet
 		ConditionType
 		Condition
 		FormatError
-		Formats
+		FormatProvider
 		LazyLoader},
 
 	"base/mapper" => %w{
@@ -134,11 +135,14 @@ end
 	"extensions/jquery-msajax" => %w{
 		Validation
 		Selectors
-		MsAjax},
+		Helpers
+		Ever},
 
 	"base/mock" => %w{Mock},
 	
-	"extensions/dotnet" => %w{WebService}
+	"extensions/dotnet" => %w{WebService},
+
+	"extensions/msajax" => %w{FormatProvider}
 }
 
 @exports = {
@@ -220,7 +224,7 @@ task :build_msajax_nojquery do
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
 		f.write("\n(function() {\n")
 		
-		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet"].each do |name|
+		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet", "extensions/msajax"].each do |name|
 			src_dir = @src_dir
 			names = name.split("/")
 			names.each { |step| src_dir = File.join(src_dir, step) }
@@ -241,7 +245,7 @@ task :build_msajax do
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
 		f.write("\n(function() {\n")
 		
-		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/jquery-msajax", "extensions/dotnet"].each do |name|
+		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/jquery-msajax", "extensions/dotnet", "extensions/msajax"].each do |name|
 			src_dir = @src_dir
 			names = name.split("/")
 			names.each { |step| src_dir = File.join(src_dir, step) }

@@ -1,21 +1,16 @@
-ExoWeb.Model.Entity.formats.$load = new ExoWeb.Model.Format({
-	convert: function(obj) {
-		return obj.meta.type.toIdString(obj.meta.id);
-	},
-	convertBack: function(val) {
-		var ids = val.split("|");
-		var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
-		var obj = jstype.meta.get(ids[1]);
+// Gets or loads the entity with the specified typed string id
+Entity.fromIdString = function Entity$fromIdString(id) {
+	var ids = id.split("|");
+	var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
+	var obj = jstype.meta.get(ids[1]);
 
-		if (!obj) {
-			obj = new jstype(ids[1]);
-			ObjectLazyLoader.register(obj);
-//					ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [jstype.meta.get_fullName(), ids[1]]);
-		}
-
-		return obj;
+	if (!obj) {
+		obj = new jstype(ids[1]);
+		ObjectLazyLoader.register(obj);
 	}
-});
+
+	return obj;
+};
 
 function toExoGraph(val, translator) {
 	if (val === undefined || val === null)

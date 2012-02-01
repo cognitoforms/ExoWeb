@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+	<head>
+		<title>Server-side rendering template selection</title>
+		<link href="../Common/Styles/qunit.css" type="text/css" rel="stylesheet" />
+		<style type="text/css">
+			.sys-template {display:none;}
+		</style>
+		<script type="text/javascript" src="../Common/Scripts/JQuery/jquery-1.3.2.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/QUnit/qunit.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/Microsoft/MicrosoftAjax.debug.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.debug.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/ExoWeb/exoweb-msajax.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/QUnit/qunit.ext.js"></script>
+		<script type="text/javascript" src="../Common/Model/types.js"></script>
+		<script type="text/javascript" src="../Common/Model/instances.js"></script>
+		<script type="text/javascript">
+
+			ExoWeb.setErrorHandler(function() {});
+
+			$.fn.getTemplateContext = function() {
+				return this.map(function() {
+					return Sys.UI.Template.findContext(this);
+				});
+			};
+
+			$.fn.template = function() {
+				return this.map(function() {
+					var ctrl = this.control;
+					if (ctrl) {
+						if (ctrl instanceof Sys.UI.DataView) {
+							return ctrl._getTemplate()._element;
+						}
+						else if (ctrl instanceof ExoWeb.UI.Content) {
+							return ctrl._context.template._element;
+						}
+					}
+					return $(this).getTemplateContext()[0]._element;
+				});
+			};
+
+			defineTest("initial: verify markup and client-rendered templates", {
+				description: "initial rendered state",
+				fn: function() {
+					equals($("#client").find(".role-root > .actor-name.role-lead").length, 1);
+					equals($("#client").find(".role-root > .role-name").length, 1);
+					equals($("#client").find(".role-root > .movie-name").length, 1);
+					equals($("#client").find(".all-roles .role .role-name").length, 1);
+					equals($("#client").find(".lead-roles .lead-role .lead-role-name").length, 1);
+					equals($("#server").find(".role-root > .actor-name.role-lead").length, 1);
+					equals($("#server").find(".role-root > .role-name").length, 1);
+					equals($("#server").find(".role-root > .movie-name").length, 1);
+					equals($("#server").find(".all-roles .role .role-name").length, 1);
+					equals($("#server").find(".lead-roles .lead-role .lead-role-name").length, 0);
+					ok($("#client").template().is(".root"));
+					ok($("#client > div").template().is(".role-root"));
+					ok($("#client .all-roles").template().is(".all-roles"));
+					ok($("#client .all-roles > div").template().is(".role"));
+					ok($("#client .lead-roles").template().is(".lead-roles"));
+					ok($("#client .lead-roles > div").template().is(".lead-role"));
+				}
+			});
+
+			defineTest("linked: verify server-rendered templates", {
+				description: "initial rendered state",
+				setup: function() {
+					Sys.Application.linkElement(document.getElementById("server"), document.getElementById("_t0"));
+				},
+				fn: function() {
+					ok($("#server").template().is(".root"));
+					ok($("#server > div").template().is(".role-root"));
+					ok($("#server .all-roles").template().is(".all-roles"));
+					ok($("#server .all-roles > div").template().is(".role"));
+					ok($("#server .lead-roles").template().is(".lead-roles"));
+					ok($("#server .lead-roles > div").template().is(".lead-role"));
+				}
+			});
+
+			timeoutTests(2000);
+
+			ExoWeb.config.debug = true;
+
+			$extend("Actor", function() {
+				Actor.meta.addProperty({ name: "uiLeadRoles", type: Role, isList: true })
+					.calculated({
+						fn: function() {
+							return $transform(this.get_Roles()).where("Lead == true");
+						},
+						basedOn: ["this.Roles", "change of this.Roles.Lead"]
+					});
+			});
+
+			$exoweb({
+				model: { role: { from: "Role", id: "robin_hood_robin_longstride" } },
+				domReady: function() {
+					executeAllTests();
+				}
+			});
+
+		</script>
+	</head>
+	<body xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" xmlns:content="javascript:ExoWeb.UI.Content"
+		xmlns:toggle="javascript:ExoWeb.UI.Toggle" xmlns:template="javascript:ExoWeb.UI.Template" sys:activate="*">
+		
+		<!-- QUnit Display -->
+		<h1 id="qunit-header">Test Results:</h1>
+		<h2 id="qunit-banner"></h2>
+		<h2 id="qunit-userAgent"></h2>
+		<ol id="qunit-tests"></ol>
+
+		<div id="_t0" class="sys-template root">
+			<div sys:attach="content" content:template="role" content:data="{{ $dataItem }}"></div>
+		</div>
+		<table id="content">
+			<tbody>
+				<tr>
+					<td valign="top" width="400">
+						<div id="client" class="sys-template root" sys:attach="dataview" dataview:data="{~ context.model.role, source=window }" sys:content-template="role-root">
+							<div sys:attach="content" content:template="role" content:data="{{ $dataItem }}"></div>
+						</div>
+					</td>
+					<td valign="top" width="400">
+						<div id="server" class="sys-ignore root" data-sys-attach="dataview" data-dataview-data="{~ context.model.role, source=window }" data-sys-content-template="role-root" data-sys-tmplidx="0">
+							<!--item-->
+							<div class="role-root" data-sys-attach="content" data-content-template="role" data-content-data="{{ $dataItem }}">
+								<span class="actor-name role-lead" data-sys-class-role-lead="{{ $dataItem.get_Lead() }}" data-sys-innerhtml="{{ $dataItem.get_Actor().get_Person().get_FirstName() + ' ' + $dataItem.get_Actor().get_Person().get_LastName() }}">Russell Crowe</span>
+								as
+								<span class="role-name" data-sys-innerhtml="{binding Name}">Robin Longstride</span>
+								in
+								<span class="movie-name" data-sys-innerhtml="{binding Movie.Name}">Robin Hood</span>
+								<h3>Leads</h3>
+								<div class="sys-template lead-roles" sys:attach="dataview" dataview:data="{binding Actor.uiLeadRoles}">
+									<div sys:attach="content" content:template="lead-role" content:data="{{ $dataItem }}"></div>
+								</div>
+								<h3>All roles</h3>
+								<div class="all-roles" data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="1">
+									<!--item-->
+									<div class="role" data-sys-attach="content" data-content-data="{{ $dataItem }}">
+										<span class="role-name" data-sys-innerhtml="{binding Name}">Robin Longstride</span>
+									</div>
+									<!--/item-->
+								</div>
+							</div>
+							<!--/item-->
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<div class="sys-template role-root" sys:attach="template" template:name="role-root role" template:datatype="Role" sys:content-template="role">
+			<span class="actor-name" sys:class-role-lead="{{ $dataItem.get_Lead() }}">{{ $dataItem.get_Actor().get_Person().get_FirstName() + " " + $dataItem.get_Actor().get_Person().get_LastName() }}</span>
+			as
+			<span class="role-name">{binding Name}</span>
+			in
+			<span class="movie-name">{binding Movie.Name}</span>
+			<h3>Leads</h3>
+			<div class="sys-template lead-roles" sys:attach="dataview" dataview:data="{binding Actor.uiLeadRoles}">
+				<div sys:attach="content" content:template="lead-role" content:data="{{ $dataItem }}"></div>
+			</div>
+			<h3>All roles</h3>
+			<div class="sys-template all-roles" sys:attach="dataview" dataview:data="{binding Actor.Roles}">
+				<div sys:attach="content" content:data="{{ $dataItem }}"></div>
+			</div>
+		</div>
+		<div class="sys-template lead-role" sys:attach="template" template:name="role lead-role" template:datatype="Role">
+			<span class="lead-role-name">{binding Name}</span>
+		</div>
+		<div class="sys-template role" sys:attach="template" template:name="role" template:datatype="Role">
+			<span class="role-name">{binding Name}</span>
+		</div>
+	</body>
+</html>

@@ -30,18 +30,12 @@ describe("$format", function() {
 		expect($format("{0},{1}|{2}{0}", ["A", "B", "C"])).toBe("A,B|CA");
 	});
 
-	it("it accepts a format string and an format argument object", function() {
-		expect($format("{a},{b.val}|{c}{a}", { a: "A", b: { val: "B" }, c: "C" })).toBe("A,B|CA");
-	});
-
 	it("it accepts a format string and any number of format argument objects", function() {
 		expect($format("{0},{1}|{2}{0}", "A", "B", "C")).toBe("A,B|CA");
 	});
 
 	it("if single argument is passed it uses \"params mode\" when format string uses only zero-index, argument object otherwise", function() {
-		expect($format("{a}-{b}", { a: "A", b: "B", c: "C"})).toBe("A-B");
 		expect($format("{0}-{0}", "AAA")).toBe("AAA-AAA");
-		expect($format("{0}-{b}", "AAA")).toBe("A-{b}");
 	});
 
 	it("if single array argument is passed it uses the array as arguments", function() {

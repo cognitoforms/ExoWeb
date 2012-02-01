@@ -23,6 +23,31 @@ ContextQuery.mixin({
 			if (this.options.serverinfo)
 				this.context.server.set_ServerInfo(this.options.serverinfo);
 
+			// If the allSignals signal is not active, then set up a fake pending callback in
+			// order to ensure that the context is not "loaded" prior to models being initilized.
+			if (!allSignals.isActive()) {
+				this._predictiveModelPending = allSignals.pending(null, this, true);
+			}
+
+			// Setup lazy loading on the context object to control lazy evaluation.
+			// Loading is considered complete at the same point model.ready() fires.
+			ExoWeb.Model.LazyLoader.register(this.context, {
+				load: function context$load(obj, propName, callback, thisPtr) {
+					//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
+
+					// objects are already loading so just queue up the calls
+					allSignals.waitForAll(function context$load$callback() {
+						//ExoWeb.trace.log(["context", "lazyLoad"], "raising createContext.ready()");
+
+						ExoWeb.Model.LazyLoader.unregister(obj, this);
+
+						if (callback && callback instanceof Function) {
+							callback.call(thisPtr || this);
+						}
+					}, this, true);
+				}
+			});
+
 			callback.call(thisPtr || this);
 		},
 
@@ -30,7 +55,8 @@ ContextQuery.mixin({
 	///////////////////////////////////////////////////////////////////////////////
 		function ContextQuery$initModels(callback, thisPtr) {
 			if (this.options.model) {
-				this.context.onBeforeModel();
+				// Start capturing changes prior to processing any model query
+				this.context.server.beginCapturingChanges();
 				ExoWeb.trace.log("context", "Running init step for model queries.");
 				ExoWeb.eachProp(this.options.model, function (varName, query) {
 					// Assert that the necessary properties are provided
@@ -41,7 +67,13 @@ ContextQuery.mixin({
 
 					// common initial setup of state for all model queries
 					this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName), isArray: false };
-					allSignals.pending(null, this, true);
+
+					if (this._predictiveModelPending) {
+						delete this._predictiveModelPending;
+					}
+					else {
+						allSignals.pending(null, this, true);
+					}
 
 					// normalize id(s) property and determine whether the result should be an array
 					if (query.hasOwnProperty("ids") && !(query.ids instanceof Array)) {
@@ -86,6 +118,12 @@ ContextQuery.mixin({
 						}
 					}
 				}, this);
+			}
+
+			// Undo predictive pending "callback" set up before models were processed.
+			if (this._predictiveModelPending) {
+				delete this._predictiveModelPending;
+				allSignals.oneDone();
 			}
 
 			callback.call(thisPtr || this);
@@ -308,8 +346,11 @@ ContextQuery.mixin({
 									}, this, true),
 									this.state[varName].signal.orPending(function context$objects$callback(error) {
 										ExoWeb.trace.logError("objectInit",
-											"Failed to load {query.from}({query.ids}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-											{ query: query, error: error });
+											"Failed to load {0}({1}) (HTTP: {3}, Timeout: {4})",
+											query.from,
+											query.ids,
+											error._statusCode,
+											error._timedOut);
 									}, this, true), this);
 							}
 						}, this);
@@ -342,8 +383,11 @@ ContextQuery.mixin({
 								}, this, true),
 								allSignals.orPending(function context$objects$callback(error) {
 									ExoWeb.trace.logError("objectInit",
-										"Failed to load {query.from}({query.ids}) (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-										{ query: query, error: error });
+										"Failed to load {0}({1}) (HTTP: {2}, Timeout: {3})",
+										query.from,
+										query.ids,
+										error._statusCode,
+										error._timedOut);
 								}, this, true)
 							);
 						}
@@ -466,30 +510,6 @@ ContextQuery.mixin({
 					}
 				}, this);
 			}
-
-			callback.call(thisPtr || this);
-		},
-
-	// Setup lazy loading on the context object to control lazy evaluation.
-	// Loading is considered complete at the same point model.ready() fires.
-	///////////////////////////////////////////////////////////////////////////////
-		function ContextQuery$registerLazyLoader(callback, thisPtr) {
-			ExoWeb.Model.LazyLoader.register(this.context, {
-				load: function context$load(obj, propName, callback, thisPtr) {
-					//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
-
-					// objects are already loading so just queue up the calls
-					allSignals.waitForAll(function context$load$callback() {
-						//ExoWeb.trace.log(["context", "lazyLoad"], "raising createContext.ready()");
-
-						ExoWeb.Model.LazyLoader.unregister(obj, this);
-
-						if (callback && callback instanceof Function) {
-							callback.call(thisPtr || this);
-						}
-					}, this, true);
-				}
-			});
 
 			callback.call(thisPtr || this);
 		},

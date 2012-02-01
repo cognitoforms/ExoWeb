@@ -1,56 +1,67 @@
-var allSignals = new ExoWeb.Signal("createContext allSignals");
+// Signal to keep track of any ongoing context initialization
+var allSignals = new ExoWeb.Signal("Context : allSignals");
 
 ExoWeb.registerActivity(function() {
 	return allSignals.isActive();
 });
 
 function Context() {
-	var model = new ExoWeb.Model.Model();
-
-	this.model = { meta: model };
-	this.server = new ServerSync(model);
-
-	// start capturing changes prior to processing any model query
-	this._addEvent("beforeModel", this.server.beginCapturingChanges.bind(this.server), null, true);
+	this.model = { meta: new ExoWeb.Model.Model() };
+	this.server = new ServerSync(this.model.meta);
 }
 
 Context.mixin(ExoWeb.Functor.eventing);
 
+var numberOfPendingQueries;
+
 Context.mixin({
-	isModelReady: function() {
-		var result = false;
+	addReady: function Context$addReady(callback, thisPtr) {
+		var queriesAreComplete = numberOfPendingQueries === 0;
 
-		eachProp(this.model, function(prop, val) {
-			if (prop != "meta") {
-				result = true;
-				return false;
-			}
-		}, this);
+		this._addEvent("ready", thisPtr ? callback.bind(thisPtr) : callback, null, true);
 
-		return result;
-	},
-	addModelReady: function Context$ready(callback, thisPtr) {
-		this._addEvent("modelReady", thisPtr ? callback.bind(thisPtr) : callback, null, true);
-
-		// Raise event immediately if there are currently models. Subscribers
-		// will not actually be called until signals have subsided.
-		if (this.isModelReady())
-			this.onModelReady();
-	},
-	onModelReady: function () {
-		// Indicate that one or more model queries are ready for consumption
-		allSignals.waitForAll(function() {
-			this._raiseEvent("modelReady");
-		}, this);
-	},
-	onBeforeModel: function () {
-		this._raiseEvent("beforeModel");
+		// Simulate the event being raised immediately if a query or queries have already completed
+		if (queriesAreComplete) {
+			// Subscribers will not actually be called until signals have subsided
+			allSignals.waitForAll(function() {
+				this._raiseEvent("ready");
+			}, this);
+		}
 	}
 });
 
-function Context$query(options) {
-	var contextQuery = new ContextQuery(this, options);
+function ensureContext() {
+	if (!window.context) {
+		window.context = new Context();
+	}
+	else if (!(window.context instanceof Context)) {
+		ExoWeb.trace.throwAndLog("context", "The window object has a context property that is not a valid context.");
+	}
+	return window.context;
+}
 
-	// if there is a model option, when the query is finished executing the model ready fn will be called
-	contextQuery.execute(options.model ? this.onModelReady.bind(this) : null);
+Context.ready = function Context$ready(context) {
+	numberOfPendingQueries--;
+
+	var queriesAreComplete = numberOfPendingQueries === 0;
+
+	if (queriesAreComplete) {
+		// Indicate that one or more model queries are ready for consumption
+		allSignals.waitForAll(function() {
+			context._raiseEvent("ready");
+		});
+	}
+};
+
+Context.query = function Context$query(context, options) {
+	var queriesHaveBegunOrCompleted = numberOfPendingQueries !== undefined;
+	if (!queriesHaveBegunOrCompleted) {
+		numberOfPendingQueries = 0;
+	}
+	numberOfPendingQueries++;
+
+	// Execute the query and fire the ready event when complete
+	(new ContextQuery(context, options)).execute(function() {
+		Context.ready(context);
+	});
 }

@@ -13,10 +13,10 @@
 		Type._registerScript("MicrosoftAjaxTemplates.js", ["MicrosoftAjaxComponentModel.js", "MicrosoftAjaxSerialization.js"]);
 
 		var merge = Sys._merge,
-	foreach = Sys._foreach,
-	forIn = Sys._forIn,
-	indexOf = Sys._indexOf,
-	isBrowser = Sys._isBrowser;
+			foreach = Sys._foreach,
+			forIn = Sys._forIn,
+			indexOf = Sys._indexOf,
+			isBrowser = Sys._isBrowser;
 
 		function serialize(obj) {
 			return Sys.Serialization.JavaScriptSerializer.serialize(obj);
@@ -200,8 +200,8 @@
 					if (isExpression) {
 						name = serialize(name);
 						code.push("  $component = $element;\n    (", expression,
-                                ") ? Sys.UI.DomElement.addCssClass($element, ", name,
-                                ") : Sys.UI.DomElement.removeCssClass($element, ", name, ");\n");
+								") ? Sys.UI.DomElement.addCssClass($element, ", name,
+								") : Sys.UI.DomElement.removeCssClass($element, ", name, ");\n");
 					}
 					else {
 						code.push("  $component = $element;\n  ", expression, ";\n");
@@ -218,7 +218,7 @@
 							}
 							else if (map.type === 2) {
 								code.push("  __f = ", expression, ";\n",
-                                      "  $component.", map.setterName, '(typeof(__f) === "function" ? __f : new Function("sender", "args", __f));\n');
+									  "  $component.", map.setterName, '(typeof(__f) === "function" ? __f : new Function("sender", "args", __f));\n');
 							}
 							else {
 								code.push("  $component.", map.name, " = ", expression, ";\n");
@@ -248,17 +248,17 @@
 					if (isExpression) {
 						if (/^on/i.test(name)) {
 							code.push("  $component = $element;\n  $element." + name + " = new Function(" +
-                            (document.attachEvent ? "" : "'event', ") + expression + ");\n");
+							(document.attachEvent ? "" : "'event', ") + expression + ");\n");
 						}
 						else {
 							if (booleanValue) {
 								code.push("  $component = $element;\n  if (" + expression +
-                                        ") {\n    __e = document.createAttribute('" + name +
-                                        "');\n    __e.nodeValue = \"" + booleanValue + "\";\n    $element.setAttributeNode(__e);\n  }\n");
+										") {\n    __e = document.createAttribute('" + name +
+										"');\n    __e.nodeValue = \"" + booleanValue + "\";\n    $element.setAttributeNode(__e);\n  }\n");
 							}
 							else {
 								code.push("  $component = $element;\n  __e = document.createAttribute('" + name + "');\n  __e.nodeValue = " +
-                                    expression + ";\n  $element.setAttributeNode(__e);\n");
+									expression + ";\n  $element.setAttributeNode(__e);\n");
 							}
 						}
 					}
@@ -273,7 +273,7 @@
 			value = this._getAttributeExpression(attrib, value);
 			if (value) {
 				return this._appendAttributeSetter(code, typeIndex, attrib,
-                value.code, value.isExpression, booleanValue);
+				value.code, value.isExpression, booleanValue);
 			}
 			return false;
 		}
@@ -287,8 +287,8 @@
 				}
 				else if (value.startsWith("{") && value.endsWith("}")) {
 					var ext = Sys.Application._getExtensionCode(value.slice(1, -1)),
-                    properties = ext.properties,
-                    props = "";
+					properties = ext.properties,
+					props = "";
 					for (var name in properties) {
 						var subValue = this._getAttributeExpression(attrib, properties[name]);
 						if (subValue && subValue.isExpression) {
@@ -303,8 +303,8 @@
 					}
 					return { isExpression: ext.instance.expression,
 						code: "Sys.Application._getMarkupExtension(" + serialize(ext.name) + ").extension($component, " +
-                        serialize((attrib.type === 2 ? "class:" : "") + attrib.name) +
-                        ", $context, {" + props + "})" };
+						serialize((attrib.type === 2 ? "class:" : "") + attrib.name) +
+						", $context, {" + props + "})" };
 				}
 			}
 			if (attrib.isId) {
@@ -350,7 +350,7 @@
 			if (value) {
 				value = this._getAttributeExpression({ name: name }, value, true).code;
 				code.push((name === "sys:if") ? ("  if (" + value + ") {\n")
-                        : ("  " + value + "\n"));
+						: ("  " + value + "\n"));
 			}
 			return !!value;
 		}
@@ -390,9 +390,9 @@
 		}
 		function Sys$UI$Template$_buildTemplateCode(nestedTemplates, element, code, depth) {
 			var i, j, l, m, typeName, isInput, isButton,
-            expressionRegExp = Sys.UI.Template._expressionRegExp,
-            storeElementCode = "  " + (depth ? ("__p[__d-1].appendChild(") : "__topElements.push("),
-            isIE = isBrowser("InternetExplorer");
+			expressionRegExp = Sys.UI.Template._expressionRegExp,
+			storeElementCode = "  " + (depth ? ("__p[__d-1].appendChild(") : "__topElements.push("),
+			isIE = isBrowser("InternetExplorer");
 			code.push("  __d++;\n");
 			for (i = 0, l = element.childNodes.length; i < l; i++) {
 				var childNode = element.childNodes[i], text = childNode.nodeValue;
@@ -437,25 +437,30 @@
 				}
 				else {
 					var attributes = childNode.attributes,
-                    typeNames = null, sysAttribute = null, typeIndex = {},
-                    tagName = childNode.tagName.toLowerCase(),
-                    booleanAttributes, dp1 = depth + 1;
+						typeNames = null, sysAttribute = null, typeIndex = {},
+						tagName = childNode.tagName.toLowerCase(),
+						booleanAttributes, dp1 = depth + 1, contentTemplate;
 					if (tagName === "script") {
 						continue;
 					}
 					var isCodeIfGenerated = this._processCodeBlock("sys:if", childNode, code);
 					this._processCodeBlock("sys:codebefore", childNode, code);
+					contentTemplate = this._getExplicitAttribute(null, null, childNode, "sys:content-template");
+					if (contentTemplate) {
+						if (contentTemplate.constructor !== String) throw new Error("The sys:content-template attribute value must be a string.");
+						code.push("  __contentTemplates.push('" + contentTemplate + "');\n");
+					}
 					isButton = (tagName === "button");
 					isInput = isButton || (tagName === "input");
 					if (isInput) {
 						var typeExpression = childNode.getAttribute("sys:type");
 						typeExpression = typeExpression ?
-                        this._getAttributeExpression({ name: "type" }, typeExpression) :
-                        this._getAttributeExpression({ name: "type", isNative: true }, childNode.getAttribute("type"));
+						this._getAttributeExpression({ name: "type" }, typeExpression) :
+						this._getAttributeExpression({ name: "type", isNative: true }, childNode.getAttribute("type"));
 						var nameExpression = childNode.getAttribute("sys:name");
 						nameExpression = nameExpression ?
-                        this._getAttributeExpression({ name: "name" }, nameExpression) :
-                        this._getAttributeExpression({ name: "name", isNative: true }, childNode.getAttribute("name"));
+						this._getAttributeExpression({ name: "name" }, nameExpression) :
+						this._getAttributeExpression({ name: "name", isNative: true }, childNode.getAttribute("name"));
 						if (!typeExpression.isExpression || !nameExpression.isExpression) {
 							throw Error.invalidOperation(Sys.UI.TemplatesRes.mustSetInputElementsExplicitly);
 						}
@@ -470,7 +475,7 @@
 						code.push(" $element.__mstcindex = $context._tcindex;\n");
 					}
 					this._getExplicitAttribute(code, typeIndex, childNode, "sys:id", "id", false, { isId: true }) ||
-                    this._getExplicitAttribute(code, typeIndex, childNode, "id", "id", true, { isId: true });
+					this._getExplicitAttribute(code, typeIndex, childNode, "id", "id", true, { isId: true });
 
 					typeNames = this._getExplicitAttribute(code, typeIndex, childNode, "sys:attach");
 					if (typeNames) {
@@ -483,12 +488,12 @@
 							if (!type) {
 								throw Error.invalidOperation(String.format(Sys.UI.TemplatesRes.invalidAttach, "sys:attach", typeName));
 							}
-							var isComponent, isControlOrBehavior, isContext,
-                            isClass = typeof (type) !== "string";
+							var isComponent, isControlOrBehavior, isContext, isContentTemplate, isClass = typeof (type) !== "string";
 							if (isClass) {
 								isComponent = type.inheritsFrom(Sys.Component);
 								isControlOrBehavior = (isComponent && (type.inheritsFrom(Sys.UI.Behavior) || type.inheritsFrom(Sys.UI.Control)));
 								isContext = type.implementsInterface(Sys.UI.ITemplateContextConsumer);
+								isContentTemplate = type.implementsInterface(Sys.UI.IContentTemplateConsumer);
 							}
 							typeIndex[typeName] = { type: type, isClass: isClass, isComponent: isComponent };
 							if (isClass) {
@@ -505,8 +510,12 @@
 								if (isContext) {
 									code.push("  $component.set_templateContext($context);\n");
 								}
+								if (isContentTemplate) {
+									code.push("  if (__parentContentTemplate && __parentContentTemplate.length > 0) $component.addContentTemplate(__parentContentTemplate);\n");
+									code.push("  if (__contentTemplates.length > 0) $component.addContentTemplate(__contentTemplates.join(' '));\n");
+								}
 								var idattr = typeName + ":id",
-                                typeattr = Sys.Application._splitAttribute(idattr, false, typeIndex);
+								typeattr = Sys.Application._splitAttribute(idattr, false, typeIndex);
 								typeattr.isId = true;
 								this._getExplicitAttribute(code, typeIndex, childNode, idattr, "id", false, typeattr);
 							}
@@ -516,14 +525,14 @@
 					this._getExplicitAttribute(code, typeIndex, childNode, "class", "className", true);
 					if (!isInput) {
 						booleanAttributes = Sys.UI.Template._booleanAttributes[tagName] ||
-                        Sys.UI.Template._commonBooleanAttributes;
+						Sys.UI.Template._commonBooleanAttributes;
 						this._processBooleanAttributes(childNode, code, typeIndex, booleanAttributes[" list"]);
 					}
 					var isSelect = (tagName === "select"),
-                    delayedAttributes = null,
-                    split = Sys.Application._splitAttribute,
-                    skipChildren = false,
-                    skip = { 'id': 1, 'class': 1, 'style': 1, 'sys:attach': 1, 'sys:id': 1, 'sys:disabled': 1, 'sys:checked': 1, 'sys:readonly': 1, 'sys:ismap': 1, 'sys:multiple': 1, 'sys:selected': 1, 'sys:if': 1, 'sys:codebefore': 1, 'sys:codeafter': 1 };
+					delayedAttributes = null,
+					split = Sys.Application._splitAttribute,
+					skipChildren = false,
+					skip = { 'id': 1, 'class': 1, 'style': 1, 'sys:attach': 1, 'sys:id': 1, 'sys:disabled': 1, 'sys:checked': 1, 'sys:readonly': 1, 'sys:ismap': 1, 'sys:multiple': 1, 'sys:selected': 1, 'sys:if': 1, 'sys:codebefore': 1, 'sys:codeafter': 1, 'sys:content-template': 1 };
 					for (j = 0, m = attributes.length; j < m; j++) {
 						var attribute = attributes[j], name = attribute.nodeName, lowerName = name.toLowerCase();
 
@@ -539,9 +548,9 @@
 						if (skip[lowerName] || booleanAttributes[lowerName]) continue;
 						if (isInput && Sys.UI.Template._inputRequiredAttributes[lowerName]) continue;
 						var attrib = split(name, isSelect, typeIndex),
-                        ns = attrib.ns,
-                        value = attribute.nodeValue,
-                        atype = attrib.type;
+						ns = attrib.ns,
+						value = attribute.nodeValue,
+						atype = attrib.type;
 						name = attrib.name;
 						if (atype === 1) {
 							if (isSelect && (!ns || ns === "sys")) {
@@ -585,7 +594,7 @@
 						var nestedTemplate = new Sys.UI.Template(childNode);
 						nestedTemplate.recompile();
 						nestedTemplates.push(childNode._msajaxtemplate);
-						code.push("  $element._msajaxtemplate = this.get_element()._msajaxtemplate[1][" + (nestedTemplates.length - 1) + "];\n");
+						code.push("  $element._msajaxtemplate = this.get_element()._msajaxtemplate[2][" + (nestedTemplates.length - 1) + "];\n");
 					}
 					else if (!skipChildren) {
 						this._buildTemplateCode(nestedTemplates, childNode, code, dp1);
@@ -596,6 +605,9 @@
 							attribute = delayedAttributes[j];
 							this._processAttribute(code, typeIndex, attribute[0], attribute[1]);
 						}
+					}
+					if (contentTemplate) {
+						code.push("  __contentTemplates.pop();\n");
 					}
 					this._processCodeBlock("sys:codeafter", childNode, code);
 					if (isCodeIfGenerated) {
@@ -619,14 +631,14 @@
 		function Sys$UI$Template$recompile() {
 			/// <summary locid="M:J#Sys.UI.Template.recompile" />
 			var element = this.get_element(),
-            code = [" $index = (typeof($index) === 'number' ? $index : __instanceId);\n var fragment=document.createDocumentFragment(), $component, __componentIndex, __e, __f, __topElements = [], __d = 0, __p = [fragment], $element = __containerElement, container = fragment, $context = new Sys.UI.TemplateContext(), $id = function(prefix) { return $context.getInstanceId(prefix); };\n $context.data = (typeof(__data) === 'undefined' ? null : __data);\n $context.components = [];\n $context.nodes = __topElements;\n $context.dataItem = $dataItem;\n $context.index = $index;\n $context.parentContext = __parentContext;\n $context.containerElement = __containerElement;\n $context.insertBeforeNode = __referenceNode;\n $context.template = this;\n with($dataItem || {}) {\n"],
-            nestedTemplates = [];
+			code = [" $index = (typeof($index) === 'number' ? $index : __instanceId);\n var fragment=document.createDocumentFragment(), $component, __componentIndex, __e, __f, __topElements = [], __d = 0, __p = [fragment], $element = __containerElement, container = fragment, $context = new Sys.UI.TemplateContext(), __contentTemplates = [], $id = function(prefix) { return $context.getInstanceId(prefix); };\n $context.data = (typeof(__data) === 'undefined' ? null : __data);\n $context.components = [];\n $context.nodes = __topElements;\n $context.dataItem = $dataItem;\n $context.index = $index;\n $context.parentContext = __parentContext;\n $context.containerElement = __containerElement;\n $context.insertBeforeNode = __referenceNode;\n $context.template = this;\n with($dataItem || {}) {\n"],
+			nestedTemplates = [];
 			this._buildTemplateCode(nestedTemplates, element, code, 0);
 			code.push("}\n __containerElement.appendChild(fragment);\n $context._onInstantiated(__referenceNode);\n return $context;");
 			code = code.join('');
-			element._msajaxtemplate = [this._instantiateIn = new Function("__containerElement", "__data", "$dataItem", "$index", "__referenceNode", "__parentContext", "__instanceId", code), nestedTemplates];
+			element._msajaxtemplate = [this._instantiateIn = new Function("__containerElement", "__data", "$dataItem", "$index", "__referenceNode", "__parentContext", "__parentContentTemplate", "__instanceId", code), element, nestedTemplates];
 		}
-		function Sys$UI$Template$instantiateIn(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext) {
+		function Sys$UI$Template$instantiateIn(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext, parentContentTemplate) {
 			/// <summary locid="M:J#$id" />
 			/// <param name="containerElement"></param>
 			/// <param name="data" optional="true" mayBeNull="true"></param>
@@ -634,11 +646,12 @@
 			/// <param name="dataIndex" optional="true" mayBeNull="true" type="Number" integer="true"></param>
 			/// <param name="nodeToInsertTemplateBefore" optional="true" mayBeNull="true"></param>
 			/// <param name="parentContext" type="Sys.UI.TemplateContext" optional="true" mayBeNull="true"></param>
+			/// <param name="parentContentTemplate" type="String" optional="true" mayBeNull="true"></param>
 			/// <returns type="Sys.UI.TemplateContext"></returns>
 			containerElement = Sys.UI.DomElement._ensureGet(containerElement, null, "containerElement");
 			nodeToInsertTemplateBefore = Sys.UI.DomElement._ensureGet(nodeToInsertTemplateBefore, null, "nodeToInsertTemplateBefore");
 			this._ensureCompiled();
-			return this._instantiateIn(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext, this._instanceId++);
+			return this._instantiateIn(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext, parentContentTemplate, this._instanceId++);
 		}
 
 		Sys.UI.Template.prototype = {
@@ -662,7 +675,7 @@
 			return restricted.attributes[name.toLowerCase()];
 		}
 		Sys.UI.Template._checkAttribute = function Sys$UI$Template$_checkAttribute(name, value) {
-			if (!value) return value;
+			if (value === null || value === undefined) return value;
 			var newValue = value, restricted = Sys.UI.Template._getRestrictedIndex();
 			if (restricted.attributes[name.toLowerCase()]) {
 				if (typeof (value) !== "string") {
@@ -730,8 +743,8 @@
 
 		Sys.UI.Template._commonBooleanAttributes = { disabled: true, " list": ["disabled"] };
 		Sys.UI.Template._inputBooleanAttributes =
-    { disabled: true, checked: true, readonly: true,
-    	" list": ["disabled", "checked", "readonly"] };
+	{ disabled: true, checked: true, readonly: true,
+		" list": ["disabled", "checked", "readonly"] };
 		Sys.UI.Template._booleanAttributes = {
 			"input": Sys.UI.Template._inputBooleanAttributes,
 			"select": { disabled: true, multiple: true, " list": ["disabled", "multiple"] },
@@ -741,27 +754,27 @@
 		};
 		Sys.UI.Template._expressionRegExp = /\{\{\s*([\w\W]*?)\s*\}\}/g;
 		Sys.UI.Template.allowedProtocols = [
-    "http",
-    "https"
+	"http",
+	"https"
 ];
 		Sys.UI.Template.restrictedAttributes = [
-    "src",
-    "href",
-    "codebase",
-    "cite",
-    "background",
-    "action",
-    "longdesc",
-    "profile",
-    "usemap",
-    "classid",
-    "data"
+	"src",
+	"href",
+	"codebase",
+	"cite",
+	"background",
+	"action",
+	"longdesc",
+	"profile",
+	"usemap",
+	"classid",
+	"data"
 ];
 		Sys.UI.Template._getRestrictedIndex = function Sys$UI$Template$_getRestrictedIndex() {
 			var i, l, protocolIndex, attributeIndex,
-        protocols = Sys.UI.Template.allowedProtocols || [],
-        attributes = Sys.UI.Template.restrictedAttributes || [],
-        index = Sys.UI.Template._restrictedIndex;
+		protocols = Sys.UI.Template.allowedProtocols || [],
+		attributes = Sys.UI.Template.restrictedAttributes || [],
+		index = Sys.UI.Template._restrictedIndex;
 			if (!index || (index.allowedProtocols !== protocols) || (index.restrictedAttributes !== attributes)) {
 				index = { allowedProtocols: protocols, restrictedAttributes: attributes };
 				index.protocols = protocolIndex = {};
@@ -871,7 +884,7 @@
 			}
 			delete Sys.UI.TemplateContext._contexts[this._tcindex];
 			this.nodes = this.dataItem = this.components = this.getInstanceId =
-        this.containerElement = this.insertBeforeNode = this.parentContext = this.data = null;
+		this.containerElement = this.insertBeforeNode = this.parentContext = this.data = null;
 			this.isDisposed = true;
 		}
 		function Sys$UI$TemplateContext$query(selector) {
@@ -882,14 +895,14 @@
 		}
 		function Sys$UI$TemplateContext$_find(selector, single) {
 			return /^[#\$](\w|[$:\.\-])+$/.test(selector) ?
-            this._findById(selector.substr(0, 1), selector.substr(1), single) :
-            Sys._find(selector, this.nodes, single);
+			this._findById(selector.substr(0, 1), selector.substr(1), single) :
+			Sys._find(selector, this.nodes, single);
 		}
 		function Sys$UI$TemplateContext$_findById(kind, id, single) {
 			var element = null;
 			for (var context = this; !element && context; context = context.parentContext) {
 				var nodes = context.nodes,
-                instanceId = kind + context.getInstanceId(id);
+				instanceId = kind + context.getInstanceId(id);
 				if (context._global) {
 					element = Sys.get(instanceId) || Sys.get(instanceId, nodes);
 				}
@@ -937,17 +950,25 @@
 				}
 			}
 		}
-		function Sys$UI$TemplateContext$_onInstantiated(referenceNode, global) {
+		function Sys$UI$TemplateContext$add_instantiated(handler) {
+			/// <summary locid="E:J#Sys.UI.DataViewTemplateContext.instantiated" />
+			Sys.Observer.addEventHandler(this, "instantiated", handler);
+		}
+		function Sys$UI$TemplateContext$remove_instantiated(handler) {
+			Sys.Observer.removeEventHandler(this, "instantiated", handler);
+		}
+		function Sys$UI$TemplateContext$_onInstantiated(referenceNode, leaveInPlace) {
 			foreach(this._completed, function (callback) {
 				callback();
 			});
 			this._completed = [];
-			if (!global) {
+			if (!leaveInPlace) {
 				var container = this.containerElement;
 				foreach(this.nodes, function (node) {
 					container.insertBefore(node, referenceNode || null);
 				});
 			}
+			Sys.Observer.raiseEvent(this, "instantiated");
 		}
 		function Sys$UI$TemplateContext$_registerComponent(component) {
 			var components = this.components;
@@ -983,6 +1004,8 @@
 			_findById: Sys$UI$TemplateContext$_findById,
 			getInstanceId: Sys$UI$TemplateContext$getInstanceId,
 			initializeComponents: Sys$UI$TemplateContext$initializeComponents,
+			add_instantiated: Sys$UI$TemplateContext$add_instantiated,
+			remove_instantiated: Sys$UI$TemplateContext$remove_instantiated,
 			_onInstantiated: Sys$UI$TemplateContext$_onInstantiated,
 			_registerComponent: Sys$UI$TemplateContext$_registerComponent,
 			_registerIf: Sys$UI$TemplateContext$_registerIf
@@ -1007,6 +1030,28 @@
 		}
 		Sys.UI.ITemplateContextConsumer.registerInterface("Sys.UI.ITemplateContextConsumer");
 
+		Sys.UI.IContentTemplateConsumer = function Sys$UI$IContentTemplateConsumer() {
+			throw Error.notImplemented();
+		};
+		function Sys$UI$IContentTemplateConsumer$addContentTemplate(tmpl) {
+			/// <value type="String" locid="M:J#Sys.UI.IContentTemplateConsumer.addContentTemplate"></value>
+			/// <param name="bindingContext" type="Object" optional="false" mayBeNull="false"></param>
+			if (tmpl.constructor !== String) throw new Error("Method \"addContentTemplate\" requires an argument of type String.");
+			if (tmpl.length > 0) {
+				if (this._contentTemplate) {
+					this._contentTemplate += " ";
+					this._contentTemplate += tmpl;
+				}
+				else {
+					this._contentTemplate = tmpl;
+				}
+			}
+		}
+		Sys.UI.IContentTemplateConsumer.prototype = {
+			addContentTemplate: Sys$UI$IContentTemplateConsumer$addContentTemplate
+		};
+		Sys.UI.IContentTemplateConsumer.registerInterface("Sys.UI.IContentTemplateConsumer");
+
 		Sys.Application._caseIndex = {};
 
 		Sys.Application._prototypeIndex = {};
@@ -1021,7 +1066,7 @@
 			/// <param name="recursive" optional="true" mayBeNull="true"></param>
 			/// <returns type="Sys.UI.TemplateContext"></returns>
 			return Sys.Application.activateElements(element, bindingContext || null, (recursive !== false));
-		}
+		};
 
 		Sys.Application.activateElements = function Sys$Application$activateElements(elements, bindingContext, recursive) {
 			/// <summary locid="M:J#Sys.Application.activateElements" />
@@ -1030,29 +1075,29 @@
 			/// <param name="recursive" optional="true" mayBeNull="true"></param>
 			/// <returns type="Sys.UI.TemplateContext"></returns>
 			var app = Sys.Application,
-        tc = app._context,
-        useDirect = isBrowser("InternetExplorer");
+		tc = app._context,
+		useDirect = isBrowser("InternetExplorer");
 			tc.dataItem = typeof (bindingContext) === "undefined" ? null : bindingContext;
 			tc.components = tc.components || [];
 			tc.nodes = elements;
 			recursive = (recursive !== false);
 			Sys._queryAll(elements, function (element) {
-				app._activateElement(element, tc, useDirect, recursive);
+				app._activateElement(element, tc, useDirect, null, recursive);
 			});
 			tc.initializeComponents();
 			tc._onInstantiated(null, true);
 			return tc;
-		}
+		};
 
 		Sys.registerPlugin({
 			name: "activateElements",
 			plugin: Sys.Application.activateElements,
 			returnType: "Sys.UI.TemplateContext",
 			parameters: [
-        { name: "elements", description: "The element or array of elements to activate. You may also pass DOM selectors or array of DOM selectors." },
-        { name: "bindingContext", description: "The binding context." },
-        { name: "recursive", type: "Boolean", description: "Specifies whether processing should occur recursively." }
-    ]
+		{ name: "elements", description: "The element or array of elements to activate. You may also pass DOM selectors or array of DOM selectors." },
+		{ name: "bindingContext", description: "The binding context." },
+		{ name: "recursive", type: "Boolean", description: "Specifies whether processing should occur recursively." }
+	]
 		});
 
 		Sys.Application._findType = function Sys$Application$_findType(element, prefix, useDirect) {
@@ -1094,15 +1139,16 @@
 			return type;
 		}
 
-		Sys.Application._activateElement = function Sys$Application$_activateElement(parent, templateContext, useDirect, recursive) {
+		Sys.Application._activateElement = function Sys$Application$_activateElement(parent, templateContext, useDirect, parentContentTemplates, recursive) {
 			if (recursive) {
 				recursive = !Sys.UI.Template._isTemplate(parent);
 			}
 			var i = -1,
-        allElements = recursive ? (useDirect ? parent.all : parent.getElementsByTagName("*")) : [],
-        isTemplate = /(^| )sys\-template($| )/
+		allElements = recursive ? (useDirect ? parent.all : parent.getElementsByTagName("*")) : [],
+		isTemplate = /(^| )sys\-template($| )/,
+		isIgnore = /(^| )sys\-ignore($| )/,
 			expandosAreLast = useDirect && Sys.Browser.version <= 7,
-        element = parent;
+		element = parent;
 			do {
 				if (element.nodeType !== 1) continue;
 				///// this code is inline rather than factored out into a function because
@@ -1110,12 +1156,12 @@
 				///// to be measurably slower in IE, due to the overhead of invoking a function.
 				///// begin element activation
 
-				var err, j, m, typeList = null, entry = null, index = null, fnIndex = null,
-            activated = false,
-            nodeName = null,
-            attributes = element.attributes,
-            alength = attributes.length - 1,
-            attributes2 = null;
+				var err, j, m, typeList = null, entry = null, index = null, fnIndex = null, contentTemplate = null,
+			activated = false,
+			nodeName = null,
+			attributes = element.attributes,
+			alength = attributes.length - 1,
+			attributes2 = null;
 				if (alength >= 0 && (!expandosAreLast || attributes[alength].expando) && !element.__msajaxactivated) {
 					for (j = alength; j >= 0; j--) {
 						var attribute = attributes[j];
@@ -1129,15 +1175,21 @@
 								typeList = value.split(',');
 								break;
 							case "sys:command":
-								var command = Sys.Application._getPropertyValue(null, null, null, value, templateContext, null, true);
+								var command = Sys.Application._getPropertyValue(null, null, null, value, templateContext, element, null, true);
 								var commandArg = Sys.Application._getCommandAttr(element, "sys:commandargument", useDirect),
-                        commandTarget = Sys.Application._getCommandAttr(element, "sys:commandtarget", useDirect);
+						commandTarget = Sys.Application._getCommandAttr(element, "sys:commandtarget", useDirect);
 								Sys.UI.DomElement.setCommand(element, command || "", commandArg || null, Sys.UI.DomElement._ensureGet(commandTarget, templateContext, "sys:commandtarget"));
+								break;
+							case "sys:content-template":
+								contentTemplate = value;
 								break;
 							default:
 								attributes2 = attributes2 || [];
 								attributes2.push(attribute);
 						}
+					}
+					if (contentTemplate !== null && typeList === null) {
+						throw Error.invalidOperation("invalidSysContentTemplate");
 					}
 					if (activated) {
 						element.__msajaxactivated = true;
@@ -1150,13 +1202,14 @@
 								if (!type) {
 									throw Error.invalidOperation(String.format(Sys.UI.TemplatesRes.invalidAttach, "sys:attach", typeName));
 								}
-								var props = null, isComponent = 0, isControlOrBehavior = 0, isContext = 0,
-                            isClass = (typeof (type) !== "string"),
-                            instance = null;
+								var props = null, isComponent = 0, isControlOrBehavior = 0, isContext = 0, isContentTemplate = 0,
+							isClass = (typeof (type) !== "string"),
+							instance = null;
 								if (isClass) {
 									isComponent = type.inheritsFrom(Sys.Component);
 									isControlOrBehavior = (isComponent && (type.inheritsFrom(Sys.UI.Behavior) || type.inheritsFrom(Sys.UI.Control)));
 									isContext = type.implementsInterface(Sys.UI.ITemplateContextConsumer);
+									isContentTemplate = type.implementsInterface(Sys.UI.IContentTemplateConsumer);
 									instance = isControlOrBehavior ? new type(element) : new type();
 									if (isComponent) {
 										instance.beginUpdate();
@@ -1167,7 +1220,21 @@
 									if (isContext) {
 										instance.set_templateContext(templateContext);
 									}
+									if (isContentTemplate) {
+										if (contentTemplate !== null) {
+											instance.addContentTemplate(contentTemplate);
+										}
+										if (parentContentTemplates) {
+											instance.addContentTemplate(parentContentTemplates);
+										}
+									}
+									else if (contentTemplate !== null) {
+										throw Error.invalidOperation("invalidSysContentTemplate");
+									}
 									entry = { instance: instance, isClass: true, typeName: typeName, type: type };
+								}
+								else if (contentTemplate !== null) {
+									throw Error.invalidOperation("invalidSysContentTemplate");
 								}
 								else {
 									props = {};
@@ -1189,15 +1256,15 @@
 								nodeName = attribute.nodeName;
 								value = attribute.nodeValue;
 								var isSelect = (/^select$/i.test(element.tagName)),
-                            attrib = Sys.Application._splitAttribute(nodeName, isSelect, index),
-                            atype = attrib.type,
-                            ns = attrib.ns,
-                            name = attrib.name;
+							attrib = Sys.Application._splitAttribute(nodeName, isSelect, index),
+							atype = attrib.type,
+							ns = attrib.ns,
+							name = attrib.name;
 								if (atype < 0) continue;
 								if (atype === 3) {
 									entry = attrib.index;
 									var target = entry.instance;
-									value = Sys.Application._getPropertyValue(attrib, target, name, value, templateContext);
+									value = Sys.Application._getPropertyValue(attrib, target, name, value, templateContext, element);
 									if (typeof (value) === "undefined") continue;
 									if (entry.isClass) {
 										switch (attrib.map.type) {
@@ -1219,7 +1286,7 @@
 									if (attrib.textNode || (name === "innerHTML")) {
 										Sys.Application._clearContent(element);
 									}
-									value = Sys.Application._getPropertyValue(attrib, element, name, value, templateContext);
+									value = Sys.Application._getPropertyValue(attrib, element, name, value, templateContext, element);
 									if (typeof (value) === "undefined") continue;
 									switch (attrib.type) {
 										case 0:
@@ -1232,8 +1299,8 @@
 												break;
 											}
 											var booleans = Sys.UI.Template._booleanAttributes,
-                                        lowerTag = element.tagName.toLowerCase(),
-                                        isbool = (name === "disabled") || (booleans[lowerTag] && booleans[lowerTag][name]);
+										lowerTag = element.tagName.toLowerCase(),
+										isbool = (name === "disabled") || (booleans[lowerTag] && booleans[lowerTag][name]);
 											if (isbool) {
 												if (name === "selected") {
 													element.selected = value;
@@ -1284,11 +1351,11 @@
 							}
 						}
 					}
-					///// end element activatation
+					///// end element activation
 				}
 				if (recursive) {
 					var className = element.className;
-					if (className && (className.length >= 12) && ((className === "sys-template") || isTemplate.test(className))) {
+					if (className && (className.length >= 10) && (className === "sys-template" || className === "sys-ignore" || isTemplate.test(className) || isIgnore.test(className))) {
 						var next = element.nextSibling;
 						while (next && (next.nodeType !== 1)) {
 							next = next.nextSibling;
@@ -1318,6 +1385,422 @@
 			while (!!(element = allElements[++i]));
 		}
 
+		// a non-control targeting data attribute, i.e. "data-sys-class"
+		var sysDataAttrExpr = /^data\-sys\-([a-z_]*)$/;
+
+		// a control targeting data attribute, i.e.: "data-dataview-data"
+		var controlDataAttrExpr = /^data\-([a-z_]*)\-([a-z_]*)$/;
+		
+		// a non-control targeting data attribute, i.e. "data-sys-class"
+		var sysAttrExpr = /^sys\:([a-z_]*)$/;
+
+		Sys.Application._linkAttributes = function Sys$Application$_linkAttributes(element, parentContext, attachedName) {
+			var i, attr, dataAttr, sysAttrib, msDataAttrib, isSelect, match, attrName, value, target, targetProp, link = true, typeIndex;
+
+			if (element.control && attachedName) {
+				typeIndex = {};
+				controlType = element.control.constructor;
+				typeIndex[attachedName] = { type: controlType, isClass: true, isComponent: controlType.inheritsFrom(Sys.Component) };
+			}
+
+			for (i = 0; i < element.attributes.length; i++) {
+				attr = element.attributes[i];
+				attrName = attr.name;
+
+				// test for a "data attribute", i.e. "data-dataview-data"
+				if (sysDataAttrExpr.test(attrName)) {
+					dataAttr = { raw: attrName, prefix: "sys" };
+					dataAttr.name = sysDataAttrExpr.exec(attr.name)[1];
+				}
+				else if (controlDataAttrExpr.test(attrName)) {
+					dataAttr = { raw: attrName };
+					match = controlDataAttrExpr.exec(attrName);
+					dataAttr.control = dataAttr.prefix = match[1];
+					dataAttr.name = match[2];
+				}
+				else if (sysAttrExpr.test(attrName)) {
+					dataAttr = { raw: attrName, prefix: "sys" };
+					dataAttr.name = sysAttrExpr.exec(attr.name)[1];
+					link = false;
+				}
+
+				// if this is a data attribute, then link or bind it to the target and remove it from the DOM
+				if (dataAttr) {
+					target = dataAttr.control ? element.control : element;
+					targetProp = dataAttr.name;
+
+					isSelect = (/^select$/i.test(element.tagName));
+					msDataAttrib = Sys.Application._splitAttribute(dataAttr.prefix + ":" + dataAttr.name, isSelect, typeIndex);
+					value = Sys.Application._getPropertyValue(msDataAttrib, target, targetProp, attr.nodeValue, parentContext, element, null, false, { isLinkPending: !element.control && link });
+					if (value !== undefined) {
+						Sys.Observer.setValue(target, msDataAttrib.name || targetProp, value);
+					}
+
+					dataAttr = null;
+					element.removeAttribute(attr.name);
+					i -= 1;
+				}
+			}
+		};
+
+		// marks the beginning or end of a context, i.e. "/item" or "item _$t202"
+		var itemCommentExpr = /^(\/|)item\s*(\s[\$_A-Za-z0-9]+|)$/;
+
+		Sys.Application._linkContexts = function Sys$Application$_linkContexts(parentContext, parentControl, parentData, parentElement, currentContext, parentContentTemplates, recursive) {
+			var children, newContext, preceedingText, ctxIdx, isSelect, i, node, match, marker, tmplIdx, tmpl, generatesContext, value, foundBinding, isArrayData,
+				isSingleExternalContext, lastIndex, targetProp, msAttrib, text, trimText, exprRegExp, attachName, isContentTemplate, contentTemplate, childContentTemplates;
+
+			ctxIdx = -1;
+			isSingleExternalContext = !recursive && currentContext;
+			isArrayData = parentData && parentData instanceof Array;
+			isSelect = (/^select$/i.test(parentElement.tagName));
+			exprRegExp = Sys.UI.Template._expressionRegExp;
+
+			// Copy child nodes into array to isolate from external changes to the DOM
+			i = -1;
+			children = [];
+			while (node = parentElement.childNodes[++i]) {
+				children[i] = node;
+			}
+
+			for (i = 0; i < children.length; i++) {
+				node = children[i];
+				marker = tmplIdx = tmpl = match = value = null;
+				generatesContext = foundBinding = false;
+
+				// Look for binding expressions in text nodes
+				// NOTE: based on _buildTemplateCode
+				if (node.nodeType === 3) {
+					text = node.nodeValue;
+					trimText = text.trim();
+
+					// An extension takes the place of node value
+					if ((trimText.startsWith("{") && trimText.endsWith("}") && (!trimText.startsWith("{{") || !trimText.endsWith("}}")))) {
+						foundBinding = true;
+						targetProp = (parentElement.tagName.toLowerCase() === "textarea" ? "value" : "innerText");
+						msAttrib = Sys.Application._splitAttribute(targetProp, isSelect);
+						value = Sys.Application._getPropertyValue(msAttrib, parentElement, targetProp, text, currentContext, parentElement, null, false);
+					}
+					// Multiple expressions can be nested within a block of text
+					else{
+						lastIndex = 0;
+						match = exprRegExp.exec(text);
+						while (match) {
+							if (!foundBinding) {
+								value = "";
+								foundBinding = true;
+								targetProp = (parentElement.tagName.toLowerCase() === "textarea" ? "value" : "innerText");
+								msAttrib = Sys.Application._splitAttribute(targetProp, isSelect);
+							}
+							value += text.substring(lastIndex, match.index) || "";
+							value += Sys.Application._getPropertyValue(msAttrib, parentElement, targetProp, match[0], currentContext, parentElement, null, false) || "";
+							lastIndex = match.index + match[0].length;
+							match = exprRegExp.exec(text);
+						}
+						if (foundBinding && lastIndex < text.length) {
+							value += text.substr(lastIndex);
+						}
+					}
+
+					// Update the node's value
+					if (foundBinding) {
+						node.nodeValue = value || "";
+					}
+				}
+
+				// If this is top-level then look for context markers
+				if (!recursive) {
+					if (node.nodeType === 8 && (match = itemCommentExpr.exec(node.nodeValue))) {
+						if (match[1] === "") {
+							marker = { begin: true, end: false };
+						}
+						else if (match[1] === "/") {
+							marker = { begin: false, end: true };
+						}
+		
+						marker.template = match[2];
+					}
+					else if (isSelect) {
+						if (node.tagName === "BEGIN") {
+							marker = { begin: true, end: false };
+						}
+						else if (node.tagName === "END") {
+							marker = { begin: false, end: true };
+						}
+					}
+
+					if (marker) {
+						if (isSingleExternalContext) {
+							throw new Error("Unexpected context marker in DOM: context was provided by caller");
+						}
+
+						// Start a new context after this node
+						if (marker.begin) {
+
+							// Verify that there isn't currently an active context
+							if (currentContext) {
+								// There should be no context either because it is supplied by the caller
+								// (i.e. Content), we have only just entered the method and haven't yet encountered
+								// a context begin marker, or the node was preceeded by a context end marker
+								throw new Error("There is already a context in use. This may be caused by invalid markup.");
+							}
+
+							// Start new context for a new item when a context begin marker is found (mimicks compiled code)
+							newContext = new Sys.UI.TemplateContext();
+							ctxIdx += 1;
+							newContext.data = parentData;
+							newContext.components = [];
+
+							// Use the preceeding text nodes if there are any
+							newContext.nodes = preceedingText ? preceedingText.slice() : [];
+
+							// Set the index and use it to retrieve the data item for the context
+							if (isArrayData) {
+								if (ctxIdx >= parentData.length) {
+									throw new Error("Unexpected number of contexts: expected " + parentData.length + " but found at least " + (ctxIdx + 1));
+								}
+								newContext.dataItem = parentData[ctxIdx];
+							}
+							else if (ctxIdx > 0) {
+								throw new Error("Found multiple contexts in DOM, but data is not an array.");
+							}
+							else {
+								newContext.dataItem = parentData;
+							}
+							newContext.index = ctxIdx;
+
+							newContext.parentContext = parentContext;
+							newContext.containerElement = parentElement;
+
+							// If a template id was specified in the marker, then use it to retrieve the template
+							if (marker.template) {
+								newContext.template = new Sys.UI.Template(document.getElementById(marker.template.trim()));
+							}
+							// Otherwise get the template from the parent control (i.e. dataview)
+							else if (parentControl._getTemplate) {
+								newContext.template = parentControl._getTemplate();
+							}
+
+							// Pre-compile the template if necessary, since we will need to access nested templates
+							newContext.template._ensureCompiled();
+
+							// Clear out text nodes array
+							preceedingText = null;
+
+							// Add the context to the parent control and use it as the current context
+							parentControl._contexts.push(newContext);
+							currentContext = newContext;
+						}
+						// End the current context when a context end marker is found
+						else if (marker.end) {
+							currentContext._onInstantiated(null, true);
+
+							// Reset variables tied to the current context
+							currentContext = null;
+						}
+
+						// Remove the marker node and continue to the next
+						parentElement.removeChild(node);
+						continue;
+					}
+					else {
+						// Save text nodes to be included in the following context
+						if (node.nodeType === 3 && !currentContext) {
+							if (preceedingText) {
+								preceedingText.push(node);
+							}
+							else {
+								preceedingText = [node];
+							}
+						}
+						else {
+							// Only top-level (non-recursive) nodes are added to the context nodes list
+							currentContext.nodes.push(node);
+						}
+					}
+				}
+
+				// Only elements
+				if (node.nodeType === 1) {
+					// If a template index attribute was specified, then us it for templated controls
+					if (node.hasAttribute("data-sys-tmplidx")) {
+						tmplIdx = parseInt(node.getAttribute("data-sys-tmplidx"), 10);
+						node.removeAttribute("data-sys-tmplidx");
+					}
+
+					// Assign context index (mimicks compiled code)
+					node.__mstcindex = currentContext._tcindex;
+
+					// If a sys:if attribute exists, then potentially remove the element from the DOM
+					// don't remove it immediately since its contents could affect linking (e.g. child template index)
+					if (node.hasAttribute("sys:if")) {
+						if (Sys.Application._getPropertyValue(null, null, null, node.getAttribute("sys:if"), currentContext, node, null, true)) {
+							node.removeAttribute("sys:if");
+						}
+						else {
+							parentElement.removeChild(node);
+							continue;
+						}
+					}
+
+					// generate client ids
+					if (node.hasAttribute("sys:id") || node.hasAttribute("id")) {
+						var result = Sys.Application._getPropertyValue(null, null, null, node.getAttribute("sys:id") || node.getAttribute("id"), currentContext, node, null, true);
+						result = currentContext.getInstanceId(result);
+						node.removeAttribute("sys:id");
+						node.removeAttribute("id");
+						node.id = result;
+					}
+
+					// Detect content-template attribute
+					if (node.hasAttribute("data-sys-content-template")) {
+						contentTemplate = node.getAttribute("data-sys-content-template");
+					}
+					else {
+						contentTemplate = null;
+					}
+
+					// a control was rendered server-side, so link it and it's attributes
+					if (node.hasAttribute("data-sys-attach")) {
+						attachName = node.getAttribute("data-sys-attach");
+						Sys.Application._linkControlElement(node, currentContext);
+
+						// Provide control with content template names if it requires them
+						isContentTemplate = node.control.constructor.implementsInterface(Sys.UI.IContentTemplateConsumer);
+						if (isContentTemplate) {
+							if (contentTemplate) {
+								node.control.addContentTemplate(contentTemplate);
+							}
+							if (parentContentTemplates) {
+								node.control.addContentTemplate(parentContentTemplates);
+							}
+						}
+						else if (contentTemplate !== null) {
+							throw Error.invalidOperation("invalidSysContentTemplate");
+						}
+
+						Sys.Application._linkAttributes(node, currentContext, attachName);
+
+						// determine whether the control is a context-generating control (i.e. dataview), in
+						// which case it will be responsible for linking it's own content
+						if (node.control._generatesContext) {
+							generatesContext = node.control._generatesContext();
+						}
+
+						// if the control gets its template from it's parent's template it should use
+						if (generatesContext && node.control._setTemplate) {
+							if (typeof(tmplIdx) !== "number") {
+								throw new Error("A templated control is attached to the node, but no template index was specified.");
+							}
+							tmpl = new Sys.UI.Template(currentContext.template.get_element()._msajaxtemplate[2][tmplIdx][1]);
+							tmpl._ensureCompiled();
+							node.control._setTemplate(tmpl);
+						}
+
+						// register the control with the context here rather than when
+						// linking the control (so that attributes can be linked first?)
+						currentContext._registerComponent(node.control);
+					}
+
+					if (parentContentTemplates) {
+						childContentTemplates = parentContentTemplates;
+						if (contentTemplate) {
+							childContentTemplates += " " + contentTemplate;
+						}
+					}
+					else if (contentTemplate) {
+						childContentTemplates = contentTemplate;
+					}
+					else {
+						childContentTemplates = null;
+					}
+
+					// if the element doesn't generate a context, then recursively link it's children
+					if (!generatesContext) {
+						// if the node is a template (class = "sys-template"), then increment the child template index so that
+						// context-generating controls that follow will be assigned the correct template
+						if (Sys.UI.Template._isTemplate(node)) {
+							attachName = node.getAttribute("sys:attach");
+							Sys.Application._activateElement(node, currentContext, isBrowser("InternetExplorer"), childContentTemplates, true);
+							Sys.Application._linkAttributes(node, currentContext, attachName);
+						}
+						else {
+							// If the node has any attributes that weren't rendered (i.e. "sys:" attributes), then activate only this node
+							if (Array.prototype.some.call(node.attributes, function(a) { return a.name.indexOf(":") >= 0; })) {
+								Sys.Application._activateElement(node, currentContext, isBrowser("InternetExplorer"), childContentTemplates, false);
+							}
+							Sys.Application._linkAttributes(node, currentContext, attachName);
+							// Recursively link child nodes
+							Sys.Application._linkContexts(parentContext, parentControl, parentData, node, currentContext, childContentTemplates, true);
+						}
+					}
+				}
+			}
+
+			if (!recursive && isArrayData && !isSingleExternalContext && ctxIdx != parentData.length - 1) {
+				throw new Error("Unexpected number of contexts: expected " + parentData.length + " but found " + (ctxIdx + 1));
+			}
+		};
+
+		Sys.Application._linkControlElement = function Sys$Application$_linkControlElement(element, parentContext) {
+			if (!element.hasAttribute("data-sys-attach")) {
+				throw new Error("Element is not a control.");
+			}
+
+			var controlType = element.getAttribute("data-sys-attach"),
+				type = Sys.Application._findType(element, controlType, isBrowser("InternetExplorer")),
+				isContext = type.implementsInterface(Sys.UI.ITemplateContextConsumer),
+				control = new type(element);
+
+			element.removeAttribute("data-sys-attach");
+			control.beginUpdate();
+			control.set_isLinkPending(true);
+			if (isContext) {
+				control.set_templateContext(parentContext);
+			}
+
+			return controlType;
+		};
+
+		Sys.Application.linkElement = function (element, tmplElement) {
+			var appContext, control, controlType, tmpl, contentTemplate, isContentTemplate;
+
+			// Initialize the application context
+			appContext = Sys.Application._context;
+			appContext.dataItem = null;
+			appContext.components = appContext.components || [];
+			appContext.nodes = [element];
+
+			// Initialize the root control
+			controlType = Sys.Application._linkControlElement(element, appContext);
+			control = element.control;
+
+			// Detect content-template attribute
+			if (element.hasAttribute("data-sys-content-template")) {
+				isContentTemplate = element.control.constructor.implementsInterface(Sys.UI.IContentTemplateConsumer);
+				if (!isContentTemplate) {
+					throw Error.invalidOperation("invalidSysContentTemplate");
+				}
+				contentTemplate = element.getAttribute("data-sys-content-template");
+				if (contentTemplate) {
+					element.control.addContentTemplate(contentTemplate);
+				}
+			}
+
+			// Set the template
+			if (control._setTemplate) {
+				tmpl = new Sys.UI.Template(tmplElement);
+				tmpl._ensureCompiled();
+				control._setTemplate(tmpl);
+			}
+
+			Sys.Application._linkAttributes(element, appContext, controlType);
+
+			appContext._registerComponent(control);
+			appContext.initializeComponents();
+			appContext._onInstantiated(null, true);
+		};
+
 		Sys.Application._clearContent = function Sys$Application$_clearContent(element) {
 			var err;
 			Sys.Application.disposeElement(element, true);
@@ -1332,7 +1815,7 @@
 			var err, value = null;
 			try {
 				value = useDirect ? element[name] : element.getAttribute(name);
-				value = value ? Sys.Application._getPropertyValue(null, null, null, value, templateContext, null, true) : null;
+				value = value ? Sys.Application._getPropertyValue(null, null, null, value, templateContext, element, null, true) : null;
 			}
 			catch (err) { }
 			return value;
@@ -1351,12 +1834,12 @@
 		}
 		Sys.Application._splitAttribute = function Sys$Application$_splitAttribute(attributeName, isSelect, typeIndex) {
 			var nameParts = attributeName.split(':'),
-            ns = nameParts.length > 1 ? nameParts[0] : null,
-            name = nameParts[ns ? 1 : 0],
-            type = -1,
-            textNode, map, index, isSys = (ns === "sys"),
-            lowerName = name.toLowerCase(),
-            isNative = !ns;
+			ns = nameParts.length > 1 ? nameParts[0] : null,
+			name = nameParts[ns ? 1 : 0],
+			type = -1,
+			textNode, map, index, isSys = (ns === "sys"),
+			lowerName = name.toLowerCase(),
+			isNative = !ns;
 			if (!ns || isSys) {
 				var newName = Sys.Application._directAttributes[lowerName];
 				if (newName) {
@@ -1423,7 +1906,7 @@
 		Sys.Application._translateStyleName = function Sys$Application$_translateStyleName(name) {
 			if (name.indexOf('-') === -1) return name;
 			var parts = name.toLowerCase().split('-'),
-        newName = parts[0];
+		newName = parts[0];
 			for (var i = 1, l = parts.length; i < l; i++) {
 				var part = parts[i];
 				newName += part.substr(0, 1).toUpperCase() + part.substr(1);
@@ -1431,7 +1914,7 @@
 			return newName;
 		}
 
-		Sys.Application._getExtensionCode = function Sys$Application$_getExtensionCode(extension, doEval, templateContext) {
+		Sys.Application._getExtensionCode = function Sys$Application$_getExtensionCode(extension, doEval, templateContext, element) {
 			extension = extension.trim();
 			var name, properties, propertyBag = {}, spaceIndex = extension.indexOf(' ');
 			if (spaceIndex !== -1) {
@@ -1441,13 +1924,13 @@
 					properties = properties.replace(/\\,/g, '\u0000').split(",");
 					for (var i = 0, l = properties.length; i < l; i++) {
 						var property = properties[i].replace(/\u0000/g, ","),
-                        equalIndex = property.indexOf('='),
-                        pValue, pName;
+						equalIndex = property.indexOf('='),
+						pValue, pName;
 						if (equalIndex !== -1) {
 							pName = property.substr(0, equalIndex).trim();
 							pValue = property.substr(equalIndex + 1).trim();
 							if (doEval) {
-								pValue = this._getPropertyValue(null, null, null, pValue, templateContext, true);
+								pValue = this._getPropertyValue(null, null, null, pValue, templateContext, element, true);
 							}
 						}
 						else {
@@ -1464,20 +1947,20 @@
 			return { instance: Sys.Application._getMarkupExtension(name), name: name, properties: propertyBag };
 		}
 
-		Sys.Application._getPropertyValue = function Sys$Application$_getPropertyValue(attrib, target, name, value, templateContext, inExtension, suppressExtension) {
-			var propertyValue = value;
-			if (value.startsWith("{{") && value.endsWith("}}")) {
-				propertyValue = this._evaluateExpression(value.slice(2, -2), templateContext);
+		Sys.Application._getPropertyValue = function Sys$Application$_getPropertyValue(attrib, target, name, value, templateContext, element, inExtension, suppressExtension, additionalProperties) {
+			var propertyValue = value.replace(/&lt;/, "<").replace(/&gt;/, ">");
+			if (propertyValue.startsWith("{{") && propertyValue.endsWith("}}")) {
+				propertyValue = this._evaluateExpression(propertyValue.slice(2, -2), templateContext, element);
 			}
-			else if (!suppressExtension && !inExtension && value.startsWith("{") && value.endsWith("}")) {
-				var extension = this._getExtensionCode(value.slice(1, -1), true, templateContext);
-				propertyValue = extension.instance.extension(target, (attrib.type === 2 ? "class:" : "") + name, templateContext, extension.properties);
+			else if (!suppressExtension && !inExtension && propertyValue.startsWith("{") && propertyValue.endsWith("}")) {
+				var extension = this._getExtensionCode(propertyValue.slice(1, -1), true, templateContext, element);
+				propertyValue = extension.instance.extension(target, (attrib.type === 2 ? "class:" : "") + name, templateContext, merge(additionalProperties || {}, extension.properties));
 			}
 			return propertyValue;
 		}
 		Sys.Application._tryName = function Sys$Application$_tryName(name, type) {
 			var prototype = type.prototype,
-        setterName = "set_" + name, setter = prototype[setterName];
+		setterName = "set_" + name, setter = prototype[setterName];
 			if (setter) {
 				return { name: name, setterName: setterName, setter: setter, type: 1 };
 			}
@@ -1521,11 +2004,11 @@
 		}
 		Sys.Application._mapToPrototype = function Sys$Application$_mapToPrototype(name, type) {
 			if (!type) {
-				throw "type is undefined (name=\"" + name + "\").";
+				throw new Error("type is undefined (name=\"" + name + "\").");
 			}
 
 			if (!type.__typeName) {
-				throw "\"" + type + "\" is not a valid type (name=\"" + name + "\").";
+				throw new Error("\"" + type + "\" is not a valid type (name=\"" + name + "\").");
 			}
 
 			var fixedName, caseIndex = Sys.Application._caseIndex[type.__typeName];
@@ -1558,14 +2041,16 @@
 			}
 			return fixedName;
 		}
+
 		Sys.Application._doEval = function Sys$Application$_doEval(__expression, $context) {
 			with ($context.dataItem || {}) {
 				return eval("(" + __expression + ")");
 			}
-		}
-		Sys.Application._evaluateExpression = function Sys$Application$_evaluateExpression($expression, $templateContext) {
-			return Sys.Application._doEval.call($templateContext.dataItem, $expression, $templateContext);
-		}
+		};
+		Sys.Application._evaluateExpression = function Sys$Application$_evaluateExpression(expression, $context, $element) {
+			var fn = new Function("$context", "$element", "$dataItem", "$index", "$id", "return " + expression + ";");
+			return fn($context, $element, $context.dataItem, $context.index, function(prefix) { return $context.getInstanceId(prefix); });
+		};
 
 		Sys.Application._registerComponent = function Sys$Application$_registerComponent(element, component) {
 			var components = element._components;
@@ -1729,7 +2214,7 @@
 				this._targetHandlers = null;
 				this._sourceHandlers = null;
 				var source = this._source,
-                target = this._target;
+				target = this._target;
 				if (source) {
 					if (this._sourceOption) Sys.Observer.removeEventHandler(source, "optionsChanged", this._onOptionsUpdated);
 					if (Sys.INotifyDisposing.isImplementedBy(source)) source.remove_disposing(this._onDispose);
@@ -1772,12 +2257,12 @@
 		}
 		function Sys$Binding$_watchObject(object, isSource) {
 			var path = isSource ? this._pathArray : this._targetPropertyArray,
-            handlers = isSource ? this._sourceHandlers : this._targetHandlers,
-            observable = !!object;
+			handlers = isSource ? this._sourceHandlers : this._targetHandlers,
+			observable = !!object;
 			if (path) {
 				for (var i = 0, l = path.length; i < l; i++) {
 					var property = path[i],
-                    handler = handlers[i];
+					handler = handlers[i];
 					if (!handler || handler.object !== object) {
 						if (handler) {
 							this._forget(handler);
@@ -1799,8 +2284,8 @@
 		}
 		function Sys$Binding$_isInput(element, property) {
 			var ret,
-            tag = (Sys.UI.DomElement.isDomElement(element) && element.nodeType === 1 && element.tagName) ?
-                element.tagName.toLowerCase() : "";
+			tag = (Sys.UI.DomElement.isDomElement(element) && element.nodeType === 1 && element.tagName) ?
+				element.tagName.toLowerCase() : "";
 			if (tag === "select" || tag === "input" || tag === "textarea") {
 				property = (property || "").toLowerCase();
 				if (property === "value" || property === "selectedindex" || property === "checked") {
@@ -1813,21 +2298,21 @@
 		}
 		function Sys$Binding$_listen(object, property, isSource) {
 			var _this = this,
-            listener = isSource ? this._onSourceChanged : this._onTargetChanged,
-            handlers = {
-            	listener: listener,
-            	object: object,
-            	pc: function (sender, args) {
-            		var changed = args.get_propertyName();
-            		if (!changed || changed === property) {
-            			listener();
-            		}
-            	},
-            	dom: []
-            };
+			listener = isSource ? this._onSourceChanged : this._onTargetChanged,
+			handlers = {
+				listener: listener,
+				object: object,
+				pc: function (sender, args) {
+					var changed = args.get_propertyName();
+					if (!changed || changed === property) {
+						listener();
+					}
+				},
+				dom: []
+			};
 			Sys.Observer._addEventHandler(object, "propertyChanged", handlers.pc);
 			var isInput = this._isInput(object, property),
-            adder = Sys.UI.DomEvent.addHandler;
+			adder = Sys.UI.DomEvent.addHandler;
 			if (isInput) {
 				handlers.dom.push("change");
 				adder(object, "change", listener);
@@ -1845,7 +2330,7 @@
 		}
 		function Sys$Binding$_forget(handler) {
 			var object = handler.object,
-            dom = handler.dom;
+			dom = handler.dom;
 			Sys.Observer._removeEventHandler(object, "propertyChanged", handler.pc);
 			for (var i = 0, l = dom.length; i < l; i++) {
 				Sys.UI.DomEvent.removeHandler(object, dom[i], handler.listener);
@@ -1871,6 +2356,16 @@
 				}
 			}
 			return ret;
+		}
+		function Sys$Binding$link() {
+			/// <summary locid="M:J#Sys.Binding.link" />
+			if (this.get_mode() === Sys.BindingMode.oneWayToSource) {
+				this._targetChanged(false);
+			}
+			else {
+				this._sourceChanged(false);
+			}
+			Sys.Binding.callBaseMethod(this, 'link');
 		}
 		function Sys$Binding$update(mode) {
 			/// <summary locid="M:J#Sys.Binding.update" />
@@ -1906,7 +2401,7 @@
 		}
 		function Sys$Binding$_doInitialize() {
 			var source = this.get_source(),
-            target = this.get_target();
+				target = this.get_target();
 			if (typeof (source) === "string") {
 				this.set_source(source = this._resolveReference(source) || null);
 			}
@@ -1917,14 +2412,19 @@
 			if (target && (mode === Sys.BindingMode.auto)) {
 				mode = "oneWay";
 				if ((this._isInput(target, this._targetPropertyArray ? this._targetPropertyArray[0] : "")) ||
-                Sys.INotifyPropertyChange.isImplementedBy(target)) {
+				Sys.INotifyPropertyChange.isImplementedBy(target)) {
 					mode = "twoWay";
 				}
 				mode = Sys.BindingMode[mode];
 				this.set_mode(mode);
 			}
 			Sys.Binding.callBaseMethod(this, 'initialize');
-			this.update(mode);
+			if (this.get_isLinkPending()) {
+				this.link();
+			}
+			else {
+				this.update(mode);
+			}
 
 			if (mode !== Sys.BindingMode.oneTime) {
 				if (source) {
@@ -1969,72 +2469,76 @@
 		}
 		function Sys$Binding$_optionsUpdated(select) {
 			if (!this._disposed) {
-				this.update(select === this.get_source() ? 4
- : 2
-);
+				this.update(select === this.get_source() ? 4 : 2);
 			}
 		}
 		function Sys$Binding$_sourceChanged(force) {
 			if (this._disposed) return;
-			force = force === true;
 			var er,
-            target = this.get_target(),
-            source = this.get_source();
+				link = force === false,
+				target = this.get_target(),
+				source = this.get_source();
+			force = force === true;
 			if (!target) return;
 			source = (source && this._pathArray)
-                    ? this._getPropertyFromIndex(source, this._pathArray, 0, this._pathArray.length - 1)
-                    : source;
-			if (!this._updateSource && (force || (source !== this._lastSource))) {
+					? this._getPropertyFromIndex(source, this._pathArray, 0, this._pathArray.length - 1)
+					: source;
+			if (!this._updateSource && (force || link || (source !== this._lastSource))) {
 				try {
 					this._updateTarget = true;
 					this._lastSource = this._lastTarget = source;
-					if (this._convertFn) {
-						if (this._ignoreErrors) {
-							try {
-								source = this._convertFn(source, this);
-							}
-							catch (er) { }
-						}
-						else {
-							source = this._convertFn(source, this);
-						}
-					}
-					if ((source === null) || (typeof (source) === "undefined")) {
-						source = this.get_defaultValue();
-					}
-					if (this._targetProperty && this._targetProperty.startsWith("class:")) {
-						var className = this._targetProperty.substr(6).trim();
-						source ? Sys.UI.DomElement.addCssClass(target, className) : Sys.UI.DomElement.removeCssClass(target, className);
-					}
-					else {
-						var targetArrayLength = this._targetPropertyArray.length;
-						target = this._getPropertyFromIndex(target, this._targetPropertyArray, 0, targetArrayLength - 2);
-						if ((target !== null) && (typeof (target) !== "undefined")) {
-							var name = this._targetPropertyArray[targetArrayLength - 1],
-                            isElement = Sys.UI.DomElement.isDomElement(target);
-							if (isElement) {
-								source = Sys.UI.Template._checkAttribute(name, source) || "";
-							}
-							if (isElement && (name === "innerHTML" || name === "innerText")) {
-								Sys.Application._clearContent(target);
-								if (name === "innerHTML") {
-									target.innerHTML = source;
+					if (!link) {
+						if (this._convertFn) {
+							if (this._ignoreErrors) {
+								try {
+									source = this._convertFn(source, this);
 								}
-								else {
-									target.appendChild(document.createTextNode(source));
-								}
-								Sys.Observer.raisePropertyChanged(target, name);
-							}
-							else if (isElement && (name === "tabIndex" || name === "tabindex")) {
-								Sys.Observer._setValue(target, "tabIndex", source);
+								catch (er) { }
 							}
 							else {
-								Sys.Observer._setValue(target, name, source);
+								source = this._convertFn(source, this);
 							}
-							if (source && isElement && this._isChecked(target, name)) {
-								var a = document.createAttribute(name);
-								a.nodeValue = name;
-								target.setAttributeNode(a);
+						}
+						if ((source === null) || (typeof (source) === "undefined")) {
+							source = this.get_defaultValue();
+						}
+						if (this._targetProperty && this._targetProperty.startsWith("class:")) {
+							var className = this._targetProperty.substr(6).trim();
+							source ? Sys.UI.DomElement.addCssClass(target, className) : Sys.UI.DomElement.removeCssClass(target, className);
+						}
+						else {
+							var targetArrayLength = this._targetPropertyArray.length;
+							target = this._getPropertyFromIndex(target, this._targetPropertyArray, 0, targetArrayLength - 2);
+							if ((target !== null) && (typeof (target) !== "undefined")) {
+								var name = this._targetPropertyArray[targetArrayLength - 1],
+								isElement = Sys.UI.DomElement.isDomElement(target);
+								if (isElement) {
+									source = Sys.UI.Template._checkAttribute(name, source);
+									if (source === null || source === undefined) {
+										source = "";
+									}
+								}
+								if (isElement && (name === "innerHTML" || name === "innerText")) {
+									Sys.Application._clearContent(target);
+									if (name === "innerHTML") {
+										target.innerHTML = source;
+									}
+									else {
+										target.appendChild(document.createTextNode(source));
+									}
+									Sys.Observer.raisePropertyChanged(target, name);
+								}
+								else if (isElement && (name === "tabIndex" || name === "tabindex")) {
+									Sys.Observer._setValue(target, "tabIndex", source);
+								}
+								else {
+									Sys.Observer._setValue(target, name, source);
+								}
+								if (source && isElement && this._isChecked(target, name)) {
+									var a = document.createAttribute(name);
+									a.nodeValue = name;
+									target.setAttributeNode(a);
+								}
 							}
 						}
 					}
@@ -2043,50 +2547,53 @@
 					this._updateTarget = false;
 				}
 			}
-			if (!force) {
+			if (!force && !link) {
 				this._watchObject(this.get_source(), true);
 			}
 		}
 		function Sys$Binding$_targetChanged(force) {
 			if (this._disposed) return;
+			var link = force === false,
+				target = this.get_target(),
+				source = this.get_source();
 			force = force === true;
-			var target = this.get_target(),
-            source = this.get_source();
 			if (!source) return;
 			target = !target ? null : this._getPropertyFromIndex(target, this._targetPropertyArray,
-                                                0, this._targetPropertyArray.length - 1);
-			if (!this._updateTarget && (force || (target !== this._lastTarget))) {
+												0, this._targetPropertyArray.length - 1);
+			if (!this._updateTarget && (force || link || (target !== this._lastTarget))) {
 				try {
 					this._updateSource = true;
 					this._lastTarget = this._lastSource = target;
-					if (this._convertBackFn) {
-						if (this._ignoreErrors) {
-							try {
+					if (!link) {
+						if (this._convertBackFn) {
+							if (this._ignoreErrors) {
+								try {
+									target = this._convertBackFn(target, this);
+								}
+								catch (e) { }
+							}
+							else {
 								target = this._convertBackFn(target, this);
 							}
-							catch (e) { }
 						}
-						else {
-							target = this._convertBackFn(target, this);
-						}
-					}
-					if (this._pathArray) {
-						var sourceArrayLength = this._pathArray.length;
-						source = this._getPropertyFromIndex(source, this._pathArray, 0, sourceArrayLength - 2);
-						if ((source !== null) && (typeof (source) !== "undefined")) {
-							var name = this._pathArray[sourceArrayLength - 1],
-                            isElement = Sys.UI.DomElement.isDomElement(source);
-							if (isElement) {
-								target = Sys.UI.Template._checkAttribute(name, target);
-								if (name === "innerHTML") {
-									Sys.Application._clearContent(source);
+						if (this._pathArray) {
+							var sourceArrayLength = this._pathArray.length;
+							source = this._getPropertyFromIndex(source, this._pathArray, 0, sourceArrayLength - 2);
+							if ((source !== null) && (typeof (source) !== "undefined")) {
+								var name = this._pathArray[sourceArrayLength - 1],
+								isElement = Sys.UI.DomElement.isDomElement(source);
+								if (isElement) {
+									target = Sys.UI.Template._checkAttribute(name, target);
+									if (name === "innerHTML") {
+										Sys.Application._clearContent(source);
+									}
 								}
-							}
-							Sys.Observer._setValue(source, name, target);
-							if (target && isElement && this._isChecked(source, name)) {
-								var a = document.createAttribute(name);
-								a.nodeValue = name;
-								source.setAttributeNode(a);
+								Sys.Observer._setValue(source, name, target);
+								if (target && isElement && this._isChecked(source, name)) {
+									var a = document.createAttribute(name);
+									a.nodeValue = name;
+									source.setAttributeNode(a);
+								}
 							}
 						}
 					}
@@ -2095,7 +2602,7 @@
 					this._updateSource = false;
 				}
 			}
-			if (!force) {
+			if (!force && !link) {
 				this._watchObject(this.get_target());
 			}
 		}
@@ -2138,6 +2645,7 @@
 			_forget: Sys$Binding$_forget,
 			_resolveFunction: Sys$Binding$_resolveFunction,
 			update: Sys$Binding$update,
+			link: Sys$Binding$link,
 			_notSet: Sys$Binding$_notSet,
 			initialize: Sys$Binding$initialize,
 			_doInitialize: Sys$Binding$_doInitialize,
@@ -2603,7 +3111,7 @@ false);
 			}
 			var data = this.get_viewData();
 			if ((selectedIndex !== -1) && (selectedIndex < data.length) &&
-            (data[selectedIndex] === oldSelected)) {
+			(data[selectedIndex] === oldSelected)) {
 				return;
 			}
 			for (var i = 0, l = changes.length; i < l; i++) {
@@ -2672,6 +3180,12 @@ false);
 			}
 			return template;
 		}
+		function Sys$UI$DataView$_setTemplate(value) {
+			if (this._dvTemplate) {
+				throw Error.invalidOperation(Sys.UI.TemplatesRes.templateAlreadyDefined);
+			}
+			this._dvTemplate = value;
+		}
 		function Sys$UI$DataView$_getTemplate() {
 			if (this._dvTemplate) return this._dvTemplate;
 			var template = this.get_itemTemplate();
@@ -2703,7 +3217,12 @@ false);
 			this._stale = false;
 			this._dirty = true;
 			if (this._isActive()) {
-				this.refresh();
+				if (this.get_isLinkPending()) {
+					this.link();
+				}
+				else {
+					this.refresh();
+				}
 				this.raisePropertyChanged("data");
 			}
 			else {
@@ -2712,7 +3231,7 @@ false);
 		}
 		function Sys$UI$DataView$_resetSelectedIndex() {
 			var data = this.get_viewData(), initialSelectedIndex = this.get_initialSelectedIndex(),
-            selectedIndex = this.get_selectedIndex();
+			selectedIndex = this.get_selectedIndex();
 			if (!(data instanceof Array) || (initialSelectedIndex >= data.length)) {
 				if (selectedIndex !== -1) {
 					this.set_selectedIndex(-1);
@@ -2856,6 +3375,7 @@ false);
 					var child = startNode || container.firstChild, nextChild;
 					while (child) {
 						nextChild = child === endNode ? null : child.nextSibling;
+						Sys.Application.disposeElement(child, false);
 						container.removeChild(child);
 						child = nextChild;
 					}
@@ -2883,7 +3403,7 @@ false);
 			var i, len;
 			for (i = 0, len = placeholders.length; i < len; i++) {
 				var ph = placeholders[i],
-                container = ph ? ph.parentNode : this.get_element();
+				container = ph ? ph.parentNode : this.get_element();
 				this._clearContainer(container, ph);
 			}
 			for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
@@ -2910,14 +3430,17 @@ false);
 			}
 			return true;
 		}
+		function Sys$UI$DataView$_generatesContext() {
+			return true;
+		}
 		function Sys$UI$DataView$refresh(start, count) {
 			/// <summary locid="M:J#Sys.UI.DataView.refresh" />
 			if (!this._setData) return;
 			var collectionChange = this._changing;
 			this._changing = false;
 			var data = this.get_data(),
-			pctx = this.get_templateContext(),
-            renderArgs = new Sys.Data.DataEventArgs(data);
+				pctx = this.get_templateContext(),
+				renderArgs = new Sys.Data.DataEventArgs(data);
 			renderArgs._itemTemplate = this._getTemplate();
 			renderArgs._placeholder = Sys.UI.DomElement._ensureGet(this.get_itemPlaceholder(), pctx, "itemPlaceholder");
 			this.onRendering(renderArgs);
@@ -2929,8 +3452,9 @@ false);
 			var template = this._ensureTemplate(renderArgs._itemTemplate);
 			this._dirty = false;
 			var ph = Sys.UI.DomElement._ensureGet(renderArgs._placeholder, pctx, "itemPlaceholder"),
-			element = this.get_element(),
-			result, itemTemplate, args;
+				element = this.get_element(),
+				result, itemTemplate, args,
+				contentTemplate = this._contentTemplate;
 			if (this._placeholders && arguments.length === 0) {
 				this._clearContainers(this._placeholders);
 			}
@@ -3021,7 +3545,7 @@ false);
 				}
 				lastPh = currentPh;
 				if (itemTemplate) {
-					result = itemTemplate.instantiateIn(container, data, item, i, currentPh || insertBefore, pctx);
+					result = itemTemplate.instantiateIn(container, data, item, i, currentPh || insertBefore, pctx, contentTemplate);
 				}
 				else {
 					result = merge(new Sys.UI.TemplateContext(), {
@@ -3122,15 +3646,20 @@ false);
 			}
 			this._swapData(this._data, null);
 			this._currentData = this._lastData = this._placeholders = this._containers = this._placeholder =
-        this._contexts = this._parentContext = this._dvTemplate = this._request = this._dataProvider =
-        this._wsp = this._wspClass = this._provider = this._data = this._fetchParameters = this._query = null;
+		this._contexts = this._parentContext = this._dvTemplate = this._request = this._dataProvider =
+		this._wsp = this._wspClass = this._provider = this._data = this._fetchParameters = this._query = null;
 			Sys.UI.DataView.callBaseMethod(this, "dispose")
 		}
 		function Sys$UI$DataView$initialize() {
 			/// <summary locid="M:J#initialize" />
 			Sys.UI.DataView.callBaseMethod(this, "initialize");
-			this.refresh();
-			this.updated();
+			if (this.get_isLinkPending()) {
+				this.link();
+			}
+			else {
+				this.refresh();
+				this.updated();
+			}
 		}
 		function Sys$UI$DataView$fetchData(succeededCallback, failedCallback, mergeOption, userContext) {
 			/// <summary locid="M:J#fetchData" />
@@ -3164,12 +3693,12 @@ false);
 				this.abortFetch();
 			}
 			var dataProvider = this._dataProvider,
-            wsp = this._wsp,
-            wspc = this._wspClass,
-            query = this.get_fetchOperation(),
-            parameters = this.get_fetchParameters() || null,
-            httpVerb = this.get_httpVerb() || "POST",
-            timeout = this.get_timeout() || 0;
+			wsp = this._wsp,
+			wspc = this._wspClass,
+			query = this.get_fetchOperation(),
+			parameters = this.get_fetchParameters() || null,
+			httpVerb = this.get_httpVerb() || "POST",
+			timeout = this.get_timeout() || 0;
 			if (typeof (mergeOption) === "undefined") {
 				mergeOption = null;
 			}
@@ -3191,7 +3720,7 @@ false);
 				Type._checkDependency("MicrosoftAjaxWebServices.js", "Sys.UI.DataView.fetchData");
 				if (wspc) {
 					request = Sys.UI.DataView._fetchWSP(null, wspc.get_path(), query, parameters, httpVerb, onSuccess,
-                                                         onFail, timeout || wspc.get_timeout());
+														 onFail, timeout || wspc.get_timeout());
 				}
 				else {
 					request = Sys.UI.DataView._fetchWSP(null, this._provider, query, parameters, httpVerb, onSuccess, onFail, timeout);
@@ -3226,6 +3755,30 @@ false);
 				this.raisePropertyChanged("");
 				this._changed = false;
 			}
+		}
+		function Sys$UI$DataView$link() {
+			/// <summary locid="M:J#Sys.UI.DataView.link" />
+
+			if (!this.hasOwnProperty("_data")) {
+				// Exit early if the data has not yet been set.
+				return;
+			}
+
+			// Make sure that the control doesn't appear that it needs to re-render
+			this._changed = false;
+			this._dirty = false;
+
+			// Would normally be set up by "refresh"
+			this._contexts = [];
+			this._placeholders = [null];
+			this._containers = [this.get_element()];
+
+			Sys.Application._linkContexts(this.get_templateContext(), this, this.get_data(), this.get_element(), null, this._contentTemplate);
+
+			// Would normally be called at the end of "refresh"
+			this._initializeResults();
+
+			Sys.UI.DataView.callBaseMethod(this, "link");
 		}
 		Sys.UI.DataView.prototype = {
 			_autoFetch: false,
@@ -3304,6 +3857,7 @@ false);
 			_raiseSelectedData: Sys$UI$DataView$_raiseSelectedData,
 			_raiseSucceeded: Sys$UI$DataView$_raiseSucceeded,
 			_ensureTemplate: Sys$UI$DataView$_ensureTemplate,
+			_setTemplate: Sys$UI$DataView$_setTemplate,
 			_getTemplate: Sys$UI$DataView$_getTemplate,
 			_loadData: Sys$UI$DataView$_loadData,
 			_resetSelectedIndex: Sys$UI$DataView$_resetSelectedIndex,
@@ -3322,6 +3876,7 @@ false);
 			_clearContainer: Sys$UI$DataView$_clearContainer,
 			_clearContainers: Sys$UI$DataView$_clearContainers,
 			_isAlone: Sys$UI$DataView$_isAlone,
+			_generatesContext: Sys$UI$DataView$_generatesContext,
 			refresh: Sys$UI$DataView$refresh,
 			_swapData: Sys$UI$DataView$_swapData,
 			_validateIndexInput: Sys$UI$DataView$_validateIndexInput,
@@ -3331,9 +3886,10 @@ false);
 			onCommand: Sys$UI$DataView$onCommand,
 			onItemRendering: Sys$UI$DataView$onItemRendering,
 			onItemRendered: Sys$UI$DataView$onItemRendered,
-			updated: Sys$UI$DataView$updated
+			updated: Sys$UI$DataView$updated,
+			link: Sys$UI$DataView$link
 		}
-		Sys.UI.DataView.registerClass("Sys.UI.DataView", Sys.UI.Control, Sys.UI.ITemplateContextConsumer);
+		Sys.UI.DataView.registerClass("Sys.UI.DataView", Sys.UI.Control, Sys.UI.ITemplateContextConsumer, Sys.UI.IContentTemplateConsumer);
 		Sys.registerComponent(Sys.UI.DataView);
 
 		Sys.UI.DataView._fetchWSP = function Sys$UI$DataView$_fetchWSP(dataContext, uri, operation, parameters, httpVerb, succeededCallback, failedCallback, timeout, context) {
@@ -3341,9 +3897,9 @@ false);
 				throw Error.invalidOperation(Sys.UI.TemplatesRes.requiredUri);
 			}
 			return Sys.Net.WebServiceProxy.invoke(
-        uri, operation,
-        httpVerb === "GET", parameters, succeededCallback,
-        failedCallback, context, timeout);
+		uri, operation,
+		httpVerb === "GET", parameters, succeededCallback,
+		failedCallback, context, timeout);
 		}
 		Sys.UI.DataViewItemEventArgs = function Sys$UI$DataViewItemEventArgs(dataItem, itemContext) {
 			/// <summary locid="M:J#Sys.UI.DataViewItemEventArgs.#ctor" />
@@ -3411,10 +3967,12 @@ Sys.UI.TemplatesRes={
 'invalidAttach':'Invalid attribute \'{0}\', the type \'{1}\' is not a registered namespace.',
 'cannotActivate':'Could not activate element with id \'{0}\', the element could not be found.',
 'misplacedTemplate':'DataView item template must not be a child element of the DataView.',
+'templateAlreadyDefined': 'DataView template is already defined.',
 'functionNotFound':'A function with the name \'{0}\' could not be found.',
 'bindingPropertyNotSet':'Binding \'{0}\' must be set prior to initialize.',
 'invalidSelectedIndexValue':'Value must be a Number or a String that can be converted to a Number.',
 'mustSetInputElementsExplicitly':'Input elements \'type\' and \'name\' attributes must be explicitly set.',
 'invalidTypeNamespace':'Invalid type namespace declaration, \'{0}\' is not a valid type.',
-'cannotFindMarkupExtension':'A markup extension with the name \'{0}\' could not be found.'
+'cannotFindMarkupExtension':'A markup extension with the name \'{0}\' could not be found.',
+'invalidSysContentTemplate': 'The sys:content-template attribute must be used on or within an control that implements Sys.UI.IContentTemplateConsumer.'
 };

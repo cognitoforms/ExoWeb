@@ -1,5 +1,5 @@
 var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
-	throw "Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);";
+	throw new Error("Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);");
 };
 
 function roundtripProvider(type, id, paths, changes, onSuccess, onFailure, thisPtr) {

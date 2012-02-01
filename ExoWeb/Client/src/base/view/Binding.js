@@ -5,7 +5,18 @@ function Binding(templateContext, source, sourcePath, target, targetPath, option
 	this._source = source;
 	this._sourcePath = sourcePath;
 	this._target = target;
-	this._targetPath = targetPath;
+
+	var pathLower = targetPath ? targetPath.toLowerCase() : targetPath;
+	if (pathLower === "innertext") {
+		this._targetPath = "innerText";
+	}
+	else if (pathLower === "innerhtml") {
+		this._targetPath = "innerHTML";
+	}
+	else {
+		this._targetPath = targetPath;
+	}
+
 	this._options = options || {};
 
 	this._isTargetElement = Sys.UI.DomElement.isDomElement(target);
@@ -96,8 +107,8 @@ Binding.mixin({
 
 	_format: function(value) {
 		// attempt to format the source value used the named format
-		if (value && this._options.format && value.constructor.formats && value.constructor.formats[this._options.format]) {
-			return value.constructor.formats[this._options.format].convert(value);
+		if (value && this._options.format) {
+			return getFormat(value.constructor, this._options.format).convert(value);
 		}
 
 		return value;

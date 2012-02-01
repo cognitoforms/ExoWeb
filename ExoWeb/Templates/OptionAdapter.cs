@@ -8,58 +8,98 @@ namespace ExoWeb.Templates
 {
 	public class OptionAdapter : IBindable
 	{
-		internal OptionAdapter(Adapter adapter, GraphInstance instance)
+		internal OptionAdapter(Adapter adapter, object value)
 		{
 			this.Parent = adapter;
-			this.RawValue = instance;
+			this.RawValue = value;
 		}
 
+		#region Properties
+		/// <summary>
+		/// The option's parent adapter
+		/// </summary>
 		public Adapter Parent { get; private set; }
 
-		public GraphInstance RawValue { get; private set; }
+		/// <summary>
+		/// The underlying value that the option represents
+		/// </summary>
+		public object RawValue { get; private set; }
 
-		public object DisplayValue
+		/// <summary>
+		/// The display (human-readable) representation of the option
+		/// </summary>
+		string DisplayValue
 		{
 			get
 			{
-				return Adapter.GetDisplayFormat(RawValue, null);
+				string value;
+				Adapter.TryGetDisplayValue(Parent.Property, Parent.Format, RawValue, out value);
+				return value;
 			}
 		}
 
-		public object SystemValue
+		/// <summary>
+		/// The system (non-human-readable) representation of the option
+		/// </summary>
+		string SystemValue
 		{
 			get
 			{
-				return Parent.GetSystemFormat(RawValue);
+				string systemValue;
+				Adapter.TryGetSystemValue(RawValue, out systemValue);
+				return systemValue;
 			}
 		}
 
+		/// <summary>
+		/// Whether or not this object is a currently selected value
+		/// </summary>
 		public bool Selected
 		{
 			get
 			{
 				return Parent.IsList ?
-					((IEnumerable<GraphInstance>)Parent.RawValue).Contains(RawValue) :
+					((IEnumerable<GraphInstance>)Parent.RawValue).Contains((GraphInstance)RawValue) :
 					RawValue.Equals(Parent.RawValue);
 			}
 		}
+		#endregion
 
-		object IBindable.Evaluate(string expression)
+		#region Jurassic Interface
+		BindingResult IBindable.Evaluate(string expression)
 		{
+			bool isValid = false;
+			object value = null;
+
 			switch (expression)
 			{
 				case "parent":
-					return Parent;
+					isValid = true;
+					value = Parent;
+					break;
 				case "selected":
-					return Selected;
+					isValid = true;
+					value = Selected;
+					break;
 				case "rawValue":
-					return RawValue;
+					isValid = true;
+					value = RawValue;
+					break;
 				case "displayValue":
-					return DisplayValue;
+					string displayValue;
+					isValid = Adapter.TryGetDisplayValue(Parent.Property, Parent.Format, RawValue, out displayValue);
+					value = displayValue;
+					break;
 				case "systemValue":
-					return SystemValue;
+					string systemValue;
+					if (!(isValid = Adapter.TryGetSystemValue(RawValue, out systemValue)))
+						throw new ApplicationException("Cannot obtain a system value since the given object is invalid for the property");
+					value = systemValue;
+					break;
 			}
-			return null;
+
+			return new BindingResult() { IsValid = isValid, Value = value };
 		}
+		#endregion
 	}
 }

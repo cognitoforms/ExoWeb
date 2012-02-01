@@ -14,6 +14,23 @@ namespace ExoWeb.Templates.JavaScript
 		internal AdapterWrapper(ScriptEngine engine, Adapter templateAdapter)
 			: base(templateAdapter, engine, engine.Object.InstancePrototype)
 		{ }
+
+		protected override object GetMissingPropertyValue(string jsPropertyName)
+		{
+			if (jsPropertyName.StartsWith("get_"))
+			{
+				var prop = jsPropertyName.Substring(4);
+				if (RealObject.HasProperty(prop))
+				{
+					return LazyDefineMethod<string>(jsPropertyName, adapter =>
+					{
+						return adapter.GetPropertyValue(prop);
+					});
+				}
+			}
+
+			return base.GetMissingPropertyValue(jsPropertyName);
+		}
 	}
 }
 

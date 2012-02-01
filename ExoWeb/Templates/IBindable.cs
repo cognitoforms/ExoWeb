@@ -7,6 +7,6 @@ namespace ExoWeb.Templates
 {
 	public interface IBindable
 	{
-		object Evaluate(string expression);
+		BindingResult Evaluate(string expression);
 	}
 }

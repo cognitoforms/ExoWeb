@@ -1,40 +1,40 @@
 function evalPath(obj, path, nullValue, undefinedValue) {
-	var steps = path.split(".");
+	var i, name, steps = path.split("."), source, value = obj;
 
-	if (obj === null) {
+	if (value === null) {
 		return arguments.length >= 3 ? nullValue : null;
 	}
-	if (obj === undefined) {
+	if (value === undefined) {
 		return arguments.length >= 4 ? undefinedValue : undefined;
 	}
 
-	for (var i = 0; i < steps.length; ++i) {
-		var name = steps[i];
-		obj = ExoWeb.getValue(obj, name);
+	for (i = 0; i < steps.length; ++i) {
+		name = steps[i];
+		source = value;
+		value = ExoWeb.getValue(source, name);
 
-		if (obj === null) {
+		if (value === null) {
 			return arguments.length >= 3 ? nullValue : null;
 		}
-		if (obj === undefined) {
+		if (value === undefined) {
 			return arguments.length >= 4 ? undefinedValue : undefined;
 		}
 	}
 
-	if (obj === null) {
+	if (value === null) {
 		return arguments.length >= 3 ? nullValue : null;
 	}
-	if (obj === undefined) {
+	if (value === undefined) {
 		return arguments.length >= 4 ? undefinedValue : undefined;
 	}
 
-	return obj;
+	return value;
 }
 
 ExoWeb.evalPath = evalPath;
 
 function getLastTarget(target, propertyPath) {
-	var path = propertyPath;
-	var finalTarget = target;
+	var i, path = propertyPath, finalTarget = target;
 
 	if (path.constructor == String) {
 		path = path.split(".");
@@ -43,7 +43,7 @@ function getLastTarget(target, propertyPath) {
 		ExoWeb.trace.throwAndLog(["$lastTarget", "core"], "invalid parameter propertyPath");
 	}
 
-	for (var i = 0; i < path.length - 1; i++) {
+	for (i = 0; i < path.length - 1; i++) {
 		if (finalTarget) {
 			finalTarget = ExoWeb.getValue(finalTarget, path[i]);
 		}
@@ -87,32 +87,6 @@ function getValue(target, property) {
 
 ExoWeb.getValue = getValue;
 
-var ctorProviders = ExoWeb._ctorProviders = {};
-
-function addCtorProvider(type, provider) {
-	var key;
-
-	// given type is a string, then use it as the dictionary key
-	if (ExoWeb.isType(type, String)) {
-		key = type;
-	}
-	// given type is a function, then parse the name
-	else if (ExoWeb.isType(type, Function)) {
-		key = parseFunctionName(type);
-	}
-	/* TODO
-	else {
-	}*/
-
-	/* TODO
-	if (!ExoWeb.isType(provider, Function)) {
-	}*/
-
-	if (key !== undefined && key !== null) {
-		ctorProviders[key] = provider;
-	}
-}
-
 function getCtor(type) {
 
 	// Only return a value if the argument is defined
@@ -132,17 +106,6 @@ function getCtor(type) {
 
 				// evaluate the path
 				ctor = evalPath(window, type);
-			}
-			else {
-				// Look for a registered provider for the argument's type.
-				// TODO:  account for inheritance when determining provider?
-				var providerKey = parseFunctionName(type.constructor);
-				var provider = ctorProviders[providerKey];
-
-				if (provider !== undefined && provider !== null) {
-					// invoke the provider to obtain the constructor
-					ctor = provider(type);
-				}
 			}
 
 			// warn (and implicitly return undefined) if the result is not a javascript function
@@ -177,7 +140,8 @@ function isType(val, type) {
 ExoWeb.isType = isType;
 
 function eachProp(obj, callback, thisPtr) {
-	for (var prop in obj) {
+	var prop;
+	for (prop in obj) {
 		if (obj.hasOwnProperty(prop)) {
 			if (callback.apply(thisPtr || this, [prop, obj[prop]]) === false) {
 				break;
@@ -199,42 +163,27 @@ function objectToArray(obj) {
 ExoWeb.objectToArray = objectToArray;
 
 function $format(str, values) {
-	if (!values) return str;
+	var source = null, arrayMode = false;
 
-	var source = null,
-		arrayMode = false;
+	if (!values) return str;
 
 	if (arguments.length > 2) {
 		// use arguments passed to function as array
 		source = Array.prototype.slice.call(arguments, 1);
-		arrayMode = true;
 	}
 	else {
-		source = values;
-		if (values && values instanceof Array) {
-			// if the values are already an array there is no need to transform
-			// them into an array later on, in fact this would be unexpected behavior
-			arrayMode = true;
-		}
+		source = !(values instanceof Array) ? [values] : values
 	}
 
-	return str.replace(/\{([a-z0-9_.]+)\}/ig, function $format$token(match, expr) {
-		// Attempt to determine that single arg was passed, but
-		// "arguments mode" was intended based on the format string.
-		if (arrayMode === false && expr === "0") {
-			var allOneIndex = true;
-			str.replace(/\{([a-z0-9_.]+)\}/ig, function $format$token(match, expr) {
-				if (expr !== "0") {
-					allOneIndex = false;
-				}
-			});
-			if (allOneIndex === true) {
-				source = [values];
-				arrayMode = true;
-			}
+	return str.replace(/\{([0-9]+)\}/ig, function $format$token(match, indexStr) {
+		var index = parseInt(indexStr, 10);
+		var result = source[index];
+
+		if (result !== null && result !== undefined && result.constructor !== String) {
+			result = result.toString();
 		}
 
-		return evalPath(source, expr, "", match).toString();
+		return result;
 	});
 }
 

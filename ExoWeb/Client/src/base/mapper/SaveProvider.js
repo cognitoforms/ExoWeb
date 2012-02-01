@@ -1,5 +1,5 @@
 var saveProviderFn = function saveProviderFn(root, changes, onSuccess, onFailure) {
-	throw "Save provider has not been implemented.  Call ExoWeb.Mapper.setSaveProvider(fn);";
+	throw new Error("Save provider has not been implemented.  Call ExoWeb.Mapper.setSaveProvider(fn);");
 };
 
 function saveProvider(root, changes, onSuccess, onFailure, thisPtr) {

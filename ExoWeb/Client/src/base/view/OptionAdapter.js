@@ -9,23 +9,25 @@ function OptionAdapter(parent, obj) {
 OptionAdapter.prototype = {
 	// Internal book-keeping and setup methods
 	///////////////////////////////////////////////////////////////////////
-	_loadForFormatAndRaiseChange: function OptionAdapter$_loadForFormatAndRaiseChange(val, fmtName) {
+	_loadForFormatAndRaiseChange: function OptionAdapter$_loadForFormatAndRaiseChange(val) {
 		if (val === undefined || val === null) {
-			Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
+			Sys.Observer.raisePropertyChanged(this, "displayValue");
+			Sys.Observer.raisePropertyChanged(this, "systemValue");
 			return;
 		}
 
-		var signal = new ExoWeb.Signal("OptionAdapter." + fmtName + "Value");
-		this._parent._doForFormatPaths(val, fmtName, function(path) {
+		var signal = new ExoWeb.Signal("OptionAdapter.displayValue");
+		this._parent._doForFormatPaths(val, function (path) {
 			ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 		}, this);
-		signal.waitForAll(function() {
-			Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
+		signal.waitForAll(function () {
+			Sys.Observer.raisePropertyChanged(this, "displayValue");
+			Sys.Observer.raisePropertyChanged(this, "systemValue");
 		}, this);
 	},
-	_subscribeToFormatChanges: function OptionAdapter$_subscribeToFormatChanges(val, fmtName) {
-		this._parent._doForFormatPaths(val, fmtName, function(path) {
-			Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.bind(this).prependArguments(val, fmtName));
+	_subscribeToFormatChanges: function OptionAdapter$_subscribeToFormatChanges(val) {
+		this._parent._doForFormatPaths(val, function (path) {
+			Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.bind(this).prependArguments(val));
 		}, this);
 	},
 	_ensureObservable: function OptionAdapter$_ensureObservable() {
@@ -33,8 +35,7 @@ OptionAdapter.prototype = {
 			Sys.Observer.makeObservable(this);
 
 			// set up initial watching of format paths
-			this._subscribeToFormatChanges(this._obj, "system");
-			this._subscribeToFormatChanges(this._obj, "display");
+			this._subscribeToFormatChanges(this._obj);
 
 			this._observable = true;
 		}
@@ -49,12 +50,16 @@ OptionAdapter.prototype = {
 		return this._obj;
 	},
 	get_displayValue: function OptionAdapter$get_displayValue() {
-		var format = this._parent.get_displayFormat();
+		var format = this._parent._format;
 		return format ? format.convert(this._obj) : this._obj;
 	},
 	get_systemValue: function OptionAdapter$get_systemValue() {
-		var format = this._parent.get_systemFormat();
-		return format ? format.convert(this._obj) : this._obj;
+		if (this._obj === null || this._obj === undefined) {
+			return "";
+		}
+		else {
+			return this._parent.get_isEntity() ? Entity.toIdString(this._obj) : this._obj.toString();
+		}
 	},
 	get_selected: function OptionAdapter$get_selected() {
 		return this._parent.get_selected(this._obj);

@@ -6,7 +6,7 @@ function randomInteger(min, max) {
 	}
 	else if (arguments.length === 1) {
 		if (!isInteger(min)) {
-			throw "Minimum argument must be an integer.";
+			throw new Error("Minimum argument must be an integer.");
 		}
 
 		if (min < 0) {
@@ -18,13 +18,13 @@ function randomInteger(min, max) {
 		}
 	}
 	else if (!isInteger(min)) {
-		throw "Minimum argument must be an integer.";
+		throw new Error("Minimum argument must be an integer.");
 	}
 	else if (!isInteger(max)) {
-		throw "Maximum argument must be an integer.";
+		throw new Error("Maximum argument must be an integer.");
 	}
 	else if (min >= max) {
-		throw "Minimum argument must be less than maximum argument.";
+		throw new Error("Minimum argument must be less than maximum argument.");
 	}
 
 	return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -34,10 +34,10 @@ exports.randomInteger = randomInteger;
 
 function randomText(len) {
 	if (arguments.length === 0) {
-		throw "Length argument is required.";
+		throw new Error("Length argument is required.");
 	}
 	else if (!isNatural(len)) {
-		throw "Length argument must be a natural number.";
+		throw new Error("Length argument must be a natural number.");
 	}
 
 	var result = "";

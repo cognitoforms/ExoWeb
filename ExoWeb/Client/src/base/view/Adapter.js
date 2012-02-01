@@ -1,4 +1,4 @@
-function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
+function Adapter(target, propertyPath, format, options) {
 	Adapter.initializeBase(this);
 
 	this._target = target instanceof OptionAdapter ? target.get_rawValue() : target;
@@ -9,7 +9,7 @@ function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
 
 	if (options.optionsTransform) {
 		if (options.optionsTransform.indexOf("groupBy(") >= 0) {
-			ExoWeb.trace.throwAndLog(["@", "markupExt"], "optionsTransform does not support grouping");
+			ExoWeb.trace.throwAndLog(["@", "markupExt"], "The optionsTransform property does not support grouping");
 		}
 		this._optionsTransform = options.optionsTransform;
 	}
@@ -18,12 +18,11 @@ function Adapter(target, propertyPath, systemFormat, displayFormat, options) {
 		this._allowedValuesMayBeNull = options.allowedValuesMayBeNull;
 	}
 
-	// Track state for system and display formats, including the format and bad value.
-	this._systemState = { FormatName: systemFormat, Format: undefined, BadValue: undefined };
-	this._displayState = { FormatName: displayFormat, Format: undefined, BadValue: undefined };
-
 	// Initialize the property chain.
 	this._initPropertyChain();
+
+	// Determine the display format to use
+	this._format = format ? getFormat(this._propertyChain.get_jstype(), format) : this._propertyChain.get_format();
 
 	// Load the object this adapter is bound to and then load allowed values.
 	ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath,
@@ -79,61 +78,45 @@ Adapter.prototype = {
 		// get the property chain for this adapter starting at the source object
 		this._propertyChain = sourceObject.meta.property(this._propertyPath);
 		if (!this._propertyChain) {
-			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{p}\" could not be found.", { p: this._propertyPath });
+			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{0}\" could not be found.", this._propertyPath);
 		}
 
-		// If the target is an adapter, prepend it's property chain.  Can't simply concatenate paths
-		// since the child path could be instance-dependent (i.e. the paren't value is a subtype).
+		// If the target is an adapter, prepend its property chain.  Cannot simply concatenate paths
+		// since the child path could be instance-dependent (i.e. the parents value is a subtype).
 		if (this._target instanceof Adapter) {
 			this._propertyChain.prepend(this._target.get_propertyChain());
 			this._parentAdapter = this._target;
 			this._target = this._target.get_target();
 		}
 	},
-	_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val, fmtName) {
-		var signal = new ExoWeb.Signal("Adapter." + fmtName + "Value");
-		if (val !== undefined && val !== null) {
-			this._doForFormatPaths(val, fmtName, function (path) {
-				ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
-			});
-		}
+	_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val) {
+		var signal = new ExoWeb.Signal("Adapter.displayValue");
+		this._doForFormatPaths(val, function (path) {
+			ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
+		});
 		signal.waitForAll(function () {
-			Sys.Observer.raisePropertyChanged(this, fmtName + "Value");
+			Sys.Observer.raisePropertyChanged(this, "displayValue");
+			Sys.Observer.raisePropertyChanged(this, "systemValue");
 		}, this);
 	},
-	_doForFormatPaths: function Adapter$_doForFormatPaths(val, fmtName, callback, thisPtr) {
-		if (val === undefined || val === null) {
+	_doForFormatPaths: function Adapter$_doForFormatPaths(val, callback, thisPtr) {
+		if (val === undefined || val === null || !this._format) {
 			return;
 		}
 
-		var fmtMethod = this["get_" + fmtName + "Format"];
-		var fmt = fmtMethod.call(this);
-
 		if (fmt) {
-			var paths;
-
-			if (fmtName === "display" && (this._propertyChain.get_isEntityType() || this._propertyChain.get_isEntityListType()) && fmt === ExoWeb.Model.Entity.formats.$display) {
-				var jstype = this._propertyChain.get_jstype();
-				paths = ["Name", "Label", "Text"].filter(function(prop) {
-					return jstype.hasOwnProperty("$" + prop);
-				});
-			}
-			else {
-				paths = fmt.getPaths();
-			}
-
-			Array.forEach(paths, callback, thisPtr || this);
+			Array.forEach(this._format.getPaths(), callback, thisPtr || this);
 		}
 	},
-	_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val, fmtName) {
-		this._doForFormatPaths(val, fmtName, function (path) {
-			var fn = this._formatSubscribers[fmtName + "|" + path];
+	_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val) {
+		this._doForFormatPaths(val, function (path) {
+			var fn = this._formatSubscribers[path];
 			Sys.Observer.removePathChanged(val, path, fn);
 		});
 	},
-	_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val, fmtName) {
-		this._doForFormatPaths(val, fmtName, function (path) {
-			var fn = this._formatSubscribers[fmtName + "|" + path] = this._loadForFormatAndRaiseChange.bind(this).prependArguments(val, fmtName);
+	_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val) {
+		this._doForFormatPaths(val, function (path) {
+			var fn = this._formatSubscribers[path] = this._loadForFormatAndRaiseChange.bind(this).prependArguments(val);
 			Sys.Observer.addPathChanged(val, path, fn);
 		});
 	},
@@ -151,17 +134,13 @@ Adapter.prototype = {
 			// set up initial watching of format paths
 			if (this._propertyChain.lastTarget(this._target)) {
 				var rawValue = this._propertyChain.value(this._target);
-				this._subscribeToFormatChanges(rawValue, "system");
-				this._subscribeToFormatChanges(rawValue, "display");
+				this._subscribeToFormatChanges(rawValue);
 			}
 
 			// when the value changes resubscribe
 			this._propertyChain.addChanged(function (sender, args) {
-				_this._unsubscribeFromFormatChanges(args.oldValue, "system");
-				_this._unsubscribeFromFormatChanges(args.oldValue, "display");
-
-				_this._subscribeToFormatChanges(args.newValue, "system");
-				_this._subscribeToFormatChanges(args.newValue, "display");
+				_this._unsubscribeFromFormatChanges(args.oldValue);
+				_this._subscribeToFormatChanges(args.newValue);
 			}, this._target);
 
 			this._observable = true;
@@ -180,11 +159,8 @@ Adapter.prototype = {
 			Sys.Observer.raisePropertyChanged(_this, "rawValue");
 		});
 
-		// raise system value changed event
-		this._loadForFormatAndRaiseChange(rawValue, "system");
-
-		// raise display value changed event
-		this._loadForFormatAndRaiseChange(rawValue, "display");
+		// raise value changed event
+		this._loadForFormatAndRaiseChange(rawValue);
 
 		// Raise change on options representing the old and new value in the event that the property 
 		// has be changed by non-UI code or another UI component.  This will result in double raising 
@@ -224,54 +200,14 @@ Adapter.prototype = {
 		Sys.Observer.raisePropertyChanged(this, "allowedValues");
 		Sys.Observer.raisePropertyChanged(this, "options");
 	},
-	_getFormattedValue: function Adapter$_getFormattedValue(formatName) {
-		this._ensureObservable();
-
-		var state = this["_" + formatName + "State"];
-
-		if (state) {
-			// if a "bad value" exists then return it rather than the actual value
-			if (state.BadValue !== undefined) {
-				return state.BadValue;
-			}
-
-			var rawValue = this.get_rawValue();
-
-			var formatMethod = this["get_" + formatName + "Format"];
-			if (formatMethod) {
-				var format = formatMethod.call(this);
-				if (format) {
-					if (rawValue instanceof Array) {
-						return rawValue.map(function (value) { return format.convert(value); });
-					}
-					else {
-						return format.convert(rawValue);
-					}
-				}
-				else {
-					return rawValue;
-				}
-			}
-		}
-	},
-	_setFormattedValue: function Adapter$_setFormattedValue(formatName, value) {
-		var state = this["_" + formatName + "State"];
-
-		var format;
-		var formatMethod = this["get_" + formatName + "Format"];
-		if (formatMethod) {
-			format = formatMethod.call(this);
-		}
-
-		var converted = format ? format.convertBack(value) : value;
-
+	_setValue: function Adapter$_setValue(value) {
 		var prop = this._propertyChain;
 		var meta = prop.lastTarget(this._target).meta;
 
 		meta.clearConditions(this);
 
-		if (converted instanceof ExoWeb.Model.FormatError) {
-			this._condition = converted.createCondition(this, prop.lastProperty());
+		if (value instanceof ExoWeb.Model.FormatError) {
+			this._condition = value.createCondition(this, prop.lastProperty());
 
 			meta.conditionIf(this._condition, true);
 
@@ -282,15 +218,15 @@ Adapter.prototype = {
 			// run the rules to preserve the order of conditions
 			else {
 				// store the "bad value" since the actual value will be different
-				state.BadValue = value;
+				this._badValue = value;
 				meta.executeRules(prop);
 			}
 		}
 		else {
-			var changed = prop.value(this._target) !== converted;
+			var changed = prop.value(this._target) !== value;
 
-			if (state.BadValue !== undefined) {
-				delete state.BadValue;
+			if (this._badValue !== undefined) {
+				delete this._badValue;
 				delete this._condition;
 
 				// force rules to run again in order to trigger validation events
@@ -299,7 +235,7 @@ Adapter.prototype = {
 				}
 			}
 
-			this.set_rawValue(converted, changed);
+			this.set_rawValue(value, changed);
 		}
 	},
 
@@ -371,8 +307,27 @@ Adapter.prototype = {
 
 		return false;
 	},
+	aspects: function Adapter$aspects() {
+		if (!this._aspects) {
+			this._aspects = {
+				"isList": this.get_isList(),
+				"isReference": this.get_isEntity() || this.get_isEntityList(),
+				"dataType": this.get_dataType()
+			};
+		}
+		return this._aspects;
+	},
 	get_isList: function Adapter$get_isList() {
 		return this._propertyChain.get_isList();
+	},
+	get_isEntity: function Adapter$get_isEntity() {
+		return this._propertyChain.get_isEntityType();
+	},
+	get_isEntityList: function Adapter$get_isEntityList() {
+		return this._propertyChain.get_isEntityListType();
+	},
+	get_isStatic: function Adapter$get_isStatic() {
+		return this._propertyChain.get_isStatic();
 	},
 	get_target: function Adapter$get_target() {
 		return this._target;
@@ -382,6 +337,12 @@ Adapter.prototype = {
 	},
 	get_propertyChain: function Adapter$get_propertyChain() {
 		return this._propertyChain;
+	},
+	get_format: function Adapter$get_format() {
+		return this._format;
+	},
+	get_dataType: function Adapter$get_dataType() {
+		return this._propertyChain.get_jstype();
 	},
 	get_label: function Adapter$get_label() {
 		// if no label is specified then use the property label
@@ -520,11 +481,10 @@ Adapter.prototype = {
 		}
 		else {
 			if (selected) {
-				var value = (this.get_systemFormat()) ? this.get_systemFormat().convert(obj) : obj;
-				this.set_systemValue(value);
+				this.set_rawValue(obj);
 			}
 			else {
-				this.set_systemValue(null);
+				this.set_rawValue(null);
 			}
 		}
 	},
@@ -550,45 +510,68 @@ Adapter.prototype = {
 			}
 		}
 	},
-	get_systemFormat: function Adapter$get_systemFormat() {
-		if (!this._systemState.Format) {
-			var jstype = this._propertyChain.get_jstype();
-
-			if (this._systemState.FormatName) {
-				this._systemState.Format = jstype.formats[this._systemState.FormatName];
+	get_systemValue: function Adapter$get_systemValue() {
+		var rawValue = this.get_rawValue();
+		if (this.get_isEntity()) {
+			return rawValue ? Entity.toIdString(rawValue) : "";
+		}
+		else if (this.isType(Boolean)) {
+			if (rawValue === true) {
+				return "true";
 			}
-			else if (!(this._systemState.Format = this._propertyChain.get_format())) {
-				this._systemState.Format = jstype.formats.$system || jstype.formats.$display;
+			else if (rawValue === false) {
+				return "false";
+			}
+			else {
+				return "";
 			}
 		}
-
-		return this._systemState.Format;
-	},
-	get_systemValue: function Adapter$get_systemValue() {
-		return this._getFormattedValue("system");
+		else {
+			ExoWeb.trace.logWarning(["@", "markupExt"], "Possible incorrect usage of systemValue for a type that is not supported");
+			return rawValue ? rawValue.toString() : "";
+		}
 	},
 	set_systemValue: function Adapter$set_systemValue(value) {
-		this._setFormattedValue("system", value);
-	},
-	get_displayFormat: function Adapter$get_displayFormat() {
-		if (!this._displayState.Format) {
-			var jstype = this._propertyChain.get_jstype();
-
-			if (this._displayState.FormatName) {
-				this._displayState.Format = jstype.formats[this._displayState.FormatName];
+		if (this.get_isEntity()) {
+			this._setValue(value ? Entity.fromIdString(value) : null);
+		}
+		else if (this.isType(Boolean)) {
+			if (value === "true") {
+				this._setValue(true);
 			}
-			else if (!(this._displayState.Format = this._propertyChain.get_format())) {
-				this._displayState.Format = jstype.formats.$display || jstype.formats.$system;
+			else if (value === "false") {
+				this._setValue(false);
+			}
+			else {
+				this._setValue(null);
 			}
 		}
-
-		return this._displayState.Format;
+		else {
+			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Cannot set systemValue property of Adapters for non-entity types.");
+		}
 	},
 	get_displayValue: function Adapter$get_displayValue() {
-		return this._getFormattedValue("display");
+		var rawValue = this.get_rawValue();
+		if (this._format) {
+			if (rawValue instanceof Array) {
+				return rawValue.map(function (value) { return this._format.convert(value); }, this).join(", ");
+			}
+			else {
+				return this._format.convert(rawValue);
+			}
+		}
+		else {
+			return rawValue;
+		}
 	},
 	set_displayValue: function Adapter$set_displayValue(value) {
-		this._setFormattedValue("display", value);
+		if (this.get_isEntity()) {
+			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Cannot set displayValue property of Adapters for entity types.");
+		}
+		else {
+			value = this._format ? this._format.convertBack(value) : value;
+			this._setValue(value);
+		}
 	},
 
 	// Used to register validating and validated events through the adapter as if binding directly to an Entity

@@ -1,36 +1,44 @@
 function Template(element) {
-	/// <summary>
+	/// <summary locid="M:J#ExoWeb.UI.Template.#ctor">
 	/// In addition to defining template markup, also defines rules that are used
 	/// to determine if it should be chosen as the template for a given element
 	/// based on a CSS selector as well as a javascript filter that is evaluated 
 	/// against the element in question.
 	/// </summary>
-	///
-	/// <example>
-	///		<div sys:attach="template" template:for="table.inputform tr" template:if="<some condition>"></div>
-	/// </example>
-
+	/// <param name="element"></param>
 	Template.initializeBase(this, [element]);
 }
 
-Template.prototype = {
-	// CSS Selectors
-	///////////////////////////////////////////////////////////////////////////
-	get_for: function() {
-		return this._for;
-	},
-	set_for: function(value) {
-		this._for = value;
-	},
-	matches: function(e) {
-		if (this._for === undefined) {
-			return true;
-		}
+var allTemplates = {};
 
-		return $(e).is(this._for);
+Template.prototype = {
+
+	get_name: function Template$get_name() {
+		/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.name"></value>
+		return this._name;
+	},
+	set_name: function Template$set_name(value) {
+		this._name = value;
+	},
+
+	get_nameArray: function Template$get_nameArray() {
+		/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.nameArray"></value>
+		if (this._name && !this._nameArray) {
+			this._nameArray = this._name.trim().split(/\s+/);
+		}
+		return this._nameArray;
+	},
+
+	get_kind: function Template$get_kind() {
+		/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.kind"></value>
+		return this._kind;
+	},
+	set_kind: function Template$set_kind(value) {
+		this._kind = value;
 	},
 
 	get_dataType: function Template$get_dataType() {
+		/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.dataType"></value>
 		return this._dataType;
 	},
 	set_dataType: function Template$set_dataType(value) {
@@ -42,65 +50,168 @@ Template.prototype = {
 			this._dataType = value;
 		}
 	},
-	get_dataTypeCtor: function Template$set_dataType() {
-		// lazy evaluate the actual constructor
+
+	get_dataTypeCtor: function Template$get_dataTypeCtor() {
+		/// <value mayBeNull="true" type="String" locid="P:J#ExoWeb.UI.Template.dataTypeCtor"></value>
 		if (!this._dataTypeCtor && ExoWeb.isType(this._dataType, String)) {
+			// lazy evaluate the actual constructor
 			this._dataTypeCtor = ExoWeb.getCtor(this._dataType);
 		}
 		return this._dataTypeCtor;
 	},
-	isType: function Template$isType(obj) {
-		// Don't return a value if a data type has not been specified.
-		if (this._dataType === undefined || this._dataType === null) {
-			return;
-		}
 
-		return ExoWeb.isType(obj, this.get_dataTypeCtor());
+	get_isReference: function Template$get_isReference() {
+		/// <value mayBeNull="true" type="Boolean" locid="P:J#ExoWeb.UI.Template.isReference"></value>
+		return this._isReference;
 	},
-
-	// Arbitrary JavaScript
-	///////////////////////////////////////////////////////////////////////////
-	get_if: function() {
-		return this._if;
-	},
-	set_if: function(value) {
-		this._if = value;
-	},
-	satisfies: function(element, data) {
-		// return true by default if no filter
-		var result = true;
-
-		if (this._if) {
-			if (!this._ifFn) {
-				try {
-					// turn arbitrary javascript code into function
-					this._ifFn = new Function("$data", "$container", "return " + this._if + ";");
-				}
-				catch (compileError) {
-					ExoWeb.trace.throwAndLog(["ui", "templates"], "Compiling statement \"" + this._if + "\" causes the following error: " + compileError);
-				}
+	set_isReference: function Template$set_isReference(value) {
+		if (value && value.constructor === String) {
+			var str = value.toLowerCase().trim();
+			if (str === "true") {
+				value = true;
 			}
-
-			if (this._ifFn) {
-				try {
-					result = this._ifFn.apply(this, [data, element]);
-				}
-				catch (executeError) {
-					ExoWeb.trace.logWarning(["ui", "templates"], "Executing statement \"" + this._if + "\" causes the following error: " + executeError);
-					result = false;
-				}
+			else if (str === "false") {
+				value = false;
+			}
+			else {
+				this._isReferenceText = value;
+				value = null;
 			}
 		}
-
-		return result;
+		this._isReference = value;
 	},
 
-	test: function(element, data) {
-		// determines if the given element matches this template
-		return this.matches(element) && this.satisfies(element, data);
+	get_isList: function Template$get_isList() {
+		/// <value mayBeNull="true" type="Boolean" locid="P:J#ExoWeb.UI.Template.isList"></value>
+		return this._isList;
+	},
+	set_isList: function Template$set_isList(value) {
+		if (value && value.constructor === String) {
+			var str = value.toLowerCase().trim();
+			if (str === "true") {
+				value = true;
+			}
+			else if (str === "false") {
+				value = false;
+			}
+			else {
+				this._isListText = value;
+				value = null;
+			}
+		}
+		this._isList = value;
+	},
+
+	get_aspects: function Template$get_aspects() {
+		/// <value mayBeNull="true" type="Boolean" locid="P:J#ExoWeb.UI.Template.aspects"></value>
+		if (!this._aspects) {
+			var aspects = this._aspects = {};
+			if (this._isList !== null && this._isList !== undefined) {
+				aspects.isList = this._isList;
+			}
+			if (this._isReference !== null && this._isReference !== undefined) {
+				aspects.isReference = this._isReference;
+			}
+			if (this.get_dataType() !== null && this.get_dataType() !== undefined) {
+				aspects.dataType = this.get_dataTypeCtor();
+			}
+		}
+		return this._aspects;
+	},
+
+	isCorrectKind: function Template$isCorrectKind(obj) {
+		/// <summary locid="M:J#ExoWeb.UI.Template.isCorrectKind">
+		/// Determines whether the given object is of the correct kind
+		/// for the template, if a kind is specified.
+		/// </summary>
+		/// <param name="obj" optional="false" mayBeNull="false"></param>
+		/// <returns type="Boolean"></returns>
+		if (obj instanceof ExoWeb.View.Adapter) {
+			return this._kind === "@";
+		}
+		else {
+			return this._kind === undefined;
+		}
+	},
+
+	_namesSatisfiedBy: function Template$_namesSatisfiedBy(names) {
+		/// <summary locid="M:J#ExoWeb.UI.Template._namesSatisfiedBy">
+		/// Determines whether the given names collection satisifes all
+		/// required template names.
+		/// </summary>
+		/// <param name="names" type="Array" optional="false" mayBeNull="false"></param>
+		/// <returns type="Boolean"></returns>
+		return !this.get_nameArray() || !this.get_nameArray().some(function(n) { return !names.contains(n); });
+	},
+
+	_aspectsSatisfiedBy: function Template$_aspectsSatisfiedBy(aspects) {
+		/// <summary locid="M:J#ExoWeb.UI.Template._aspectsSatisfiedBy">
+		/// Determines whether the given data satisfies special aspects
+		/// required by the template.
+		/// </summary>
+		/// <param name="aspects" type="Array" optional="false" mayBeNull="false"></param>
+		/// <returns type="Boolean"></returns>
+		var satisfied = true;
+		eachProp(this.get_aspects(), function(name, value) {
+			if (!aspects.hasOwnProperty(name) || (value === null || value === undefined) || (name !== "dataType" && aspects[name] !== value) || (name === "dataType" && aspects[name] !== value && !(aspects[name] && aspects[name].meta && aspects[name].meta.isSubclassOf(value.meta)))) {
+				return (satisfied = false);
+			}
+		});
+		return satisfied;
+	},
+
+	matches: function Template$matches(data, names) {
+		/// <summary locid="M:J#ExoWeb.UI.Template.matches">
+		/// Determines whether the given data and name array match the template.
+		/// </summary>
+		/// <param name="data" optional="false" mayBeNull="false"></param>
+		/// <param name="names" type="Array" optional="false" mayBeNull="false"></param>
+		/// <returns type="Boolean"></returns>
+		if (this._namesSatisfiedBy(names)) {
+			var aspects;
+			if (data && data.aspects && data.aspects instanceof Function) {
+				aspects = data.aspects();
+			}
+			else {
+				aspects = {
+					isList: (data && data instanceof Array),
+					isReference: (data && data instanceof ExoWeb.Model.Entity),
+					dataType: (function(obj) {
+							if (obj === null || obj === undefined) {
+								return null;
+							}
+							else if (obj instanceof ExoWeb.Model.Entity) {
+								return obj.meta.type.get_jstype();
+							}
+							else if (obj instanceof Array) {
+								return Array;
+							}
+							else if (obj instanceof Object) {
+								return Object;
+							}
+							else {
+								return obj.constructor;
+							}
+						}) (data)
+				};
+			}
+			return this._aspectsSatisfiedBy(aspects);
+		}
+	},
+
+	toString: function() {
+		return $format("<{0} name=\"{1}\" kind=\"{2}\" datatype=\"{3}\" isreference=\"{4}\" islist=\"{5}\" />",
+			this._element.tagName.toLowerCase(),
+			this._name || "",
+			this._kind || "",
+			this._dataType || "",
+			isNullOrUndefined(this._isReference) ? "" : this._isReference,
+			isNullOrUndefined(this._isList) ? "" : this._isList
+		);
 	},
 
 	initialize: function() {
+		/// <summary locid="M:J#ExoWeb.UI.Template.initialize" />
 		Template.callBaseMethod(this, "initialize");
 
 		// add a class that can be used to search for templates 
@@ -108,53 +219,54 @@ Template.prototype = {
 		$(this.get_element()).addClass("exoweb-template").hide();
 
 		if (this.get_element().control.constructor !== String) {
-			allTemplates.push(this.get_element());
+			var el = this.get_element();
+			var tagName = el.tagName.toLowerCase();
+			var cache = allTemplates[tagName];
+			if (!cache) {
+				cache = allTemplates[tagName] = [];
+			}
+			cache.push(el);
 		}
 	}
+
 };
 
-var allTemplates = [];
-
-Template.find = function Template$find(element, data) {
-	/// <summary>
-	/// Finds the first field template with a selector and filter that
-	/// match the given element and returns the template.
+function findTemplate(tagName, data, names) {
+	/// <summary locid="M:J#ExoWeb.UI.Template.find">
+	/// Finds the first field template that match the given data and names and returns the template.
 	/// </summary>
-
-	ExoWeb.trace.log(["templates"],
-		"attempt to find match for element = {0}{1}, data = {2}",
-		[element.tagName, element.className ? "." + element.className : "", data]);
+	ExoWeb.trace.log(["templates"], "attempt to find template match for names = {0}, data = {1}", [names.join(","), data]);
 
 	if (data === undefined || data === null) {
 		ExoWeb.trace.logWarning("templates", "Attempting to find template for {0} data.", [data === undefined ? "undefined" : "null"]);
 	}
 
-	for (var t = allTemplates.length - 1; t >= 0; t--) {
-		var tmpl = allTemplates[t];
-
-		if (tmpl.control instanceof Template) {
-			var isType = tmpl.control.isType(data);
-			if ((isType === undefined || isType === true) && tmpl.control.test(element, data)) {
-//						ExoWeb.trace.log(["templates"], "TEMPLATE MATCHES!: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
-				return tmpl;
-			}
-			else {
-//						ExoWeb.trace.log(["templates"], "template does not match: for = {_for}, type = {_dataType}, if = {_if}", tmpl.control);
+	var cache;
+	if (cache = allTemplates[tagName]) {
+		for (var t = cache.length - 1; t >= 0; t--) {
+			var tmplEl = cache[t];
+			var tmpl = tmplEl.control;
+	
+			if (tmpl instanceof Template) {
+				var isCorrectKind = tmpl.isCorrectKind(data);
+				if ((isCorrectKind === undefined || isCorrectKind === true) && tmpl.matches(data, names)) {
+					return tmplEl;
+				}
 			}
 		}
 	}
 
 	return null;
-};
+}
 
-// bookkeeping for Template.load()...
-// consider wrapper object to clean up after templates are loaded?
+// bookkeeping for Template.load
+// TODO: consider wrapper object to clean up after templates are loaded?
 var templateCount = 0;
 var externalTemplatesSignal = new ExoWeb.Signal("external templates");
 var lastTemplateRequestSignal;
 
 Template.load = function Template$load(path, options) {
-	/// <summary>
+	/// <summary locid="M:J#ExoWeb.UI.Template.load">
 	/// Loads external templates into the page.
 	/// </summary>
 
@@ -166,17 +278,8 @@ Template.load = function Template$load(path, options) {
 	var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
 	var callback = externalTemplatesSignal.pending(signal.pending(function (elem) {
 		//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
-
-		// Store the number of templates before activating this element.
-		var originalTemplateCount = allTemplates.length;
-
 		// Activate template controls within the response.
 		Sys.Application.activateElement(elem);
-
-		// No new templates were created.
-		if (originalTemplateCount === allTemplates.length) {
-			ExoWeb.trace.logWarning("ui", "Templates for request \"{0}\" from path \"{1}\" yields no templates.", [id, path]);
-		}
 	}));
 
 	$(function ($) {
@@ -217,4 +320,4 @@ Template.load = function Template$load(path, options) {
 };
 
 ExoWeb.UI.Template = Template;
-Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control);
+Template.registerClass("ExoWeb.UI.Template", Sys.UI.Control, Sys.UI.IContentTemplateConsumer);

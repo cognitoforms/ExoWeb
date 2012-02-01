@@ -16,6 +16,7 @@ namespace ExoWeb.Templates.JavaScript
 		internal Meta(ScriptEngine engine, GraphInstance instance)
 			: base(engine, engine.Object.InstancePrototype)
 		{
+			this.PopulateFunctions();
 			this.instance = instance;
 		}
 

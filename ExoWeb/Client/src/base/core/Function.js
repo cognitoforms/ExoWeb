@@ -50,7 +50,7 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 		if (options.partitionedArg !== null && options.partitionedArg !== undefined) {
 			partitionedArg = arguments[options.partitionedArg];
 			if (!(partitionedArg instanceof Array)) {
-				throw "The partitioned argument must be an array.";
+				throw new Error("The partitioned argument must be an array.");
 			}
 
 			// Create a copy of the argument.
@@ -88,7 +88,7 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 
 		// Verify that the the partitioned argument is part of the grouping.
 		if (partitionedArgIdx === -1) {
-			throw "Invalid partitionedArg option.";
+			throw new Error("Invalid partitionedArg option.");
 		}
 
 		// Is this call already in progress?
@@ -148,7 +148,7 @@ Function.prototype.dontDoubleUp = function Function$dontDoubleUp(options) {
 			// make sure the original callback is invoked and that cleanup occurs
 			call.callback.add(function() {
 				if (calls.indexOf(call) < 0) {
-					throw "Call not found.";
+					throw new Error("Call not found.");
 				}
 				if (origCallback) {
 					origCallback.apply(origThisPtr || this, arguments);
@@ -382,3 +382,8 @@ function after(original, fn) {
 	};
 }
 exports.after = after; // IGNORE
+
+function callArgument(arg) {
+	arg.call();
+};
+exports.callArgument = callArgument; // IGNORE

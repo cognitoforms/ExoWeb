@@ -1,7 +1,5 @@
 Sys.Application.registerMarkupExtension("@",
 	function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
-//				ExoWeb.trace.log(["@", "markupExt"], "@ " + (properties.$default || "(no path)") + " (evaluating)");
-
 		if (properties.required) {
 			ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter markup extension does not support the \"required\" property.");
 		}
@@ -9,10 +7,33 @@ Sys.Application.registerMarkupExtension("@",
 		var path = properties.path || properties.$default;
 		delete properties.$default;
 
-		var adapter = new Adapter(properties.source || templateContext.dataItem, path, properties.systemFormat, properties.displayFormat, properties);
+		var source;
+		if (properties.source) {
+			source = properties.source;
+			delete properties.source;
+		}
+		else {
+			source = templateContext.dataItem;
+		}
+
+		var adapter;
+		if (!path) {
+			if (!(source instanceof Adapter)) {
+				throw new Error("No path was specified for the \"@\" markup extension, and the source is not an adapter.");
+			}
+			for (var prop in properties) {
+				if (properties.hasOwnProperty(prop) && prop !== "isLinkPending") {
+					throw new Error("Additional adapter properties cannot be specified when deferring to another adapter (no path specified). Found property \"" + prop + "\".");
+				}
+			}
+			adapter = source;
+		}
+		else {
+			adapter = new Adapter(source, path, properties.format, properties);
+			templateContext.components.push(adapter);
+		}
 
 		adapter.ready(function AdapterReady() {
-//					ExoWeb.trace.log(["@", "markupExt"], "@ " + (adapter._propertyPath || "(no path)") + "  <.>");
 			Sys.Observer.setValue(component, targetProperty, adapter);
 			if (component.add_disposing) {
 				component.add_disposing(function() {
@@ -20,6 +41,4 @@ Sys.Application.registerMarkupExtension("@",
 				});
 			}
 		});
-
-		templateContext.components.push(adapter);
 	}, false);

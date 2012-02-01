@@ -37,6 +37,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FluentAssertions">
+      <HintPath>..\Dependencies\FluentAssertions1.6.0\.NetFramework 4.0\FluentAssertions.dll</HintPath>
+    </Reference>
     <Reference Include="Interop.SHDocVw">
       <HintPath>..\Dependencies\WatiN\net20\Interop.SHDocVw.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
@@ -80,6 +83,9 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AssertLists.cs" />
+    <Compile Include="JavascriptHelpersTest.cs" />
+    <Compile Include="Templates\JavaScript\EvaluatorTest.cs" />
     <Compile Include="ExoWebTest.cs" />
     <Compile Include="Jasmine\Jasmine_View.cs" />
     <Compile Include="Jasmine\Jasmine_Model.cs" />
@@ -88,8 +94,12 @@
     <Compile Include="Jasmine\JasmineTest.cs" />
     <Compile Include="JavascriptTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QUnit\QUnit_UI.cs" />
     <Compile Include="QUnit\QUnit_Core.cs" />
     <Compile Include="QUnit\QUnitTest.cs" />
+    <Compile Include="Templates\MicrosoftAjax\AttributeHelperTest.cs" />
+    <Compile Include="Templates\MicrosoftAjax\ToggleTest.cs" />
+    <Compile Include="Templates\MicrosoftAjax\TransformTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ExoGraph\ExoGraph.UnitTest\ExoGraph.UnitTest.csproj">

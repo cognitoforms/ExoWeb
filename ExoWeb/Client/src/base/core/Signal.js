@@ -9,6 +9,24 @@ function Signal(debugLabel) {
 	this._debugLabel = debugLabel;
 }
 
+var setupCallbacks = function setupCallbacks() {
+	window.setTimeout(function () {
+		var callbacks, maxBatch = isNumber(ExoWeb.config.signalMaxBatchSize) ? ExoWeb.config.signalMaxBatchSize : null;
+		if (maxBatch && pendingSignalTimeouts.length > maxBatch) {
+			// Exceeds max batch size, so only invoke the max number and delay the rest
+			callbacks = pendingSignalTimeouts.splice(0, maxBatch);
+			setupCallbacks();
+		}
+		else {
+			// No max batch, or does not exceed size, so call all pending callbacks
+			callbacks = pendingSignalTimeouts;
+			pendingSignalTimeouts = null;
+		}
+		// Call each callback in order
+		callbacks.forEach(callArgument);
+	}, 1);
+};
+
 function doCallback(name, thisPtr, callback, args, executeImmediately) {
 	if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
 		var batch = Batch.suspendCurrent("_doCallback");
@@ -27,13 +45,7 @@ function doCallback(name, thisPtr, callback, args, executeImmediately) {
 		});
 
 		if (setup) {
-			window.setTimeout(function () {
-				var callbacks = pendingSignalTimeouts;
-				pendingSignalTimeouts = null;
-				callbacks.forEach(function (cb) {
-					cb();
-				});
-			}, 1);
+			setupCallbacks();
 		}
 	}
 	else {

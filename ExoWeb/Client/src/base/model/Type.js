@@ -8,7 +8,7 @@ function Type(model, name, baseType, origin) {
 	this._pool = {};
 	this._legacyPool = {};
 	this._counter = 0;
-	this._properties = {};
+	this._properties = {}; 
 	this._instanceProperties = {};
 	this._staticProperties = {};
 	this._model = model;
@@ -18,7 +18,7 @@ function Type(model, name, baseType, origin) {
 	// generate class and constructor
 	var jstype = Model.getJsType(name, true);
 
-	if (jstype) {
+	if (jstype) { 
 		ExoWeb.trace.throwAndLog(["model"], "'{1}' has already been declared", arguments);
 	}
 
@@ -60,11 +60,6 @@ function Type(model, name, baseType, origin) {
 	disableConstruction = false;
 
 	this._jstype.prototype.constructor = this._jstype;
-
-	// formats
-	var formats = function() { };
-	formats.prototype = baseJsType.formats;
-	this._jstype.formats = new formats();
 
 	// helpers
 	jstype.meta = this;
@@ -159,11 +154,6 @@ Type.prototype = {
 		this._addEvent("initExisting", handler, obj ? equals(obj) : null, once);
 		return this;
 	},
-	toIdString: function Type$toIdString(id) {
-		if (id) {
-			return $format("{0}|{1}", [this.get_fullName(), id]);
-		}
-	},
 	newId: function Type$newId() {
 		// Get the next id for this type's heirarchy.
 		for (var nextId, type = this; type; type = type.baseType) {
@@ -197,7 +187,7 @@ Type.prototype = {
 		Sys.Observer.makeObservable(obj);
 
 		for (var t = this; t; t = t.baseType) {
-			if (t._pool.hasOwnProperty(key)){
+			if (t._pool.hasOwnProperty(key)) {
 				ExoWeb.trace.throwAndLog("model", "Object \"{0}|{1}\" has already been registered.", [this.get_fullName(), id]);
 			}
 
@@ -276,17 +266,13 @@ Type.prototype = {
 
 		return list;
 	},
-	addPropertyAdded: function(handler) {
+	addPropertyAdded: function (handler) {
 		this._addEvent("propertyAdded", handler);
 	},
 	addProperty: function Type$addProperty(def) {
 		var format = def.format;
 		if (format && format.constructor === String) {
-			format = def.type.formats[format];
-
-			if (!format) {
-				ExoWeb.trace.throwAndLog("model", "Cannot create property {0}.{1} because there is not a '{2}' format defined for {3}", [this._fullName, def.name, def.format, def.type]);
-			}
+			format = getFormat(def.type, format);
 		}
 
 		var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic, def.index);
@@ -301,7 +287,7 @@ Type.prototype = {
 				mtype._jstype[shortcutName] = prop;
 			}
 
-			mtype.derivedTypes.forEach(function(t) {
+			mtype.derivedTypes.forEach(function (t) {
 				genPropertyShortcut(t, false);
 			});
 		}
@@ -312,11 +298,11 @@ Type.prototype = {
 		// its sub types don't need to be iterated over each time the constructor is called.
 		if (!prop.get_isStatic()) {
 			if (prop.get_isList()) {
-				this._initNewProps.push({ property: prop, valueFn: function() { return []; } });
+				this._initNewProps.push({ property: prop, valueFn: function () { return []; } });
 
 				if (prop.get_origin() !== "server") {
-					this._initExistingProps.push({ property: prop, valueFn: function() { return []; } });
-					Array.forEach(this.known(), function(obj) {
+					this._initExistingProps.push({ property: prop, valueFn: function () { return []; } });
+					Array.forEach(this.known(), function (obj) {
 						prop.init(obj, []);
 					});
 				}
@@ -325,7 +311,7 @@ Type.prototype = {
 				// Previously only server-origin properties were inited in an attempt to allow
 				// calculations of client-origin properties to run when accessed. However, since
 				// rules attempt to run when registered this is no longer necessary.
-				this._initNewProps.push({ property: prop, valueFn: function() { return undefined; } });
+				this._initNewProps.push({ property: prop, valueFn: function () { return undefined; } });
 			}
 		}
 		// initially client-based static list properties when added
@@ -352,36 +338,34 @@ Type.prototype = {
 			}
 		}
 
-		this._raiseEvent("propertyAdded", [this, { property: prop }]);
+		this._raiseEvent("propertyAdded", [this, { property: prop}]);
 
 		return prop;
 	},
 	addMethod: function Type$addMethod(def) {
-		this._jstype.prototype[def.name] = function () 
-		{
+		this._jstype.prototype[def.name] = function () {
 			// Detect the optional success and failure callback delegates
 			var onSuccess;
 			var onFail;
-			var paths = null;					
+			var paths = null;
 
-			if (arguments.length > 1)
-			{
-				onSuccess = arguments[arguments.length-2];
+			if (arguments.length > 1) {
+				onSuccess = arguments[arguments.length - 2];
 				if (onSuccess instanceof Function) {
-					onFail = arguments[arguments.length-1];
+					onFail = arguments[arguments.length - 1];
 				}
 				else {
-					onSuccess = arguments[arguments.length-1];
-				}						
+					onSuccess = arguments[arguments.length - 1];
+				}
 			}
 			else if (arguments.length > 0)
-				onSuccess = arguments[arguments.length-1];
+				onSuccess = arguments[arguments.length - 1];
 
 			if (!onSuccess instanceof Function)
 				onSuccess = undefined;
 
-			var onSuccessFn = function(result) {
-				if(onSuccess !== undefined) {
+			var onSuccessFn = function (result) {
+				if (onSuccess !== undefined) {
 					onSuccess(result.event);
 				}
 			};
@@ -391,8 +375,7 @@ Type.prototype = {
 
 			if (argCount >= 1 && argCount <= 2 && arguments[0] instanceof Object &&
 					((argCount == 1 && (def.parameters.length != 1 || firstArgCouldBeParameterSet)) ||
-					((argCount == 2 && (def.parameters.length != 2 || (firstArgCouldBeParameterSet && arguments[1] instanceof Array))))))
-			{
+					((argCount == 2 && (def.parameters.length != 2 || (firstArgCouldBeParameterSet && arguments[1] instanceof Array)))))) {
 
 				// Invoke the server event
 				context.server.raiseServerEvent(def.name, this, arguments[0], false, onSuccessFn, onFail, argCount == 2 ? arguments[1] : null);
@@ -417,12 +400,12 @@ Type.prototype = {
 		};
 	},
 	_makeGetter: function Type$_makeGetter(receiver, fn, skipTypeCheck) {
-		return function() {
+		return function () {
 			return fn.call(receiver, this, skipTypeCheck);
 		};
 	},
 	_makeSetter: function Type$_makeSetter(prop) {
-		var setter = function(val) {
+		var setter = function (val) {
 			if (prop.isInited(this))
 				prop._setter(this, val, true);
 			else
@@ -445,6 +428,14 @@ Type.prototype = {
 	},
 	get_model: function Type$get_model() {
 		return this._model;
+	},
+	get_format: function Type$get_format() {
+		return this._format ? this._format : (this.baseType ? this.baseType.get_format() : undefined);
+	},
+	set_format: function Type$set_format(value) {
+		if (value && value.constructor == String)
+			value = getFormat(this.get_jstype(), value);
+		this._format = value;
 	},
 	get_fullName: function Type$get_fullName() {
 		return this._fullName;
@@ -484,7 +475,7 @@ Type.prototype = {
 			}
 		}
 		function Type$addRule$changed(sender, args) {
-			if (args.wasInited && (rule.canExecute  ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
+			if (args.wasInited && (rule.canExecute ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
 				Type$addRule$fn(sender, args.property, rule.execute);
 			}
 		}
@@ -555,7 +546,7 @@ Type.prototype = {
 			if (input.get_dependsOnChange()) {
 				prop.addChanged(isSameType ?
 					Type$addRule$changed :
-					function(sender, args) {
+					function (sender, args) {
 						if (sender instanceof jstype) {
 							Type$addRule$changed.apply(this, arguments);
 						}
@@ -566,7 +557,7 @@ Type.prototype = {
 			if (input.get_dependsOnInit()) {
 				prop.addChanged(isSameType ?
 					Type$addRule$init :
-					function(sender, args) {
+					function (sender, args) {
 						if (sender instanceof jstype) {
 							Type$addRule$init.apply(this, arguments);
 						}
@@ -577,7 +568,7 @@ Type.prototype = {
 			if (input.get_dependsOnGet()) {
 				prop.addGet(isSameType ?
 					Type$addRule$get :
-					function(obj, prop, value, isInited) {
+					function (obj, prop, value, isInited) {
 						if (obj instanceof jstype) {
 							Type$addRule$get.apply(this, arguments);
 						}
@@ -613,8 +604,8 @@ Type.prototype = {
 					if (rule.isAsync) {
 						// run rule asynchronously, and then pickup running next rules afterwards
 						var _this = this;
-//									ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-						rule.execute(obj, function() {
+						//									ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+						rule.execute(obj, function () {
 							rule._isExecuting = false;
 							obj.meta.markRuleExecuted(rule);
 							_this.executeRules(obj, rules, callback, i + 1);
@@ -623,7 +614,7 @@ Type.prototype = {
 					}
 					else {
 						try {
-//										ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
+							//										ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
 							rule.execute(obj);
 							obj.meta.markRuleExecuted(rule);
 						}
@@ -671,7 +662,7 @@ Type.prototype = {
 	isSubclassOf: function Type$isSubclassOf(mtype) {
 		var result = false;
 
-		this.eachBaseType(function(baseType) {
+		this.eachBaseType(function (baseType) {
 			if (baseType === mtype) {
 				result = true;
 				return false;

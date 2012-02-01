@@ -16,38 +16,24 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public List<Attribute> Attributes { get; internal set; }
 
-		public Binding Binding { get; internal set; }
-
-		public Binding If { get; internal set; }
-
 		public bool IsClosed { get; internal set; }
 
-		internal override void Render(AjaxPage page, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
 		{
-			// Exit immediately if the element is conditionally hidden
-			if (If != null && If.Evaluate(page) as bool? == false)
-				return;
-
 			RenderStartTag(page, writer);
-
-			// Element Binding
-			if (Binding != null)
-			{
-				var data = Binding.Evaluate(page);
-				if (data != null)
-					writer.Write(data);
-				else
-					writer.Write(Binding.Expression);
-				RenderEndTag(page, writer);
-			}
 		}
 
-		protected void RenderStartTag(AjaxPage page, System.IO.TextWriter writer)
+		protected void RenderStartTag(AjaxPage page, System.IO.TextWriter writer, params AttributeBinding[] bindings)
 		{
-			RenderStartTag(page, writer, null);
+			RenderStartTag(page, writer, null, bindings);
 		}
 
-		protected void RenderStartTag(AjaxPage page, System.IO.TextWriter writer, Func<IEnumerable<KeyValuePair<string, object>>, IEnumerable<KeyValuePair<string, object>>> attributeTransform)
+		protected void RenderStartTag(AjaxPage page, System.IO.TextWriter writer, Func<IEnumerable<AttributeBinding>, IEnumerable<AttributeBinding>> attributeTransform, params AttributeBinding[] bindings)
+		{
+			RenderStartTag(page, writer, attributeTransform, false, bindings);
+		}
+
+		protected void RenderStartTag(AjaxPage page, System.IO.TextWriter writer, Func<IEnumerable<AttributeBinding>, IEnumerable<AttributeBinding>> attributeTransform, bool abort, params AttributeBinding[] bindings)
 		{
 			// Immediately abort if no tag name
 			if (Tag == null)
@@ -59,28 +45,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			// Attributes
 			string innerHtml = null;
 			var attributes = (Attributes ?? new List<Attribute>())
-				.Select(attribute =>
-				{
-					var data = attribute.Binding != null ? attribute.Binding.Evaluate(page) : null;
-					if (data != null)
-						return new KeyValuePair<string, object>((attribute.Name.StartsWith("sys:") ? attribute.Name.Substring(4).ToLower() : attribute.Name.ToLower()), data);
-					else
-						return new KeyValuePair<string, object>(attribute.Name.ToLower(), attribute.Value);
+				.Select(attribute => attribute.Binding == null ? new AttributeBinding(attribute, null) : attribute.Binding.Evaluate(page));
 
-				})
-				.Where(attribute =>
-				{
-					if (attribute.Value == null)
-						return false;
-					var html = attribute.Value.ToString();
-					if (attribute.Key == "sys:innerhtml")
-						innerHtml = html;
-					else if (attribute.Key == "sys:innertext")
-						innerHtml = HttpUtility.HtmlEncode(html);
-					else
-						return true;
-					return false;
-				});
+			// Adding binding attributes if necessary
+			if (bindings != null && bindings.Length > 0)
+				attributes = attributes.Concat(bindings.Where(b => b != null));
 
 			// Transform the attributes if necessary
 			if (attributeTransform != null)
@@ -88,15 +57,44 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 			// Write the attributes to the output stream
 			foreach (var attribute in attributes)
-				writer.Write(" " + attribute.Key + "=\"" + HttpUtility.HtmlEncode(attribute.Value.ToString()) + "\"");
+			{
+				// Determine if the attribute represents bound element content
+				if (attribute.IsBound)
+				{
+					if (attribute.Name == "sys:innerhtml")
+						innerHtml = (attribute.DisplayValue ?? "").ToString();
+					else if (attribute.Name == "sys:innertext")
+						innerHtml = HttpUtility.HtmlEncode(attribute.DisplayValue ?? "");
+				}
+
+				bool isHtmlBoolean;
+				if (Tag.Equals("input", StringComparison.InvariantCultureIgnoreCase))
+				{
+					var attributeName = attribute.Name.StartsWith("sys:") ? attribute.Name.Substring(4) : attribute.Name;
+					var attr = attributes.SingleOrDefault(a => a.Name.Equals("type", StringComparison.InvariantCultureIgnoreCase) && a.IsValid && a.Value != null);
+					if (attr == null)
+						isHtmlBoolean = HtmlHelpers.IsBooleanAttribute(attributeName, Tag, null, true);
+					else
+						isHtmlBoolean = HtmlHelpers.IsBooleanAttribute(attributeName, Tag, attr.Value.ToString());
+				}
+				else
+					isHtmlBoolean = HtmlHelpers.IsBooleanAttribute(attribute.Name, Tag);
+
+				if (abort)
+					attribute.Abort(writer, isHtmlBoolean);
+				else
+					attribute.Render(writer, isHtmlBoolean);
+			}
 
 			// Close Tag
-			if (IsClosed && Binding == null)
+			if (IsClosed)
 			{
 				if (innerHtml != null)
 					writer.Write(">" + innerHtml + "</" + Tag + ">");
-				else
+				else if (HtmlHelpers.IsSelfClosing(Tag))
 					writer.Write(" />");
+				else
+					writer.Write("></" + Tag + ">");
 			}
 			else if (innerHtml != null)
 				writer.Write(">" + innerHtml);
@@ -104,7 +102,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				writer.Write(">");
 		}
 
-		protected void RenderEndTag(AjaxPage page, System.IO.TextWriter writer)
+		protected void RenderEndTag(System.IO.TextWriter writer)
 		{
 			// Immediately abort if no tag name
 			if (Tag == null)

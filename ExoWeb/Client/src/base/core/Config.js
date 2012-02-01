@@ -7,6 +7,10 @@ var config = {
 	// done in order to get around problems with browser complaining about long-running script.
 	signalTimeout: false,
 
+	// The maximum number of pending signals to execute as a batch.
+	// By default this is null, which means that no maximum is enforced.
+	signalMaxBatchSize: null,
+
 	// Causes the query processing to load model roots in the query individually. By default they are batch-loaded.
 	individualQueryLoading: false,
 

@@ -108,6 +108,12 @@ Property.mixin({
 		return this._index;
 	},
 	get_format: function Property$get_format() {
+		if (!this._format) {
+			if (this._jstype.meta instanceof ExoWeb.Model.Type)
+				this._format = this._jstype.meta.get_format(); // Default to type-level formats for entity types
+			else
+				this._format = getFormat(this._jstype, "G"); // Default to general format for non-entity type
+		}
 		return this._format;
 	},
 	format: function (val) {

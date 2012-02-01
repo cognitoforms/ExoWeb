@@ -129,8 +129,8 @@ Model.prototype = {
 			delete window[key];
 		}
 	},
-	addType: function Model$addType(name, base, origin) {
-		var type = new Type(this, name, base, origin);
+	addType: function Model$addType(name, base, origin, format) {
+		var type = new Type(this, name, base, origin, format);
 		this._types[name] = type;
 		return type;
 	},
@@ -235,7 +235,7 @@ Model.getJsType = function Model$getJsType(name, allowUndefined) {
 				return;
 			}
 			else {
-				throw Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+				throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
 			}
 		}
 	}

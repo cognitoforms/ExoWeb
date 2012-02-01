@@ -64,7 +64,12 @@
 		else {
 			this._dirty = true;
 			if (this._isActive()) {
-				this.refresh();
+				if (this.get_isLinkPending()) {
+					this.link();
+				}
+				else {
+					this.refresh();
+				}
 				this.raisePropertyChanged("data");
 			}
 			else {

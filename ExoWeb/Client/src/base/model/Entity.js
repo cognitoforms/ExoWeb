@@ -20,7 +20,7 @@ function getProperties(/*[properties] or [propName, propValue] */) {
 
 Entity.mixin({
 	init: function Entity$init(/*[properties] or [propName, propValue] */) {
-		forEachProperty(getProperties.apply(this, arguments), function(name, value) {
+		forEachProperty(getProperties.apply(this, arguments), function (name, value) {
 			var prop = this.meta.type.property(name, true);
 
 			if (!prop) {
@@ -32,7 +32,7 @@ Entity.mixin({
 		}, this);
 	},
 	set: function Entity$set(/*[properties] or [propName, propValue] */) {
-		forEachProperty(getProperties.apply(this, arguments), function(name, value) {
+		forEachProperty(getProperties.apply(this, arguments), function (name, value) {
 			this._accessor("set", name).call(this, value);
 		}, this);
 	},
@@ -48,54 +48,31 @@ Entity.mixin({
 
 		return fn;
 	},
-	toString: function Entity$toString(formatName) {
-		var format;
-
-		if (formatName) {
-			format = this.constructor.formats[formatName];
-
-			if (!format) {
-				ExoWeb.trace.throwAndLog(["formatting"], "Invalid format: {0}", arguments);
-			}
+	toString: function Entity$toString(format) {
+		if (format) {
+			format = getFormat(this.constructor, format);
 		}
 		else {
-			format = this.constructor.formats.$display || this.constructor.formats.$system;
+			format = this.meta.type.get_format();
 		}
 
-		return format.convert(this);
+		if (format)
+			return format.convert(this);
+		else
+			return Entity.toIdString(this);
 	}
 });
 
-Entity.formats = {
-	$system: new Format({
-		undefinedString: "",
-		nullString: "",
-		convert: function(obj) {
-			return obj.meta.type.toIdString(obj.meta.id);
-		},
-		convertBack: function(str) {
-			// indicates "no value", which is distinct from "no selection"
-			var ids = str.split("|");
-			var jstype = Model.getJsType(ids[0]);
-			if (jstype && jstype.meta) {
-				return jstype.meta.get(ids[1]);
-			}
-		}
-	}),
-	$display: new Format({
-		convert: function(obj) {
-			if (obj.get_Label)
-				return obj.get_Label();
+// Gets the typed string id suitable for roundtripping via fromIdString
+Entity.toIdString = function Entity$toIdString(obj) {
+	return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
+};
 
-			if (obj.get_Name)
-				return obj.get_Name();
-
-			if (obj.get_Text)
-				return obj.get_Text();
-
-			return $format("{0}|{1}", [obj.meta.type.get_fullName(), obj.meta.id]);
-		}
-	})
+// Gets or loads the entity with the specified typed string id
+Entity.fromIdString = function Entity$fromIdString(id) {
+	var ids = id.split("|");
+	var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
+	return jstype.meta.get(ids[1]);
 };
 
 ExoWeb.Model.Entity = Entity;

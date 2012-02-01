@@ -1,5 +1,5 @@
 var eventProviderFn = function eventProviderFn(eventType, instance, event, paths, changes, onSuccess, onFailure) {
-	throw "Event provider has not been implemented.  Call ExoWeb.Mapper.setEventProvider(fn);";
+	throw new Error("Event provider has not been implemented.  Call ExoWeb.Mapper.setEventProvider(fn);");
 };
 
 function eventProvider(eventType, instance, event, paths, changes, onSuccess, onFailure, thisPtr) {

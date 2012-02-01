@@ -49,9 +49,12 @@ var transform = require("../../../src/base/core/Transform");
 var typeChecking = require("../../../src/base/core/typeChecking");
 var utilities = require("../../../src/base/core/Utilities");
 var batch = require("../../../src/base/core/Batch");
+var formatProvider = require("../../../src/base/model/FormatProvider");
 
 global.Transform = transform.Transform;
 
+var getFormat = global.getFormat = formatProvider.getFormat;
+var setFormatProvider = global.setFormatProvider = formatProvider.setFormatProvider;
 var getValue = global.getValue = ExoWeb.getValue;
 var evalPath = global.evalPath = ExoWeb.evalPath;
 var isObject = global.isObject = typeChecking.isObject;
@@ -59,6 +62,22 @@ var isArray = global.isArray = typeChecking.isArray;
 var isNullOrUndefined = global.isNullOrUndefined = typeChecking.isNullOrUndefined;
 var forEach = global.forEach = arrays.forEach;
 var Batch = global.Batch = batch.Batch;
+
+setFormatProvider(function FormatProvider(type, format) {
+	return {
+		convert: function (val) {
+			if (val instanceof Date) {
+				return $format("{0}/{1}/{2}", [val.getMonth(), val.getDate(), 1900 + val.getYear()]);
+			}
+			else {
+				return val.toString();
+			}
+		},
+		convertBack: function (str) {
+			return str;
+		}
+	};
+});
 
 // References
 ///////////////////////////////////////

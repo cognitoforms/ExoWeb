@@ -7,8 +7,8 @@ if (idx >= 0 && idx < path.length - 1) {
 	path = path.substring(0, idx + 1);
 }
 
-var fmt = window.location.port ? "{protocol}//{hostname}:{port}" : "{protocol}//{hostname}";
-var host = $format(fmt, window.location);
+var fmt = window.location.port ? "{0}//{1}:{2}" : "{0}//{1}";
+var host = $format(fmt, window.location.protocol, window.location.hostname, window.location.port);
 
 function getPath() {
 	return host + (ExoWeb.DotNet.config.appRoot || path) + "ExoWeb.axd";

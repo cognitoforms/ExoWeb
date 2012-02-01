@@ -103,7 +103,7 @@ ExoWeb.trace = {
 	throwAndLog: function trace$throwAndLog(category, message, args) {
 		ExoWeb.trace.logError(category, message, args);
 
-		throw $format(message, args);
+		throw new Error($format(message, args));
 	},
 	getCallStack: function getCallStack() {
 		var result = [];
@@ -151,8 +151,7 @@ function formatArgument(arg) {
 			return "\"" + arg + "\"";
 		}
 		else {
-			var fmt = arg.constructor && arg.constructor.formats && arg.constructor.formats.$system;
-			return fmt ? fmt.convert(arg) : (arg.toString ? arg.toString() : "~unknown");
+			return arg.format ? arg.format() : (arg.toString ? arg.toString() : "~unknown");
 		}
 	}
 	catch (e) {

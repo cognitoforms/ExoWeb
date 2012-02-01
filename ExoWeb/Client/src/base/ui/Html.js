@@ -28,7 +28,12 @@ Html.prototype = {
 		this._url = value;
 	},
 	get_path: function Html$get_path() {
-		return $format(this.get_url(), this.get_source());
+		var source = this.get_source();
+		var url = this.get_url();
+		if (source instanceof ExoWeb.Model.Entity) {
+			url = source.toString(url);
+		}
+		return $format(url, source);
 	},
 	initialize: function Html$initialize() {
 		Html.callBaseMethod(this, "initialize");
@@ -43,7 +48,7 @@ Html.prototype = {
 			$(element).removeClass(loadingClass);
 
 			if (status != "success" && status != "notmodified") {
-				ExoWeb.trace.throwAndLog("ui", "Failed to load html: status = {status}", { status: status, response: response });
+				ExoWeb.trace.throwAndLog("ui", "Failed to load html: status = {0}", status);
 			}
 		});
 	}

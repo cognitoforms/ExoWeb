@@ -7,9 +7,9 @@
 		Person: {
 			properties: {
 				Name: { type: "String" },
-				BirthDate: { type: "Date", format: "ShortDate" },
+				BirthDate: { type: "Date", format: "d" },
 				Age: { type: "Number" },
-				PhoneNumber: { type: "String", format: "Phone" }
+				PhoneNumber: { type: "String" }
 			}
 		},
 		Driver: {

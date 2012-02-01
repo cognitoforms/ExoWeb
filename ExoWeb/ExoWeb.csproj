@@ -94,27 +94,40 @@
     <Compile Include="ServiceRequestEventArgs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SerializeEventArgs.cs" />
-    <Compile Include="ServiceAdapter.cs" />
     <Compile Include="ServiceErrorEventArgs.cs" />
     <Compile Include="ServiceHandler.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="ServiceRequest.cs" />
     <Compile Include="ServiceResponse.cs" />
+    <Compile Include="Templates\BindingResult.cs" />
     <Compile Include="Templates\Context.cs" />
+    <Compile Include="Templates\HtmlHelpers.cs" />
     <Compile Include="Templates\IBindable.cs" />
     <Compile Include="Templates\ITemplate.cs" />
     <Compile Include="Templates\JavaScript\AdapterWrapper.cs" />
+    <Compile Include="Templates\JavaScript\ContextWrapper.cs" />
+    <Compile Include="Templates\JavaScript\DictionaryWrapper.cs" />
+    <Compile Include="Templates\JavaScript\Evaluator.cs" />
+    <Compile Include="Templates\JavaScript\IScriptEngineFactory.cs" />
+    <Compile Include="Templates\JavaScript\JavaScriptHelpers.cs" />
+    <Compile Include="Templates\JavaScript\Marshaler.cs" />
     <Compile Include="Templates\JavaScript\OptionAdapterWrapper.cs" />
-    <Compile Include="Templates\JavaScript\EntityWrapperFactory.cs" />
+    <Compile Include="Templates\JavaScript\ScriptEngineFactory.cs" />
+    <Compile Include="Templates\JavaScript\ScriptFunction.cs" />
+    <Compile Include="Templates\JavaScript\ScriptFunctionEvaluationException.cs" />
+    <Compile Include="Templates\JavaScript\ScriptFunctionSyntaxException.cs" />
+    <Compile Include="Templates\JavaScript\Transform.cs" />
     <Compile Include="Templates\JavaScript\Wrapper.cs" />
     <Compile Include="Templates\Adapter.cs" />
     <Compile Include="Templates\MicrosoftAjax\Attribute.cs" />
+    <Compile Include="Templates\MicrosoftAjax\AttributeBinding.cs" />
     <Compile Include="Templates\MicrosoftAjax\Binding.cs" />
     <Compile Include="Templates\MicrosoftAjax\Block.cs" />
     <Compile Include="Templates\MicrosoftAjax\Control.cs" />
     <Compile Include="Templates\MicrosoftAjax\Content.cs" />
     <Compile Include="Templates\MicrosoftAjax\Behavior.cs" />
+    <Compile Include="Templates\MicrosoftAjax\AttributeHelper.cs" />
     <Compile Include="Templates\MicrosoftAjax\Html.cs" />
     <Compile Include="Templates\JavaScript\InvalidPropertyException.cs" />
     <Compile Include="Templates\JavaScript\Meta.cs" />
@@ -142,6 +155,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Client\AutoExec.exe" />
     <Content Include="Client\dist\exoweb-templates.htm" />
     <Content Include="Client\dist\exoweb-mock.js" />
     <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
@@ -234,11 +248,12 @@
     <Content Include="Client\src\base\model\Condition.js" />
     <Content Include="Client\src\base\model\ConditionType.js" />
     <Content Include="Client\src\base\model\ConditionTypeSet.js" />
+    <Content Include="Client\src\base\model\StringFormatRule.js" />
     <Content Include="Client\src\base\model\Entity.js" />
     <Content Include="Client\src\base\model\ErrorIfExpressionsRule.js" />
     <Content Include="Client\src\base\model\Format.js" />
     <Content Include="Client\src\base\model\FormatError.js" />
-    <Content Include="Client\src\base\model\Formats.js" />
+    <Content Include="Client\src\base\model\FormatProvider.js" />
     <Content Include="Client\src\base\model\LazyLoader.js" />
     <Content Include="Client\src\base\model\ListLengthRule.js" />
     <Content Include="Client\src\base\model\Model.js" />
@@ -272,13 +287,16 @@
     <Content Include="Client\src\base\view\MsAjax.js" />
     <Content Include="Client\src\base\view\OptionAdapter.js" />
     <Content Include="Client\src\extensions\dotnet\WebService.js" />
-    <Content Include="Client\src\extensions\jquery-msajax\MsAjax.js" />
+    <Content Include="Client\src\extensions\jquery-msajax\Helpers.js" />
+    <Content Include="Client\src\extensions\jquery-msajax\Ever.js" />
     <Content Include="Client\src\extensions\jquery-msajax\Selectors.js" />
     <Content Include="Client\src\extensions\jquery-msajax\Validation.js" />
+    <Content Include="Client\src\extensions\msajax\FormatProvider.js" />
     <Content Include="Dependencies\Jurassic.dll" />
     <Content Include="Dependencies\Jurassic.pdb" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Client\AutoRake.bat" />
     <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
     <None Include="Client\ref\aspnetajax\LICENSE" />

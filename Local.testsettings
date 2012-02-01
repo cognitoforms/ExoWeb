@@ -1,10 +1,19 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <TestSettings name="Local" id="d8e7fa80-d127-45cb-973d-517ecc77c34e" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
   <Description>These are default test settings for a local test run.</Description>
-  <Deployment enabled="false" />
+  <Deployment>
+    <DeploymentItem filename="C:\Users\thomasja\Projects\VC3.TestView\ServerRendering\Public\ExoGraph\ExoGraph.UnitTest\JsonModel\types.js" />
+    <DeploymentItem filename="C:\Users\thomasja\Projects\VC3.TestView\ServerRendering\Public\ExoGraph\ExoGraph.UnitTest\JsonModel\instances.js" />
+  </Deployment>
   <Execution>
-    <TestTypeSpecific />
-    <AgentRule name="Execution Agents">
+    <TestTypeSpecific>
+      <UnitTestRunConfig testTypeId="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b">
+        <AssemblyResolution>
+          <TestDirectory useLoadContext="true" />
+        </AssemblyResolution>
+      </UnitTestRunConfig>
+    </TestTypeSpecific>
+    <AgentRule name="LocalMachineDefaultRole">
     </AgentRule>
   </Execution>
 </TestSettings>

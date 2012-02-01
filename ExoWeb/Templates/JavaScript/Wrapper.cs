@@ -7,12 +7,17 @@ using Jurassic;
 
 namespace ExoWeb.Templates.JavaScript
 {
+	interface IWrapper
+	{
+		object RealObject { get; }
+	}
+
 	/// <summary>
 	/// Base class to simplify wrapping .NET classes. Properties are defined on an as needed basis.
 	/// Override GetMissingPropertyValue() to declare properties.
 	/// </summary>
 	/// <typeparam name="T"></typeparam>
-	abstract class Wrapper<T> : ObjectInstance
+	abstract class Wrapper<T> : ObjectInstance, IWrapper
 	{
 		protected Wrapper(T realObject, ScriptEngine engine, ObjectInstance prototype)
 			: base(engine, prototype)
@@ -81,6 +86,28 @@ namespace ExoWeb.Templates.JavaScript
 				Wrapper<T> wrapper = (Wrapper<T>)thisObject;
 				return impl(wrapper.RealObject);
 			}
+		}
+
+		object IWrapper.RealObject
+		{
+			get { return this.RealObject; }
+		}
+
+		public override int GetHashCode()
+		{
+			return RealObject.GetHashCode();
+		}
+
+		public override bool Equals(object obj)
+		{
+			object value = obj;
+			if (value is Wrapper<T>)
+				value = ((Wrapper<T>)value).RealObject;
+
+			if (value != null)
+				return value.Equals(RealObject);
+
+			return base.Equals(obj);
 		}
 	}
 }

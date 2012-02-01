@@ -1,5 +1,10 @@
 function Toggle(element) {
+
+	// Default action is show
+	this._action = "show";
+
 	Toggle.initializeBase(this, [element]);
+
 }
 
 var Toggle_allowedActions = ["show", "hide", "enable", "disable", "render", "dispose", "addClass", "removeClass"];
@@ -71,17 +76,42 @@ Toggle.mixin({
 
 	// Render/Destroy
 	//////////////////////////////////////////////////////////
+	link_render: function Toggle$link_render() {
+		this._context = null;
+
+		if ((this._action === "render" && $(this._element).is(".toggle-on")) || (this._action === "dispose" && $(this._element).is(".toggle-off"))) {
+			var pctx = this.get_templateContext();
+
+			var newContext = new Sys.UI.TemplateContext();
+			newContext.data = pctx.dataItem;
+			newContext.components = [];
+			newContext.nodes = [];
+			newContext.dataItem = pctx.dataItem;
+			newContext.index = 0;
+			newContext.parentContext = pctx;
+			newContext.containerElement = this.get_element();
+			newContext.template = this._getTemplate();
+			newContext.template._ensureCompiled();
+			this._context = newContext;
+
+			Sys.Application._linkContexts(pctx, this, pctx.dataItem, this.get_element(), newContext, this._contentTemplate);
+
+			newContext.initializeComponents();
+			newContext._onInstantiated(null, true);
+		}
+	},
 	init_render: function Toggle$init_render() {
-		if (!$(this._element).is(".sys-template")) {
+		if (!this._template && !$(this._element).is(".sys-template")) {
 			ExoWeb.trace.throwAndLog(["ui", "toggle"], "When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
 		}
 
 		this._template = new Sys.UI.Template(this._element);
+		this._template._ensureCompiled();
 		$(this._element).empty();
 		$(this._element).removeClass("sys-template");
 	},
 	do_render: function Toggle$do_render() {
-		var pctx = Sys.UI.Template.findContext(this._element);
+		var pctx = this.get_templateContext();
 
 		var renderArgs = new Sys.Data.DataEventArgs(pctx.dataItem);
 		Sys.Observer.raiseEvent(this, "rendering", renderArgs);
@@ -89,10 +119,8 @@ Toggle.mixin({
 		this.set_state("on");
 		$(this._element).empty();
 
-		if (pctx.dataItem) {
-			this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, pctx.index, null, pctx);
-			this._context.initializeComponents();
-		}
+		var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
+		context.initializeComponents();
 
 		Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 	},
@@ -168,6 +196,7 @@ Toggle.mixin({
 
 	// Render/Dispose
 	//////////////////////////////////////////////////////////
+	link_dispose: Toggle.prototype.link_render,
 	init_dispose: Toggle.prototype.init_render,
 	undo_render: Toggle.prototype.do_dispose,
 	undo_dispose: Toggle.prototype.do_render,
@@ -179,6 +208,27 @@ Toggle.mixin({
 });
 
 Toggle.mixin({
+	_generatesContext: function Toggle$_generatesContext() {
+		return this._action === "render" || this._action === "dispose";
+	},
+	_getTemplate: function Toggle$_getTemplate() {
+		return this._template;
+	},
+	_setTemplate: function Toggle$_setTemplate(value) {
+		this._template = value;
+	},
+
+	get_templateContext: function Content$get_templateContext() {
+		/// <value mayBeNull="false" type="Sys.UI.TemplateContext" locid="P:J#ExoWeb.UI.Toggle.templateContext"></value>
+		if (!this._parentContext) {
+			this._parentContext = Sys.UI.Template.findContext(this._element);
+		}
+		return this._parentContext;
+	},
+	set_templateContext: function Context$set_templateContext(value) {
+		this._parentContext = value;
+	},
+
 	get_action: function Toggle$get_action() {
 		/// <summary>
 		/// The value that determines what the control should
@@ -290,6 +340,9 @@ Toggle.mixin({
 			var onType = Object.prototype.toString.call(this._on);
 
 			if (this.get_strictMode() === true) {
+				if (this._on.constructor !== Boolean)
+					ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:on should be a value of type Boolean.");
+
 				return this._on;
 			}
 			else if (onType === "[object Array]") {
@@ -301,7 +354,15 @@ Toggle.mixin({
 			}
 		}
 		else if (this._when instanceof Function) {
-			return !!this._when(this._on);
+			var result = this._when(this._on);
+			if (this.get_strictMode() === true) {
+				if (result === null || result === undefined || result.constructor !== Boolean)
+					ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:when function should return a value of type Boolean.");
+				return result;
+			}
+			else {
+				return !!result;
+			}
 		}
 		else {
 			return this._on === this._when;
@@ -321,18 +382,31 @@ Toggle.mixin({
 			this[(this.get_equals() === true ? "do_" : "undo_") + this._action].call(this);
 		}
 	},
+	addContentTemplate: function Toggle$addContentTemplate(tmpl) {
+		if (this._action !== "render" && this._action !== "dispose" && this.get_templateContext() === Sys.Application._context) {
+			throw Error.invalidOperation("invalidSysContentTemplate");
+		}
+		Sys.UI.IContentTemplateConsumer.prototype.addContentTemplate.apply(this, arguments);
+	},
 	initialize: function Toggle$initialize() {
 		Toggle.callBaseMethod(this, "initialize");
 
-		this._element._exowebtoggle = this;
-
-		// Perform custom init logic for the action
-		var actionInit = this["init_" + this._action];
-		if (actionInit) {
-			actionInit.call(this);
+		if (this.get_isLinkPending()) {
+			// Perform custom init logic for the action
+			var actionLink = this["link_" + this._action];
+			if (actionLink) {
+				actionLink.call(this);
+			}
 		}
-
-		this.execute();
+		else {
+			// Perform custom init logic for the action
+			var actionInit = this["init_" + this._action];
+			if (actionInit) {
+				actionInit.call(this);
+			}
+	
+			this.execute();
+		}
 	},
 	_stateClass: function(state)
 	{
@@ -344,4 +418,4 @@ Toggle.mixin({
 });
 
 ExoWeb.UI.Toggle = Toggle;
-Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control);
+Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control, Sys.UI.ITemplateContextConsumer, Sys.UI.IContentTemplateConsumer);

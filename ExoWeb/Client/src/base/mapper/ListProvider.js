@@ -1,5 +1,5 @@
 var listProviderFn = function listProvider(ownerType, ownerId, paths, changes, onSuccess, onFailure) {
-	throw "List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);";
+	throw new Error("List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);");
 };
 
 function listProvider(ownerType, ownerId, listProp, otherProps, changes, onSuccess, onFailure, thisPtr) {

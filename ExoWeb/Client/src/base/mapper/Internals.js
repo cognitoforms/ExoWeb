@@ -1,4 +1,7 @@
 var STATIC_ID = "static";
+var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
+var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
+var hasTimeFormat = /[hHmts]/;
 
 function ensureJsType(model, typeName, callback, thisPtr) {
 	var mtype = model.type(typeName);
@@ -7,23 +10,23 @@ function ensureJsType(model, typeName, callback, thisPtr) {
 		fetchTypes(model, [typeName], function(jstypes) {
 			callback.apply(thisPtr || this, jstypes);
 		});
-	}
+	} 
 	else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 		ExoWeb.Model.LazyLoader.load(mtype, null, function(jstype) {
 			callback.apply(thisPtr || this, [jstype]);
-		});
+		}); 
 	}
 	else {
 		callback.apply(thisPtr || this, [mtype.get_jstype()]);
 	}
-}
+}  
 
 function conditionsFromJson(model, json, callback, thisPtr) {
 	var signal = new Signal("conditionsFromJson");
 
 	for (var code in json) {
 		conditionFromJson(model, code, json[code], signal.pending());
-	}
+	} 
 
 	signal.waitForAll(function() {
 		if (callback && callback instanceof Function) {
@@ -230,12 +233,13 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 							if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
 
 								// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
-								propData = Date.formats.$json.convertBack(propData);
+								dateRegex.lastIndex = 0;
+								propData = new Date(propData.replace(dateRegex, dateRegexReplace));
 
 								//now that we have the value set for the date.
 								//if the underlying property datatype is actually a date and not a datetime
 								//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-								if (prop.get_format() === Date.formats.ShortDate) {
+								if (prop.get_format() && !hasTimeFormat.test(prop.get_format())) {
 									var serverOffset = model._server.get_ServerTimezoneOffset();
 									var localOffset = -(new Date().getTimezoneOffset() / 60);
 									propData.addHours(serverOffset - localOffset);
@@ -279,6 +283,11 @@ function typeFromJson(model, typeName, json) {
 	// get model type. it may have already been created for lazy loading	
 	var mtype = getType(model, typeName, json.baseType, true);
 
+	// set the default type format
+	if (json.format) {
+		mtype.set_format(getFormat(mtype.get_jstype(), json.format));
+	}
+
 	if (mtype.get_originForNewProperties() === "client") {
 		ExoWeb.trace.throwAndLog("typeInit", "type \"{0}\" has already been loaded", mtype._fullName);
 	}
@@ -296,11 +305,10 @@ function typeFromJson(model, typeName, json) {
 		propType = getJsType(model, propType);
 
 		// Format
-		var format = (propJson.format && propType.formats) ? propType.formats[propJson.format] : null;
+		var format = getFormat(propType, propJson.format);
 
 		// Add the property
 		var prop = mtype.addProperty({ name: propName, type: propType, isList: propJson.isList, label: propJson.label, format: format, isStatic: propJson.isStatic, index: propJson.index });
-
 
 		// setup static properties for lazy loading
 		if (propJson.isStatic) {
@@ -605,8 +613,10 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 		// *NOT* continue as if the type is available.
 		else {
 			ExoWeb.trace.throwAndLog("typeInit",
-				"Failed to load {typeNames} (HTTP: {error._statusCode}, Timeout: {error._timedOut})",
-				{ typeNames: typeNames.join(","), error: types });
+				"Failed to load {0} (HTTP: {1}, Timeout: {2})",
+				typeNames.join(","),
+				types._statusCode,
+				types._timedOut);
 		}
 	}
 
@@ -777,7 +787,8 @@ function restoreDates(value) {
 	function tryRestoreDate(obj, key) {
 		var val = obj[key];
 		if (val && val.constructor === String && dateRegex.test(val)) {
-			obj[key] = Date.formats.$json.convertBack(val);
+			dateRegex.lastIndex = 0;
+			obj[key] = new Date(val.replace(dateRegex, dateRegexReplace));
 		}
 	}
 

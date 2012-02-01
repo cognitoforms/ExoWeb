@@ -8,7 +8,7 @@ var formatConditionType = new ConditionType("FormatError", "Error", "The value i
 FormatError.mixin({
 	createCondition: function FormatError$createCondition(origin, prop) {
 		return new Condition(formatConditionType,
-			$format(this.get_message(), { value: prop.get_label() }),
+			$format(this.get_message(), prop.get_label()),
 			[prop],
 			origin);
 	},

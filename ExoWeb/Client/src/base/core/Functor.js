@@ -7,14 +7,14 @@ function Functor() {
 
 			// Ensure that there is either no filter or the filter passes.
 			if (!item.filter || item.filter.apply(this, arguments) === true) {
-				// Call the handler function.
-				item.fn.apply(this, arguments);
-
 				// If handler is set to execute once,
-				// remove the handler after calling.
+				// remove the handler before calling.
 				if (item.once === true) {
 					funcs.splice(i--, 1);
 				}
+
+				// Call the handler function.
+				item.fn.apply(this, arguments);
 			}
 		}
 	};

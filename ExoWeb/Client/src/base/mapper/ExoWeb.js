@@ -1,28 +1,30 @@
+// Don't activate the DOM automatically, instead delay until after context initialization
 Sys.activateDom = false;
 
 // Object constant to signal to mapper to create a new instance rather than load one
-window.$newId = function() { return "$newId"; };
+var $newId = function $newId() {
+	return "$newId";
+};
+
+window.$newId = $newId;
 
 // Indicates whether or not the DOM has been activated
 var activated = false;
 
-// The (combined) set of options that are pending
-// execution. Options will stack up until something
-// is encountered that triggers loading to occur.
-var pendingOptions;
-
-function modelReadyHandler(contextReady, extendContext, domReady) {
+var modelReadyHandler = function modelReadyHandler(contextReady, extendContext, domReady) {
 	return function () {
 		var readySignal = new Signal();
-		
-		if (extendContext)
+
+		if (extendContext) {
 			extendContext(window.context, readySignal.pending());
+		}
 
-		readySignal.waitForAll(function() {
-			if (contextReady)
+		readySignal.waitForAll(function modelReadyHandler$signalReady() {
+			if (contextReady) {
 				contextReady(window.context);
+			}
 
-			$(function() {
+			$(function modelReadyHandler$documentReady() {
 				// Activate the document if this is the first context to load
 				if (!activated) {
 					activated = true;
@@ -30,79 +32,102 @@ function modelReadyHandler(contextReady, extendContext, domReady) {
 				}
 
 				// Invoke dom ready notifications
-				if (domReady)
+				if (domReady) {
 					domReady(window.context);
+				}
 			});
 		});
 	};
-}
+};
+
+// The (combined) set of options that are pending execution
+// Options will stack up until something is encountered that triggers loading to occur
+var pendingOptions = null;
+
+var updatePendingOptionsWith = function updatePendingOptionsWith(newOptions) {
+	if (pendingOptions !== null) {
+		pendingOptions.init = mergeFunctions(pendingOptions.init, newOptions.init);
+		pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, newOptions.extendContext, { async: true, callbackIndex: 1 });
+		pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
+		pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
+		pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
+		pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, newOptions.model) : newOptions.model;
+		pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
+		pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
+		pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
+		pendingOptions.serverinfo = pendingOptions.serverinfo ? $.extend(pendingOptions.serverinfo, newOptions.serverinfo) : newOptions.serverinfo;
+	}
+	else {
+		pendingOptions = newOptions;
+	}
+};
+
+var flushPendingOptions = function flushPendingOptions() {
+	var includesEmbeddedData, executingOptions, init, contextReady, extendContext, domReady;
+
+	includesEmbeddedData = pendingOptions.model ||
+		(pendingOptions.types && !(pendingOptions.types instanceof Array)) ||
+		pendingOptions.instances ||
+		pendingOptions.conditions ||
+		pendingOptions.changes;
+
+	if (includesEmbeddedData) {
+		executingOptions = pendingOptions;
+		pendingOptions = null;
+
+		window.context = ensureContext();
+
+		// Perform context initialization when the model is ready
+		if (executingOptions.contextReady || executingOptions.extendContext || executingOptions.domReady || !activated) {
+			window.context.addReady(modelReadyHandler(executingOptions.contextReady, executingOptions.extendContext, executingOptions.domReady));
+		}
+
+		// Perform initialization immediately
+		if (executingOptions.init) {
+			executingOptions.init(window.context);
+		}
+
+		// Start the new query
+		Context.query(window.context, {
+			model: executingOptions.model,
+			types: executingOptions.types,
+			changes: executingOptions.changes,
+			conditions: executingOptions.conditions,
+			instances: executingOptions.instances,
+			serverinfo: executingOptions.serverinfo
+		});
+	}
+	else if (window.context) {
+		if (!(window.context instanceof Context)) {
+			ExoWeb.trace.throwAndLog("context", "The window object has a context property that is not a valid context.");
+		}
+
+		if (pendingOptions.init) {
+			// Context has already been created, so perform initialization and remove it so that we don't double-up
+			init = pendingOptions.init;
+			pendingOptions.init = null;
+			init(window.context);
+		}
+
+		if (pendingOptions.contextReady || pendingOptions.extendContext || pendingOptions.domReady) {
+			contextReady = pendingOptions.contextReady;
+			extendContext = pendingOptions.extendContext;
+			domReady = pendingOptions.domReady;
+			pendingOptions.contextReady = pendingOptions.extendContext = pendingOptions.domReady = null;
+			window.context.addReady(modelReadyHandler(contextReady, extendContext, domReady));
+		}
+	}
+};
 
 // Global method for initializing ExoWeb on a page
-window.$exoweb = function (options) {
-	// Support initialization function as parameter
-	if (options instanceof Function)
-		options = { init: options };
-
-	if (!pendingOptions)
-		// No pending options to merge
-		pendingOptions = options;
-	else {
-		// Merge options as necessary
-		pendingOptions.init = mergeFunctions(pendingOptions.init, options.init);
-		pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, options.extendContext, { async: true, callbackIndex: 1 });
-		pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, options.contextReady);
-		pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, options.domReady);
-		pendingOptions.types = pendingOptions.types ? (options.types ? pendingOptions.types.concat(options.types) : pendingOptions.types) : options.types;
-		pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, options.model) : options.model;
-		pendingOptions.changes = pendingOptions.changes ? (options.changes ? pendingOptions.changes.concat(options.changes) : pendingOptions.changes) : options.changes;
-		pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, options.conditions) : options.conditions;
-		pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, options.instances) : options.instances;
-		pendingOptions.serverinfo = pendingOptions.serverinfo ? $.extend(pendingOptions.serverinfo, options.serverinfo) : options.serverinfo;
+var $exoweb = function $exoweb(newOptions) {
+	// Support initialization function argument
+	if (newOptions instanceof Function) {
+		newOptions = { init: newOptions };
 	}
 
-	// Exit immediately if no model or types are pending
-	if (!(pendingOptions.model || (pendingOptions.types && !(pendingOptions.types instanceof Array)) || pendingOptions.instances || pendingOptions.conditions || pendingOptions.changes)) {
-		if (window.context && pendingOptions.init) {
-
-			// Context has already been created, so perform initialization and remove it so that we don't double-up
-			pendingOptions.init(window.context);
-			pendingOptions.init = null;
-		}
-
-		if (window.context && window.context.isModelReady() &&
-			(pendingOptions.contextReady || pendingOptions.extendContext || pendingOptions.domReady)) {
-
-			// The context is already ready, so invoke handlers and remove so that we don't double-up
-			window.context.addModelReady(modelReadyHandler(pendingOptions.contextReady, pendingOptions.extendContext, pendingOptions.domReady));
-			pendingOptions.contextReady = null;
-			pendingOptions.extendContext = null;
-			pendingOptions.domReady = null;
-		}
-
-		return;
-	}
-
-	var currentOptions = pendingOptions;
-	pendingOptions = null;
-
-	// Create a context if needed
-	window.context = window.context || new Context();
-
-	// Perform initialization once the context is ready
-	if (currentOptions.contextReady || currentOptions.extendContext || currentOptions.domReady || !activated)
-		window.context.addModelReady(modelReadyHandler(currentOptions.contextReady, currentOptions.extendContext, currentOptions.domReady));
-	
-	// Perform initialization
-	if (currentOptions.init)
-		currentOptions.init(window.context);
-
-	// Start the new query
-	Context$query.call(window.context, {
-		model: currentOptions.model,
-		types: currentOptions.types,
-		changes: currentOptions.changes,
-		conditions: currentOptions.conditions,
-		instances: currentOptions.instances,
-		serverinfo: currentOptions.serverinfo
-	});
+	updatePendingOptionsWith(newOptions);
+	flushPendingOptions();
 };
+
+window.$exoweb = $exoweb;

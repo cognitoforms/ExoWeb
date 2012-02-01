@@ -1,5 +1,5 @@
 var objectProviderFn = function objectProviderFn(type, ids, paths, inScope, changes, onSuccess, onFailure) {
-	throw "Object provider has not been implemented.  Call ExoWeb.Mapper.setObjectProvider(fn);";
+	throw new Error("Object provider has not been implemented.  Call ExoWeb.Mapper.setObjectProvider(fn);");
 };
 
 function objectProvider(type, ids, paths, inScope, changes, onSuccess, onFailure, thisPtr) {

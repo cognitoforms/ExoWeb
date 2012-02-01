@@ -44,38 +44,33 @@
 
 <!-- multiple entity references -->
 <script type="text/javascript">
-
-	function selectedOnlyDeselect(e, index) {
-		var adapt = $parentContextData(e, null, 2);
-		adapt.get_rawValue().removeAt(index);
+	function selectedOnlyDeselect(element, index) {
+		var adapter = $parentContextData(element, null, 2);
+		var option = adapter.get_options()[index];
+		option.set_selected(false);
 	}
-
-	function selectedOnlySelect(e) {
-		if (e.selectedIndex > 0) {
-			var adapt = $parentContextData(e, null, null);
-			var option = $parentContextData(e.options[e.selectedIndex], null, null);
-			if (!option.get_selected()) {
-				adapt.get_rawValue().add(option.get_rawValue())
-			}
-			e.selectedIndex = 0;
+	function selectedOnlySelect(element) {
+		if (element.selectedIndex > 0) {
+			var adapter = $parentContextData(element, null, null);
+			var option = $parentContextData(element.options[element.selectedIndex], null, null);
+			option.set_selected(true);
+			element.selectedIndex = 0;
 		}
 	}
-		
 </script>
 
 <span template:name="field selectedOnly" template:datatype="ExoWeb.View.Adapter" adapter:datatype="ExoWeb.Model.Entity" adapter:islist="true"
-
 	class="sys-template" sys:attach="template" template:for=".field.selectedOnly span" template:if="$data instanceof ExoWeb.View.Adapter && $data.get_isList() && $data.isType(ExoWeb.Model.Entity)">
 	<div class='validation'></div>
-	<ul class="sys-template deletable" sys:attach="dataview" dataview:data="{~ displayValue }">
+	<ul class="sys-template deletable" sys:attach="dataview" dataview:data="{~ options, transform=where('selected === true') }">
 		<li>
-			<span>{{ $dataItem }}</span>
+			<span>{binding displayValue}</span>
 			<span class="delete" sys:onclick="{{ 'selectedOnlyDeselect(this,'+ $index +')' }}"></span>
 		</li>
-	</ul>	
-	<select class="sys-template" sys:attach="dataview" dataview:data="{ binding options }" onchange="selectedOnlySelect(this)">
+	</ul>
+	<select class="sys-template" sys:attach="dataview" dataview:data="{~ options, transform=where('selected === false') }" onchange="selectedOnlySelect(this)">
 		<option sys:if="{{ $index == 0 }}" value="">-- select --</option>
-		<option>{ binding displayValue }</option>		
+		<option>{binding displayValue}</option>
 	</select>
 </span>
 
@@ -100,7 +95,7 @@
 <!-- date, time only -->
 <span template:name="field time-only" template:datatype="ExoWeb.View.Adapter" adapter:datatype="Date"
 
-	class="sys-template" sys:attach="template" template:for=".field span" template:if="$data.isType(Date) && $data.get_displayFormat() === Date.formats.Time">
+	class="sys-template" sys:attach="template" template:for=".field span" template:if="$data.isType(Date) && $data.get_format() === Date.formats.Time">
 	<input type='text' sys:value="{ binding displayValue }" />
 </span>
 

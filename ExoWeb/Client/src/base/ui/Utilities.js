@@ -2,8 +2,8 @@ function getTemplateSubContainer(childElement) {
 	var element = childElement;
 
 	function isDataViewOrContent(el) {
-		return element.parentNode._exowebcontent ||
-			(element.parentNode._msajaxtemplate && !element.parentNode._exowebtoggle);
+		return (el.control && el.control instanceof Sys.UI.DataView) ||
+			(el.control && el.control instanceof ExoWeb.UI.Content);
 	}
 
 	// find the first parent that has an attached ASP.NET Ajax dataview or ExoWeb content control (ignore toggle)

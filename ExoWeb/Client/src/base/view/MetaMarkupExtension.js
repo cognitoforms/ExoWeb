@@ -20,7 +20,7 @@ Sys.Application.registerMarkupExtension(
 			element = component;
 		}
 
-		var adapter = new Adapter(options.source || templateContext.dataItem, options.path, options.systemFormat, options.displayFormat, properties);
+		var adapter = new Adapter(options.source || templateContext.dataItem, options.path, options.format, properties);
 		options.source = adapter;
 		options.path = element.nodeName == "SELECT" ? "systemValue" : "displayValue";
 

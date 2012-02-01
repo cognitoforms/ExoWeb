@@ -10,6 +10,7 @@ using ExoRule;
 using System.Collections;
 using ExoWeb.Templates;
 using System.IO;
+using ExoWeb.Templates.JavaScript;
 
 namespace ExoWeb
 {
@@ -32,8 +33,10 @@ namespace ExoWeb
 
 		static ExoWeb()
 		{
-			Adapter = new ServiceAdapter();
+			// Configure default serialization
 			InitializeSerialization();
+
+			// Cache the .NET 4.0 method info to create HTML strings when using MVC
 			var assembly = Assembly.LoadWithPartialName("System.Web.Mvc");
 			if (assembly != null)
 			{
@@ -41,19 +44,9 @@ namespace ExoWeb
 				if (type != null)
 					createHtmlString = type.GetMethod("Create", BindingFlags.Static | BindingFlags.Public, null, new Type[] { typeof(string) }, null);
 			}
-		}
 
-		#endregion
-
-		#region Properties
-
-		/// <summary>
-		/// Gets a unique cache key to use when referencing client scripts to ensure that application
-		/// changes cause browsers to pull down new type schema information.
-		/// </summary>
-		public static string CacheHash
-		{
-			get
+			// Initialize the default implementation of the cache hash provider
+			CacheHashProvider = () =>
 			{
 				if (cacheHash == null)
 				{
@@ -65,16 +58,46 @@ namespace ExoWeb
 					cacheHash = code.ToString();
 				}
 				return cacheHash;
-			}
+			};
+
+			// Enable server rendering by default
+			EnableServerRendering = true;
 		}
 
-		public static ServiceAdapter Adapter { get; set; }
+		#endregion
+
+		#region Properties
+
+		/// <summary>
+		/// Gets a unique cache key to use when referencing client scripts to ensure that application
+		/// changes cause browsers to pull down new type schema information.
+		/// </summary>
+		public static Func<string> CacheHashProvider { get; set; }
+
+		/// <summary>
+		/// Gets a unique cache key to use when referencing client scripts to ensure that application
+		/// changes cause browsers to pull down new type schema information.
+		/// </summary>
+		public static string CacheHash
+		{
+			get
+			{
+				return CacheHashProvider();
+			}
+		}
 
 		/// <summary>
 		/// Indicates whether all error information should be available on 
 		/// the client.  This option should be used with caution.
 		/// </summary>
 		public static bool EnableExceptionInformation { get; set; }
+
+		/// <summary>
+		/// Indicates whether server rendering should be enabled either using the <see cref="Render"/> method
+		/// or the <see cref="Templates.Render"/> server control to render templates on the server as
+		/// part of the initial page request.
+		/// </summary>
+		public static bool EnableServerRendering { get; set; }
 
 		#endregion
 
@@ -294,7 +317,7 @@ namespace ExoWeb
 
 			// Track the current model roots to support server template rendering
 			foreach (var root in response.Model)
-				Templates.Page.Current.Model[root.Key] = root.Value.Roots;
+				Templates.Page.Current.Model[root.Key] = root.Value.IsList ? (object)root.Value.Roots : (root.Value.Roots.Length == 1 ?root.Value.Roots[0] : null);
 
 			// Return the response
 			return GetHtmlString("<script type=\"text/javascript\">$exoweb(" + ToJson(typeof(ServiceResponse), response) + ");</script>");
@@ -307,7 +330,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static object LoadTemplates(params string[] paths)
 		{
-			Templates.Page.Current.Templates.AddRange(paths.SelectMany(p => Templates.Page.Current.LoadTemplates(System.Web.HttpContext.Current.Server.MapPath(p))));
+			Templates.Page.Current.Templates.AddRange(paths.SelectMany(p => Templates.Page.Current.LoadTemplates(System.Web.HttpContext.Current.Server.MapPath(p))).Reverse());
 			var urls = paths.Select(p => p.StartsWith("~") ? System.Web.VirtualPathUtility.ToAbsolute(p) : p).Select(p => p + (p.Contains("?") ? "&" : "?") + "cachehash=" + ExoWeb.CacheHash);
 			return GetHtmlString("<script type=\"text/javascript\">$exoweb(function () {" + urls.Aggregate("", (js, url) => js + "ExoWeb.UI.Template.load(\"" + url + "\"); ") + "});</script>");
 		}
@@ -323,12 +346,17 @@ namespace ExoWeb
 		public static object Render(Func<object, object> template)
 		{
 			var markup = template(null).ToString();
-			using (var writer = new StringWriter())
+			if (EnableServerRendering)
 			{
-				Page.Current.Parse(markup).Render(Page.Current, writer);
-				return GetHtmlString(writer.ToString()); 
+				using (var writer = new StringWriter())
+				{
+					Page.Current.Parse(markup).Render(Page.Current, writer);
+					return GetHtmlString(writer.ToString());
 
+				}
 			}
+			else
+				return GetHtmlString(markup);
 		}
 
 		/// <summary>
@@ -682,6 +710,10 @@ namespace ExoWeb
 						if (graphType.BaseType != null)
 							json.Set("baseType", JsonConverter.GetJsonReferenceType(graphType.BaseType));
 
+						// Base Type
+						if (!String.IsNullOrEmpty(graphType.Format))
+							json.Set("format", graphType.Format);
+
 						// Properties
 						json.Set("properties", graphType.Properties
 							.Where(property => property.DeclaringType == graphType && IncludeInClientModel(property))
@@ -704,10 +736,11 @@ namespace ExoWeb
 					(property, json) =>
 					{
 						// Type
-						json.Set("type", (property is GraphValueProperty ?
+						string type = (property is GraphValueProperty ?
 							JsonConverter.GetJsonValueType(((GraphValueProperty)property).PropertyType) ?? "Object" :
 							JsonConverter.GetJsonReferenceType(((GraphReferenceProperty)property).PropertyType)) +
-							(property.IsList ? "[]" : ""));
+							(property.IsList ? "[]" : "");
+						json.Set("type", type);
 
 						// IsStatic
 						if (property.IsStatic)
@@ -730,12 +763,12 @@ namespace ExoWeb
 							json.Set("index", index);
 
 						// Format
-						string formatName = ExoWeb.Adapter.GetFormatName(property);
-						if (!string.IsNullOrEmpty(formatName))
-							json.Set("format", formatName);
+						string format = property.Format;
+						if (!string.IsNullOrEmpty(format))
+							json.Set("format", format);
 
 						// Label
-						string label = ExoWeb.Adapter.GetLabel(property);
+						string label = property.Label;
 						if (!string.IsNullOrEmpty(label))
 							json.Set("label", label);
 					}, 
@@ -973,6 +1006,20 @@ namespace ExoWeb
 								json.Set("max", rule.Maximum);
 						},
 						json => { throw new NotSupportedException("StringLengthRule cannot be deserialized."); }),
+
+					// StringFormatRule
+					new JsonConverter<StringFormatRule>(
+						(rule, json) =>
+						{
+							json.Set("type", "stringFormat");
+							json.Set("property", rule.Property.Name);
+							if (!String.IsNullOrEmpty(rule.FormatDescription))
+								json.Set("description", rule.FormatDescription);
+							json.Set("expression", rule.FormatExpression.ToString());
+							if (!String.IsNullOrEmpty(rule.ReformatExpression))
+								json.Set("reformat", rule.ReformatExpression);
+						},
+						json => { throw new NotSupportedException("StringFormatRule cannot be deserialized."); }),
 
 			});
 

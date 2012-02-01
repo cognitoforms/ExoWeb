@@ -1,5 +1,5 @@
 var typeProviderFn = function typeProviderFn(types, onSuccess, onFailure) {
-	throw "Type provider has not been implemented.  Call ExoWeb.Mapper.setTypeProvider(fn);";
+	throw new Error("Type provider has not been implemented.  Call ExoWeb.Mapper.setTypeProvider(fn);");
 };
 
 function typeProviderImpl(types, callback, thisPtr) {

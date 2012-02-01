@@ -68,6 +68,8 @@
     <Content Include="Common\Resources\CateBlanchett.jpg" />
     <Content Include="Common\Resources\ChrisODonnell.jpg" />
     <Content Include="Common\Resources\DanAckroyd.jpg" />
+    <Content Include="Common\Resources\DavisGuggenheim.jpg" />
+    <Content Include="Common\Resources\GeoffreyCanada.jpg" />
     <Content Include="Common\Resources\GeorgeClooney.jpg" />
     <Content Include="Common\Resources\Ghostbusters.jpg" />
     <Content Include="Common\Resources\HaroldRamis.jpg" />
@@ -80,6 +82,7 @@
     <Content Include="Common\Resources\TheGladiator.jpg" />
     <Content Include="Common\Resources\TheMatrix.jpg" />
     <Content Include="Common\Resources\UmaThurman.jpg" />
+    <Content Include="Common\Resources\WaitingForSuperman.jpg" />
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2-vsdoc.js" />
     <Content Include="Common\Scripts\mock-driver.js" />
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2.js" />
@@ -101,9 +104,13 @@
     <Content Include="Model\Inheritance.htm" />
     <Content Include="Model\Property.htm" />
     <Content Include="Model\Types.htm" />
-    <Content Include="UI\DataViewPartial.htm" />
-    <Content Include="UI\Helpers.htm" />
-    <Content Include="UI\ServerRenderWithLinking.htm" />
+    <Content Include="UI\DataViewPartialRefresh.htm" />
+    <Content Include="UI\ServerRenderTemplateSelection.htm" />
+    <Content Include="UI\ServerRenderAbort.htm" />
+    <Content Include="UI\ServerRenderToggle.htm" />
+    <Content Include="UI\TemplateSelection.htm" />
+    <Content Include="UI\ParentContextData.htm" />
+    <Content Include="UI\ServerRender.htm" />
     <Content Include="View\Adapter.htm" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
