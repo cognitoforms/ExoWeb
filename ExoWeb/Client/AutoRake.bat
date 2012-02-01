@@ -1,0 +1,1 @@
+AutoExec rake src\*\*.js
