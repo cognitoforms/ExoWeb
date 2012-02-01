@@ -230,22 +230,25 @@ Content.prototype = {
 		var container = this.get_element();
 		this._context = null;
 
-		var tmplEl = this._findTemplate();
-		var template = new Sys.UI.Template(tmplEl);
+		var data = this.get_data();
+		if (data !== null && data !== undefined) {
+			var tmplEl = this._findTemplate();
+			var template = new Sys.UI.Template(tmplEl);
 
-		// get custom classes from template
-		var classes = $(tmplEl).attr("class");
-		if (classes) {
-			classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
-			$(container).addClass(classes);
+			// get custom classes from template
+			var classes = $(tmplEl).attr("class");
+			if (classes) {
+				classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
+				$(container).addClass(classes);
+			}
+
+			// Get the list of template names applicable to the control's children
+			var contentTemplate = this._getResultingTemplateNames(tmplEl);
+
+			this._context = template.instantiateIn(container, this._data, this._data, 0, null, parentContext, contentTemplate.join(" "));
+
+			this._initializeResults();
 		}
-
-		// Get the list of template names applicable to the control's children
-		var contentTemplate = this._getResultingTemplateNames(tmplEl);
-
-		this._context = template.instantiateIn(container, this._data, this._data, 0, null, parentContext, contentTemplate.join(" "));
-
-		this._initializeResults();
 	},
 
 	_renderStart: function Content$_renderStart(force) {
