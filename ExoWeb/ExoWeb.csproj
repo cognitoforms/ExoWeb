@@ -224,7 +224,7 @@
     <Content Include="Client\src\base\mapper\Context.js" />
     <Content Include="Client\src\base\mapper\ContextQuery.js" />
     <Content Include="Client\src\base\mapper\EventProvider.js" />
-    <Content Include="Client\src\base\mapper\ExoGraphEventListener.js" />
+    <Content Include="Client\src\base\mapper\ExoModelEventListener.js" />
     <Content Include="Client\src\base\mapper\ExoWeb.js" />
     <Content Include="Client\src\base\mapper\Extend.js" />
     <Content Include="Client\src\base\mapper\Internals.js" />
