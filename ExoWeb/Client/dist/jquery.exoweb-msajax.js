@@ -221,7 +221,7 @@
 
 	var processElements = function processElements(container, els, action, source) {
 		// Determine if the input is an array
-		var isArr = ExoWeb.isArray(els),
+		var isArr = Object.prototype.toString.call(els) === "[object Array]",
 
 			// The number of elements to process
 			numEls = isArr ? els.length : 1,
@@ -533,9 +533,17 @@
 		}
 		else {
 			existingFn = handler.action;
-			handler.action = ExoWeb.Functor();
-			handler.action.add(existingFn);
-			handler.action.add(action);
+			if (window.ExoWeb) {
+				handler.action = ExoWeb.Functor();
+				handler.action.add(existingFn);
+				handler.action.add(action);
+			}
+			else {
+				handler.action = function() {
+					existingFn.apply(this, arguments);
+					action.apply(this, arguments);
+				};
+			}
 		}
 	};
 
@@ -562,6 +570,7 @@
 
 		// Handle legacy form
 		if (typeof (opts) === "function") {
+			addedImmediate = this;
 			options = {
 				context: queryContext,
 				selector: querySelector,
@@ -573,9 +582,11 @@
 		else {
 			options = opts;
 			// Detect non-supported options
-			for (var opt in options) {
-				if (options.hasOwnProperty(opt) && !/^(selector|source|added|deleted|bound|unbound)$/.test(opt)) {
-					ExoWeb.trace.logWarning("ever", "Unexpected option \"" + opt + "\"");
+			if (window.ExoWeb) {
+				for (var opt in options) {
+					if (options.hasOwnProperty(opt) && !/^(selector|source|added|deleted|bound|unbound)$/.test(opt)) {
+						ExoWeb.trace.logWarning("ever", "Unexpected option \"" + opt + "\"");
+					}
 				}
 			}
 			// Set the context if it was specified
@@ -599,16 +610,21 @@
 			// Merge the query selector with the options selector
 			if (querySelector) {
 				if (options.selector) {
-					options.selector = querySelector.split(",").map(function(s) { return s + " " + options.selector; }).join(", ");
+					options.selector = querySelector.replace(/,/g, " " + options.selector + ",") + " " + options.selector;
 				}
 				else {
 					options.selector = querySelector;
 				}
 			}
 			else if (!options.selector) {
-				ExoWeb.trace.throwAndLog("ever", "Ever requires a selector");
+				if (window.ExoWeb) {
+					ExoWeb.trace.throwAndLog("ever", "Ever requires a selector");
+				}
+				else {
+					throw new Error("Ever requires a selector");
+				}
 			}
-			if (options.source) {
+			if (window.ExoWeb && options.source) {
 				if (!(options.added || options.deleted)) {
 					ExoWeb.trace.logWarning("ever", "The source option only applies to added and deleted handlers");
 				}
