@@ -11,6 +11,9 @@ var processElements = function processElements(container, els, action, source) {
 		// Cache of handlers for the action in question
 		actionHandlers,
 
+		// The number of unfiltered handlers
+		numActionHandlers,
+
 		// Handlers that are applicable to this call
 		handlers,
 
@@ -42,12 +45,24 @@ var processElements = function processElements(container, els, action, source) {
 	actionHandlers = everHandlers[action];
 
 	// Filter based on source and context
-	handlers = actionHandlers.filter(function(handler) {
+	i = -1;
+	numActionHandlers = actionHandlers.length;
+	handlers = [];
+	while (++i < numActionHandlers) {
+		handler = actionHandlers[i];
+
 		// If a handler source is specified then filter by the source
-		return (!handler.source || handler.source === source) &&
-			// If a handler context is specified then see if it contains the given container, or equals if children were passed in
-			(!handler.context || (isArr && handler.context === container) || jQuery.contains(handler.context, container));
-	});
+		if (!handler.source || handler.source === source) {
+			continue;
+		}
+
+		// If a handler context is specified then see if it contains the given container, or equals if children were passed in
+		if (!handler.context || (isArr && handler.context === container) || jQuery.contains(handler.context, container)) {
+			continue;
+		}
+
+		handlers.push(handler);
+	}
 
 	numHandlers = handlers.length;
 
