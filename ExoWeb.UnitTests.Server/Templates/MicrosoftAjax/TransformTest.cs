@@ -1,11 +1,11 @@
 ﻿using System;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ExoGraph.UnitTest;
+using ExoModel.UnitTest;
 using ExoWeb.Templates.JavaScript;
 using System.Collections;
 using System.Linq;
-using ExoGraph;
+using ExoModel;
 using System.Collections.Generic;
 
 namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
@@ -17,7 +17,7 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		[TestInitialize]
 		public void CreateContext()
 		{
-			GraphContext.Init(new TestGraphTypeProvider());
+			ModelContext.Init(new TestModelTypeProvider());
 		}
 		#endregion
 
@@ -54,12 +54,12 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		{
 			DoTransform(requests =>
 			{
-				IEnumerable inputInstances = requests.Select(r => GraphContext.Current.GetGraphInstance(r));
+				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
 
 				IEnumerable results = Accessors.DoTransform(inputInstances, "where('User.IsActive')", "where('Category.Name === \"Server\"')");
 
 				Assert.IsNotNull(results);
-				var outputInstances = results as IEnumerable<GraphInstance>;
+				var outputInstances = results as IEnumerable<ModelInstance>;
 				Assert.IsNotNull(outputInstances);
 
 				Assert.AreEqual(1, outputInstances.Count());
@@ -74,7 +74,7 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		{
 			DoTransform(requests =>
 			{
-				IEnumerable inputInstances = requests.Select(r => GraphContext.Current.GetGraphInstance(r));
+				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
 
 				IEnumerable results = Accessors.DoTransform(inputInstances, "where('User.IsActive')", "groupBy('Category')");
 
@@ -84,8 +84,8 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 
 				object firstGroup = Accessors.GetTransformGroup(resultObjects.First());
 
-				Assert.IsInstanceOfType(firstGroup, typeof(GraphInstance));
-				Assert.AreEqual("Server", ((Category)((GraphInstance)firstGroup).Instance).Name);
+				Assert.IsInstanceOfType(firstGroup, typeof(ModelInstance));
+				Assert.AreEqual("Server", ((Category)((ModelInstance)firstGroup).Instance).Name);
 			});
 		}
 
@@ -94,7 +94,7 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		{
 			DoTransform(requests =>
 			{
-				IEnumerable inputInstances = requests.Select(r => GraphContext.Current.GetGraphInstance(r));
+				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
 
 				IEnumerable results = Accessors.DoTransform(inputInstances, "groupBy('User')", "where('group.IsActive')");
 
@@ -104,8 +104,8 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 
 				object firstGroup = Accessors.GetTransformGroup(resultObjects.First());
 
-				Assert.IsInstanceOfType(firstGroup, typeof(GraphInstance));
-				Assert.AreEqual("TestUser", ((User)((GraphInstance)firstGroup).Instance).UserName);
+				Assert.IsInstanceOfType(firstGroup, typeof(ModelInstance));
+				Assert.AreEqual("TestUser", ((User)((ModelInstance)firstGroup).Instance).UserName);
 			});
 		}
 
@@ -114,7 +114,7 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		{
 			DoTransform(requests =>
 			{
-				IEnumerable inputInstances = requests.Select(r => GraphContext.Current.GetGraphInstance(r));
+				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
 
 				IEnumerable results = Accessors.DoTransform(inputInstances, "groupBy('User')", "groupBy('group.IsActive')", "orderBy('group asc')");
 
@@ -129,8 +129,8 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 				Assert.AreEqual(1, inactiveGroups.Count());
 
 				object firstInactiveGroup = Accessors.GetTransformGroup(inactiveGroups.First());
-				Assert.IsInstanceOfType(firstInactiveGroup, typeof(GraphInstance));
-				Assert.AreEqual("ArchivedUser", ((User)((GraphInstance)firstInactiveGroup).Instance).UserName);
+				Assert.IsInstanceOfType(firstInactiveGroup, typeof(ModelInstance));
+				Assert.AreEqual("ArchivedUser", ((User)((ModelInstance)firstInactiveGroup).Instance).UserName);
 			});
 		}
 		#endregion

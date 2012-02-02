@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ExoGraph.UnitTest;
+using ExoModel.UnitTest;
 using FluentAssertions;
-using ExoGraph;
+using ExoModel;
 using System.Text.RegularExpressions;
 
 namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
@@ -19,7 +19,7 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		[TestInitialize]
 		public void CreateContext()
 		{
-			GraphContext.Init(new TestGraphTypeProvider());
+			ModelContext.Init(new TestModelTypeProvider());
 		}
 		#endregion
 

@@ -5,9 +5,9 @@ using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Jurassic;
 using Jurassic.Library;
-using ExoGraph.UnitTest;
+using ExoModel.UnitTest;
 using System.Reflection;
-using ExoGraph;
+using ExoModel;
 using System.Threading;
 using System.Collections;
 
@@ -20,7 +20,7 @@ namespace ExoWeb.UnitTests.Server
 		[TestInitialize]
 		public void CreateContext()
 		{
-			GraphContext.Init(new TestGraphTypeProvider());
+			ModelContext.Init(new TestModelTypeProvider());
 		}
 		#endregion
 
@@ -121,13 +121,13 @@ namespace ExoWeb.UnitTests.Server
 			};
 
 			var path = Accessors.CreateScriptFunction("arg", "arg.get_User()");
-			Assert.AreEqual(((IGraphInstance)data.User).Instance, path(((IGraphInstance)data).Instance), "marshal GraphInstance");
+			Assert.AreEqual(((IModelInstance)data.User).Instance, path(((IModelInstance)data).Instance), "marshal ModelInstance");
 
 			var f = Accessors.CreateScriptFunction("arg", "arg");
 			Assert.AreEqual(true, f(true));
 			Assert.AreEqual("abc", f("abc"));
 			Assert.AreEqual(1.0, f(1.0));
-			Assert.AreEqual(((IGraphInstance)data).Instance, f(((IGraphInstance)data).Instance));
+			Assert.AreEqual(((IModelInstance)data).Instance, f(((IModelInstance)data).Instance));
 		}
 
 		[TestMethod]
@@ -139,8 +139,8 @@ namespace ExoWeb.UnitTests.Server
 				Description = "abc123"
 			};
 
-			TestEntityExpression(data, "$data.meta.id", ((IGraphInstance)data).Instance.Id);
-			TestEntityExpression(data, "$data.get_User().meta.id", ((IGraphInstance)data.User).Instance.Id);
+			TestEntityExpression(data, "$data.meta.id", ((IModelInstance)data).Instance.Id);
+			TestEntityExpression(data, "$data.get_User().meta.id", ((IModelInstance)data.User).Instance.Id);
 		}
 
 		[TestMethod]
@@ -287,17 +287,17 @@ namespace ExoWeb.UnitTests.Server
 			Assert.AreEqual(expectedResult, result, javascript + " ---> " + expectedResult);
 		}
 
-		void TestAdapterExpression<T>(IGraphInstance data, string propertyName, string javascript, T expectedResult)
+		void TestAdapterExpression<T>(IModelInstance data, string propertyName, string javascript, T expectedResult)
 		{
 			TestExpression(engine => Accessors.CreateAdapter(engine, data, propertyName), javascript, expectedResult);
 		}
 
-		void TestEntityExpression<T>(IGraphInstance data, string javascript, T expectedResult)
+		void TestEntityExpression<T>(IModelInstance data, string javascript, T expectedResult)
 		{
 			TestExpression(engine => Accessors.CreateEntity(engine, data), javascript, expectedResult);
 		}
 
-		void TestEntityException(IGraphInstance data, string javascript, Predicate<Exception> expected)
+		void TestEntityException(IModelInstance data, string javascript, Predicate<Exception> expected)
 		{
 			var engine = new Jurassic.ScriptEngine();
 			engine.ForceStrictMode = true;
