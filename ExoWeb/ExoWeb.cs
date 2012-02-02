@@ -899,7 +899,7 @@ namespace ExoWeb
 						{
 							json.Set("category", conditionType.Category.ToString());
 
-							if (conditionType.Sets != null && conditionType.Sets.Length > 0)
+							if (conditionType.Sets != null && conditionType.Sets.Any())
 								json.Set("sets", conditionType.Sets.Select(set => set.Name));
 
 							json.Set("message", conditionType.Message);
