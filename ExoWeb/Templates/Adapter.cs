@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using ExoRule;
 using ExoRule.Validation;
 using System.Collections;
@@ -54,7 +54,7 @@ namespace ExoWeb.Templates
 		/// <summary>
 		/// The source value that the property path is evaluated against
 		/// </summary>
-		public GraphInstance Source
+		public ModelInstance Source
 		{
 			get
 			{
@@ -65,7 +65,7 @@ namespace ExoWeb.Templates
 		/// <summary>
 		/// The property represented by the path
 		/// </summary>
-		public GraphProperty Property
+		public ModelProperty Property
 		{
 			get
 			{
@@ -104,7 +104,7 @@ namespace ExoWeb.Templates
 		{
 			get
 			{
-				return Property is GraphReferenceProperty && ((GraphReferenceProperty)Property).IsList;
+				return Property is ModelReferenceProperty && ((ModelReferenceProperty)Property).IsList;
 			}
 		}
 
@@ -171,7 +171,7 @@ namespace ExoWeb.Templates
 		/// <param name="optionsTransform"></param>
 		/// <param name="rawOptions"></param>
 		/// <returns></returns>
-		internal static bool TryGetAllowedValues(GraphProperty property, GraphInstance source, Transform optionsTransform, out IEnumerable<object> allowedValues)
+		internal static bool TryGetAllowedValues(ModelProperty property, ModelInstance source, Transform optionsTransform, out IEnumerable<object> allowedValues)
 		{
 			bool isValid = true;
 			allowedValues = null;
@@ -189,7 +189,7 @@ namespace ExoWeb.Templates
 				else
 					allowedValues = allowedInstances.Cast<object>();
 			}
-			else if (property is GraphValueProperty && JsonConverter.GetJsonValueType(((GraphValueProperty)property).PropertyType) == "Boolean")
+			else if (property is ModelValueProperty && JsonConverter.GetJsonValueType(((ModelValueProperty)property).PropertyType) == "Boolean")
 				allowedValues = (new bool[] { true, false }).Cast<object>();
 
 			return isValid;
@@ -203,16 +203,16 @@ namespace ExoWeb.Templates
 		/// <param name="value"></param>
 		/// <param name="displayValue"></param>
 		/// <returns></returns>
-		internal static bool TryGetDisplayValue(GraphProperty property, string format, object value, out string displayValue)
+		internal static bool TryGetDisplayValue(ModelProperty property, string format, object value, out string displayValue)
 		{
 			if (value == null)
 				displayValue = "";
-			else if (property is GraphValueProperty)
-				displayValue = ((GraphValueProperty)property).FormatValue(value, format);
-			else if (value is IEnumerable<GraphInstance>)
+			else if (property is ModelValueProperty)
+				displayValue = ((ModelValueProperty)property).FormatValue(value, format);
+			else if (value is IEnumerable<ModelInstance>)
 			{
 				StringBuilder builder = new StringBuilder();
-				foreach (GraphInstance instance in (IEnumerable<GraphInstance>)value)
+				foreach (ModelInstance instance in (IEnumerable<ModelInstance>)value)
 				{
 					string instanceValue;
 					if (!instance.TryFormat(format ?? property.Format, out instanceValue))
@@ -229,8 +229,8 @@ namespace ExoWeb.Templates
 
 				displayValue = builder.ToString();
 			}
-			else if (value is GraphInstance)
-				return ((GraphInstance)value).TryFormat(format ?? property.Format, out displayValue);
+			else if (value is ModelInstance)
+				return ((ModelInstance)value).TryFormat(format ?? property.Format, out displayValue);
 			else
 				throw new ArgumentException("Cannot obtain a display value since the given object is invalid for the property.");
 
@@ -250,8 +250,8 @@ namespace ExoWeb.Templates
 
 			if (value != null)
 			{
-				if (value is GraphInstance)
-					systemValue = ((GraphInstance)value).Type.Name + "|" + ((GraphInstance)value).Id;
+				if (value is ModelInstance)
+					systemValue = ((ModelInstance)value).Type.Name + "|" + ((ModelInstance)value).Id;
 				else
 					isValid = false;
 			}

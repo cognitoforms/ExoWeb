@@ -471,7 +471,7 @@ ContextQuery.mixin({
 
 						if (this.state[varName].objectJson) {
 							// ensure that instance data is loaded (even if not needed to establish roots) just in case
-							// root object was satisfied because it happened to be a part of the graph of another root object
+							// root object was satisfied because it happened to be a part of the model of another root object
 							objectsFromJson(this.context.model.meta, this.state[varName].objectJson, allSignals.pending());
 						}
 

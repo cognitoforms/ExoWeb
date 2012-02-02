@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 
 namespace ExoWeb.Templates
 {
@@ -59,7 +59,7 @@ namespace ExoWeb.Templates
 			get
 			{
 				return Parent.IsList ?
-					((IEnumerable<GraphInstance>)Parent.RawValue).Contains((GraphInstance)RawValue) :
+					((IEnumerable<ModelInstance>)Parent.RawValue).Contains((ModelInstance)RawValue) :
 					RawValue.Equals(Parent.RawValue);
 			}
 		}

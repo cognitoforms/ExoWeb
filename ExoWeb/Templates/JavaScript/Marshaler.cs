@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using Jurassic;
 using Jurassic.Library;
 using System.Collections;
@@ -30,8 +30,8 @@ namespace ExoWeb.Templates.JavaScript
 			if (clrObject is IDictionary<string, object>)
 				return new DictionaryWrapper(engine, (IDictionary<string, object>)clrObject);
 
-			if (clrObject is GraphInstance)
-				return Wrap((GraphInstance)clrObject);
+			if (clrObject is ModelInstance)
+				return Wrap((ModelInstance)clrObject);
 
 			if (clrObject is Templates.Adapter)
 				return new AdapterWrapper(engine, (Adapter)clrObject);
@@ -67,7 +67,7 @@ namespace ExoWeb.Templates.JavaScript
 			return jsObject;
 		}
 
-		public EntityWrapper Wrap(GraphInstance instance)
+		public EntityWrapper Wrap(ModelInstance instance)
 		{
 			string key = instance.Type.Name + "|" + instance.Id;
 

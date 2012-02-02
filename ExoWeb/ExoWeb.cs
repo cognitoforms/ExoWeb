@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using ExoGraph;
+using ExoModel;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
@@ -110,7 +110,7 @@ namespace ExoWeb
 		public static event EventHandler<ServiceErrorEventArgs> Error;
 
 		/// <summary>
-		/// Raised before conditions related to a graph instance are included in the service response
+		/// Raised before conditions related to a model instance are included in the service response
 		/// </summary>
 		public static event EventHandler<EnsureConditionsEventArgs> EnsureConditions;
 
@@ -148,7 +148,7 @@ namespace ExoWeb
 		/// Raises the <see cref="EnsureConditions"/> event
 		/// </summary>
 		/// <param name="dictionary"></param>
-		internal static void OnEnsureConditions(ServiceResponse response, IEnumerable<GraphInstance> instances)
+		internal static void OnEnsureConditions(ServiceResponse response, IEnumerable<ModelInstance> instances)
 		{
 			if (EnsureConditions != null)
 				EnsureConditions(response, new EnsureConditionsEventArgs(instances));
@@ -253,7 +253,7 @@ namespace ExoWeb
 			}
 
 			// Perform the initialization action, if specified
-			GraphTransaction initChanges = null;
+			ModelTransaction initChanges = null;
 			if (init != null)
 			{
 				// Determine matching parameters
@@ -286,10 +286,10 @@ namespace ExoWeb
 				}
 
 				// Perform initialization while capturing changes
-				initChanges = new GraphTransaction().Record(() =>
+				initChanges = new ModelTransaction().Record(() =>
 				{
 					// Prevent property change rules from running until after initialization
-					GraphEventScope.Perform(() => init.DynamicInvoke(parameters));
+					ModelEventScope.Perform(() => init.DynamicInvoke(parameters));
 				});
 			}
 
@@ -298,18 +298,18 @@ namespace ExoWeb
 			ServiceResponse response = request.Invoke();
 
 			// Keep init and property get changes that were captured when processing the queries.
-			GraphTransaction queryChanges = response.Changes;
+			ModelTransaction queryChanges = response.Changes;
 
 			// Prepend initialization events for each instance created by the model queries
-			var rootChanges = (GraphTransaction)request.Queries
+			var rootChanges = (ModelTransaction)request.Queries
 					.SelectMany(q => q.Roots)
 					.Where(i => i.IsNew)
-					.Select(i => new GraphInitEvent.InitNew(i))
-					.Cast<GraphEvent>()
+					.Select(i => new ModelInitEvent.InitNew(i))
+					.Cast<ModelEvent>()
 					.ToList();
 
-			// Combine all changes into a single graph transaction.
-			response.Changes = GraphTransaction.Combine(new GraphTransaction[] { rootChanges, initChanges, queryChanges }.Where(t => t != null));
+			// Combine all changes into a single model transaction.
+			response.Changes = ModelTransaction.Combine(new ModelTransaction[] { rootChanges, initChanges, queryChanges }.Where(t => t != null));
 
 			response.Model = roots.ToDictionary(r => r.Key, r => r.Value);
 			foreach (var q in response.Model.Values)
@@ -380,7 +380,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static ServiceRequest.Query Query(string type, string id, params string[] paths)
 		{
-			return new ServiceRequest.Query(GraphContext.Current.GetGraphType(type), new string[] { id }, true, false, paths);
+			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, true, false, paths);
 		}
 
 		/// <summary>
@@ -392,7 +392,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static ServiceRequest.Query Query<T>(string id, params string[] paths)
 		{
-			return new ServiceRequest.Query(GraphContext.Current.GetGraphType<T>(), new string[] { id }, true, false, paths);
+			return new ServiceRequest.Query(ModelContext.Current.GetModelType<T>(), new string[] { id }, true, false, paths);
 		}
 
 		/// <summary>
@@ -405,7 +405,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static ServiceRequest.Query Query(string type, string id, ViewScope scope, params string[] paths)
 		{
-			return new ServiceRequest.Query(GraphContext.Current.GetGraphType(type), new string[] { id }, scope == ViewScope.InScope, false, paths);
+			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, scope == ViewScope.InScope, false, paths);
 		}
 
 		/// <summary>
@@ -418,7 +418,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static ServiceRequest.Query Query<T>(string id, ViewScope scope, params string[] paths)
 		{
-			return new ServiceRequest.Query(GraphContext.Current.GetGraphType<T>(), new string[] { id }, scope == ViewScope.InScope, false, paths);
+			return new ServiceRequest.Query(ModelContext.Current.GetModelType<T>(), new string[] { id }, scope == ViewScope.InScope, false, paths);
 		}
 
 		/// <summary>
@@ -441,8 +441,8 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static ServiceRequest.Query Query(object instance, ViewScope scope, params string[] paths)
 		{
-			GraphType type;
-			GraphInstance[] roots;
+			ModelType type;
+			ModelInstance[] roots;
 			bool isList;
 
 			if (ExoWeb.TryConvertQueryInstance(instance, out type, out roots, out isList))
@@ -479,7 +479,7 @@ namespace ExoWeb
 		/// <param name="roots"></param>
 		/// <param name="isList"></param>
 		/// <returns></returns>
-		internal static bool TryConvertQueryInstance(object instance, out GraphType type, out GraphInstance[] roots, out bool isList)
+		internal static bool TryConvertQueryInstance(object instance, out ModelType type, out ModelInstance[] roots, out bool isList)
 		{
 			// Default the out parameters to null
 			type = null;
@@ -490,14 +490,14 @@ namespace ExoWeb
 			if (instance == null)
 				return false;
 
-			// Get the current graph context
-			var context = GraphContext.Current;
+			// Get the current model context
+			var context = ModelContext.Current;
 
-			// Determine if the instance is a graph instance
-			type = context.GetGraphType(instance);
+			// Determine if the instance is a model instance
+			type = context.GetModelType(instance);
 			if (type != null)
 			{
-				roots = new GraphInstance[] { type.GetGraphInstance(instance) };
+				roots = new ModelInstance[] { type.GetModelInstance(instance) };
 
 				if (roots[0].Type.Properties.Any())
 					roots[0].OnPropertyGet(roots[0].Type.Properties.First());
@@ -506,22 +506,22 @@ namespace ExoWeb
 				return true;
 			}
 
-			// Otherwise, determine if the instance is a list of graph instances
+			// Otherwise, determine if the instance is a list of model instances
 			else if (instance is IEnumerable)
 			{
-				// Convert the list to an array of graph instances
+				// Convert the list to an array of model instances
 				roots =
 				(
 					from element in ((IEnumerable)instance).Cast<object>()
-					let elementType = context.GetGraphType(element)
+					let elementType = context.GetModelType(element)
 					where elementType != null
-					select elementType.GetGraphInstance(element)
+					select elementType.GetModelInstance(element)
 				).ToArray();
 
 				// Indicate that the instance represents a list
 				isList = true;
 
-				// If the array contains at least one graph instance, determine the base graph type
+				// If the array contains at least one model instance, determine the base model type
 				if (roots.Length > 0)
 				{
 					type = roots[0].Type;
@@ -533,7 +533,7 @@ namespace ExoWeb
 					return true;
 				}
 
-				// Otherwise, attempt to infer the graph type from the type of the list
+				// Otherwise, attempt to infer the model type from the type of the list
 				else
 				{
 					// First see if the type implements IEnumerable<T>
@@ -542,7 +542,7 @@ namespace ExoWeb
 					{
 						if (interfaceType.IsGenericType && interfaceType.GetGenericTypeDefinition() == typeof(ICollection<>))
 						{
-							type = context.GetGraphType(interfaceType.GetGenericArguments()[0]);
+							type = context.GetModelType(interfaceType.GetGenericArguments()[0]);
 							if (type != null)
 								return true;
 						}
@@ -554,7 +554,7 @@ namespace ExoWeb
 						PropertyInfo itemProperty = listType.GetProperty("Item", new Type[] { typeof(int) });
 						if (itemProperty != null)
 						{
-							type = context.GetGraphType(itemProperty.PropertyType);
+							type = context.GetModelType(itemProperty.PropertyType);
 							if (type != null)
 								return true;
 						}
@@ -570,12 +570,12 @@ namespace ExoWeb
 		/// Determines whether a given property should be included in the
 		/// model on the client.  
 		/// </summary>
-		/// <param name="property">The graph property that may be included.</param>
+		/// <param name="property">The model property that may be included.</param>
 		/// <returns>A boolean value indicating whether to include the property.</returns>
-		internal static bool IncludeInClientModel(GraphProperty property)
+		internal static bool IncludeInClientModel(ModelProperty property)
 		{
-			return !(property is GraphValueProperty) ||
-				JsonConverter.GetJsonValueType(((GraphValueProperty)property).PropertyType) != null;
+			return !(property is ModelValueProperty) ||
+				JsonConverter.GetJsonValueType(((ModelValueProperty)property).PropertyType) != null;
 		}
 
 		/// <summary>
@@ -626,15 +626,15 @@ namespace ExoWeb
 
 		public static string GetTypes(params string[] types)
 		{
-			return GetTypes(types.Select(type => GraphContext.Current.GetGraphType(type)).ToArray());
+			return GetTypes(types.Select(type => ModelContext.Current.GetModelType(type)).ToArray());
 		}
 
 		public static string GetType<T>()
 		{
-			return GetTypes(GraphContext.Current.GetGraphType<T>());
+			return GetTypes(ModelContext.Current.GetModelType<T>());
 		}
 
-		static string GetTypes(params GraphType[] types)
+		static string GetTypes(params ModelType[] types)
 		{
 			var json = ToJson(typeof(ServiceResponse), new ServiceRequest(types).Invoke());
 			return json.Substring(1, json.Length - 2);
@@ -657,88 +657,88 @@ namespace ExoWeb
 				.Cast<JavaScriptConverter>());
 
 			// Deserialize Value Change Event
-			Func<Json, GraphValueChangeEvent> deserializeValueChangeEvent = (json) =>
+			Func<Json, ModelValueChangeEvent> deserializeValueChangeEvent = (json) =>
 			{
-				GraphInstance instance = json.Get<GraphInstance>("instance");
-				GraphValueProperty property = (GraphValueProperty)instance.Type.Properties[json.Get<string>("property")];
-				return new GraphValueChangeEvent(instance, property, json.IsNull("oldValue") ? null : json.Get(property.PropertyType, "oldValue"), json.IsNull("newValue") ? null : json.Get(property.PropertyType, "newValue"));
+				ModelInstance instance = json.Get<ModelInstance>("instance");
+				ModelValueProperty property = (ModelValueProperty)instance.Type.Properties[json.Get<string>("property")];
+				return new ModelValueChangeEvent(instance, property, json.IsNull("oldValue") ? null : json.Get(property.PropertyType, "oldValue"), json.IsNull("newValue") ? null : json.Get(property.PropertyType, "newValue"));
 			};
 
 			// Deserialize Reference Change Event
-			Func<Json, GraphReferenceChangeEvent> deserializeReferenceChangeEvent = (json) =>
+			Func<Json, ModelReferenceChangeEvent> deserializeReferenceChangeEvent = (json) =>
 			{
-				GraphInstance instance = json.Get<GraphInstance>("instance");
-				GraphReferenceProperty property = (GraphReferenceProperty)instance.Type.Properties[json.Get<string>("property")];
-				return new GraphReferenceChangeEvent(instance, property, json.Get<GraphInstance>("oldValue"), json.Get<GraphInstance>("newValue"));
+				ModelInstance instance = json.Get<ModelInstance>("instance");
+				ModelReferenceProperty property = (ModelReferenceProperty)instance.Type.Properties[json.Get<string>("property")];
+				return new ModelReferenceChangeEvent(instance, property, json.Get<ModelInstance>("oldValue"), json.Get<ModelInstance>("newValue"));
 			};
 
 			// Deserialize List Change Event
-			Func<Json, GraphListChangeEvent> deserializeListChangeEvent = (json) =>
+			Func<Json, ModelListChangeEvent> deserializeListChangeEvent = (json) =>
 			{
-				GraphInstance instance = json.Get<GraphInstance>("instance");
-				GraphReferenceProperty property = (GraphReferenceProperty)instance.Type.Properties[json.Get<string>("property")];
-				return new GraphListChangeEvent(instance, property, json.Get<GraphInstance[]>("added"), json.Get<GraphInstance[]>("removed"));
+				ModelInstance instance = json.Get<ModelInstance>("instance");
+				ModelReferenceProperty property = (ModelReferenceProperty)instance.Type.Properties[json.Get<string>("property")];
+				return new ModelListChangeEvent(instance, property, json.Get<ModelInstance[]>("added"), json.Get<ModelInstance[]>("removed"));
 			};
 
 			// Deserialize Init New Event
-			Func<Json, GraphInitEvent.InitNew> deserializeInitNewEvent =
-				(json) => new GraphInitEvent.InitNew(json.Get<GraphInstance>("instance"));
+			Func<Json, ModelInitEvent.InitNew> deserializeInitNewEvent =
+				(json) => new ModelInitEvent.InitNew(json.Get<ModelInstance>("instance"));
 
 			// Deserialize Init Existing Event
-			Func<Json, GraphInitEvent.InitExisting> deserializeInitExistingEvent =
-				(json) => new GraphInitEvent.InitExisting(json.Get<GraphInstance>("instance"));
+			Func<Json, ModelInitEvent.InitExisting> deserializeInitExistingEvent =
+				(json) => new ModelInitEvent.InitExisting(json.Get<ModelInstance>("instance"));
 
 			// Deserialize Delete Event
-			Func<Json, GraphDeleteEvent> deserializeDeleteEvent = (json) => new GraphDeleteEvent(json.Get<GraphInstance>("instance"), json.Get<bool>("isPendingDelete"));
+			Func<Json, ModelDeleteEvent> deserializeDeleteEvent = (json) => new ModelDeleteEvent(json.Get<ModelInstance>("instance"), json.Get<bool>("isPendingDelete"));
 
-			// Construct Graph Instance
-			var createGraphInstance = typeof(GraphInstance).GetConstructor(
+			// Construct Model Instance
+			var createModelInstance = typeof(ModelInstance).GetConstructor(
 				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
 				null,
-				new Type[] { typeof(GraphType), typeof(string) },
+				new Type[] { typeof(ModelType), typeof(string) },
 				null);
 
-			// Register custom converters for GraphType, GraphProperty, GraphMethod, GraphInstance, GraphEvent
+			// Register custom converters for ModelType, ModelProperty, ModelMethod, ModelInstance, ModelEvent
 			RegisterConverters(
 				new JavaScriptConverter[] 
 			{
-				// Graph Type
-				new JsonConverter<GraphType>(
-					(graphType, json) =>
+				// Model Type
+				new JsonConverter<ModelType>(
+					(modelType, json) =>
 					{
 						// Base Type
-						if (graphType.BaseType != null)
-							json.Set("baseType", JsonConverter.GetJsonReferenceType(graphType.BaseType));
+						if (modelType.BaseType != null)
+							json.Set("baseType", JsonConverter.GetJsonReferenceType(modelType.BaseType));
 
 						// Base Type
-						if (!String.IsNullOrEmpty(graphType.Format))
-							json.Set("format", graphType.Format);
+						if (!String.IsNullOrEmpty(modelType.Format))
+							json.Set("format", modelType.Format);
 
 						// Properties
-						json.Set("properties", graphType.Properties
-							.Where(property => property.DeclaringType == graphType && IncludeInClientModel(property))
+						json.Set("properties", modelType.Properties
+							.Where(property => property.DeclaringType == modelType && IncludeInClientModel(property))
 							.ToDictionary(property => property.Name));
 
 						// Methods
-						json.Set("methods", graphType.Methods.ToDictionary(method => method.Name));
+						json.Set("methods", modelType.Methods.ToDictionary(method => method.Name));
 
 						// Condition Types
 						json.Set("conditionTypes", 
-							Rule.GetRegisteredRules(graphType)
+							Rule.GetRegisteredRules(modelType)
 								.Where(rule => !(rule is PropertyRule) || IncludeInClientModel(((PropertyRule)rule).Property))
 								.SelectMany(rule => rule.ConditionTypes)
 								.ToDictionary(conditionType => conditionType.Code));
 					}, 
-					json => { throw new NotSupportedException("GraphType cannot be deserialized."); }),
+					json => { throw new NotSupportedException("ModelType cannot be deserialized."); }),
 
-				// Graph Property
-				new JsonConverter<GraphProperty>(
+				// Model Property
+				new JsonConverter<ModelProperty>(
 					(property, json) =>
 					{
 						// Type
-						string type = (property is GraphValueProperty ?
-							JsonConverter.GetJsonValueType(((GraphValueProperty)property).PropertyType) ?? "Object" :
-							JsonConverter.GetJsonReferenceType(((GraphReferenceProperty)property).PropertyType)) +
+						string type = (property is ModelValueProperty ?
+							JsonConverter.GetJsonValueType(((ModelValueProperty)property).PropertyType) ?? "Object" :
+							JsonConverter.GetJsonReferenceType(((ModelReferenceProperty)property).PropertyType)) +
 							(property.IsList ? "[]" : "");
 						json.Set("type", type);
 
@@ -752,7 +752,7 @@ namespace ExoWeb
 
 						// Index
 						int index = 0;
-						foreach (GraphProperty p in property.DeclaringType.Properties)
+						foreach (ModelProperty p in property.DeclaringType.Properties)
 						{
 							if (p == property)
 								break;
@@ -772,10 +772,10 @@ namespace ExoWeb
 						if (!string.IsNullOrEmpty(label))
 							json.Set("label", label);
 					}, 
-					json => { throw new NotSupportedException("GraphProperty cannot be deserialized."); }),
+					json => { throw new NotSupportedException("ModelProperty cannot be deserialized."); }),
 
-					// Graph Method
-					new JsonConverter<GraphMethod>(
+					// Model Method
+					new JsonConverter<ModelMethod>(
 						(method, json) =>
 						{
 							// Parameters
@@ -784,23 +784,23 @@ namespace ExoWeb
 							// IsStatic
 							json.Set("isStatic", method.IsStatic);
 						},
-						json => { throw new NotSupportedException("GraphMethod cannot be deserialized."); }),
+						json => { throw new NotSupportedException("ModelMethod cannot be deserialized."); }),
 
-					// Graph Instance
-					new JsonConverter<GraphInstance>(
+					// Model Instance
+					new JsonConverter<ModelInstance>(
 						(instance, json) =>
 						{
 							json.Set("id", instance.Id);
 							json.Set("type", instance.Type.Name);
 						},
 						json => 
-							(GraphInstance)createGraphInstance.Invoke(new object[] { 
-								GraphContext.Current.GetGraphType(json.Get<string>("type")), 
+							(ModelInstance)createModelInstance.Invoke(new object[] { 
+								ModelContext.Current.GetModelType(json.Get<string>("type")), 
 								json.Get<string>("id") })),
 
-					// Graph Event
-					new JsonConverter<GraphEvent>(
-						(instance, json) => { throw new NotSupportedException("GraphEvent cannot be serialized."); },
+					// Model Event
+					new JsonConverter<ModelEvent>(
+						(instance, json) => { throw new NotSupportedException("ModelEvent cannot be serialized."); },
 						(json) =>
 						{
 							string eventName = json.Get<string>("type");
@@ -816,82 +816,82 @@ namespace ExoWeb
 							throw new NotSupportedException(eventName + " event cannot be deserialized.");;
 						}),
 
-					// Graph Value Change Event
-					new JsonConverter<GraphValueChangeEvent>(
-						(graphEvent, json) =>
+					// Model Value Change Event
+					new JsonConverter<ModelValueChangeEvent>(
+						(modelEvent, json) =>
 						{
 							json.Set("type", "ValueChange");
-							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
-							json.Set("property", graphEvent.Property.Name);
-							json.Set("oldValue", graphEvent.OldValue);
-							json.Set("newValue", graphEvent.NewValue);
+							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
+							json.Set("property", modelEvent.Property.Name);
+							json.Set("oldValue", modelEvent.OldValue);
+							json.Set("newValue", modelEvent.NewValue);
 						},
 						deserializeValueChangeEvent),
 							
-					// Graph Reference Change Event
-					new JsonConverter<GraphReferenceChangeEvent>(
-						(graphEvent, json) =>
+					// Model Reference Change Event
+					new JsonConverter<ModelReferenceChangeEvent>(
+						(modelEvent, json) =>
 						{
 							json.Set("type", "ReferenceChange");
-							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
-							json.Set("property", graphEvent.Property.Name);
-							json.Set("oldValue", GetEventInstance(graphEvent.OldValue, graphEvent.OldValueId));
-							json.Set("newValue", GetEventInstance(graphEvent.NewValue, graphEvent.NewValueId));
+							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
+							json.Set("property", modelEvent.Property.Name);
+							json.Set("oldValue", GetEventInstance(modelEvent.OldValue, modelEvent.OldValueId));
+							json.Set("newValue", GetEventInstance(modelEvent.NewValue, modelEvent.NewValueId));
 						},
 						deserializeReferenceChangeEvent),
 							
-					// Graph List Change Event
-					new JsonConverter<GraphListChangeEvent>(
-						(graphEvent, json) =>
+					// Model List Change Event
+					new JsonConverter<ModelListChangeEvent>(
+						(modelEvent, json) =>
 						{
 							json.Set("type", "ListChange");
-							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
-							json.Set("property", graphEvent.Property.Name);
-							json.Set("added", graphEvent.Added.Select((instance, index) => GetEventInstance(instance, graphEvent.AddedIds.ElementAt(index))));
-							json.Set("removed", graphEvent.Removed.Select((instance, index) => GetEventInstance(instance, graphEvent.RemovedIds.ElementAt(index))));
+							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
+							json.Set("property", modelEvent.Property.Name);
+							json.Set("added", modelEvent.Added.Select((instance, index) => GetEventInstance(instance, modelEvent.AddedIds.ElementAt(index))));
+							json.Set("removed", modelEvent.Removed.Select((instance, index) => GetEventInstance(instance, modelEvent.RemovedIds.ElementAt(index))));
 						},
 						deserializeListChangeEvent),
 							
-					// Graph Init New Event
-					new JsonConverter<GraphInitEvent.InitNew>(
-						(graphEvent, json) =>
+					// Model Init New Event
+					new JsonConverter<ModelInitEvent.InitNew>(
+						(modelEvent, json) =>
 						{
 							json.Set("type", "InitNew");
-							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
+							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
 						},
 						deserializeInitNewEvent),
 							
-					// Graph Init Existing Event
-					new JsonConverter<GraphInitEvent.InitExisting>(
-						(graphEvent, json) =>
+					// Model Init Existing Event
+					new JsonConverter<ModelInitEvent.InitExisting>(
+						(modelEvent, json) =>
 						{
 							json.Set("type", "InitExisting");
-							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
+							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
 						},
 						deserializeInitExistingEvent),
 							
-					// Graph Delete Event
-					new JsonConverter<GraphDeleteEvent>(
-						(graphEvent, json) =>
+					// Model Delete Event
+					new JsonConverter<ModelDeleteEvent>(
+						(modelEvent, json) =>
 						{
 							json.Set("type", "Delete");
-							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
-							json.Set("isPendingDelete", graphEvent.IsPendingDelete);
+							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
+							json.Set("isPendingDelete", modelEvent.IsPendingDelete);
 						},
 						deserializeDeleteEvent),
 														
-					// Graph Save Event
-					new JsonConverter<GraphSaveEvent>(
-						(graphEvent, json) =>
+					// Model Save Event
+					new JsonConverter<ModelSaveEvent>(
+						(modelEvent, json) =>
 						{
 							json.Set("type", "Save");
-							json.Set("instance", GetEventInstance(graphEvent.Instance, graphEvent.InstanceId));
-							json.Set("added", graphEvent.Added.Select(instance => new Dictionary<string, string>() 
+							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
+							json.Set("added", modelEvent.Added.Select(instance => new Dictionary<string, string>() 
 								{ { "type", instance.Type.Name }, { "oldId", instance.OriginalId }, { "newId", instance.Id } }));
-							json.Set("modified", graphEvent.Modified);
-							json.Set("deleted", graphEvent.Deleted);
+							json.Set("modified", modelEvent.Modified);
+							json.Set("deleted", modelEvent.Deleted);
 						},
-						json => { throw new NotSupportedException("GraphSaveEvent cannot be deserialized."); }),
+						json => { throw new NotSupportedException("ModelSaveEvent cannot be deserialized."); }),
 
 					// Condition Type
 					new JsonConverter<ConditionType>(
@@ -933,8 +933,7 @@ namespace ExoWeb
 					new JsonConverter<AllowedValuesRule>(
 						(rule, json) =>
 						{
-							json.Set("type", "allowedValues");
-							json.Set("property", rule.Property.Name);
+							SerializePropertyRule(rule, json);
 							json.Set("source", rule.IsStaticSource ? rule.Source : "this." + rule.Source);
 						},
 						json => { throw new NotSupportedException("AllowedValuesRule cannot be deserialized."); }),
@@ -943,8 +942,7 @@ namespace ExoWeb
 					new JsonConverter<CompareRule>(
 						(rule, json) =>
 						{
-							json.Set("type", "compare");
-							json.Set("property", rule.Property.Name);
+							SerializePropertyRule(rule, json);
 							json.Set("compareOperator", rule.CompareOperator.ToString());
 							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
 						},
@@ -954,8 +952,7 @@ namespace ExoWeb
 					new JsonConverter<ListLengthRule>(
 						(rule, json) =>
 						{
-							json.Set("type", "listLength");
-							json.Set("property", rule.Property.Name);
+							SerializePropertyRule(rule, json);
 							json.Set("compareOperator", rule.CompareOperator.ToString());
 							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
 							json.Set("staticLength", rule.StaticLength.ToString());
@@ -966,8 +963,7 @@ namespace ExoWeb
 					new JsonConverter<RangeRule>(
 						(rule, json) =>
 						{
-							json.Set("type", "range");
-							json.Set("property", rule.Property.Name);
+							SerializePropertyRule(rule, json);
 							json.Set("min", rule.Minimum);
 							json.Set("max", rule.Maximum);
 						},
@@ -986,20 +982,26 @@ namespace ExoWeb
 					new JsonConverter<RequiredIfRule>(
 						(rule, json) =>
 						{
-							json.Set("type", "requiredIf");
-							json.Set("property", rule.Property.Name);
+							SerializePropertyRule(rule, json);
 							json.Set("compareOperator", rule.CompareOperator.ToString());
 							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
 							json.Set("compareValue", rule.CompareValue);
 						},
 						json => { throw new NotSupportedException("RequiredIfRule cannot be deserialized."); }),
 
+					// OwnerRule
+					new JsonConverter<OwnerRule>(
+						(rule, json) =>
+						{
+							SerializePropertyRule(rule, json);
+						},
+						json => { throw new NotSupportedException("OwnerRule cannot be deserialized."); }),
+
 					// StringLengthRule
 					new JsonConverter<StringLengthRule>(
 						(rule, json) =>
 						{
-							json.Set("type", "stringLength");
-							json.Set("property", rule.Property.Name);
+							SerializePropertyRule(rule, json);
 							if (rule.Minimum > 0)
 								json.Set("min", rule.Minimum);
 							if (rule.Maximum > 0)
@@ -1011,8 +1013,7 @@ namespace ExoWeb
 					new JsonConverter<StringFormatRule>(
 						(rule, json) =>
 						{
-							json.Set("type", "stringFormat");
-							json.Set("property", rule.Property.Name);
+							SerializePropertyRule(rule, json);
 							if (!String.IsNullOrEmpty(rule.FormatDescription))
 								json.Set("description", rule.FormatDescription);
 							json.Set("expression", rule.FormatExpression.ToString());
@@ -1028,7 +1029,23 @@ namespace ExoWeb
 			deserialize = serializer.GetType().GetMethod("Deserialize", new Type[] { typeof(string) });
 		}
 
-		static Dictionary<string, string> GetEventInstance(GraphInstance instance, string id)
+		/// <summary>
+		/// Performs default serialization for subclasses of <see cref="PropertyRule"/>.
+		/// </summary>
+		/// <param name="rule"></param>
+		/// <param name="json"></param>
+		static void SerializePropertyRule(PropertyRule rule, Json json)
+		{
+			string ruleName = rule.GetType().Name;
+			if (ruleName.EndsWith("Rule"))
+				ruleName = ruleName.Substring(0, ruleName.Length - 4);
+			ruleName = ruleName[0].ToString().ToLower() + ruleName.Substring(1);
+			json.Set("type", ruleName);
+			json.Set("property", rule.Property.Name);
+			//json.Set("error", rule.ConditionTypes.First().Code);
+		}
+
+		static Dictionary<string, string> GetEventInstance(ModelInstance instance, string id)
 		{
 			if (instance == null)
 				return null;

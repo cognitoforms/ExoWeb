@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using ExoRule;
 
 namespace ExoWeb
 {
 	/// <summary>
 	/// Represents the set of information to serialize to the client for a
-	/// load request for a specific <see cref="GraphType"/>.
+	/// load request for a specific <see cref="ModelType"/>.
 	/// </summary>
 	/// <remarks>
 	/// Serializes as:
@@ -28,17 +28,17 @@ namespace ExoWeb
 	///	}
 	///	</code>
 	/// </remarks>
-	internal class GraphTypeInfo : IJsonSerializable
+	internal class ModelTypeInfo : IJsonSerializable
 	{
-		internal GraphTypeInfo()
+		internal ModelTypeInfo()
 		{
-			StaticProperties = new HashSet<GraphProperty>();
-			Instances = new Dictionary<string, GraphInstanceInfo>();
+			StaticProperties = new HashSet<ModelProperty>();
+			Instances = new Dictionary<string, ModelInstanceInfo>();
 		}
 
-		public HashSet<GraphProperty> StaticProperties { get; private set; }
+		public HashSet<ModelProperty> StaticProperties { get; private set; }
 
-		public Dictionary<string, GraphInstanceInfo> Instances { get; private set; }
+		public Dictionary<string, ModelInstanceInfo> Instances { get; private set; }
 
 		#region IJsonSerializable
 

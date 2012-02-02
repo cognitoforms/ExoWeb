@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using ExoRule;
 
 namespace ExoWeb
@@ -13,30 +13,30 @@ namespace ExoWeb
 	/// </summary>
 	internal class ServiceResponse : IJsonSerializable
 	{
-		public Dictionary<string, GraphType> Types { get; internal set; }
+		public Dictionary<string, ModelType> Types { get; internal set; }
 
-		public Dictionary<string, GraphTypeInfo> Instances { get; internal set; }
+		public Dictionary<string, ModelTypeInfo> Instances { get; internal set; }
 
 		public Dictionary<string, List<Condition>> Conditions { get; internal set; }
 
 		public object[] Events { get; internal set; }
 
-		public GraphTransaction Changes { get; set; }
+		public ModelTransaction Changes { get; set; }
 
 		public ServerInformation ServerInfo { get; set; }
 
 		public Dictionary<string, ServiceRequest.Query> Model { get; set; }
 
-		public GraphTypeInfo GetGraphTypeInfo(GraphType type)
+		public ModelTypeInfo GetModelTypeInfo(ModelType type)
 		{
 			// Create the set of type instance information if not initialized
 			if (Instances == null)
-				Instances = new Dictionary<string,GraphTypeInfo>();
+				Instances = new Dictionary<string,ModelTypeInfo>();
 			
-			// Get or initialize the graph type instance information store
-			GraphTypeInfo typeInfo;
+			// Get or initialize the model type instance information store
+			ModelTypeInfo typeInfo;
 			if (!Instances.TryGetValue(type.Name, out typeInfo))
-				Instances[type.Name] = typeInfo = new GraphTypeInfo();
+				Instances[type.Name] = typeInfo = new ModelTypeInfo();
 
 			// Return the requested value
 			return typeInfo;
@@ -65,7 +65,7 @@ namespace ExoWeb
 				json.Set("serverinfo", ServerInfo);
 
 			if (Changes != null && Changes.Any())
-				json.Set("changes", (IEnumerable<GraphEvent>)Changes.Where(graphEvent => !(graphEvent is GraphValueChangeEvent) || ExoWeb.IncludeInClientModel(((GraphValueChangeEvent)graphEvent).Property)));
+				json.Set("changes", (IEnumerable<ModelEvent>)Changes.Where(modelEvent => !(modelEvent is ModelValueChangeEvent) || ExoWeb.IncludeInClientModel(((ModelValueChangeEvent)modelEvent).Property)));
 		}
 
 		object IJsonSerializable.Deserialize(Json json)

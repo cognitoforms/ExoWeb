@@ -3,19 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Jurassic.Library;
-using ExoGraph;
+using ExoModel;
 using Jurassic;
 
 namespace ExoWeb.Templates.JavaScript
 {
-	internal class EntityWrapper : Wrapper<GraphInstance>
+	internal class EntityWrapper : Wrapper<ModelInstance>
 	{
 		const string GetterPrefix = "get_";
 		const string SetterPrefix = "set_";
 
 		Marshaler factory;
 
-		internal EntityWrapper(ScriptEngine engine, GraphInstance instance, Marshaler factory)
+		internal EntityWrapper(ScriptEngine engine, ModelInstance instance, Marshaler factory)
 			: base(instance, engine, engine.Object.InstancePrototype)
 		{
 			this.factory = factory;
@@ -37,20 +37,20 @@ namespace ExoWeb.Templates.JavaScript
 			else
 				throw new InvalidOperationException("Only property get accessors are supported on model objects: " + jsPropertyName);
 
-			GraphProperty property = RealObject.Type.Properties[modelPropertyName];
+			ModelProperty property = RealObject.Type.Properties[modelPropertyName];
 
 			if (property == null)
 				throw new InvalidPropertyException(RealObject.Type, modelPropertyName);
 
-			if (property is GraphValueProperty)
+			if (property is ModelValueProperty)
 			{
 				// optimization: cast outside of delegate
-				GraphValueProperty valueProperty = (GraphValueProperty)property;
+				ModelValueProperty valueProperty = (ModelValueProperty)property;
 
 				return LazyDefineMethod(jsPropertyName, instance => instance.GetValue(valueProperty));
 			}
 
-			GraphReferenceProperty refProperty = (GraphReferenceProperty)property;
+			ModelReferenceProperty refProperty = (ModelReferenceProperty)property;
 
 			if (refProperty.IsList)
 			{
@@ -63,7 +63,7 @@ namespace ExoWeb.Templates.JavaScript
 			{
 				return LazyDefineMethod(jsPropertyName, instance =>
 				{
-					GraphInstance result = instance.GetReference(refProperty);
+					ModelInstance result = instance.GetReference(refProperty);
 
 					if (result == null)
 						return null;

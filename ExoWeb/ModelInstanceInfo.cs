@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using System.Collections;
 
 namespace ExoWeb
@@ -10,25 +10,25 @@ namespace ExoWeb
 	/// <summary>
 	/// Tracks an instance being serialized and each list property that must be serialized with it.
 	/// </summary>
-	internal class GraphInstanceInfo : IEnumerable<object>
+	internal class ModelInstanceInfo : IEnumerable<object>
 	{
 		HashSet<string> lists;
 
-		internal GraphInstance Instance { get; private set; }
+		internal ModelInstance Instance { get; private set; }
 
-		internal GraphInstanceInfo(GraphInstance instance)
+		internal ModelInstanceInfo(ModelInstance instance)
 		{
 			this.Instance = instance;
 		}
 
-		internal void IncludeList(GraphProperty list)
+		internal void IncludeList(ModelProperty list)
 		{
 			if (lists == null)
 				lists = new HashSet<string>();
 			lists.Add(list.Name);
 		}
 
-		internal bool HasList(GraphProperty list)
+		internal bool HasList(ModelProperty list)
 		{
 			return lists != null && lists.Contains(list.Name);
 		}

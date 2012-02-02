@@ -1,4 +1,4 @@
-function ExoGraphEventListener(model, translator, filters) {
+function ExoModelEventListener(model, translator, filters) {
 	this._model = model;
 	this._translator = translator;
 	this._filters = filters;
@@ -10,15 +10,15 @@ function ExoGraphEventListener(model, translator, filters) {
 	model.addObjectUnregistered(this.onObjectUnregistered.bind(this));
 }
 
-ExoGraphEventListener.mixin(ExoWeb.Functor.eventing);
+ExoModelEventListener.mixin(ExoWeb.Functor.eventing);
 
-ExoGraphEventListener.mixin({
-	addChangeCaptured: function ExoGraphEventListener$onEvent(handler) {
+ExoModelEventListener.mixin({
+	addChangeCaptured: function ExoModelEventListener$onEvent(handler) {
 		this._addEvent("changeCaptured", handler);
 	},
 
 	// Model event handlers
-	onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
+	onListChanged: function ExoModelEventListener$onListChanged(obj, property, listChanges) {
 		if (this._filters && this._filters.listChanged && this._filters.listChanged(obj, property, listChanges) !== true)
 			return;
 
@@ -34,7 +34,7 @@ ExoGraphEventListener.mixin({
 
 			var change = {
 				type: "ListChange",
-				instance: toExoGraph(obj, this._translator),
+				instance: toExoModel(obj, this._translator),
 				property: property.get_name(),
 				added: [],
 				removed: []
@@ -42,20 +42,20 @@ ExoGraphEventListener.mixin({
 
 			var _this = this;
 			if (listChange.newStartingIndex >= 0 || listChange.newItems) {
-				Array.forEach(listChange.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
-					change.added.push(toExoGraph(obj, _this._translator));
+				Array.forEach(listChange.newItems, function ExoModelEventListener$onListChanged$addedItem(obj) {
+					change.added.push(toExoModel(obj, _this._translator));
 				});
 			}
 			if (listChange.oldStartingIndex >= 0 || listChange.oldItems) {
-				Array.forEach(listChange.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
-					change.removed.push(toExoGraph(obj, _this._translator));
+				Array.forEach(listChange.oldItems, function ExoModelEventListener$onListChanged$removedItem(obj) {
+					change.removed.push(toExoModel(obj, _this._translator));
 				});
 			}
 
 			this._raiseEvent("changeCaptured", [change]);
 		}
 	},
-	onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
+	onObjectRegistered: function ExoModelEventListener$onObjectRegistered(obj) {
 		if (this._filters && this._filters.objectRegistered && this._filters.objectRegistered(obj) !== true)
 			return;
 
@@ -64,19 +64,19 @@ ExoGraphEventListener.mixin({
 
 			var change = {
 				type: "InitNew",
-				instance: toExoGraph(obj, this._translator)
+				instance: toExoModel(obj, this._translator)
 			};
 
 			this._raiseEvent("changeCaptured", [change]);
 		}
 	},
-	onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
+	onObjectUnregistered: function ExoModelEventListener$onObjectUnregistered(obj) {
 		if (this._filters && this._filters.objectUnregistered && this._filters.objectUnregistered(obj) !== true)
 			return;
 
 		ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {0}({1})", obj.meta.type.fullName, obj.meta.id);
 	},
-	onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
+	onPropertyChanged: function ExoModelEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 		if (this._filters && this._filters.propertyChanged && this._filters.propertyChanged(obj, property, newValue, oldValue) !== true)
 			return;
 
@@ -90,7 +90,7 @@ ExoGraphEventListener.mixin({
 
 			var valueChange = {
 				type: "ValueChange",
-				instance: toExoGraph(obj, this._translator),
+				instance: toExoModel(obj, this._translator),
 				property: property.get_name(),
 				oldValue: oldValue,
 				newValue: newValue
@@ -108,10 +108,10 @@ ExoGraphEventListener.mixin({
 
 			var refChange = {
 				type: "ReferenceChange",
-				instance: toExoGraph(obj, this._translator),
+				instance: toExoModel(obj, this._translator),
 				property: property.get_name(),
-				oldValue: toExoGraph(oldValue, this._translator),
-				newValue: toExoGraph(newValue, this._translator)
+				oldValue: toExoModel(oldValue, this._translator),
+				newValue: toExoModel(newValue, this._translator)
 			};
 
 			this._raiseEvent("changeCaptured", [refChange]);
@@ -119,4 +119,4 @@ ExoGraphEventListener.mixin({
 	}
 });
 
-exports.ExoGraphEventListener = ExoGraphEventListener;
+exports.ExoModelEventListener = ExoModelEventListener;

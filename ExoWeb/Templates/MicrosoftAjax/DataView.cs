@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using ExoRule.Validation;
 using System.Collections;
 using ExoWeb.Templates.JavaScript;

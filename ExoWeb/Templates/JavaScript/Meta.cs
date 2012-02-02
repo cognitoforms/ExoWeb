@@ -4,16 +4,16 @@ using System.Linq;
 using System.Text;
 using Jurassic;
 using Jurassic.Library;
-using ExoGraph;
+using ExoModel;
 using ExoRule;
 
 namespace ExoWeb.Templates.JavaScript
 {
 	class Meta : ObjectInstance
 	{
-		GraphInstance instance;
+		ModelInstance instance;
 
-		internal Meta(ScriptEngine engine, GraphInstance instance)
+		internal Meta(ScriptEngine engine, ModelInstance instance)
 			: base(engine, engine.Object.InstancePrototype)
 		{
 			this.PopulateFunctions();

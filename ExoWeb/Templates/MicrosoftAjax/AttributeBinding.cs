@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Web;
-using ExoGraph;
+using ExoModel;
 using ExoWeb.Templates.JavaScript;
 
 namespace ExoWeb.Templates.MicrosoftAjax
@@ -46,7 +46,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 		}
 
-		public GraphProperty Property
+		public ModelProperty Property
 		{
 			get
 			{
@@ -54,7 +54,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 		}
 
-		public GraphInstance Source
+		public ModelInstance Source
 		{
 			get
 			{

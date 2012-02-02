@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using ExoGraph;
+using ExoModel;
 using Jurassic;
 
 namespace ExoWeb.Templates.JavaScript
@@ -96,7 +96,7 @@ namespace ExoWeb.Templates.JavaScript
 			}
 			catch (ArgumentException e)
 			{
-				// Handle an argument exception coming from GraphSource
+				// Handle an argument exception coming from ModelSource
 				if (e.ParamName == "path")
 					return false;
 				else
@@ -205,7 +205,7 @@ namespace ExoWeb.Templates.JavaScript
 				// Determine whether the given enumerable is a grouping.
 				var isGrouping = transform.IsGrouping(opIndex);
 
-				var comparer = new GraphPathComparer();
+				var comparer = new ModelPathComparer();
 				foreach (Match match in orderByParser.Matches(result))
 				{
 					string path = match.Groups["path"].Value;
@@ -218,7 +218,7 @@ namespace ExoWeb.Templates.JavaScript
 						if (path == "group")
 							comparer.AddCustomStep(o => ((Grouping)o).Group, descending, nullsLast);
 						else if (path.StartsWith("group."))
-							comparer.AddCustomPathStep(o => (GraphInstance)((Grouping)o).Group, path.Substring(6), descending, nullsLast);
+							comparer.AddCustomPathStep(o => (ModelInstance)((Grouping)o).Group, path.Substring(6), descending, nullsLast);
 						else if (path == "items.length")
 							comparer.AddCustomStep(o => ((Grouping)o).Items.Count(), descending, nullsLast);
 						else
@@ -276,10 +276,10 @@ namespace ExoWeb.Templates.JavaScript
 					}
 					else
 					{
-						var evaluator = Evaluator.CompileLogicalExpression<FilterItem<GraphInstance>, FilterItemPathToken<GraphInstance>>(whereText, path => new GraphInstanceFilterItemPathToken(path));
-						return enumerable.Cast<GraphInstance>().Where((obj, i) =>
+						var evaluator = Evaluator.CompileLogicalExpression<FilterItem<ModelInstance>, FilterItemPathToken<ModelInstance>>(whereText, path => new ModelInstanceFilterItemPathToken(path));
+						return enumerable.Cast<ModelInstance>().Where((obj, i) =>
 						{
-							return evaluator.Evaluate(new FilterItem<GraphInstance>(obj, i));
+							return evaluator.Evaluate(new FilterItem<ModelInstance>(obj, i));
 						});
 					}
 				};
@@ -329,21 +329,21 @@ namespace ExoWeb.Templates.JavaScript
 							if (!obj.TryGetValue(path, out path, out result))
 								throw new InvalidGroupByException(groupByText);
 							if (!string.IsNullOrEmpty(path))
-								result = new GraphSource(((GraphInstance)result).Type, path).GetValue(((GraphInstance)result));
+								result = new ModelSource(((ModelInstance)result).Type, path).GetValue(((ModelInstance)result));
 							return result;
 						}).Select(g => new Grouping(g.Key, g));
 					}
 					else
 					{
-						return enumerable.Cast<GraphInstance>()
+						return enumerable.Cast<ModelInstance>()
 							.GroupBy(obj =>
 							{
-								var graphSource = new GraphSource(obj.Type, groupByText);
-								var source = graphSource.GetSource(obj);
-								var property = source.Properties[graphSource.SourceProperty];
-								var isReference = property is GraphReferenceProperty;
-								var value = graphSource.GetValue(obj);
-								return isReference ? GraphContext.Current.GetGraphInstance(value) : value;
+								var modelSource = new ModelSource(obj.Type, groupByText);
+								var source = modelSource.GetSource(obj);
+								var property = source.Properties[modelSource.SourceProperty];
+								var isReference = property is ModelReferenceProperty;
+								var value = modelSource.GetValue(obj);
+								return isReference ? ModelContext.Current.GetModelInstance(value) : value;
 							})
 							.Select(g => new Grouping(g.Key, g));
 					}
@@ -373,7 +373,7 @@ namespace ExoWeb.Templates.JavaScript
 		#region FilterItemPathToken<TType>
 
 		/// <summary>
-		/// An expression token that refers to a graph path, or a grouping path optionally followed by a graph path.
+		/// An expression token that refers to a model path, or a grouping path optionally followed by a model path.
 		/// </summary>
 		internal abstract class FilterItemPathToken<TType> : Evaluator.Token<FilterItem<TType>>
 		{
@@ -387,36 +387,36 @@ namespace ExoWeb.Templates.JavaScript
 			/// </summary>
 			internal string Path { get; private set; }
 
-			protected static object GetValue(GraphInstance instance, int index, string path)
+			protected static object GetValue(ModelInstance instance, int index, string path)
 			{
 				if (path == "$index")
 					return index;
 				else
-					return new GraphSource(instance.Type, path).GetValue(instance);
+					return new ModelSource(instance.Type, path).GetValue(instance);
 			}
 		}
 
 		#endregion
 
-		#region GraphInstanceFilterItemPathToken
+		#region ModelInstanceFilterItemPathToken
 
 		/// <summary>
-		/// An expression token that refers to a graph path.
+		/// An expression token that refers to a model path.
 		/// </summary>
-		internal class GraphInstanceFilterItemPathToken : FilterItemPathToken<GraphInstance>
+		internal class ModelInstanceFilterItemPathToken : FilterItemPathToken<ModelInstance>
 		{
-			internal GraphInstanceFilterItemPathToken(string path)
+			internal ModelInstanceFilterItemPathToken(string path)
 				: base(path)
 			{
 			}
 
-			internal override object GetValue(FilterItem<GraphInstance> source)
+			internal override object GetValue(FilterItem<ModelInstance> source)
 			{
 				if (Path == "$item")
 					// Return the current item.
 					return source.Item.Instance;
 				else
-					// Remove the $item prefix since it is not necessary and will not be recongnized by ExoGraph.
+					// Remove the $item prefix since it is not necessary and will not be recongnized by ExoModel.
 					return GetValue(source.Item, source.Index, Path.IndexOf("$item.") == 0 ? Path.Substring(6) : Path);
 			}
 		}
@@ -426,7 +426,7 @@ namespace ExoWeb.Templates.JavaScript
 		#region GroupingFilterItemPathToken
 
 		/// <summary>
-		/// An expression token that refers to grouping path, and optional subsequent graph path.
+		/// An expression token that refers to grouping path, and optional subsequent model path.
 		/// </summary>
 		internal class GroupingFilterItemPathToken : FilterItemPathToken<Grouping>
 		{
@@ -440,7 +440,7 @@ namespace ExoWeb.Templates.JavaScript
 				string path = Path;
 				object result = null;
 
-				// Remove the $item prefix since it is not necessary and will not be recongnized by ExoGraph.
+				// Remove the $item prefix since it is not necessary and will not be recongnized by ExoModel.
 				if (path.StartsWith("$item."))
 					path = path.Substring(6);
 
@@ -448,7 +448,7 @@ namespace ExoWeb.Templates.JavaScript
 					throw new Exception("Expression \"" + Path + "\" is not valid for a grouping.");
 
 				if (!string.IsNullOrEmpty(path))
-					result = GetValue((GraphInstance)result, source.Index, path);
+					result = GetValue((ModelInstance)result, source.Index, path);
 
 				return result;
 			}
@@ -505,7 +505,7 @@ namespace ExoWeb.Templates.JavaScript
 				}
 				else if (path.StartsWith("group."))
 				{
-					value = (GraphInstance)Group;
+					value = (ModelInstance)Group;
 					remainder = path.Substring(6);
 					result = true;
 				}
@@ -537,9 +537,9 @@ namespace ExoWeb.Templates.JavaScript
 
 		#endregion
 
-		#region GraphPathComparer
+		#region ModelPathComparer
 
-		public class GraphPathComparer : IComparer<GraphInstance>, IComparer<object>
+		public class ModelPathComparer : IComparer<ModelInstance>, IComparer<object>
 		{
 			List<ComparisonPath> paths = new List<ComparisonPath>();
 
@@ -551,7 +551,7 @@ namespace ExoWeb.Templates.JavaScript
 				paths.Add(new ComparisonPath() { Path = path, IsDescending = descending, NullsLast = nullsLast });
 			}
 
-			public void AddCustomPathStep(Func<object, GraphInstance> accessor, string path, bool descending, bool nullsLast)
+			public void AddCustomPathStep(Func<object, ModelInstance> accessor, string path, bool descending, bool nullsLast)
 			{
 				if (accessor == null)
 					throw new ArgumentNullException("accessor", "The custom accessor cannot be null.");
@@ -575,17 +575,17 @@ namespace ExoWeb.Templates.JavaScript
 			/// <param name="type"></param>
 			/// <param name="path"></param>
 			/// <returns></returns>
-			private GraphType DetermineRootType(GraphType type, string path)
+			private ModelType DetermineRootType(ModelType type, string path)
 			{
-				GraphType result = null;
-				GraphPath graphPath;
+				ModelType result = null;
+				ModelPath modelPath;
 
 				// Recursively check the base type first.
 				if (type.BaseType != null)
 					result = DetermineRootType(type.BaseType, path);
 
 				// If the path is not valid for the base type, then check this type.
-				if (result == null && type.TryGetPath(path, out graphPath))
+				if (result == null && type.TryGetPath(path, out modelPath))
 					result = type;
 
 				return result;
@@ -597,14 +597,14 @@ namespace ExoWeb.Templates.JavaScript
 			/// <param name="instance"></param>
 			/// <param name="path"></param>
 			/// <returns></returns>
-			private GraphSource GetPathSource(GraphInstance instance, string path)
+			private ModelSource GetPathSource(ModelInstance instance, string path)
 			{
 				var rootType = DetermineRootType(instance.Type, path);
 
 				if (rootType == null)
 					throw new InvalidPropertyException(instance.Type, path);
 
-				return new GraphSource(rootType, path);
+				return new ModelSource(rootType, path);
 			}
 
 			public int Compare(object x, object y)
@@ -624,8 +624,8 @@ namespace ExoWeb.Templates.JavaScript
 
 					if (path.Path != null)
 					{
-						xValue = GetPathSource((GraphInstance)xValue, path.Path).GetValue((GraphInstance)xValue);
-						yValue = GetPathSource((GraphInstance)yValue, path.Path).GetValue((GraphInstance)yValue);
+						xValue = GetPathSource((ModelInstance)xValue, path.Path).GetValue((ModelInstance)xValue);
+						yValue = GetPathSource((ModelInstance)yValue, path.Path).GetValue((ModelInstance)yValue);
 					}
 
 					if (xValue == null && yValue == null)
@@ -650,7 +650,7 @@ namespace ExoWeb.Templates.JavaScript
 				return Compare(x, y);
 			}
 
-			int IComparer<GraphInstance>.Compare(GraphInstance x, GraphInstance y)
+			int IComparer<ModelInstance>.Compare(ModelInstance x, ModelInstance y)
 			{
 				return Compare(x, y);
 			}

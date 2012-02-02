@@ -12,7 +12,7 @@ Entity.fromIdString = function Entity$fromIdString(id) {
 	return obj;
 };
 
-function toExoGraph(val, translator) {
+function toExoModel(val, translator) {
 	if (val === undefined || val === null)
 		return;
 
@@ -43,7 +43,7 @@ function translateId(translator, type, id) {
 	return clientId;
 }
 
-function fromExoGraph(val, translator, create) {
+function fromExoModel(val, translator, create) {
 	if (val !== undefined && val !== null && val.type && val.id ) {
 		var type = ExoWeb.Model.Model.getJsType(val.type);
 

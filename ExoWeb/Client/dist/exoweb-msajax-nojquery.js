@@ -7789,7 +7789,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return obj;
 	};
 
-	function toExoGraph(val, translator) {
+	function toExoModel(val, translator) {
 		if (val === undefined || val === null)
 			return;
 
@@ -7820,7 +7820,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return clientId;
 	}
 
-	function fromExoGraph(val, translator, create) {
+	function fromExoModel(val, translator, create) {
 		if (val !== undefined && val !== null && val.type && val.id ) {
 			var type = ExoWeb.Model.Model.getJsType(val.type);
 
@@ -7852,10 +7852,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ExoGraphEventListener
+	// #region ExoModelEventListener
 	//////////////////////////////////////////////////
 
-	function ExoGraphEventListener(model, translator, filters) {
+	function ExoModelEventListener(model, translator, filters) {
 		this._model = model;
 		this._translator = translator;
 		this._filters = filters;
@@ -7867,15 +7867,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 		model.addObjectUnregistered(this.onObjectUnregistered.bind(this));
 	}
 
-	ExoGraphEventListener.mixin(ExoWeb.Functor.eventing);
+	ExoModelEventListener.mixin(ExoWeb.Functor.eventing);
 
-	ExoGraphEventListener.mixin({
-		addChangeCaptured: function ExoGraphEventListener$onEvent(handler) {
+	ExoModelEventListener.mixin({
+		addChangeCaptured: function ExoModelEventListener$onEvent(handler) {
 			this._addEvent("changeCaptured", handler);
 		},
 
 		// Model event handlers
-		onListChanged: function ExoGraphEventListener$onListChanged(obj, property, listChanges) {
+		onListChanged: function ExoModelEventListener$onListChanged(obj, property, listChanges) {
 			if (this._filters && this._filters.listChanged && this._filters.listChanged(obj, property, listChanges) !== true)
 				return;
 
@@ -7891,7 +7891,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var change = {
 					type: "ListChange",
-					instance: toExoGraph(obj, this._translator),
+					instance: toExoModel(obj, this._translator),
 					property: property.get_name(),
 					added: [],
 					removed: []
@@ -7899,20 +7899,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var _this = this;
 				if (listChange.newStartingIndex >= 0 || listChange.newItems) {
-					Array.forEach(listChange.newItems, function ExoGraphEventListener$onListChanged$addedItem(obj) {
-						change.added.push(toExoGraph(obj, _this._translator));
+					Array.forEach(listChange.newItems, function ExoModelEventListener$onListChanged$addedItem(obj) {
+						change.added.push(toExoModel(obj, _this._translator));
 					});
 				}
 				if (listChange.oldStartingIndex >= 0 || listChange.oldItems) {
-					Array.forEach(listChange.oldItems, function ExoGraphEventListener$onListChanged$removedItem(obj) {
-						change.removed.push(toExoGraph(obj, _this._translator));
+					Array.forEach(listChange.oldItems, function ExoModelEventListener$onListChanged$removedItem(obj) {
+						change.removed.push(toExoModel(obj, _this._translator));
 					});
 				}
 
 				this._raiseEvent("changeCaptured", [change]);
 			}
 		},
-		onObjectRegistered: function ExoGraphEventListener$onObjectRegistered(obj) {
+		onObjectRegistered: function ExoModelEventListener$onObjectRegistered(obj) {
 			if (this._filters && this._filters.objectRegistered && this._filters.objectRegistered(obj) !== true)
 				return;
 
@@ -7921,19 +7921,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var change = {
 					type: "InitNew",
-					instance: toExoGraph(obj, this._translator)
+					instance: toExoModel(obj, this._translator)
 				};
 
 				this._raiseEvent("changeCaptured", [change]);
 			}
 		},
-		onObjectUnregistered: function ExoGraphEventListener$onObjectUnregistered(obj) {
+		onObjectUnregistered: function ExoModelEventListener$onObjectUnregistered(obj) {
 			if (this._filters && this._filters.objectUnregistered && this._filters.objectUnregistered(obj) !== true)
 				return;
 
 			ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {0}({1})", obj.meta.type.fullName, obj.meta.id);
 		},
-		onPropertyChanged: function ExoGraphEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
+		onPropertyChanged: function ExoModelEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 			if (this._filters && this._filters.propertyChanged && this._filters.propertyChanged(obj, property, newValue, oldValue) !== true)
 				return;
 
@@ -7947,7 +7947,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var valueChange = {
 					type: "ValueChange",
-					instance: toExoGraph(obj, this._translator),
+					instance: toExoModel(obj, this._translator),
 					property: property.get_name(),
 					oldValue: oldValue,
 					newValue: newValue
@@ -7965,10 +7965,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var refChange = {
 					type: "ReferenceChange",
-					instance: toExoGraph(obj, this._translator),
+					instance: toExoModel(obj, this._translator),
 					property: property.get_name(),
-					oldValue: toExoGraph(oldValue, this._translator),
-					newValue: toExoGraph(newValue, this._translator)
+					oldValue: toExoModel(oldValue, this._translator),
+					newValue: toExoModel(newValue, this._translator)
 				};
 
 				this._raiseEvent("changeCaptured", [refChange]);
@@ -7976,7 +7976,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	});
 
-	ExoWeb.Mapper.ExoGraphEventListener = ExoGraphEventListener;
+	ExoWeb.Mapper.ExoModelEventListener = ExoModelEventListener;
 
 	// #endregion
 
@@ -8316,7 +8316,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// Determine that the target of a change is a new instance
 					var instanceIsNew = function(change) {
 						if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
-							var obj = fromExoGraph(change.instance, serverSync._translator);
+							var obj = fromExoModel(change.instance, serverSync._translator);
 							return obj && obj.meta.isNew;
 						}
 						return false;
@@ -8436,13 +8436,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						// Update post-save changes with new id
 						function fixInstance(inst) {
-							if (inst && obj === fromExoGraph(inst, serverSync._translator))
+							if (inst && obj === fromExoModel(inst, serverSync._translator))
 								inst.id = idChange.newId;
 						}
 
 						this._sets.forEach(function (set) {
 							set._changes.forEach(function (change) {
-								// Only process changes to graph instances
+								// Only process changes to model instances
 								if (!change.instance) return;
 
 								fixInstance(change.instance);
@@ -8493,7 +8493,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
 					if (change.newValue) {
 						tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(before, function (refType) {
-							var refObj = fromExoGraph(change.newValue, serverSync._translator, true);
+							var refObj = fromExoModel(change.newValue, serverSync._translator, true);
 							Sys.Observer.setValue(srcObj, change.property, refObj);
 						}, after), this);
 					}
@@ -8548,7 +8548,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// apply added items
 					change.added.forEach(function (item) {
 						tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(before, function (itemType) {
-							var itemObj = fromExoGraph(item, serverSync._translator, true);
+							var itemObj = fromExoModel(item, serverSync._translator, true);
 							if (!list.contains(itemObj)) {
 								list.add(itemObj);
 							}
@@ -8559,7 +8559,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					change.removed.forEach(function (item) {
 						// no need to load instance only to remove it from a list
 						tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
-							var itemObj = fromExoGraph(item, serverSync._translator, true);
+							var itemObj = fromExoModel(item, serverSync._translator, true);
 							list.remove(itemObj);
 						}, after), this, true);
 					}, this);
@@ -8599,7 +8599,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
 		}
 
-		this._listener = new ExoGraphEventListener(this._model, this._translator, {
+		this._listener = new ExoModelEventListener(this._model, this._translator, {
 			listChanged: filterPropertyEvent,
 			propertyChanged: filterPropertyEvent,
 			objectRegistered: filterObjectEvent,
@@ -8808,7 +8808,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							ignore = false;
 						}
 						else {
-							var obj = fromExoGraph(item, this._translator);
+							var obj = fromExoModel(item, this._translator);
 							// Only objects that exist can be disabled
 							if (!obj || this.canSaveObject(obj)) {
 								ignore = false;
@@ -8822,7 +8822,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							ignore = false;
 						}
 						else {
-							var obj = fromExoGraph(item, this._translator);
+							var obj = fromExoModel(item, this._translator);
 							if (!obj || this.canSaveObject(obj)) {
 								ignore = false;
 							}
@@ -8840,7 +8840,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			else if (change.type === "ReferenceChange") {
 				var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 				if (oldJsType) {
-					var oldValue = fromExoGraph(change.oldValue, this._translator);
+					var oldValue = fromExoModel(change.oldValue, this._translator);
 					if (oldValue && !this.canSaveObject(oldValue)) {
 						return false;
 					}
@@ -8848,7 +8848,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var newJsType = change.newValue && ExoWeb.Model.Model.getJsType(change.newValue.type, true);
 				if (newJsType) {
-					var newValue = fromExoGraph(change.newValue, this._translator);
+					var newValue = fromExoModel(change.newValue, this._translator);
 					if (newValue && !this.canSaveObject(newValue)) {
 						return false;
 					}
@@ -8862,7 +8862,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// Ensure that the instance that the change pertains to can be saved.
-			var instanceObj = fromExoGraph(change.instance, this._translator);
+			var instanceObj = fromExoModel(change.instance, this._translator);
 			return !instanceObj || this.canSaveObject(instanceObj);
 		},
 
@@ -8971,17 +8971,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				if (arg instanceof Array) {
 					for (var i = 0; i < arg.length; ++i) {
-						arg[i] = toExoGraph(arg[i], this._translator);
+						arg[i] = toExoModel(arg[i], this._translator);
 					}
 				}
 				else {
-					event[key] = toExoGraph(arg, this._translator);
+					event[key] = toExoModel(arg, this._translator);
 				}
 			}
 
 			eventProvider(
 				name,
-				toExoGraph(obj, this._translator),
+				toExoModel(obj, this._translator),
 				event,
 				paths,
 			// If includeAllChanges is true, then use all changes including those 
@@ -9000,11 +9000,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var event = result.events[0];
 				if (event instanceof Array) {
 					for (var i = 0; i < event.length; ++i) {
-						event[i] = fromExoGraph(event[i], this._translator, true);
+						event[i] = fromExoModel(event[i], this._translator, true);
 					}
 				}
 				else {
-					event = fromExoGraph(event, this._translator, true);
+					event = fromExoModel(event, this._translator, true);
 				}
 
 				restoreDates(event);
@@ -9136,7 +9136,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._raiseBeginEvents("save", args);
 
 			saveProvider(
-				toExoGraph(root, this._translator),
+				toExoModel(root, this._translator),
 				serializeChanges.call(this, false, root),
 				this._onSaveSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onSaveFailed.bind(this).appendArguments(args, failed || success)
@@ -9267,14 +9267,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-			var obj = fromExoGraph(change.instance, this._translator);
+			var obj = fromExoModel(change.instance, this._translator);
 
 			Sys.Observer.setValue(obj, change.property, change.oldValue);
 			callback();
 		},
 		rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-			var obj = fromExoGraph(change.instance, this._translator);
-			var ref = fromExoGraph(change.oldValue, this._translator);
+			var obj = fromExoModel(change.instance, this._translator);
+			var ref = fromExoModel(change.oldValue, this._translator);
 
 			Sys.Observer.setValue(obj, change.property, ref);
 			callback();
@@ -9285,7 +9285,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			callback();
 		},
 		rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
-			var obj = fromExoGraph(change.instance, this._translator);
+			var obj = fromExoModel(change.instance, this._translator);
 			var prop = obj.meta.property(change.property, true);
 			var list = prop.value(obj);
 			var translator = this._translator;
@@ -9294,13 +9294,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// Rollback added items
 			Array.forEach(change.added, function ServerSync$rollbackListChanges$added(item) {
-				var childObj = fromExoGraph(item, translator);
+				var childObj = fromExoModel(item, translator);
 				list.remove(childObj);
 			});
 
 			// Rollback removed items
 			Array.forEach(change.removed, function ServerSync$rollbackListChanges$added(item) {
-				var childObj = fromExoGraph(item, translator);
+				var childObj = fromExoModel(item, translator);
 				list.add(childObj);
 			});
 
@@ -10325,7 +10325,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		else if (lazyLoad == LazyLoadEnum.Force) {
 			if (!obj) {
 				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator, true);
+				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
 			}
 			callback.call(thisPtr || this, obj);
 			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
@@ -10334,7 +10334,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
 			if (!obj) {
 				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				obj = fromExoGraph({ type: type.meta.get_fullName(), id: id }, translator, true);
+				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
 			}
 
 			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
@@ -11276,7 +11276,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 							if (this.state[varName].objectJson) {
 								// ensure that instance data is loaded (even if not needed to establish roots) just in case
-								// root object was satisfied because it happened to be a part of the graph of another root object
+								// root object was satisfied because it happened to be a part of the model of another root object
 								objectsFromJson(this.context.model.meta, this.state[varName].objectJson, allSignals.pending());
 							}
 

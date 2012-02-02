@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 
 namespace ExoWeb.Templates.JavaScript
 {	
@@ -11,7 +11,7 @@ namespace ExoWeb.Templates.JavaScript
 	/// </summary>
 	class InvalidPropertyException : Exception
 	{
-		public InvalidPropertyException(GraphType type, string name)
+		public InvalidPropertyException(ModelType type, string name)
 			: base("Invalid property: " + type.Name + "." + name)
 		{
 		}

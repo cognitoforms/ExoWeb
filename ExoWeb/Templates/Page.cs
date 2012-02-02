@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using ExoGraph;
+using ExoModel;
 using ExoWeb.Templates.JavaScript;
 
 namespace ExoWeb.Templates
@@ -210,18 +210,18 @@ namespace ExoWeb.Templates
 				}
 			}
 
-			// GraphInstance
-			if (context is GraphInstance)
+			// ModelInstance
+			if (context is ModelInstance)
 			{
-				result.Source = context as GraphInstance;
+				result.Source = context as ModelInstance;
 				
 				// Exit immediately if the path is not valid
-				GraphPath graphPath;
-				if (!result.Source.Type.TryGetPath(path, out graphPath))
+				ModelPath modelPath;
+				if (!result.Source.Type.TryGetPath(path, out modelPath))
 					return result;
 
 				// Walk the path, honoring only first steps
-				for (var step = graphPath.FirstSteps.First(); step != null; step = step.NextSteps.FirstOrDefault())
+				for (var step = modelPath.FirstSteps.First(); step != null; step = step.NextSteps.FirstOrDefault())
 				{
 					if (step.NextSteps.Any())
 					{
@@ -231,7 +231,7 @@ namespace ExoWeb.Templates
 
 						// Attempt to walk the instance path if the current step is valid
 						if (result.Source != null)
-							result.Source = result.Source.Type.Properties.Contains(step.Property) ? result.Source.GetReference((GraphReferenceProperty)step.Property) : null;
+							result.Source = result.Source.Type.Properties.Contains(step.Property) ? result.Source.GetReference((ModelReferenceProperty)step.Property) : null;
 					}
 					else
 						result.Property = step.Property;
@@ -244,12 +244,12 @@ namespace ExoWeb.Templates
 				if (result.Source != null)
 				{
 					// Evaluate the last step along the path
-					if (result.Property is GraphValueProperty)
-						result.Value = result.Source.GetValue((GraphValueProperty)result.Property);
+					if (result.Property is ModelValueProperty)
+						result.Value = result.Source.GetValue((ModelValueProperty)result.Property);
 					else if (result.Property.IsList)
-						result.Value = result.Source.GetList((GraphReferenceProperty)result.Property);
+						result.Value = result.Source.GetList((ModelReferenceProperty)result.Property);
 					else
-						result.Value = result.Source.GetReference((GraphReferenceProperty)result.Property);
+						result.Value = result.Source.GetReference((ModelReferenceProperty)result.Property);
 				}
 
 				return result;

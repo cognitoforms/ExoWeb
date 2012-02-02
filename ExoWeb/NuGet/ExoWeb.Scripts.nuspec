@@ -18,7 +18,7 @@
     <projectUrl>http://exosuite.com/</projectUrl>
     <licenseUrl>http://exosuite.com/license</licenseUrl>
     <dependencies>
-	  <dependency id="ExoGraph" version="1.0.0" />
+	  <dependency id="ExoModel" version="1.0.0" />
 	  <dependency id="ExoRule" version="1.0.0" />
 	  <dependency id="ExoWeb" version="1.0.0" />
 	</dependencies>

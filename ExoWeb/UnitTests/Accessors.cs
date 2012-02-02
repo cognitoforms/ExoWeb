@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using ExoWeb.Templates.JavaScript;
 using Jurassic;
 using ExoWeb.Templates.MicrosoftAjax;
@@ -52,13 +52,13 @@ namespace ExoWeb.UnitTests
 		}
 		#endregion
 
-		public static object CreateEntity(ScriptEngine engine, IGraphInstance instance)
+		public static object CreateEntity(ScriptEngine engine, IModelInstance instance)
 		{
 			Marshaler marshaller = new Marshaler(engine);
 			return marshaller.Wrap(instance.Instance);
 		}
 
-		public static object CreateAdapter(ScriptEngine engine, IGraphInstance instance, string propertyName)
+		public static object CreateAdapter(ScriptEngine engine, IModelInstance instance, string propertyName)
 		{
 			AjaxPage page = new AjaxPage();
 

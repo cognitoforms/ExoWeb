@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Jurassic;
-using ExoGraph;
+using ExoModel;
 
 namespace ExoWeb.Templates.JavaScript
 {
 	/// <summary>
-	/// Ties the lifetime of a ScriptEngine to that of each GraphContext.
+	/// Ties the lifetime of a ScriptEngine to that of each ModelContext.
 	/// </summary>
 	class ScriptEngineFactory : IScriptEngineFactory
 	{
 		public ScriptEngine GetScriptEngine()
 		{
-			return GraphContext.Current.GetExtension<Extension>().Engine;
+			return ModelContext.Current.GetExtension<Extension>().Engine;
 		}
 
 		class Extension

@@ -207,7 +207,7 @@ ChangeLog.mixin({
 				// Determine that the target of a change is a new instance
 				var instanceIsNew = function(change) {
 					if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
-						var obj = fromExoGraph(change.instance, serverSync._translator);
+						var obj = fromExoModel(change.instance, serverSync._translator);
 						return obj && obj.meta.isNew;
 					}
 					return false;
@@ -327,13 +327,13 @@ ChangeLog.mixin({
 
 					// Update post-save changes with new id
 					function fixInstance(inst) {
-						if (inst && obj === fromExoGraph(inst, serverSync._translator))
+						if (inst && obj === fromExoModel(inst, serverSync._translator))
 							inst.id = idChange.newId;
 					}
 
 					this._sets.forEach(function (set) {
 						set._changes.forEach(function (change) {
-							// Only process changes to graph instances
+							// Only process changes to model instances
 							if (!change.instance) return;
 
 							fixInstance(change.instance);
@@ -384,7 +384,7 @@ ChangeLog.mixin({
 			tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
 				if (change.newValue) {
 					tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(before, function (refType) {
-						var refObj = fromExoGraph(change.newValue, serverSync._translator, true);
+						var refObj = fromExoModel(change.newValue, serverSync._translator, true);
 						Sys.Observer.setValue(srcObj, change.property, refObj);
 					}, after), this);
 				}
@@ -439,7 +439,7 @@ ChangeLog.mixin({
 				// apply added items
 				change.added.forEach(function (item) {
 					tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(before, function (itemType) {
-						var itemObj = fromExoGraph(item, serverSync._translator, true);
+						var itemObj = fromExoModel(item, serverSync._translator, true);
 						if (!list.contains(itemObj)) {
 							list.add(itemObj);
 						}
@@ -450,7 +450,7 @@ ChangeLog.mixin({
 				change.removed.forEach(function (item) {
 					// no need to load instance only to remove it from a list
 					tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
-						var itemObj = fromExoGraph(item, serverSync._translator, true);
+						var itemObj = fromExoModel(item, serverSync._translator, true);
 						list.remove(itemObj);
 					}, after), this, true);
 				}, this);

@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 
 namespace ExoWeb
 {
 	public class EnsureConditionsEventArgs : EventArgs
 	{
-		internal EnsureConditionsEventArgs(IEnumerable<GraphInstance> instances)
+		internal EnsureConditionsEventArgs(IEnumerable<ModelInstance> instances)
 		{
 			this.Instances = instances;
 		}
 
-		public IEnumerable<GraphInstance> Instances { get; private set; }
+		public IEnumerable<ModelInstance> Instances { get; private set; }
 	}
 }

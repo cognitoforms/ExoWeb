@@ -1,7 +1,7 @@
 ﻿<configuration>
   <system.webServer>
     <modules>
-      <add name="ExoGraph" type="ExoGraph.GraphContextProvider+PoolModule, ExoGraph"/>
+      <add name="ExoModel" type="ExoModel.ModelContextProvider+PoolModule, ExoModel"/>
     </modules>
     <handlers>
       <add name="ExoWeb" verb="*" path="ExoWeb.axd" type="ExoWeb.ServiceHandler, ExoWeb"/>

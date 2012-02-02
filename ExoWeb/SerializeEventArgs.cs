@@ -2,17 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 
 namespace ExoWeb
 {
 	public class SerializeEventArgs : EventArgs
 	{
-		internal SerializeEventArgs(GraphInstance instance)
+		internal SerializeEventArgs(ModelInstance instance)
 		{
 			this.Instance = instance;
 		}
 
-		public GraphInstance Instance { get; private set; }
+		public ModelInstance Instance { get; private set; }
 	}
 }

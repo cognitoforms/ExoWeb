@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using System.Collections;
 using ExoWeb.Templates.JavaScript;
 
@@ -65,10 +65,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			var isAdapter = data is Adapter;
 			var realData = isAdapter ? ((Adapter)data).RawValue : data;
 			var property = dataBinding.Property;
-			var referenceType = realData is GraphInstance ? ((GraphInstance)realData).Type :
-								property is GraphReferenceProperty ? ((GraphReferenceProperty)property).PropertyType : null;
-			var valueType = realData != null && !(realData is GraphInstance || realData is IEnumerable<GraphInstance>) ? realData.GetType() :
-							property is GraphValueProperty ?  ((GraphValueProperty)property).PropertyType : null;
+			var referenceType = realData is ModelInstance ? ((ModelInstance)realData).Type :
+								property is ModelReferenceProperty ? ((ModelReferenceProperty)property).PropertyType : null;
+			var valueType = realData != null && !(realData is ModelInstance || realData is IEnumerable<ModelInstance>) ? realData.GetType() :
+							property is ModelValueProperty ?  ((ModelValueProperty)property).PropertyType : null;
 			var isList = (property != null && property.IsList) || (realData is IEnumerable && !(realData is string));
 
 			// Evaluate content:template binding to get this content control's declare template(s)
@@ -106,7 +106,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			page.IsTopLevel = isTopLevel;
 		}
 
-		Template FindTemplate(AjaxPage page, bool isAdapter, GraphType entityType, Type valueType, bool isList, string[] names)
+		Template FindTemplate(AjaxPage page, bool isAdapter, ModelType entityType, Type valueType, bool isList, string[] names)
 		{
 			// Find the appropriate template
 			return page.Templates.OfType<Template>().Reverse().FirstOrDefault(

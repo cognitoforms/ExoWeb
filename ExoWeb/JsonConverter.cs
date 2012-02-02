@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Web.Script.Serialization;
 using System.Reflection;
-using ExoGraph;
+using ExoModel;
 using ExoRule;
 using System.Runtime.Serialization;
 using System.Diagnostics;
@@ -149,14 +149,14 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Gets the serializable value of a <see cref="GraphProperty"/>.
+		/// Gets the serializable value of a <see cref="ModelProperty"/>.
 		/// </summary>
 		/// <param name="property"></param>
 		/// <param name="source"></param>
 		/// <returns></returns>
-		internal static object GetPropertyValue(GraphProperty property, IGraphPropertySource source)
+		internal static object GetPropertyValue(ModelProperty property, IModelPropertySource source)
 		{
-			GraphReferenceProperty reference = property as GraphReferenceProperty;
+			ModelReferenceProperty reference = property as ModelReferenceProperty;
 			if (reference != null)
 			{
 				// Serialize lists
@@ -170,16 +170,16 @@ namespace ExoWeb
 
 			// Serialize values
 			else
-				return source.GetValue((GraphValueProperty)property);
+				return source.GetValue((ModelValueProperty)property);
 		}
 
 		/// <summary>
-		/// Gets the serializable representation of a <see cref="GraphInstance"/>.
+		/// Gets the serializable representation of a <see cref="ModelInstance"/>.
 		/// </summary>
 		/// <param name="property"></param>
 		/// <param name="instance"></param>
 		/// <returns></returns>
-		internal static object GetReference(GraphReferenceProperty property, GraphInstance instance)
+		internal static object GetReference(ModelReferenceProperty property, ModelInstance instance)
 		{
 			if (instance == null)
 				return null;
@@ -208,14 +208,14 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Gets the name of the specified <see cref="GraphType"/>.
+		/// Gets the name of the specified <see cref="ModelType"/>.
 		/// </summary>
 		/// <param name="type"></param>
 		/// <returns></returns>
-		internal static string GetJsonReferenceType(GraphType type)
+		internal static string GetJsonReferenceType(ModelType type)
 		{
 			string jsonType = "";
-			for (GraphType t = type; t != null; t = t.BaseType)
+			for (ModelType t = type; t != null; t = t.BaseType)
 				jsonType += (string.IsNullOrEmpty(jsonType) ? "" : ">") + t.Name;
 			return jsonType;
 		}

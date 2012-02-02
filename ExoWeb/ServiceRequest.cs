@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 using ExoRule;
 using System.Reflection;
 using System.Collections;
@@ -23,7 +23,7 @@ namespace ExoWeb
 			Config = new Dictionary<string, object>();
 		}
 
-		internal ServiceRequest(GraphType[] types)
+		internal ServiceRequest(ModelType[] types)
 		{
 			Types = types;
 			Config = new Dictionary<string, object>();
@@ -36,7 +36,7 @@ namespace ExoWeb
 		/// <summary>
 		/// The set of type metadata to return.
 		/// </summary>
-		public GraphType[] Types { get; private set; }
+		public ModelType[] Types { get; private set; }
 
 		/// <summary>
 		/// The set of queries to load.
@@ -79,7 +79,7 @@ namespace ExoWeb
 			{
 				// Set the types to return from the request
 				if (Types != null)
-					response.Types = Types.ToDictionary<GraphType, string>(type => type.Name);
+					response.Types = Types.ToDictionary<ModelType, string>(type => type.Name);
 
 				// Apply view initialization changes
 				if (Changes != null && Changes.Length > 0 && Changes[0].Source == ChangeSource.Init)
@@ -117,11 +117,11 @@ namespace ExoWeb
 					// Get instances loaded by the request
 					var instances = response.Instances != null ?
 						response.Instances.Values.SelectMany(d => d.Instances.Values).Select(instance => instance.Instance) :
-						new GraphInstance[0];
+						new ModelInstance[0];
 
 					// Add instances created during the request
 					instances = response.Changes != null ?
-						instances.Union(response.Changes.OfType<GraphInitEvent.InitNew>().Select(graphEvent => graphEvent.Instance)) :
+						instances.Union(response.Changes.OfType<ModelInitEvent.InitNew>().Select(modelEvent => modelEvent.Instance)) :
 						instances;
 
 					// Ensure conditions are evaluated before extracting them
@@ -152,8 +152,8 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Performs the queries for the current request, either to prepare the graph before 
-		/// applying changes (forLoad = false), or to actually load the graph and transmit the 
+		/// Performs the queries for the current request, either to prepare the model before 
+		/// applying changes (forLoad = false), or to actually load the model and transmit the 
 		/// requested instances to the client.
 		/// </summary>
 		/// <param name="response"></param>
@@ -165,7 +165,7 @@ namespace ExoWeb
 			{
 				// Record changes while processing queries
 				if (forLoad)
-					(response.Changes ?? new GraphTransaction()).Record(() => ProcessQueryInstances(response, forLoad));
+					(response.Changes ?? new ModelTransaction()).Record(() => ProcessQueryInstances(response, forLoad));
 				else
 					ProcessQueryInstances(response, forLoad);
 			}
@@ -177,7 +177,7 @@ namespace ExoWeb
 			foreach (Query query in Queries)
 			{
 				if ((forLoad && query.ForLoad) || query.InScope)
-					foreach (GraphInstance root in query.Roots)
+					foreach (ModelInstance root in query.Roots)
 						ProcessInstance(root, query.Path != null ? query.Path.FirstSteps : null, forLoad && query.ForLoad, query.InScope, forLoad, response);
 			}
 		}
@@ -188,8 +188,8 @@ namespace ExoWeb
 		void ApplyChanges(ServiceResponse response)
 		{
 			// Consolidate previous changes
-			GraphTransaction transaction = 
-				GraphTransaction.Combine((Changes ?? new ChangeSet[0])
+			ModelTransaction transaction = 
+				ModelTransaction.Combine((Changes ?? new ChangeSet[0])
 				.Where(cs => cs.Source != ChangeSource.Init)
 				.Select(cs => cs.Changes));
 
@@ -203,13 +203,13 @@ namespace ExoWeb
 
 			// Otherwise, just raise events
 			else
-				response.Changes = new GraphTransaction().Record(() => RaiseEvents(response, null));
+				response.Changes = new ModelTransaction().Record(() => RaiseEvents(response, null));
 		}
 	
 		/// <summary>
 		/// Raises domain events.
 		/// </summary>
-		void RaiseEvents(ServiceResponse response, GraphTransaction transaction)
+		void RaiseEvents(ServiceResponse response, ModelTransaction transaction)
 		{
 			// Process each event in the request
 			if (Events != null)
@@ -227,8 +227,8 @@ namespace ExoWeb
 						if (result == null)
 							return null;
 
-						GraphType type;
-						GraphInstance[] roots;
+						ModelType type;
+						ModelInstance[] roots;
 						bool isList;
 
 						if (ExoWeb.TryConvertQueryInstance(result, out type, out roots, out isList))
@@ -252,19 +252,19 @@ namespace ExoWeb
 		/// <param name="instances"></param>
 		/// <param name="paths"></param>
 		/// <param name="path"></param>
-		static void ProcessInstance(GraphInstance instance, GraphStepList steps, bool includeInResponse, bool inScope, bool forLoad, ServiceResponse response)
+		static void ProcessInstance(ModelInstance instance, ModelStepList steps, bool includeInResponse, bool inScope, bool forLoad, ServiceResponse response)
 		{
-			GraphInstanceInfo instanceInfo = null;
+			ModelInstanceInfo instanceInfo = null;
 
 			// Track the instance if the query represents a load request
 			if (includeInResponse)
 			{
 				// Fetch or initialize the dictionary of instances for the type of the current instance
-				GraphTypeInfo typeInfo = response.GetGraphTypeInfo(instance.Type);
+				ModelTypeInfo typeInfo = response.GetModelTypeInfo(instance.Type);
 
 				// Add the current instance to the dictionary if it is not already there
 				if (!typeInfo.Instances.TryGetValue(instance.Id, out instanceInfo))
-					typeInfo.Instances[instance.Id] = instanceInfo = new GraphInstanceInfo(instance);
+					typeInfo.Instances[instance.Id] = instanceInfo = new ModelInstanceInfo(instance);
 			}
 
 			// Exit immediately if there are no child steps to process
@@ -287,9 +287,9 @@ namespace ExoWeb
 			if (inScope)
 			{
 				if (forLoad)
-					instance.RunPendingPropertyGetRules(p => p is GraphValueProperty || steps.Any(s => s.Property == p));
+					instance.RunPendingPropertyGetRules(p => p is ModelValueProperty || steps.Any(s => s.Property == p));
 				else
-					instance.RunPendingPropertyGetRules(p => p is GraphValueProperty);
+					instance.RunPendingPropertyGetRules(p => p is ModelValueProperty);
 			}
 		}
 
@@ -318,7 +318,7 @@ namespace ExoWeb
 			/// <summary>
 			/// The changes to apply before raising events or loading data.
 			/// </summary>
-			public GraphTransaction Changes { get; private set; }
+			public ModelTransaction Changes { get; private set; }
 
 			#region IJsonSerializable
 
@@ -333,7 +333,7 @@ namespace ExoWeb
 				Source = json.Get<ChangeSource>("source");
 
 				// Changes
-				Changes = json.Get<List<GraphEvent>>("changes");
+				Changes = json.Get<List<ModelEvent>>("changes");
 
 				return this;
 			}
@@ -360,15 +360,15 @@ namespace ExoWeb
 		#region DomainEvent
 
 		/// <summary>
-		/// Represents a domain event to be raised on a specific <see cref="GraphInstance"/>.
+		/// Represents a domain event to be raised on a specific <see cref="ModelInstance"/>.
 		/// </summary>
 		public class DomainEvent : IJsonSerializable
 		{
-			public GraphInstance Instance { get; internal set; }
+			public ModelInstance Instance { get; internal set; }
 
 			public string[] Include { get; internal set; }			
 
-			internal virtual object Raise(GraphTransaction transaction)
+			internal virtual object Raise(ModelTransaction transaction)
 			{
 				throw new NotImplementedException();
 			}
@@ -383,7 +383,7 @@ namespace ExoWeb
 			object IJsonSerializable.Deserialize(Json json)
 			{
 				// Get the event target
-				var instance = json.Get<GraphInstance>("instance");
+				var instance = json.Get<ModelInstance>("instance");
 
 				// Get the property paths to include
 				Include = json.Get<string[]>("include");
@@ -409,13 +409,13 @@ namespace ExoWeb
 					return domainEvent;
 				}
 
-				// Graph method
-				GraphMethod method = null;
+				// Model method
+				ModelMethod method = null;
 				for(var t = instance.Type; t != null && method == null; t = t.BaseType)
 					method = t.Methods[eventName];
 
 				if (method != null)
-					return new GraphMethodEvent(instance, method, json.Get<Json>("event"), Include);
+					return new ModelMethodEvent(instance, method, json.Get<Json>("event"), Include);
 
 				// Indicate that the event name could not be resolved
 				throw new ArgumentException(eventName + " is not a valid event for " + instance.Type.Name);
@@ -441,9 +441,9 @@ namespace ExoWeb
 			public TEvent Event { get; private set; }
 
 			/// <summary>
-			/// Raises the domain event on the target <see cref="GraphInstance"/>.
+			/// Raises the domain event on the target <see cref="ModelInstance"/>.
 			/// </summary>
-			internal override object Raise(GraphTransaction transaction)
+			internal override object Raise(ModelTransaction transaction)
 			{
 				if (typeof(TEvent) == typeof(SaveEvent))
 				{
@@ -461,17 +461,17 @@ namespace ExoWeb
 		internal class SaveEvent
 		{ }
 
-		#region GraphMethodEvent
+		#region ModelMethodEvent
 
 		/// <summary>
-		/// A domain event that supports calling graph methods on the specified instance.
+		/// A domain event that supports calling model methods on the specified instance.
 		/// </summary>
-		class GraphMethodEvent : DomainEvent
+		class ModelMethodEvent : DomainEvent
 		{
-			GraphMethod method;
+			ModelMethod method;
 			Json json;
 
-			internal GraphMethodEvent(GraphInstance instance, GraphMethod method, Json json, string[] include)
+			internal ModelMethodEvent(ModelInstance instance, ModelMethod method, Json json, string[] include)
 			{
 				this.Instance = instance;
 				this.method = method;
@@ -479,17 +479,17 @@ namespace ExoWeb
 				this.Include = include;
 			}
 
-			internal override object Raise(GraphTransaction transaction)
+			internal override object Raise(ModelTransaction transaction)
 			{
 				object[] args = method.Parameters.Select(p =>
 				{
 					if (p.ReferenceType == null)
 						return json.Get(p.ValueType, p.Name);
 					else if (p.IsList)
-						return json.Get<GraphInstance[]>(p.Name).Select(gi => gi.Instance).ToArray();
+						return json.Get<ModelInstance[]>(p.Name).Select(gi => gi.Instance).ToArray();
 					else
 					{
-						GraphInstance gi = json.Get<GraphInstance>(p.Name);
+						ModelInstance gi = json.Get<ModelInstance>(p.Name);
 						if (gi != null)
 							gi = transaction.GetInstance(gi.Type, gi.Id);
 						return gi == null ? null : gi.Instance;
@@ -515,7 +515,7 @@ namespace ExoWeb
 			Query()
 			{ }
 
-			internal Query(GraphType type, string[] ids, bool inScope, bool isList, string[] paths)
+			internal Query(ModelType type, string[] ids, bool inScope, bool isList, string[] paths)
 			{
 				this.From = type;
 				this.Ids = ids;
@@ -530,7 +530,7 @@ namespace ExoWeb
 			/// </summary>
 			/// <param name="roots"></param>
 			/// <param name="paths"></param>
-			internal Query(GraphType type, GraphInstance[] roots, bool inScope, bool isList, string[] paths)
+			internal Query(ModelType type, ModelInstance[] roots, bool inScope, bool isList, string[] paths)
 			{
 				this.From = type;
 				this.Include = paths ?? new string[] { };
@@ -540,7 +540,7 @@ namespace ExoWeb
 				this.IsList = isList;
 			}
 
-			public GraphType From { get; set; }
+			public ModelType From { get; set; }
 
 			public string[] Ids { get; internal set; }
 
@@ -553,11 +553,11 @@ namespace ExoWeb
 			public bool IsList { get; internal set; }
 
 			/// <summary>
-			/// Gets the set of root graph instances for the current query.
+			/// Gets the set of root model instances for the current query.
 			/// </summary>
-			internal GraphInstance[] Roots { get; set; }	
+			internal ModelInstance[] Roots { get; set; }	
 
-			internal GraphPath Path { get; set; }
+			internal ModelPath Path { get; set; }
 
 			/// <summary>
 			/// Prepares the query by parsing instance and static paths to determine
@@ -603,56 +603,56 @@ namespace ExoWeb
 				string type = path.Substring(0, propertyIndex);
 				string property = path.Substring(propertyIndex + 1);
 
-				// Get the graph type
-				GraphType graphType = GraphContext.Current.GetGraphType(type);
-				if (graphType == null)
-					throw new ArgumentException("'" + type + "' is not a valid graph type for the static property path of '" + path + "'.");
+				// Get the model type
+				ModelType modelType = ModelContext.Current.GetModelType(type);
+				if (modelType == null)
+					throw new ArgumentException("'" + type + "' is not a valid model type for the static property path of '" + path + "'.");
 
-				// Get the graph property
-				GraphProperty graphProperty = graphType.Properties[property];
-				if (graphProperty == null || !graphProperty.IsStatic)
+				// Get the model property
+				ModelProperty modelProperty = modelType.Properties[property];
+				if (modelProperty == null || !modelProperty.IsStatic)
 					throw new ArgumentException("'" + property + "' is not a valid property for the static property path of '" + path + "'.");
 
 				// Add the property to the set of static properties to serialize
-				response.GetGraphTypeInfo(graphType).StaticProperties.Add(graphProperty);
+				response.GetModelTypeInfo(modelType).StaticProperties.Add(modelProperty);
 
 				// Register instances for static reference properties to be serialized
-				GraphReferenceProperty reference = graphProperty as GraphReferenceProperty;
+				ModelReferenceProperty reference = modelProperty as ModelReferenceProperty;
 				if (reference != null)
 				{
 					// Get the cached set of instances to be serialized for the property type
-					GraphTypeInfo propertyTypeInfo = response.GetGraphTypeInfo(reference.PropertyType);
+					ModelTypeInfo propertyTypeInfo = response.GetModelTypeInfo(reference.PropertyType);
 
 					// Static lists
 					if (reference.IsList)
 					{
-						foreach (GraphInstance instance in graphType.GetList(reference))
+						foreach (ModelInstance instance in modelType.GetList(reference))
 						{
-							GraphTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetGraphTypeInfo(instance.Type);
+							ModelTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetModelTypeInfo(instance.Type);
 							if (!typeInfo.Instances.ContainsKey(instance.Id))
-								typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
+								typeInfo.Instances.Add(instance.Id, new ModelInstanceInfo(instance));
 						}
 					}
 
 					// Static references
 					else
 					{
-						GraphInstance instance = graphType.GetReference(reference);
-						GraphTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetGraphTypeInfo(instance.Type);
+						ModelInstance instance = modelType.GetReference(reference);
+						ModelTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetModelTypeInfo(instance.Type);
 						if (instance != null && !typeInfo.Instances.ContainsKey(instance.Id))
-							typeInfo.Instances.Add(instance.Id, new GraphInstanceInfo(instance));
+							typeInfo.Instances.Add(instance.Id, new ModelInstanceInfo(instance));
 					}
 				}
 			}
 
-			internal void LoadRoots(GraphTransaction transaction)
+			internal void LoadRoots(ModelTransaction transaction)
 			{
 				// Exit immediately if roots have already been loaded
 				if (Roots != null)
 					return;
 
 				// Create an array of roots to be loaded
-				Roots = new GraphInstance[Ids == null ? 0 : Ids.Length];
+				Roots = new ModelInstance[Ids == null ? 0 : Ids.Length];
 
 				// Get the root instances 
 				for (int i = 0; i < Roots.Length; i++)
@@ -702,7 +702,7 @@ namespace ExoWeb
 			{
 				string typeName = json.Get<string>("from");
 				if (typeName != null)
-					From = GraphContext.Current.GetGraphType(typeName);
+					From = ModelContext.Current.GetModelType(typeName);
 
 				if (json.IsNull("id"))
 				{
@@ -739,7 +739,7 @@ namespace ExoWeb
 			// Types
 			var types = json.Get<string[]>("types");
 			if (types != null)
-				Types = types.Select(type => GraphContext.Current.GetGraphType(type)).ToArray();
+				Types = types.Select(type => ModelContext.Current.GetModelType(type)).ToArray();
 
 			// Queries
 			Queries = json.Get<Query[]>("queries");

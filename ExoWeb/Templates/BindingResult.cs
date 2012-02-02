@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using ExoGraph;
+using ExoModel;
 
 namespace ExoWeb.Templates
 {
@@ -15,9 +15,9 @@ namespace ExoWeb.Templates
 
 		public object Value { get; set; }
 
-		public GraphInstance Source { get; set; }
+		public ModelInstance Source { get; set; }
 
-		public GraphProperty Property { get; set; }
+		public ModelProperty Property { get; set; }
 
 		public bool IsValid { get; set; }
 	}

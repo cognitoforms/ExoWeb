@@ -97,7 +97,7 @@ end
 		EventProvider
 		ResponseHandler
 		Translation
-		ExoGraphEventListener
+		ExoModelEventListener
 		ChangeSet
 		ChangeLog
 		ServerSync

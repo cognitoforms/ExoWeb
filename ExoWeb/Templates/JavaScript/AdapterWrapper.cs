@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Jurassic;
 using Jurassic.Library;
-using ExoGraph;
+using ExoModel;
 using ExoRule;
 
 namespace ExoWeb.Templates.JavaScript

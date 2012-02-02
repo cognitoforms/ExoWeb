@@ -19,7 +19,7 @@ function ServerSync(model) {
 		return property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
 	}
 
-	this._listener = new ExoGraphEventListener(this._model, this._translator, {
+	this._listener = new ExoModelEventListener(this._model, this._translator, {
 		listChanged: filterPropertyEvent,
 		propertyChanged: filterPropertyEvent,
 		objectRegistered: filterObjectEvent,
@@ -228,7 +228,7 @@ ServerSync.mixin({
 						ignore = false;
 					}
 					else {
-						var obj = fromExoGraph(item, this._translator);
+						var obj = fromExoModel(item, this._translator);
 						// Only objects that exist can be disabled
 						if (!obj || this.canSaveObject(obj)) {
 							ignore = false;
@@ -242,7 +242,7 @@ ServerSync.mixin({
 						ignore = false;
 					}
 					else {
-						var obj = fromExoGraph(item, this._translator);
+						var obj = fromExoModel(item, this._translator);
 						if (!obj || this.canSaveObject(obj)) {
 							ignore = false;
 						}
@@ -260,7 +260,7 @@ ServerSync.mixin({
 		else if (change.type === "ReferenceChange") {
 			var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 			if (oldJsType) {
-				var oldValue = fromExoGraph(change.oldValue, this._translator);
+				var oldValue = fromExoModel(change.oldValue, this._translator);
 				if (oldValue && !this.canSaveObject(oldValue)) {
 					return false;
 				}
@@ -268,7 +268,7 @@ ServerSync.mixin({
 
 			var newJsType = change.newValue && ExoWeb.Model.Model.getJsType(change.newValue.type, true);
 			if (newJsType) {
-				var newValue = fromExoGraph(change.newValue, this._translator);
+				var newValue = fromExoModel(change.newValue, this._translator);
 				if (newValue && !this.canSaveObject(newValue)) {
 					return false;
 				}
@@ -282,7 +282,7 @@ ServerSync.mixin({
 		}
 
 		// Ensure that the instance that the change pertains to can be saved.
-		var instanceObj = fromExoGraph(change.instance, this._translator);
+		var instanceObj = fromExoModel(change.instance, this._translator);
 		return !instanceObj || this.canSaveObject(instanceObj);
 	},
 
@@ -391,17 +391,17 @@ ServerSync.mixin({
 
 			if (arg instanceof Array) {
 				for (var i = 0; i < arg.length; ++i) {
-					arg[i] = toExoGraph(arg[i], this._translator);
+					arg[i] = toExoModel(arg[i], this._translator);
 				}
 			}
 			else {
-				event[key] = toExoGraph(arg, this._translator);
+				event[key] = toExoModel(arg, this._translator);
 			}
 		}
 
 		eventProvider(
 			name,
-			toExoGraph(obj, this._translator),
+			toExoModel(obj, this._translator),
 			event,
 			paths,
 		// If includeAllChanges is true, then use all changes including those 
@@ -420,11 +420,11 @@ ServerSync.mixin({
 			var event = result.events[0];
 			if (event instanceof Array) {
 				for (var i = 0; i < event.length; ++i) {
-					event[i] = fromExoGraph(event[i], this._translator, true);
+					event[i] = fromExoModel(event[i], this._translator, true);
 				}
 			}
 			else {
-				event = fromExoGraph(event, this._translator, true);
+				event = fromExoModel(event, this._translator, true);
 			}
 
 			restoreDates(event);
@@ -556,7 +556,7 @@ ServerSync.mixin({
 		this._raiseBeginEvents("save", args);
 
 		saveProvider(
-			toExoGraph(root, this._translator),
+			toExoModel(root, this._translator),
 			serializeChanges.call(this, false, root),
 			this._onSaveSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onSaveFailed.bind(this).appendArguments(args, failed || success)
@@ -687,14 +687,14 @@ ServerSync.mixin({
 		}
 	},
 	rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-		var obj = fromExoGraph(change.instance, this._translator);
+		var obj = fromExoModel(change.instance, this._translator);
 
 		Sys.Observer.setValue(obj, change.property, change.oldValue);
 		callback();
 	},
 	rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-		var obj = fromExoGraph(change.instance, this._translator);
-		var ref = fromExoGraph(change.oldValue, this._translator);
+		var obj = fromExoModel(change.instance, this._translator);
+		var ref = fromExoModel(change.oldValue, this._translator);
 
 		Sys.Observer.setValue(obj, change.property, ref);
 		callback();
@@ -705,7 +705,7 @@ ServerSync.mixin({
 		callback();
 	},
 	rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
-		var obj = fromExoGraph(change.instance, this._translator);
+		var obj = fromExoModel(change.instance, this._translator);
 		var prop = obj.meta.property(change.property, true);
 		var list = prop.value(obj);
 		var translator = this._translator;
@@ -714,13 +714,13 @@ ServerSync.mixin({
 
 		// Rollback added items
 		Array.forEach(change.added, function ServerSync$rollbackListChanges$added(item) {
-			var childObj = fromExoGraph(item, translator);
+			var childObj = fromExoModel(item, translator);
 			list.remove(childObj);
 		});
 
 		// Rollback removed items
 		Array.forEach(change.removed, function ServerSync$rollbackListChanges$added(item) {
-			var childObj = fromExoGraph(item, translator);
+			var childObj = fromExoModel(item, translator);
 			list.add(childObj);
 		});
 
