@@ -4622,6 +4622,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			new ExoWeb.Model.Rule.stringLength(this._containingType, { property: this._name, min: min, max: max }, conditionType);
 			return this;
 		},
+		stringFormat: function (description, expression, reformat, conditionType) {
+			new ExoWeb.Model.Rule.stringFormat(this._containingType, { property: this._name, description: description, expression: expression, reformat: reformat }, conditionType);
+			return this;
+		},
 		listLength: function (options, conditionType) {
 			new ExoWeb.Model.Rule.listLength(this._containingType, { property: this._name, staticLength: options.staticLength, compareSource: options.compareSource, compareOperator: options.compareOperator }, conditionType);
 			return this;

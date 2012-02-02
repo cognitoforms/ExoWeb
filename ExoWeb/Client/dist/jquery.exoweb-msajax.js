@@ -229,9 +229,6 @@
 			// Cache of handlers for the action in question
 			actionHandlers,
 
-			// The number of unfiltered handlers
-			numActionHandlers,
-
 			// Handlers that are applicable to this call
 			handlers,
 
@@ -263,24 +260,12 @@
 		actionHandlers = everHandlers[action];
 
 		// Filter based on source and context
-		i = -1;
-		numActionHandlers = actionHandlers.length;
-		handlers = [];
-		while (++i < numActionHandlers) {
-			handler = actionHandlers[i];
-
+		handlers = actionHandlers.filter(function(handler) {
 			// If a handler source is specified then filter by the source
-			if (!handler.source || handler.source === source) {
-				continue;
-			}
-
-			// If a handler context is specified then see if it contains the given container, or equals if children were passed in
-			if (!handler.context || (isArr && handler.context === container) || jQuery.contains(handler.context, container)) {
-				continue;
-			}
-
-			handlers.push(handler);
-		}
+			return (!handler.source || handler.source === source) &&
+				// If a handler context is specified then see if it contains the given container, or equals if children were passed in
+				(!handler.context || (isArr && handler.context === container) || jQuery.contains(handler.context, container));
+		});
 
 		numHandlers = handlers.length;
 
