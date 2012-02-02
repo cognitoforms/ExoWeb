@@ -206,8 +206,11 @@ ChangeLog.mixin({
 
 				// Determine that the target of a change is a new instance
 				var instanceIsNew = function(change) {
-					var obj = fromExoGraph(change.instance, serverSync._translator);
-					return obj && obj.meta.isNew;
+					if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
+						var obj = fromExoGraph(change.instance, serverSync._translator);
+						return obj && obj.meta.isNew;
+					}
+					return false;
 				};
 
 				// Truncate changes that we believe were actually saved based on the response
