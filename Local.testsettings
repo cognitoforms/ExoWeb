@@ -2,8 +2,8 @@
 <TestSettings name="Local" id="d8e7fa80-d127-45cb-973d-517ecc77c34e" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
   <Description>These are default test settings for a local test run.</Description>
   <Deployment>
-    <DeploymentItem filename="C:\Users\thomasja\Projects\VC3.TestView\ServerRendering\Public\ExoGraph\ExoGraph.UnitTest\JsonModel\types.js" />
-    <DeploymentItem filename="C:\Users\thomasja\Projects\VC3.TestView\ServerRendering\Public\ExoGraph\ExoGraph.UnitTest\JsonModel\instances.js" />
+    <DeploymentItem filename="..\ExoGraph\ExoGraph.UnitTest\JsonModel\types.js" />
+    <DeploymentItem filename="..\ExoGraph\ExoGraph.UnitTest\JsonModel\instances.js" />
   </Deployment>
   <Execution>
     <TestTypeSpecific>
