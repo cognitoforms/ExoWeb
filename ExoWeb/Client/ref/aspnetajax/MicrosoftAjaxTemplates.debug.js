@@ -1395,7 +1395,7 @@
 		var sysAttrExpr = /^sys\:([a-z_]*)$/;
 
 		Sys.Application._linkAttributes = function Sys$Application$_linkAttributes(element, parentContext, attachedName) {
-			var i, attr, dataAttr, sysAttrib, msDataAttrib, isSelect, match, attrName, value, target, targetProp, link = true, typeIndex;
+			var i, attr, dataAttr, sysAttrib, msDataAttrib, isSelect, match, attrName, value, target, targetProp, link, typeIndex;
 
 			if (element.control && attachedName) {
 				typeIndex = {};
@@ -1411,12 +1411,14 @@
 				if (sysDataAttrExpr.test(attrName)) {
 					dataAttr = { raw: attrName, prefix: "sys" };
 					dataAttr.name = sysDataAttrExpr.exec(attr.name)[1];
+					link = true;
 				}
 				else if (controlDataAttrExpr.test(attrName)) {
 					dataAttr = { raw: attrName };
 					match = controlDataAttrExpr.exec(attrName);
 					dataAttr.control = dataAttr.prefix = match[1];
 					dataAttr.name = match[2];
+					link = true;
 				}
 				else if (sysAttrExpr.test(attrName)) {
 					dataAttr = { raw: attrName, prefix: "sys" };
