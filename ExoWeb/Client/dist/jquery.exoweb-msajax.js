@@ -270,12 +270,12 @@
 			handler = actionHandlers[i];
 
 			// If a handler source is specified then filter by the source
-			if (!handler.source || handler.source === source) {
+			if (handler.source && handler.source !== source) {
 				continue;
 			}
 
 			// If a handler context is specified then see if it contains the given container, or equals if children were passed in
-			if (!handler.context || (isArr && handler.context === container) || jQuery.contains(handler.context, container)) {
+			if (handler.context && !((isArr && handler.context === container) || jQuery.contains(handler.context, container))) {
 				continue;
 			}
 
