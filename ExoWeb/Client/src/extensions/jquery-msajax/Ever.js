@@ -151,9 +151,10 @@ function ensureIntercepting() {
 		// intercept Sys.UI.DataView._clearContainers called conditionally during dispose() and refresh().
 		// dispose is too late because the nodes will have been cleared out.
 		Sys.UI.DataView.prototype._clearContainers = function _clearContainers$override(placeholders, start, count) {
-			var i, len, nodes, startNode, endNode;
+			var i, len, nodes, startNode, endNode, context;
 			for (i = start || 0, len = count ? (start + count) : this._contexts.length; i < len; i++) {
-				nodes = this._contexts[i].nodes;
+				context = this._contexts[i];
+				nodes = context.nodes;
 				if (nodes.length > 0) {
 					processElements(context.containerElement, nodes, "deleted", "template");
 				}
