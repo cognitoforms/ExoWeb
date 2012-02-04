@@ -143,7 +143,7 @@ namespace ExoWeb.Templates
 			get
 			{
 				string systemValue;
-				TryGetSystemValue(RawValue, out systemValue);
+				TryGetSystemValue(Property, RawValue, out systemValue);
 				return systemValue;
 			}
 		}
@@ -243,20 +243,29 @@ namespace ExoWeb.Templates
 		/// <param name="value"></param>
 		/// <param name="systemValue"></param>
 		/// <returns></returns>
-		internal static bool TryGetSystemValue(object value, out string systemValue)
+		internal static bool TryGetSystemValue(ModelProperty property, object value, out string systemValue)
 		{
-			bool isValid = true;
-			systemValue = null;
-
-			if (value != null)
+			if (property is ModelReferenceProperty)
+				systemValue = value != null ? ((ModelInstance)value).Type.Name + "|" + ((ModelInstance)value).Id : null;
+			else if (JsonConverter.GetJsonValueType(((ModelValueProperty)property).PropertyType) == "Boolean")
 			{
-				if (value is ModelInstance)
-					systemValue = ((ModelInstance)value).Type.Name + "|" + ((ModelInstance)value).Id;
+				if (value is bool)
+					systemValue = (bool)value ? "true" : "false";
+				else if (value is bool?)
+					systemValue = ((bool?)value).HasValue ? (((bool?)value).Value ? "true" : "false") : "";
 				else
-					isValid = false;
+				{
+					systemValue = null;
+					return false;
+				}
+			}
+			else
+			{
+				systemValue = null;
+				return false;
 			}
 
-			return isValid;
+			return true;
 		}
 		#endregion
 
@@ -315,7 +324,7 @@ namespace ExoWeb.Templates
 					break;
 				case "systemValue":
 					string systemValue;
-					if (!(isValid = TryGetSystemValue(RawValue, out systemValue)))
+					if (!(isValid = TryGetSystemValue(Property, RawValue, out systemValue)))
 						throw new ApplicationException("Cannot obtain a system value since the given object is invalid for the property");
 					value = systemValue;
 					break;

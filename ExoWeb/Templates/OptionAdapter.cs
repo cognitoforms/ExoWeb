@@ -46,7 +46,7 @@ namespace ExoWeb.Templates
 			get
 			{
 				string systemValue;
-				Adapter.TryGetSystemValue(RawValue, out systemValue);
+				Adapter.TryGetSystemValue(Parent.Property, RawValue, out systemValue);
 				return systemValue;
 			}
 		}
@@ -92,7 +92,7 @@ namespace ExoWeb.Templates
 					break;
 				case "systemValue":
 					string systemValue;
-					if (!(isValid = Adapter.TryGetSystemValue(RawValue, out systemValue)))
+					if (!(isValid = Adapter.TryGetSystemValue(Parent.Property, RawValue, out systemValue)))
 						throw new ApplicationException("Cannot obtain a system value since the given object is invalid for the property");
 					value = systemValue;
 					break;
