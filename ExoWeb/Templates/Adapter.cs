@@ -173,7 +173,6 @@ namespace ExoWeb.Templates
 		/// <returns></returns>
 		internal static bool TryGetAllowedValues(ModelProperty property, ModelInstance source, Transform optionsTransform, out IEnumerable<object> allowedValues)
 		{
-			bool isValid = true;
 			allowedValues = null;
 
 			var allowedInstances = AllowedValuesRule.GetAllowedValues(source, property);
@@ -183,7 +182,7 @@ namespace ExoWeb.Templates
 				if (optionsTransform != null)
 				{
 					IEnumerable transformed;
-					if (isValid = optionsTransform.TryExecute(Page.Current, allowedInstances, out transformed))
+					if (optionsTransform.TryExecute(Page.Current, allowedInstances, out transformed))
 						allowedValues = transformed.Cast<object>().ToArray();
 				}
 				else
@@ -192,7 +191,7 @@ namespace ExoWeb.Templates
 			else if (property is ModelValueProperty && JsonConverter.GetJsonValueType(((ModelValueProperty)property).PropertyType) == "Boolean")
 				allowedValues = (new bool[] { true, false }).Cast<object>();
 
-			return isValid;
+			return allowedValues != null;
 		}
 
 		/// <summary>
