@@ -172,6 +172,27 @@ namespace ExoWeb.Templates.JavaScript
 		}
 
 		/// <summary>
+		/// Attempt to get a value for the given path from the given root model instance.
+		/// If the result is a model type then a model instance is returned.
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="path"></param>
+		/// <returns></returns>
+		static object TryEvaluatePath(ModelInstance instance, string path)
+		{
+			var modelSource = new ModelSource(instance.Type, path);
+			var source = modelSource.GetSource(instance);
+			if (source == null)
+				return null;
+			var property = source.Properties[modelSource.SourceProperty];
+			var isReference = property is ModelReferenceProperty;
+			var value = modelSource.GetValue(instance);
+			if (value == null)
+				return null;
+			return isReference ? ModelContext.Current.GetModelInstance(value) : value;
+		}
+
+		/// <summary>
 		/// Determines whether the enumerable passed into the operation at
 		/// the given index is an enumerable of groupings.
 		/// </summary>
@@ -329,22 +350,14 @@ namespace ExoWeb.Templates.JavaScript
 							if (!obj.TryGetValue(path, out path, out result))
 								throw new InvalidGroupByException(groupByText);
 							if (!string.IsNullOrEmpty(path))
-								result = new ModelSource(((ModelInstance)result).Type, path).GetValue(((ModelInstance)result));
+								result = TryEvaluatePath((ModelInstance)result, path);
 							return result;
 						}).Select(g => new Grouping(g.Key, g));
 					}
 					else
 					{
 						return enumerable.Cast<ModelInstance>()
-							.GroupBy(obj =>
-							{
-								var modelSource = new ModelSource(obj.Type, groupByText);
-								var source = modelSource.GetSource(obj);
-								var property = source.Properties[modelSource.SourceProperty];
-								var isReference = property is ModelReferenceProperty;
-								var value = modelSource.GetValue(obj);
-								return isReference ? ModelContext.Current.GetModelInstance(value) : value;
-							})
+							.GroupBy(obj => TryEvaluatePath(obj, groupByText))
 							.Select(g => new Grouping(g.Key, g));
 					}
 				};
