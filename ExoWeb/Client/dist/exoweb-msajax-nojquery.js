@@ -9271,46 +9271,70 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-			var obj = fromExoModel(change.instance, this._translator);
+			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
 
-			Sys.Observer.setValue(obj, change.property, change.oldValue);
-			callback();
+					Sys.Observer.setValue(srcObj, change.property, change.oldValue);
+					callback();
+
+				}, this);
+			}, this);
 		},
 		rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-			var obj = fromExoModel(change.instance, this._translator);
-			var ref = fromExoModel(change.oldValue, this._translator);
-
-			Sys.Observer.setValue(obj, change.property, ref);
-			callback();
+			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+					if (change.oldValue) {
+						tryGetJsType(this._model, change.oldValue.type, null, true, function (refType) {
+							tryGetEntity(this._model, this._translator, refType, change.oldValue.id, change.property, LazyLoadEnum.None, function (refObj) {
+								Sys.Observer.setValue(srcObj, change.property, refObj);
+								callback();
+							}, this);
+						}, this);
+					}
+					else {
+						Sys.Observer.setValue(srcObj, change.property, null);
+						callback();
+					}
+				}, this);
+			}, this);
 		},
 		rollbackInitChange: function ServerSync$rollbackInitChange(change, callback) {
-			delete change.instance;
 			//TODO: need to remove from the translator
 			callback();
 		},
 		rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
-			var obj = fromExoModel(change.instance, this._translator);
-			var prop = obj.meta.property(change.property, true);
-			var list = prop.value(obj);
-			var translator = this._translator;
+			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+					var prop = srcObj.meta.property(change.property, true);
+					var list = prop.value(srcObj);
+					var translator = this._translator;
 
-			list.beginUpdate();
+					list.beginUpdate();
 
-			// Rollback added items
-			Array.forEach(change.added, function ServerSync$rollbackListChanges$added(item) {
-				var childObj = fromExoModel(item, translator);
-				list.remove(childObj);
-			});
+					// Rollback added items
+					Array.forEach(change.added, function rollbackListChanges$added(item) {
+						tryGetJsType(this._model, item.type, null, false, function (itemType) {
+							var childObj = fromExoModel(item, translator);
+							if (childObj) {
+								list.remove(childObj);
+							}
+						}, this);
+					});
 
-			// Rollback removed items
-			Array.forEach(change.removed, function ServerSync$rollbackListChanges$added(item) {
-				var childObj = fromExoModel(item, translator);
-				list.add(childObj);
-			});
+					// Rollback removed items
+					Array.forEach(change.removed, function rollbackListChanges$added(item) {
+						tryGetJsType(this._model, item.type, null, true, function (itemType) {
+							var childObj = fromExoModel(item, translator, true);
 
-			list.endUpdate();
+							list.add(childObj);
+						}, this);
+					});
 
-			callback();
+					list.endUpdate();
+
+					callback();
+				}, this);
+			}, this);
 		},
 
 		// Various
