@@ -281,7 +281,7 @@ function typeFromJson(model, typeName, json) {
 //			ExoWeb.trace.log("typeInit", "{1}   <.>", arguments);
 
 	// get model type. it may have already been created for lazy loading	
-	var mtype = getType(model, typeName, json.baseType, true);
+	var mtype = getType(model, typeName, json.baseType);
 
 	// set the default type format
 	if (json.format) {
@@ -399,7 +399,7 @@ function getJsType(model, typeName, forLoading) {
 	// If its not defined, assume the type is a model type
 	// that may eventually be fetched.
 	if (jstype === undefined) {
-		jstype = getType(model, null, family, forLoading).get_jstype();
+		jstype = getType(model, null, family).get_jstype();
 	}
 
 	return jstype;
@@ -454,11 +454,7 @@ function getType(model, finalType, propType) {
 			// if type doesn't exist, setup a ghost type
 			if (!mtype) {
 				mtype = model.addType(type, baseType, "server");
-
-				//if (!forLoading || family.length > 0) {
-//							ExoWeb.trace.log("typeInit", "{0} (ghost)", [type]);
-					TypeLazyLoader.register(mtype);
-				//}
+				TypeLazyLoader.register(mtype);
 			}
 		}
 	}
