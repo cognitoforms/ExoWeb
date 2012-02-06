@@ -100,14 +100,19 @@
 		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : 4 }}"></textarea>
 </span>
 
-<!-- field, default (text input) -->
+<!-- field, string (text input) -->
 <span template:name="field" template:kind="@" class="sys-template" sys:attach="template" template:datatype="String" template:isreference="false" template:islist="false">
 	<input type='text' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : 15 }}" />
 </span>
 
-<!-- field, default (text password) -->
+<!-- field, string (text password) -->
 <span template:name="password" template:kind="@" class="sys-template" sys:attach="template" template:datatype="String" template:isreference="false" template:islist="false">
 	<input type='password' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : 15 }}" />
+</span>
+
+<!-- field, default (text input) -->
+<span template:name="field" template:kind="@" class="sys-template" sys:attach="template" template:isreference="false" template:islist="false">
+	<input type='text' sys:value="{ binding displayValue }" />
 </span>
 
 <!-- form (div layout) -->
