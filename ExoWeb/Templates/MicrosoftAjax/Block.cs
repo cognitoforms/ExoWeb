@@ -155,6 +155,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 			// Load and parse the template markup
 			XmlDocument templates = new XmlDocument();
+			templates.PreserveWhitespace = true;
 			try
 			{
 				templates.LoadXml(xml);
