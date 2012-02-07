@@ -273,7 +273,7 @@ Adapter.prototype = {
 
 		var value;
 		try {
-			value = this.get_systemValue();
+			value = this.get_rawValue();
 
 			if (value === null) {
 				value = "null";
