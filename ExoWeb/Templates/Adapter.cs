@@ -27,7 +27,6 @@ namespace ExoWeb.Templates
 
 		BindingResult binding;
 		Transform optionsTransform;
-		IEnumerable<OptionAdapter> options;
 		Dictionary<string, string> properties;
 
 		internal Adapter(BindingResult binding, IDictionary<string, string> parameters)
