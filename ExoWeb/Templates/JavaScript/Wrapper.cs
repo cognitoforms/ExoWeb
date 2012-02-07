@@ -41,7 +41,7 @@ namespace ExoWeb.Templates.JavaScript
 			{
 				var property = typeof(T).GetProperty(jsPropertyName.Substring(4), System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
 				if (property != null)
-					return LazyDefineMethod(jsPropertyName, item => property.GetValue(item, null));
+					return LazyDefineMethod(jsPropertyName, item => Page.ScriptMarshaller.Wrap(property.GetValue(item, null)));
 			}
 
 			return base.GetMissingPropertyValue(jsPropertyName);
