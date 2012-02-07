@@ -45,7 +45,7 @@ namespace ExoWeb.Templates
 			{
 				HttpContext webCtx = HttpContext.Current;
 				Page page;
-				
+
 
 				// If in a web request, store the reference in HttpContext
 				if (webCtx != null)
@@ -80,7 +80,7 @@ namespace ExoWeb.Templates
 			get
 			{
 				JavaScript.Marshaler scriptMarshaller = null;
-				
+
 				if (HttpContext.Current != null)
 					scriptMarshaller = (JavaScript.Marshaler)HttpContext.Current.Items["ExoWeb.Page.ScriptMarshaller"];
 
@@ -90,7 +90,7 @@ namespace ExoWeb.Templates
 				return scriptMarshaller;
 			}
 		}
-		
+
 		/// <summary>
 		/// Begins a new template context as a child of the current context. 
 		/// </summary>
@@ -189,9 +189,24 @@ namespace ExoWeb.Templates
 					path = path.Substring(index + 1);
 				}
 
-				// Return an invalid result if the model value could not be found
-				else
+
+			}
+
+			// Otherwise see if the path represents a static property
+			else
+			{
+				ModelSource source;
+				// Return immediately if the path does not represent a valid static property
+				if (!ModelSource.TryGetSource(null, path, out source))
 					return result;
+
+				result.IsValid = true;
+				result.Property = ModelContext.Current.GetModelType(source.SourceType).Properties[source.SourceProperty];
+				result.Value =
+					result.Property is ModelValueProperty ? source.GetValue(null) :
+					result.Property.IsList ? (object)source.GetList(null) :
+					source.GetReference(null);
+				return result;
 			}
 
 			// Transform grouping
@@ -214,7 +229,7 @@ namespace ExoWeb.Templates
 			if (context is ModelInstance)
 			{
 				result.Source = context as ModelInstance;
-				
+
 				// Exit immediately if the path is not valid
 				ModelPath modelPath;
 				if (!result.Source.Type.TryGetPath(path, out modelPath))
