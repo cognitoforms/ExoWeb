@@ -390,10 +390,8 @@ ServerSync.mixin({
 			var arg = event[key];
 
 			if (arg instanceof Array) {
-				for (var i = 0; i < arg.length; ++i) {
-					arg[i] = toExoModel(arg[i], this._translator);
+				event[key] = arg.map(function (a) { return toExoGraph(a, this._translator); }, this);
 				}
-			}
 			else {
 				event[key] = toExoModel(arg, this._translator);
 			}

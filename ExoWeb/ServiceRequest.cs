@@ -484,9 +484,9 @@ namespace ExoWeb
 				object[] args = method.Parameters.Select(p =>
 				{
 					if (p.ReferenceType == null)
-						return json.Get(p.ValueType, p.Name);
+						return json.Get(p.ParameterType, p.Name);
 					else if (p.IsList)
-						return json.Get<ModelInstance[]>(p.Name).Select(gi => gi.Instance).ToArray();
+						return json.Get<ModelInstance[]>(p.Name).Select(gi => transaction.GetInstance(gi.Type, gi.Id)).ToList(p.ReferenceType, p.ParameterType);
 					else
 					{
 						ModelInstance gi = json.Get<ModelInstance>(p.Name);
