@@ -551,18 +551,37 @@ Adapter.prototype = {
 		}
 	},
 	get_displayValue: function Adapter$get_displayValue() {
+		var displayValue;
 		var rawValue = this.get_rawValue();
+
 		if (this._format) {
+			// Use a markup or property format if available
 			if (rawValue instanceof Array) {
-				return rawValue.map(function (value) { return this._format.convert(value); }, this).join(", ");
+				displayValue = rawValue.map(function (value) { return this._format.convert(value); }, this);
 			}
 			else {
-				return this._format.convert(rawValue);
+				displayValue = this._format.convert(rawValue);
 			}
 		}
-		else {
-			return rawValue;
+		else if (rawValue instanceof Array) {
+			// If no format exists, then fall back to toString
+			displayValue = rawValue.map(function (value) {
+				if (value === null || value === undefined) {
+					return "";
+				}
+				else {
+					return value.toString();
+				}
+			}, this);
 		}
+		else if (rawValue === null || rawValue === undefined) {
+			displayValue = "";
+		}
+		else {
+			displayValue = rawValue.toString();
+		}
+
+		return displayValue instanceof Array ? displayValue.join(", ") : displayValue;
 	},
 	set_displayValue: function Adapter$set_displayValue(value) {
 		if (this.get_isEntity()) {

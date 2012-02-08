@@ -253,13 +253,13 @@ namespace ExoWeb.Templates
 					systemValue = ((bool?)value).HasValue ? (((bool?)value).Value ? "true" : "false") : "";
 				else
 				{
-					systemValue = null;
+					systemValue = "";
 					return false;
 				}
 			}
 			else
 			{
-				systemValue = null;
+				systemValue = value != null ? value.ToString() : "";
 				return false;
 			}
 
