@@ -168,6 +168,7 @@ namespace ExoWeb.Templates
 			// First see if the binding expression represents a model level source
 			if (path.StartsWith("window.context.model."))
 				path = path.Substring(7);
+
 			if (path.StartsWith("context.model."))
 			{
 				path = path.Substring(14);
@@ -188,25 +189,13 @@ namespace ExoWeb.Templates
 					// Trim the path down to the unevaluated portion
 					path = path.Substring(index + 1);
 				}
-
-
+				else
+					return result;
 			}
 
 			// Otherwise see if the path represents a static property
 			else
 			{
-				ModelSource source;
-				// Return immediately if the path does not represent a valid static property
-				if (!ModelSource.TryGetSource(null, path, out source))
-					return result;
-
-				result.IsValid = true;
-				result.Property = ModelContext.Current.GetModelType(source.SourceType).Properties[source.SourceProperty];
-				result.Value =
-					result.Property is ModelValueProperty ? source.GetValue(null) :
-					result.Property.IsList ? (object)source.GetList(null) :
-					source.GetReference(null);
-				return result;
 			}
 
 			// Transform grouping
@@ -232,47 +221,64 @@ namespace ExoWeb.Templates
 
 				// Exit immediately if the path is not valid
 				ModelPath modelPath;
-				if (!result.Source.Type.TryGetPath(path, out modelPath))
-					return result;
-
-				// Walk the path, honoring only first steps
-				for (var step = modelPath.FirstSteps.First(); step != null; step = step.NextSteps.FirstOrDefault())
+				if (result.Source.Type.TryGetPath(path, out modelPath))
 				{
-					if (step.NextSteps.Any())
+					// Walk the path, honoring only first steps
+					for (var step = modelPath.FirstSteps.First(); step != null; step = step.NextSteps.FirstOrDefault())
 					{
-						// Exit immediately if an intermediary step is a list
-						if (step.Property.IsList)
-							return result;
+						if (step.NextSteps.Any())
+						{
+							// Exit immediately if an intermediary step is a list
+							if (step.Property.IsList)
+								return result;
 
-						// Attempt to walk the instance path if the current step is valid
-						if (result.Source != null)
-							result.Source = result.Source.Type.Properties.Contains(step.Property) ? result.Source.GetReference((ModelReferenceProperty)step.Property) : null;
+							// Attempt to walk the instance path if the current step is valid
+							if (result.Source != null)
+								result.Source = result.Source.Type.Properties.Contains(step.Property) ? result.Source.GetReference((ModelReferenceProperty)step.Property) : null;
+						}
+						else
+							result.Property = step.Property;
 					}
-					else
-						result.Property = step.Property;
+
+					// Indicate that the result is now considered valid since the path could be walked
+					result.IsValid = true;
+
+					// Attempt to evaluate the last step along the path
+					if (result.Source != null)
+					{
+						// Evaluate the last step along the path
+						if (result.Property is ModelValueProperty)
+							result.Value = result.Source.GetValue((ModelValueProperty)result.Property);
+						else if (result.Property.IsList)
+							result.Value = result.Source.GetList((ModelReferenceProperty)result.Property);
+						else
+							result.Value = result.Source.GetReference((ModelReferenceProperty)result.Property);
+					}
+
+					return result;
 				}
-
-				// Indicate that the result is now considered valid since the path could be walked
-				result.IsValid = true;
-
-				// Attempt to evaluate the last step along the path
-				if (result.Source != null)
-				{
-					// Evaluate the last step along the path
-					if (result.Property is ModelValueProperty)
-						result.Value = result.Source.GetValue((ModelValueProperty)result.Property);
-					else if (result.Property.IsList)
-						result.Value = result.Source.GetList((ModelReferenceProperty)result.Property);
-					else
-						result.Value = result.Source.GetReference((ModelReferenceProperty)result.Property);
-				}
-
-				return result;
 			}
 
 			// IBindable
 			if (context is IBindable)
-				return ((IBindable)context).Evaluate(path);
+				result = ((IBindable)context).Evaluate(path);
+
+			// As a last resort, see if this is a static path
+			if (!result.IsValid)
+			{
+				ModelSource source;
+				// Return immediately if the path does not represent a valid static property
+				if (!ModelSource.TryGetSource(null, path, out source))
+					return result;
+
+				result.IsValid = true;
+				result.Property = ModelContext.Current.GetModelType(source.SourceType).Properties[source.SourceProperty];
+				result.Value =
+					result.Property is ModelValueProperty ? source.GetValue(null) :
+					result.Property.IsList ? (object)source.GetList(null) :
+					source.GetReference(null);
+				return result;
+			}
 
 			// Invalid
 			return result;
