@@ -1,5 +1,6 @@
-Sys.Application.registerMarkupExtension("~",
-	function(component, targetProperty, templateContext, properties) {
+Sys.Application.registerMarkupExtension(
+	"~",
+	function LazyMarkupExtension(component, targetProperty, templateContext, properties) {
 		var source;
 		var scopeChain;
 		var path = properties.path || properties.$default || null;
@@ -43,4 +44,5 @@ Sys.Application.registerMarkupExtension("~",
 		// register with the template context as a child component
 		templateContext.components.push(binding);
 	},
-	false);
+	false
+);

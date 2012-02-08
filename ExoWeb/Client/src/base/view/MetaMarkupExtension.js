@@ -1,18 +1,12 @@
 Sys.Application.registerMarkupExtension(
 	"#",
-	function(component, targetProperty, templateContext, properties) {
-		var options = Sys._merge({
-			source: templateContext.dataItem,
-			templateContext: templateContext,
-			target: component,
-			targetProperty: targetProperty
-		}, properties);
-		
-		
-		options.path = options.path || options.$default;
-		delete options.$default;
+	function MetaMarkupExtension(component, targetProperty, templateContext, properties) {
+		if (properties.required) {
+			ExoWeb.trace.logWarning(["@", "markupExt"], "Meta markup extension does not support the \"required\" property.");
+		}
 
-		var element = null;
+		var options, element;
+
 		if (Sys.Component.isInstanceOfType(component)) {
 			element = component.get_element();
 		}
@@ -20,11 +14,23 @@ Sys.Application.registerMarkupExtension(
 			element = component;
 		}
 
-		var adapter = new Adapter(options.source || templateContext.dataItem, options.path, options.format, properties);
-		options.source = adapter;
-		options.path = element.nodeName == "SELECT" ? "systemValue" : "displayValue";
+		options = Sys._merge({
+			source: templateContext.dataItem,
+			templateContext: templateContext,
+			target: component,
+			targetProperty: targetProperty,
+			property: element.nodeName === "SELECT" ? "systemValue" : "displayValue"
+		}, properties);
 
-		var binding = Sys.Binding.bind(options);
-		templateContext.components.push(binding);
+		options.path = options.path || options.$default;
+		delete options.$default;
+
+		options.source = new Adapter(options.source || templateContext.dataItem, options.path, options.format, properties);
+
+		options.path = options.property;
+		delete options.property;
+
+		templateContext.components.push(Sys.Binding.bind(options));
 	},
-	false);
+	false
+);

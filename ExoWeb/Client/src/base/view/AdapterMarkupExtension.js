@@ -1,4 +1,5 @@
-Sys.Application.registerMarkupExtension("@",
+Sys.Application.registerMarkupExtension(
+	"@",
 	function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
 		if (properties.required) {
 			ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter markup extension does not support the \"required\" property.");
@@ -41,4 +42,6 @@ Sys.Application.registerMarkupExtension("@",
 				});
 			}
 		});
-	}, false);
+	},
+	false
+);
