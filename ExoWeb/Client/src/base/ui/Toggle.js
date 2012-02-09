@@ -118,6 +118,7 @@ Toggle.mixin({
 
 		this.set_state("on");
 		$(this._element).empty();
+		$(this.get_element()).show();
 
 		var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
 		context.initializeComponents();
@@ -130,6 +131,7 @@ Toggle.mixin({
 
 		this.set_state("off");
 		$(this._element).empty();
+		$(this.get_element()).hide();
 
 		Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 	},
