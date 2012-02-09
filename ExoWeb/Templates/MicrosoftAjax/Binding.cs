@@ -134,6 +134,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		internal class OneWayExtension : Binding
 		{
 			JavaScript.ScriptFunction script;
+			bool isValid = true;
 
 			internal OneWayExtension(string attribute, string expression)
 				: base(attribute, expression)
@@ -149,22 +150,28 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					new KeyValuePair<string, object>("$index", page.Context.Index)
 				});
 
-				if (script == null)
-				{
-					lock (this)
-					{
-						if (script == null)
-							script = new JavaScript.ScriptFunction(Page.ScriptEngineFactory, arguments.Select(a => a.Key), Path);
-					}
-				}
-
-				try
-				{
-					return new AttributeBinding(Attribute, new BindingResult() { Value = script.Evaluate(arguments.Select(a => a.Value), Page.ScriptMarshaller), IsValid = true });
-				}
-				catch
-				{
+				if (!isValid)
 					return new AttributeBinding(Attribute, BindingResult.Invalid);
+				else
+				{
+					if (script == null)
+					{
+						lock (this)
+						{
+							if (script == null)
+								script = new JavaScript.ScriptFunction(Page.ScriptEngineFactory, arguments.Select(a => a.Key), Path);
+						}
+					}
+
+					try
+					{
+						return new AttributeBinding(Attribute, new BindingResult() { Value = script.Evaluate(arguments.Select(a => a.Value), Page.ScriptMarshaller), IsValid = true });
+					}
+					catch
+					{
+						isValid = false;
+						return new AttributeBinding(Attribute, BindingResult.Invalid);
+					}
 				}
 			}
 		}
@@ -185,7 +192,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			internal TwoWayExtension(string attribute, string expression)
 				: base(attribute, expression)
 			{
-				IsTwoWay = true;
+				IsTwoWay = !Parameters.ContainsKey("mode") || Parameters["mode"] != "oneTime";
 				ParseExpression();
 				Parameters.TryGetValue("format", out format);
 			}
