@@ -127,7 +127,7 @@ namespace ExoWeb.UnitTests
 			StringBuilder builder = new StringBuilder();
 			using (TextWriter textWriter = new StringWriter(builder))
 			{
-				Page.Current.Parse(template).Render(Page.Current, textWriter);
+				Page.Current.Parse("UnitTest", template).Render(Page.Current, textWriter);
 			}
 			return builder.ToString();
 		}

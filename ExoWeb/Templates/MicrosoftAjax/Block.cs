@@ -133,7 +133,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// </summary>
 		/// <param name="markup"></param>
 		/// <returns></returns>
-		protected internal static List<Block> Parse(string markup)
+		protected internal static List<Block> Parse(string source, string markup)
 		{
 			// Convert html entities to xml entities
 			string xml = entityParser.Replace(markup, m =>
@@ -164,7 +164,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			{
 				throw new ApplicationException("Invalid XML: " + xml, e);
 			}
-			return ParseChildren(templates.DocumentElement, false);
+			return ParseChildren(source, templates.DocumentElement, false);
 		}
 
 		/// <summary>
@@ -172,10 +172,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// </summary>
 		/// <param name="element"></param>
 		/// <returns></returns>
-		static List<Block> ParseChildren(XmlElement element, bool withinTemplate)
+		static List<Block> ParseChildren(string source, XmlElement element, bool withinTemplate)
 		{
 			int nestedTemplates;
-			return ParseChildren(element, withinTemplate, -1, out nestedTemplates);
+			return ParseChildren(source, element, withinTemplate, -1, out nestedTemplates);
 		}
 
 		/// <summary>
@@ -186,7 +186,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <param name="lastNestedTemplateIndex">Tracks the index of the last template element that was encountered. Passed through to recursive calls excluding templates.</param>
 		/// <param name="nestedTemplates">Out parameter that returns the number of template controls represented by the children of the given element.</param>
 		/// <returns></returns>
-		static List<Block> ParseChildren(XmlElement element, bool withinTemplate, int lastNestedTemplateIndex, out int nestedTemplates)
+		static List<Block> ParseChildren(string source, XmlElement element, bool withinTemplate, int lastNestedTemplateIndex, out int nestedTemplates)
 		{
 			// Track the blocks represented by the current element
 			var blocks = new List<Block>();
@@ -220,6 +220,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 										{
 											Attributes = GetAttributes(child, "class", "sys:attach", "sys:if", "template:name", "template:kind", "template:datatype", "template:islist", "template:isreference"),
 											Name = child.GetAttribute("template:name").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries),
+											Source = source + " [" + child.GetAttribute("template:name") + "]" + (child.HasAttribute("template:datatype") ? " - " + child.GetAttribute("template:datatype") : ""),
 											IsList = child.HasAttribute("template:islist") ? child.GetAttribute("template:islist").ToLower() == "true" : (bool?)null,
 											IsReference = child.HasAttribute("template:isreference") ? child.GetAttribute("template:isreference").ToLower() == "true" : (bool?)null,
 											IsAdapter = child.HasAttribute("template:kind") && child.GetAttribute("template:kind") == "@",
@@ -247,6 +248,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 											Attributes = GetAttributes(child, "sys:attach", "sys:if", "content:data", "content:template"),
 											Data = GetBinding(child, "content:data"),
 											Template = GetBinding(child, "content:template"),
+											DataType = GetBinding(child, "content:datatype"),
 											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
 										};
 										break;
@@ -336,11 +338,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 									// Parse child blocks as a new template region.  This means that lastNestedTemplateIndex
 									// starts fresh (-1) and the number of child templates are not relevant here.
-									control.Blocks = ParseChildren(child, true);
+									control.Blocks = ParseChildren(source, child, true);
 								}
 								else
 									// Parse children and capture the number of top-level templates contained within
-									control.Blocks = ParseChildren(child, withinTemplate, lastNestedTemplateIndex, out numTopLevelTemplates);
+									control.Blocks = ParseChildren(source, child, withinTemplate, lastNestedTemplateIndex, out numTopLevelTemplates);
 
 								// Increment the number of nested templates and last index by
 								// the number of top-level templates that this node represents
@@ -383,7 +385,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							if (!e.IsClosed)
 							{
 								int numTopLevelTemplates;
-								var children = ParseChildren(child, withinTemplate, lastNestedTemplateIndex, out numTopLevelTemplates);
+								var children = ParseChildren(source, child, withinTemplate, lastNestedTemplateIndex, out numTopLevelTemplates);
 								lastNestedTemplateIndex += numTopLevelTemplates;
 								nestedTemplates += numTopLevelTemplates;
 
@@ -397,7 +399,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						{
 							// Get the blocks contained by the literal element
 							int numTopLevelTemplates;
-							var children = ParseChildren(child, withinTemplate, lastNestedTemplateIndex, out numTopLevelTemplates);
+							var children = ParseChildren(source, child, withinTemplate, lastNestedTemplateIndex, out numTopLevelTemplates);
 							lastNestedTemplateIndex += numTopLevelTemplates;
 							nestedTemplates += numTopLevelTemplates;
 

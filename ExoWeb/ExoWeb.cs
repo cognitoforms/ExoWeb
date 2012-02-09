@@ -11,6 +11,7 @@ using System.Collections;
 using ExoWeb.Templates;
 using System.IO;
 using ExoWeb.Templates.JavaScript;
+using System.Web;
 
 namespace ExoWeb
 {
@@ -107,6 +108,10 @@ namespace ExoWeb
 
 		public static event EventHandler<ServiceRequestEventArgs> EndRequest;
 
+		public static event EventHandler<Templates.RenderEventArgs> BeginRender;
+
+		public static event EventHandler<Templates.RenderEventArgs> EndRender;
+
 		public static event EventHandler<ServiceErrorEventArgs> Error;
 
 		/// <summary>
@@ -122,6 +127,26 @@ namespace ExoWeb
 		{
 			if (BeginRequest != null)
 				BeginRequest(request, new ServiceRequestEventArgs(request, null));
+		}
+
+		/// <summary>
+		/// Raises the <see cref="BeginRender"/> event for the specified <see cref="Page"/> and <see cref="ITemplate"/>.
+		/// </summary>
+		/// <param name="error"></param>
+		internal static void OnBeginRender(Page page, ITemplate template)
+		{
+			if (BeginRender != null)
+				BeginRender(page, new RenderEventArgs(page, template));
+		}
+
+		/// <summary>
+		/// Raises the <see cref="EndRender"/> event for the specified <see cref="Page"/> and <see cref="ITemplate"/>.
+		/// </summary>
+		/// <param name="error"></param>
+		internal static void OnEndRender(Page page, ITemplate template)
+		{
+			if (EndRender != null)
+				EndRender(page, new RenderEventArgs(page, template));
 		}
 
 		/// <summary>
@@ -350,7 +375,7 @@ namespace ExoWeb
 			{
 				using (var writer = new StringWriter())
 				{
-					Page.Current.Parse(markup).Render(Page.Current, writer);
+					Page.Current.Parse(HttpContext.Current.Request.Path, markup).Render(Page.Current, writer);
 					return GetHtmlString(writer.ToString());
 
 				}

@@ -141,6 +141,7 @@
     <Compile Include="Templates\Page.cs" />
     <Compile Include="Templates\Render.cs" />
     <Compile Include="Templates\MicrosoftAjax\Template.cs" />
+    <Compile Include="Templates\RenderEventArgs.cs" />
     <Compile Include="UnitTests\Accessors.cs" />
     <Compile Include="ViewScope.cs" />
   </ItemGroup>

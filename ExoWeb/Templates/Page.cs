@@ -133,9 +133,9 @@ namespace ExoWeb.Templates
 				Context = Context.ParentContext;
 		}
 
-		public abstract ITemplate Parse(string template);
+		public abstract ITemplate Parse(string source, string template);
 
-		public abstract IEnumerable<ITemplate> ParseTemplates(string template);
+		public abstract IEnumerable<ITemplate> ParseTemplates(string source, string template);
 
 		public abstract IEnumerable<ITemplate> LoadTemplates(string path);
 

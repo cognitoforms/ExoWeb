@@ -7,6 +7,7 @@ using AspControl = System.Web.UI.Control;
 using HtmlTextWriter = System.Web.UI.HtmlTextWriter;
 using LiteralControl = System.Web.UI.LiteralControl;
 using System.IO;
+using System.Web;
 
 namespace ExoWeb.Templates
 {
@@ -42,7 +43,7 @@ namespace ExoWeb.Templates
 		{
 			// Parse and render the template
 			if (ExoWeb.EnableServerRendering)
-				ExoPage.Current.Parse(GetMarkup()).Render(ExoPage.Current, writer);
+				ExoPage.Current.Parse(HttpContext.Current.Request.Path + " (" + ID + ")", GetMarkup()).Render(ExoPage.Current, writer);
 			else
 				writer.Write(GetMarkup());
 		}

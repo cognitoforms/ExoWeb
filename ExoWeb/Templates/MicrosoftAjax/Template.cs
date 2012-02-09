@@ -15,6 +15,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		static Dictionary<string, IEnumerable<Template>> templates = new Dictionary<string, IEnumerable<Template>>();
 		static Dictionary<string, FileSystemWatcher> watchers = new Dictionary<string, FileSystemWatcher>();
 
+		public string Source { get; internal set; }
+
 		public string[] Name { get; internal set; }
 
 		public string DataType { get; internal set; }
@@ -27,9 +29,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public string[] Class { get; internal set; }
 
-		public static new Template Parse(string template)
+		public static new Template Parse(string source, string template)
 		{
-			return new Template() { Markup = template, Blocks = Block.Parse(template), ContentTemplateNames = new string[0] };
+			return new Template() { Markup = template, Source = source, Blocks = Block.Parse(source, template), ContentTemplateNames = new string[0] };
 		}
 
 		/// <summary>
@@ -44,7 +46,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				return t;
 			else
 			{
-				t = Block.Parse(File.ReadAllText(path)).OfType<Template>().ToArray();
+				t = Block.Parse(Path.GetFileName(path), File.ReadAllText(path)).OfType<Template>().ToArray();
 				templates[path.ToLower()] = t;
 				string directory = Path.GetDirectoryName(path).ToLower();
 				if (!watchers.ContainsKey(directory))
@@ -69,8 +71,16 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, TextWriter writer)
 		{
-			foreach (var block in Blocks)
-				block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
+			try
+			{
+				ExoWeb.OnBeginRender(page, this);
+				foreach (var block in Blocks)
+					block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
+			}
+			finally
+			{
+				ExoWeb.OnEndRender(page, this);
+			}
 		}
 
 		/// <summary>

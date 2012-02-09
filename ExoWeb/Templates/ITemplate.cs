@@ -7,6 +7,8 @@ namespace ExoWeb.Templates
 {
 	public interface ITemplate
 	{
+		string Source { get; }
+
 		void Render(Page page, System.IO.TextWriter writer);
 	}
 }

@@ -22,14 +22,14 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 		}
 
-		public override ITemplate Parse(string template)
+		public override ITemplate Parse(string name, string template)
 		{
-			return Template.Parse(template);
+			return Template.Parse(name, template);
 		}
 
-		public override IEnumerable<ITemplate> ParseTemplates(string template)
+		public override IEnumerable<ITemplate> ParseTemplates(string source, string template)
 		{
-			return Block.Parse(template).OfType<ITemplate>();
+			return Block.Parse(source, template).OfType<ITemplate>();
 		}
 
 		public override IEnumerable<ITemplate> LoadTemplates(string path)
