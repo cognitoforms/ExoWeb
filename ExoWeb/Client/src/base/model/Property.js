@@ -116,6 +116,9 @@ Property.mixin({
 		}
 		return this._format;
 	},
+	set_format: function Property$set_format(value) {
+		this._format = getFormat(this._jstype, value);
+	},
 	format: function (val) {
 		return this.get_format() ? this.get_format().convert(val) : val;
 	},
