@@ -462,6 +462,21 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return result;
 		}
 
+		static void EnsureValidMarkup(XmlNode node)
+		{
+			if (node.ChildNodes.Count == 0)
+			{
+				string markup = node.OuterXml;
+				bool selfClosing = markup.EndsWith("/>");
+				if (selfClosing)
+				{
+					string tag = node.Name;
+					if (!HtmlHelpers.IsSelfClosing(tag))
+						throw new ApplicationException("The \"" + tag + "\" tag cannot be self-closed:" + markup);
+				}
+			}
+		}
+
 		/// <summary>
 		/// Gets the HTML markup for the specified <see cref="XmlNode"/>.
 		/// </summary>
@@ -469,6 +484,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <returns></returns>
 		static string GetMarkup(XmlNode node)
 		{
+			EnsureValidMarkup(node);
 			return xmlnsParser.Replace(node.OuterXml, "");
 		}
 

@@ -73,11 +73,30 @@ namespace ExoWeb.Templates
 			return result;
 		}
 
-		readonly static string[] selfClosingTags = new string[] { "area", "base", "basefont", "br", "col", "frame", "hr", "img", "input", "link", "meta", "param" };
+		// http://stackoverflow.com/questions/97522/what-are-all-the-valid-self-closing-tags-in-xhtml-as-implemented-by-the-major-b
+		// http://www.w3schools.com/tags/ref_byfunc.asp
+		// http://www.w3.org/TR/html-polyglot/#empty-elements
+		readonly static string[] selfClosingTags = new string[] {
+			"area",
+			"base",
+			"basefont",
+			"br",
+			"col",
+			"command",
+			"embed",
+			"frame",
+			"hr",
+			"img",
+			"input",
+			"keygen",
+			"link",
+			"meta",
+			"param",
+			"source"
+		};
 
 		/// <summary>
 		/// Determines whether the given tag can close itself, i.e. [tag /] in place of [tag][/tag].
-		/// http://stackoverflow.com/questions/97522/what-are-all-the-valid-self-closing-tags-in-xhtml-as-implemented-by-the-major-b
 		/// </summary>
 		/// <param name="tag"></param>
 		/// <returns></returns>
