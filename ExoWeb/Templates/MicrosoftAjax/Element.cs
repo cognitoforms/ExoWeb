@@ -70,9 +70,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				}
 
 				bool isHtmlBoolean;
+				var attributeName = attribute.Name.StartsWith("sys:") ? attribute.Name.Substring(4) : attribute.Name;
 				if (Tag.Equals("input", StringComparison.InvariantCultureIgnoreCase))
 				{
-					var attributeName = attribute.Name.StartsWith("sys:") ? attribute.Name.Substring(4) : attribute.Name;
 					var attr = attributes.SingleOrDefault(a => a.Name.Equals("type", StringComparison.InvariantCultureIgnoreCase) && a.IsValid && a.Value != null);
 					if (attr == null)
 						isHtmlBoolean = HtmlHelpers.IsBooleanAttribute(attributeName, Tag, null, true);
@@ -80,7 +80,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						isHtmlBoolean = HtmlHelpers.IsBooleanAttribute(attributeName, Tag, attr.Value.ToString());
 				}
 				else
-					isHtmlBoolean = HtmlHelpers.IsBooleanAttribute(attribute.Name, Tag);
+					isHtmlBoolean = HtmlHelpers.IsBooleanAttribute(attributeName, Tag);
 
 				if (abort)
 					attribute.Abort(writer, isHtmlBoolean);
