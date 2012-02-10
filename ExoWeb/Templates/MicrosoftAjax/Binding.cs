@@ -148,7 +148,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				IEnumerable<KeyValuePair<string, object>> arguments = page.Context.Variables.Concat( new KeyValuePair<string, object>[] { 
 					new KeyValuePair<string, object>("$dataItem", page.Context.DataItem),
 					new KeyValuePair<string, object>("$index", page.Context.Index),
-					new KeyValuePair<string, object>("$context", page.Context)
+					new KeyValuePair<string, object>("$context", page.Context),
+					new KeyValuePair<string, object>("$id", (Func<string, string>)(id => page.Context.GetInstanceId(id))),
 				});
 
 				if (!isValid)

@@ -24,6 +24,9 @@ namespace ExoWeb.Templates.JavaScript
 
 		public object Wrap(object clrObject)
 		{
+			if (clrObject is Page)
+				return new PageContextWrapper(engine, (Page)clrObject);
+
 			if (clrObject is Transform.Grouping)
 				return new Transform.GroupingWrapper(engine, (Transform.Grouping)clrObject);
 

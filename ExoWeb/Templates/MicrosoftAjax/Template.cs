@@ -91,7 +91,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		void ITemplate.Render(Page page, System.IO.TextWriter writer)
 		{
 			var ajaxPage = (AjaxPage)page;
-			ajaxPage.IsTopLevel = true;
 
 			// Add sys-ignore class to root level controls before rendering the inline template
 			foreach (var control in Blocks.OfType<Control>())

@@ -106,7 +106,7 @@
     <Compile Include="Templates\IBindable.cs" />
     <Compile Include="Templates\ITemplate.cs" />
     <Compile Include="Templates\JavaScript\AdapterWrapper.cs" />
-    <Compile Include="Templates\JavaScript\ContextWrapper.cs" />
+    <Compile Include="Templates\JavaScript\PageContextWrapper.cs" />
     <Compile Include="Templates\JavaScript\TemplateContextWrapper.cs" />
     <Compile Include="Templates\JavaScript\DictionaryWrapper.cs" />
     <Compile Include="Templates\JavaScript\Evaluator.cs" />
@@ -192,7 +192,6 @@
     <Content Include="Client\specs\base\mapper\test_ChangeSet.js" />
     <Content Include="Client\specs\base\mapper\test_ChangeLog.js" />
     <Content Include="Client\specs\base\mapper\test_ResponseHandler.js" />
-    <Content Include="Client\specs\base\model\test_Formats.js" />
     <Content Include="Client\specs\base\model\test_PathTokens.js" />
     <Content Include="Client\specs\base\view\test_Binding.js" />
     <Content Include="Client\ref\jasmine\jasmine.console.js" />
@@ -275,7 +274,6 @@
     <Content Include="Client\src\base\ui\Content.js" />
     <Content Include="Client\src\base\ui\DataView.js" />
     <Content Include="Client\src\base\ui\Html.js" />
-    <Content Include="Client\src\base\ui\MsAjax.js" />
     <Content Include="Client\src\base\ui\Template.js" />
     <Content Include="Client\src\base\ui\Toggle.js" />
     <Content Include="Client\src\base\ui\ToggleGroup.js" />

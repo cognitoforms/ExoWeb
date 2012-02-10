@@ -119,8 +119,7 @@ end
 		DataView
 		Html
 		Behavior
-		Utilities
-		MsAjax},
+		Utilities},
 
 	"base/view" => %w{
 		AdapterMarkupExtension

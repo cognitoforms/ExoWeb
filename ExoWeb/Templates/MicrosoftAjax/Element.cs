@@ -55,9 +55,19 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			if (attributeTransform != null)
 				attributes = attributeTransform(attributes);
 
+			bool foundId = false;
+
 			// Write the attributes to the output stream
 			foreach (var attribute in attributes)
 			{
+				// Ensure that multiple id attributes are not specified
+				if (!page.Context.IsGlobal && (attribute.Name == "id" || attribute.Name == "sys:id"))
+				{
+					if (foundId)
+						throw new ApplicationException("Found multiple id attributes: " + Markup);
+					foundId = true;
+				}
+
 				// Determine if the attribute represents bound element content
 				if (attribute.IsBound)
 				{
@@ -83,7 +93,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				if (abort)
 					attribute.Abort(writer, isHtmlBoolean);
 				else
-					attribute.Render(writer, isHtmlBoolean);
+					attribute.Render(page, writer, isHtmlBoolean, !page.Context.IsGlobal);
 			}
 
 			// Close Tag

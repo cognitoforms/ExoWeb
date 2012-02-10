@@ -130,7 +130,7 @@ namespace ExoWeb.Templates.JavaScript
 			return new ScriptFunction(Page.ScriptEngineFactory, new string[] { "context", "list", "$index", "$dataItem" }, (prefix ?? "") + expression + (suffix ?? ""));
 		}
 
-		static object ExecuteFunction(ScriptFunction function, ContextWrapper globalContext, object list, object index, object dataItem, params object[] args)
+		static object ExecuteFunction(ScriptFunction function, object globalContext, object list, object index, object dataItem, params object[] args)
 		{
 			return function.Evaluate((new object[] { globalContext, list, index, dataItem }).Concat(args.Select(arg => Page.ScriptMarshaller.Wrap(arg))), Page.ScriptMarshaller);
 		}
@@ -211,7 +211,7 @@ namespace ExoWeb.Templates.JavaScript
 			var function = GenerateFunction(expression);
 			return (transform, opIndex, page, enumerable) =>
 			{
-				var globalContext = page.GlobalContext;
+				var globalContext = Page.ScriptMarshaller.Wrap(page);
 				var list = Page.ScriptMarshaller.Wrap(enumerable);
 				var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
 				var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
@@ -263,7 +263,7 @@ namespace ExoWeb.Templates.JavaScript
 				var function = GenerateFunction(expression, "(", ")(arguments[4])");
 				return (transform, opIndex, page, enumerable) =>
 				{
-					var globalContext = page.GlobalContext;
+					var globalContext = Page.ScriptMarshaller.Wrap(page);
 					var list = Page.ScriptMarshaller.Wrap(enumerable);
 					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
 					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
@@ -281,7 +281,7 @@ namespace ExoWeb.Templates.JavaScript
 					// Determine whether the given enumerable is a grouping.
 					var isGrouping = transform.IsGrouping(opIndex);
 
-					var globalContext = page.GlobalContext;
+					var globalContext = Page.ScriptMarshaller.Wrap(page);
 					var list = Page.ScriptMarshaller.Wrap(enumerable);
 					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
 					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
@@ -317,7 +317,7 @@ namespace ExoWeb.Templates.JavaScript
 				var function = GenerateFunction(expression, "(", ")(arguments[4])");
 				return (transform, opIndex, page, enumerable) =>
 				{
-					var globalContext = page.GlobalContext;
+					var globalContext = Page.ScriptMarshaller.Wrap(page);
 					var list = Page.ScriptMarshaller.Wrap(enumerable);
 					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
 					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
@@ -335,7 +335,7 @@ namespace ExoWeb.Templates.JavaScript
 					// Determine whether the given enumerable is a grouping.
 					var isGrouping = transform.IsGrouping(opIndex);
 
-					var globalContext = page.GlobalContext;
+					var globalContext = Page.ScriptMarshaller.Wrap(page);
 					var list = Page.ScriptMarshaller.Wrap(enumerable);
 					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
 					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);

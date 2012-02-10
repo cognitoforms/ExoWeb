@@ -58,11 +58,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			// Render the inline template for top level dataviews
-			var isTopLevel = page.IsTopLevel;
 			string templateId = null;
 			string controlId = null;
 			bool renderControlId = false;
-			if (isTopLevel)
+			if (page.Context.IsGlobal)
 			{
 				templateId = page.NextControlId;
 				controlId = Attributes.Where(a => a.Name == "id").Select(a => a.Value).FirstOrDefault();
@@ -80,7 +79,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				writer.Write("</");
 				writer.Write(Tag);
 				writer.Write(">");
-				page.IsTopLevel = false;
 			}
 
 			RenderStartTag(page, writer, ifBinding, dataBinding,
@@ -126,11 +124,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			RenderEndTag(writer);
 
 			// Render script linking logic
-			if (isTopLevel)
+			if (page.Context.IsGlobal)
 				writer.Write(string.Format("<script type=\"text/javascript\">$exoweb({{ domReady: function() {{ Sys.Application.linkElement(document.getElementById(\"{0}\"), document.getElementById(\"{1}\")); }} }});</script>", controlId, templateId));
-
-			// Reset the top level status
-			page.IsTopLevel = isTopLevel;
 		}
 
 		public override string ToString()

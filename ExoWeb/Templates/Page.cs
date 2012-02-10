@@ -14,7 +14,6 @@ namespace ExoWeb.Templates
 		[ThreadStatic]
 		static Page current;
 
-		JavaScript.ContextWrapper globalContext;
 		int index = 0;
 
 		public Page()
@@ -22,16 +21,6 @@ namespace ExoWeb.Templates
 			Templates = new List<ITemplate>();
 			Model = new Dictionary<string, object>();
 			BeginContext(null, null);
-		}
-
-		internal JavaScript.ContextWrapper GlobalContext
-		{
-			get
-			{
-				if (globalContext == null)
-					globalContext = new JavaScript.ContextWrapper(ScriptEngineFactory.GetScriptEngine(), this);
-				return globalContext;
-			}
 		}
 
 		public List<ITemplate> Templates { get; private set; }

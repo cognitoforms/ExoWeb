@@ -18,7 +18,7 @@ namespace ExoWeb.Templates.JavaScript
 		[JSFunction(Name = "getInstanceId")]
 		public string GetInstanceId(string id)
 		{
-			return id + RealObject.Id;
+			return RealObject.GetInstanceId(id);
 		}
 
 		protected override object GetMissingPropertyValue(string jsPropertyName)

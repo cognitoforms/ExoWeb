@@ -17,8 +17,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			IsIE = HttpContext.Current != null && HttpContext.Current.Request.Browser.IsBrowser("IE");
 		}
 
-		internal bool IsTopLevel { get; set; }
-
 		int nextControlId;
 		internal string NextControlId
 		{

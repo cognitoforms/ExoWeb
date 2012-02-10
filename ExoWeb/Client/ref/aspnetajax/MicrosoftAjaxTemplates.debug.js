@@ -919,19 +919,7 @@
 			/// <summary locid="M:J#Sys.UI.TemplateContext.getInstanceId" />
 			/// <param name="prefix" type="String"></param>
 			/// <returns type="String"></returns>
-			var s;
-			if (this._global) {
-				s = "";
-			}
-			else {
-				s = this.index;
-				var ctx = this.parentContext;
-				while (ctx && !ctx._global) {
-					s = ctx.index + "_" + s;
-					ctx = ctx.parentContext;
-				}
-			}
-			return prefix + s;
+			return prefix + (this._global ? "" : this._tcindex);
 		}
 		function Sys$UI$TemplateContext$initializeComponents() {
 			/// <summary locid="M:J#Sys.UI.TemplateContext.initializeComponents" />
@@ -1644,11 +1632,13 @@
 					}
 
 					// generate client ids
-					if (node.hasAttribute("sys:id") || node.hasAttribute("id")) {
-						var result = Sys.Application._getPropertyValue(null, null, null, node.getAttribute("sys:id") || node.getAttribute("id"), currentContext, node, null, true);
+					if (node.hasAttribute("sys:id")) {
+						var result = Sys.Application._getPropertyValue(null, null, null, node.getAttribute("sys:id"), currentContext, node, null, true);
 						result = currentContext.getInstanceId(result);
 						node.removeAttribute("sys:id");
-						node.removeAttribute("id");
+						if (node.id) {
+							throw new Error("Found a sys:id binding in pre-rendered markup, but the element already has an id.");
+						}
 						node.id = result;
 					}
 

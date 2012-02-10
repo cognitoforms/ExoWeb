@@ -6,9 +6,9 @@ using Jurassic;
 
 namespace ExoWeb.Templates.JavaScript
 {
-	class ContextWrapper : Wrapper<Page>
+	class PageContextWrapper : Wrapper<Page>
 	{
-		internal ContextWrapper(ScriptEngine engine, Page page)
+		internal PageContextWrapper(ScriptEngine engine, Page page)
 			: base(page, engine, engine.Object.Prototype)
 		{
 		}

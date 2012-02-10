@@ -24,6 +24,16 @@ namespace ExoWeb.Templates
 
 		public Context ParentContext { get; internal set; }
 
+		public bool IsGlobal
+		{
+			get { return ParentContext == null; }
+		}
+
+		internal string GetInstanceId(string id)
+		{
+			return id + Id;
+		}
+
 		void IDisposable.Dispose()
 		{
 			Page.EndContext();

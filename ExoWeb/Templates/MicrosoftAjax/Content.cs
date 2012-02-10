@@ -116,10 +116,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				return;
 			}
 
-			// Render the inline template for top level dataviews
-			var isTopLevel = page.IsTopLevel;
-			page.IsTopLevel = false;
-
 			// Render the template inside a new template context
 			using (var context = page.BeginContext(data, null))
 			{
@@ -132,8 +128,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				// Render the original content end tag
 				RenderEndTag(writer);
 			}
-
-			page.IsTopLevel = isTopLevel;
 		}
 
 		Template FindTemplate(AjaxPage page, bool isAdapter, ModelType entityType, Type valueType, bool isList, string[] names)

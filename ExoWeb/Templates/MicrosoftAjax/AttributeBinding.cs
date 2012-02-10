@@ -78,7 +78,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 		}
 
-		public void Render(System.IO.TextWriter writer, bool isHtmlBool)
+		public void Render(AjaxPage page, System.IO.TextWriter writer, bool isHtmlBool, bool generateIds)
 		{
 			// Bound attribute
 			if (binding != null)
@@ -114,7 +114,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				else
 					RenderAttribute(writer, attribute.Name, attribute.Binding.Expression);
 			}
-
+			else if (generateIds && (attribute.Name == "id" || attribute.Name == "sys:id"))
+				RenderAttribute(writer, "id", page.Context.GetInstanceId(attribute.Value));
 			// Simple attribute
 			else if (attribute.Name.Contains(":") && attribute.Name != "sys:id")
 				RenderAttribute(writer, "data-" + attribute.Name.Replace(':', '-'), attribute.Value);
