@@ -304,7 +304,8 @@
 					return { isExpression: ext.instance.expression,
 						code: "Sys.Application._getMarkupExtension(" + serialize(ext.name) + ").extension($component, " +
 						serialize((attrib.type === 2 ? "class:" : "") + attrib.name) +
-						", $context, {" + props + "})" };
+						", $context, {" + props + "})"
+					};
 				}
 			}
 			if (attrib.isId) {
@@ -744,7 +745,8 @@
 		Sys.UI.Template._commonBooleanAttributes = { disabled: true, " list": ["disabled"] };
 		Sys.UI.Template._inputBooleanAttributes =
 	{ disabled: true, checked: true, readonly: true,
-		" list": ["disabled", "checked", "readonly"] };
+		" list": ["disabled", "checked", "readonly"]
+	};
 		Sys.UI.Template._booleanAttributes = {
 			"input": Sys.UI.Template._inputBooleanAttributes,
 			"select": { disabled: true, multiple: true, " list": ["disabled", "multiple"] },
@@ -843,7 +845,7 @@
 				}
 			}
 		}
-		Sys.UI.TemplateContext = function Sys$UI$TemplateContext() {
+		Sys.UI.TemplateContext = function Sys$UI$TemplateContext(tcindex) {
 			/// <summary locid="M:J#Sys.UI.TemplateContext.#ctor" />
 			/// <field name="data" locid="F:J#Sys.UI.TemplateContext.data"></field>
 			/// <field name="dataItem" locid="F:J#Sys.UI.TemplateContext.dataItem"></field>
@@ -853,7 +855,7 @@
 			/// <field name="containerElement" domElement="true" locid="F:J#Sys.UI.TemplateContext.containerElement"></field>
 			/// <field name="components" type="Array" elementType="Object" locid="F:J#Sys.UI.TemplateContext.components"></field>
 			/// <field name="nodes" type="Array" elementDomElement="true" locid="F:J#Sys.UI.TemplateContext.nodes"></field>
-			var index = this._tcindex = Sys.UI.TemplateContext._tcindex++;
+			var index = this._tcindex = tcindex || Sys.UI.TemplateContext._tcindex++;
 			Sys.UI.TemplateContext._contexts[index] = this;
 			this._completed = [];
 			Sys.UI.TemplateContext.initializeBase(this);
@@ -1390,7 +1392,7 @@
 
 		// a control targeting data attribute, i.e.: "data-dataview-data"
 		var controlDataAttrExpr = /^data\-([a-z_]*)\-([a-z_]*)$/;
-		
+
 		// a non-control targeting data attribute, i.e. "data-sys-class"
 		var sysAttrExpr = /^sys\:([a-z_]*)$/;
 
@@ -1446,10 +1448,10 @@
 		};
 
 		// marks the beginning or end of a context, i.e. "/item" or "item _$t202"
-		var itemCommentExpr = /^(\/|)item\s*(\s[\$_A-Za-z0-9]+|)$/;
+		var itemCommentExpr = /^(\/|)item(\:([\$_A-Za-z0-9]+)|)$/;
 
 		Sys.Application._linkContexts = function Sys$Application$_linkContexts(parentContext, parentControl, parentData, parentElement, currentContext, parentContentTemplates, recursive) {
-			var children, newContext, preceedingText, ctxIdx, isSelect, i, node, match, marker, tmplIdx, tmpl, generatesContext, value, foundBinding, isArrayData,
+			var children, newContext, preceedingText, ctxIdx, tcIdx, isSelect, i, node, match, marker, tmplIdx, tmpl, generatesContext, value, foundBinding, isArrayData,
 				isSingleExternalContext, lastIndex, targetProp, msAttrib, text, trimText, exprRegExp, attachName, isContentTemplate, contentTemplate, childContentTemplates;
 
 			ctxIdx = -1;
@@ -1484,7 +1486,7 @@
 						value = Sys.Application._getPropertyValue(msAttrib, parentElement, targetProp, text, currentContext, parentElement, null, false);
 					}
 					// Multiple expressions can be nested within a block of text
-					else{
+					else {
 						lastIndex = 0;
 						match = exprRegExp.exec(text);
 						while (match) {
@@ -1514,16 +1516,18 @@
 				if (!recursive) {
 					if (node.nodeType === 8 && (match = itemCommentExpr.exec(node.nodeValue))) {
 						if (match[1] === "") {
+							tcIdx = match[2];
 							marker = { begin: true, end: false };
 						}
 						else if (match[1] === "/") {
 							marker = { begin: false, end: true };
 						}
-		
+
 						marker.template = match[2];
 					}
 					else if (isSelect) {
 						if (node.tagName === "BEGIN") {
+							tcIdx = node.id;
 							marker = { begin: true, end: false };
 						}
 						else if (node.tagName === "END") {
@@ -1548,7 +1552,7 @@
 							}
 
 							// Start new context for a new item when a context begin marker is found (mimicks compiled code)
-							newContext = new Sys.UI.TemplateContext();
+							newContext = new Sys.UI.TemplateContext(tcIdx);
 							ctxIdx += 1;
 							newContext.data = parentData;
 							newContext.components = [];
@@ -1574,12 +1578,8 @@
 							newContext.parentContext = parentContext;
 							newContext.containerElement = parentElement;
 
-							// If a template id was specified in the marker, then use it to retrieve the template
-							if (marker.template) {
-								newContext.template = new Sys.UI.Template(document.getElementById(marker.template.trim()));
-							}
-							// Otherwise get the template from the parent control (i.e. dataview)
-							else if (parentControl._getTemplate) {
+							// Get the template from the parent control (i.e. dataview)
+							if (parentControl._getTemplate) {
 								newContext.template = parentControl._getTemplate();
 							}
 
@@ -1689,9 +1689,17 @@
 							generatesContext = node.control._generatesContext();
 						}
 
+						// set the server-generated ctx id
+						if (generatesContext && node.control._setTemplateCtxId) {
+							if (!tcIdx) {
+								throw new Error("A templated control is attached to the node, which expects a ctx id, but no id was specified.");
+							}
+							node.control._setTemplateCtxId(tcIdx);
+						}
+
 						// if the control gets its template from it's parent's template it should use
 						if (generatesContext && node.control._setTemplate) {
-							if (typeof(tmplIdx) !== "number") {
+							if (typeof (tmplIdx) !== "number") {
 								throw new Error("A templated control is attached to the node, but no template index was specified.");
 							}
 							tmpl = new Sys.UI.Template(currentContext.template.get_element()._msajaxtemplate[2][tmplIdx][1]);
@@ -1728,7 +1736,7 @@
 						}
 						else {
 							// If the node has any attributes that weren't rendered (i.e. "sys:" attributes), then activate only this node
-							if (Array.prototype.some.call(node.attributes, function(a) { return a.name.indexOf(":") >= 0; })) {
+							if (Array.prototype.some.call(node.attributes, function (a) { return a.name.indexOf(":") >= 0; })) {
 								Sys.Application._activateElement(node, currentContext, isBrowser("InternetExplorer"), childContentTemplates, false);
 							}
 							Sys.Application._linkAttributes(node, currentContext, attachName);
@@ -2051,7 +2059,7 @@
 		};
 		Sys.Application._evaluateExpression = function Sys$Application$_evaluateExpression(expression, $context, $element) {
 			var fn = new Function("$context", "$element", "$dataItem", "$index", "$id", "return " + expression + ";");
-			return fn($context, $element, $context.dataItem, $context.index, function(prefix) { return $context.getInstanceId(prefix); });
+			return fn($context, $element, $context.dataItem, $context.index, function (prefix) { return $context.getInstanceId(prefix); });
 		};
 
 		Sys.Application._registerComponent = function Sys$Application$_registerComponent(element, component) {
@@ -3062,8 +3070,8 @@ false);
 
 				// Determine if the changes contain an add event that occurs before a remove event which preceeds it in the array.
 				// i.e.: array = [0, 1], add 2 at index 2, then remove at index 0, resulting in [1, 2]
-				var containsAddBeforePrecedingRemove = changes.some(function(evt, i) {
-					return evt.action === Sys.NotifyCollectionChangedAction.add && changes.some(function(other, j) {
+				var containsAddBeforePrecedingRemove = changes.some(function (evt, i) {
+					return evt.action === Sys.NotifyCollectionChangedAction.add && changes.some(function (other, j) {
 						return j > i && other.action === Sys.NotifyCollectionChangedAction.remove && other.oldStartingIndex <= evt.newStartingIndex;
 					});
 				});
@@ -3077,19 +3085,19 @@ false);
 					var template = this._ensureTemplate(this._getTemplate());
 					template._ensureCompiled();
 					var templateUsesDollarIndex = /with\s*\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
-	
+
 					if (templateUsesDollarIndex) {
 						this.refresh();
 					}
 					else {
 						var _this = this;
-						foreach(changes, function(evt) {
+						foreach(changes, function (evt) {
 							var i, arr, start, len;
 							if (evt.oldItems && evt.oldItems.length > 0) {
 								arr = evt.oldItems;
 								start = evt.oldStartingIndex;
 								len = arr.length;
-	
+
 								_this._clearContainers(_this._placeholders, start, len);
 								_this._contexts.splice(start, len);
 							}
@@ -3097,7 +3105,7 @@ false);
 								arr = evt.newItems;
 								start = evt.newStartingIndex;
 								len = arr.length;
-	
+
 								for (i = 0; i < len; i++) {
 									_this._contexts.splice(start + i, 0, null);
 								}

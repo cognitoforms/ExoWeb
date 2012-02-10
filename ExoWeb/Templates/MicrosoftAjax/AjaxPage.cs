@@ -11,6 +11,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// </summary>
 	internal class AjaxPage : Page
 	{
+		internal AjaxPage()
+		{
+			IsIE = System.Web.HttpContext.Current.Request.Browser.IsBrowser("IE");
+		}
+
 		internal bool IsTopLevel { get; set; }
 
 		int nextControlId;
@@ -21,6 +26,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				return "exo" + nextControlId++;
 			}
 		}
+
+		internal bool IsIE { get; private set; }
 
 		public override ITemplate Parse(string name, string template)
 		{

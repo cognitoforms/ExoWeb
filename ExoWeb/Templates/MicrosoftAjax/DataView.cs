@@ -107,14 +107,19 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				// Begin a new template context
 				using (page.BeginContext(item, index++, null))
 				{
-					writer.Write("<!--item-->");
-					if (isSelect)
-						writer.Write("<!--[if IE]><begin /><![endif]-->");
+					
+					if (isSelect && page.IsIE)
+						writer.Write("<begin id='" + page.Context.Id +"' />");
+					else
+						writer.Write("<!--item:" + page.Context.Id + "-->");
+
 					foreach (var block in Blocks)
 						block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
-					if (isSelect)
-						writer.Write("<!--[if IE]><end /><![endif]-->");
-					writer.Write("<!--/item-->");
+
+					if (isSelect && page.IsIE)
+						writer.Write("<end />");
+					else
+						writer.Write("<!--/item-->");
 				}
 			}
 

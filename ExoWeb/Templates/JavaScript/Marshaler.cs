@@ -39,6 +39,9 @@ namespace ExoWeb.Templates.JavaScript
 			if (clrObject is Templates.OptionAdapter)
 				return new OptionAdapterWrapper(engine, (OptionAdapter)clrObject);
 
+			if (clrObject is Templates.Context)
+				return new TemplateContextWrapper(engine, (Context)clrObject);
+
 			if (clrObject is UnwrappedArray)
 				return ((UnwrappedArray)clrObject).Array;
 

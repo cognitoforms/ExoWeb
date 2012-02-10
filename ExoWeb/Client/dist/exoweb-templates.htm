@@ -11,14 +11,14 @@
 <!-- field as-radio, entity (radio button list, flow layout) -->
 <span template:name="field as-radio" template:kind="@" template:isreference="true" template:islist="false" class="sys-template" sys:attach="template">
 	<div class="sys-template" sys:attach="dataview" dataview:data="{ binding options }">
-		<input type="radio" id="option" sys:name="{{ $context.parentContext.getInstanceId('group') }}" sys:checked="{ binding selected }" /><label sys:for="{{ $id('option') }}">{ binding displayValue }</label>
+		<label><input type="radio" id="option" sys:name="{{ $context.parentContext.getInstanceId('group') }}" sys:checked="{ binding selected }" /><span>{ binding displayValue, mode=oneTime }</span></label>
 	</div>
 </span>
 
 <!-- field as-radio, entity (radio button list, vertical layout) -->
 <div template:name="field as-radio" template:kind="@" template:isreference="true" template:islist="false" class="sys-template" sys:attach="template">
 	<div class="sys-template" sys:attach="dataview" dataview:data="{ binding options }">
-		<p class="list"><input type="radio" id="option" sys:name="{{ $context.parentContext.getInstanceId('group') }}" sys:checked="{ binding selected }" /><label sys:for="{{ $id('option') }}">{ binding displayValue }</label></p>
+		<p class="list"><label><input type="radio" id="option" sys:name="{{ $context.parentContext.getInstanceId('group') }}" sys:checked="{ binding selected }" /><span>{ binding displayValue, mode=oneTime }</span></label></p>
 	</div>
 </div>
 
@@ -66,8 +66,8 @@
 <span template:name="field" template:kind="@" template:isreference="true" template:islist="true" class="sys-template" sys:attach="template">
 	<div class='validation'></div>
 	<div class="sys-template" sys:attach="dataview" dataview:data="{ binding options }">
-		<input type="checkbox" sys:checked="{ binding selected }" />
-		<label sys:for="{{ $id('option') }}">{ binding displayValue }</label><br />
+		<label><input type="checkbox" sys:checked="{ binding selected }" />
+		<span>{ binding displayValue, mode=oneTime }</span></label><br />
 	</div>
 </span>
 

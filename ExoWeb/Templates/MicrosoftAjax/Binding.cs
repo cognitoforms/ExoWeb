@@ -147,7 +147,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			{
 				IEnumerable<KeyValuePair<string, object>> arguments = page.Context.Variables.Concat( new KeyValuePair<string, object>[] { 
 					new KeyValuePair<string, object>("$dataItem", page.Context.DataItem),
-					new KeyValuePair<string, object>("$index", page.Context.Index)
+					new KeyValuePair<string, object>("$index", page.Context.Index),
+					new KeyValuePair<string, object>("$context", page.Context)
 				});
 
 				if (!isValid)
@@ -192,9 +193,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			internal TwoWayExtension(string attribute, string expression)
 				: base(attribute, expression)
 			{
-				IsTwoWay = !Parameters.ContainsKey("mode") || Parameters["mode"] != "oneTime";
 				ParseExpression();
-				Parameters.TryGetValue("format", out format);
+				IsTwoWay = !Parameters.ContainsKey("mode") || Parameters["mode"] != "oneTime";
 			}
 
 			internal override AttributeBinding Evaluate(AjaxPage page)

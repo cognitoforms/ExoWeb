@@ -291,68 +291,74 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				return;
 			}
 
-			RenderStartTag(page, writer, attrs => MergeAttribute(MergeAttribute(MergeAttribute(attrs,
-				"class", value =>
-				{
-					if (actionValue == ToggleAction.addClass || actionValue == ToggleAction.removeClass)
-					{
-						if ((actionValue == ToggleAction.addClass && equals.Value) || (actionValue == ToggleAction.removeClass && !equals.Value))
-							value = AttributeHelper.EnsureClassName(value, classValue);
-						else
-							value = AttributeHelper.RemoveClassName(value, classValue);
-					}
+			bool render = actionValue == ToggleAction.render || actionValue == ToggleAction.dispose;
 
-					// Add/remove the "toggle-on" and "toggle-off" classes based on state
-					value = AttributeHelper.EnsureClassName(value, equals.Value ? "toggle-on" : "toggle-off");
-					value = AttributeHelper.RemoveClassName(value, equals.Value ? "toggle-off" : "toggle-on");
-
-					return value;
-				}).ToArray(),
-				"style", value =>
-				{
-					// Manipulate attributes of the element based on action and toggle mode
-					if (actionValue == ToggleAction.show || actionValue == ToggleAction.hide)
-					{
-						if ((actionValue == ToggleAction.show && equals.Value) || (actionValue == ToggleAction.hide && !equals.Value))
-						{
-							if (AttributeHelper.GetCssStyle(value, "display") == "none")
-								value = AttributeHelper.RemoveCssStyle(value, "display");
-						}
-						else
-							value = AttributeHelper.EnsureCssStyle(value, "display", "none");
-					}
-
-					return value;
-				}).ToArray(),
-				"disabled", value =>
-				{
-					if (actionValue == ToggleAction.enable || actionValue == ToggleAction.disable)
-					{
-						if ((actionValue == ToggleAction.enable && equals.Value) || (actionValue == ToggleAction.disable && !equals.Value))
-							value = null;
-						else
-							value = "disabled";
-					}
-
-					return value;
-				}), ifBinding, onBinding, classBinding, actionBinding, groupNameBinding, strictModeBinding, whenBinding,
-				// If this is render/dispose, include the nested template index as a special attribute
-				actionValue == ToggleAction.render || actionValue == ToggleAction.dispose ? new AttributeBinding(new Attribute() { Name = "data-sys-tmplidx", Value = NestedTemplateIndex.ToString() }, null) : null);
-
-			if (actionValue == ToggleAction.render || actionValue == ToggleAction.dispose)
+			using (var context = render ? page.BeginContext(page.Context.DataItem, null) : null)
 			{
-				// Only render the inner blocks if the template would be rendered client-side
-				if ((actionValue == ToggleAction.render && equals.Value) || (actionValue == ToggleAction.dispose && !equals.Value))
+				RenderStartTag(page, writer, attrs => MergeAttribute(MergeAttribute(MergeAttribute(attrs,
+					"class", value =>
+					{
+						if (actionValue == ToggleAction.addClass || actionValue == ToggleAction.removeClass)
+						{
+							if ((actionValue == ToggleAction.addClass && equals.Value) || (actionValue == ToggleAction.removeClass && !equals.Value))
+								value = AttributeHelper.EnsureClassName(value, classValue);
+							else
+								value = AttributeHelper.RemoveClassName(value, classValue);
+						}
+
+						// Add/remove the "toggle-on" and "toggle-off" classes based on state
+						value = AttributeHelper.EnsureClassName(value, equals.Value ? "toggle-on" : "toggle-off");
+						value = AttributeHelper.RemoveClassName(value, equals.Value ? "toggle-off" : "toggle-on");
+
+						return value;
+					}).ToArray(),
+					"style", value =>
+					{
+						// Manipulate attributes of the element based on action and toggle mode
+						if (actionValue == ToggleAction.show || actionValue == ToggleAction.hide)
+						{
+							if ((actionValue == ToggleAction.show && equals.Value) || (actionValue == ToggleAction.hide && !equals.Value))
+							{
+								if (AttributeHelper.GetCssStyle(value, "display") == "none")
+									value = AttributeHelper.RemoveCssStyle(value, "display");
+							}
+							else
+								value = AttributeHelper.EnsureCssStyle(value, "display", "none");
+						}
+
+						return value;
+					}).ToArray(),
+					"disabled", value =>
+					{
+						if (actionValue == ToggleAction.enable || actionValue == ToggleAction.disable)
+						{
+							if ((actionValue == ToggleAction.enable && equals.Value) || (actionValue == ToggleAction.disable && !equals.Value))
+								value = null;
+							else
+								value = "disabled";
+						}
+
+						return value;
+					}), ifBinding, onBinding, classBinding, actionBinding, groupNameBinding, strictModeBinding, whenBinding,
+					// If this is render/dispose, include the nested template index as a special attribute
+					render ? new AttributeBinding(new Attribute() { Name = "data-sys-tmplidx", Value = NestedTemplateIndex.ToString() }, null) : null,
+					render ? new AttributeBinding(new Attribute() { Name = "data-sys-tcindex", Value = context.Id }, null) : null);
+
+				if (render)
+				{
+					// Only render the inner blocks if the template would be rendered client-side
+					if ((actionValue == ToggleAction.render && equals.Value) || (actionValue == ToggleAction.dispose && !equals.Value))
+						foreach (var block in Blocks)
+							block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
+				}
+				else
+				{
 					foreach (var block in Blocks)
 						block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
-			}
-			else
-			{
-				foreach (var block in Blocks)
-					block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
-			}
+				}
 
-			RenderEndTag(writer);
+				RenderEndTag(writer);
+			}
 		}
 
 		public override string ToString()

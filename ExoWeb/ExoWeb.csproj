@@ -107,6 +107,7 @@
     <Compile Include="Templates\ITemplate.cs" />
     <Compile Include="Templates\JavaScript\AdapterWrapper.cs" />
     <Compile Include="Templates\JavaScript\ContextWrapper.cs" />
+    <Compile Include="Templates\JavaScript\TemplateContextWrapper.cs" />
     <Compile Include="Templates\JavaScript\DictionaryWrapper.cs" />
     <Compile Include="Templates\JavaScript\Evaluator.cs" />
     <Compile Include="Templates\JavaScript\IScriptEngineFactory.cs" />

@@ -15,6 +15,7 @@ namespace ExoWeb.Templates
 		static Page current;
 
 		JavaScript.ContextWrapper globalContext;
+		int index = 0;
 
 		public Page()
 		{
@@ -121,7 +122,7 @@ namespace ExoWeb.Templates
 		/// <returns></returns>
 		Context BeginContextInternal(object dataItem, int? index, IEnumerable<KeyValuePair<string, object>> variables)
 		{
-			return Context = new Context() { Page = this, DataItem = dataItem, Index = index, Variables = variables ?? Context.NoVariables, ParentContext = Context };
+			return Context = new Context() { Page = this, DataItem = dataItem, Id = "s" + this.index++, Index = index, Variables = variables ?? Context.NoVariables, ParentContext = Context };
 		}
 
 		/// <summary>
