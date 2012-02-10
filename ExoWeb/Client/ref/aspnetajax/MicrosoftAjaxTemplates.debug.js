@@ -1431,10 +1431,10 @@
 				// if this is a data attribute, then link or bind it to the target and remove it from the DOM
 				if (dataAttr) {
 					target = dataAttr.control ? element.control : element;
-					targetProp = dataAttr.name;
 
 					isSelect = (/^select$/i.test(element.tagName));
 					msDataAttrib = Sys.Application._splitAttribute(dataAttr.prefix + ":" + dataAttr.name, isSelect, typeIndex);
+					targetProp = msDataAttrib.name;
 					value = Sys.Application._getPropertyValue(msDataAttrib, target, targetProp, attr.nodeValue, parentContext, element, null, false, { isLinkPending: !element.control && link });
 					if (value !== undefined) {
 						Sys.Observer.setValue(target, msDataAttrib.name || targetProp, value);
