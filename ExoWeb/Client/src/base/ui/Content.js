@@ -139,6 +139,9 @@ Content.prototype = {
 	_generatesContext: function Content$_generatesContext() {
 		return true;
 	},
+	_setTemplateCtxId: function Content$_setTemplateCtxId(idx) {
+		this._ctxIdx = idx;
+	},
 
 	_findTemplate: function Content$_findTemplate() {
 		/// <summary locid="M:J#ExoWeb.UI.Content._findTemplate">
@@ -308,7 +311,10 @@ Content.prototype = {
 			var pctx = this.get_templateContext();
 			var tmplEl = this._findTemplate();
 
-			var newContext = new Sys.UI.TemplateContext();
+			if (!this._ctxIdx && this._element.childNodes.length > 0)
+				throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
+
+			var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
 			newContext.data = this._data;
 			newContext.components = [];
 			newContext.nodes = [];

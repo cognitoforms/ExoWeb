@@ -1662,6 +1662,11 @@
 						contentTemplate = null;
 					}
 
+					// Detect tcindex attribute
+					if (node.hasAttribute("data-sys-tcindex")) {
+						tcIdx = node.getAttribute("data-sys-tcindex");
+					}
+
 					// a control was rendered server-side, so link it and it's attributes
 					if (node.hasAttribute("data-sys-attach")) {
 						attachName = node.getAttribute("data-sys-attach");
@@ -1691,9 +1696,6 @@
 
 						// set the server-generated ctx id
 						if (generatesContext && node.control._setTemplateCtxId) {
-							if (!tcIdx) {
-								throw new Error("A templated control is attached to the node, which expects a ctx id, but no id was specified.");
-							}
 							node.control._setTemplateCtxId(tcIdx);
 						}
 

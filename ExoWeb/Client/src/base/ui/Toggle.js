@@ -82,7 +82,10 @@ Toggle.mixin({
 		if ((this._action === "render" && $(this._element).is(".toggle-on")) || (this._action === "dispose" && $(this._element).is(".toggle-off"))) {
 			var pctx = this.get_templateContext();
 
-			var newContext = new Sys.UI.TemplateContext();
+			if (!this._ctxIdx && this._element.childNodes.length > 0)
+				throw new Error("A toggle control is attached to the node, which expects a template context id, but no id was specified.");
+
+			var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
 			newContext.data = pctx.dataItem;
 			newContext.components = [];
 			newContext.nodes = [];
@@ -218,6 +221,9 @@ Toggle.mixin({
 	},
 	_setTemplate: function Toggle$_setTemplate(value) {
 		this._template = value;
+	},
+	_setTemplateCtxId: function Toggle$_setTemplateCtxId(idx) {
+		this._ctxIdx = idx;
 	},
 
 	get_templateContext: function Content$get_templateContext() {
