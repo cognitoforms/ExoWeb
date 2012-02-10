@@ -8977,7 +8977,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var arg = event[key];
 
 				if (arg instanceof Array) {
-					event[key] = arg.map(function (a) { return toExoGraph(a, this._translator); }, this);
+					event[key] = arg.map(function (a) { return toExoModel(a, this._translator); }, this);
 					}
 				else {
 					event[key] = toExoModel(arg, this._translator);
