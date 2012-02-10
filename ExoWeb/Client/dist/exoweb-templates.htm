@@ -140,17 +140,17 @@
 	<tr>
 		<!-- grid readonly html -->
 		<td template:name="grid readonly html" template:kind="@" class="sys-template field" sys:attach="template">
-			<span sys:innerHTML="{ binding displayValue }" />
+			<span sys:innerHTML="{ binding displayValue }"></span>
 		</td>
 
 		<!-- grid readonly -->
 		<td template:name="grid readonly" template:kind="@" class="sys-template field" sys:attach="template">
-			<span sys:innerText="{ binding displayValue }" />
+			<span sys:innerText="{ binding displayValue }"></span>
 		</td>
 
 		<!-- grid -->
 		<td template:name="grid" template:kind="@" class="sys-template field" sys:attach="template">
-			<span sys:attach="content" content:template="field" content:data="{@ }" />
+			<span sys:attach="content" content:template="field" content:data="{@ }"></span>
 		</td>
 	</tr>
 </table>
