@@ -446,6 +446,35 @@ Type.prototype = {
 	get_properties: function Type$get_properties() {
 		return ExoWeb.objectToArray(this._properties);
 	},
+	get_allproperties: function Type$get_allproperties() {
+		var temp = ExoWeb.objectToArray(this._properties);
+
+		//go up the base types until there are no more
+		var tempObj = this;
+		while (tempObj.baseType) {
+			tempObj = tempObj.baseType;
+			temp = tempObj.get_properties().concat(temp);
+		}
+
+		return temp;
+	},
+	get_baseproperties: function Type$get_baseproperties() {
+		var temp = new Array();
+
+		//go up the base types until there are no more
+		var tempObj = this;
+		var alreadyBase = true;
+		while (tempObj.baseType) {
+			tempObj = tempObj.baseType;
+			temp = tempObj.get_properties().concat(temp);
+			alreadyBase = false;
+		}
+
+		if (alreadyBase)
+			temp = tempObj.get_properties();
+
+		return temp;
+	},
 	get_staticProperties: function Type$get_staticProperties() {
 		return this._staticProperties;
 	},
