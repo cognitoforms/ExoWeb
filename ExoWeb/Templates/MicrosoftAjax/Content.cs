@@ -15,8 +15,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	{
 		public Binding Data { get; internal set; }
 
-		public Binding DataType { get; internal set; }
-
 		public Binding Template { get; internal set; }
 
 		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
@@ -46,17 +44,16 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			// Get the data associated with the content control
 			var dataBinding = Data.Evaluate(page);
 			var templateBinding = Template != null ? Template.Evaluate(page) : null;
-			var dataTypeBinding = DataType != null ? DataType.Evaluate(page) : null;
 
 			// Output the original template if the data binding expression could not be evaluated
-			if ((!dataBinding.IsValid && (dataTypeBinding == null || !dataTypeBinding.IsValid)) || (templateBinding != null && !templateBinding.IsValid))
+			if (!dataBinding.IsValid || (templateBinding != null && !templateBinding.IsValid))
 			{
 				Abort(page, templateNames, writer);
 				return;
 			}
 
 			// Just render an empty content element if the data is null
-			if (dataBinding.IsValid && dataBinding.Value == null)
+			if (dataBinding.Value == null)
 			{
 				RenderStartTag(page, writer, ifBinding, dataBinding);
 				RenderEndTag(writer);
@@ -64,41 +61,16 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			// Get the binding data
-			object data = null;
-			object realData = null;
-			ModelProperty property = null;
-			bool isAdapter = false;
-			ModelType referenceType = null;
-			Type valueType = null;
-			bool isList = false;
-
-			// Valid binding
-			if (dataBinding.IsValid)
-			{
-				data = dataBinding.Value;
-				isAdapter = data is Adapter;
-				realData = isAdapter ? ((Adapter)data).RawValue : data;
-				property = dataBinding.Property;
-				referenceType = realData is ModelInstance ? ((ModelInstance)realData).Type :
+			var data = dataBinding.Value;
+			var isAdapter = data is Adapter;
+			var realData = isAdapter ? ((Adapter)data).RawValue : data;
+			var property = dataBinding.Property;
+			var referenceType = realData is ModelInstance ? ((ModelInstance)realData).Type :
 								property is ModelReferenceProperty ? ((ModelReferenceProperty)property).PropertyType : null;
-				valueType = realData != null && !(realData is ModelInstance || realData is IEnumerable<ModelInstance>) ? realData.GetType() :
-							property is ModelValueProperty ? ((ModelValueProperty)property).PropertyType : null;
-				isList = (property != null && property.IsList) || (realData is IEnumerable && !(realData is string));
-			}
+			var valueType = realData != null && !(realData is ModelInstance || realData is IEnumerable<ModelInstance>) ? realData.GetType() :
+							property is ModelValueProperty ?  ((ModelValueProperty)property).PropertyType : null;
+			var isList = (property != null && property.IsList) || (realData is IEnumerable && !(realData is string));
 
-			// Datatype hint only
-			else
-			{
-				var dataType = dataTypeBinding.Value as String;
-				isAdapter = Data is Binding.AdapterExtension || dataType == "ExoWeb.View.Adapter";
-				isList = dataType.EndsWith("[]");
-				if (isList)
-					dataType = dataType.Substring(0, dataType.Length - 2);
-				valueType =	dataType == "String" ? typeof(string) :	dataType == "Number" ? typeof(decimal) : dataType == "Date" ? typeof(DateTime) : dataType == "Boolean" ? typeof(bool) : null;
-				if (valueType == null)
-					referenceType = ModelContext.Current.GetModelType(dataType);
-			}
-			
 			// Evaluate content:template binding to get this content control's declare template(s)
 			var templates = templateBinding != null && templateBinding.DisplayValue != null ? templateBinding.DisplayValue.Split(' ') : new string[0];
 
