@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Web;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {
@@ -13,7 +14,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	{
 		internal AjaxPage()
 		{
-			IsIE = System.Web.HttpContext.Current.Request.Browser.IsBrowser("IE");
+			IsIE = HttpContext.Current != null && HttpContext.Current.Request.Browser.IsBrowser("IE");
 		}
 
 		internal bool IsTopLevel { get; set; }

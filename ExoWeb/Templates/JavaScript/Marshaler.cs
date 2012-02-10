@@ -45,6 +45,9 @@ namespace ExoWeb.Templates.JavaScript
 			if (clrObject is UnwrappedArray)
 				return ((UnwrappedArray)clrObject).Array;
 
+			if (clrObject is Delegate)
+				return new WrappedFunction(this, engine, (Delegate)clrObject);
+
 			if (clrObject is IEnumerable && !(clrObject is string))
 			{
 				// copy items into a placeholder javascript array
@@ -83,6 +86,25 @@ namespace ExoWeb.Templates.JavaScript
 			entities.Add(key, entity);
 
 			return entity;
+		}
+
+		class WrappedFunction : FunctionInstance
+		{
+			Marshaler marshaler;
+			Delegate impl;
+
+			public WrappedFunction(Marshaler marshaler, ScriptEngine engine, Delegate impl)
+				: base(engine, engine.Object.InstancePrototype)
+			{
+				this.marshaler = marshaler;
+				this.impl = impl;
+			}
+
+			public override object CallLateBound(object thisObject, params object[] argumentValues)
+			{
+				object result = impl.DynamicInvoke(argumentValues.Select(marshaler.Unwrap).ToArray());
+				return marshaler.Wrap(result);
+			}
 		}
 
 		/// <summary>

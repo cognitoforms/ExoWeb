@@ -113,7 +113,7 @@ namespace ExoWeb.UnitTests.Server
 
 
 		[TestMethod]
-		public void TestCompiledExpressionsMarshaling()
+		public void TestCompiledExpressionsObjectMarshaling()
 		{
 			var data = new Request
 			{
@@ -128,6 +128,18 @@ namespace ExoWeb.UnitTests.Server
 			Assert.AreEqual("abc", f("abc"));
 			Assert.AreEqual(1.0, f(1.0));
 			Assert.AreEqual(((IModelInstance)data).Instance, f(((IModelInstance)data).Instance));
+		}
+
+		[TestMethod]
+		public void TestCompiledExpressionsFunctionMarshaling()
+		{
+			int value = 7;
+
+			var add = Accessors.CreateScriptFunction("arg", "arg(3)");
+			Assert.AreEqual(
+				value + 3,
+				add((Func<int, int>)(i => value + i)),
+				"marshal ModelInstance");
 		}
 
 		[TestMethod]
