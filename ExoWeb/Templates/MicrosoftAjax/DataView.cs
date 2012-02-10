@@ -98,8 +98,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			else
 				list = new object[] { dataBinding.Value };
 
-			bool isSelect = Tag.Equals("select", StringComparison.CurrentCultureIgnoreCase);
-
 			// Process the template for each list item
 			var index = 0;
 			foreach (var item in list)
@@ -107,8 +105,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				// Begin a new template context
 				using (page.BeginContext(item, index++, null))
 				{
-					
-					if (isSelect && page.IsIE)
+					if (IsSelect && page.IsIE)
 						writer.Write("<begin id='" + page.Context.Id +"' />");
 					else
 						writer.Write("<!--item:" + page.Context.Id + "-->");
@@ -116,7 +113,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					foreach (var block in Blocks)
 						block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
 
-					if (isSelect && page.IsIE)
+					if (IsSelect && page.IsIE)
 						writer.Write("<end />");
 					else
 						writer.Write("<!--/item-->");
