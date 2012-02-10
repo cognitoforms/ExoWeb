@@ -1516,14 +1516,12 @@
 				if (!recursive) {
 					if (node.nodeType === 8 && (match = itemCommentExpr.exec(node.nodeValue))) {
 						if (match[1] === "") {
-							tcIdx = match[2];
+							tcIdx = match[3];
 							marker = { begin: true, end: false };
 						}
 						else if (match[1] === "/") {
 							marker = { begin: false, end: true };
 						}
-
-						marker.template = match[2];
 					}
 					else if (isSelect) {
 						if (node.tagName === "BEGIN") {
