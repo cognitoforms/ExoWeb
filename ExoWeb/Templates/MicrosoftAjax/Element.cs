@@ -18,8 +18,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public bool IsClosed { get; internal set; }
 
-		public bool IsSelect { get { return Tag.Equals("select", StringComparison.CurrentCultureIgnoreCase); } }
-
 		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
 		{
 			RenderStartTag(page, writer);
