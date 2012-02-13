@@ -214,8 +214,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 								{
 									// Template
 									case "template":
-										bool isAdapter = child.GetAttribute("template:kind") == "@";
-
 										control = new Template()
 										{
 											Attributes = GetAttributes(child, "class", "sys:attach", "sys:if", "template:name", "template:kind", "template:datatype", "template:islist", "template:isreference"),
@@ -223,7 +221,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 											Source = source + " [" + child.GetAttribute("template:name") + "]" + (child.HasAttribute("template:datatype") ? " - " + child.GetAttribute("template:datatype") : ""),
 											IsList = child.HasAttribute("template:islist") ? child.GetAttribute("template:islist").ToLower() == "true" : (bool?)null,
 											IsReference = child.HasAttribute("template:isreference") ? child.GetAttribute("template:isreference").ToLower() == "true" : (bool?)null,
-											IsAdapter = child.HasAttribute("template:kind") && child.GetAttribute("template:kind") == "@",
+											Kind = child.HasAttribute("template:kind") ? child.GetAttribute("template:kind") : null,
 											DataType = child.HasAttribute("template:datatype") ? child.GetAttribute("template:datatype") : null,
 											Class = child.GetAttribute("class").Split(' ').Where(c => c != "" && c.ToLower() != "sys-template").ToArray(),
 											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]

@@ -21,7 +21,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public string DataType { get; internal set; }
 
-		public bool IsAdapter { get; internal set; }
+		public string Kind { get; internal set; }
+
+		public bool IsAdapter { get { return Kind == "@"; } }
 
 		public bool? IsList { get; internal set; }
 
