@@ -16,7 +16,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public List<Attribute> Attributes { get; internal set; }
 
-		public bool IsClosed { get; internal set; }
+		public bool IsEmpty { get; internal set; }
+
+		protected static IEnumerable<AttributeBinding> AbortSysAttachDataAttribute(IEnumerable<AttributeBinding> attributes)
+		{
+			return attributes.Select(a => a.Name == "data-sys-attach" ? new AttributeBinding(new Attribute() { Name = "sys:attach", Value = a.DisplayValue }, null) : a);
+		}
 
 		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
 		{
@@ -97,7 +102,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			// Close Tag
-			if (IsClosed)
+			if (IsEmpty)
 			{
 				if (innerHtml != null)
 					writer.Write(">" + innerHtml + "</" + Tag + ">");

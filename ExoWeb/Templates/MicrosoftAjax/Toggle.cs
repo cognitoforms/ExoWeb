@@ -93,7 +93,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			{
 				RenderStartTag(page, writer,
 					// replace data-sys-attach attribute with sys:attach
-					attributes => attributes.Select(a => a.Name == "data-sys-attach" ? new AttributeBinding(new Attribute() { Name = "sys:attach", Value = a.DisplayValue }, null) : a),
+					AbortSysAttachDataAttribute,
 					// abort rendering
 					true,
 					// pass in all binding attributes

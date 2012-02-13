@@ -373,7 +373,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 								Markup = isBinding || child.ChildNodes.Count == 0 ? GetMarkup(child) : GetElementMarkup(child),
 								Attributes = GetAttributes(child),
 								Tag = child.Name,
-								IsClosed = isBinding || child.ChildNodes.Count == 0
+								IsEmpty = isBinding || child.ChildNodes.Count == 0
 							};
 
 							if (isBinding)
@@ -382,7 +382,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							blocks.Add(e);
 
 							// Process child nodes, if the element content is not bound
-							if (!e.IsClosed)
+							if (!e.IsEmpty)
 							{
 								int numTopLevelTemplates;
 								var children = ParseChildren(source, child, withinTemplate, lastNestedTemplateIndex, out numTopLevelTemplates);
