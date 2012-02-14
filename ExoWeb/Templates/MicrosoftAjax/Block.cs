@@ -314,7 +314,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 								if (child.InnerXml.Trim().StartsWith("{") && child.InnerXml.Trim().EndsWith("}"))
 								{
 									parseChildren = false;
-									control.Attributes.Add(new Attribute() { Name = "innerhtml", Binding = Binding.Parse("sys:innerhtml", child.InnerXml.Trim()), Value = child.InnerXml.Trim() });
+									control.Attributes.Add(new Attribute() { Name = "innerhtml", Binding = Binding.Parse(GetDefaultProperty(child), child.InnerXml.Trim()), Value = child.InnerXml.Trim() });
 								}
 							}
 
@@ -379,7 +379,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							};
 
 							if (isBinding)
-								e.Attributes.Add(new Attribute() { Name = "innerhtml", Binding = Binding.Parse("sys:innerhtml", child.InnerXml.Trim()) });
+								e.Attributes.Add(new Attribute() { Name = "innerhtml", Binding = Binding.Parse(GetDefaultProperty(child), child.InnerXml.Trim()) });
 
 							blocks.Add(e);
 
@@ -445,6 +445,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			return blocks;
+		}
+
+		private static string GetDefaultProperty(XmlNode node)
+		{
+			return node.Name.ToLower() == "textarea" ? "sys:value" : "sys:innerhtml";
 		}
 
 		/// <summary>
