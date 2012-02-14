@@ -1438,8 +1438,8 @@
 		// marks the beginning or end of a context, i.e. "/item" or "item _$t202"
 		var itemCommentExpr = /^(\/|)item(\:([\$_A-Za-z0-9]+)|)$/;
 
-		Sys.Application._linkContexts = function Sys$Application$_linkContexts(parentContext, parentControl, parentData, parentElement, currentContext, parentContentTemplates, recursive) {
-			var children, newContext, preceedingText, ctxIdx, tcIdx, isSelect, i, node, match, marker, tmplIdx, tmpl, generatesContext, value, foundBinding, isArrayData,
+		Sys.Application._linkContexts = function Sys$Application$_linkContexts(parentContext, parentControl, parentData, parentElement, currentContext, parentContentTemplates, recursive, generateIds) {
+			var children, newContext, preceedingText, ctxIdx, tcIdx, isSelect, i, node, match, marker, tmplIdx, tmpl, generatesContext, value, foundBinding, isArrayData, generateChildIds,
 				isSingleExternalContext, lastIndex, targetProp, msAttrib, text, trimText, exprRegExp, attachName, isContentTemplate, contentTemplate, childContentTemplates;
 
 			ctxIdx = -1;
@@ -1459,6 +1459,7 @@
 				node = children[i];
 				marker = tmplIdx = tmpl = match = value = null;
 				generatesContext = foundBinding = false;
+				generateChildIds = generateIds;
 
 				// Look for binding expressions in text nodes
 				// NOTE: based on _buildTemplateCode
@@ -1619,6 +1620,11 @@
 					// Assign context index (mimicks compiled code)
 					node.__mstcindex = currentContext._tcindex;
 
+					if (!generateChildIds) {
+						// Detect special attributes that would have been taken care of by server-side rendering.
+						generateChildIds = node.hasAttribute("sys:attach") || node.hasAttribute("sys:if") || node.hasAttribute("sys:content-template");
+					}
+
 					// If a sys:if attribute exists, then potentially remove the element from the DOM
 					// don't remove it immediately since its contents could affect linking (e.g. child template index)
 					if (node.hasAttribute("sys:if")) {
@@ -1631,15 +1637,16 @@
 						}
 					}
 
-					// generate client ids
+					// generate client id
 					if (node.hasAttribute("sys:id")) {
-						var result = Sys.Application._getPropertyValue(null, null, null, node.getAttribute("sys:id"), currentContext, node, null, true);
-						result = currentContext.getInstanceId(result);
-						node.removeAttribute("sys:id");
 						if (node.id) {
 							throw new Error("Found a sys:id binding in pre-rendered markup, but the element already has an id.");
 						}
-						node.id = result;
+						node.id = currentContext.getInstanceId(node.getAttribute("sys:id"));
+						node.removeAttribute("sys:id");
+					}
+					else if (generateChildIds && node.hasAttribute("id")) {
+						node.id = currentContext.getInstanceId(node.id);
 					}
 
 					// Detect content-template attribute
@@ -1651,9 +1658,7 @@
 					}
 
 					// Detect tcindex attribute
-					if (node.hasAttribute("data-sys-tcindex")) {
-						tcIdx = node.getAttribute("data-sys-tcindex");
-					}
+					tcIdx = node.getAttribute("data-sys-tcindex");
 
 					// a control was rendered server-side, so link it and it's attributes
 					if (node.hasAttribute("data-sys-attach")) {
@@ -1731,7 +1736,7 @@
 							}
 							Sys.Application._linkAttributes(node, currentContext, attachName);
 							// Recursively link child nodes
-							Sys.Application._linkContexts(parentContext, parentControl, parentData, node, currentContext, childContentTemplates, true);
+							Sys.Application._linkContexts(parentContext, parentControl, parentData, node, currentContext, childContentTemplates, true, generateChildIds);
 						}
 					}
 				}

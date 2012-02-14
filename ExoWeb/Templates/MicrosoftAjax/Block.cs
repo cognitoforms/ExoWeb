@@ -204,7 +204,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						var child = (XmlElement)node;
 
 						// Control
-						if (child.HasAttribute("sys:attach") || child.HasAttribute("sys:if") || child.HasAttribute("sys:content-template"))
+						if (child.HasAttribute("sys:attach") ||
+							child.HasAttribute("sys:if") ||
+							child.HasAttribute("sys:content-template") ||
+							child.HasAttribute("sys:id") ||
+							child.HasAttribute("id"))
 						{
 							bool parseChildren = true;
 							Control control;
@@ -254,7 +258,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 									// Toggle
 									case "toggle":
 										control = new Toggle() 
- 										{
+										{
 											Attributes = GetAttributes(child, "sys:attach", "sys:if", "toggle:on", "toggle:action", "toggle:class", "toggle:groupname", "toggle:strictmode", "toggle:when"),
 											On = GetBinding(child, "toggle:on"),
 											Class = GetBinding(child, "toggle:class"),
