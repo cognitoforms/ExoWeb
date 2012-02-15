@@ -48,7 +48,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			writer.Write("<" + Tag);
 
 			// Attributes
-			string innerHtml = null;
+			string innerContent = null;
 			var attributes = (Attributes ?? new List<Attribute>())
 				.Select(attribute => attribute.Binding == null ? new AttributeBinding(attribute, null) : attribute.Binding.Evaluate(page));
 
@@ -61,7 +61,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				attributes = attributeTransform(attributes);
 
 			bool foundId = false;
-
+			bool isTextArea = Tag.Equals("textarea", StringComparison.InvariantCultureIgnoreCase);
 			// Write the attributes to the output stream
 			foreach (var attribute in attributes)
 			{
@@ -76,10 +76,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				// Determine if the attribute represents bound element content
 				if (attribute.IsBound)
 				{
-					if (attribute.Name == "sys:innerhtml")
-						innerHtml = (attribute.DisplayValue ?? "").ToString();
+					if (attribute.Name == "sys:innerhtml" || (isTextArea && attribute.Name == "sys:value"))
+						innerContent = (attribute.DisplayValue ?? "").ToString();
 					else if (attribute.Name == "sys:innertext")
-						innerHtml = HttpUtility.HtmlEncode(attribute.DisplayValue ?? "");
+						innerContent = HttpUtility.HtmlEncode(attribute.DisplayValue ?? "");
 				}
 
 				bool isHtmlBoolean;
@@ -98,21 +98,21 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				if (abort)
 					attribute.Abort(writer, isHtmlBoolean);
 				else
-					attribute.Render(page, writer, isHtmlBoolean, !page.Context.IsGlobal);
+					attribute.Render(page, writer, isHtmlBoolean, !page.Context.IsGlobal, isTextArea);
 			}
 
 			// Close Tag
 			if (IsEmpty)
 			{
-				if (innerHtml != null)
-					writer.Write(">" + innerHtml + "</" + Tag + ">");
+				if (innerContent != null)
+					writer.Write(">" + innerContent + "</" + Tag + ">");
 				else if (HtmlHelpers.IsSelfClosing(Tag))
 					writer.Write(" />");
 				else
 					writer.Write("></" + Tag + ">");
 			}
-			else if (innerHtml != null)
-				writer.Write(">" + innerHtml);
+			else if (innerContent != null)
+				writer.Write(">" + innerContent);
 			else
 				writer.Write(">");
 		}

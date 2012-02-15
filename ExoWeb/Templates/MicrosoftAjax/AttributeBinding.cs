@@ -78,7 +78,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 		}
 
-		public void Render(AjaxPage page, System.IO.TextWriter writer, bool isHtmlBool, bool generateIds)
+		public void Render(AjaxPage page, System.IO.TextWriter writer, bool isHtmlBool, bool generateIds, bool isTextArea)
 		{
 			// Bound attribute
 			if (binding != null)
@@ -97,7 +97,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 						if (binding.Value != null)
 						{
-							if (attributeName != "if" && attributeName != "innerhtml" && attributeName != "innertext")
+							if (attributeName != "if" && attributeName != "innerhtml" && attributeName != "innertext" && !(isTextArea && attributeName == "value"))
 							{
 								if (!isHtmlBool)
 									RenderAttribute(writer, attributeName, binding.Value.ToString());
