@@ -2246,6 +2246,16 @@ Sys.Observer.makeObservable = function Sys$Observer$makeObservable(target) {
 	}
 	return target;
 }
+Sys.Observer.disposeObservable = function Sys$Observer$disposeObservable(target) {
+	var isArray = target instanceof Array,
+		o = Sys.Observer;
+	if (target.setValue === o._observeMethods.setValue) {
+		o._removeMethods(target, o._observeMethods);
+		if (isArray) {
+			o._removeMethods(target, o._arrayMethods);
+		}
+	}
+}
 Sys.Observer._ensureObservable = function Sys$Observer$_ensureObservable(target) {
 	var type = typeof target;
 	if ((type === "string") || (type === "number") || (type === "boolean") || (type === "date")) {
@@ -2259,6 +2269,11 @@ Sys.Observer._addMethods = function Sys$Observer$_addMethods(target, methods) {
 		//    throw Error.invalidOperation(String.format(Sys.Res.observableConflict, m));
 		//}
 		target[m] = methods[m];
+	}
+}
+Sys.Observer._removeMethods = function Sys$Observer$_removeMethods(target, methods) {
+	for (var m in methods) {
+		target[m] = null;
 	}
 }
 
@@ -4144,10 +4159,11 @@ Sys.Component = function Sys$Component() {
 		this._updating = true;
 	}
 	function Sys$Component$dispose() {
-		Sys.Observer.raiseEvent(this, "disposing")
+		Sys.Observer.raiseEvent(this, "disposing");
 		Sys.Observer.clearEventHandlers(this);
 		Sys.Application.unregisterDisposableObject(this);
 		Sys.Application.removeComponent(this);
+		this._updating = this._initialized = this._observerContext = this._isLinkPending = null;
 	}
 	function Sys$Component$endUpdate() {
 		this._updating = false;
@@ -4169,7 +4185,6 @@ Sys.Component = function Sys$Component() {
 	function Sys$Component$updated() {
 	}
 Sys.Component.prototype = {
-	_idSet: false,
 	get_events: Sys$Component$get_events,
 	get_id: Sys$Component$get_id,
 	set_id: Sys$Component$set_id,
@@ -5342,6 +5357,7 @@ Sys._Application = function Sys$_Application() {
 				var object = disposableObjects[i];
 				if (typeof(object) !== "undefined") {
 					object.dispose();
+					delete object.__msdisposeindex;
 				}
 			}
 			this._disposableObjects.length = 0;

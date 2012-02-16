@@ -2693,7 +2693,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	Sys.Observer.addSpecificPropertyChanged = function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
 		if (!target.__propertyChangeHandlers) {
 			target.__propertyChangeHandlers = {};
-
 			Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
 		}
 
@@ -2724,7 +2723,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				if (!hasHandlers) {
-					delete target.__propertyChangeHandlers;
+					target.__propertyChangeHandlers = null;
 					Sys.Observer.removePropertyChanged(target, _raiseSpecificPropertyChanged);
 				}
 			}
@@ -2861,9 +2860,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 				}
 
-				// delete the property from the object if there are no longer any paths being watched
+				// null out the property of the target if there are no longer any paths being watched
 				if (!hasHandlers) {
-					delete target.__pathChangeHandlers;
+					target.__pathChangeHandlers = null;
 				}
 			}
 		}
@@ -4243,7 +4242,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (handler)
 				handler(rule, { property: this, isTarget: isTarget });
 		},
-		addRuleRegistered: function Property$addChanged(handler, obj, once) {
+		addRuleRegistered: function Property$addRuleRegistered(handler, obj, once) {
 			this._addEvent("ruleRegistered", handler, obj ? equals(obj) : null, once);
 			return this;
 		},
@@ -5056,6 +5055,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Return the property to support method chaining
 			return this;
 		},
+		removeChanged: function PropertyChain$removeChanged(handlers) {
+			this._properties.forEach(function(prop, index) {
+				prop.removeChanged(handlers[index]);
+			}, this);
+		},
 		// starts listening for change events along the property chain on any known instances. Use obj argument to
 		// optionally filter the events to a specific object
 		addChanged: function PropertyChain$addChanged(handler, obj, once, tolerateNulls) {
@@ -5073,25 +5077,30 @@ Type.registerNamespace("ExoWeb.DotNet");
 				handler(sender, newArgs);
 			}
 
+			this._lastAddChangedHandlers;
 			if (this._properties.length == 1) {
 				// OPTIMIZATION: no need to search all known objects for single property chains
+				this._lastAddChangedHandlers = [raiseHandler];
 				this._properties[0].addChanged(raiseHandler, obj, once);
 			}
 			else {
-				Array.forEach(this._properties, function(prop, index) {
+				this._lastAddChangedHandlers = [];
+				this._properties.forEach(function(prop, index) {
 					var priorProp = (index === 0) ? undefined : chain._properties[index - 1];
 					if (obj) {
 						// CASE: using object filter
-						prop.addChanged(function PropertyChain$_raiseChanged$1Obj(sender, args) {
+						var fn = function PropertyChain$_raiseChanged$1Obj(sender, args) {
 							if (chain.connects(obj, sender, priorProp)) {
 								args.originalSender = sender;
 								raiseHandler(obj, args);
 							}
-						}, null, once);
+						};
+						this._lastAddChangedHandlers.push(fn);
+						prop.addChanged(fn, null, once);
 					}
 					else {
 						// CASE: no object filter
-						prop.addChanged(function PropertyChain$_raiseChanged$Multi(sender, args) {
+						var fn = function PropertyChain$_raiseChanged$Multi(sender, args) {
 							// scan all known objects of this type and raise event for any instance connected
 							// to the one that sent the event.
 							Array.forEach(chain._rootType.known(), function(known) {
@@ -5100,9 +5109,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 									raiseHandler(known, args);
 								}
 							});
-						}, null, once);
+						};
+						this._lastAddChangedHandlers.push(fn);
+						prop.addChanged(fn, null, once);
 					}
-				});
+				}, this);
 			}
 
 			// Return the property to support method chaining
@@ -5403,6 +5414,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		addPropertyValidating: function (propName, handler) {
 			this._addEvent("propertyValidating:" + propName, handler);
+		},
+		removePropertyValidating: function (propName, handler) {
+			this._removeEvent("propertyValidating:" + propName, handler);
 		},
 		destroy: function () {
 			this.type.unregister(this.obj);
@@ -11681,7 +11695,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Show/Hide
 		//////////////////////////////////////////////////////////
 		do_show: function Toggle$do_show() {
-			$(this.get_element()).show();
+			$(this._element).show();
 			this.set_state("on");
 
 			// visibility has changed so raise event
@@ -11692,7 +11706,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._visible = true;
 		},
 		do_hide: function Toggle$do_hide() {
-			$(this.get_element()).hide();
+			$(this._element).hide();
 			this.set_state("off");
 
 			// visibility has changed so raise event
@@ -11733,11 +11747,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Enable/Disable
 		//////////////////////////////////////////////////////////
 		do_enable: function Toggle$do_enable() {
-			$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().removeAttr("disabled");
+			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
 			this.set_state("on");
 		},
 		do_disable: function Toggle$do_disable() {
-			$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().attr("disabled", "disabled");
+			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 			this.set_state("off");
 		},
 
@@ -11759,12 +11773,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 				newContext.dataItem = pctx.dataItem;
 				newContext.index = 0;
 				newContext.parentContext = pctx;
-				newContext.containerElement = this.get_element();
+				newContext.containerElement = this._element;
 				newContext.template = this._getTemplate();
 				newContext.template._ensureCompiled();
 				this._context = newContext;
 
-				Sys.Application._linkContexts(pctx, this, pctx.dataItem, this.get_element(), newContext, this._contentTemplate);
+				Sys.Application._linkContexts(pctx, this, pctx.dataItem, this._element, newContext, this._contentTemplate);
 
 				newContext.initializeComponents();
 				newContext._onInstantiated(null, true);
@@ -11788,7 +11802,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			this.set_state("on");
 			$(this._element).empty();
-			$(this.get_element()).show();
+			$(this._element).show();
 
 			var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
 			context.initializeComponents();
@@ -11800,8 +11814,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 			Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
 			this.set_state("off");
+			if (this._context) {
+				this._context.dispose();
+			}
 			$(this._element).empty();
-			$(this.get_element()).hide();
+			$(this._element).hide();
 
 			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 		},
@@ -11821,18 +11838,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// addClass / removeClass
 		//////////////////////////////////////////////////////////
 		do_addClass: function Toggle$do_addClass() {
-			var $el = $(this.get_element());
+			var $el = $(this._element);
 		
-			if(!$el.is("."+this._class)) {
+			if(!$el.is("." + this._class)) {
 				$el.addClass(this._class);
 				this.set_state("on");
 				Sys.Observer.raiseEvent(this, "classAdded");
 			}
 		},
 		do_removeClass: function Toggle$do_removeClass() {
-			var $el = $(this.get_element());
+			var $el = $(this._element);
 		
-			if($el.is("."+this._class)) {
+			if($el.is("." + this._class)) {
 				$el.removeClass(this._class);
 				this.set_state("off");
 				Sys.Observer.raiseEvent(this, "classRemoved");
@@ -12009,12 +12026,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			Sys.Observer.raiseEvent(this, value);
 		},
 
-		get_equals: function Toggle$get_equals() {
+		equals: function Toggle$equals() {
 			if (this._when === undefined) {
 				// When is not defined, so condition depends entirely on "on" property
 				var onType = Object.prototype.toString.call(this._on);
 
-				if (this.get_strictMode() === true) {
+				if (this._strictMode === true) {
 					if (this._on.constructor !== Boolean)
 						ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:on should be a value of type Boolean.");
 
@@ -12030,7 +12047,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 			else if (this._when instanceof Function) {
 				var result = this._when(this._on);
-				if (this.get_strictMode() === true) {
+				if (this._strictMode === true) {
 					if (result === null || result === undefined || result.constructor !== Boolean)
 						ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:when function should return a value of type Boolean.");
 					return result;
@@ -12054,7 +12071,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		execute: function Toggle$execute() {
 			if (this.canExecute()) {
-				this[(this.get_equals() === true ? "do_" : "undo_") + this._action].call(this);
+				this[(this.equals() === true ? "do_" : "undo_") + this._action].call(this);
 			}
 		},
 		addContentTemplate: function Toggle$addContentTemplate(tmpl) {
@@ -12062,6 +12079,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 				throw Error.invalidOperation("invalidSysContentTemplate");
 			}
 			Sys.UI.IContentTemplateConsumer.prototype.addContentTemplate.apply(this, arguments);
+		},
+		dispose: function ExoWeb$UI$Toggle$dispose() {
+			if (this._template) {
+				this._template.dispose();
+			}
+			if (this._context) {
+				this._context.dispose();
+			}
+			this._action = this._class = this._collectionChangedHandler = this._contentTemplate =
+				this._context = this._ctxIdx = this._groupName = this._on = this._parentContext =
+				this._state = this._strictMode = this._template = this._visible = this._when = null;
+			ExoWeb.UI.Toggle.callBaseMethod(this, "dispose");
 		},
 		initialize: function Toggle$initialize() {
 			Toggle.callBaseMethod(this, "initialize");
@@ -12086,9 +12115,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		_stateClass: function(state)
 		{
 			if(state == "on")
-				$(this.get_element()).addClass("toggle-on").removeClass("toggle-off");
+				$(this._element).addClass("toggle-on").removeClass("toggle-off");
 			else
-				$(this.get_element()).removeClass("toggle-on").addClass("toggle-off");
+				$(this._element).removeClass("toggle-on").addClass("toggle-off");
 		}
 	});
 
@@ -12356,25 +12385,23 @@ Type.registerNamespace("ExoWeb.DotNet");
 				else {
 					aspects = {
 						isList: (data && data instanceof Array),
-						isReference: (data && data instanceof ExoWeb.Model.Entity),
-						dataType: (function(obj) {
-								if (obj === null || obj === undefined) {
-									return null;
-								}
-								else if (obj instanceof ExoWeb.Model.Entity) {
-									return obj.meta.type.get_jstype();
-								}
-								else if (obj instanceof Array) {
-									return Array;
-								}
-								else if (obj instanceof Object) {
-									return Object;
-								}
-								else {
-									return obj.constructor;
-								}
-							}) (data)
+						isReference: (data && data instanceof ExoWeb.Model.Entity)
 					};
+					if (data === null || data === undefined) {
+						aspects.dataType = null;
+					}
+					else if (data instanceof ExoWeb.Model.Entity) {
+						aspects.dataType = data.meta.type.get_jstype();
+					}
+					else if (data instanceof Array) {
+						aspects.dataType = Array;
+					}
+					else if (data instanceof Object) {
+						aspects.dataType = Object;
+					}
+					else {
+						aspects.dataType = data.constructor;
+					}
 				}
 				return this._aspectsSatisfiedBy(aspects);
 			}
@@ -12391,16 +12418,22 @@ Type.registerNamespace("ExoWeb.DotNet");
 			);
 		},
 
+		dispose: function Template$dispose() {
+			this._aspects = this._contentTemplate = this._dataType = this._dataTypeCtor = this._isList = this._isListText =
+				this._isReference = this._isReferenceText = this._kind = this._name = this._nameArray = null;
+			ExoWeb.UI.Template.callBaseMethod(this, "dispose");
+		},
+
 		initialize: function() {
 			/// <summary locid="M:J#ExoWeb.UI.Template.initialize" />
 			Template.callBaseMethod(this, "initialize");
 
 			// add a class that can be used to search for templates 
 			// and make sure that the template element is hidden
-			$(this.get_element()).addClass("exoweb-template").hide();
+			$(this._element).addClass("exoweb-template").hide();
 
-			if (this.get_element().control.constructor !== String) {
-				var el = this.get_element();
+			if (this._element.control.constructor !== String) {
+				var el = this._element;
 				var tagName = el.tagName.toLowerCase();
 				var cache = allTemplates[tagName];
 				if (!cache) {
@@ -12548,10 +12581,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		set_data: function Content$set_data(value) {
 			var removedData = ((value === undefined || value === null) && (this._data !== undefined && this._data !== null));
 
-			if (this._data && this._changeHandler) {
+			if (this._changedHandler) {
 				// Remove old change handler if applicable.
 				Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
-				this._changedHandler = null;
+				delete this._changedHandler;
 			}
 
 			this._data = value;
@@ -12691,7 +12724,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			/// </summary>
 
 			return ((this._data !== undefined && this._data !== null) || force === true) &&
-				!!this._initialized && this._element !== undefined && this._element !== null && !this.get_disabled();
+				this.get_isInitialized() && this._element !== undefined && this._element !== null && !this.get_disabled();
 		},
 
 		_getResultingTemplateNames: function Content$_getResultingTemplateNames(tmplEl) {
@@ -12737,13 +12770,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// Failing to empty content before rendering can result in invalid content since rendering 
 			// content is not necessarily in order because of waiting on external templates.
-			$(this._element).empty();
+			var container = this._element;
+
+			$(container).empty();
 
 			var parentContext = this.get_templateContext();
-			var container = this.get_element();
 			this._context = null;
 
-			var data = this.get_data();
+			var data = this._data;
 			if (data !== null && data !== undefined) {
 				var tmplEl = this._findTemplate();
 				var template = new Sys.UI.Template(tmplEl);
@@ -12831,7 +12865,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				newContext.dataItem = this._data;
 				newContext.index = 0;
 				newContext.parentContext = pctx;
-				newContext.containerElement = this.get_element();
+				newContext.containerElement = this._element;
 				newContext.template = new Sys.UI.Template(tmplEl);
 				newContext.template._ensureCompiled();
 
@@ -12840,7 +12874,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// Get the list of template names applicable to the control's children
 				var contentTemplate = this._getResultingTemplateNames(tmplEl);
 
-				var element = this.get_element();
+				var element = this._element;
 				Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
 
 				for (var i = 0; i < element.childNodes.length; i++) {
@@ -12863,6 +12897,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 					this._renderStart(force);
 				}
 			}
+		},
+
+		dispose: function ExoWeb$UI$Content$dispose() {
+			if (this._context) {
+				this._context.dispose();
+			}
+			if (this._changedHandler) {
+				Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
+				this._changedHandler = null;
+			}
+			this._contentTemplate = this._context = this._ctxIdx =
+				this._data = this._disabled = this._isRendered = this._parentContext = this._template = null;
+			ExoWeb.UI.Content.callBaseMethod(this, "dispose");
 		},
 
 		initialize: function Content$initialize() {
@@ -13365,11 +13412,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			adapter.ready(function AdapterReady() {
 				Sys.Observer.setValue(component, targetProperty, adapter);
-				if (component.add_disposing) {
-					component.add_disposing(function() {
-						adapter.dispose();
-					});
-				}
 			});
 		},
 		false
@@ -13379,6 +13421,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #region MetaMarkupExtension
 	//////////////////////////////////////////////////
+
+	var bindingSetters = [];
+	var setterExpr = /^set_(.*)$/;
+	ExoWeb.eachProp(Sys.Binding.prototype, function(prop) {
+		var name = setterExpr.exec(prop);
+		if (name) {
+			bindingSetters.push(name[1]);
+		}
+	});
 
 	Sys.Application.registerMarkupExtension(
 		"#",
@@ -13404,14 +13455,26 @@ Type.registerNamespace("ExoWeb.DotNet");
 				property: element.nodeName === "SELECT" ? "systemValue" : "displayValue"
 			}, properties);
 
+			delete properties.$default;
+
+			// remove properties that apply to the binding
+			for (var p in properties) {
+				if (properties.hasOwnProperty(p)) {
+					if (bindingSetters.indexOf(p) >= 0) {
+						delete properties[p];
+					}
+				}
+			}
+
 			options.path = options.path || options.$default;
 			delete options.$default;
 
-			options.source = new Adapter(options.source || templateContext.dataItem, options.path, options.format, properties);
+			var adapter = options.source = new Adapter(options.source || templateContext.dataItem, options.path, options.format, properties);
 
 			options.path = options.property;
 			delete options.property;
-
+		
+			templateContext.components.push(adapter);
 			templateContext.components.push(Sys.Binding.bind(options));
 		},
 		false
@@ -13498,18 +13561,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		this._isTargetElement = Sys.UI.DomElement.isDomElement(target);
 
-		this._collectionChangedHandler = this._collectionChanged.bind(this);
-		this._sourcePathChangedHandler = this._sourcePathChanged.bind(this);
-		this._watchedItemPathChangedHandler = this._watchedItemPathChanged.bind(this);
-		this._evalSuccessHandler = this._evalSuccess.bind(this);
-		this._evalFailureHandler = this._evalFailure.bind(this);
-
-		if (target.add_disposing) {
-			target.add_disposing(this.dispose.bind(this));
-		}
-
 		if (this._sourcePath) {
 			// Start the initial fetch of the source value.
+			this._evalSuccessHandler = this._evalSuccess.bind(this);
+			this._evalFailureHandler = this._evalFailure.bind(this);
 			ExoWeb.Model.LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
 		}
 		else {
@@ -13561,7 +13616,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var targetValue = this._pendingValue;
 				delete this._pendingValue;
 
-				if (this._isDisposed === true) {
+				if (this._disposed === true) {
 					return;
 				}
 
@@ -13624,19 +13679,21 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		_update: function(value, oldItems, newItems) {
-			if (this._isDisposed === true) {
+			if (this._disposed === true) {
 				return;
 			}
 
 			// if necessary, remove an existing collection change handler
-			if (this._value && this._value instanceof Array) {
+			if (this._collectionChangedHandler) {
 				Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
 				delete this._value;
+				delete this._collectionChangedHandler;
 			}
 
 			// if the value is an array and we will transform the value or require paths, then watch for collection change events
 			if (value && value instanceof Array && this._options.required) {
 				this._value = value;
+				this._collectionChangedHandler = this._collectionChanged.bind(this);
 				Sys.Observer.makeObservable(value);
 				Sys.Observer.addCollectionChanged(value, this._collectionChangedHandler);
 			}
@@ -13644,31 +13701,33 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// If additional paths are required then load them before invoking the callback.
 			if (this._options.required) {
 				this._updateWatchedItems(value, oldItems, newItems, function() {
-					this._queue(this._ifNull(this._format(this._transform(value))));
+					this._queue(this._format(this._ifNull(this._transform(value))));
 				});
 			}
 			else {
-				this._queue(this._ifNull(this._format(this._transform(value))));
+				this._queue(this._format(this._ifNull(this._transform(value))));
 			}
 		},
 	
 		_updateWatchedItems: function(value, oldItems, newItems, callback) {
 			// Unwatch require path for items that are no longer relevant.
-			if (oldItems) {
+			if (oldItems && oldItems.length > 0) {
 				oldItems.forEach(function(item) {
 					Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
 				}, this);
+				delete this._watchedItemPathChangedHandler;
 			}
 
 			if (value) {
 				// Load required paths, then manipulate the source value and update the target.
 				this._require(value, function() {
-					if (this._isDisposed === true) {
+					if (this._disposed === true) {
 						return;
 					}
 
-					if (newItems) {
+					if (newItems && newItems.length > 0) {
 						// Watch require path for new items.
+						this._watchedItemPathChangedHandler = this._watchedItemPathChanged.bind(this);
 						forEach(newItems, function(item) {
 							Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
 						}, this);
@@ -13710,7 +13769,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		_evalSuccess: function(result, message) {
+			if (this._disposed) {
+				return;
+			}
+
+			delete this._evalSuccessHandler;
+
 			if (this._sourcePath) {
+				this._sourcePathChangedHandler = this._sourcePathChanged.bind(this);
 				Sys.Observer.addPathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler, true);
 			}
 
@@ -13720,11 +13786,42 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		_evalFailure: function(err) {
+			if (this._disposed) {
+				return;
+			}
+
+			delete this._evalFailureHandler;
+
 			ExoWeb.trace.throwAndLog(["~", "markupExt"], "Couldn't evaluate path '{0}', {1}", [this._sourcePath, err]);
 		},
 
 		dispose: function() {
-			this._isDisposed = true;
+			if (!this._disposed) {
+				this._disposed = true;
+				if (this._collectionChangedHandler) {
+					Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
+					this._collectionChangedHandler = null;
+				}
+				if (this._sourcePathChangedHandler) {
+					Sys.Observer.removePathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler);
+					this._sourcePathChangedHandler = null;
+				}
+				if (this._watchedItemPathChangedHandler) {
+					ensureArray(this._sourcePathResult).forEach(function(item) {
+						Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
+					}, this);
+					this._watchedItemPathChangedHandler = null;
+				}
+				if (this._evalSuccessHandler) {
+					this._evalSuccessHandler = null;
+				}
+				if (this._evalFailureHandler) {
+					this._evalFailureHandler = null;
+				}
+				this._isTargetElement = this._options = this._pendingValue = this._source =
+					this._sourcePath = this._sourcePathResult = this._target = this._targetPath =
+					this._templateContext = this._transformFn = this._value = null;
+			}
 			Binding.callBaseMethod(this, "dispose");
 		}
 
@@ -13799,7 +13896,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._propertyPath = propertyPath;
 		this._ignoreTargetEvents = false;
 		this._readySignal = new ExoWeb.Signal("Adapter Ready");
-		this._isDisposed = false;
 
 		if (options.optionsTransform) {
 			if (options.optionsTransform.indexOf("groupBy(") >= 0) {
@@ -13836,6 +13932,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		_extendProperties: function Adapter$_extendProperties(options) {
 			if (options) {
 				var allowedOverrides = ["label", "helptext"];
+				this._extendedProperties = [];
 				for (var optionName in options) {
 					// check for existing getter and setter methods
 					var getter = this["get_" + optionName];
@@ -13845,6 +13942,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 					if (getter && !Array.contains(allowedOverrides, optionName)) {
 						continue;
 					}
+
+					this._extendedProperties.push(optionName);
 
 					// create a getter and setter if they don't exist
 					if (!getter || !(getter instanceof Function)) {
@@ -13921,7 +14020,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 				Sys.Observer.makeObservable(this);
 
 				// subscribe to property changes at all points in the path
-				this._propertyChain.addChanged(this._onTargetChanged.bind(this), this._target);
+				this._targetChangedHandler = this._onTargetChanged.bind(this);
+				this._propertyChain.addChanged(this._targetChangedHandler, this._target);
+				this._targetChangedHandlerArray = this._propertyChain._lastAddChangedHandlers;
 
 				this._formatSubscribers = {};
 
@@ -13968,31 +14069,68 @@ Type.registerNamespace("ExoWeb.DotNet");
 				});
 			}
 
-			// re-evaluate property event handlers
-			if (this._propertyValidatedHandler) {
-				this.addPropertyValidated(null, this._propertyValidatedHandler);
-			}
-			if (this._propertyValidatingHandler) {
-				this.addPropertyValidating(null, this._propertyValidatingHandler);
+			// Re-attach validation handlers if needed
+			var properties = this._propertyChain._properties;
+			var numProps = properties.length;
+
+			// The last target does not change if this is a single-property chain,
+			// so no need to update validation events
+			if (numProps > 1) {
+				// If there was initially no value then no validation event handlers would need to be removed
+				if (args.oldValue) {
+					// Determine the old last target
+					var property,
+						propIndex = properties.indexOf(args.triggeredBy) + 1,
+						newLastTarget = this._propertyChain.lastTarget(this._target),
+						oldLastTarget = args.oldValue;
+					while (oldLastTarget && propIndex < numProps - 1) {
+						property = properties[propIndex++],
+						oldLastTarget = property.value(oldLastTarget);
+					}
+
+					// Remove and re-add validation handlers if the last target has changed
+					if (oldLastTarget !== newLastTarget) {
+						if (this._propertyValidatedHandler) {
+							oldLastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
+							this.addPropertyValidated(null, this._propertyValidatedHandler);
+						}
+						if (this._propertyValidatingHandler) {
+							oldLastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
+							this.addPropertyValidating(null, this._propertyValidatingHandler);
+						}
+					}
+				}
+				// If a value is being initially set for any property other than the last property (which would affect the value of
+				// the last target) then initially set up validation event handlers that were set previously.
+				else if (args.triggeredBy !== this.lastProperty()) {
+					if (this._propertyValidatedHandler) {
+						this.addPropertyValidated(null, this._propertyValidatedHandler);
+					}
+					if (this._propertyValidatingHandler) {
+						this.addPropertyValidating(null, this._propertyValidatingHandler);
+					}
+				}
 			}
 		},
 		_reloadOptions: function Adapter$_reloadOptions(allowLazyLoad) {
-			ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
-
-			if (allowLazyLoad === true) {
-				// delete backing fields so that allowed values can be recalculated (and loaded)
-				delete this._allowedValues;
-				delete this._options;
+			if (!this._disposed) {
+				ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
+	
+				if (allowLazyLoad === true) {
+					// delete backing fields so that allowed values can be recalculated (and loaded)
+					delete this._allowedValues;
+					delete this._options;
+				}
+				else {
+					// clear out backing fields so that allowed values can be recalculated
+					this._allowedValues = undefined;
+					this._options = undefined;
+				}
+	
+				// raise events in order to cause subscribers to fetch the new value
+				Sys.Observer.raisePropertyChanged(this, "allowedValues");
+				Sys.Observer.raisePropertyChanged(this, "options");
 			}
-			else {
-				// clear out backing fields so that allowed values can be recalculated
-				this._allowedValues = undefined;
-				this._options = undefined;
-			}
-
-			// raise events in order to cause subscribers to fetch the new value
-			Sys.Observer.raisePropertyChanged(this, "allowedValues");
-			Sys.Observer.raisePropertyChanged(this, "options");
 		},
 		_setValue: function Adapter$_setValue(value) {
 			var prop = this._propertyChain;
@@ -14035,21 +14173,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Various methods.
 		///////////////////////////////////////////////////////////////////////
-		dispose: function Adapter$dispose() {
-			//ExoWeb.trace.log(["@", "markupExt"], "Adapter disposed.");
-			this._isDisposed = true;
-
-			this.clearValidation();
-
-			Adapter.callBaseMethod(this, "dispose");
-		},
-		clearValidation: function () {
-			if (this._condition) {
-				var prop = this._propertyChain;
-				var meta = prop.lastTarget(this._target).meta;
-				meta.conditionIf(this._condition, false);
-			}
-		},
 		ready: function Adapter$ready(callback, thisPtr) {
 			this._readySignal.waitForAll(callback, thisPtr);
 		},
@@ -14165,7 +14288,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						if (rawValue instanceof Array) {
 							Array.forEach(rawValue, function (item, index) {
 								this._allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, function (answer) {
-									if (!answer && !_this._isDisposed) {
+									if (!answer && !_this._disposed) {
 										//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 										_this.set_selected(item, false);
 									}
@@ -14174,7 +14297,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						}
 						else {
 							this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, function (answer) {
-								if (!answer && !_this._isDisposed) {
+								if (!answer && !_this._disposed) {
 									//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 									_this.set_rawValue(null);
 								}
@@ -14213,15 +14336,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 						if (!allowedValues) {
 							//allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
 							ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
+							this._reloadOptionsHandler = this._reloadOptions.bind(this);
 							ExoWeb.Model.LazyLoader.eval(rule._allowedValuesProperty.get_isStatic() ? null : targetObj,
 								rule._allowedValuesProperty.get_path(),
-								this._reloadOptions.bind(this));
+								this._reloadOptionsHandler);
 							return;
 						}
 
 						if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
 							ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
-							ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptions.bind(this), this);
+							this._reloadOptionsHandler = this._reloadOptions.bind(this);
+							ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptionsHandler, this);
 							return;
 						}
 					}
@@ -14395,7 +14520,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (lastTarget) {
 				lastTarget.meta.addPropertyValidating(this._propertyChain.get_name(), handler);
-				this._propertyValidatingHandler = null;
 			}
 		},
 		addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
@@ -14405,7 +14529,57 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (lastTarget) {
 				lastTarget.meta.addPropertyValidated(this._propertyChain.get_name(), handler);
-				this._propertyValidatedHandler = null;
+			}
+		},
+
+		clearValidation: function () {
+			if (this._condition) {
+				var prop = this._propertyChain;
+				var meta = prop.lastTarget(this._target).meta;
+				meta.conditionIf(this._condition, false);
+				delete this._condition;
+			}
+		},
+		dispose: function Adapter$dispose() {
+			var disposed = this._disposed, options = null;
+
+			if (!disposed) {
+				this._disposed = true;
+				options = this._options;
+				this.clearValidation();
+				if (this._extendedProperties) {
+					var ext = this._extendedProperties;
+					for (var i = 0, l = ext.length; i < l; i++) {
+						this["_" + ext[i]] = null;
+					}
+					this._extendedProperties = null;
+				}
+				if (this._targetChangedHandler) {
+					this._propertyChain.removeChanged(this._targetChangedHandlerArray);
+					this._targetChangedHandler = null;
+				}
+				this._unsubscribeFromFormatChanges(this.get_rawValue());
+				// Clean up validation event handlers
+				var lastTarget = this._propertyChain.lastTarget(this._target);
+				if (this._propertyValidatedHandler) {
+					lastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
+				}
+				if (this._propertyValidatedHandler) {
+					lastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
+				}
+				this._allowedValues = this._allowedValuesMayBeNull = this._allowedValuesRule = this._aspects = this._badValue =
+					this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =
+					this._observable = this._options = this._optionsTransform = this._parentAdapter = this._propertyChain =
+					this._propertyPath = this._readySignal = this._reloadOptionsHandler = this._target = this._targetChangedHandlerArray = null;
+			}
+
+			Adapter.callBaseMethod(this, "dispose");
+
+			if (!disposed) {
+				Sys.Observer.disposeObservable(this);
+				if (options) {
+					options.forEach(Sys.Observer.disposeObservable);
+				}
 			}
 		}
 	};

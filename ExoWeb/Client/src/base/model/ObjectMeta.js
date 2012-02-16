@@ -191,6 +191,9 @@ ObjectMeta.mixin({
 	addPropertyValidating: function (propName, handler) {
 		this._addEvent("propertyValidating:" + propName, handler);
 	},
+	removePropertyValidating: function (propName, handler) {
+		this._removeEvent("propertyValidating:" + propName, handler);
+	},
 	destroy: function () {
 		this.type.unregister(this.obj);
 	},

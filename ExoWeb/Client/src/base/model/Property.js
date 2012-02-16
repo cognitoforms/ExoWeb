@@ -75,7 +75,7 @@ Property.mixin({
 		if (handler)
 			handler(rule, { property: this, isTarget: isTarget });
 	},
-	addRuleRegistered: function Property$addChanged(handler, obj, once) {
+	addRuleRegistered: function Property$addRuleRegistered(handler, obj, once) {
 		this._addEvent("ruleRegistered", handler, obj ? equals(obj) : null, once);
 		return this;
 	},

@@ -2590,6 +2590,16 @@ Sys.Observer.makeObservable = function Sys$Observer$makeObservable(target) {
     }
     return target;
 }
+Sys.Observer.disposeObservable = function Sys$Observer$disposeObservable(target) {
+	var isArray = target instanceof Array,
+		o = Sys.Observer;
+	if (target.setValue === o._observeMethods.setValue) {
+		o._removeMethods(target, o._observeMethods);
+		if (isArray) {
+			o._removeMethods(target, o._arrayMethods);
+		}
+	}
+}
 Sys.Observer._ensureObservable = function Sys$Observer$_ensureObservable(target) {
     var type = typeof target;
     if ((type === "string") || (type === "number") || (type === "boolean") || (type === "date")) {
@@ -2603,6 +2613,11 @@ Sys.Observer._addMethods = function Sys$Observer$_addMethods(target, methods) {
         }
         target[m] = methods[m];
     }
+}
+Sys.Observer._removeMethods = function Sys$Observer$_removeMethods(target, methods) {
+	for (var m in methods) {
+		target[m] = null;
+	}
 }
 
 

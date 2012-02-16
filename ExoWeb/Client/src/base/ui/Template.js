@@ -175,25 +175,23 @@ Template.prototype = {
 			else {
 				aspects = {
 					isList: (data && data instanceof Array),
-					isReference: (data && data instanceof ExoWeb.Model.Entity),
-					dataType: (function(obj) {
-							if (obj === null || obj === undefined) {
-								return null;
-							}
-							else if (obj instanceof ExoWeb.Model.Entity) {
-								return obj.meta.type.get_jstype();
-							}
-							else if (obj instanceof Array) {
-								return Array;
-							}
-							else if (obj instanceof Object) {
-								return Object;
-							}
-							else {
-								return obj.constructor;
-							}
-						}) (data)
+					isReference: (data && data instanceof ExoWeb.Model.Entity)
 				};
+				if (data === null || data === undefined) {
+					aspects.dataType = null;
+				}
+				else if (data instanceof ExoWeb.Model.Entity) {
+					aspects.dataType = data.meta.type.get_jstype();
+				}
+				else if (data instanceof Array) {
+					aspects.dataType = Array;
+				}
+				else if (data instanceof Object) {
+					aspects.dataType = Object;
+				}
+				else {
+					aspects.dataType = data.constructor;
+				}
 			}
 			return this._aspectsSatisfiedBy(aspects);
 		}
@@ -210,16 +208,22 @@ Template.prototype = {
 		);
 	},
 
+	dispose: function Template$dispose() {
+		this._aspects = this._contentTemplate = this._dataType = this._dataTypeCtor = this._isList = this._isListText =
+			this._isReference = this._isReferenceText = this._kind = this._name = this._nameArray = null;
+		ExoWeb.UI.Template.callBaseMethod(this, "dispose");
+	},
+
 	initialize: function() {
 		/// <summary locid="M:J#ExoWeb.UI.Template.initialize" />
 		Template.callBaseMethod(this, "initialize");
 
 		// add a class that can be used to search for templates 
 		// and make sure that the template element is hidden
-		$(this.get_element()).addClass("exoweb-template").hide();
+		$(this._element).addClass("exoweb-template").hide();
 
-		if (this.get_element().control.constructor !== String) {
-			var el = this.get_element();
+		if (this._element.control.constructor !== String) {
+			var el = this._element;
 			var tagName = el.tagName.toLowerCase();
 			var cache = allTemplates[tagName];
 			if (!cache) {

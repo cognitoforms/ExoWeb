@@ -36,11 +36,6 @@ Sys.Application.registerMarkupExtension(
 
 		adapter.ready(function AdapterReady() {
 			Sys.Observer.setValue(component, targetProperty, adapter);
-			if (component.add_disposing) {
-				component.add_disposing(function() {
-					adapter.dispose();
-				});
-			}
 		});
 	},
 	false

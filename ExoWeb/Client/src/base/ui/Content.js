@@ -38,10 +38,10 @@ Content.prototype = {
 	set_data: function Content$set_data(value) {
 		var removedData = ((value === undefined || value === null) && (this._data !== undefined && this._data !== null));
 
-		if (this._data && this._changeHandler) {
+		if (this._changedHandler) {
 			// Remove old change handler if applicable.
 			Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
-			this._changedHandler = null;
+			delete this._changedHandler;
 		}
 
 		this._data = value;
@@ -181,7 +181,7 @@ Content.prototype = {
 		/// </summary>
 
 		return ((this._data !== undefined && this._data !== null) || force === true) &&
-			!!this._initialized && this._element !== undefined && this._element !== null && !this.get_disabled();
+			this.get_isInitialized() && this._element !== undefined && this._element !== null && !this.get_disabled();
 	},
 
 	_getResultingTemplateNames: function Content$_getResultingTemplateNames(tmplEl) {
@@ -227,13 +227,14 @@ Content.prototype = {
 
 		// Failing to empty content before rendering can result in invalid content since rendering 
 		// content is not necessarily in order because of waiting on external templates.
-		$(this._element).empty();
+		var container = this._element;
+
+		$(container).empty();
 
 		var parentContext = this.get_templateContext();
-		var container = this.get_element();
 		this._context = null;
 
-		var data = this.get_data();
+		var data = this._data;
 		if (data !== null && data !== undefined) {
 			var tmplEl = this._findTemplate();
 			var template = new Sys.UI.Template(tmplEl);
@@ -321,7 +322,7 @@ Content.prototype = {
 			newContext.dataItem = this._data;
 			newContext.index = 0;
 			newContext.parentContext = pctx;
-			newContext.containerElement = this.get_element();
+			newContext.containerElement = this._element;
 			newContext.template = new Sys.UI.Template(tmplEl);
 			newContext.template._ensureCompiled();
 
@@ -330,7 +331,7 @@ Content.prototype = {
 			// Get the list of template names applicable to the control's children
 			var contentTemplate = this._getResultingTemplateNames(tmplEl);
 
-			var element = this.get_element();
+			var element = this._element;
 			Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
 
 			for (var i = 0; i < element.childNodes.length; i++) {
@@ -353,6 +354,19 @@ Content.prototype = {
 				this._renderStart(force);
 			}
 		}
+	},
+
+	dispose: function ExoWeb$UI$Content$dispose() {
+		if (this._context) {
+			this._context.dispose();
+		}
+		if (this._changedHandler) {
+			Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
+			this._changedHandler = null;
+		}
+		this._contentTemplate = this._context = this._ctxIdx =
+			this._data = this._disabled = this._isRendered = this._parentContext = this._template = null;
+		ExoWeb.UI.Content.callBaseMethod(this, "dispose");
 	},
 
 	initialize: function Content$initialize() {

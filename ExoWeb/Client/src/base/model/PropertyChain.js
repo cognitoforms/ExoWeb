@@ -283,6 +283,11 @@ PropertyChain.prototype = {
 		// Return the property to support method chaining
 		return this;
 	},
+	removeChanged: function PropertyChain$removeChanged(handlers) {
+		this._properties.forEach(function(prop, index) {
+			prop.removeChanged(handlers[index]);
+		}, this);
+	},
 	// starts listening for change events along the property chain on any known instances. Use obj argument to
 	// optionally filter the events to a specific object
 	addChanged: function PropertyChain$addChanged(handler, obj, once, tolerateNulls) {
@@ -300,25 +305,30 @@ PropertyChain.prototype = {
 			handler(sender, newArgs);
 		}
 
+		this._lastAddChangedHandlers;
 		if (this._properties.length == 1) {
 			// OPTIMIZATION: no need to search all known objects for single property chains
+			this._lastAddChangedHandlers = [raiseHandler];
 			this._properties[0].addChanged(raiseHandler, obj, once);
 		}
 		else {
-			Array.forEach(this._properties, function(prop, index) {
+			this._lastAddChangedHandlers = [];
+			this._properties.forEach(function(prop, index) {
 				var priorProp = (index === 0) ? undefined : chain._properties[index - 1];
 				if (obj) {
 					// CASE: using object filter
-					prop.addChanged(function PropertyChain$_raiseChanged$1Obj(sender, args) {
+					var fn = function PropertyChain$_raiseChanged$1Obj(sender, args) {
 						if (chain.connects(obj, sender, priorProp)) {
 							args.originalSender = sender;
 							raiseHandler(obj, args);
 						}
-					}, null, once);
+					};
+					this._lastAddChangedHandlers.push(fn);
+					prop.addChanged(fn, null, once);
 				}
 				else {
 					// CASE: no object filter
-					prop.addChanged(function PropertyChain$_raiseChanged$Multi(sender, args) {
+					var fn = function PropertyChain$_raiseChanged$Multi(sender, args) {
 						// scan all known objects of this type and raise event for any instance connected
 						// to the one that sent the event.
 						Array.forEach(chain._rootType.known(), function(known) {
@@ -327,9 +337,11 @@ PropertyChain.prototype = {
 								raiseHandler(known, args);
 							}
 						});
-					}, null, once);
+					};
+					this._lastAddChangedHandlers.push(fn);
+					prop.addChanged(fn, null, once);
 				}
-			});
+			}, this);
 		}
 
 		// Return the property to support method chaining

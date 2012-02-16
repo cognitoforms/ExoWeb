@@ -11,7 +11,6 @@ function _raiseSpecificPropertyChanged(target, args) {
 Sys.Observer.addSpecificPropertyChanged = function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
 	if (!target.__propertyChangeHandlers) {
 		target.__propertyChangeHandlers = {};
-
 		Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
 	}
 
@@ -42,7 +41,7 @@ Sys.Observer.removeSpecificPropertyChanged = function Sys$Observer$removeSpecifi
 			}
 
 			if (!hasHandlers) {
-				delete target.__propertyChangeHandlers;
+				target.__propertyChangeHandlers = null;
 				Sys.Observer.removePropertyChanged(target, _raiseSpecificPropertyChanged);
 			}
 		}
@@ -179,9 +178,9 @@ Sys.Observer.removePathChanged = function Sys$Observer$removePathChanged(target,
 				}
 			}
 
-			// delete the property from the object if there are no longer any paths being watched
+			// null out the property of the target if there are no longer any paths being watched
 			if (!hasHandlers) {
-				delete target.__pathChangeHandlers;
+				target.__pathChangeHandlers = null;
 			}
 		}
 	}

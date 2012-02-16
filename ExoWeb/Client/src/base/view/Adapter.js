@@ -5,7 +5,6 @@ function Adapter(target, propertyPath, format, options) {
 	this._propertyPath = propertyPath;
 	this._ignoreTargetEvents = false;
 	this._readySignal = new ExoWeb.Signal("Adapter Ready");
-	this._isDisposed = false;
 
 	if (options.optionsTransform) {
 		if (options.optionsTransform.indexOf("groupBy(") >= 0) {
@@ -42,6 +41,7 @@ Adapter.prototype = {
 	_extendProperties: function Adapter$_extendProperties(options) {
 		if (options) {
 			var allowedOverrides = ["label", "helptext"];
+			this._extendedProperties = [];
 			for (var optionName in options) {
 				// check for existing getter and setter methods
 				var getter = this["get_" + optionName];
@@ -51,6 +51,8 @@ Adapter.prototype = {
 				if (getter && !Array.contains(allowedOverrides, optionName)) {
 					continue;
 				}
+
+				this._extendedProperties.push(optionName);
 
 				// create a getter and setter if they don't exist
 				if (!getter || !(getter instanceof Function)) {
@@ -127,7 +129,9 @@ Adapter.prototype = {
 			Sys.Observer.makeObservable(this);
 
 			// subscribe to property changes at all points in the path
-			this._propertyChain.addChanged(this._onTargetChanged.bind(this), this._target);
+			this._targetChangedHandler = this._onTargetChanged.bind(this);
+			this._propertyChain.addChanged(this._targetChangedHandler, this._target);
+			this._targetChangedHandlerArray = this._propertyChain._lastAddChangedHandlers;
 
 			this._formatSubscribers = {};
 
@@ -174,31 +178,68 @@ Adapter.prototype = {
 			});
 		}
 
-		// re-evaluate property event handlers
-		if (this._propertyValidatedHandler) {
-			this.addPropertyValidated(null, this._propertyValidatedHandler);
-		}
-		if (this._propertyValidatingHandler) {
-			this.addPropertyValidating(null, this._propertyValidatingHandler);
+		// Re-attach validation handlers if needed
+		var properties = this._propertyChain._properties;
+		var numProps = properties.length;
+
+		// The last target does not change if this is a single-property chain,
+		// so no need to update validation events
+		if (numProps > 1) {
+			// If there was initially no value then no validation event handlers would need to be removed
+			if (args.oldValue) {
+				// Determine the old last target
+				var property,
+					propIndex = properties.indexOf(args.triggeredBy) + 1,
+					newLastTarget = this._propertyChain.lastTarget(this._target),
+					oldLastTarget = args.oldValue;
+				while (oldLastTarget && propIndex < numProps - 1) {
+					property = properties[propIndex++],
+					oldLastTarget = property.value(oldLastTarget);
+				}
+
+				// Remove and re-add validation handlers if the last target has changed
+				if (oldLastTarget !== newLastTarget) {
+					if (this._propertyValidatedHandler) {
+						oldLastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
+						this.addPropertyValidated(null, this._propertyValidatedHandler);
+					}
+					if (this._propertyValidatingHandler) {
+						oldLastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
+						this.addPropertyValidating(null, this._propertyValidatingHandler);
+					}
+				}
+			}
+			// If a value is being initially set for any property other than the last property (which would affect the value of
+			// the last target) then initially set up validation event handlers that were set previously.
+			else if (args.triggeredBy !== this.lastProperty()) {
+				if (this._propertyValidatedHandler) {
+					this.addPropertyValidated(null, this._propertyValidatedHandler);
+				}
+				if (this._propertyValidatingHandler) {
+					this.addPropertyValidating(null, this._propertyValidatingHandler);
+				}
+			}
 		}
 	},
 	_reloadOptions: function Adapter$_reloadOptions(allowLazyLoad) {
-		ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
-
-		if (allowLazyLoad === true) {
-			// delete backing fields so that allowed values can be recalculated (and loaded)
-			delete this._allowedValues;
-			delete this._options;
+		if (!this._disposed) {
+			ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
+	
+			if (allowLazyLoad === true) {
+				// delete backing fields so that allowed values can be recalculated (and loaded)
+				delete this._allowedValues;
+				delete this._options;
+			}
+			else {
+				// clear out backing fields so that allowed values can be recalculated
+				this._allowedValues = undefined;
+				this._options = undefined;
+			}
+	
+			// raise events in order to cause subscribers to fetch the new value
+			Sys.Observer.raisePropertyChanged(this, "allowedValues");
+			Sys.Observer.raisePropertyChanged(this, "options");
 		}
-		else {
-			// clear out backing fields so that allowed values can be recalculated
-			this._allowedValues = undefined;
-			this._options = undefined;
-		}
-
-		// raise events in order to cause subscribers to fetch the new value
-		Sys.Observer.raisePropertyChanged(this, "allowedValues");
-		Sys.Observer.raisePropertyChanged(this, "options");
 	},
 	_setValue: function Adapter$_setValue(value) {
 		var prop = this._propertyChain;
@@ -241,21 +282,6 @@ Adapter.prototype = {
 
 	// Various methods.
 	///////////////////////////////////////////////////////////////////////
-	dispose: function Adapter$dispose() {
-		//ExoWeb.trace.log(["@", "markupExt"], "Adapter disposed.");
-		this._isDisposed = true;
-
-		this.clearValidation();
-
-		Adapter.callBaseMethod(this, "dispose");
-	},
-	clearValidation: function () {
-		if (this._condition) {
-			var prop = this._propertyChain;
-			var meta = prop.lastTarget(this._target).meta;
-			meta.conditionIf(this._condition, false);
-		}
-	},
 	ready: function Adapter$ready(callback, thisPtr) {
 		this._readySignal.waitForAll(callback, thisPtr);
 	},
@@ -371,7 +397,7 @@ Adapter.prototype = {
 					if (rawValue instanceof Array) {
 						Array.forEach(rawValue, function (item, index) {
 							this._allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, function (answer) {
-								if (!answer && !_this._isDisposed) {
+								if (!answer && !_this._disposed) {
 									//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 									_this.set_selected(item, false);
 								}
@@ -380,7 +406,7 @@ Adapter.prototype = {
 					}
 					else {
 						this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, function (answer) {
-							if (!answer && !_this._isDisposed) {
+							if (!answer && !_this._disposed) {
 								//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
 								_this.set_rawValue(null);
 							}
@@ -419,15 +445,17 @@ Adapter.prototype = {
 					if (!allowedValues) {
 						//allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
 						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
+						this._reloadOptionsHandler = this._reloadOptions.bind(this);
 						ExoWeb.Model.LazyLoader.eval(rule._allowedValuesProperty.get_isStatic() ? null : targetObj,
 							rule._allowedValuesProperty.get_path(),
-							this._reloadOptions.bind(this));
+							this._reloadOptionsHandler);
 						return;
 					}
 
 					if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
 						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
-						ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptions.bind(this), this);
+						this._reloadOptionsHandler = this._reloadOptions.bind(this);
+						ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptionsHandler, this);
 						return;
 					}
 				}
@@ -601,7 +629,6 @@ Adapter.prototype = {
 
 		if (lastTarget) {
 			lastTarget.meta.addPropertyValidating(this._propertyChain.get_name(), handler);
-			this._propertyValidatingHandler = null;
 		}
 	},
 	addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
@@ -611,7 +638,57 @@ Adapter.prototype = {
 
 		if (lastTarget) {
 			lastTarget.meta.addPropertyValidated(this._propertyChain.get_name(), handler);
-			this._propertyValidatedHandler = null;
+		}
+	},
+
+	clearValidation: function () {
+		if (this._condition) {
+			var prop = this._propertyChain;
+			var meta = prop.lastTarget(this._target).meta;
+			meta.conditionIf(this._condition, false);
+			delete this._condition;
+		}
+	},
+	dispose: function Adapter$dispose() {
+		var disposed = this._disposed, options = null;
+
+		if (!disposed) {
+			this._disposed = true;
+			options = this._options;
+			this.clearValidation();
+			if (this._extendedProperties) {
+				var ext = this._extendedProperties;
+				for (var i = 0, l = ext.length; i < l; i++) {
+					this["_" + ext[i]] = null;
+				}
+				this._extendedProperties = null;
+			}
+			if (this._targetChangedHandler) {
+				this._propertyChain.removeChanged(this._targetChangedHandlerArray);
+				this._targetChangedHandler = null;
+			}
+			this._unsubscribeFromFormatChanges(this.get_rawValue());
+			// Clean up validation event handlers
+			var lastTarget = this._propertyChain.lastTarget(this._target);
+			if (this._propertyValidatedHandler) {
+				lastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
+			}
+			if (this._propertyValidatedHandler) {
+				lastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
+			}
+			this._allowedValues = this._allowedValuesMayBeNull = this._allowedValuesRule = this._aspects = this._badValue =
+				this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =
+				this._observable = this._options = this._optionsTransform = this._parentAdapter = this._propertyChain =
+				this._propertyPath = this._readySignal = this._reloadOptionsHandler = this._target = this._targetChangedHandlerArray = null;
+		}
+
+		Adapter.callBaseMethod(this, "dispose");
+
+		if (!disposed) {
+			Sys.Observer.disposeObservable(this);
+			if (options) {
+				options.forEach(Sys.Observer.disposeObservable);
+			}
 		}
 	}
 };

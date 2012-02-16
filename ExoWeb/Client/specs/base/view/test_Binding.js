@@ -142,7 +142,7 @@ describe("Basic behavior", function() {
 			this.evalResult = "value";
 			var binding = new Binding(null, source, "property", {});
 
-			expect(addPathChangedSpy).toHaveBeenCalledWith(source, "property", binding._sourcePathChangedHandler, true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(source, "property", any(Function), true);
 		});
 
 		it("does not watch for a path change if a source path is not provided", function() {
@@ -293,10 +293,10 @@ describe("Required option", function() {
 
 			var binding = new Binding({ index: 0, dataItem: source }, source, "value", { get_element: function() { } }, "value", { required: "val" });
 
-			expect(addPathChangedSpy).toHaveBeenCalledWith(source, "value", binding._sourcePathChangedHandler, true);
-			expect(addPathChangedSpy).toHaveBeenCalledWith(value[0], "val", binding._watchedItemPathChangedHandler, true);
-			expect(addPathChangedSpy).toHaveBeenCalledWith(value[1], "val", binding._watchedItemPathChangedHandler, true);
-			expect(addPathChangedSpy).toHaveBeenCalledWith(value[2], "val", binding._watchedItemPathChangedHandler, true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(source, "value", any(Function), true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(value[0], "val", any(Function), true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(value[1], "val", any(Function), true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(value[2], "val", any(Function), true);
 			expect(setTargetSpy).toHaveBeenCalledWith(value);
 
 			addPathChangedSpy.reset();
@@ -325,10 +325,10 @@ describe("Required option", function() {
 
 			var binding = new Binding({ index: 0, dataItem: source }, source, "value", { get_element: function() { } }, "value", { required: "val" });
 
-			expect(addPathChangedSpy).toHaveBeenCalledWith(source, "value", binding._sourcePathChangedHandler, true);
-			expect(addPathChangedSpy).toHaveBeenCalledWith(value[0], "val", binding._watchedItemPathChangedHandler, true);
-			expect(addPathChangedSpy).toHaveBeenCalledWith(value[1], "val", binding._watchedItemPathChangedHandler, true);
-			expect(addPathChangedSpy).toHaveBeenCalledWith(value[2], "val", binding._watchedItemPathChangedHandler, true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(source, "value", any(Function), true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(value[0], "val", any(Function), true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(value[1], "val", any(Function), true);
+			expect(addPathChangedSpy).toHaveBeenCalledWith(value[2], "val", any(Function), true);
 			expect(setTargetSpy).toHaveBeenCalledWith(value);
 
 			setTargetSpy.reset();
@@ -342,8 +342,8 @@ describe("Required option", function() {
 				}
 			});
 
-			expect(removePathChangedSpy).toHaveBeenCalledWith(removed, "val", binding._watchedItemPathChangedHandler);
-			expect(addPathChangedSpy).toHaveBeenCalledWith(added, "val", binding._watchedItemPathChangedHandler, true);
+			expect(removePathChangedSpy).toHaveBeenCalledWith(removed, "val", any(Function));
+			expect(addPathChangedSpy).toHaveBeenCalledWith(added, "val", any(Function), true);
 		});
 
 	});

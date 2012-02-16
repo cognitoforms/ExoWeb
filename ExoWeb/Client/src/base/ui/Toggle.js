@@ -14,7 +14,7 @@ Toggle.mixin({
 	// Show/Hide
 	//////////////////////////////////////////////////////////
 	do_show: function Toggle$do_show() {
-		$(this.get_element()).show();
+		$(this._element).show();
 		this.set_state("on");
 
 		// visibility has changed so raise event
@@ -25,7 +25,7 @@ Toggle.mixin({
 		this._visible = true;
 	},
 	do_hide: function Toggle$do_hide() {
-		$(this.get_element()).hide();
+		$(this._element).hide();
 		this.set_state("off");
 
 		// visibility has changed so raise event
@@ -66,11 +66,11 @@ Toggle.mixin({
 	// Enable/Disable
 	//////////////////////////////////////////////////////////
 	do_enable: function Toggle$do_enable() {
-		$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().removeAttr("disabled");
+		$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
 		this.set_state("on");
 	},
 	do_disable: function Toggle$do_disable() {
-		$("select,input,textarea,a,button,optgroup,option", this.get_element()).andSelf().attr("disabled", "disabled");
+		$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 		this.set_state("off");
 	},
 
@@ -92,12 +92,12 @@ Toggle.mixin({
 			newContext.dataItem = pctx.dataItem;
 			newContext.index = 0;
 			newContext.parentContext = pctx;
-			newContext.containerElement = this.get_element();
+			newContext.containerElement = this._element;
 			newContext.template = this._getTemplate();
 			newContext.template._ensureCompiled();
 			this._context = newContext;
 
-			Sys.Application._linkContexts(pctx, this, pctx.dataItem, this.get_element(), newContext, this._contentTemplate);
+			Sys.Application._linkContexts(pctx, this, pctx.dataItem, this._element, newContext, this._contentTemplate);
 
 			newContext.initializeComponents();
 			newContext._onInstantiated(null, true);
@@ -121,7 +121,7 @@ Toggle.mixin({
 
 		this.set_state("on");
 		$(this._element).empty();
-		$(this.get_element()).show();
+		$(this._element).show();
 
 		var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
 		context.initializeComponents();
@@ -133,8 +133,11 @@ Toggle.mixin({
 		Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
 		this.set_state("off");
+		if (this._context) {
+			this._context.dispose();
+		}
 		$(this._element).empty();
-		$(this.get_element()).hide();
+		$(this._element).hide();
 
 		Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 	},
@@ -154,18 +157,18 @@ Toggle.mixin({
 	// addClass / removeClass
 	//////////////////////////////////////////////////////////
 	do_addClass: function Toggle$do_addClass() {
-		var $el = $(this.get_element());
+		var $el = $(this._element);
 		
-		if(!$el.is("."+this._class)) {
+		if(!$el.is("." + this._class)) {
 			$el.addClass(this._class);
 			this.set_state("on");
 			Sys.Observer.raiseEvent(this, "classAdded");
 		}
 	},
 	do_removeClass: function Toggle$do_removeClass() {
-		var $el = $(this.get_element());
+		var $el = $(this._element);
 		
-		if($el.is("."+this._class)) {
+		if($el.is("." + this._class)) {
 			$el.removeClass(this._class);
 			this.set_state("off");
 			Sys.Observer.raiseEvent(this, "classRemoved");
@@ -342,12 +345,12 @@ Toggle.mixin({
 		Sys.Observer.raiseEvent(this, value);
 	},
 
-	get_equals: function Toggle$get_equals() {
+	equals: function Toggle$equals() {
 		if (this._when === undefined) {
 			// When is not defined, so condition depends entirely on "on" property
 			var onType = Object.prototype.toString.call(this._on);
 
-			if (this.get_strictMode() === true) {
+			if (this._strictMode === true) {
 				if (this._on.constructor !== Boolean)
 					ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:on should be a value of type Boolean.");
 
@@ -363,7 +366,7 @@ Toggle.mixin({
 		}
 		else if (this._when instanceof Function) {
 			var result = this._when(this._on);
-			if (this.get_strictMode() === true) {
+			if (this._strictMode === true) {
 				if (result === null || result === undefined || result.constructor !== Boolean)
 					ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:when function should return a value of type Boolean.");
 				return result;
@@ -387,7 +390,7 @@ Toggle.mixin({
 	},
 	execute: function Toggle$execute() {
 		if (this.canExecute()) {
-			this[(this.get_equals() === true ? "do_" : "undo_") + this._action].call(this);
+			this[(this.equals() === true ? "do_" : "undo_") + this._action].call(this);
 		}
 	},
 	addContentTemplate: function Toggle$addContentTemplate(tmpl) {
@@ -395,6 +398,18 @@ Toggle.mixin({
 			throw Error.invalidOperation("invalidSysContentTemplate");
 		}
 		Sys.UI.IContentTemplateConsumer.prototype.addContentTemplate.apply(this, arguments);
+	},
+	dispose: function ExoWeb$UI$Toggle$dispose() {
+		if (this._template) {
+			this._template.dispose();
+		}
+		if (this._context) {
+			this._context.dispose();
+		}
+		this._action = this._class = this._collectionChangedHandler = this._contentTemplate =
+			this._context = this._ctxIdx = this._groupName = this._on = this._parentContext =
+			this._state = this._strictMode = this._template = this._visible = this._when = null;
+		ExoWeb.UI.Toggle.callBaseMethod(this, "dispose");
 	},
 	initialize: function Toggle$initialize() {
 		Toggle.callBaseMethod(this, "initialize");
@@ -419,9 +434,9 @@ Toggle.mixin({
 	_stateClass: function(state)
 	{
 		if(state == "on")
-			$(this.get_element()).addClass("toggle-on").removeClass("toggle-off");
+			$(this._element).addClass("toggle-on").removeClass("toggle-off");
 		else
-			$(this.get_element()).removeClass("toggle-on").addClass("toggle-off");
+			$(this._element).removeClass("toggle-on").addClass("toggle-off");
 	}
 });
 

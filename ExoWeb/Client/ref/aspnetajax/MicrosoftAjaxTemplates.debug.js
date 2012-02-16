@@ -883,6 +883,12 @@
 						}
 					}
 				}
+				var components = this.components;
+				if (components) {
+					for (var i = 0, l = components.length; i < l; i++) {
+						delete components[i].__tc;
+					}
+				}
 			}
 			delete Sys.UI.TemplateContext._contexts[this._tcindex];
 			this.nodes = this.dataItem = this.components = this.getInstanceId =
@@ -2228,18 +2234,11 @@
 					if (this._targetOption) Sys.Observer.removeEventHandler(target, "optionsChanged", this._onOptionsUpdated);
 					if (Sys.INotifyDisposing.isImplementedBy(target)) target.remove_disposing(this._onDispose);
 				}
-				this._convert = null;
-				this._convertBack = null;
-				this._convertFn = null;
-				this._convertBackFn = null;
-				this._lastSource = null;
-				this._lastTarget = null;
-				this._source = null;
-				this._target = null;
-				this._pathArray = null;
-				this._defaultValue = null;
-				this._targetPropertyArray = null;
-				this._templateContext = null;
+				this._convert = this._convertBack = this._convertFn = this._convertBackFn = this._lastSource = this._lastTarget =
+					this._source = this._target = this._path = this._pathArray = this._defaultValue = this._targetProperty =
+					this._targetPropertyArray = this._templateContext = this._updateSource = this._sourceOption = this._updateTarget =
+					this._targetOption = this._mode = this._onOptionsUpdated = this._onTargetChanged = this._onSourceChanged = 
+					this._onDispose = null;
 			}
 			Sys.Binding.callBaseMethod(this, 'dispose');
 		}
@@ -3650,10 +3649,13 @@ false);
 				this._fetching = false;
 			}
 			this._swapData(this._data, null);
-			this._currentData = this._lastData = this._placeholders = this._containers = this._placeholder =
-		this._contexts = this._parentContext = this._dvTemplate = this._request = this._dataProvider =
-		this._wsp = this._wspClass = this._provider = this._data = this._fetchParameters = this._query = null;
-			Sys.UI.DataView.callBaseMethod(this, "dispose")
+			this._currentData = this._lastData = this._placeholders = this._containers = this._placeholder = this._contexts =
+				this._autoFetch = this._parentContext = this._dvTemplate = this._request = this._dataProvider = this._wsp =
+				this._wspClass = this._fetching = this._initialSelectedIndex = this._selectedIndex = this._provider = this._data =
+				this._fetchParameters = this._query = this._contentTemplate = this._changed = this._dirty = this._eventType =
+				this._stale = this._timeout = this._visibilityMode = this._changing = this._changedHandler = this._viewData =
+				this._cleared = this._rendered = this._setData = null;
+			Sys.UI.DataView.callBaseMethod(this, "dispose");
 		}
 		function Sys$UI$DataView$initialize() {
 			/// <summary locid="M:J#initialize" />
