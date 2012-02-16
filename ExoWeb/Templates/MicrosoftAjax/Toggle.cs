@@ -314,10 +314,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					}).ToArray(),
 					"style", value =>
 					{
-						// Manipulate attributes of the element based on action and toggle mode
-						if (actionValue == ToggleAction.show || actionValue == ToggleAction.hide)
+						if (actionValue == ToggleAction.show || actionValue == ToggleAction.hide ||
+							actionValue == ToggleAction.render || actionValue == ToggleAction.dispose)
 						{
-							if ((actionValue == ToggleAction.show && equals.Value) || (actionValue == ToggleAction.hide && !equals.Value))
+							if (((actionValue == ToggleAction.show || actionValue == ToggleAction.render) && equals.Value) ||
+								((actionValue == ToggleAction.hide || actionValue == ToggleAction.dispose) && !equals.Value))
 							{
 								if (AttributeHelper.GetCssStyle(value, "display") == "none")
 									value = AttributeHelper.RemoveCssStyle(value, "display");
