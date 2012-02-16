@@ -12481,11 +12481,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 					callback(tmpl.get(0));
 				}
 				else {
-					tmpl.load(path, function () {
+					tmpl.load(path, function (responseText) {
 						var elem = this;
 
 						// Cache the template
-						ExoWeb.cache(path, elem.innerHTML);
+						ExoWeb.cache(path, responseText);
 
 						// if there is a pending request then wait for it to complete
 						if (lastReq) {

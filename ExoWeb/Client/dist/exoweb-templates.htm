@@ -27,8 +27,8 @@
 	<select class="sys-template" sys:value="{ binding systemValue }"
 		sys:attach="dataview" dataview:data="{ binding options }">
 		<option sys:if="{{ $index == 0 }}" value=""></option>
-		<option sys:if="{{ $dataItem.get_selected() }}" selected="selected" sys:value="{ binding systemValue }">{ binding displayValue }</option>
-		<option sys:if="{{ !$dataItem.get_selected() }}" sys:value="{ binding systemValue }">{ binding displayValue }</option>
+		<option sys:if="{{ $dataItem.get_selected() }}" selected="selected" sys:value="{ binding systemValue, mode=oneTime }">{ binding displayValue, mode=oneTime }</option>
+		<option sys:if="{{ !$dataItem.get_selected() }}" sys:value="{ binding systemValue, mode=oneTime }">{ binding displayValue, mode=oneTime }</option>
 	</select>
 </span>
 
@@ -89,25 +89,25 @@
 <!-- field html, string (text area) -->
 <span template:name="field html" template:kind="@" template:datatype="String" class="sys-template" sys:attach="template">
 	<textarea sys:id="html1" sys:value="{ binding displayValue }"
-		sys:cols="{{ !!$dataItem.get_htmlCols ? $dataItem.get_htmlCols() : 60 }}"
-		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : 4 }}"></textarea>
+		sys:cols="{{ !!$dataItem.get_htmlCols ? $dataItem.get_htmlCols() : '' }}"
+		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : '' }}"></textarea>
 </span>																		
 
 <!-- field text, string (text area) -->
 <span template:name="field text" template:kind="@" template:datatype="String" class="sys-template" sys:attach="template">
 	<textarea sys:id="html1" sys:value="{ binding displayValue }"
-		sys:cols="{{ !!$dataItem.get_htmlCols ? $dataItem.get_htmlCols() : 60 }}"
-		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : 4 }}"></textarea>
+		sys:cols="{{ !!$dataItem.get_htmlCols ? $dataItem.get_htmlCols() : '' }}"
+		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : '' }}"></textarea>
 </span>
 
 <!-- field, string (text input) -->
 <span template:name="field" template:kind="@" class="sys-template" sys:attach="template" template:datatype="String" template:isreference="false" template:islist="false">
-	<input type='text' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : 15 }}" />
+	<input type='text' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : '' }}" />
 </span>
 
 <!-- field, string (text password) -->
 <span template:name="password" template:kind="@" class="sys-template" sys:attach="template" template:datatype="String" template:isreference="false" template:islist="false">
-	<input type='password' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : 15 }}" />
+	<input type='password' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : '' }}" />
 </span>
 
 <!-- field, default (text input) -->
@@ -174,36 +174,39 @@
 		});
 	}
 
-	$("input:bound, select:bound, textarea:bound").ever(function () {
-		$(this).validated(function (sender, issues) {
+	$(document.documentElement).ever({
+        selector: "input, select, textarea",
+        bound: function () {
+		    $(this).validated(function (sender, issues) {
 
-			// locate validation area
-			var $area = $(this).closest(".field");
-			var $validation = $area.find(".validation");
+			    // locate validation area
+			    var $area = $(this).closest(".field");
+			    var $validation = $area.find(".validation");
 
-			if ($validation.size() == 0) {
-				$validation = $(this).next();
+			    if ($validation.size() == 0) {
+				    $validation = $(this).next();
 
-				if (!$validation.is('.validation')) {
-					// container not found so inject it
-					$validation = $(this).after("<div class='validation'></div>").next();
-				}
-			}
+				    if (!$validation.is('.validation')) {
+					    // container not found so inject it
+					    $validation = $(this).after("<div class='validation'></div>").next();
+				    }
+			    }
 
-			var states = ["some", "none"];
+			    var states = ["some", "none"];
 
-			if (issues.length == 0) {
-				setState($(this), "validated", "none", states);
-				setState($validation, "validation", "none", states);
-				setState($area, "validated", "none", states);
-			} else {
-				setState($(this), "validated", "some", states);
-				setState($validation, "validation", "some", states);
-				setState($area, "validated", "some", states);
+			    if (issues.length == 0) {
+				    setState($(this), "validated", "none", states);
+				    setState($validation, "validation", "none", states);
+				    setState($area, "validated", "none", states);
+			    } else {
+				    setState($(this), "validated", "some", states);
+				    setState($validation, "validation", "some", states);
+				    setState($area, "validated", "some", states);
 
-				$validation.text(issues[0].get_message());
-			}
-		});
+				    $validation.text(issues[0].get_message());
+			    }
+            });
+		}
 	});
 	
 </script>
