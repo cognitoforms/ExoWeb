@@ -1,1 +1,5 @@
-rake
+call PreRake
+
+PAUSE
+
+call rake
