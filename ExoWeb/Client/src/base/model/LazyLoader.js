@@ -15,7 +15,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		path = new PathTokens(path.join("."));
 	}
 	else if (!ExoWeb.isType(path, PathTokens)) {
-		throw new Error("lazyLoad: Unknown path \"" + path + "\" of type " + ExoWeb.parseFunctionName(path.constructor) + ".");
+		throw new Error("Unknown path \"" + path + "\" of type " + ExoWeb.parseFunctionName(path.constructor) + ".");
 	}
 
 	scopeChain = scopeChain || [window];
@@ -26,7 +26,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		// This is used by evalAll to ensure that array properties can be force loaded at any point in the path.
 		continueFn = arguments[6] instanceof Function ? arguments[6] : continueFn;
 		// Allow recursive calling function (eval or evalAll) to specify that loading was performed.
-		performedLoading = arguments[7] instanceof Boolean ? arguments[7] : performedLoading;
+		performedLoading = arguments[7] instanceof Boolean ? arguments[7] : false;
 		// Allow recursive calling function (eval or evalAll) to specify the root object being used.
 		root = arguments[8];
 		// Allow recursive calling function (eval or evalAll) to specify the processed steps.
@@ -44,15 +44,15 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 	if (target === undefined || target === null) {
 		target = root = Array.dequeue(scopeChain);
 	}
-
+	
 	while (path.steps.length > 0) {
 		// If null or undefined was passed in with no scope chain, fail
 		if (target === undefined || target === null) {
 			if (errorCallback) {
-				errorCallback.call(thisPtr, "Target is null or undefined");
+				errorCallback.apply(thisPtr || this, ["Target is null or undefined"]);
 			}
 			else {
-				throw new Error("lazyLoad: Cannot complete property evaluation because the target is null or undefined");
+				throw new Error("Cannot complete property evaluation because the target is null or undefined");
 			}
 		}
 
@@ -93,10 +93,10 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 			// Otherwise, fail since the path could not be evaluated
 			else {
 				if (errorCallback) {
-					errorCallback.call(thisPtr, "Property is undefined: " + step.property);
+					errorCallback.apply(thisPtr || this, ["Property is undefined: " + step.property]);
 				}
 				else {
-					throw new Error("lazyLoad: Cannot complete property evaluation because a property is undefined: " + step.property);
+					throw new Error("Cannot complete property evaluation because a property is undefined: " + step.property);
 				}
 
 				return;
@@ -120,49 +120,57 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 	// Load final object
 	if (target !== undefined && target !== null && !LazyLoader.isLoaded(target)) {
 		performedLoading = true;
-		LazyLoader.load(target, null, successCallback.prepare(thisPtr, [target, performedLoading, root]));
+		LazyLoader.load(target, null, successCallback.prepare(thisPtr || this, [target, performedLoading, root]));
 	}
 	else if (successCallback) {
-		successCallback.apply(thisPtr, [target, performedLoading, root]);
+		successCallback.apply(thisPtr || this, [target, performedLoading, root]);
 	}
 };
 
-LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading, root*/) {
+LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading, root, processed*/) {
+	var root, performedLoading, processed;
+
+	if (arguments.length === 10) {
+		performedLoading = arguments[7] instanceof Boolean ? arguments[7] : false;
+		root = arguments[8];
+		processed = arguments[9];
+	}
+	else {
+		performedLoading = false;
+		root = target;
+		processed = [];
+	}
+
 	// Ensure that the target is an array
 	if (!(target instanceof Array)) {
-		target = [target];
+		LazyLoader.eval(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed);
+		return;
 	}
 	// Ensure that the array is loaded, then continue
 	else if (!LazyLoader.isLoaded(target)) {
 		LazyLoader.load(target, null, function() {
-			LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root);
+			LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed);
 		});
 		return;
 	}
 
-	var root = target;
-	var performedLoading = false;
-
-	if (arguments.length === 9) {
-		performedLoading = arguments[7] instanceof Boolean ? arguments[7] : false;
-		root = arguments[8];
-	}
-
 	var signal = new ExoWeb.Signal("evalAll - " + path);
 	var results = [];
-	var roots = [];
 	var errors = [];
 	var successCallbacks = [];
 	var errorCallbacks = [];
 	var allSucceeded = true;
 
-	Array.forEach(target, function(subTarget, i) {
+	target.forEach(function(subTarget, i) {
 		results.push(null);
 		errors.push(null);
 		successCallbacks.push(signal.pending(function(result, performedLoadingOne, rootOne) {
 			performedLoading = performedLoading || performedLoadingOne;
 			results[i] = result;
-			roots[i] = rootOne;
+			if (root !== rootOne) {
+				ExoWeb.trace.logWarning("lazyLoad", "Found different roots when evaluating all paths.");
+			}
+			root = rootOne;
 		}));
 		errorCallbacks.push(signal.orPending(function(err) {
 			allSucceeded = false;
@@ -170,32 +178,27 @@ LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, 
 		}));
 	});
 
-	Array.forEach(target, function(subTarget, i) {
+	target.forEach(function(subTarget, i) {
 		// Make a copy of the original path tokens for arrays so that items' processing don't affect one another.
 		if (path instanceof PathTokens) {
 			path = path.buildExpression();
 		}
-		LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root);
+		LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed.slice(0));
 	});
 
 	signal.waitForAll(function() {
 		if (allSucceeded) {
 			// call the success callback if one exists
 			if (successCallback) {
-				successCallback.apply(thisPtr, [results, performedLoading, roots]);
+				successCallback.apply(thisPtr || this, [results, performedLoading, root]);
 			}
 		}
 		else if (errorCallback) {
-			errorCallback.call(thisPtr, errors);
+			errorCallback.apply(thisPtr || this, [errors]);
 		}
 		else {
-			var numErrors = 0;
-			Array.forEach(errors, function(e) {
-				if (e) {
-					ExoWeb.trace.logError(["lazyLoad"], e);
-					numErrors += 1;
-				}
-				ExoWeb.trace.throwAndLog(["lazyLoad"], "{0} errors encountered while attempting to eval paths for all items in the target array.", [numErrors]);
+			errors.forEach(function(e) {
+				throw new Error("Error encountered while attempting to eval paths for all items in the target array: " + e);
 			});
 		}
 	});

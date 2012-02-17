@@ -11,8 +11,17 @@ var ExoWeb = global.ExoWeb = { Model: {} };
 Array.dequeue = function Array$dequeue(array) { return array.shift(); };
 Array.insert = function Array$dequeue(array, index, value) { return array.splice(index, 0, value); };
 
+var config = require("../../../src/base/core/Config");
+ExoWeb.config = config;
+
 var functions = require("../../../src/base/core/Function");
 var arrays = require("../../../src/base/core/Array");
+
+var trace = require("../../../src/base/core/Trace");
+logError = ExoWeb.trace.logError;
+log = ExoWeb.trace.log;
+
+var signal = require("../../../src/base/core/Signal");
 
 // utilities are attached to ExoWeb object
 var typeChecking = require("../../../src/base/core/TypeChecking");
@@ -60,27 +69,89 @@ describe("eval", function() {
 	});
 
 	it("calls the success function with the path value", function() {
-		var success = jasmine.jasmine.createSpy();
-		var failure = jasmine.jasmine.createSpy();
+		var success = jasmine.jasmine.createSpy("success");
+		var failure = jasmine.jasmine.createSpy("failure").andCallFake(function(e) {
+			console.log(e);
+		});
 		LazyLoader.eval(this.data, "Student.Name", success, failure);
-		expect(success).toHaveBeenCalledWith("John Doe", false, this.data);
 		expect(failure).not.toHaveBeenCalled();
+		expect(success).toHaveBeenCalledWith("John Doe", false, this.data);
 	});
 	
 	it("falls back to the global (window) object", function() {
-		var success = jasmine.jasmine.createSpy();
-		var failure = jasmine.jasmine.createSpy();
+		var success = jasmine.jasmine.createSpy("success");
+		var failure = jasmine.jasmine.createSpy("failure").andCallFake(function(e) {
+			console.log(e);
+		});
 		LazyLoader.eval(this.data, "foo.bar", success, failure);
-		expect(success).toHaveBeenCalledWith(true, false, global);
 		expect(failure).not.toHaveBeenCalled();
+		expect(success).toHaveBeenCalledWith(true, false, global);
 	});
 
 	it("falls back to the global (window) object even if part of the path was evaluated", function() {
-		var success = jasmine.jasmine.createSpy();
-		var failure = jasmine.jasmine.createSpy();
+		var success = jasmine.jasmine.createSpy("success");
+		var failure = jasmine.jasmine.createSpy("failure").andCallFake(function(e) {
+			console.log(e);
+		});
 		LazyLoader.eval(this.data, "context.district.Name", success, failure);
-		expect(success).toHaveBeenCalledWith("Some District", false, global);
 		expect(failure).not.toHaveBeenCalled();
+		expect(success).toHaveBeenCalledWith("Some District", false, global);
+	});
+});
+
+describe("evalAll", function() {
+	beforeEach(function() {
+		this.data = {
+			context: "123",
+			Students: [{
+				Name: "John Doe"
+			}, {
+				Name: "Jane Doe"
+			}],
+			Districts: [{
+				Schools: [{
+					Name: "School 1"
+				}, {
+					Name: "School 2"
+				}]
+			}, {
+				Schools: [{
+					Name: "School 3"
+				}, {
+					Name: "School 4"
+				}]
+			}]
+		};
+	});
+
+	it("is equivalent to eval when no arrays exist on the path", function() {
+		var success = jasmine.jasmine.createSpy("success");
+		var failure = jasmine.jasmine.createSpy("failure").andCallFake(function(e) {
+			console.log(e);
+		});
+		LazyLoader.evalAll(this.data, "context", success, failure);
+		expect(failure).not.toHaveBeenCalled();
+		expect(success).toHaveBeenCalledWith("123", false, this.data);
+	});
+
+	it("returns all values for the path", function() {
+		var success = jasmine.jasmine.createSpy("success");
+		var failure = jasmine.jasmine.createSpy("failure").andCallFake(function(e) {
+			console.log(e);
+		});
+		LazyLoader.evalAll(this.data, "Students.Name", success, failure);
+		expect(failure).not.toHaveBeenCalled();
+		expect(success).toHaveBeenCalledWith(["John Doe", "Jane Doe"], false, this.data);
+	});
+
+	it("returns an n-dimensional array depending on the level of nested arrays", function() {
+		var success = jasmine.jasmine.createSpy("success");
+		var failure = jasmine.jasmine.createSpy("failure").andCallFake(function(e) {
+			console.log(e);
+		});
+		LazyLoader.evalAll(this.data, "Districts.Schools.Name", success, failure);
+		expect(failure).not.toHaveBeenCalled();
+		expect(success).toHaveBeenCalledWith([["School 1", "School 2"], ["School 3", "School 4"]], false, this.data);
 	});
 });
 

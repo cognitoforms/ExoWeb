@@ -1252,8 +1252,10 @@ jasmine.Matchers.prototype.toHaveBeenCalled = function() {
     throw new Error('Expected a spy, but got ' + jasmine.pp(this.actual) + '.');
   }
 
+  var prefix = this.isNot ? " not" : "";
+
   this.message = function() {
-    return "Expected spy " + this.actual.identity + " to have been called.";
+    return "Expected spy " + this.actual.identity + prefix + " to have been called.";
   };
 
   return this.actual.wasCalled;
