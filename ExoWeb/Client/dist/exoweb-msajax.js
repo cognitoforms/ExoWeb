@@ -11745,11 +11745,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		// Enable/Disable
-		//////////////////////////////////////////////////////////
+	    //////////////////////////////////////////////////////////
 		do_enable: function Toggle$do_enable() {
 			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
 			this.set_state("on");
-		},
+	    },
+	    link_disable: function Toggle$link_disable() {
+	        $("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
+	    },
 		do_disable: function Toggle$do_disable() {
 			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 			this.set_state("off");
