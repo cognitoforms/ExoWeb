@@ -64,14 +64,16 @@ Toggle.mixin({
 	},
 
 	// Enable/Disable
-    //////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////
+	link_disable: function Toggle$link_disable() {
+		if ((this._action === "disable" && $(this._element).is(".toggle-on")) || (this._action === "enable" && $(this._element).is(".toggle-off"))) {
+			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
+		}
+	},
 	do_enable: function Toggle$do_enable() {
 		$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
 		this.set_state("on");
-    },
-    link_disable: function Toggle$link_disable() {
-        $("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
-    },
+	},
 	do_disable: function Toggle$do_disable() {
 		$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 		this.set_state("off");
@@ -201,6 +203,7 @@ Toggle.mixin({
 
 	// Enable/Disable
 	//////////////////////////////////////////////////////////
+	link_enabled: Toggle.prototype.link_disable,
 	init_disable: Toggle.prototype.init_enable,
 	undo_disable: Toggle.prototype.do_enable,
 	undo_enable: Toggle.prototype.do_disable,
