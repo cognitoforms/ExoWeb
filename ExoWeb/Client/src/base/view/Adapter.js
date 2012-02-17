@@ -667,11 +667,13 @@ Adapter.prototype = {
 			this._unsubscribeFromFormatChanges(this.get_rawValue());
 			// Clean up validation event handlers
 			var lastTarget = this._propertyChain.lastTarget(this._target);
-			if (this._propertyValidatedHandler) {
-				lastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
-			}
-			if (this._propertyValidatedHandler) {
-				lastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
+			if (lastTarget) {
+				if (this._propertyValidatedHandler) {
+					lastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
+				}
+				if (this._propertyValidatedHandler) {
+					lastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
+				}
 			}
 			this._allowedValues = this._allowedValuesMayBeNull = this._allowedValuesRule = this._aspects = this._badValue =
 				this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =

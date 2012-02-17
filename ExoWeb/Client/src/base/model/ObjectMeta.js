@@ -184,6 +184,9 @@ ObjectMeta.mixin({
 	addPropertyValidated: function (propName, handler) {
 		this._addEvent("propertyValidated:" + propName, handler);
 	},
+	removePropertyValidated: function (propName, handler) {
+		this._removeEvent("propertyValidated:" + propName, handler);
+	},
 	_raisePropertyValidating: function (propName) {
 		var queue = this.type.get_model()._validatingQueue;
 		queue.push({ sender: this, propName: propName });
