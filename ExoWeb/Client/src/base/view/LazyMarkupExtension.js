@@ -30,8 +30,13 @@ Sys.Application.registerMarkupExtension(
 				source = properties.source;
 			}
 		}
-		else {
+		else if (templateContext.dataItem) {
 			source = templateContext.dataItem;
+		}
+		else {
+			// No context data, so path must be global
+			source = window;
+			scopeChain = [];
 		}
 
 		var binding = new Binding(templateContext, source, path, component, properties.targetProperty || targetProperty, {

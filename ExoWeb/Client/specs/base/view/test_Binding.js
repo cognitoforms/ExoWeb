@@ -116,7 +116,7 @@ function onBeforeEach() {
 	self.evalResult = null;
 
 	ExoWeb.Model.LazyLoader.eval = function(source, path, callback) {
-		callback(self.evalResult);
+		callback(self.evalResult, false, source);
 	};
 
 	self.getResult = null;

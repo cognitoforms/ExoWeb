@@ -228,7 +228,9 @@ Binding.mixin({
 		}
 	},
 
-	_evalSuccess: function(result, message) {
+	_evalSuccess: function(result, performedLoading, source) {
+		this._source = source;
+
 		if (this._disposed) {
 			return;
 		}

@@ -12,11 +12,10 @@ ExoWeb.Model = {};
 var functions = require("../../../src/base/core/Function");
 var arrays = require("../../../src/base/core/Array");
 
-var pathTokens = require("../../../src/base/model/PathTokens");
+var PathTokens = require("../../../src/base/model/PathTokens").PathTokens;
 
 // References
 ///////////////////////////////////////
-var PathTokens = ExoWeb.Model.PathTokens;
 var describe = jasmine.describe;
 var it = jasmine.it;
 var expect = jasmine.expect;

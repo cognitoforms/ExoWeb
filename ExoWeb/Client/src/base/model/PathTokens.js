@@ -90,4 +90,4 @@ PathTokens.mixin({
 	}
 });
 
-ExoWeb.Model.PathTokens = PathTokens;
+exports.PathTokens = PathTokens;

@@ -184,8 +184,8 @@ Adapter.prototype = {
 
 		// The last target does not change if this is a single-property chain,
 		// so no need to update validation events
-		if (numProps > 1) {
-			// If there was initially no value then no validation event handlers would need to be removed
+		if (numProps > 1 && args.triggeredBy !== this._propertyChain.lastProperty()) {
+			// Remove event handlers for previous last target
 			if (args.oldValue) {
 				// Determine the old last target
 				var property,
@@ -209,15 +209,12 @@ Adapter.prototype = {
 					}
 				}
 			}
-			// If a value is being initially set for any property other than the last property (which would affect the value of
-			// the last target) then initially set up validation event handlers that were set previously.
-			else if (args.triggeredBy !== this.lastProperty()) {
-				if (this._propertyValidatedHandler) {
-					this.addPropertyValidated(null, this._propertyValidatedHandler);
-				}
-				if (this._propertyValidatingHandler) {
-					this.addPropertyValidating(null, this._propertyValidatingHandler);
-				}
+
+			if (this._propertyValidatedHandler) {
+				this.addPropertyValidated(null, this._propertyValidatedHandler);
+			}
+			if (this._propertyValidatingHandler) {
+				this.addPropertyValidating(null, this._propertyValidatingHandler);
 			}
 		}
 	},
