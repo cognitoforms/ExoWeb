@@ -97,12 +97,15 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 						if (binding.Value != null)
 						{
-							if (attributeName != "if" && attributeName != "innerhtml" && attributeName != "innertext" && !(isTextArea && attributeName == "value"))
+							if (attributeName != "if" && attributeName != "innerhtml" && attributeName != "innertext" && !(isTextArea && attributeName == "value") && !attribute.Name.StartsWith("sys:class-"))
 							{
-								if (!isHtmlBool)
+								if (isHtmlBool)
+								{
+									if (JavaScriptHelpers.IsTruthy(binding.Value))
+										RenderAttribute(writer, attributeName, attributeName);
+								}
+								else
 									RenderAttribute(writer, attributeName, binding.Value.ToString());
-								else if (JavaScriptHelpers.IsTruthy(binding.Value))
-									RenderAttribute(writer, attributeName, attributeName);
 							}
 						}
 					}
@@ -119,10 +122,13 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			// Simple attribute
 			else if (attribute.Name.Contains(":") && attribute.Name != "sys:id")
 				RenderAttribute(writer, "data-" + attribute.Name.Replace(':', '-'), attribute.Value);
-			else if (!isHtmlBool)
+			else if (isHtmlBool)
+			{
+				if (JavaScriptHelpers.IsTruthy(attribute.Value))
+					RenderAttribute(writer, attribute.Name, attribute.Name);
+			}
+			else
 				RenderAttribute(writer, attribute.Name, attribute.Value);
-			else if (JavaScriptHelpers.IsTruthy(attribute.Value))
-				RenderAttribute(writer, attribute.Name, attribute.Name);
 		}
 
 		public void Abort(System.IO.TextWriter writer, bool isHtmlBool)

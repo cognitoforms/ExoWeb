@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using ExoModel;
 using System.Web;
+using ExoWeb.Templates.JavaScript;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {
@@ -60,8 +61,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			if (attributeTransform != null)
 				attributes = attributeTransform(attributes);
 
+			string classNames = null;
 			bool foundId = false;
 			bool isTextArea = Tag.Equals("textarea", StringComparison.InvariantCultureIgnoreCase);
+
 			// Write the attributes to the output stream
 			foreach (var attribute in attributes)
 			{
@@ -98,7 +101,41 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				if (abort)
 					attribute.Abort(writer, isHtmlBoolean);
 				else
-					attribute.Render(page, writer, isHtmlBoolean, !page.Context.IsGlobal, isTextArea);
+				{
+					if (attribute.Name == "class")
+					{
+						if (classNames == null)
+							classNames = (string)attribute.Value;
+						else
+							classNames += " " + (string)attribute.Value;
+					}
+					else
+					{
+						if (attribute.Name.StartsWith("sys:class-"))
+						{
+							// If binding evaluates as truthy, then render the store the class name
+							if (JavaScriptHelpers.IsTruthy(attribute.Value))
+							{
+								string sysClassValue = attribute.Name.Substring(10);
+								if (classNames == null)
+									classNames = sysClassValue;
+								else
+									classNames += (classNames.Length > 0 ? " " : "") + sysClassValue;
+							}
+						}
+						attribute.Render(page, writer, isHtmlBoolean, !page.Context.IsGlobal, isTextArea);
+					}
+				}
+			}
+
+			// Write direct class and sys:class- attribute values together. Note: by checking
+			// for null we may be avoiding writing a class attribute altogether whereas the
+			// client framework would have produced an empty class attribute.
+			if (classNames != null)
+			{
+				writer.Write(" class=\"");
+				HttpUtility.HtmlAttributeEncode(classNames, writer);
+				writer.Write("\"");
 			}
 
 			// Close Tag
