@@ -244,16 +244,15 @@ describe("Format option", function() {
 
 });
 
-describe("IfNull option", function () {
+describe("nullValue option", function () {
 
 	beforeEach(onBeforeEach);
 
 	describe("Binding", function () {
 
 		it("sets the target to the given value if the source value is null or undefined", function () {
-			var setTargetSpy = jasmine.spyOn(Binding.prototype, "_ifNull").andCallThrough();
-			var binding = new Binding({ index: 0, dataItem: {} }, {}, "value", { get_element: function () { } }, "value", { ifNull: "n/a" });
-			expect(binding._ifNull(null)).toBe("n/a");
+			var binding = new Binding({ index: 0, dataItem: {} }, {}, "value", { get_element: function () { } }, "value", { nullValue: "n/a" });
+			expect(binding._getValue(null)).toBe("n/a");
 		});
 
 	});

@@ -88,44 +88,34 @@ Binding.mixin({
 	// setting the target.  These methods are NOT asynchronous.
 	//////////////////////////////////////////////////////////////////////////
 
-	_ifNull: function(value) {
-		// use a default value if the source value is null or undefined
-		if (isNullOrUndefined(value) && this._options.ifNull) {
-			return this._options.ifNull;
-		}
-
-		return value;
-	},
-
-	_format: function(value) {
-		// attempt to format the source value used the named format
-		if (value && this._options.format) {
-			return getFormat(value.constructor, this._options.format).convert(value);
-		}
-
-		return value;
-	},
-
-	_transform: function(value) {
-		// pass the value through if no transform is specified
-		if (!this._options.transform)
-			return value;
-
-		if (value) {
-			if (!this._transformFn) {
-				// generate the transform function
-				this._transformFn = new Function("list", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
+	_getValue: function(value) {
+		// Use a default value if the source value is null. NOTE: Because of the way LazyLoader.eval and evalPath are used,
+		// the result should never be undefined. Undefined would indicate that a property did not exist, which would be an
+		// error. This also has the side-effect of being more compatible with server-side rendering.
+		if (value === null) {
+			if (this._options.hasOwnProperty("nullValue")) {
+				return this._options.nullValue;
 			}
-
-			// transform the original list using the given options
-			var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
-
-			if (transformResult.live !== Transform.prototype.live) {
-				ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", and \"groupBy\".");
-			}
-
-			return transformResult.live();
 		}
+		else {
+			// Attempt to format the source value using a format specifier
+			if (this._options.format) {
+				return getFormat(value.constructor, this._options.format).convert(value);
+			}
+			else if (this._options.transform) {
+				// Generate the transform function
+				if (!this._transformFn) {
+					this._transformFn = new Function("list", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
+				}
+				// Transform the original list using the given options
+				var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
+				if (transformResult.live !== Transform.prototype.live) {
+					ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", and \"groupBy\".");
+				}
+				return transformResult.live();
+			}
+		}
+		return value;
 	},
 
 	// Functions that deal with responding to changes, asynchronous loading,
@@ -161,11 +151,11 @@ Binding.mixin({
 		// If additional paths are required then load them before invoking the callback.
 		if (this._options.required) {
 			this._updateWatchedItems(value, oldItems, newItems, function() {
-				this._queue(this._format(this._ifNull(this._transform(value))));
+				this._queue(this._getValue(value));
 			});
 		}
 		else {
-			this._queue(this._format(this._ifNull(this._transform(value))));
+			this._queue(this._getValue(value));
 		}
 	},
 	

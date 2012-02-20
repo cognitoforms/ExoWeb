@@ -208,19 +208,32 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 				var result = page.EvaluatePath(path);
 
-				if (format != null && result.Value is IFormattable)
-					result.Value = ((IFormattable)result.Value).ToString(format, null);
-
-				string transformText;
-				if (transform == null && Parameters.TryGetValue("transform", out transformText) && transformText.Length > 0)
-					transform = Transform.Compile(transformText);
-
-				if (result.IsValid && transform != null && result.Value != null)
+				if (result.IsValid)
 				{
-					//result.Value = transform.Execute(page, (IEnumerable)result.Value);
-					IEnumerable transformed;
-					result.IsValid = transform.TryExecute(page, (IEnumerable)result.Value, out transformed);
-					result.Value = result.IsValid ? transformed : null;
+					if (result.Value == null)
+					{
+						string nullValue;
+						if (Parameters.TryGetValue("nullValue", out nullValue))
+							result.Value = nullValue;
+					}
+					else
+					{
+						if (format != null && result.Value is IFormattable)
+							result.Value = ((IFormattable)result.Value).ToString(format, null);
+						else
+						{
+							string transformText;
+							if (transform == null && Parameters.TryGetValue("transform", out transformText) && transformText.Length > 0)
+								transform = Transform.Compile(transformText);
+
+							if (result.IsValid && transform != null)
+							{
+								IEnumerable transformed;
+								result.IsValid = transform.TryExecute(page, (IEnumerable)result.Value, out transformed);
+								result.Value = result.IsValid ? transformed : null;
+							}
+						}
+					}
 				}
 
 				return new AttributeBinding(Attribute, result);

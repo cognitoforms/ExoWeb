@@ -43,7 +43,7 @@ Sys.Application.registerMarkupExtension(
 			required: properties.required,
 			transform: properties.transform,
 			format: properties.format,
-			ifNull: properties.ifNull
+			nullValue: properties.nullValue
 		}, scopeChain);
 
 		// register with the template context as a child component

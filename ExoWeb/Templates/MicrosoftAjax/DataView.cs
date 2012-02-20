@@ -91,7 +91,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			IEnumerable list;
 			if (dataBinding.Value == null)
 				list = new object[0];
-			else if (dataBinding.Value is IEnumerable)
+			else if (dataBinding.Value is IEnumerable && !(dataBinding.Value is string))
 				list = (IEnumerable)dataBinding.Value;
 			else
 				list = new object[] { dataBinding.Value };
