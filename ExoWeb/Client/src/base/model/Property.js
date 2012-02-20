@@ -5,7 +5,7 @@
 /// that can be treated as a single property.
 /// </remarks>
 ///////////////////////////////////////////////////////////////////////////////
-function Property(containingType, name, jstype, isList, label, format, isStatic, index) {
+function Property(containingType, name, jstype, isList, label, format, isStatic, isPersisted, index) {
 	this._containingType = containingType;
 	this._name = name;
 	this._fieldName = "_" + name;
@@ -14,11 +14,19 @@ function Property(containingType, name, jstype, isList, label, format, isStatic,
 	this._format = format;
 	this._isList = !!isList;
 	this._isStatic = !!isStatic;
+	this._isPersisted = !!isPersisted;
 	this._index = index;
 	this._rules = [];
 
 	if (containingType.get_originForNewProperties()) {
 		this._origin = containingType.get_originForNewProperties();
+	}
+
+	if (this._origin === "client" && this._isPersisted) {
+		ExoWeb.trace.logWarning("model",
+			"Client-origin properties should not be marked as persisted: Type = {0}, Name = {1}",
+			containingType.get_fullName(),
+			name);
 	}
 }
 
@@ -254,6 +262,10 @@ Property.mixin({
 
 	get_isStatic: function Property$get_isStatic() {
 		return this._isStatic;
+	},
+
+	get_isPersisted: function Property$get_isPersisted() {
+		return this._isPersisted;
 	},
 
 	get_label: function Property$get_label() {

@@ -3726,7 +3726,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				format = getFormat(def.type, format);
 			}
 
-			var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic, def.index);
+			var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic, def.isPersisted, def.index);
 
 			this._properties[def.name] = prop;
 			(def.isStatic ? this._staticProperties : this._instanceProperties)[def.name] = prop;
@@ -4172,7 +4172,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, jstype, isList, label, format, isStatic, index) {
+	function Property(containingType, name, jstype, isList, label, format, isStatic, isPersisted, index) {
 		this._containingType = containingType;
 		this._name = name;
 		this._fieldName = "_" + name;
@@ -4181,11 +4181,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._format = format;
 		this._isList = !!isList;
 		this._isStatic = !!isStatic;
+		this._isPersisted = !!isPersisted;
 		this._index = index;
 		this._rules = [];
 
 		if (containingType.get_originForNewProperties()) {
 			this._origin = containingType.get_originForNewProperties();
+		}
+
+		if (this._origin === "client" && this._isPersisted) {
+			ExoWeb.trace.logWarning("model",
+				"Client-origin properties should not be marked as persisted: Type = {0}, Name = {1}",
+				containingType.get_fullName(),
+				name);
 		}
 	}
 
@@ -4421,6 +4429,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		get_isStatic: function Property$get_isStatic() {
 			return this._isStatic;
+		},
+
+		get_isPersisted: function Property$get_isPersisted() {
+			return this._isPersisted;
 		},
 
 		get_label: function Property$get_label() {
@@ -9872,7 +9884,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var format = getFormat(propType, propJson.format);
 
 			// Add the property
-			var prop = mtype.addProperty({ name: propName, type: propType, isList: propJson.isList, label: propJson.label, format: format, isStatic: propJson.isStatic, index: propJson.index });
+			var prop = mtype.addProperty({
+				name: propName,
+				type: propType,
+				isList: propJson.isList,
+				label: propJson.label,
+				format: format,
+				isStatic: propJson.isStatic,
+				isPersisted: propJson.isPersisted !== false,
+				index: propJson.index
+			});
 
 			// setup static properties for lazy loading
 			if (propJson.isStatic) {
@@ -11756,14 +11777,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		// Enable/Disable
-	    //////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////
+		link_disable: function Toggle$link_disable() {
+			if ((this._action === "disable" && $(this._element).is(".toggle-on")) || (this._action === "enable" && $(this._element).is(".toggle-off"))) {
+				$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
+			}
+		},
 		do_enable: function Toggle$do_enable() {
 			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
 			this.set_state("on");
-	    },
-	    link_disable: function Toggle$link_disable() {
-	        $("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
-	    },
+		},
 		do_disable: function Toggle$do_disable() {
 			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 			this.set_state("off");
@@ -11893,6 +11916,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Enable/Disable
 		//////////////////////////////////////////////////////////
+		link_enabled: Toggle.prototype.link_disable,
 		init_disable: Toggle.prototype.init_enable,
 		undo_disable: Toggle.prototype.do_enable,
 		undo_enable: Toggle.prototype.do_disable,

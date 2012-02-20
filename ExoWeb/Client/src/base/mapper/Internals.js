@@ -308,7 +308,16 @@ function typeFromJson(model, typeName, json) {
 		var format = getFormat(propType, propJson.format);
 
 		// Add the property
-		var prop = mtype.addProperty({ name: propName, type: propType, isList: propJson.isList, label: propJson.label, format: format, isStatic: propJson.isStatic, index: propJson.index });
+		var prop = mtype.addProperty({
+			name: propName,
+			type: propType,
+			isList: propJson.isList,
+			label: propJson.label,
+			format: format,
+			isStatic: propJson.isStatic,
+			isPersisted: propJson.isPersisted !== false,
+			index: propJson.index
+		});
 
 		// setup static properties for lazy loading
 		if (propJson.isStatic) {
