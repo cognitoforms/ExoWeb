@@ -1626,7 +1626,11 @@
 					// Assign context index (mimicks compiled code)
 					node.__mstcindex = currentContext._tcindex;
 
-					if (!generateChildIds) {
+					if (node.hasAttribute("data-continue")) {
+						// Children were allowed to continue rendering, so don't start generating ids
+						node.removeAttribute("data-continue");
+					}
+					else if (!generateChildIds) {
 						// Detect special attributes that would have been taken care of by server-side rendering.
 						generateChildIds = node.hasAttribute("sys:attach") || node.hasAttribute("sys:if") || node.hasAttribute("sys:content-template");
 					}

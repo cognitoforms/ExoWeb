@@ -92,8 +92,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			else
 			{
 				RenderStartTag(page, writer,
-					// replace data-sys-attach attribute with sys:attach
-					AbortSysAttachDataAttribute,
+					// replace data-sys-attach attribute with sys:attach and add data-continue attribute to notify client that children were allowed to render
+					attributes => MergeAttribute(AbortSysAttachDataAttribute(attributes), "data-continue", value => "data-continue"),
 					// abort rendering
 					true,
 					// pass in all binding attributes
