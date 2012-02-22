@@ -14746,8 +14746,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var target = this._target,
 				link = force === false;
 
-			force = force === true;
-
 			// invoke the method implementation
 			sourceChangedImpl.apply(this, [force]);
 
