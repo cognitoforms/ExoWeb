@@ -59,7 +59,7 @@ namespace ExoWeb
 
 						// Invoke the request and output the response
 						context.Response.ContentType = "application/json";
-						context.Response.Write(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke()));
+						context.Response.Write(ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke(null)));
 
 						break;
 
@@ -72,7 +72,7 @@ namespace ExoWeb
 
 						// Output the type metadata
 						context.Response.ContentType = "application/json";
-						context.Response.Write(ExoWeb.ToJson(typeof(ServiceResponse), ExoWeb.FromJson<ServiceRequest>("{types:[" + context.Request.QueryString["type"] + "]}").Invoke()));
+						context.Response.Write(ExoWeb.ToJson(typeof(ServiceResponse), ExoWeb.FromJson<ServiceRequest>("{types:[" + context.Request.QueryString["type"] + "]}").Invoke(null)));
 
 						break;
 

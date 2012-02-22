@@ -66,7 +66,7 @@ namespace ExoWeb
 		/// Outputs the JSON for the specified instance to the response stream.
 		/// </summary>
 		/// <param name="response"></param>
-		internal ServiceResponse Invoke()
+		internal ServiceResponse Invoke(ModelTransaction initChanges)
 		{
 			// Raise the begin request event
 			ExoWeb.OnBeginRequest(this);
@@ -74,6 +74,7 @@ namespace ExoWeb
 			// Create a response for the request
 			ServiceResponse response = new ServiceResponse();
 			response.ServerInfo = new ServerInformation();
+			response.Changes = initChanges;
 
 			try
 			{
@@ -99,13 +100,13 @@ namespace ExoWeb
 				}
 
 				// Preload the scope of work before applying changes
-				PerformQueries(response, false);
+				PerformQueries(response, false, initChanges != null);
 
 				// Apply additional changes and raise domain events
 				ApplyChanges(response);
 
 				// Load instances specified by load queries
-				PerformQueries(response, true);
+				PerformQueries(response, true, initChanges != null);
 
 				// Condense the transaction log
 				if (response.Changes != null)
@@ -158,13 +159,37 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="response"></param>
 		/// <param name="forLoad"></param>
-		void PerformQueries(ServiceResponse response, bool forLoad)
+		void PerformQueries(ServiceResponse response, bool forLoad, bool forInit)
 		{
 			// Load data based on the specified queries
 			if (Queries != null)
 			{
 				// Record changes while processing queries
-				if (forLoad)
+				if (forInit)
+				{
+					response.Changes.Record(() => ProcessQueryInstances(response, forLoad), evt =>
+					{
+						if (evt.Instance.IsNew)
+							return true;
+
+						var refChange = evt as ModelReferenceChangeEvent;
+						if (refChange != null)
+						{
+							return (refChange.OldValue != null && refChange.OldValue.IsNew) ||
+								(refChange.NewValue != null && refChange.NewValue.IsNew);
+						}
+
+						var listChange = evt as ModelListChangeEvent;
+						if (listChange != null)
+						{
+							return (listChange.Added != null && listChange.Added.Any(i => i.IsNew)) ||
+								(listChange.Removed != null && listChange.Removed.Any(i => i.IsNew));
+						}
+
+						return false;
+					});
+				}
+				else if (forLoad)
 					(response.Changes ?? new ModelTransaction()).Record(() => ProcessQueryInstances(response, forLoad));
 				else
 					ProcessQueryInstances(response, forLoad);
@@ -194,7 +219,7 @@ namespace ExoWeb
 				.Select(cs => cs.Changes));
 
 			// Chain the transactions about to be applied to any previously applied initialization changes
-			if (response.Changes != null)
+			if (response.Changes != null && transaction != null)
 				response.Changes.Chain(transaction);
 
 			// Apply changes and raise domain events
@@ -203,7 +228,7 @@ namespace ExoWeb
 
 			// Otherwise, just raise events
 			else
-				response.Changes = new ModelTransaction().Record(() => RaiseEvents(response, null));
+				response.Changes = (response.Changes ?? new ModelTransaction()).Record(() => RaiseEvents(response, null));
 		}
 	
 		/// <summary>

@@ -277,8 +277,18 @@ namespace ExoWeb
 				}
 			}
 
+			// Create the request object
+			ServiceRequest request = new ServiceRequest(roots.Select(r => r.Value).ToArray());
+
+			// Synthesize init new changes for new query roots
+			ModelTransaction initChanges = (ModelTransaction)request.Queries
+					.SelectMany(q => q.Roots)
+					.Where(i => i.IsNew)
+					.Select(i => new ModelInitEvent.InitNew(i))
+					.Cast<ModelEvent>()
+					.ToList();
+
 			// Perform the initialization action, if specified
-			ModelTransaction initChanges = null;
 			if (init != null)
 			{
 				// Determine matching parameters
@@ -311,30 +321,15 @@ namespace ExoWeb
 				}
 
 				// Perform initialization while capturing changes
-				initChanges = new ModelTransaction().Record(() =>
+				initChanges.Record(() =>
 				{
 					// Prevent property change rules from running until after initialization
 					ModelEventScope.Perform(() => init.DynamicInvoke(parameters));
 				});
 			}
 
-			// Execute the queries
-			ServiceRequest request = new ServiceRequest(roots.Select(r => r.Value).ToArray());
-			ServiceResponse response = request.Invoke();
-
-			// Keep init and property get changes that were captured when processing the queries.
-			ModelTransaction queryChanges = response.Changes;
-
-			// Prepend initialization events for each instance created by the model queries
-			var rootChanges = (ModelTransaction)request.Queries
-					.SelectMany(q => q.Roots)
-					.Where(i => i.IsNew)
-					.Select(i => new ModelInitEvent.InitNew(i))
-					.Cast<ModelEvent>()
-					.ToList();
-
-			// Combine all changes into a single model transaction.
-			response.Changes = ModelTransaction.Combine(new ModelTransaction[] { rootChanges, initChanges, queryChanges }.Where(t => t != null));
+			// Invoke the request queries
+			ServiceResponse response = request.Invoke(initChanges);
 
 			response.Model = roots.ToDictionary(r => r.Key, r => r.Value);
 			foreach (var q in response.Model.Values)
@@ -631,7 +626,7 @@ namespace ExoWeb
 		public static string ProcessRequest(string json)
 		{
 			ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
-			return ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke());
+			return ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke(null));
 		}
 
 		public static void RegisterForSerialization(Assembly assembly)
@@ -661,7 +656,7 @@ namespace ExoWeb
 
 		static string GetTypes(params ModelType[] types)
 		{
-			var json = ToJson(typeof(ServiceResponse), new ServiceRequest(types).Invoke());
+			var json = ToJson(typeof(ServiceResponse), new ServiceRequest(types).Invoke(null));
 			return json.Substring(1, json.Length - 2);
 		}
 
