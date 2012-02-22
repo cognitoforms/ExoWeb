@@ -14743,7 +14743,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		var sourceChangedImpl = Sys.Binding.prototype._sourceChanged;
 		Sys.Binding.prototype._sourceChanged = function (force) {
-			var target = this._target;
+			var target = this._target,
+				link = force === false;
+
+			force = force === true;
 
 			// invoke the method implementation
 			sourceChangedImpl.apply(this, [force]);
@@ -14751,7 +14754,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (this._disposed) return;
 
 			// Remove checked attribute from other radio buttons in the group that are currently checked.
-			if (Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]") && !this._lastSource) {
+			if (!link && Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]") && !this._lastSource) {
 				$(target).removeAttr("checked");
 			}
 		};
