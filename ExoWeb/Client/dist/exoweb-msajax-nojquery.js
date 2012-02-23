@@ -15031,8 +15031,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Number
 		if (type === Number) {
-			var isCurrency = format.match(/[$c]+/i);
-			var isPercentage = format.match(/[%p]+/i);
+			var isCurrencyFormat = format.match(/[$c]+/i);
+			var isPercentageFormat = format.match(/[%p]+/i);
+			var isIntegerFormat = format.match(/[dnfg]0/i);
 
 			return new Format({
 				description: "",
@@ -15054,12 +15055,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 					var result;
 
 					// Remove currency symbols before parsing
-					if (isCurrency)
+					if (isCurrencyFormat)
 						result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
 
 					// Remove percentage symbols before parsing and divide by 100
-					else if (isPercentage)
+					else if (isPercentageFormat)
 						result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
+
+					// Ensure integers are actual whole numbers
+					else if (isIntegerFormat && !isInteger(Number.parseLocale(str)))
+						result = NaN;
 
 					// Just parse a simple number
 					else
@@ -15093,7 +15098,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return new Format({
 				description: "",
 				convert: function (val) {
-					if (val === true) 
+					if (val === true)
 						return trueFormat;
 					else if (val === false)
 						return falseFormat;
