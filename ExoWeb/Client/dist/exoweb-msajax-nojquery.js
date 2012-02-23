@@ -4030,7 +4030,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 							if (sender instanceof jstype) {
 								Type$addRule$changed.apply(this, arguments);
 							}
-						}
+						},
+						null, // no object filter
+						false, // subscribe for all time, not once
+						true // tolerate nulls since rule execution logic will handle guard conditions
 					);
 				}
 
