@@ -136,7 +136,7 @@ Adapter.prototype = {
 			this._formatSubscribers = {};
 
 			// set up initial watching of format paths
-			if (this._propertyChain.lastTarget(this._target)) {
+			if (this._propertyChain.lastTarget(this._target, true)) {
 				var rawValue = this._propertyChain.value(this._target);
 				this._subscribeToFormatChanges(rawValue);
 			}
