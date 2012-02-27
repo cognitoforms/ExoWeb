@@ -7149,7 +7149,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Load final object
 		if (target !== undefined && target !== null && !LazyLoader.isLoaded(target)) {
 			performedLoading = true;
-			LazyLoader.load(target, null, successCallback.prepare(thisPtr || this, [target, performedLoading, root]));
+			LazyLoader.load(target, null, successCallback ? successCallback.prepare(thisPtr || this, [target, performedLoading, root]) : undefined);
 		}
 		else if (successCallback) {
 			successCallback.apply(thisPtr || this, [target, performedLoading, root]);
