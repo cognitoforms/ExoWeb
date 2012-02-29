@@ -175,8 +175,12 @@ ChangeLog.mixin({
 			return;
 		}
 
+		var newChanges = 0;
+
 		try {
 			var batch = ExoWeb.Batch.start("apply changes");
+
+			serverSync.beginApplyingChanges();
 
 			if ((source !== undefined && source !== null && (!this.activeSet() || this.activeSet().source() !== source)) || serverSync.isCapturingChanges()) {
 				if (source) {
@@ -188,7 +192,6 @@ ChangeLog.mixin({
 				}
 			}
 
-			var newChanges = 0;
 			var currentChanges = this.count(serverSync.canSave, serverSync);
 			var totalChanges = changes.length;
 
@@ -269,23 +272,24 @@ ChangeLog.mixin({
 				}
 			}, this);
 
-
 			// start a new set to capture future changes
 			if (serverSync.isCapturingChanges()) {
 				this.start("client");
-			}
-
-			ExoWeb.Batch.end(batch);
-
-			// raise "HasPendingChanges" change event, only new changes were recorded
-			if (newChanges > 0) {
-				Sys.Observer.raisePropertyChanged(serverSync, "HasPendingChanges");
 			}
 		}
 		catch (e) {
 			// attempt to clean up in the event of an error
 			ExoWeb.Batch.end(batch);
 			ExoWeb.trace.throwAndLog(["server"], e);
+		}
+		finally {
+			serverSync.endApplyingChanges();
+			ExoWeb.Batch.end(batch);
+		}
+
+		// raise "HasPendingChanges" change event, only new changes were recorded
+		if (newChanges > 0) {
+			Sys.Observer.raisePropertyChanged(serverSync, "HasPendingChanges");
 		}
 	},
 	applySaveChange: function (change, serverSync, before, after) {
@@ -457,7 +461,9 @@ ChangeLog.mixin({
 
 				// don't end update until the items have been loaded
 				listSignal.waitForAll(serverSync.ignoreChanges(before, function () {
+					serverSync.beginApplyingChanges();
 					list.endUpdate();
+					serverSync.endApplyingChanges();
 				}, after), this, true);
 			}, after), this);
 		}, this);

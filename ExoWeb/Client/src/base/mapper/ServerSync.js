@@ -286,21 +286,30 @@ ServerSync.mixin({
 		return !instanceObj || this.canSaveObject(instanceObj);
 	},
 
-	_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback) {
-		var signal = new ExoWeb.Signal("Success");
+	_handleResult: function ServerSync$handleResult(result, source, checkpoint, callbackOrOptions) {
+		var options,
+			batch,
+			signal = new ExoWeb.Signal("Success");
+
+		if (callbackOrOptions instanceof Function) {
+			options = { callback: callbackOrOptions };
+		}
+		else {
+			options = callbackOrOptions;
+		}
 
 		if (result.serverinfo)
 			this.set_ServerInfo(result.serverinfo);
 
 		if (result.instances) {
-			var batch = ExoWeb.Batch.start();
+			batch = ExoWeb.Batch.start();
 
 			objectsFromJson(this._model, result.instances, signal.pending(function () {
 				function processChanges() {
 					ExoWeb.Batch.end(batch);
 
 					if (result.changes && result.changes.length > 0) {
-						this._changeLog.applyChanges(checkpoint, result.changes, source, this);
+						this._changeLog.applyChanges(checkpoint, result.changes, source, this, null, options.beforeApply, options.afterApply);
 					}
 					else if (source) {
 						// no changes, so record empty set
@@ -319,7 +328,7 @@ ServerSync.mixin({
 			}), this);
 		}
 		else if (result.changes && result.changes.length > 0) {
-			this._changeLog.applyChanges(checkpoint, result.changes, source, this);
+			this._changeLog.applyChanges(checkpoint, result.changes, source, this, null, options.beforeApply, options.afterApply);
 			if (result.conditions) {
 				conditionsFromJson(this._model, result.conditions, signal.pending());
 			}
@@ -337,8 +346,8 @@ ServerSync.mixin({
 		}
 
 		signal.waitForAll(function () {
-			if (callback && callback instanceof Function) {
-				callback.call(this);
+			if (options.callback && options.callback instanceof Function) {
+				options.callback.call(this);
 			}
 		}, this);
 	},

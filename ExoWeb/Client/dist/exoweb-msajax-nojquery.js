@@ -8360,8 +8360,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return;
 			}
 
+			var newChanges = 0;
+
 			try {
 				var batch = ExoWeb.Batch.start("apply changes");
+
+				serverSync.beginApplyingChanges();
 
 				if ((source !== undefined && source !== null && (!this.activeSet() || this.activeSet().source() !== source)) || serverSync.isCapturingChanges()) {
 					if (source) {
@@ -8373,7 +8377,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 				}
 
-				var newChanges = 0;
 				var currentChanges = this.count(serverSync.canSave, serverSync);
 				var totalChanges = changes.length;
 
@@ -8459,18 +8462,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (serverSync.isCapturingChanges()) {
 					this.start("client");
 				}
-
-				ExoWeb.Batch.end(batch);
-
-				// raise "HasPendingChanges" change event, only new changes were recorded
-				if (newChanges > 0) {
-					Sys.Observer.raisePropertyChanged(serverSync, "HasPendingChanges");
-				}
 			}
 			catch (e) {
 				// attempt to clean up in the event of an error
 				ExoWeb.Batch.end(batch);
 				ExoWeb.trace.throwAndLog(["server"], e);
+			}
+			finally {
+				serverSync.endApplyingChanges();
+				ExoWeb.Batch.end(batch);
+			}
+
+			// raise "HasPendingChanges" change event, only new changes were recorded
+			if (newChanges > 0) {
+				Sys.Observer.raisePropertyChanged(serverSync, "HasPendingChanges");
 			}
 		},
 		applySaveChange: function (change, serverSync, before, after) {
@@ -8642,7 +8647,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// don't end update until the items have been loaded
 					listSignal.waitForAll(serverSync.ignoreChanges(before, function () {
+						serverSync.beginApplyingChanges();
 						list.endUpdate();
+						serverSync.endApplyingChanges();
 					}, after), this, true);
 				}, after), this);
 			}, this);
@@ -8942,21 +8949,30 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return !instanceObj || this.canSaveObject(instanceObj);
 		},
 
-		_handleResult: function ServerSync$handleResult(result, source, checkpoint, callback) {
-			var signal = new ExoWeb.Signal("Success");
+		_handleResult: function ServerSync$handleResult(result, source, checkpoint, callbackOrOptions) {
+			var options,
+				batch,
+				signal = new ExoWeb.Signal("Success");
+
+			if (callbackOrOptions instanceof Function) {
+				options = { callback: callbackOrOptions };
+			}
+			else {
+				options = callbackOrOptions;
+			}
 
 			if (result.serverinfo)
 				this.set_ServerInfo(result.serverinfo);
 
 			if (result.instances) {
-				var batch = ExoWeb.Batch.start();
+				batch = ExoWeb.Batch.start();
 
 				objectsFromJson(this._model, result.instances, signal.pending(function () {
 					function processChanges() {
 						ExoWeb.Batch.end(batch);
 
 						if (result.changes && result.changes.length > 0) {
-							this._changeLog.applyChanges(checkpoint, result.changes, source, this);
+							this._changeLog.applyChanges(checkpoint, result.changes, source, this, null, options.beforeApply, options.afterApply);
 						}
 						else if (source) {
 							// no changes, so record empty set
@@ -8975,7 +8991,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}), this);
 			}
 			else if (result.changes && result.changes.length > 0) {
-				this._changeLog.applyChanges(checkpoint, result.changes, source, this);
+				this._changeLog.applyChanges(checkpoint, result.changes, source, this, null, options.beforeApply, options.afterApply);
 				if (result.conditions) {
 					conditionsFromJson(this._model, result.conditions, signal.pending());
 				}
@@ -8993,8 +9009,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			signal.waitForAll(function () {
-				if (callback && callback instanceof Function) {
-					callback.call(this);
+				if (options.callback && options.callback instanceof Function) {
+					options.callback.call(this);
 				}
 			}, this);
 		},
