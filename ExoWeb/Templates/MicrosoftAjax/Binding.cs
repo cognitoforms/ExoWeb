@@ -187,8 +187,6 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// </summary>
 		internal class TwoWayExtension : Binding
 		{
-			string format;
-
 			Transform transform;
 
 			internal TwoWayExtension(string attribute, string expression)
@@ -218,7 +216,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					}
 					else
 					{
-						if (format != null && result.Value is IFormattable)
+						string format;
+						if (Parameters.TryGetValue("format", out format) && !string.IsNullOrEmpty(format) && result.Value is IFormattable)
 							result.Value = ((IFormattable)result.Value).ToString(format, null);
 						else
 						{
