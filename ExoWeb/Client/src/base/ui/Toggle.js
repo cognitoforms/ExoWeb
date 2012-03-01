@@ -4,7 +4,6 @@ function Toggle(element) {
 	this._action = "show";
 
 	Toggle.initializeBase(this, [element]);
-
 }
 
 var Toggle_allowedActions = ["show", "hide", "enable", "disable", "render", "dispose", "addClass", "removeClass"];
@@ -235,14 +234,14 @@ Toggle.mixin({
 		this._ctxIdx = idx;
 	},
 
-	get_templateContext: function Content$get_templateContext() {
+	get_templateContext: function Toggle$get_templateContext() {
 		/// <value mayBeNull="false" type="Sys.UI.TemplateContext" locid="P:J#ExoWeb.UI.Toggle.templateContext"></value>
 		if (!this._parentContext) {
 			this._parentContext = Sys.UI.Template.findContext(this._element);
 		}
 		return this._parentContext;
 	},
-	set_templateContext: function Context$set_templateContext(value) {
+	set_templateContext: function Toggle$set_templateContext(value) {
 		this._parentContext = value;
 	},
 
