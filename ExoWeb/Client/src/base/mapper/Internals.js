@@ -10,23 +10,23 @@ function ensureJsType(model, typeName, callback, thisPtr) {
 		fetchTypes(model, [typeName], function(jstypes) {
 			callback.apply(thisPtr || this, jstypes);
 		});
-	} 
+	}
 	else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 		ExoWeb.Model.LazyLoader.load(mtype, null, function(jstype) {
 			callback.apply(thisPtr || this, [jstype]);
-		}); 
+		});
 	}
 	else {
 		callback.apply(thisPtr || this, [mtype.get_jstype()]);
 	}
-}  
+}
 
 function conditionsFromJson(model, json, callback, thisPtr) {
 	var signal = new Signal("conditionsFromJson");
 
 	for (var code in json) {
 		conditionFromJson(model, code, json[code], signal.pending());
-	} 
+	}
 
 	signal.waitForAll(function() {
 		if (callback && callback instanceof Function) {
@@ -88,20 +88,17 @@ function conditionFromJson(model, code, json, callback, thisPtr) {
 function objectsFromJson(model, json, callback, thisPtr) {
 	var signal = new ExoWeb.Signal("objectsFromJson");
 
-	try {
-		for (var typeName in json) {
-			var poolJson = json[typeName];
-			for (var id in poolJson) {
-				// locate the object's state in the json
-				objectFromJson(model, typeName, id, poolJson[id], signal.pending(), thisPtr);
-			}
+	for (var typeName in json) {
+		var poolJson = json[typeName];
+		for (var id in poolJson) {
+			// locate the object's state in the json
+			objectFromJson(model, typeName, id, poolJson[id], signal.pending(), thisPtr);
 		}
 	}
-	finally {
-		signal.waitForAll(function() {
-			callback.apply(thisPtr || this, arguments);
-		});
-	}
+
+	signal.waitForAll(function() {
+		callback.apply(thisPtr || this, arguments);
+	});
 }
 
 function objectFromJson(model, typeName, id, json, callback, thisPtr) {
@@ -151,11 +148,11 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 			for (var propName in props) {
 				if (loadedProperties.contains(propName))
 					continue;
-			
+
 				loadedProperties.push(propName);
 
 				var prop = props[propName];
-		
+
 	//					ExoWeb.trace.log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
 
 				if (!prop) {
@@ -169,10 +166,10 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 
 				// instance fields have indexes, static fields use names
 				if(obj) {
-					propData = json[prop.get_index()]; 
+					propData = json[prop.get_index()];
 				}
 				else {
-					propData = json[propName]; 
+					propData = json[propName];
 
 					// not all static fields may be present
 					if(propData === undefined)
@@ -280,7 +277,7 @@ function typesFromJson(model, json) {
 function typeFromJson(model, typeName, json) {
 //			ExoWeb.trace.log("typeInit", "{1}   <.>", arguments);
 
-	// get model type. it may have already been created for lazy loading	
+	// get model type. it may have already been created for lazy loading
 	var mtype = getType(model, typeName, json.baseType);
 
 	// set the default type format
@@ -436,7 +433,7 @@ function flattenTypes(types, flattened) {
 // family-qualified type name (ex: Employee>Person).
 function getType(model, finalType, propType) {
 	// ensure the entire type family is at least ghosted
-	// so that javascript OO mechanisms work properly		
+	// so that javascript OO mechanisms work properly
 	var family = [];
 
 	flattenTypes(finalType, family);
@@ -561,7 +558,7 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 									}
 								}
 							});
-	
+
 							if (!pendingBaseType) {
 								loadableTypes.push(typeName);
 								return true;
@@ -728,7 +725,7 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 					}
 				}
 				else {
-					// This is a static property.  Static property paths 
+					// This is a static property.  Static property paths
 					// are currently limited to a single property.
 					var step = null, typeName = "";
 					while (path.steps.length > 1) {
