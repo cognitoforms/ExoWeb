@@ -208,14 +208,23 @@ PropertyChain.prototype = {
 		return this._path;
 	},
 	_getPathFromIndex: function PropertyChain$_getPathFromIndex(startIndex) {
-		var parts = [];
+		var steps = [];
 		if (this._properties[startIndex].get_isStatic()) {
-			parts.push(this._properties[startIndex].get_containingType().get_fullName());
+			steps.push(this._properties[startIndex].get_containingType().get_fullName());
 		}
 
-		this._properties.slice(startIndex).forEach(function(p) { parts.push(p.get_name()); });
+		var previousStepType;
+		this._properties.slice(startIndex).forEach(function(p, i) {
+			if (i !== 0) {
+				if (p.get_containingType() !== previousStepType && p.get_containingType().isSubclassOf(previousStepType)) {
+					steps[steps.length - 1] = steps[steps.length - 1] + "<" + p.get_containingType().get_fullName() + ">";
+				}
+			}
+			steps.push(p.get_name());
+			previousStepType = p.get_jstype().meta;
+		});
 
-		return parts.join(".");
+		return steps.join(".");
 	},
 	firstProperty: function PropertyChain$firstProperty() {
 		return this._properties[0];
