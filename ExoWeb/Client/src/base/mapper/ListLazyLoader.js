@@ -27,17 +27,21 @@ function listLoad(list, propName, callback, thisPtr) {
 			conditionsJson = result.conditions;
 		}),
 		signal.orPending(function(e) {
-			var message = $format("Failed to load {0}({1}).{2}: ", [ownerType, ownerId, propName]);
+			var errorMessage;
 			if (e !== undefined && e !== null &&
 					e.get_message !== undefined && e.get_message !== null &&
 					e.get_message instanceof Function) {
 
-				message += e.get_message();
+				errorMessage = e.get_message();
+			}
+			else if (e.message) {
+				errorMessage = e.message;
 			}
 			else {
-				message += "unknown error";
+				errorMessage = "unknown error";
 			}
-			ExoWeb.trace.logError("lazyLoad", message);
+
+			throw ExoWeb.trace.logError(["listInit", "lazyLoad"], "Failed to load {0}({1}).{2}: {3}", ownerType, ownerId, propName, errorMessage);
 		})
 	);
 

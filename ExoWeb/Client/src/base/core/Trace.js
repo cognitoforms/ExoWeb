@@ -99,6 +99,8 @@ ExoWeb.trace = {
 		if (typeof (console) !== "undefined") {
 			console.error(msg);
 		}
+
+		return new Error(msg);
 	},
 	throwAndLog: function trace$throwAndLog(category, message, args) {
 		ExoWeb.trace.logError(category, message, args);
