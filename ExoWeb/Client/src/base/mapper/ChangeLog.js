@@ -296,6 +296,19 @@ ChangeLog.mixin({
 		if (!change.added)
 			return;
 
+		change.deleted.forEach(function(instance) {
+			tryGetJsType(serverSync._model, instance.type, null, false, function (type) {
+				tryGetEntity(serverSync._model, serverSync._translator, type, instance.id, null, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (obj) {
+					// Notify server object that the instance is deleted
+					serverSync.notifyDeleted(obj);
+					// Simply a marker flag for debugging purposes
+					obj.meta.isDeleted = true;
+					// Unregister the object so that it can't be retrieved via get, known, or have rules execute against it
+					type.meta.unregister(obj);
+				}, after), this);
+			}, this);
+		}, this);
+
 		change.added.forEach(function (idChange, idChangeIndex) {
 			ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function (jstype) {
 				var serverOldId = idChange.oldId;

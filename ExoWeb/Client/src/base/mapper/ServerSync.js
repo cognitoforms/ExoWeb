@@ -6,24 +6,35 @@ function ServerSync(model) {
 	this._pendingSave = false;
 	this._scopeQueries = [];
 	this._objectsExcludedFromSave = [];
+	this._objectsDeleted = [];
 	this._translator = new ExoWeb.Translator();
 	this._serverInfo = null;
 
+	function isDeleted(obj, isChange) {
+		if (Array.contains(this._objectsDeleted, obj)) {
+			if (isChange) {
+				ExoWeb.trace.logWarning("server", "Object {0}({1}) was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id);
+			}
+			return true;
+		}
+		return false;
+	}
+
 	// don't record changes to types that didn't originate from the server
 	function filterObjectEvent(obj) {
-		return obj.meta.type.get_origin() === "server";
+		return !isDeleted.apply(this, [obj, false]) && obj.meta.type.get_origin() === "server";
 	}
 
 	// don't record changes to types or properties that didn't originate from the server
 	function filterPropertyEvent(obj, property) {
-		return property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
+		return !isDeleted.apply(this, [obj, true]) && property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
 	}
 
 	this._listener = new ExoModelEventListener(this._model, this._translator, {
-		listChanged: filterPropertyEvent,
-		propertyChanged: filterPropertyEvent,
-		objectRegistered: filterObjectEvent,
-		objectUnregistered: filterObjectEvent
+		listChanged: filterPropertyEvent.bind(this),
+		propertyChanged: filterPropertyEvent.bind(this),
+		objectRegistered: filterObjectEvent.bind(this),
+		objectUnregistered: filterObjectEvent.bind(this)
 	});
 
 	var applyingChanges = 0;
@@ -180,6 +191,16 @@ ServerSync.mixin({
 		if (!Array.contains(this._objectsExcludedFromSave, obj)) {
 			this._objectsExcludedFromSave.push(obj);
 			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+			return true;
+		}
+	},
+	notifyDeleted: function ServerSync$notifyDeleted(obj) {
+		if (!(obj instanceof ExoWeb.Model.Entity)) {
+			throw ExoWeb.trace.logError("server", "Notified of deleted object that is not an entity.");
+		}
+
+		if (!Array.contains(this._objectsDeleted, obj)) {
+			this._objectsDeleted.push(obj);
 			return true;
 		}
 	},

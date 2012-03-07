@@ -3682,8 +3682,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		unregister: function Type$unregister(obj) {
-			this._model.notifyObjectUnregistered(obj);
-
 			for (var t = this; t; t = t.baseType) {
 				delete t._pool[obj.meta.id.toLowerCase()];
 
@@ -3692,8 +3690,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 
-			delete obj.meta._obj;
-			delete obj.meta;
+			this._model.notifyObjectUnregistered(obj);
 		},
 		get: function Type$get(id) {
 			validateId(this, id);
@@ -8492,6 +8489,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (!change.added)
 				return;
 
+			change.deleted.forEach(function(instance) {
+				tryGetJsType(serverSync._model, instance.type, null, false, function (type) {
+					tryGetEntity(serverSync._model, serverSync._translator, type, instance.id, null, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (obj) {
+						// Notify server object that the instance is deleted
+						serverSync.notifyDeleted(obj);
+						// Simply a marker flag for debugging purposes
+						obj.meta.isDeleted = true;
+						// Unregister the object so that it can't be retrieved via get, known, or have rules execute against it
+						type.meta.unregister(obj);
+					}, after), this);
+				}, this);
+			}, this);
+
 			change.added.forEach(function (idChange, idChangeIndex) {
 				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function (jstype) {
 					var serverOldId = idChange.oldId;
@@ -8679,24 +8689,35 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._pendingSave = false;
 		this._scopeQueries = [];
 		this._objectsExcludedFromSave = [];
+		this._objectsDeleted = [];
 		this._translator = new ExoWeb.Translator();
 		this._serverInfo = null;
 
+		function isDeleted(obj, isChange) {
+			if (Array.contains(this._objectsDeleted, obj)) {
+				if (isChange) {
+					ExoWeb.trace.logWarning("server", "Object {0}({1}) was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id);
+				}
+				return true;
+			}
+			return false;
+		}
+
 		// don't record changes to types that didn't originate from the server
 		function filterObjectEvent(obj) {
-			return obj.meta.type.get_origin() === "server";
+			return !isDeleted.apply(this, [obj, false]) && obj.meta.type.get_origin() === "server";
 		}
 
 		// don't record changes to types or properties that didn't originate from the server
 		function filterPropertyEvent(obj, property) {
-			return property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
+			return !isDeleted.apply(this, [obj, true]) && property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
 		}
 
 		this._listener = new ExoModelEventListener(this._model, this._translator, {
-			listChanged: filterPropertyEvent,
-			propertyChanged: filterPropertyEvent,
-			objectRegistered: filterObjectEvent,
-			objectUnregistered: filterObjectEvent
+			listChanged: filterPropertyEvent.bind(this),
+			propertyChanged: filterPropertyEvent.bind(this),
+			objectRegistered: filterObjectEvent.bind(this),
+			objectUnregistered: filterObjectEvent.bind(this)
 		});
 
 		var applyingChanges = 0;
@@ -8853,6 +8874,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (!Array.contains(this._objectsExcludedFromSave, obj)) {
 				this._objectsExcludedFromSave.push(obj);
 				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+				return true;
+			}
+		},
+		notifyDeleted: function ServerSync$notifyDeleted(obj) {
+			if (!(obj instanceof ExoWeb.Model.Entity)) {
+				throw ExoWeb.trace.logError("server", "Notified of deleted object that is not an entity.");
+			}
+
+			if (!Array.contains(this._objectsDeleted, obj)) {
+				this._objectsDeleted.push(obj);
 				return true;
 			}
 		},

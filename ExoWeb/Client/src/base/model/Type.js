@@ -229,8 +229,6 @@ Type.prototype = {
 		}
 	},
 	unregister: function Type$unregister(obj) {
-		this._model.notifyObjectUnregistered(obj);
-
 		for (var t = this; t; t = t.baseType) {
 			delete t._pool[obj.meta.id.toLowerCase()];
 
@@ -239,8 +237,7 @@ Type.prototype = {
 			}
 		}
 
-		delete obj.meta._obj;
-		delete obj.meta;
+		this._model.notifyObjectUnregistered(obj);
 	},
 	get: function Type$get(id) {
 		validateId(this, id);
