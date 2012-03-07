@@ -14,6 +14,7 @@ var insert = arrays.insert;
 var insertRange = arrays.insertRange;
 var intersect = arrays.intersect;
 var last = arrays.last;
+var lastIndexOf = arrays.lastIndexOf;
 var map = arrays.map;
 var purge = arrays.purge;
 var reduce = arrays.reduce;
@@ -170,6 +171,15 @@ describe("indexOf", function () {
 		expect(arr.indexOf("B")).toBe(1);
 	});
 });
+
+describe("lastIndexOf", function () {
+	it("returns the last index of a given element in the array", function () {
+		var arr = ["A", "B", "C", "A"];
+
+		expect(lastIndexOf(arr, "A")).toBe(3);
+	});
+});
+
 
 describe("fill", function () {
 	it("pushes a given number of items into the array with the given value", function () {

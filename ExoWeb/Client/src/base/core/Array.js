@@ -133,7 +133,7 @@ function lastIndexOf(arr, item, from) {
 	var k = n >= 0 ? Math.min(n, len - 1) : len - Math.abs(n);
 
 	while (k >= 0)
-		if (k in t && t[k] === searchElement)
+		if (k in arr && arr[k] === item)
 			return k;
 
 	return -1;
