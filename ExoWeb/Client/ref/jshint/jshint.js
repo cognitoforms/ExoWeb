@@ -5288,7 +5288,7 @@ loop:   for (;;) {
         if (peek(nexttoken.id === 'var' ? 1 : 0).id === 'in') {
             if (nexttoken.id === 'var') {
                 advance('var');
-                varstatement(true);
+                varstatement.call(this, true);
             } else {
                 switch (funct[nexttoken.value]) {
                 case 'unused':
@@ -5317,7 +5317,7 @@ loop:   for (;;) {
             if (nexttoken.id !== ';') {
                 if (nexttoken.id === 'var') {
                     advance('var');
-                    varstatement();
+                    varstatement.call(this);
                 } else {
                     for (;;) {
                         expression(0, 'for');
