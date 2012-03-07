@@ -257,7 +257,7 @@ function remove(arr, item) {
 	if (idx < 0)
 		return false;
 
-	removeAt(arr, idx);
+	arr.splice(idx, 1);
 	return true;
 }
 
