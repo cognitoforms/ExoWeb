@@ -14652,7 +14652,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 				this._unsubscribeFromFormatChanges(this.get_rawValue());
 				// Clean up validation event handlers
-				var lastTarget = this._propertyChain.lastTarget(this._target);
+				var lastTarget = this._propertyChain.lastTarget(this._target, true);
 				if (lastTarget) {
 					if (this._propertyValidatedHandler) {
 						lastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
