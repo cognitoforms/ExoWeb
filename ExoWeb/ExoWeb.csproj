@@ -300,6 +300,7 @@
     <None Include="Client\AutoRake.bat" />
     <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
+    <None Include="Client\RakeScripts.bat" />
     <None Include="Client\ref\aspnetajax\LICENSE" />
     <None Include="Client\ref\jsmin\jsmin" />
     <None Include="Client\ref\jsmin\jsmin.c" />
