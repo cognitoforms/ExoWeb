@@ -214,7 +214,7 @@ namespace ExoWeb.Templates
 				if (result.Source.Type.TryGetPath(path, out modelPath))
 				{
 					// Walk the path, honoring only first steps
-					for (var step = modelPath.FirstSteps.First(); step != null; step = step.NextSteps.FirstOrDefault())
+					for (var step = FirstApplicableStep(result.Source, modelPath.FirstSteps); step != null; step = FirstApplicableStep(result.Source, step.NextSteps))
 					{
 						if (step.NextSteps.Any())
 						{
@@ -272,6 +272,14 @@ namespace ExoWeb.Templates
 
 			// Invalid
 			return result;
+		}
+
+		private ModelStep FirstApplicableStep(ModelInstance instance, ModelStepList steps)
+		{
+			if (instance == null)
+				return steps.FirstOrDefault();
+			else
+				return steps.Where(s => s.Property.DeclaringType.IsInstanceOfType(instance)).FirstOrDefault();
 		}
 	}
 }
