@@ -24,6 +24,9 @@ namespace ExoWeb.Templates.JavaScript
 
 		public object Wrap(object clrObject)
 		{
+			if (clrObject == null)
+				return Null.Value;
+
 			if (clrObject is Page)
 				return new PageContextWrapper(engine, (Page)clrObject);
 
@@ -67,6 +70,12 @@ namespace ExoWeb.Templates.JavaScript
 
 		public object Unwrap(object jsObject)
 		{
+			if (jsObject == Null.Value)
+				return null;
+
+			if (jsObject == Undefined.Value)
+				return null;
+
 			if (jsObject is IWrapper)
 				return ((IWrapper)jsObject).RealObject;
 
@@ -76,8 +85,11 @@ namespace ExoWeb.Templates.JavaScript
 			return jsObject;
 		}
 
-		public EntityWrapper Wrap(ModelInstance instance)
+		public object Wrap(ModelInstance instance)
 		{
+			if (instance == null)
+				return Null.Value;
+
 			string key = instance.Type.Name + "|" + instance.Id;
 
 			EntityWrapper entity;

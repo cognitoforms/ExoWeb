@@ -63,12 +63,7 @@ namespace ExoWeb.Templates.JavaScript
 			{
 				return LazyDefineMethod(jsPropertyName, instance =>
 				{
-					ModelInstance result = instance.GetReference(refProperty);
-
-					if (result == null)
-						return null;
-
-					return factory.Wrap(result);
+					return factory.Wrap(instance.GetReference(refProperty));
 				});
 			}
 		}

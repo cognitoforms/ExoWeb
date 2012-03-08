@@ -111,7 +111,6 @@ namespace ExoWeb.UnitTests.Server
 			}
 		}
 
-
 		[TestMethod]
 		public void TestCompiledExpressionsObjectMarshaling()
 		{
@@ -128,6 +127,15 @@ namespace ExoWeb.UnitTests.Server
 			Assert.AreEqual("abc", f("abc"));
 			Assert.AreEqual(1.0, f(1.0));
 			Assert.AreEqual(((IModelInstance)data).Instance, f(((IModelInstance)data).Instance));
+		}
+
+		[TestMethod]
+		public void TestCompiledExpressionsNullAndUndefinedMarshalling()
+		{
+			Assert.AreEqual(true, Accessors.CreateScriptFunction("x", "x === null")(null), "marshal null === null");
+			Assert.AreEqual(true, Accessors.CreateScriptFunction("x", "x !== undefined")(null), "marshal null !== undefined");
+			Assert.AreEqual(null, Accessors.CreateScriptFunction("x", "null")(null), "marshal return null");
+			Assert.AreEqual(null, Accessors.CreateScriptFunction("x", "undefined")(null), "marshal return undefined");
 		}
 
 		[TestMethod]
@@ -262,7 +270,6 @@ namespace ExoWeb.UnitTests.Server
 			Assert.AreEqual("abc", f.Call(null, "abc"));
 		}
 
-	
 		[TestMethod]
 		public void TestEntityArrays()
 		{
