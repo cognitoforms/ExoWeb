@@ -9077,10 +9077,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed, paths) {
 			pendingRequests++;
 
-			Sys.Observer.setValue(this, "PendingServerEvent", true);
-
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
 			var checkpoint = this._changeLog.checkpoint("server event " + name + " " + (new Date()).format("d"));
+
+			Sys.Observer.setValue(this, "PendingServerEvent", true);
 
 			var args = { type: "raiseServerEvent", eventTarget: obj, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
 			this._raiseBeginEvents("raiseServerEvent", args);
@@ -9179,9 +9179,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 				paths = null;
 			}
 
+			var checkpoint = this._changeLog.checkpoint("roundtrip " + (new Date()).format("d"));
+
 			Sys.Observer.setValue(this, "PendingRoundtrip", true);
 
-			var args = { type: "roundtrip" };
+			var args = { type: "roundtrip", checkpoint: checkpoint };
 			this._raiseBeginEvents("roundtrip", args);
 
 			var mtype = root ? root.meta.type || root.meta : null;
@@ -9192,16 +9194,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 				id,
 				paths,
 				serializeChanges.call(this, !!root, root),
-				this._onRoundtripSuccess.bind(this).appendArguments(args, success),
+				this._onRoundtripSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onRoundtripFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
-		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, args, callback) {
+		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, args, checkpoint, callback) {
 			Sys.Observer.setValue(this, "PendingRoundtrip", false);
 
 			args.responseObject = result;
 
-			this._handleResult(result, "roundtrip", null, function () {
+			this._handleResult(result, "roundtrip", checkpoint, function () {
 				this._raiseEndEvents("roundtrip", "Success", args);
 
 				if (callback && callback instanceof Function)
@@ -9249,10 +9251,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		save: function ServerSync$save(root, success, failed) {
 			pendingRequests++;
 
-			Sys.Observer.setValue(this, "PendingSave", true);
-
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
 			var checkpoint = this._changeLog.checkpoint("save " + (new Date()).format("d"));
+
+			Sys.Observer.setValue(this, "PendingSave", true);
 
 			var args = { type: "save", root: root, checkpoint: checkpoint };
 			this._raiseBeginEvents("save", args);
