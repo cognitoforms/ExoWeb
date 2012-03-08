@@ -29,6 +29,7 @@ namespace ExoWeb.Templates
 					{
 						foreach (AspControl control in Controls)
 						{
+							control.DataBind();
 							control.RenderControl(htmlWriter);
 						}
 					}
