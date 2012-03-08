@@ -381,7 +381,18 @@ Property.mixin({
 	},
 	isInited: function Property$isInited(obj) {
 		var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-		return target.hasOwnProperty(this._fieldName);
+		if (!target.hasOwnProperty(this._fieldName)) {
+			// If the backing field has not been created, then property is not initialized
+			return false;
+		}
+		if (this._isList) {
+			var value = this.value(obj);
+			if (!LazyLoader.isLoaded(value)) {
+				// If the list is not-loaded, then the property is not initialized
+				return false;
+			}
+		}
+		return true;
 	},
 
 	// starts listening for get events on the property. Use obj argument to

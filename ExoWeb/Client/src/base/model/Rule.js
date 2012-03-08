@@ -35,7 +35,7 @@ Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter, callba
 };
 
 Rule.canExecute = function(rule, sender, args) {
-	return rule.inputs.every(function(input) { return (args && input.property === args.property) || !input.get_dependsOnInit() || input.property.isInited(sender, true); });
+	return rule.inputs.every(function(input) { return (args && input.property === args.property) || !input.get_dependsOnInit() || input.property.isInited(sender); });
 };
 
 Rule.ensureError = function Rule$ensureError(ruleName, prop) {

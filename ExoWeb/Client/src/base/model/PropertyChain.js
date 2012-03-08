@@ -299,7 +299,7 @@ PropertyChain.prototype = {
 	},
 	// starts listening for change events along the property chain on any known instances. Use obj argument to
 	// optionally filter the events to a specific object
-	addChanged: function PropertyChain$addChanged(handler, obj, once, tolerateNulls) {
+	addChanged: function PropertyChain$addChanged(handler, obj, once, toleratePartial) {
 		var chain = this;
 
 		function raiseHandler(sender, args) {
@@ -341,7 +341,7 @@ PropertyChain.prototype = {
 						// scan all known objects of this type and raise event for any instance connected
 						// to the one that sent the event.
 						Array.forEach(chain._rootType.known(), function(known) {
-							if (chain.isInited(known, tolerateNulls) && chain.connects(known, sender, priorProp)) {
+							if (chain.isInited(known, !toleratePartial) && chain.connects(known, sender, priorProp)) {
 								args.originalSender = sender;
 								raiseHandler(known, args);
 							}
@@ -403,42 +403,22 @@ PropertyChain.prototype = {
 			return (target !== undefined && target !== null) ? prop.value(target) : null;
 		}
 	},
-	// tolerateNull added to accomodate situation where calculated rules where not
-	// executing due to empty values before the end of the PropertyChain.  When tolerateNull
-	// is true, isInited will not return false if the entire chain isn't inited.
-	isInited: function PropertyChain$isInited(obj, tolerateNull) {
-		var allInited = true;
-		var numProperties = 0;
-		var emptyList = false;
+	isInited: function PropertyChain$isInited(obj, enforceCompleteness) {
+		/// <summary>
+		/// Determines if the property chain is initialized, akin to single Property initialization.
+		/// </summary>
+		var allInited = true, numProperties = 0;
 
 		this.each(obj, function(target, property) {
 			numProperties++;
 			if (!property.isInited(target)) {
+				numProperties--;
 				allInited = false;
 				return false;
 			}
-			else if (property.get_isList() === true) {
-				// Break early on empty list that has been loaded.
-				var value = property.value(target);
-				if (value.length === 0 && LazyLoader.isLoaded(value)) {
-					emptyList = true;
-					return false;
-				}
-			}
 		});
 
-		if (numProperties < this._properties.length && !tolerateNull && !emptyList) {
-			allInited = false;
-//					ExoWeb.trace.log("model", "Path \"{0}\" is not inited since \"{1}\" is undefined.", [this.get_path(), this._properties[numProperties - 1].get_name()]);
-		}
-		else if (allInited) {
-//					ExoWeb.trace.log("model", "Path \"{0}\" has been inited.", [this.get_path()]);
-		}
-		else {
-//					ExoWeb.trace.log("model", "Path \"{0}\" has NOT been inited.", [this.get_path()]);
-		}
-
-		return allInited;
+		return allInited && (numProperties === this._properties.length || !enforceCompleteness);
 	},
 	toString: function PropertyChain$toString() {
 		if (this._isStatic) {
