@@ -690,7 +690,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var k = n >= 0 ? Math.min(n, len - 1) : len - Math.abs(n);
 
 		while (k >= 0)
-			if (k in t && t[k] === searchElement)
+			if (k in arr && arr[k] === item)
 				return k;
 
 		return -1;
@@ -814,7 +814,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		if (idx < 0)
 			return false;
 
-		removeAt(arr, idx);
+		arr.splice(idx, 1);
 		return true;
 	}
 
@@ -2410,7 +2410,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	Date.prototype.addYears = function addYears(numYears) {
 		return new Date(this.getFullYear() + numYears, this.getMonth(), this.getDate(), this.getHours(), this.getMinutes(), this.getSeconds(), this.getMilliseconds());
 	};
-	
+
 	Date.prototype.addDays = function addDays(numDays, requireWeekDay) {
 		var date = new Date(this.getFullYear(), this.getMonth(), this.getDate() + numDays, this.getHours(), this.getMinutes(), this.getSeconds(), this.getMilliseconds());
 
@@ -2431,9 +2431,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return date;
 	};
 
-	Date.prototype.addHours = function (h) {
-		this.setHours(this.getHours() + h);
-		return this;
+	var oneHourInMilliseconds = 1000 * 60 * 60;
+
+	Date.prototype.addHours = function addHours(numHours) {
+		return new Date(+this + (oneHourInMilliseconds * numHours));
 	};
 
 	function getDayOfWeek(day) {
@@ -2923,6 +2924,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 	//////////////////////////////////////////////////
 
 	function Format(options) {
+		if (!options.hasOwnProperty("specifier") || !isString(options.specifier)) {
+			throw new Error("Format specifier string must be provided.");
+		}
+		this._specifier = options.specifier;
 		this._paths = options.paths;
 		this._convert = options.convert;
 		this._convertBack = options.convertBack;
@@ -2938,6 +2943,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	Format.fromTemplate = function Format$fromTemplate(type, template) {
 
 		return new Format({
+			specifier: template,
 
 			compile: function compile() {
 
@@ -3105,6 +3111,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 								val);
 				}
 			}
+		},
+		toString: function() {
+			return this._specifier;
 		}
 	});
 
@@ -8604,7 +8613,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					var newValue = change.newValue;
 				
 					// Cache the property since it is not a simple property access.
-					var property = srcObj.meta.property(change.property);
+					var property = srcObj.meta.property(change.property, true);
 
 					if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
 
@@ -8615,10 +8624,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 						//now that we have the value set for the date.
 						//if the underlying property datatype is actually a date and not a datetime
 						//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-						if (property.get_format() && !hasTimeFormat.test(property.get_format())) {
+						if (property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
 							var serverOffset = serverSync.get_ServerTimezoneOffset();
 							var localOffset = -(new Date().getTimezoneOffset() / 60);
-							newValue.addHours(serverOffset - localOffset);
+							newValue = newValue.addHours(serverOffset - localOffset);
 						}
 					}
 
@@ -9461,6 +9470,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 		///////////////////////////////////////////////////////////////////////
 		_captureChange: function ServerSync$_captureChange(change) {
 			if (!this.isApplyingChanges() && this.isCapturingChanges()) {
+				if (change.property) {
+					var instance = fromExoModel(change.instance, this._translator);
+					var property = instance.meta.property(change.property, true);
+
+					if (property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
+						var serverOffset = this.get_ServerTimezoneOffset();
+						var localOffset = -(new Date().getTimezoneOffset() / 60);
+
+						var difference = localOffset - serverOffset;
+						change.newValue = change.newValue.addHours(difference);
+					}
+				}
+
 				this._changeLog.add(change);
 
 				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
@@ -9865,10 +9887,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 									//now that we have the value set for the date.
 									//if the underlying property datatype is actually a date and not a datetime
 									//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-									if (prop.get_format() && !hasTimeFormat.test(prop.get_format())) {
+									if (prop.get_format() && !hasTimeFormat.test(prop.get_format().toString())) {
 										var serverOffset = model._server.get_ServerTimezoneOffset();
 										var localOffset = -(new Date().getTimezoneOffset() / 60);
-										propData.addHours(serverOffset - localOffset);
+										propData = propData.addHours(serverOffset - localOffset);
 									}
 								}
 								prop.init(obj, propData);
@@ -15070,6 +15092,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return new Format({
 				description: "",
+				specifier: format,
 				convert: function (val) {
 					return val.localeFormat(format);
 				},
@@ -15090,6 +15113,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return new Format({
 				description: "",
+				specifier: format,
 				convert: function (val) {
 					// Default to browser formatting for general format
 					if (format.toLowerCase() === "g")
@@ -15150,6 +15174,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			return new Format({
 				description: "",
+				specifier: format,
 				convert: function (val) {
 					if (val === true)
 						return trueFormat;
@@ -15172,6 +15197,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Default
 		return new Format({
 			description: "",
+			specifier: "",
 			convert: function (val) {
 				return val.toString();
 			},

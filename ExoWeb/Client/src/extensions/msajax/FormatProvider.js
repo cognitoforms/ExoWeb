@@ -10,6 +10,7 @@ setFormatProvider(function FormatProvider(type, format) {
 
 		return new Format({
 			description: "",
+			specifier: format,
 			convert: function (val) {
 				return val.localeFormat(format);
 			},
@@ -30,6 +31,7 @@ setFormatProvider(function FormatProvider(type, format) {
 
 		return new Format({
 			description: "",
+			specifier: format,
 			convert: function (val) {
 				// Default to browser formatting for general format
 				if (format.toLowerCase() === "g")
@@ -90,6 +92,7 @@ setFormatProvider(function FormatProvider(type, format) {
 
 		return new Format({
 			description: "",
+			specifier: format,
 			convert: function (val) {
 				if (val === true)
 					return trueFormat;
@@ -112,6 +115,7 @@ setFormatProvider(function FormatProvider(type, format) {
 	// Default
 	return new Format({
 		description: "",
+		specifier: "",
 		convert: function (val) {
 			return val.toString();
 		},

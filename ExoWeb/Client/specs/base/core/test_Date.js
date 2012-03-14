@@ -93,6 +93,36 @@ describe("weekDifference", function() {
 	});
 });
 
+describe("addHours", function() {
+	it("creates a new date object", function() {
+		var date = new Date();
+		var plusOneHour = date.addHours(1);
+		expect(plusOneHour).not.toBe(date);
+	});
+
+	it("adds or subtracts hours to the date object", function() {
+		var date = new Date();
+		var plusOneHour = date.addHours(1);
+		var difference = plusOneHour - date;
+		var oneHourInMilliseconds = 1000 * 60 * 60;
+		expect(difference).toBe(oneHourInMilliseconds);
+	});
+
+	it("accounts for beginning of DST", function() {
+		var mar11th2011 = new Date("Sun Mar 11 2012 00:00:00 GMT-0500 (Eastern Standard Time)");
+		expect(mar11th2011.addHours(1)).toEqual(new Date("Sun Mar 11 2012 01:00:00 GMT-0500 (Eastern Standard Time)"));
+		expect(mar11th2011.addHours(2)).toEqual(new Date("Sun Mar 11 2012 03:00:00 GMT-0400 (Eastern Daylight Time)"));
+		expect(mar11th2011.addHours(3)).toEqual(new Date("Sun Mar 11 2012 04:00:00 GMT-0400 (Eastern Daylight Time)"));
+	});
+
+	it("accounts for end of DST", function() {
+		var nov6th20113AM = new Date("Sun Nov 06 2011 03:00:00 GMT-0500 (Eastern Standard Time)");
+		expect(nov6th20113AM.addHours(-1)).toEqual(new Date("Sun Nov 06 2011 02:00:00 GMT-0500 (Eastern Standard Time)"));
+		expect(nov6th20113AM.addHours(-2)).toEqual(new Date("Sun Nov 06 2011 01:00:00 GMT-0500 (Eastern Standard Time)"));
+		expect(nov6th20113AM.addHours(-3)).toEqual(new Date("Sun Nov 06 2011 01:00:00 GMT-0400 (Eastern Daylight Time)"));
+	});
+});
+
 // Run Tests
 ///////////////////////////////////////
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());

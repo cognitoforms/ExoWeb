@@ -11,7 +11,7 @@ Date.prototype.toDate = function toDate() {
 Date.prototype.addYears = function addYears(numYears) {
 	return new Date(this.getFullYear() + numYears, this.getMonth(), this.getDate(), this.getHours(), this.getMinutes(), this.getSeconds(), this.getMilliseconds());
 };
-	
+
 Date.prototype.addDays = function addDays(numDays, requireWeekDay) {
 	var date = new Date(this.getFullYear(), this.getMonth(), this.getDate() + numDays, this.getHours(), this.getMinutes(), this.getSeconds(), this.getMilliseconds());
 
@@ -32,9 +32,10 @@ Date.prototype.addDays = function addDays(numDays, requireWeekDay) {
 	return date;
 };
 
-Date.prototype.addHours = function (h) {
-	this.setHours(this.getHours() + h);
-	return this;
+var oneHourInMilliseconds = 1000 * 60 * 60;
+
+Date.prototype.addHours = function addHours(numHours) {
+	return new Date(+this + (oneHourInMilliseconds * numHours));
 };
 
 function getDayOfWeek(day) {

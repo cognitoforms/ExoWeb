@@ -1,4 +1,8 @@
 function Format(options) {
+	if (!options.hasOwnProperty("specifier") || !isString(options.specifier)) {
+		throw new Error("Format specifier string must be provided.");
+	}
+	this._specifier = options.specifier;
 	this._paths = options.paths;
 	this._convert = options.convert;
 	this._convertBack = options.convertBack;
@@ -14,6 +18,7 @@ var metaPathParser = /^(.*\.|)meta(\..*|)$/;
 Format.fromTemplate = function Format$fromTemplate(type, template) {
 
 	return new Format({
+		specifier: template,
 
 		compile: function compile() {
 
@@ -181,6 +186,9 @@ Format.mixin({
 							val);
 			}
 		}
+	},
+	toString: function() {
+		return this._specifier;
 	}
 });
 

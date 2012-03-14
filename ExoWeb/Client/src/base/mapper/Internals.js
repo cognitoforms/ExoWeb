@@ -236,10 +236,10 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 								//now that we have the value set for the date.
 								//if the underlying property datatype is actually a date and not a datetime
 								//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-								if (prop.get_format() && !hasTimeFormat.test(prop.get_format())) {
+								if (prop.get_format() && !hasTimeFormat.test(prop.get_format().toString())) {
 									var serverOffset = model._server.get_ServerTimezoneOffset();
 									var localOffset = -(new Date().getTimezoneOffset() / 60);
-									propData.addHours(serverOffset - localOffset);
+									propData = propData.addHours(serverOffset - localOffset);
 								}
 							}
 							prop.init(obj, propData);

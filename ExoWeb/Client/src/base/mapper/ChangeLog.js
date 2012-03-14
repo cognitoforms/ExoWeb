@@ -420,7 +420,7 @@ ChangeLog.mixin({
 				var newValue = change.newValue;
 				
 				// Cache the property since it is not a simple property access.
-				var property = srcObj.meta.property(change.property);
+				var property = srcObj.meta.property(change.property, true);
 
 				if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
 
@@ -431,10 +431,10 @@ ChangeLog.mixin({
 					//now that we have the value set for the date.
 					//if the underlying property datatype is actually a date and not a datetime
 					//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-					if (property.get_format() && !hasTimeFormat.test(property.get_format())) {
+					if (property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
 						var serverOffset = serverSync.get_ServerTimezoneOffset();
 						var localOffset = -(new Date().getTimezoneOffset() / 60);
-						newValue.addHours(serverOffset - localOffset);
+						newValue = newValue.addHours(serverOffset - localOffset);
 					}
 				}
 
