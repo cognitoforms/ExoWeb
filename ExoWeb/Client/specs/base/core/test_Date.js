@@ -109,10 +109,10 @@ describe("addHours", function() {
 	});
 
 	it("accounts for beginning of DST", function() {
-		var mar11th2011 = new Date("Sun Mar 11 2012 00:00:00 GMT-0500 (Eastern Standard Time)");
-		expect(mar11th2011.addHours(1)).toEqual(new Date("Sun Mar 11 2012 01:00:00 GMT-0500 (Eastern Standard Time)"));
-		expect(mar11th2011.addHours(2)).toEqual(new Date("Sun Mar 11 2012 03:00:00 GMT-0400 (Eastern Daylight Time)"));
-		expect(mar11th2011.addHours(3)).toEqual(new Date("Sun Mar 11 2012 04:00:00 GMT-0400 (Eastern Daylight Time)"));
+		var mar11th2012 = new Date("Sun Mar 11 2012 00:00:00 GMT-0500 (Eastern Standard Time)");
+		expect(mar11th2012.addHours(1)).toEqual(new Date("Sun Mar 11 2012 01:00:00 GMT-0500 (Eastern Standard Time)"));
+		expect(mar11th2012.addHours(2)).toEqual(new Date("Sun Mar 11 2012 03:00:00 GMT-0400 (Eastern Daylight Time)"));
+		expect(mar11th2012.addHours(3)).toEqual(new Date("Sun Mar 11 2012 04:00:00 GMT-0400 (Eastern Daylight Time)"));
 	});
 
 	it("accounts for end of DST", function() {
