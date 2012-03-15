@@ -791,10 +791,9 @@ ServerSync.mixin({
 				var instance = fromExoModel(change.instance, this._translator);
 				var property = instance.meta.property(change.property, true);
 
-				if (property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
+				if (property.get_jstype() === Date && change.newValue && property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
 					var serverOffset = this.get_ServerTimezoneOffset();
 					var localOffset = -(new Date().getTimezoneOffset() / 60);
-
 					var difference = localOffset - serverOffset;
 					change.newValue = change.newValue.addHours(difference);
 				}
