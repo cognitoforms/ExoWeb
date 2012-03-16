@@ -10,6 +10,16 @@ var describe = jasmine.describe;
 var it = jasmine.it;
 var expect = jasmine.expect;
 
+var dateStrParser = /[A-Z][a-z]{2} [A-Z][a-z]{2} \d{1,2} \d{4} \d{2}:\d{2}:\d{2} [A-Z]+.\d{4} \(([^\s]*) ([^\s]*) Time\)/;
+
+Date.prototype.isDST = function() {
+	return dateStrParser.exec(this.toString())[2] === "Daylight";
+};
+
+Date.prototype.getTimezone = function() {
+	return dateStrParser.exec(this.toString())[1];
+};
+
 // Test Suites
 ///////////////////////////////////////
 describe("toDate", function() {
@@ -109,17 +119,29 @@ describe("addHours", function() {
 	});
 
 	it("accounts for beginning of DST", function() {
-		var mar11th2012 = new Date("Sun Mar 11 2012 00:00:00 GMT-0500 (Eastern Standard Time)");
-		expect(mar11th2012.addHours(1)).toEqual(new Date("Sun Mar 11 2012 01:00:00 GMT-0500 (Eastern Standard Time)"));
-		expect(mar11th2012.addHours(2)).toEqual(new Date("Sun Mar 11 2012 03:00:00 GMT-0400 (Eastern Daylight Time)"));
-		expect(mar11th2012.addHours(3)).toEqual(new Date("Sun Mar 11 2012 04:00:00 GMT-0400 (Eastern Daylight Time)"));
+		var mar11th2012 = new Date(2012, 3 - 1, 11);
+		var offset = (mar11th2012.getTimezoneOffset() / 60) * 100;
+
+		expect(mar11th2012.isDST()).toBe(false);
+		expect(mar11th2012.addHours(1)).toEqual(new Date("Sun Mar 11 2012 01:00:00 GMT-" + ("0" + offset) + " (" + mar11th2012.getTimezone() + " Standard Time)"));
+		expect(mar11th2012.addHours(1).isDST()).toBe(false);
+		expect(mar11th2012.addHours(2)).toEqual(new Date("Sun Mar 11 2012 03:00:00 GMT-" + ("0" + (offset - 100)) + " (" + mar11th2012.getTimezone() + " Daylight Time)"));
+		expect(mar11th2012.addHours(2).isDST()).toBe(true);
+		expect(mar11th2012.addHours(3)).toEqual(new Date("Sun Mar 11 2012 04:00:00 GMT-" + ("0" + (offset - 100)) + " (" + mar11th2012.getTimezone() + " Daylight Time)"));
+		expect(mar11th2012.addHours(3).isDST()).toBe(true);
 	});
 
 	it("accounts for end of DST", function() {
-		var nov6th20113AM = new Date("Sun Nov 06 2011 03:00:00 GMT-0500 (Eastern Standard Time)");
-		expect(nov6th20113AM.addHours(-1)).toEqual(new Date("Sun Nov 06 2011 02:00:00 GMT-0500 (Eastern Standard Time)"));
-		expect(nov6th20113AM.addHours(-2)).toEqual(new Date("Sun Nov 06 2011 01:00:00 GMT-0500 (Eastern Standard Time)"));
-		expect(nov6th20113AM.addHours(-3)).toEqual(new Date("Sun Nov 06 2011 01:00:00 GMT-0400 (Eastern Daylight Time)"));
+		var nov6th20113AM = new Date(2011, 11 - 1, 6, 3);
+		var offset = (nov6th20113AM.getTimezoneOffset() / 60) * 100;
+
+		expect(nov6th20113AM.isDST()).toBe(false);
+		expect(nov6th20113AM.addHours(-1)).toEqual(new Date("Sun Nov 06 2011 02:00:00 GMT-" + ("0" + offset) + " (" + nov6th20113AM.getTimezone() + " Standard Time)"));
+		expect(nov6th20113AM.addHours(-1).isDST()).toBe(false);
+		expect(nov6th20113AM.addHours(-2)).toEqual(new Date("Sun Nov 06 2011 01:00:00 GMT-" + ("0" + offset) + " (" + nov6th20113AM.getTimezone() + " Standard Time)"));
+		expect(nov6th20113AM.addHours(-2).isDST()).toBe(false);
+		expect(nov6th20113AM.addHours(-3)).toEqual(new Date("Sun Nov 06 2011 01:00:00 GMT-" + ("0" + (offset - 100)) + " (" + nov6th20113AM.getTimezone() + " Daylight Time)"));
+		expect(nov6th20113AM.addHours(-3).isDST()).toBe(true);
 	});
 });
 
