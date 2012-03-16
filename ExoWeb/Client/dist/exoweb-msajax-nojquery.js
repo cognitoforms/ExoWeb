@@ -14931,8 +14931,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 	var path = window.location.pathname;
 	var idx = path.lastIndexOf("/");
 
-	if (idx >= 0 && idx < path.length - 1) {
+	if (idx > 0 && idx < path.length - 1) {
 		path = path.substring(0, idx + 1);
+	}
+	else if (idx === 0 && path.length > 1) {
+		path += "/";
 	}
 
 	var fmt = window.location.port ? "{0}//{1}:{2}" : "{0}//{1}";
