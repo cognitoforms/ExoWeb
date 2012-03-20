@@ -7,20 +7,20 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace ExoWeb.UnitTests.Server.Jasmine
 {
 	[TestClass]
-	public class Jasmine_Model : JasmineTest
+	public class ModelSpecs : JasmineTest
 	{
-		public Jasmine_Model() : base("ExoWeb\\Client\\specs\\base\\model") { }
+		public ModelSpecs() : base("ExoWeb\\Client\\specs\\base\\model") { }
 
 		[TestMethod]
-		public void Formats()
+		public void FormatsSpecs()
 		{
-			RunSpec("test_Formats.js");
+			RunSpec("FormatsSpecs.js");
 		}
 
 		[TestMethod]
-		public void PathTokens()
+		public void PathTokensSpecs()
 		{
-			RunSpec("test_PathTokens.js");
+			RunSpec("PathTokensSpecs.js");
 		}
 	}
 }

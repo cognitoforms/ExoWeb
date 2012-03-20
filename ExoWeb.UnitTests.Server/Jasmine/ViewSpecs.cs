@@ -7,14 +7,14 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace ExoWeb.UnitTests.Server.Jasmine
 {
 	[TestClass]
-	public class Jasmine_View : JasmineTest
+	public class ViewSpecs : JasmineTest
 	{
-		public Jasmine_View() : base("ExoWeb\\Client\\specs\\base\\view") { }
+		public ViewSpecs() : base("ExoWeb\\Client\\specs\\base\\view") { }
 
 		[TestMethod]
-		public void Binding()
+		public void BindingSpecs()
 		{
-			RunSpec("test_Binding.js");
+			RunSpec("BindingSpecs.js");
 		}
 	}
 }

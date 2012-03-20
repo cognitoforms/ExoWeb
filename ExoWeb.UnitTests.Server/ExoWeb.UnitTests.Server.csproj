@@ -87,10 +87,10 @@
     <Compile Include="JavascriptHelpersTest.cs" />
     <Compile Include="Templates\JavaScript\EvaluatorTest.cs" />
     <Compile Include="ExoWebTest.cs" />
-    <Compile Include="Jasmine\Jasmine_View.cs" />
-    <Compile Include="Jasmine\Jasmine_Model.cs" />
-    <Compile Include="Jasmine\Jasmine_Mapper.cs" />
-    <Compile Include="Jasmine\Jasmine_Core.cs" />
+    <Compile Include="Jasmine\ViewSpecs.cs" />
+    <Compile Include="Jasmine\ModelSpecs.cs" />
+    <Compile Include="Jasmine\MapperSpecs.cs" />
+    <Compile Include="Jasmine\CoreSpecs.cs" />
     <Compile Include="Jasmine\JasmineTest.cs" />
     <Compile Include="JavascriptTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

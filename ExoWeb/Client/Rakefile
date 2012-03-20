@@ -182,23 +182,25 @@ def minify(file_name)
 #	sh run + " < " + path + ".js > " + path + ".min.js"
 end
 
-def get_test_files(dir_name, prefix)
+def get_spec_files(dir_name, prefix)
 	res = []
 	Dir.entries(File.join(dir_name, prefix)).each do |item|
 		if (item =~ /^\.*$/) == nil && File::directory?(File.join(File.join(dir_name, prefix), item))
-			get_test_files(dir_name, File.join(prefix, item)).each do |file|
+			get_spec_files(dir_name, File.join(prefix, item)).each do |file|
 				res.push(file)
 			end
-		elsif (item =~ /^test_([^\.]*)\.js$/) == 0
+		elsif (item =~ /^([^\.]*)Specs\.js$/) == 0
 			res.push(File.join(prefix, item))
+		elsif (item.gsub(/\./, "").length > 0)
+			raise ("invalid spec file " + item)
 		end
 	end
 	return res
 end
 
-task :run_tests do
+task :run_specs do
 	if system("node --version")
-		get_test_files(File.join(Dir.pwd, 'specs'), '').each do |file|
+		get_spec_files(File.join(Dir.pwd, 'specs'), '').each do |file|
 			sh "node specs" + file + " -no-date-time"
 		end
 	end
@@ -279,6 +281,6 @@ task :build_mock do
 	minify("exoweb-mock")
 end
 
-task :default => [:run_tests, :build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_mock] do
+task :default => [:run_specs, :build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_mock] do
 	puts("completed default task")
 end
