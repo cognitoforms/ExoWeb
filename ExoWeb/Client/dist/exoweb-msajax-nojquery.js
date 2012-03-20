@@ -14077,6 +14077,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// start with the target or its raw value in the case of an adapter
 			var sourceObject = (this._target instanceof Adapter) ? this._target.get_rawValue() : this._target;
 
+			if (!(sourceObject instanceof Entity)) {
+				throw new ExoWeb.trace.logError("@", "Adapter source is not an entity.");
+			}
+
 			// get the property chain for this adapter starting at the source object
 			this._propertyChain = sourceObject.meta.property(this._propertyPath);
 			if (!this._propertyChain) {
