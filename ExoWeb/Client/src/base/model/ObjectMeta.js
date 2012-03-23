@@ -232,4 +232,3 @@ ObjectMeta.mixin({
 
 ObjectMeta.mixin(ExoWeb.Functor.eventing);
 ExoWeb.Model.ObjectMeta = ObjectMeta;
-ObjectMeta.registerClass("ExoWeb.Model.ObjectMeta");

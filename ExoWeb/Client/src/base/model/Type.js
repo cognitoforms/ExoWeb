@@ -63,9 +63,6 @@ function Type(model, name, baseType, origin) {
 
 	// helpers
 	jstype.meta = this;
-
-	// done...
-	this._jstype.registerClass(name, baseJsType);
 }
 
 // copy shortcut properties from a base meta type (recursively) to a target jstype
@@ -707,4 +704,3 @@ Type.prototype = {
 
 Type.mixin(ExoWeb.Functor.eventing);
 ExoWeb.Model.Type = Type;
-Type.registerClass("ExoWeb.Model.Type");

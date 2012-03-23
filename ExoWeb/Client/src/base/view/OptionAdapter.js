@@ -81,4 +81,3 @@ OptionAdapter.prototype = {
 };
 
 ExoWeb.View.OptionAdapter = OptionAdapter;
-OptionAdapter.registerClass("ExoWeb.View.OptionAdapter");

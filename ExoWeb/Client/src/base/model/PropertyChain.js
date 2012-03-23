@@ -432,4 +432,3 @@ PropertyChain.prototype = {
 };
 
 ExoWeb.Model.PropertyChain = PropertyChain;
-PropertyChain.registerClass("ExoWeb.Model.PropertyChain");

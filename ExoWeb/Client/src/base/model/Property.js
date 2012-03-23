@@ -520,4 +520,3 @@ Property.mixin({
 });
 Property.mixin(ExoWeb.Functor.eventing);
 ExoWeb.Model.Property = Property;
-Property.registerClass("ExoWeb.Model.Property");

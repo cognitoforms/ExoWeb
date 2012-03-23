@@ -79,7 +79,6 @@ ConditionType.prototype = {
 }
 
 ExoWeb.Model.ConditionType = ConditionType;
-ConditionType.registerClass("ExoWeb.Model.ConditionType");
 
 (function() {
 	//////////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +89,6 @@ ConditionType.registerClass("ExoWeb.Model.ConditionType");
 	Error.prototype = new ConditionType();
 
 	ExoWeb.Model.ConditionType.Error = Error;
-	Error.registerClass("ExoWeb.Model.ConditionType.Error", ConditionType);
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Warning(code, message, sets) {
@@ -100,7 +98,6 @@ ConditionType.registerClass("ExoWeb.Model.ConditionType");
 	Warning.prototype = new ConditionType();
 
 	ExoWeb.Model.ConditionType.Warning = Warning;
-	Warning.registerClass("ExoWeb.Model.ConditionType.Warning", ConditionType);
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	function Permission(code, message, sets, permissionType, isAllowed) {
@@ -121,5 +118,4 @@ ConditionType.registerClass("ExoWeb.Model.ConditionType");
 	});
 
 	ExoWeb.Model.ConditionType.Permission = Permission;
-	Permission.registerClass("ExoWeb.Model.ConditionType.Permission", ConditionType);
 })();

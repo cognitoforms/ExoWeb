@@ -3453,7 +3453,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ExoWeb.Model.Entity = Entity;
-	Entity.registerClass("ExoWeb.Model.Entity");
 
 	// #endregion
 
@@ -3525,9 +3524,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// helpers
 		jstype.meta = this;
-
-		// done...
-		this._jstype.registerClass(name, baseJsType);
 	}
 
 	// copy shortcut properties from a base meta type (recursively) to a target jstype
@@ -4169,7 +4165,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	Type.mixin(ExoWeb.Functor.eventing);
 	ExoWeb.Model.Type = Type;
-	Type.registerClass("ExoWeb.Model.Type");
 
 	// #endregion
 
@@ -4698,7 +4693,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 	Property.mixin(ExoWeb.Functor.eventing);
 	ExoWeb.Model.Property = Property;
-	Property.registerClass("ExoWeb.Model.Property");
 
 	// #endregion
 
@@ -5238,7 +5232,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ExoWeb.Model.PropertyChain = PropertyChain;
-	PropertyChain.registerClass("ExoWeb.Model.PropertyChain");
 
 	// #endregion
 
@@ -5479,7 +5472,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ObjectMeta.mixin(ExoWeb.Functor.eventing);
 	ExoWeb.Model.ObjectMeta = ObjectMeta;
-	ObjectMeta.registerClass("ExoWeb.Model.ObjectMeta");
 
 	// #endregion
 
@@ -5564,7 +5556,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ExoWeb.Model.Rule = Rule;
-	Rule.registerClass("ExoWeb.Model.Rule");
 
 	// #endregion
 
@@ -5602,7 +5593,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	};
 	ExoWeb.Model.RuleInput = RuleInput;
-	RuleInput.registerClass("ExoWeb.Model.RuleInput");
 
 	// #endregion
 
@@ -6775,7 +6765,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ConditionTypeSet.mixin(ExoWeb.Functor.eventing);
 
 	ExoWeb.Model.ConditionTypeSet = ConditionTypeSet;
-	ConditionTypeSet.registerClass("ExoWeb.Model.ConditionTypeSet");
 
 	// #endregion
 
@@ -6863,7 +6852,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	ExoWeb.Model.ConditionType = ConditionType;
-	ConditionType.registerClass("ExoWeb.Model.ConditionType");
 
 	(function() {
 		//////////////////////////////////////////////////////////////////////////////////////
@@ -6874,7 +6862,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		Error.prototype = new ConditionType();
 
 		ExoWeb.Model.ConditionType.Error = Error;
-		Error.registerClass("ExoWeb.Model.ConditionType.Error", ConditionType);
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Warning(code, message, sets) {
@@ -6884,7 +6871,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		Warning.prototype = new ConditionType();
 
 		ExoWeb.Model.ConditionType.Warning = Warning;
-		Warning.registerClass("ExoWeb.Model.ConditionType.Warning", ConditionType);
 
 		//////////////////////////////////////////////////////////////////////////////////////
 		function Permission(code, message, sets, permissionType, isAllowed) {
@@ -6905,7 +6891,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		});
 
 		ExoWeb.Model.ConditionType.Permission = Permission;
-		Permission.registerClass("ExoWeb.Model.ConditionType.Permission", ConditionType);
 	})();
 
 	// #endregion
@@ -6954,7 +6939,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ExoWeb.Model.Condition = Condition;
-	Condition.registerClass("ExoWeb.Model.Condition");
 
 	// #endregion
 
@@ -14787,7 +14771,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ExoWeb.View.OptionAdapter = OptionAdapter;
-	OptionAdapter.registerClass("ExoWeb.View.OptionAdapter");
 
 	// #endregion
 

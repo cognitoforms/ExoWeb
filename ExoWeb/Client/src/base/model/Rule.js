@@ -76,4 +76,3 @@ Rule.isValidation = function Rule$isValidation(rule) {
 };
 
 ExoWeb.Model.Rule = Rule;
-Rule.registerClass("ExoWeb.Model.Rule");

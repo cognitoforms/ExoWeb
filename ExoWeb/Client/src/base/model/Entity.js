@@ -76,4 +76,3 @@ Entity.fromIdString = function Entity$fromIdString(id) {
 };
 
 ExoWeb.Model.Entity = Entity;
-Entity.registerClass("ExoWeb.Model.Entity");

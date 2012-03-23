@@ -73,4 +73,3 @@ ConditionTypeSet.prototype = {
 ConditionTypeSet.mixin(ExoWeb.Functor.eventing);
 
 ExoWeb.Model.ConditionTypeSet = ConditionTypeSet;
-ConditionTypeSet.registerClass("ExoWeb.Model.ConditionTypeSet");

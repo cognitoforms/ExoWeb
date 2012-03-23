@@ -39,4 +39,3 @@ Condition.prototype = {
 };
 
 ExoWeb.Model.Condition = Condition;
-Condition.registerClass("ExoWeb.Model.Condition");

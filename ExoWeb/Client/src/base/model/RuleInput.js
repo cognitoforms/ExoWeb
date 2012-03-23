@@ -29,4 +29,3 @@ RuleInput.prototype = {
 	}
 };
 ExoWeb.Model.RuleInput = RuleInput;
-RuleInput.registerClass("ExoWeb.Model.RuleInput");
