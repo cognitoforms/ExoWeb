@@ -193,6 +193,7 @@
     <Content Include="Client\specs\base\mapper\ChangeSetSpecs.js" />
     <Content Include="Client\specs\base\mapper\ChangeLogSpecs.js" />
     <Content Include="Client\specs\base\mapper\ResponseHandlerSpecs.js" />
+    <Content Include="Client\specs\base\model\ModelSpecs.js" />
     <Content Include="Client\specs\base\model\LazyLoaderSpecs.js" />
     <Content Include="Client\specs\base\model\PathTokensSpecs.js" />
     <Content Include="Client\specs\base\view\BindingSpecs.js" />
