@@ -258,10 +258,23 @@ namespace ExoWeb
 
 						if (ExoWeb.TryConvertQueryInstance(result, out type, out roots, out isList))
 						{
-							Query[] newQueries = new Query[] { new Query(type, roots, true, isList, domainEvent.Include) };
+							Query newQuery = new Query(type, roots, true, isList, domainEvent.Include);
+							newQuery.Prepare(response);
+
+							Query[] newQueries = new Query[] { newQuery };
 							Queries = Queries == null ? newQueries : Queries.Union(newQueries).ToArray();
 
-							return isList ? (object) roots : (object) roots[0];
+							return isList ? (object)roots : (object)roots[0];
+						}
+						else if (domainEvent.Include != null && domainEvent.Include.Length > 0)
+						{
+							Query newQuery = new Query(domainEvent.Instance.Type, new[] { domainEvent.Instance }, true, false, domainEvent.Include);
+							newQuery.Prepare(response);
+
+							Query[] newQueries = new Query[] { newQuery };
+							Queries = Queries == null ? newQueries : Queries.Union(newQueries).ToArray();
+
+							return result;
 						}
 						else
 							return result;
