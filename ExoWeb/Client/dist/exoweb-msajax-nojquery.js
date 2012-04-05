@@ -11784,6 +11784,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 	Toggle.mixin({
 		// Show/Hide
 		//////////////////////////////////////////////////////////
+		link_show: function Toggle$link_show() {
+			if ((this._action === "show" && $(this._element).is(".toggle-on")) || (this._action === "hide" && $(this._element).is(".toggle-off"))) {
+				this.set_state("on");
+			}
+			else {
+				this.set_state("off");
+			}
+		},
 		do_show: function Toggle$do_show() {
 			$(this._element).show();
 			this.set_state("on");
@@ -11839,6 +11847,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		link_disable: function Toggle$link_disable() {
 			if ((this._action === "disable" && $(this._element).is(".toggle-on")) || (this._action === "enable" && $(this._element).is(".toggle-off"))) {
 				$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
+				this.set_state("off");
+			}
+			else {
+				this.set_state("on");
 			}
 		},
 		do_enable: function Toggle$do_enable() {
@@ -11877,6 +11889,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				newContext.initializeComponents();
 				newContext._onInstantiated(null, true);
+				this.set_state("on");
+			}
+			else {
+				this.set_state("off");
 			}
 		},
 		init_render: function Toggle$init_render() {
@@ -11968,6 +11984,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	Toggle.mixin({
 		// Hide/Show
 		//////////////////////////////////////////////////////////
+		link_hide: Toggle.prototype.link_show,
 		init_hide: Toggle.prototype.init_show,
 		undo_hide: Toggle.prototype.do_show,
 		undo_show: Toggle.prototype.do_hide,
