@@ -8770,6 +8770,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ServerSync.mixin(ExoWeb.Functor.eventing);
 
+	function getInstanceForChange(instanceJson, translator, deletedObjects) {
+		var instance = fromExoModel(instanceJson, translator);
+		if (!instance) {
+			var jstype = ExoWeb.Model.Model.getJsType(instanceJson.type);
+			instance = deletedObjects.single(function(obj) {
+				return obj instanceof jstype && obj.meta.id === instanceJson.id;
+			});
+		}
+		return instance;
+	}
+
 	var pendingRequests = 0;
 
 	ExoWeb.registerActivity(function() {
@@ -8896,7 +8907,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				ExoWeb.trace.throwAndLog("server", errorFmt, ["argument is not of correct type"]);
 			}
 
-			return !Array.contains(this._objectsExcludedFromSave, obj);
+			return !Array.contains(this._objectsExcludedFromSave, obj) && !Array.contains(this._objectsDeleted, obj);
 		},
 		canSave: function ServerSync$canSave(change) {
 
@@ -8916,7 +8927,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							ignore = false;
 						}
 						else {
-							var obj = fromExoModel(item, this._translator);
+							var obj = getInstanceForChange(item, this._translator, this._objectsDeleted);
 							// Only objects that exist can be disabled
 							if (!obj || this.canSaveObject(obj)) {
 								ignore = false;
@@ -8930,7 +8941,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							ignore = false;
 						}
 						else {
-							var obj = fromExoModel(item, this._translator);
+							var obj = getInstanceForChange(item, this._translator, this._objectsDeleted);
 							if (!obj || this.canSaveObject(obj)) {
 								ignore = false;
 							}
@@ -8948,7 +8959,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			else if (change.type === "ReferenceChange") {
 				var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 				if (oldJsType) {
-					var oldValue = fromExoModel(change.oldValue, this._translator);
+					var oldValue = getInstanceForChange(change.oldValue, this._translator, this._objectsDeleted);
 					if (oldValue && !this.canSaveObject(oldValue)) {
 						return false;
 					}
@@ -8956,7 +8967,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var newJsType = change.newValue && ExoWeb.Model.Model.getJsType(change.newValue.type, true);
 				if (newJsType) {
-					var newValue = fromExoModel(change.newValue, this._translator);
+					var newValue = getInstanceForChange(change.newValue, this._translator, this._objectsDeleted);
 					if (newValue && !this.canSaveObject(newValue)) {
 						return false;
 					}
@@ -8970,7 +8981,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// Ensure that the instance that the change pertains to can be saved.
-			var instanceObj = fromExoModel(change.instance, this._translator);
+			var instanceObj = getInstanceForChange(change.instance, this._translator, this._objectsDeleted);
 			return !instanceObj || this.canSaveObject(instanceObj);
 		},
 
