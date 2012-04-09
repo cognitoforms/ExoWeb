@@ -15,7 +15,7 @@ ChangeLog.mixin({
 		// Adds a new change to the log.
 
 		if (this._activeSet === null) {
-			ExoWeb.trace.throwAndLog("server", "The change log is not currently active.");
+			throw new Error("The change log is not currently active.");
 		}
 
 		var idx = this._activeSet.add(change);
@@ -195,7 +195,17 @@ ChangeLog.mixin({
 			var currentChanges = this.count(serverSync.canSave, serverSync);
 			var totalChanges = changes.length;
 
+			// Determine that the target of a change is a new instance
+			var instanceIsNew = function(change) {
+				if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
+					var obj = fromExoModel(change.instance, serverSync._translator);
+					return obj && obj.meta.isNew;
+				}
+				return false;
+			};
+
 			// truncate change log up-front if save occurred
+			var shouldDiscardChange;
 			var saveChanges = changes.filter(function (c, i) { return c.type === "Save"; });
 			var numSaveChanges = saveChanges.length;
 			if (numSaveChanges > 0) {
@@ -207,17 +217,8 @@ ChangeLog.mixin({
 				// and using the typed identifier approach allows for a straightforward search of the array.
 				var newInstancesSaved = idChanges.map(function(idChange) { return idChange.type + "|" + idChange.oldId; });
 
-				// Determine that the target of a change is a new instance
-				var instanceIsNew = function(change) {
-					if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
-						var obj = fromExoModel(change.instance, serverSync._translator);
-						return obj && obj.meta.isNew;
-					}
-					return false;
-				};
-
 				// Truncate changes that we believe were actually saved based on the response
-				this.truncate(checkpoint, function(change) {
+				shouldDiscardChange = function(change) {
 					var couldHaveBeenSaved, isNewObjectNotYetSaved;
 
 					// Determine if the change could have been saved in the first place
@@ -228,7 +229,10 @@ ChangeLog.mixin({
 
 					// Return a value indicating whether or not the change should be removed
 					return couldHaveBeenSaved && !isNewObjectNotYetSaved;
-				});
+				};
+
+				// Truncate changes that we believe were actually saved based on the response
+				this.truncate(checkpoint, shouldDiscardChange);
 
 				// Update affected scope queries
 				idChanges.forEach(function (idChange) {
@@ -247,6 +251,8 @@ ChangeLog.mixin({
 				}, this);
 			}
 
+			var numPendingSaveChanges = numSaveChanges;
+
 			changes.forEach(function (change, changeIndex) {
 				if (change.type === "InitNew") {
 					this.applyInitChange(change, serverSync, beforeApply, afterApply);
@@ -262,13 +268,21 @@ ChangeLog.mixin({
 				}
 				else if (change.type === "Save") {
 					this.applySaveChange(change, serverSync, beforeApply, afterApply);
-					numSaveChanges--;
+					numPendingSaveChanges--;
 				}
 
-				// only record a change if there is not a pending save change
-				if (change.type !== "Save" && numSaveChanges <= 0 && (!filter || filter(change) === true)) {
-					newChanges++;
-					this.add(change);
+				if (change.type !== "Save") {
+					var noObjectsWereSaved = numSaveChanges === 0;
+					var hasPendingSaveChanges = numPendingSaveChanges > 0;
+
+					// Only record a change if there is not a pending save change, also take into account new instances that are not saved
+					if (noObjectsWereSaved || !hasPendingSaveChanges || !shouldDiscardChange(change)) {
+						// Apply additional filter
+						if (!filter || filter(change) === true) {
+							newChanges++;
+							this.add(change);
+						}
+					}
 				}
 			}, this);
 
