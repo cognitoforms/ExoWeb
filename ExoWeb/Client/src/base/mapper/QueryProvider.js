@@ -6,7 +6,7 @@ function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
 	var scopeQueries;
 
 	// ensure correct value of "scopeQueries" argument
-	if (isFunction(onSuccess)) {
+	if (!isFunction(onSuccess)) {
 		// scopeQueries is included in call, so shift arguments
 		scopeQueries = onSuccess;
 		onSuccess = onFailure;
@@ -18,7 +18,7 @@ function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
 		scopeQueries = context.server._scopeQueries;
 	}
 
-	if (isFunction(onFailure)) {
+	if (!isFunction(onFailure)) {
 		thisPtr = onFailure;
 		onFailure = null;
 	}

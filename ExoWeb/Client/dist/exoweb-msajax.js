@@ -7399,7 +7399,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var scopeQueries;
 
 		// ensure correct value of "scopeQueries" argument
-		if (isFunction(onSuccess)) {
+		if (!isFunction(onSuccess)) {
 			// scopeQueries is included in call, so shift arguments
 			scopeQueries = onSuccess;
 			onSuccess = onFailure;
@@ -7411,7 +7411,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			scopeQueries = context.server._scopeQueries;
 		}
 
-		if (isFunction(onFailure)) {
+		if (!isFunction(onFailure)) {
 			thisPtr = onFailure;
 			onFailure = null;
 		}
