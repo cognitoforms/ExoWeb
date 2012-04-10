@@ -27,6 +27,7 @@ namespace ExoWeb
 
 		public string RequestJson { get; set; }
 
+		public Dictionary<string, object> AdditionalInfo {get; set;}
 		#endregion
 
 		#region IJsonSerializable
@@ -38,6 +39,7 @@ namespace ExoWeb
 			json.Set("stackTrace", StackTrace);
 			json.Set("url", Url);
 			json.Set("refererUrl", RefererUrl);
+			json.Set("additionalInfo", AdditionalInfo);
 		}
 
 		object IJsonSerializable.Deserialize(Json json)
@@ -47,7 +49,7 @@ namespace ExoWeb
 			StackTrace = json.Get<string>("stackTrace");
 			Url = json.Get<string>("url");
 			RefererUrl = json.Get<string>("refererUrl");
-
+			AdditionalInfo = json.Get<Dictionary<string, object>>("additionalInfo");
 			return this;
 		}
 
