@@ -78,7 +78,7 @@ jQuery.fn.issues = function (options) {
 		if (!info.target || !info.property) return [];
 
 		if (options.refresh)
-			info.target.meta.executeRules(info.property);
+			info.target.meta.executeValidationRules(info.property);
 		else if (options.ensure)
 			info.target.meta.ensureValidation(info.property);
 

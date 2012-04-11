@@ -5256,14 +5256,27 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return;
 			}
 
-			var rules = prop.rules(true);
-
-			// Exclude non-validation rules, rules that have previously been executed or their
+			// Exclude rules that have previously been executed or their
 			// conditions have been attached, and allowed values rules (since if the property has
 			// not been interacted with there is no value and the rule does not apply).
+			this.executeValidationRules(prop, function(rule) {
+				return !this._executedRules.contains(rule) && !(rule instanceof AllowedValuesRule);
+			});
+		},
+		executeValidationRules: function ObjectMeta$executeValidationRules(prop, filter) {
+			var rules = prop.rules(true);
+
+			// Exclude non-validation rules
 			rules.purge(function(rule) {
-				return !Rule.isValidation(rule) || this._executedRules.contains(rule) || rule instanceof AllowedValuesRule;
+				return !Rule.isValidation(rule);
 			}, this);
+
+			// Exclude rules based on a custom filter
+			if (filter) {
+				rules.purge(function(rule) {
+					return filter.apply(this, arguments) === false;
+				}, this);
+			}
 
 			if (rules.length > 0) {
 				this.executeRulesImpl(prop, rules);
@@ -15035,7 +15048,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (!info.target || !info.property) return [];
 
 			if (options.refresh)
-				info.target.meta.executeRules(info.property);
+				info.target.meta.executeValidationRules(info.property);
 			else if (options.ensure)
 				info.target.meta.ensureValidation(info.property);
 
