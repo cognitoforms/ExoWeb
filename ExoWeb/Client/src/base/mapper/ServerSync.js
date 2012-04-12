@@ -446,7 +446,7 @@ ServerSync.mixin({
 
 		args.responseObject = result;
 
-		this._handleResult(result, args.name, checkpoint, function () {
+		this._handleResult(result, args.eventName, checkpoint, function () {
 			var event = result.events[0];
 			if (event instanceof Array) {
 				for (var i = 0; i < event.length; ++i) {
@@ -1030,9 +1030,8 @@ ServerSync.mixin({
 				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 			}, this);
 		}
-		catch (e) {
+		finally {
 			this.endApplyingChanges();
-			ExoWeb.trace.throwAndLog(["server"], e);
 		}
 	},
 	rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
