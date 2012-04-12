@@ -3667,6 +3667,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var obj = this._pool[oldKey];
 
 			if (obj) {
+				obj.meta.legacyId = oldId;
+
 				for (var t = this; t; t = t.baseType) {
 					t._pool[newKey] = obj;
 
@@ -3689,6 +3691,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		unregister: function Type$unregister(obj) {
 			for (var t = this; t; t = t.baseType) {
 				delete t._pool[obj.meta.id.toLowerCase()];
+
+				if (obj.meta.legacyId) {
+					delete t._legacyPool[obj.meta.legacyId.toLowerCase()];
+				}
 
 				if (t._known) {
 					t._known.remove(obj);
