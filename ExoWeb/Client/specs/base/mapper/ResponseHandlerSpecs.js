@@ -170,7 +170,7 @@ describe("ResponseHandler", function () {
 
 		global.TypeLazyLoader = { unregister: function() { } };
 
-		var serverSyncObj = { _changeLog: { applyChanges: changeSpy} };
+		var serverSyncObj = { applyChanges: changeSpy };
 
 		typesFromJson = typeSpy;
 		objectsFromJson = objSpy;

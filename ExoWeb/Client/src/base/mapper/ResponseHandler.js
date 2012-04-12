@@ -54,7 +54,7 @@ ResponseHandler.mixin({
 					return change.type === "InitNew";
 				});
 
-				this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync);
+				this._serverSync.applyChanges(initChanges, this._options.source);
 
 				callback.call(thisPtr);
 			}
@@ -87,7 +87,7 @@ ResponseHandler.mixin({
 					return change.type !== "InitNew";
 				});
 
-				this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync);
+				this._serverSync.applyChanges(initChanges, this._options.source);
 
 				callback.call(thisPtr);
 			}

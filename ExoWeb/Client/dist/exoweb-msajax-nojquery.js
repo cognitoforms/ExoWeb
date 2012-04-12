@@ -7793,7 +7793,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						return change.type === "InitNew";
 					});
 
-					this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync);
+					this._serverSync.applyChanges(initChanges, this._options.source);
 
 					callback.call(thisPtr);
 				}
@@ -7826,7 +7826,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						return change.type !== "InitNew";
 					});
 
-					this._serverSync._changeLog.applyChanges(initChanges, this._options.source, this._serverSync);
+					this._serverSync.applyChanges(initChanges, this._options.source);
 
 					callback.call(thisPtr);
 				}
@@ -8357,333 +8357,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._raiseEvent("changeUndone", [change, idx, currentSet, this]);
 
 			return change;
-		},
-		// APPLY CHANGES
-		///////////////////////////////////////////////////////////////////////
-		applyChanges: function (checkpoint, changes, source, serverSync, filter, beforeApply, afterApply) {
-			if (!changes || !(changes instanceof Array)) {
-				return;
-			}
-
-			var newChanges = 0;
-
-			try {
-				var batch = ExoWeb.Batch.start("apply changes");
-
-				serverSync.beginApplyingChanges();
-
-				if ((source !== undefined && source !== null && (!this.activeSet() || this.activeSet().source() !== source)) || serverSync.isCapturingChanges()) {
-					if (source) {
-						this.start(source);
-					}
-					else {
-						this.start("unknown");
-						ExoWeb.trace.logWarning("server", "Changes to apply but no source is specified.");
-					}
-				}
-
-				var currentChanges = this.count(serverSync.canSave, serverSync);
-				var totalChanges = changes.length;
-
-				// Determine that the target of a change is a new instance
-				var instanceIsNew = function(change) {
-					if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
-						var obj = fromExoModel(change.instance, serverSync._translator);
-						return obj && obj.meta.isNew;
-					}
-					return false;
-				};
-
-				// truncate change log up-front if save occurred
-				var shouldDiscardChange;
-				var saveChanges = changes.filter(function (c, i) { return c.type === "Save"; });
-				var numSaveChanges = saveChanges.length;
-				if (numSaveChanges > 0) {
-					// Collect all of the id changes in the response. Multiple saves could occur.
-					var idChanges = saveChanges.mapToArray(function(change) { return change.added || []; });
-
-					// Create a list of new instances that were saved. Use a typed identifier form since the id stored
-					// in changes in the change log will be a server id rather than client id (if there is a distinction)
-					// and using the typed identifier approach allows for a straightforward search of the array.
-					var newInstancesSaved = idChanges.map(function(idChange) { return idChange.type + "|" + idChange.oldId; });
-
-					// Truncate changes that we believe were actually saved based on the response
-					shouldDiscardChange = function(change) {
-						var couldHaveBeenSaved, isNewObjectNotYetSaved;
-
-						// Determine if the change could have been saved in the first place
-						couldHaveBeenSaved = serverSync.canSave(change);
-
-						// Determine if the change targets a new object that has not been saved
-						isNewObjectNotYetSaved = change.instance && (change.instance.isNew || instanceIsNew(change)) && !newInstancesSaved.contains(change.instance.type + "|" + change.instance.id);
-
-						// Return a value indicating whether or not the change should be removed
-						return couldHaveBeenSaved && !isNewObjectNotYetSaved;
-					};
-
-					// Truncate changes that we believe were actually saved based on the response
-					this.truncate(checkpoint, shouldDiscardChange);
-
-					// Update affected scope queries
-					idChanges.forEach(function (idChange) {
-						var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
-						if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
-							var serverOldId = idChange.oldId;
-							var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
-								serverSync._translator.reverse(idChange.type, serverOldId) :
-								idChange.oldId;
-							serverSync._scopeQueries.forEach(function (query) {
-								query.ids = query.ids.map(function (id) {
-									return (id === clientOldId) ? idChange.newId : id;
-								}, this);
-							}, this);
-						}
-					}, this);
-				}
-
-				var numPendingSaveChanges = numSaveChanges;
-
-				changes.forEach(function (change, changeIndex) {
-					if (change.type === "InitNew") {
-						this.applyInitChange(change, serverSync, beforeApply, afterApply);
-					}
-					else if (change.type === "ReferenceChange") {
-						this.applyRefChange(change, serverSync, beforeApply, afterApply);
-					}
-					else if (change.type === "ValueChange") {
-						this.applyValChange(change, serverSync, beforeApply, afterApply);
-					}
-					else if (change.type === "ListChange") {
-						this.applyListChange(change, serverSync, beforeApply, afterApply);
-					}
-					else if (change.type === "Save") {
-						this.applySaveChange(change, serverSync, beforeApply, afterApply);
-						numPendingSaveChanges--;
-					}
-
-					if (change.type !== "Save") {
-						var noObjectsWereSaved = numSaveChanges === 0;
-						var hasPendingSaveChanges = numPendingSaveChanges > 0;
-
-						// Only record a change if there is not a pending save change, also take into account new instances that are not saved
-						if (noObjectsWereSaved || !hasPendingSaveChanges || !shouldDiscardChange(change)) {
-							// Apply additional filter
-							if (!filter || filter(change) === true) {
-								newChanges++;
-								this.add(change);
-							}
-						}
-					}
-				}, this);
-
-				// start a new set to capture future changes
-				if (serverSync.isCapturingChanges()) {
-					this.start("client");
-				}
-			}
-			catch (e) {
-				// attempt to clean up in the event of an error
-				ExoWeb.Batch.end(batch);
-				ExoWeb.trace.throwAndLog(["server"], e);
-			}
-			finally {
-				serverSync.endApplyingChanges();
-				ExoWeb.Batch.end(batch);
-			}
-
-			// raise "HasPendingChanges" change event, only new changes were recorded
-			if (newChanges > 0) {
-				Sys.Observer.raisePropertyChanged(serverSync, "HasPendingChanges");
-			}
-		},
-		applySaveChange: function (change, serverSync, before, after) {
-			if (!change.added)
-				return;
-
-			change.deleted.forEach(function(instance) {
-				tryGetJsType(serverSync._model, instance.type, null, false, function (type) {
-					tryGetEntity(serverSync._model, serverSync._translator, type, instance.id, null, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (obj) {
-						// Notify server object that the instance is deleted
-						serverSync.notifyDeleted(obj);
-						// Simply a marker flag for debugging purposes
-						obj.meta.isDeleted = true;
-						// Unregister the object so that it can't be retrieved via get, known, or have rules execute against it
-						type.meta.unregister(obj);
-					}, after), this);
-				}, this);
-			}, this);
-
-			change.added.forEach(function (idChange, idChangeIndex) {
-				ensureJsType(serverSync._model, idChange.type, serverSync.ignoreChanges(before, function (jstype) {
-					var serverOldId = idChange.oldId;
-					var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
-							serverSync._translator.reverse(idChange.type, serverOldId) :
-							idChange.oldId;
-
-					// If the client recognizes the old id then this is an object we have seen before
-					if (clientOldId) {
-						var type = serverSync._model.type(idChange.type);
-
-						// Attempt to load the object.
-						var obj = type.get(clientOldId);
-
-						// Ensure that the object exists.
-						if (!obj) {
-							ExoWeb.trace.throwAndLog("server",
-								"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
-								[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
-							);
-						}
-
-						// Change the id and make non-new.
-						type.changeObjectId(clientOldId, idChange.newId);
-						Sys.Observer.setValue(obj.meta, "isNew", false);
-
-						// Update affected scope queries
-						serverSync._scopeQueries.forEach(function (query) {
-							query.ids = query.ids.map(function (id) {
-								return (id === clientOldId) ? idChange.newId : id;
-							}, this);
-						}, this);
-
-						// Update post-save changes with new id
-						function fixInstance(inst) {
-							if (inst && obj === fromExoModel(inst, serverSync._translator))
-								inst.id = idChange.newId;
-						}
-
-						this._sets.forEach(function (set) {
-							set._changes.forEach(function (change) {
-								// Only process changes to model instances
-								if (!change.instance) return;
-
-								fixInstance(change.instance);
-
-								// For list changes additionally check added and removed objects.
-								if (change.type === "ListChange") {
-									if (change.added.length > 0)
-										change.added.forEach(fixInstance);
-									if (change.removed.length > 0)
-										change.removed.forEach(fixInstance);
-								}
-								// For reference changes additionally check oldValue/newValue
-								else if (change.type === "ReferenceChange") {
-									fixInstance(change.oldValue);
-									fixInstance(change.newValue);
-								}
-							}, this);
-						}, this);
-					}
-					// Otherwise, log an error.
-					else {
-						ExoWeb.trace.logWarning("server",
-							"Cannot apply id change on type \"{0}\" since old id \"{1}\" was not found.",
-							idChange.type,
-							idChange.oldId);
-					}
-				}, after), this);
-			}, this);
-		},
-		applyInitChange: function (change, serverSync, before, after) {
-			tryGetJsType(serverSync._model, change.instance.type, null, false, serverSync.ignoreChanges(before, function (jstype) {
-				if (!jstype.meta.get(change.instance.id)) {
-					// Create the new object
-					var newObj = new jstype();
-
-					// Check for a translation between the old id that was reported and an actual old id.  This is
-					// needed since new objects that are created on the server and then committed will result in an accurate
-					// id change record, but "instance.id" for this change will actually be the persisted id.
-					var serverOldId = serverSync._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
-
-					// Remember the object's client-generated new id and the corresponding server-generated new id
-					serverSync._translator.add(change.instance.type, newObj.meta.id, serverOldId);
-				}
-			}, after), this);
-		},
-		applyRefChange: function (change, serverSync, before, after) {
-			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
-					if (change.newValue) {
-						tryGetJsType(serverSync._model, change.newValue.type, null, true, serverSync.ignoreChanges(before, function (refType) {
-							var refObj = fromExoModel(change.newValue, serverSync._translator, true);
-							Sys.Observer.setValue(srcObj, change.property, refObj);
-						}, after), this);
-					}
-					else {
-						Sys.Observer.setValue(srcObj, change.property, null);
-					}
-				}, after), this);
-			}, this);
-		},
-		applyValChange: function (change, serverSync, before, after) {
-			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
-
-					// Cache the new value, becuase we access it many times and also it may be modified below
-					// to account for timezone differences, but we don't want to modify the actual change object.
-					var newValue = change.newValue;
-				
-					// Cache the property since it is not a simple property access.
-					var property = srcObj.meta.property(change.property, true);
-
-					if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
-
-						// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
-						dateRegex.lastIndex = 0;
-						newValue = new Date(newValue.replace(dateRegex, dateRegexReplace));
-
-						//now that we have the value set for the date.
-						//if the underlying property datatype is actually a date and not a datetime
-						//then we need to add the local timezone offset to make sure that the date is displayed acurately.
-						if (property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
-							var serverOffset = serverSync.get_ServerTimezoneOffset();
-							var localOffset = -(new Date().getTimezoneOffset() / 60);
-							newValue = newValue.addHours(serverOffset - localOffset);
-						}
-					}
-
-					Sys.Observer.setValue(srcObj, change.property, newValue);
-
-				}, after), this);
-			}, this);
-		},
-		applyListChange: function (change, serverSync, before, after) {
-			tryGetJsType(serverSync._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(serverSync._model, serverSync._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, serverSync.ignoreChanges(before, function (srcObj) {
-					var prop = srcObj.meta.property(change.property, true);
-					var list = prop.value(srcObj);
-
-					list.beginUpdate();
-
-					var listSignal = new ExoWeb.Signal("applyListChange-items");
-
-					// apply added items
-					change.added.forEach(function (item) {
-						tryGetJsType(serverSync._model, item.type, null, true, listSignal.pending(serverSync.ignoreChanges(before, function (itemType) {
-							var itemObj = fromExoModel(item, serverSync._translator, true);
-							if (!list.contains(itemObj)) {
-								list.add(itemObj);
-							}
-						}, after)), this, true);
-					}, this);
-
-					// apply removed items
-					change.removed.forEach(function (item) {
-						// no need to load instance only to remove it from a list
-						tryGetJsType(serverSync._model, item.type, null, false, serverSync.ignoreChanges(before, function (itemType) {
-							var itemObj = fromExoModel(item, serverSync._translator, true);
-							list.remove(itemObj);
-						}, after), this, true);
-					}, this);
-
-					// don't end update until the items have been loaded
-					listSignal.waitForAll(serverSync.ignoreChanges(before, function () {
-						serverSync.beginApplyingChanges();
-						list.endUpdate();
-						serverSync.endApplyingChanges();
-					}, after), this, true);
-				}, after), this);
-			}, this);
 		}
 	});
 
@@ -8752,7 +8425,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this.beginCapturingChanges = function ServerSync$beginCapturingChanges() {
 			if (!isCapturingChanges) {
 				isCapturingChanges = true;
-				startChangeSet.call(this, "client");
+				this._changeLog.start("client");
 			}
 		};
 
@@ -8850,16 +8523,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return changes;
 	}
 
-	function startChangeSet(source) {
-		if (source) {
-			this._changeLog.start(source);
-		}
-		else {
-			this._changeLog.start("unknown");
-			ExoWeb.trace.logWarning("server", "Changes to apply but no source is specified.");
-		}
-	}
-
 	// when ServerSync is made singleton, this data will be referenced via closure
 	function ServerSync$addScopeQuery(query) {
 		this._scopeQueries.push(query);
@@ -8870,8 +8533,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		this._changeLog.addSet("init", changes);
 
-		if (activeSet)
-			startChangeSet.call(this, activeSet.source());
+		if (activeSet) {
+			this._changeLog.start(activeSet.source());
+		}
 	}
 
 	ServerSync.mixin({
@@ -9035,12 +8699,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 						ExoWeb.Batch.end(batch);
 
 						if (result.changes && result.changes.length > 0) {
-							this._changeLog.applyChanges(checkpoint, result.changes, source, this, null, options.beforeApply, options.afterApply);
+							this.applyChanges(checkpoint, result.changes, source, null, options.beforeApply, options.afterApply);
 						}
 						else if (source) {
 							// no changes, so record empty set
-							startChangeSet.call(this, source);
-							startChangeSet.call(this, "client");
+							this._changeLog.start(source || "unknown");
+							this._changeLog.start("client");
 						}
 					}
 
@@ -9054,7 +8718,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}), this);
 			}
 			else if (result.changes && result.changes.length > 0) {
-				this._changeLog.applyChanges(checkpoint, result.changes, source, this, null, options.beforeApply, options.afterApply);
+				this.applyChanges(checkpoint, result.changes, source, null, options.beforeApply, options.afterApply);
 				if (result.conditions) {
 					conditionsFromJson(this._model, result.conditions, signal.pending());
 				}
@@ -9062,8 +8726,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			else {
 				if (source) {
 					// no changes, so record empty set
-					startChangeSet.call(this, source);
-					startChangeSet.call(this, "client");
+					this._changeLog.start(source || "unknown");
+					this._changeLog.start("client");
 				}
 
 				if (result.conditions) {
@@ -9366,6 +9030,323 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		addSaveFailed: function (handler) {
 			this._addEvent("saveFailed", handler);
+		},
+
+		// Apply Changes
+		///////////////////////////////////////////////////////////////////////
+		applyChanges: function (checkpoint, changes, source, filter, beforeApply, afterApply) {
+			if (!changes || !(changes instanceof Array)) {
+				return;
+			}
+
+			var newChanges = 0;
+
+			try {
+				var batch = ExoWeb.Batch.start("apply changes");
+
+				this.beginApplyingChanges();
+
+				if ((source !== undefined && source !== null && (!this._changeLog.activeSet() || this._changeLog.activeSet().source() !== source)) || this.isCapturingChanges()) {
+					this._changeLog.start(source || "unknown");
+				}
+
+				var currentChanges = this._changeLog.count(this.canSave, this);
+				var totalChanges = changes.length;
+
+				// Determine that the target of a change is a new instance
+				var instanceIsNew = function(change) {
+					if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
+						var obj = fromExoModel(change.instance, this._translator);
+						return obj && obj.meta.isNew;
+					}
+					return false;
+				};
+
+				// truncate change log up-front if save occurred
+				var shouldDiscardChange;
+				var saveChanges = changes.filter(function (c, i) { return c.type === "Save"; });
+				var numSaveChanges = saveChanges.length;
+				if (numSaveChanges > 0) {
+					// Collect all of the id changes in the response. Multiple saves could occur.
+					var idChanges = saveChanges.mapToArray(function(change) { return change.added || []; });
+
+					// Create a list of new instances that were saved. Use a typed identifier form since the id stored
+					// in changes in the change log will be a server id rather than client id (if there is a distinction)
+					// and using the typed identifier approach allows for a straightforward search of the array.
+					var newInstancesSaved = idChanges.map(function(idChange) { return idChange.type + "|" + idChange.oldId; });
+
+					// Truncate changes that we believe were actually saved based on the response
+					shouldDiscardChange = function(change) {
+						var couldHaveBeenSaved, isNewObjectNotYetSaved;
+
+						// Determine if the change could have been saved in the first place
+						couldHaveBeenSaved = this.canSave(change);
+
+						// Determine if the change targets a new object that has not been saved
+						isNewObjectNotYetSaved = change.instance && (change.instance.isNew || instanceIsNew.call(this, change)) && !newInstancesSaved.contains(change.instance.type + "|" + change.instance.id);
+
+						// Return a value indicating whether or not the change should be removed
+						return couldHaveBeenSaved && !isNewObjectNotYetSaved;
+					};
+
+					// Truncate changes that we believe were actually saved based on the response
+					this._changeLog.truncate(checkpoint, shouldDiscardChange.bind(this));
+
+					// Update affected scope queries
+					idChanges.forEach(function (idChange) {
+						var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
+						if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+							var serverOldId = idChange.oldId;
+							var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
+								this._translator.reverse(idChange.type, serverOldId) :
+								idChange.oldId;
+							this._scopeQueries.forEach(function (query) {
+								query.ids = query.ids.map(function (id) {
+									return (id === clientOldId) ? idChange.newId : id;
+								}, this);
+							}, this);
+						}
+					}, this);
+				}
+
+				var numPendingSaveChanges = numSaveChanges;
+
+				changes.forEach(function (change, changeIndex) {
+					if (change.type === "InitNew") {
+						this.applyInitChange(change, beforeApply, afterApply);
+					}
+					else if (change.type === "ReferenceChange") {
+						this.applyRefChange(change, beforeApply, afterApply);
+					}
+					else if (change.type === "ValueChange") {
+						this.applyValChange(change, beforeApply, afterApply);
+					}
+					else if (change.type === "ListChange") {
+						this.applyListChange(change, beforeApply, afterApply);
+					}
+					else if (change.type === "Save") {
+						this.applySaveChange(change, beforeApply, afterApply);
+						numPendingSaveChanges--;
+					}
+
+					if (change.type !== "Save") {
+						var noObjectsWereSaved = numSaveChanges === 0;
+						var hasPendingSaveChanges = numPendingSaveChanges > 0;
+
+						// Only record a change if there is not a pending save change, also take into account new instances that are not saved
+						if (noObjectsWereSaved || !hasPendingSaveChanges || !shouldDiscardChange.call(this, change)) {
+							// Apply additional filter
+							if (!filter || filter(change) === true) {
+								newChanges++;
+								this._changeLog.add(change);
+							}
+						}
+					}
+				}, this);
+
+				// start a new set to capture future changes
+				if (this.isCapturingChanges()) {
+					this._changeLog.start("client");
+				}
+			}
+			finally {
+				this.endApplyingChanges();
+				ExoWeb.Batch.end(batch);
+			}
+
+			// raise "HasPendingChanges" change event, only new changes were recorded
+			if (newChanges > 0) {
+				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+			}
+		},
+		applySaveChange: function (change, before, after) {
+			if (!change.added)
+				return;
+
+			change.deleted.forEach(function(instance) {
+				tryGetJsType(this._model, instance.type, null, false, function (type) {
+					tryGetEntity(this._model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
+						// Notify server object that the instance is deleted
+						this.notifyDeleted(obj);
+						// Simply a marker flag for debugging purposes
+						obj.meta.isDeleted = true;
+						// Unregister the object so that it can't be retrieved via get, known, or have rules execute against it
+						type.meta.unregister(obj);
+					}, after), this);
+				}, this);
+			}, this);
+
+			change.added.forEach(function (idChange, idChangeIndex) {
+				ensureJsType(this._model, idChange.type, this.ignoreChanges(before, function (jstype) {
+					var serverOldId = idChange.oldId;
+					var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
+							this._translator.reverse(idChange.type, serverOldId) :
+							idChange.oldId;
+
+					// If the client recognizes the old id then this is an object we have seen before
+					if (clientOldId) {
+						var type = this._model.type(idChange.type);
+
+						// Attempt to load the object.
+						var obj = type.get(clientOldId);
+
+						// Ensure that the object exists.
+						if (!obj) {
+							ExoWeb.trace.throwAndLog("server",
+								"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
+								[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
+							);
+						}
+
+						// Change the id and make non-new.
+						type.changeObjectId(clientOldId, idChange.newId);
+						Sys.Observer.setValue(obj.meta, "isNew", false);
+
+						// Update affected scope queries
+						this._scopeQueries.forEach(function (query) {
+							query.ids = query.ids.map(function (id) {
+								return (id === clientOldId) ? idChange.newId : id;
+							}, this);
+						}, this);
+
+						// Update post-save changes with new id
+						function fixInstance(inst) {
+							if (inst && obj === fromExoModel(inst, this._translator))
+								inst.id = idChange.newId;
+						}
+
+						this._changeLog._sets.forEach(function (set) {
+							set._changes.forEach(function (change) {
+								// Only process changes to model instances
+								if (!change.instance) return;
+
+								fixInstance.call(this, change.instance);
+
+								// For list changes additionally check added and removed objects.
+								if (change.type === "ListChange") {
+									if (change.added.length > 0)
+										change.added.forEach(fixInstance, this);
+									if (change.removed.length > 0)
+										change.removed.forEach(fixInstance, this);
+								}
+								// For reference changes additionally check oldValue/newValue
+								else if (change.type === "ReferenceChange") {
+									fixInstance.call(this, change.oldValue);
+									fixInstance.call(this, change.newValue);
+								}
+							}, this);
+						}, this);
+					}
+					// Otherwise, log an error.
+					else {
+						ExoWeb.trace.logWarning("server",
+							"Cannot apply id change on type \"{0}\" since old id \"{1}\" was not found.",
+							idChange.type,
+							idChange.oldId);
+					}
+				}, after), this);
+			}, this);
+		},
+		applyInitChange: function (change, before, after) {
+			tryGetJsType(this._model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
+				if (!jstype.meta.get(change.instance.id)) {
+					// Create the new object
+					var newObj = new jstype();
+
+					// Check for a translation between the old id that was reported and an actual old id.  This is
+					// needed since new objects that are created on the server and then committed will result in an accurate
+					// id change record, but "instance.id" for this change will actually be the persisted id.
+					var serverOldId = this._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
+
+					// Remember the object's client-generated new id and the corresponding server-generated new id
+					this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+				}
+			}, after), this);
+		},
+		applyRefChange: function (change, before, after) {
+			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+					if (change.newValue) {
+						tryGetJsType(this._model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
+							var refObj = fromExoModel(change.newValue, this._translator, true);
+							Sys.Observer.setValue(srcObj, change.property, refObj);
+						}, after), this);
+					}
+					else {
+						Sys.Observer.setValue(srcObj, change.property, null);
+					}
+				}, after), this);
+			}, this);
+		},
+		applyValChange: function (change, before, after) {
+			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+
+					// Cache the new value, becuase we access it many times and also it may be modified below
+					// to account for timezone differences, but we don't want to modify the actual change object.
+					var newValue = change.newValue;
+				
+					// Cache the property since it is not a simple property access.
+					var property = srcObj.meta.property(change.property, true);
+
+					if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
+
+						// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
+						dateRegex.lastIndex = 0;
+						newValue = new Date(newValue.replace(dateRegex, dateRegexReplace));
+
+						//now that we have the value set for the date.
+						//if the underlying property datatype is actually a date and not a datetime
+						//then we need to add the local timezone offset to make sure that the date is displayed acurately.
+						if (property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
+							var serverOffset = this.get_ServerTimezoneOffset();
+							var localOffset = -(new Date().getTimezoneOffset() / 60);
+							newValue = newValue.addHours(serverOffset - localOffset);
+						}
+					}
+
+					Sys.Observer.setValue(srcObj, change.property, newValue);
+
+				}, after), this);
+			}, this);
+		},
+		applyListChange: function (change, before, after) {
+			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+					var prop = srcObj.meta.property(change.property, true);
+					var list = prop.value(srcObj);
+
+					list.beginUpdate();
+
+					var listSignal = new ExoWeb.Signal("applyListChange-items");
+
+					// apply added items
+					change.added.forEach(function (item) {
+						tryGetJsType(this._model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
+							var itemObj = fromExoModel(item, this._translator, true);
+							if (!list.contains(itemObj)) {
+								list.add(itemObj);
+							}
+						}, after)), this, true);
+					}, this);
+
+					// apply removed items
+					change.removed.forEach(function (item) {
+						// no need to load instance only to remove it from a list
+						tryGetJsType(this._model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
+							var itemObj = fromExoModel(item, this._translator, true);
+							list.remove(itemObj);
+						}, after), this, true);
+					}, this);
+
+					// don't end update until the items have been loaded
+					listSignal.waitForAll(this.ignoreChanges(before, function () {
+						this.beginApplyingChanges();
+						list.endUpdate();
+						this.endApplyingChanges();
+					}, after), this, true);
+				}, after), this);
+			}, this);
 		},
 
 		// Rollback
