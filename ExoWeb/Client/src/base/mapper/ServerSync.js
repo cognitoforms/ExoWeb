@@ -96,7 +96,7 @@ function ServerSync(model) {
 	// Assign back reference
 	model._server = this;
 
-	this._listener.addChangeCaptured(this._captureChange.bind(this));
+	this._listener.addChangeDetected(this._captureChange.bind(this));
 
 	Sys.Observer.makeObservable(this);
 }

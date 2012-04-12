@@ -7957,21 +7957,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ExoModelEventListener.mixin(ExoWeb.Functor.eventing);
 
 	ExoModelEventListener.mixin({
-		addChangeCaptured: function ExoModelEventListener$onEvent(handler) {
-			this._addEvent("changeCaptured", handler);
+		addChangeDetected: function ExoModelEventListener$onEvent(handler) {
+			this._addEvent("changeDetected", handler);
 		},
 
 		// Model event handlers
 		onListChanged: function ExoModelEventListener$onListChanged(obj, property, listChanges) {
 			if (this._filters && this._filters.listChanged && this._filters.listChanged(obj, property, listChanges) !== true)
 				return;
-
-			if (obj instanceof Function) {
-//					ExoWeb.trace.log("server", "logging list change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
-			}
-			else {
-//					ExoWeb.trace.log("server", "logging list change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
-			}
 
 			for (var i = 0; i < listChanges.length; ++i) {
 				var listChange = listChanges[i];
@@ -7996,7 +7989,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					});
 				}
 
-				this._raiseEvent("changeCaptured", [change]);
+				this._raiseEvent("changeDetected", [change]);
 			}
 		},
 		onObjectRegistered: function ExoModelEventListener$onObjectRegistered(obj) {
@@ -8004,14 +7997,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return;
 
 			if (obj.meta.isNew) {
-//					ExoWeb.trace.log("server", "logging new: {0}({1})", [obj.meta.type.get_fullName(), obj.meta.id]);
-
 				var change = {
 					type: "InitNew",
 					instance: toExoModel(obj, this._translator)
 				};
 
-				this._raiseEvent("changeCaptured", [change]);
+				this._raiseEvent("changeDetected", [change]);
 			}
 		},
 		onObjectUnregistered: function ExoModelEventListener$onObjectUnregistered(obj) {
@@ -8025,13 +8016,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return;
 
 			if (property.get_isValueType()) {
-				if (obj instanceof Function) {
-//						ExoWeb.trace.log("server", "logging value change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
-				}
-				else {
-//						ExoWeb.trace.log("server", "logging value change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
-				}
-
 				var valueChange = {
 					type: "ValueChange",
 					instance: toExoModel(obj, this._translator),
@@ -8040,16 +8024,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 					newValue: newValue
 				};
 
-				this._raiseEvent("changeCaptured", [valueChange]);
+				this._raiseEvent("changeDetected", [valueChange]);
 			}
 			else {
-				if (obj instanceof Function) {
-//						ExoWeb.trace.log("server", "logging reference change: {0}.{1}", [obj.meta.get_fullName(), property.get_name()]);
-				}
-				else {
-//						ExoWeb.trace.log("server", "logging reference change: {0}({1}).{2}", [obj.meta.type.get_fullName(), obj.meta.id, property.get_name()]);
-				}
-
 				var refChange = {
 					type: "ReferenceChange",
 					instance: toExoModel(obj, this._translator),
@@ -8058,7 +8035,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					newValue: toExoModel(newValue, this._translator)
 				};
 
-				this._raiseEvent("changeCaptured", [refChange]);
+				this._raiseEvent("changeDetected", [refChange]);
 			}
 		}
 	});
@@ -8469,7 +8446,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Assign back reference
 		model._server = this;
 
-		this._listener.addChangeCaptured(this._captureChange.bind(this));
+		this._listener.addChangeDetected(this._captureChange.bind(this));
 
 		Sys.Observer.makeObservable(this);
 	}
