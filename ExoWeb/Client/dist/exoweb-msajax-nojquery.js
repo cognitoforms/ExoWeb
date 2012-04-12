@@ -7907,7 +7907,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		return clientId;
 	}
 
-	function fromExoModel(val, translator, create) {
+	function fromExoModel(val, translator, create, supplementalObjectsArray) {
 		if (val !== undefined && val !== null && val.type && val.id ) {
 			var type = ExoWeb.Model.Model.getJsType(val.type);
 
@@ -7920,6 +7920,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var id = translateId(translator, val.type, val.id);
 
 				var obj = type.meta.get(id);
+
+				// If the object was not found and a supplemental list was provided, then search for it
+				if (!obj && supplementalObjectsArray && supplementalObjectsArray.length > 0) {
+					obj = supplementalObjectsArray.single(function(o) {
+						return o instanceof type && o.meta.id === id;
+					});
+				}
 
 				if (!obj && create) {
 					obj = new type(id);
