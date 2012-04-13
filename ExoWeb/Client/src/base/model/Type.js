@@ -145,13 +145,14 @@ function generateClass(type) {
 var newIdPrefix = "+c";
 
 Type.getNewIdPrefix = function getNewIdPrefix() {
+	if (arguments.length > 0) throw new Error("The method getNewIdPrefix does not accept arguments");
 	return newIdPrefix.substring(1);
 };
 
 Type.setNewIdPrefix = function setNewIdPrefix(prefix) {
-	if (prefix === null || prefix === undefined) throw new TypeError("The new id prefix argument is required");
+	if (prefix === null || prefix === undefined) throw new Error("The new id prefix argument is required");
 	if (typeof(prefix) !== "string") throw new TypeError("The new id prefix must be a string, found " + prefix.toString());
-	if (prefix.length === 0) throw new TypeError("The new id prefix cannot be empty string");
+	if (prefix.length === 0) throw new Error("The new id prefix cannot be empty string");
 	newIdPrefix = "+" + prefix;
 };
 

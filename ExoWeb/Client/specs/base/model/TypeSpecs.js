@@ -54,8 +54,14 @@ describe("Type", function() {
 		});
 
 		describe("prefix", function() {
-			it("can be retrieved", function() {
-				expect(Type.getNewIdPrefix()).toBe(expectedNewIdPrefix);
+			describe("access", function() {
+				it("returns the current prefix (without \"+\")", function() {
+					expect(Type.getNewIdPrefix()).toBe(expectedNewIdPrefix);
+				});
+	
+				it("throws an error if arguments are supplied in order to discourage bugs", function() {
+					expect(function() { Type.getNewIdPrefix("y"); }).toThrow("The method getNewIdPrefix does not accept arguments");
+				});
 			});
 
 			describe("configuration", function() {
