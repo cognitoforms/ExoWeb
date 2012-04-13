@@ -71,7 +71,14 @@ Reporter.prototype.reportSpecStarting = function(spec) {
 		this.suites.push(spec.suite.parentSuite);
 	}
 	this.suites.push(spec.suite);
-	console.log("Running \"" + spec.suite.description + " " + spec.description + "\"...");
+
+	var suiteDescription = spec.suite.description;
+	var parentSuite = spec.suite.parentSuite;
+	while (parentSuite) {
+		suiteDescription = parentSuite.description + " " + suiteDescription;
+		parentSuite = parentSuite.parentSuite;
+	}
+	console.log("Running \"" + suiteDescription + " " + spec.description + "\"...");
 };
 
 Reporter.prototype.reportSpecResults = function(spec) {
