@@ -575,7 +575,7 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 
 			// Raise loaded event on types that can be marked as loaded
 			while(loadableTypes.length > 0) {
-				var typeName = loadableTypes.shift();
+				var typeName = loadableTypes.dequeue();
 				if (baseTypeDependencies.hasOwnProperty(typeName)) {
 					// Remove dependencies from array and map
 					var deps = baseTypeDependencies[typeName];

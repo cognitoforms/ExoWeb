@@ -428,7 +428,7 @@ describe("dontDoubleUp", function() {
 			},
 			flush: function(results) {
 				for (var i = 0, len = callbacks.length; i < len; i++) {
-					var cb = callbacks.shift();
+					var cb = callbacks.dequeue();
 					var args;
 					if (results) {
 						args = results[cb.key];

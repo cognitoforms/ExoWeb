@@ -18,7 +18,7 @@ function Type(model, name, baseType, origin) {
 	// generate class and constructor
 	var jstype = Model.getJsType(name, true);
 
-	if (jstype) { 
+	if (jstype) {
 		ExoWeb.trace.throwAndLog(["model"], "'{1}' has already been declared", arguments);
 	}
 
@@ -142,6 +142,19 @@ function generateClass(type) {
 	return construct;
 }
 
+var newIdPrefix = "+c";
+
+Type.getNewIdPrefix = function getNewIdPrefix() {
+	return newIdPrefix.substring(1);
+};
+
+Type.setNewIdPrefix = function setNewIdPrefix(prefix) {
+	if (prefix === null || prefix === undefined) throw new TypeError("The new id prefix argument is required");
+	if (typeof(prefix) !== "string") throw new TypeError("The new id prefix must be a string, found " + prefix.toString());
+	if (prefix.length === 0) throw new TypeError("The new id prefix cannot be empty string");
+	newIdPrefix = "+" + prefix;
+};
+
 Type.prototype = {
 	addInitNew: function Type$addInitNew(handler, obj, once) {
 		this._addEvent("initNew", handler, obj ? equals(obj) : null, once);
@@ -163,7 +176,7 @@ Type.prototype = {
 		}
 
 		// Return the new id.
-		return "+c" + nextId;
+		return newIdPrefix + nextId;
 	},
 	register: function Type$register(obj, id) {
 		// register is called with single argument from default constructor
