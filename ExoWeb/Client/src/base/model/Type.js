@@ -24,11 +24,11 @@ function Type(model, name, baseType, origin) {
 
 	// create namespaces as needed
 	var nameTokens = name.split("."),
-		token = Array.dequeue(nameTokens),
+		token = nameTokens.dequeue(),
 		namespaceObj = window;
 	while (nameTokens.length > 0) {
 		namespaceObj = model._ensureNamespace(token, namespaceObj);
-		token = Array.dequeue(nameTokens);
+		token = nameTokens.dequeue();
 	}
 
 	// the final name to use is the last token

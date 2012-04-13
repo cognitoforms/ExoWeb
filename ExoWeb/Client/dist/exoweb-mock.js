@@ -209,7 +209,7 @@ Type.registerNamespace("ExoWeb");
 				// Look for a defined type as a part of the path.
 				var type = "", step;
 				do {
-					step = Array.dequeue(paths[i]);
+					step = paths[i].dequeue();
 					type += (type == "" ? "" : ".") + step;
 				} while (!this._objects[type] && step);
 				this._query(type, "static", paths[i], result);
@@ -327,7 +327,7 @@ Type.registerNamespace("ExoWeb");
 				var parts = p.split(".");
 
 				if (parts[0] === "this") {
-					Array.dequeue(parts);
+					parts.dequeue();
 					ret.instanceProps.push(parts);
 				}
 				else {

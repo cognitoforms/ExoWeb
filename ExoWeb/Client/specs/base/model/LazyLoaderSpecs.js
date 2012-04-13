@@ -8,7 +8,6 @@ jasmine.jasmine.debug = true;
 global.window = global;
 var ExoWeb = global.ExoWeb = { Model: {} };
 
-Array.dequeue = function Array$dequeue(array) { return array.shift(); };
 Array.insert = function Array$dequeue(array, index, value) { return array.splice(index, 0, value); };
 
 var config = require("../../../src/base/core/Config");

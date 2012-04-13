@@ -87,7 +87,7 @@ Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callba
 			type = thisType;
 		}
 
-		Array.dequeue(tokens.steps);
+		tokens.steps.dequeue();
 	}
 
 	if (tokens.steps.length === 1) {

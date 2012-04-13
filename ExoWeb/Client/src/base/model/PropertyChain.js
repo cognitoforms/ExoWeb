@@ -18,7 +18,7 @@ function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
 
 	// process each step in the path either synchronously or asynchronously depending on arguments
 	var processStep = function PropertyChain$processStep() {
-		var step = Array.dequeue(pathTokens.steps);
+		var step = pathTokens.steps.dequeue();
 
 		if (!step) {
 			ExoWeb.trace.throwAndLog("model", "Syntax error in property path: {0}", [pathTokens.expression]);

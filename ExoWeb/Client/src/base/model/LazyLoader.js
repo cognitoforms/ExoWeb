@@ -42,7 +42,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 
 	// If the target is null or undefined then attempt to backtrack using the scope chain
 	if (target === undefined || target === null) {
-		target = root = Array.dequeue(scopeChain);
+		target = root = scopeChain.dequeue();
 	}
 	
 	while (path.steps.length > 0) {
@@ -64,7 +64,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		}
 
 		// Get the next step to evaluate
-		step = Array.dequeue(path.steps);
+		step = path.steps.dequeue();
 
 		// If the target is not loaded then load it and continue when complete
 		if (!LazyLoader.isLoaded(target, step.property)) {
@@ -83,7 +83,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		if (value === undefined) {
 			// Attempt to backtrack using the next item in the scope chain.
 			if (scopeChain.length > 0) {
-				target = root = Array.dequeue(scopeChain);
+				target = root = scopeChain.dequeue();
 				Array.insert(path.steps, 0, step);
 				for (i = processed.length - 1; i >= 0; i--) {
 					Array.insert(path.steps, 0, processed[i]);

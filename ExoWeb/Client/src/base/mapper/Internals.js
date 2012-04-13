@@ -639,7 +639,7 @@ function moveTypeResults(originalArgs, invocationArgs, callbackArgs) {
 var fetchTypes = fetchTypesImpl.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, partitionedArg: 1, partitionedFilter: moveTypeResults });
 
 function fetchPathTypes(model, jstype, path, callback) {
-	var step = Array.dequeue(path.steps);
+	var step = path.steps.dequeue();
 	while (step) {
 		// locate property definition in model
 		var prop = jstype.meta.property(step.property, true);
@@ -684,7 +684,7 @@ function fetchPathTypes(model, jstype, path, callback) {
 		// keep walking the path
 		jstype = mtype.get_jstype();
 
-		step = Array.dequeue(path.steps);
+		step = path.steps.dequeue();
 	}
 
 	// done walking path
@@ -700,7 +700,7 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 		if (paths) {
 			Array.forEach(paths, function(path) {
 				if (path.steps[0].property === "this") {
-					var step = Array.dequeue(path.steps);
+					var step = path.steps.dequeue();
 					var mtype = jstype.meta;
 
 					var fetchRootTypePaths = function fetchRootTypePaths() {
@@ -729,7 +729,7 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 					// are currently limited to a single property.
 					var step = null, typeName = "";
 					while (path.steps.length > 1) {
-						step = Array.dequeue(path.steps);
+						step = path.steps.dequeue();
 						typeName += (typeName.length > 0 ? "." : "") + step.property;
 					}
 

@@ -3213,7 +3213,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				type = thisType;
 			}
 
-			Array.dequeue(tokens.steps);
+			tokens.steps.dequeue();
 		}
 
 		if (tokens.steps.length === 1) {
@@ -3485,11 +3485,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// create namespaces as needed
 		var nameTokens = name.split("."),
-			token = Array.dequeue(nameTokens),
+			token = nameTokens.dequeue(),
 			namespaceObj = window;
 		while (nameTokens.length > 0) {
 			namespaceObj = model._ensureNamespace(token, namespaceObj);
-			token = Array.dequeue(nameTokens);
+			token = nameTokens.dequeue();
 		}
 
 		// the final name to use is the last token
@@ -4824,7 +4824,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// process each step in the path either synchronously or asynchronously depending on arguments
 		var processStep = function PropertyChain$processStep() {
-			var step = Array.dequeue(pathTokens.steps);
+			var step = pathTokens.steps.dequeue();
 
 			if (!step) {
 				ExoWeb.trace.throwAndLog("model", "Syntax error in property path: {0}", [pathTokens.expression]);
@@ -7082,7 +7082,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// If the target is null or undefined then attempt to backtrack using the scope chain
 		if (target === undefined || target === null) {
-			target = root = Array.dequeue(scopeChain);
+			target = root = scopeChain.dequeue();
 		}
 	
 		while (path.steps.length > 0) {
@@ -7104,7 +7104,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// Get the next step to evaluate
-			step = Array.dequeue(path.steps);
+			step = path.steps.dequeue();
 
 			// If the target is not loaded then load it and continue when complete
 			if (!LazyLoader.isLoaded(target, step.property)) {
@@ -7123,7 +7123,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (value === undefined) {
 				// Attempt to backtrack using the next item in the scope chain.
 				if (scopeChain.length > 0) {
-					target = root = Array.dequeue(scopeChain);
+					target = root = scopeChain.dequeue();
 					Array.insert(path.steps, 0, step);
 					for (i = processed.length - 1; i >= 0; i--) {
 						Array.insert(path.steps, 0, processed[i]);
@@ -8460,17 +8460,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ServerSync.mixin(ExoWeb.Functor.eventing);
 
-	function getInstanceForChange(instanceJson, translator, deletedObjects) {
-		var instance = fromExoModel(instanceJson, translator);
-		if (!instance) {
-			var jstype = ExoWeb.Model.Model.getJsType(instanceJson.type);
-			instance = deletedObjects.single(function(obj) {
-				return obj instanceof jstype && obj.meta.id === instanceJson.id;
-			});
-		}
-		return instance;
-	}
-
 	var pendingRequests = 0;
 
 	ExoWeb.registerActivity(function() {
@@ -8608,7 +8597,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							ignore = false;
 						}
 						else {
-							var obj = getInstanceForChange(item, this._translator, this._objectsDeleted);
+							var obj = fromExoModel(item, this._translator, false, this._objectsDeleted);
 							// Only objects that exist can be disabled
 							if (!obj || this.canSaveObject(obj)) {
 								ignore = false;
@@ -8622,7 +8611,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							ignore = false;
 						}
 						else {
-							var obj = getInstanceForChange(item, this._translator, this._objectsDeleted);
+							var obj = fromExoModel(item, this._translator, false, this._objectsDeleted);
 							if (!obj || this.canSaveObject(obj)) {
 								ignore = false;
 							}
@@ -8640,7 +8629,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			else if (change.type === "ReferenceChange") {
 				var oldJsType = change.oldValue && ExoWeb.Model.Model.getJsType(change.oldValue.type, true);
 				if (oldJsType) {
-					var oldValue = getInstanceForChange(change.oldValue, this._translator, this._objectsDeleted);
+					var oldValue = fromExoModel(change.oldValue, this._translator, false, this._objectsDeleted);
 					if (oldValue && !this.canSaveObject(oldValue)) {
 						return false;
 					}
@@ -8648,7 +8637,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var newJsType = change.newValue && ExoWeb.Model.Model.getJsType(change.newValue.type, true);
 				if (newJsType) {
-					var newValue = getInstanceForChange(change.newValue, this._translator, this._objectsDeleted);
+					var newValue = fromExoModel(change.newValue, this._translator, false, this._objectsDeleted);
 					if (newValue && !this.canSaveObject(newValue)) {
 						return false;
 					}
@@ -8662,7 +8651,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// Ensure that the instance that the change pertains to can be saved.
-			var instanceObj = getInstanceForChange(change.instance, this._translator, this._objectsDeleted);
+			var instanceObj = fromExoModel(change.instance, this._translator, false, this._objectsDeleted);
 			return !instanceObj || this.canSaveObject(instanceObj);
 		},
 
@@ -10281,7 +10270,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	var fetchTypes = fetchTypesImpl.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, partitionedArg: 1, partitionedFilter: moveTypeResults });
 
 	function fetchPathTypes(model, jstype, path, callback) {
-		var step = Array.dequeue(path.steps);
+		var step = path.steps.dequeue();
 		while (step) {
 			// locate property definition in model
 			var prop = jstype.meta.property(step.property, true);
@@ -10326,7 +10315,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// keep walking the path
 			jstype = mtype.get_jstype();
 
-			step = Array.dequeue(path.steps);
+			step = path.steps.dequeue();
 		}
 
 		// done walking path
@@ -10342,7 +10331,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (paths) {
 				Array.forEach(paths, function(path) {
 					if (path.steps[0].property === "this") {
-						var step = Array.dequeue(path.steps);
+						var step = path.steps.dequeue();
 						var mtype = jstype.meta;
 
 						var fetchRootTypePaths = function fetchRootTypePaths() {
@@ -10371,7 +10360,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						// are currently limited to a single property.
 						var step = null, typeName = "";
 						while (path.steps.length > 1) {
-							step = Array.dequeue(path.steps);
+							step = path.steps.dequeue();
 							typeName += (typeName.length > 0 ? "." : "") + step.property;
 						}
 
