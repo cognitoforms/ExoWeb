@@ -4846,7 +4846,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					var newArgs = Object.copy(args);
 
 					// Reset property to be the chain, but store the original property as "triggeredBy"
-					newArgs.originalSender = known;
+					newArgs.originalSender = sender;
 					newArgs.triggeredBy = newArgs.property;
 					newArgs.property = this;
 
