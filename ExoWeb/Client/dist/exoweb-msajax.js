@@ -512,6 +512,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 				signal.waitForAll(callback, (options.thisPtrIndex && arguments[options.thisPtrIndex]) || this);
 			};
 		}
+		else if (options && options.andResults === true) {
+			return function () {
+				return fn1.apply(this, arguments) && fn2.apply(this, arguments);
+			};
+		}
+		else if (options && options.orResults === true) {
+			return function () {
+				return fn1.apply(this, arguments) || fn2.apply(this, arguments);
+			};
+		}
 		else {
 			return function () {
 				fn1.apply(this, arguments);
@@ -4825,6 +4835,52 @@ Type.registerNamespace("ExoWeb.DotNet");
 		/// single property of the root object.
 		/// </summary>
 
+		var handlers = null;
+
+		function onStepChanged(priorProp, sender, args) {
+			// scan all known objects of this type and raise event for any instance connected
+			// to the one that sent the event.
+			this._rootType.known().forEach(function(known) {
+				if (this.connects(known, sender, priorProp)) {
+					// Copy the original arguments so that we don't affect other code
+					var newArgs = Object.copy(args);
+
+					// Reset property to be the chain, but store the original property as "triggeredBy"
+					newArgs.originalSender = known;
+					newArgs.triggeredBy = newArgs.property;
+					newArgs.property = this;
+
+					// Call the handler, passing through the arguments
+					this._raiseEvent("changed", [known, newArgs]);
+				}
+			}, this);
+		}
+
+		this._updatePropertyChangeSubscriptions = function() {
+			var handler = this._getEventHandler("changed");
+			var eventHandlersExist = handler && !handler.isEmpty();
+			var subscribedToPropertyChanges = handlers !== null;
+
+			if (!eventHandlersExist && subscribedToPropertyChanges) {
+				// If there are no more subscribers then unsubscribe from property-level events
+				this._properties.forEach(function(prop, index) {
+					var handler = handlers[index];
+					prop.removeChanged(handler);
+				}, this);
+				handlers = null;
+			}
+			else if (eventHandlersExist && !subscribedToPropertyChanges) {
+				// If there are subscribers and we have not subscribed to property-level events, then do so
+				handlers = [];
+				this._properties.forEach(function(prop, index) {
+					var priorProp = (index === 0) ? undefined : this._properties[index - 1];
+					var handler = onStepChanged.bind(this).prependArguments(priorProp);
+					handlers.push(handler);
+					prop.addChanged(handler);
+				}, this);
+			}
+		};
+
 		this._rootType = rootType;
 		var type = rootType;
 		var chain = this;
@@ -4906,7 +4962,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	}
 
-	PropertyChain.prototype = {
+	PropertyChain.mixin(Functor.eventing);
+
+	PropertyChain.mixin({
 		equals: function PropertyChain$equals(prop) {
 			if (prop !== undefined && prop !== null) {
 				if (prop instanceof Property) {
@@ -5112,68 +5170,32 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Return the property to support method chaining
 			return this;
 		},
-		removeChanged: function PropertyChain$removeChanged(handlers) {
-			this._properties.forEach(function(prop, index) {
-				prop.removeChanged(handlers[index]);
-			}, this);
+		removeChanged: function PropertyChain$removeChanged(handler) {
+			this._removeEvent("changed", handler);
+
+			this._updatePropertyChangeSubscriptions();
 		},
 		// starts listening for change events along the property chain on any known instances. Use obj argument to
 		// optionally filter the events to a specific object
 		addChanged: function PropertyChain$addChanged(handler, obj, once, toleratePartial) {
-			var chain = this;
+			var filter = mergeFunctions(
 
-			function raiseHandler(sender, args) {
-				// Copy the original arguments so that we don't affect other code
-				var newArgs = Object.copy(args);
+				// Ensure that the chain is inited from the root if toleratePartial is false
+				this.isInited.bind(this).spliceArguments(1, 1, !toleratePartial),
 
-				// Reset property to be the chain, but store the original property as "triggeredBy"
-				newArgs.triggeredBy = newArgs.property;
-				newArgs.property = chain;
+				// Only raise for the given root object if specified
+				obj ? equals(obj) : null,
 
-				// Call the handler, passing through the arguments
-				handler(sender, newArgs);
-			}
+				// If multiple filters exist, both must pass
+				{ andResult: true }
 
-			this._lastAddChangedHandlers;
-			if (this._properties.length == 1) {
-				// OPTIMIZATION: no need to search all known objects for single property chains
-				this._lastAddChangedHandlers = [raiseHandler];
-				this._properties[0].addChanged(raiseHandler, obj, once);
-			}
-			else {
-				this._lastAddChangedHandlers = [];
-				this._properties.forEach(function(prop, index) {
-					var priorProp = (index === 0) ? undefined : chain._properties[index - 1];
-					if (obj) {
-						// CASE: using object filter
-						var fn = function PropertyChain$_raiseChanged$1Obj(sender, args) {
-							if (chain.connects(obj, sender, priorProp)) {
-								args.originalSender = sender;
-								raiseHandler(obj, args);
-							}
-						};
-						this._lastAddChangedHandlers.push(fn);
-						prop.addChanged(fn, null, once);
-					}
-					else {
-						// CASE: no object filter
-						var fn = function PropertyChain$_raiseChanged$Multi(sender, args) {
-							// scan all known objects of this type and raise event for any instance connected
-							// to the one that sent the event.
-							Array.forEach(chain._rootType.known(), function(known) {
-								if (chain.isInited(known, !toleratePartial) && chain.connects(known, sender, priorProp)) {
-									args.originalSender = sender;
-									raiseHandler(known, args);
-								}
-							});
-						};
-						this._lastAddChangedHandlers.push(fn);
-						prop.addChanged(fn, null, once);
-					}
-				}, this);
-			}
+			);
 
-			// Return the property to support method chaining
+			this._addEvent("changed", handler, filter, once);
+
+			this._updatePropertyChangeSubscriptions();
+
+			// Return the property chain to support method chaining
 			return this;
 		},
 		// Property pass-through methods
@@ -5249,7 +5271,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return $format("this<{0}>.{1}", [this.get_containingType(), path]);
 			}
 		}
-	};
+	});
 
 	ExoWeb.Model.PropertyChain = PropertyChain;
 
@@ -14147,7 +14169,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				// subscribe to property changes at all points in the path
 				this._targetChangedHandler = this._onTargetChanged.bind(this);
 				this._propertyChain.addChanged(this._targetChangedHandler, this._target);
-				this._targetChangedHandlerArray = this._propertyChain._lastAddChangedHandlers;
 
 				this._formatSubscribers = {};
 
@@ -14677,7 +14698,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					this._extendedProperties = null;
 				}
 				if (this._targetChangedHandler) {
-					this._propertyChain.removeChanged(this._targetChangedHandlerArray);
+					this._propertyChain.removeChanged(this._targetChangedHandler);
 					this._targetChangedHandler = null;
 				}
 				this._unsubscribeFromFormatChanges(this.get_rawValue());
@@ -14694,7 +14715,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._allowedValues = this._allowedValuesMayBeNull = this._allowedValuesRule = this._aspects = this._badValue =
 					this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =
 					this._observable = this._options = this._optionsTransform = this._parentAdapter = this._propertyChain =
-					this._propertyPath = this._readySignal = this._reloadOptionsHandler = this._target = this._targetChangedHandlerArray = null;
+					this._propertyPath = this._readySignal = this._reloadOptionsHandler = this._target = null;
 			}
 
 			Adapter.callBaseMethod(this, "dispose");

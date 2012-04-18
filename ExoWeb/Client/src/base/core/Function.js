@@ -344,6 +344,16 @@ function mergeFunctions(fn1, fn2, options) {
 			signal.waitForAll(callback, (options.thisPtrIndex && arguments[options.thisPtrIndex]) || this);
 		};
 	}
+	else if (options && options.andResults === true) {
+		return function () {
+			return fn1.apply(this, arguments) && fn2.apply(this, arguments);
+		};
+	}
+	else if (options && options.orResults === true) {
+		return function () {
+			return fn1.apply(this, arguments) || fn2.apply(this, arguments);
+		};
+	}
 	else {
 		return function () {
 			fn1.apply(this, arguments);

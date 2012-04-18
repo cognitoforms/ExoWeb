@@ -135,7 +135,6 @@ Adapter.prototype = {
 			// subscribe to property changes at all points in the path
 			this._targetChangedHandler = this._onTargetChanged.bind(this);
 			this._propertyChain.addChanged(this._targetChangedHandler, this._target);
-			this._targetChangedHandlerArray = this._propertyChain._lastAddChangedHandlers;
 
 			this._formatSubscribers = {};
 
@@ -665,7 +664,7 @@ Adapter.prototype = {
 				this._extendedProperties = null;
 			}
 			if (this._targetChangedHandler) {
-				this._propertyChain.removeChanged(this._targetChangedHandlerArray);
+				this._propertyChain.removeChanged(this._targetChangedHandler);
 				this._targetChangedHandler = null;
 			}
 			this._unsubscribeFromFormatChanges(this.get_rawValue());
@@ -682,7 +681,7 @@ Adapter.prototype = {
 			this._allowedValues = this._allowedValuesMayBeNull = this._allowedValuesRule = this._aspects = this._badValue =
 				this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =
 				this._observable = this._options = this._optionsTransform = this._parentAdapter = this._propertyChain =
-				this._propertyPath = this._readySignal = this._reloadOptionsHandler = this._target = this._targetChangedHandlerArray = null;
+				this._propertyPath = this._readySignal = this._reloadOptionsHandler = this._target = null;
 		}
 
 		Adapter.callBaseMethod(this, "dispose");
