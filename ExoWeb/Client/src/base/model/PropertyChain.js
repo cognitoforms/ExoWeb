@@ -357,7 +357,7 @@ PropertyChain.mixin({
 			obj ? equals(obj) : null,
 
 			// If multiple filters exist, both must pass
-			{ andResult: true }
+			{ andResults: true }
 
 		);
 
