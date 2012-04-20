@@ -174,7 +174,13 @@ function observableSplice(arr, events, index, removeCount, addItems) {
 		}
 	
 		if (events) {
-			events.push({ type: "remove", index: index, items: removedArray || [removedItem] });
+			events.push({
+				action: Sys.NotifyCollectionChangedAction.remove,
+				oldStartingIndex: index,
+				oldItems: removedArray || [removedItem],
+				newStartingIndex: null,
+				newItems: null
+			});
 		}
 	}
 
@@ -190,7 +196,13 @@ function observableSplice(arr, events, index, removeCount, addItems) {
 		}
 
 		if (events) {
-			events.push({ type: "add", index: index, items: addItems });
+			events.push({
+				action: Sys.NotifyCollectionChangedAction.add,
+				oldStartingIndex: null,
+				oldItems: null,
+				newStartingIndex: index,
+				newItems: addItems
+			});
 		}
 	}
 }
@@ -290,7 +302,7 @@ function update(arr, target/*, trackEvents, equalityFn*/) {
 	var source = arr, trackEvents = arguments[2], events = trackEvents ? [] : null, pointer = 0, srcSeek = 0, tgtSeek = 0, equalityFn = arguments[3];
 
 	while (srcSeek < source.length) {
-		if ((!equalityFn && source[srcSeek] === target[tgtSeek]) || (equalityFn && equalityFn(source[srcSeek], target[tgtSeek]) === true)) {
+		if (source[srcSeek] === target[tgtSeek]) {
 			if (pointer === srcSeek && pointer === tgtSeek) {
 				// items match, so advance
 				pointer = srcSeek = tgtSeek = pointer + 1;

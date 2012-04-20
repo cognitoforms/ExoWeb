@@ -51,15 +51,13 @@ AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType, mtype
 		});
 	}
 };
+
 AllowedValuesRule.prototype = {
 	_enforceInited: function AllowedValues$_enforceInited() {
 		if (this._inited !== true) {
 			ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
 		}
 		return this._inited;
-	},
-	addChanged: function AllowedValues$addChanged(handler, obj) {
-		this._allowedValuesProperty.addChanged(handler, obj);
 	},
 	execute: function AllowedValuesRule$execute(obj) {
 		if (this._enforceInited() === true) {

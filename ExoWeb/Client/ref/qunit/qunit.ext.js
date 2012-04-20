@@ -37,29 +37,34 @@
 			name: name,
 			fn: function(args, whenDone) {
 				log("tests", "{0}: invoked, waiting for scope", [name]);
-	
+
 				// wait until the test is in scope if it isn't already
 				scopeSignal.waitForAll(function() {
 					log("tests", "{0}: registered", [name]);
-	
+
 					// notify qunit that the test is starting back up
 					start();
-	
+
 					try {
 						log("tests", "{0}: applying callback", [name]);
-	
+
+						var context = {};
+
 						if (options.setUp) {
-							options.setUp();
+							options.setUp.call(context);
 						}
 						else if (options.setup) {
-							options.setup();
+							options.setup.call(context);
 						}
-	
+
 						// invoke the test callback
-						callback.apply(this, args);
-	
+						callback.call(context);
+
 						if (options.tearDown) {
-							options.tearDown();
+							options.tearDown.call(context);
+						}
+						else if (options.teardown) {
+							options.teardown.call(context);
 						}
 
 						if (whenDone && whenDone instanceof Function) {
@@ -129,7 +134,7 @@
 			callback();
 		}
 	}
-	
+
 	function executeTest(name) {
 		var args = Array.prototype.slice.call(arguments, 1);
 

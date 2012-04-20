@@ -6,11 +6,18 @@ function Adapter(target, propertyPath, format, options) {
 	this._ignoreTargetEvents = false;
 	this._readySignal = new ExoWeb.Signal("Adapter Ready");
 
+	if (options.allowedValuesTransform) {
+		this._allowedValuesTransform = options.allowedValuesTransform;
+	}
+
 	if (options.optionsTransform) {
-		if (options.optionsTransform.indexOf("groupBy(") >= 0) {
-			ExoWeb.trace.throwAndLog(["@", "markupExt"], "The optionsTransform property does not support grouping");
+		if (this._allowedValuesTransform) {
+			ExoWeb.trace.logWarning(["@", "markupExt"], "Obsolete option \"optionsTransform\" was specified, when option \"allowedValuesTransform\" already exists.");
 		}
-		this._optionsTransform = options.optionsTransform;
+		else {
+			ExoWeb.trace.logWarning(["@", "markupExt"], "Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead.");
+			this._allowedValuesTransform = options.optionsTransform;
+		}
 	}
 
 	if (options.allowedValuesMayBeNull) {
@@ -35,7 +42,7 @@ function Adapter(target, propertyPath, format, options) {
 	this._extendProperties(options);
 }
 
-Adapter.prototype = {
+Adapter.mixin({
 	// Internal book-keeping and setup methods
 	///////////////////////////////////////////////////////////////////////
 	_extendProperties: function Adapter$_extendProperties(options) {
@@ -220,26 +227,10 @@ Adapter.prototype = {
 				this.addPropertyValidating(null, this._propertyValidatingHandler);
 			}
 		}
-	},
-	_reloadOptions: function Adapter$_reloadOptions(allowLazyLoad) {
-		if (!this._disposed) {
-			ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
-	
-			if (allowLazyLoad === true) {
-				// delete backing fields so that allowed values can be recalculated (and loaded)
-				delete this._allowedValues;
-				delete this._options;
-			}
-			else {
-				// clear out backing fields so that allowed values can be recalculated
-				this._allowedValues = undefined;
-				this._options = undefined;
-			}
-	
-			// raise events in order to cause subscribers to fetch the new value
-			Sys.Observer.raisePropertyChanged(this, "allowedValues");
-			Sys.Observer.raisePropertyChanged(this, "options");
-		}
+
+		// Dispose of existing event handlers related to allowed value loading
+		disposeOptions.call(this);
+		signalOptionsReady.call(this);
 	},
 	_setValue: function Adapter$_setValue(value) {
 		var prop = this._propertyChain;
@@ -378,144 +369,7 @@ Adapter.prototype = {
 		// help text may also be included in the model?
 		return this._helptext || "";
 	},
-	get_allowedValuesRule: function Adapter$get_allowedValuesRule() {
-		if (this._allowedValuesRule === undefined) {
-			var prop = this._propertyChain.lastProperty();
-			this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-			if (this._allowedValuesRule) {
 
-				var reloadOptions = function () {
-					//ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options due to change in allowed values path.");
-
-					this._reloadOptions(true);
-
-					// clear values that are no longer allowed
-					var targetObj = this._propertyChain.lastTarget(this._target);
-					var rawValue = this.get_rawValue();
-					var _this = this;
-
-					if (rawValue instanceof Array) {
-						Array.forEach(rawValue, function (item, index) {
-							this._allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, function (answer) {
-								if (!answer && !_this._disposed) {
-									//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
-									_this.set_selected(item, false);
-								}
-							});
-						}, this);
-					}
-					else {
-						this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, function (answer) {
-							if (!answer && !_this._disposed) {
-								//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
-								_this.set_rawValue(null);
-							}
-						});
-					}
-				}
-
-				this._allowedValuesRule.addChanged(reloadOptions.bind(this).prependArguments(true), this._propertyChain.lastTarget(this._target));
-			}
-			else {
-				var _this = this;
-				prop.addRuleRegistered(function (sender, args) {
-					if (!_this._allowedValuesRule) {
-						_this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-						if (_this._allowedValuesRule) {
-							_this._reloadOptions(true);
-						}
-					}
-				});
-			}
-		}
-		return this._allowedValuesRule;
-	},
-	get_allowedValues: function Adapter$get_allowedValues() {
-		if (this._allowedValues === undefined) {
-			var rule = this.get_allowedValuesRule();
-			if (rule) {
-				var targetObj = this._propertyChain.lastTarget(this._target);
-				var allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
-
-				// only do loading if backing field does not exist, which means we've never initialized or need to re-initialize
-				if (!this.hasOwnProperty("_allowedValues")) {
-					// create the backing field so that this logic does not execute again
-					this._allowedValues = undefined;
-
-					if (!allowedValues) {
-						//allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
-						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
-						this._reloadOptionsHandler = this._reloadOptions.bind(this);
-						ExoWeb.Model.LazyLoader.eval(rule._allowedValuesProperty.get_isStatic() ? null : targetObj,
-							rule._allowedValuesProperty.get_path(),
-							this._reloadOptionsHandler);
-						return;
-					}
-
-					if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
-						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
-						this._reloadOptionsHandler = this._reloadOptions.bind(this);
-						ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptionsHandler, this);
-						return;
-					}
-				}
-
-				if (this._optionsTransform)
-					this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(allowedValues).live();
-				else
-					this._allowedValues = allowedValues;
-			}
-			else if (this.isType(Boolean)) {
-				this._allowedValues = [true, false];
-			}
-		}
-
-		return this._allowedValues;
-	},
-	get_options: function Adapter$get_options() {
-		if (this._options === undefined) {
-
-			var allowed = this.get_allowedValues();
-
-			this._options = [];
-
-			for (var a = 0; allowed && a < allowed.length; a++) {
-				Array.add(this._options, new OptionAdapter(this, allowed[a]));
-			}
-		}
-
-		return this._options;
-	},
-	get_selected: function Adapter$get_selected(obj) {
-		var rawValue = this.get_rawValue();
-
-		if (rawValue instanceof Array) {
-			return Array.contains(rawValue, obj);
-		}
-		else {
-			return rawValue === obj;
-		}
-	},
-	set_selected: function Adapter$set_selected(obj, selected) {
-		var rawValue = this.get_rawValue();
-
-		if (rawValue instanceof Array) {
-			if (selected && !Array.contains(rawValue, obj)) {
-				rawValue.add(obj);
-			}
-			else if (!selected && Array.contains(rawValue, obj)) {
-				rawValue.remove(obj);
-			}
-		}
-		else {
-			if (selected) {
-				this.set_rawValue(obj);
-			}
-			else {
-				this.set_rawValue(null);
-			}
-		}
-	},
 	get_rawValue: function Adapter$get_rawValue() {
 		this._ensureObservable();
 		return this._propertyChain.value(this._target);
@@ -654,6 +508,7 @@ Adapter.prototype = {
 
 		if (!disposed) {
 			this._disposed = true;
+			disposeOptions.call(this);
 			options = this._options;
 			this.clearValidation();
 			if (this._extendedProperties) {
@@ -678,10 +533,10 @@ Adapter.prototype = {
 					lastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
 				}
 			}
-			this._allowedValues = this._allowedValuesMayBeNull = this._allowedValuesRule = this._aspects = this._badValue =
+			this._allowedValues = this._allowedValuesMayBeNull = this._aspects = this._badValue =
 				this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =
-				this._observable = this._options = this._optionsTransform = this._parentAdapter = this._propertyChain =
-				this._propertyPath = this._readySignal = this._reloadOptionsHandler = this._target = null;
+				this._observable = this._options = this._allowedValuesTransform = this._parentAdapter = this._propertyChain =
+				this._propertyPath = this._readySignal = this._target = null;
 		}
 
 		Adapter.callBaseMethod(this, "dispose");
@@ -693,7 +548,239 @@ Adapter.prototype = {
 			}
 		}
 	}
-};
+});
+
+// #region Options
+
+function disposeOptions() {
+	var lastProperty = this._propertyChain.lastProperty();
+	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+	if (this._allowedValuesChangedHandler) {
+		allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesChangedHandler);
+		this._allowedValuesChangedHandler = null;
+	}
+	if ( this._allowedValuesRuleExistsHandler) {
+		this._propertyChain.lastProperty().removeRuleRegistered(this._allowedValuesRuleExistsHandler);
+		this._allowedValuesRuleExistsHandler = null;
+	}
+	if (this._allowedValuesExistHandler) {
+		allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesExistHandler);
+		this._allowedValuesExistHandler = null;
+	}
+	this._options = null;
+}
+
+// Create an option adapter from the given object
+function createOptionAdapter(item) {
+	// If it is a transform group then create an option group
+	if (item instanceof TransformGroup) {
+		return new OptionGroupAdapter(this, item.group, item.items);
+	}
+	// Otherwise,create a single option
+	else {
+		return new OptionAdapter(this, item);
+	}
+}
+
+// Notify subscribers that options are available
+function signalOptionsReady() {
+	if (this._disposed) {
+		return;
+	}
+
+	// Delete backing fields so that options can be recalculated (and loaded)
+	delete this._options;
+
+	// Raise events in order to cause subscribers to fetch the new value
+	Sys.Observer.raisePropertyChanged(this, "options");
+}
+
+// If the given rule is allowed values, signal options ready
+function checkAllowedValuesRuleExists(rule) {
+	if (rule instanceof Rule.allowedValues) {
+		this._propertyChain.lastProperty().removeRuleRegistered(this._allowedValuesRuleExistsHandler);
+		signalOptionsReady.call(this);
+	}
+}
+
+function checkAllowedValuesExist() {
+	var lastProperty = this._propertyChain.lastProperty();
+	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+	var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
+
+	if (allowedValues instanceof Array) {
+		allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesExistHandler);
+		delete this._allowedValuesExistHandler;
+		signalOptionsReady.call(this);
+	}
+}
+
+// If the given value is not valid, then remove it
+function checkSelectedValue(value, isValid) {
+	if (this._disposed) {
+		return;
+	}
+
+	var rawValue = this.get_rawValue();
+	if (!isValid) {
+		if (rawValue instanceof Array) {
+			if (rawValue.indexOf(value) >= 0) {
+				//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+				rawValue.remove(value);
+			}
+		}
+		else if (this.get_rawValue() === value) {
+			//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+			this.set_rawValue(null);
+		}
+	}
+}
+
+// Update the given options source array to match the current allowed values
+function refreshOptionsFromAllowedValues(optionsSourceArray) {
+	var lastProperty = this._propertyChain.lastProperty();
+	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+	var targetObj = this._propertyChain.lastTarget(this._target);
+	var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
+	if (allowedValues) {
+		update(optionsSourceArray, allowedValues);
+	}
+	else {
+		optionsSourceArray.clear();
+	}
+}
+
+// Perform any required loading of allowed values items
+function ensureAllowedValuesLoaded(newItems, callback, thisPtr) {
+	var signal = new Signal("ensureAllowedValuesLoaded");
+	newItems.forEach(function(item) {
+		if (!LazyLoader.isLoaded(item)) {
+			LazyLoader.load(item, null, signal.pending());
+		}
+	});
+	signal.waitForAll(callback, thisPtr);
+}
+
+function allowedValuesChanged(optionsSourceArray, sender, args) {
+	var lastProperty = this._propertyChain.lastProperty();
+	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+
+	// Load allowed value items that were added
+	if (args.changes) {
+		// Collect all items that were added
+		var newItems = [];
+		args.changes.forEach(function(change) {
+			if (change.newItems) {
+				newItems.addRange(change.newItems);
+			}
+		});
+		if (newItems.length > 0) {
+			ensureAllowedValuesLoaded(newItems, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+		}
+		else {
+			refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
+		}
+	}
+	else if (!args.oldValue && args.newValue) {
+		// If there was previously not a value of the path and now there is, then all items are new
+		ensureAllowedValuesLoaded(rawValue, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+	}
+	else {
+		refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
+	}
+
+	// Remove option values that are no longer valid
+	var rawValue = this.get_rawValue();
+	var targetObj = this._propertyChain.lastTarget(this._target);
+	if (rawValue instanceof Array) {
+		rawValue.forEach(function (item) {
+			allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, checkSelectedValue.bind(this).prependArguments(item));
+		}, this);
+	}
+	else {
+		allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, checkSelectedValue.bind(this).prependArguments(rawValue));
+	}
+}
+
+Adapter.mixin({
+	get_options: function Adapter$get_options() {
+		if (!this.hasOwnProperty("_options")) {
+			if (this.isType(Boolean)) {
+				this._options = [createOptionAdapter.call(this, true), createOptionAdapter.call(this, false)];
+			}
+			else {
+				var lastProperty = this._propertyChain.lastProperty();
+				var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+
+				// Watch for the registration of an allowed values rule if it doesn't exist
+				if (!allowedValuesRule) {
+					this._allowedValuesRuleExistsHandler = checkAllowedValuesRuleExists.bind(this);
+					lastProperty.addRuleRegistered(this._allowedValuesRuleExistsHandler);
+					this._options = null;
+					return;
+				}
+
+				// Cache the last target
+				var targetObj = this._propertyChain.lastTarget(this._target);
+
+				// Load allowed values if the path is not inited
+				if (!allowedValuesRule._allowedValuesProperty.isInited(targetObj, false)) {
+					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [allowedValuesRule]);
+					ExoWeb.Model.LazyLoader.eval(allowedValuesRule._allowedValuesProperty.get_isStatic() ? null : targetObj,
+						allowedValuesRule._allowedValuesProperty.get_path(),
+						signalOptionsReady.bind(this));
+					this._options = null;
+					return;
+				}
+
+				// Retrieve the value of allowed values property
+				var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
+
+				// Watch for changes until the allowed values path has a value
+				if (!allowedValues) {
+					this._allowedValuesExistHandler = checkAllowedValuesExist.bind(this);
+					allowedValuesRule._allowedValuesProperty.addChanged(this._allowedValuesExistHandler, targetObj);
+					this._options = null;
+					return;
+				}
+
+				// Load the allowed values list if it is not already loaded
+				if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
+					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [allowedValuesRule]);
+					ExoWeb.Model.LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
+					this._options = null;
+					return;
+				}
+
+				// Create an observable copy of the allowed values that we can keep up to date in our own time
+				var observableAllowedValues = allowedValues.slice();
+				Sys.Observer.makeObservable(observableAllowedValues);
+
+				// Respond to changes to allowed values
+				this._allowedValuesChangedHandler = allowedValuesChanged.bind(this).prependArguments(observableAllowedValues);
+				allowedValuesRule._allowedValuesProperty.addChanged(this._allowedValuesChangedHandler, targetObj);
+
+				// Create a transform that watches the observable copy and uses the user-supplied _allowedValuesTransform if given
+				if (this._allowedValuesTransform) {
+					transformedAllowedValues = (new Function("$array", "{ return $transform($array, true)." + this._allowedValuesTransform + "; }"))(observableAllowedValues);
+					if (transformedAllowedValues.live !== Transform.prototype.live) {
+						ExoWeb.trace.throwAndLog("@", "Invalid options transform result: may only contain \"where\", \"orderBy\", \"select\", and \"groupBy\".");
+					}
+				}
+				else {
+					transformedAllowedValues = $transform(observableAllowedValues, true);
+				}
+
+				// Map the allowed values to option adapters
+				this._options = transformedAllowedValues.select(createOptionAdapter.bind(this)).live();
+			}
+		}
+
+		return this._options;
+	}
+});
+
+// #endregion
 
 ExoWeb.View.Adapter = Adapter;
 Adapter.registerClass("ExoWeb.View.Adapter", Sys.Component, Sys.UI.ITemplateContextConsumer);

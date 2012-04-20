@@ -286,6 +286,7 @@
     <Content Include="Client\src\base\view\AdapterMarkupExtension.js" />
     <Content Include="Client\src\base\view\ConditionMarkupExtension.js" />
     <Content Include="Client\src\base\view\Binding.js" />
+    <Content Include="Client\src\base\view\OptionGroupAdapter.js" />
     <Content Include="Client\src\base\view\LazyMarkupExtension.js" />
     <Content Include="Client\src\base\view\MetaMarkupExtension.js" />
     <Content Include="Client\src\base\view\MsAjax.js" />

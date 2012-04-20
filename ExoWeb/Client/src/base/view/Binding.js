@@ -105,12 +105,12 @@ Binding.mixin({
 			else if (this._options.transform) {
 				// Generate the transform function
 				if (!this._transformFn) {
-					this._transformFn = new Function("list", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
+					this._transformFn = new Function("list", "$index", "$dataItem", "return $transform(list, true)." + this._options.transform + ";");
 				}
 				// Transform the original list using the given options
 				var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
 				if (transformResult.live !== Transform.prototype.live) {
-					ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", and \"groupBy\".");
+					ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", \"select\", and \"groupBy\".");
 				}
 				return transformResult.live();
 			}

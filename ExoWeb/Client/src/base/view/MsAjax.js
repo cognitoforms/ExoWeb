@@ -50,17 +50,8 @@
 		if ((value && value instanceof Array) && (oldValue && oldValue instanceof Array)) {
 			// copy the original array
 			var arr = oldValue.slice();
-			var events = update(arr, value, true);
-			var changes = events.map(function(e) {
-				return {
-					action: Sys.NotifyCollectionChangedAction[e.type],
-					newStartingIndex: e.type === "add" ? e.index : null,
-					newItems: e.type === "add" ? e.items : null,
-					oldStartingIndex: e.type === "remove" ? e.index : null,
-					oldItems: e.type === "remove" ? e.items : null
-				};
-			});
-			this._collectionChanged(value, { get_changes: function() { return changes; } });
+			var changes = update(arr, value, true);
+			this._collectionChanged(value, new Sys.NotifyCollectionChangedEventArgs(changes));
 		}
 		else {
 			this._dirty = true;

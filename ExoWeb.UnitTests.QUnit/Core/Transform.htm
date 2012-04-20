@@ -19,23 +19,25 @@
 			var sg = { FirstName: "Sam", LastName: "Gindhart", Grade: "02" };
 			var ag = { FirstName: "Albert", LastName: "Gindhart", Grade: "02" };
 			var jd = { FirstName: "John", LastName: "Doe", Grade: null };
-			
+
 			test("where expression", function() {
 				same($transform([mh, bm, pg, jd, sg, ag]).where("LastName == 'Gindhart'"), [pg, sg, ag]);
 				same($transform([mh, bm, pg, jd, sg, ag]).where("LastName !== 'Gindhart'"), [mh, bm, jd]);
 				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade !== null"), [mh, bm, pg, sg, ag]);
 				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == null"), [jd]);
 				same($transform([mh, bm, pg, jd, sg, ag]).where("$item.LastName != 'Doe'"), [mh, bm, pg, sg, ag]);
+				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == '01' || LastName == 'Doe'"), [mh, bm, jd]);
+				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == '02' && FirstName == 'Sam'"), [sg]);
 			});
-			
+
 			test("where function", function() {
 				same($transform([mh, bm, pg, jd, sg, ag]).where(function(item) { return item.LastName != "Gindhart"; }), [mh, bm, jd]);
 			});
-			
+
 			test("where function w/context", function() {
 				same($transform([mh, bm, pg, jd, sg, ag]).where(function(item) { return item != this; }, jd), [mh, bm, pg, sg, ag]);
 			});
-			
+
 			test("where w/$item", function() {
 				same($transform(["Apple", "Orange", "Banana"]).where("$item !== 'Banana'"), ["Apple", "Orange"]);
 				same($transform(["Apple", "Orange", "Banana"]).where("$item.length > 5"), ["Orange", "Banana"]);
@@ -79,18 +81,35 @@
 				equals(3, grouped.length, "should result in three groups.");
 			});
 
-			test("live", function() {
+			test("select function", function() {
+				var list = ["Apple", "Orange", "Banana", "Artichoke"];
+				var selected = $transform(list).select(function(item) { return item.toLowerCase(); });
+				same(selected, ["apple", "orange", "banana", "artichoke"], "should result in lower-case versions of input");
+			});
+			
+			test("select path", function() {
+				var list = ["Apple", "Orange", "Banana", "Artichoke"];
+				var selected = $transform(list).select("length");
+				same(selected, [5, 6, 6, 9], "should result in string lengths");
+			});
+
+			test("live mode", function() {
+				var transform = $transform(["Apple", "Orange", "Banana", "Artichoke"], true).where("$item[0] !== 'A'");
+				ok(transform instanceof ExoWeb.Transform, "When live mode is used the result is a transform object prior to calling 'live'.");
+				ok(transform.live() instanceof Array, "The result is an array after live is called.");
+			});
+
+			test("live function", function() {
 				var list = ["Apple", "Orange", "Banana", "Artichoke"];
 				Sys.Observer.makeObservable(list);
-				var transform = $transform(list);
 
-				var where = transform.where("$item[0] !== 'A'");
+				var where = $transform(list).where("$item[0] !== 'A'");
 				same(where, ["Orange", "Banana"]);
 
-				var ordered = transform.orderBy("length desc");
+				var ordered = $transform(list).orderBy("length desc");
 				same(ordered, ["Artichoke", "Orange", "Banana", "Apple"]);
 
-				var grouped = transform.groupBy(function(item) { return item[0]; });
+				var grouped = $transform(list).groupBy(function(item) { return item[0]; });
 				equals(grouped.length, 3, "should result in three groups");
 
 				function liveAsserts(live, original) {
@@ -120,6 +139,7 @@
 				list.insert(0, "Raspberry");
 				equals(grouped.length, 3, "non-live grouped output should not be affected");
 				equals(groupedLive.length, 4, "should be four groups after array update");
+				equals(groupedLive[0].group, "R", "'R' group should be first");
 				same(ordered, ["Artichoke", "Orange", "Banana", "Apple"], "non-live ordered output should not be affected");
 				same(orderedLive, ["Raspberry", "Artichoke", "Orange", "Banana", "Apple"], "item should be added to live ordered output");
 				same(where, ["Orange", "Banana"], "non-live where output should not be affected");
@@ -151,18 +171,23 @@
 				equals(groupedChanges[0].newStartingIndex, 0, "Should be inserted before 'Artichoke'");
 				list.remove("Tangerine");
 
+				list.insert(0, "Olive");
+				equals(groupedLive[0].group, "O", "'O' group should now be the first group.");
+				list.remove("Olive");
+
 				groupedChanges = [];
 
 				var groupItemChanges = [];
 				Sys.Observer.addCollectionChanged(groupedLive.filter(function(g) { return g.group === "A"; })[0].items, function(sender, args) { groupItemChanges.addRange(args.get_changes()); });
 
-				list.add("Apricot");
+				list.insert(0, "Apricot");
 				equals(groupedChanges.length, 0, "should be no changes to groups");
 				equals(groupItemChanges.length, 1, "should be one change to the 'A' group's items");
 				equals(groupItemChanges[0].oldItems, undefined, "should be no removed items");
 				equals(groupItemChanges[0].newItems.length, 1, "should be one added item");
-				equals(groupItemChanges[0].newStartingIndex, 2, "should be added at index 2");
+				equals(groupItemChanges[0].newStartingIndex, 0, "should be added at beginning of items list");
 				equals(groupItemChanges[0].newItems[0], "Apricot", "should be apricot");
+				equals(groupedLive.filter(function(g) { return g.group === "A"; })[0].items[0], "Apricot", "Apricot should be the first item.");
 				list.remove("Apricot");
 
 				// Test multiple levels of grouping
@@ -200,6 +225,57 @@
 				equals(groupSubItemChanges[0].newStartingIndex, 1, "should be added at index 1");
 				var group = groupedLive.filter(function(g) { return g.group === "odd"; })[0].items.filter(function(g) { return g.group === 'O'; })[0];
 				same(group.items, ["Orange", "Olive"], "items should contain the new item");
+
+				// Live changes to filtered list
+				list = ["Apple", "Orange", "Banana", "Artichoke", "Raspberry", "Tangerine", "Apricot"];
+				Sys.Observer.makeObservable(list);
+				var whereChanges = [];
+				var whereLive = $transform(list).where("$item[0] !== 'A'").live();
+				Sys.Observer.addCollectionChanged(whereLive, function(sender, args) { whereChanges.addRange(args.get_changes()); });
+				list.add("Pineapple");
+				equals(whereChanges.length, 1, "should be 1 change to filtered list");
+				equals(whereChanges[0].newItems.length, 1, "should be 1 change to filtered list");
+				equals(whereChanges[0].newItems[0], "Pineapple", "should be 1 change to filtered list");
+				whereChanges = [];
+				list.add("Avocado");
+				equals(whereChanges.length, 0, "should be no changes to filtered list");
+
+				list = ["Apple", "Orange", "Banana", "Artichoke"];
+				Sys.Observer.makeObservable(list);
+				var selectedLive = $transform(list).select("length").live();
+				same(selectedLive, [5, 6, 6, 9], "should result in string lengths");
+				var selectChanges = [];
+				Sys.Observer.makeObservable(selectChanges);
+				Sys.Observer.addCollectionChanged(selectedLive, function(sender, args) { selectChanges.addRange(args.get_changes()); });
+				list.insert(0, "Olive");
+				same(selectedLive, [5, 5, 6, 6, 9], "should result in update to live selected transform");
+				equals(selectChanges.length, 1, "should be 1 list change");
+				ok(selectChanges[0].newItems, "should be new items");
+				equals(selectChanges[0].newItems.length, 1, "should be 1 new item");
+				equals(selectChanges[0].newItems[0], 5, "added item should be 5");
+				ok(!selectChanges[0].oldItems || selectChanges[0].oldItems.length === 0, "should be no old items");
+				selectChanges.clear();
+				list.removeAt(4);
+				same(selectedLive, [5, 5, 6, 6], "should result in update to live selected transform");
+				equals(selectChanges.length, 1, "should be 1 list change");
+				ok(!selectChanges[0].newItems || selectChanges[0].newItems.length === 0, "should be no new items");
+				ok(selectChanges[0].oldItems, "should be old items");
+				equals(selectChanges[0].oldItems.length, 1, "should be 1 old item");
+				equals(selectChanges[0].oldItems[0], 9, "removed item should be 9");
+				selectChanges.clear();
+
+				list = ["Apple", "Orange", "Banana", "Artichoke"];
+				Sys.Observer.makeObservable(list);
+				var live = $transform(list).select(function(item) { return item.toLowerCase(); }).groupBy(function(item) { return item[0]; }).live();
+				equals(live.length, 3, "should be 3 groups");
+				equals(live[0].group, "a");
+				equals(live[1].group, "o");
+				equals(live[2].group, "b");
+				list.insert(0, "Olive");
+				equals(live.length, 3, "should still be 3 groups");
+				equals(live[0].group, "o");
+				equals(live[1].group, "a");
+				equals(live[2].group, "b");
 			});
 
 		</script>

@@ -3,250 +3,257 @@
 	<head>
 		<title>Adapter Tests</title>
 		<link href="../Common/Styles/qunit.css" type="text/css" rel="stylesheet" />
-
-		<script src="../Common/Scripts/JQuery/jquery-1.3.2.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/QUnit/qunit.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/Microsoft/MicrosoftAjax.debug.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb-msajax.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/ExoWeb/exoweb.jquery.js" type="text/javascript"></script>
-		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
+		<style type="text/css">
+			.sys-template {display:none;}
+		</style>
+		<script type="text/javascript" src="../Common/Scripts/JQuery/jquery-1.3.2.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/QUnit/qunit.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/Microsoft/MicrosoftAjax.debug.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.debug.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/ExoWeb/exoweb-msajax.js"></script>
+		<script type="text/javascript" src="../Common/Scripts/QUnit/qunit.ext.js"></script>
+		<script type="text/javascript" src="../Common/Model/types.js"></script>
+		<script type="text/javascript" src="../Common/Model/instances.js"></script>
 		<script type="text/javascript">
-			$exoweb({ model: { driver: { id: "1", from: "Driver", and: ["this.PrimaryCar.OriginalOwner", "this.Dealer.AvailableCars", "this.SalesPerson", "this.AllowedSalesPersons" ] }} });
 
-			defineTest("test1", {
-				description: "Adapter values (raw, system, display) refresh when path is changed" },
-				fn: function (flags, callback) {
-					ok(flags.rawValueChanged, "Raw value should broadcast change when the path changes");
-					ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
-					ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
-					callback();
+			defineTest("values refresh when the path changes", {
+				description: "Adapter values (raw, system, display) refresh when path is changed",
+				setup: function() {
+					var adapter = new ExoWeb.View.Adapter(context.model.movie, "Director", null, null, {});
+					var flags = this.flags = { rawValueChanged: false, systemValueChanged: false, displayValueChanged: false };
+
+					// Getting a value from the adapter forces it to become observable
+					adapter.get_rawValue();
+	
+					Sys.Observer.addSpecificPropertyChanged(adapter, "rawValue", function () { flags.rawValueChanged = true; });
+					Sys.Observer.addSpecificPropertyChanged(adapter, "systemValue", function () { flags.systemValueChanged = true; });
+					Sys.Observer.addSpecificPropertyChanged(adapter, "displayValue", function () { flags.displayValueChanged = true; });
+
+					var target = adapter.get_target();
+					var newDirector = new Director();
+					var oldDirector = target.get_Director();
+					target.set_Director(newDirector);
+
+					context.model.movie.set_Director(oldDirector);
+				},
+				fn: function () {
+					ok(this.flags.rawValueChanged, "Raw value should broadcast change when the path changes");
+					ok(this.flags.systemValueChanged, "System value should broadcast change when the path changes");
+					ok(this.flags.displayValueChanged, "Display value should broadcast change when the path changes");
 				}
 			});
 
-			defineTest("test2", { description: "Adapter formatted values (display, system) refresh based on changes to properties relevant to the format.", expect: 2 }, function ( flags, callback) {
-				ok(flags.systemValueChanged, "System value should broadcast change when property affecting format changes");
-				ok(flags.displayValueChanged, "Display value should broadcast change when property affecting format changes");
-				callback();
+			defineTest("values refresh when paths relevant to the format change", {
+				description: "Adapter formatted values (display, system) refresh based on changes to properties relevant to the format.",
+				expect: 2,
+				setup: function() {
+					var oldSystemFormat = Director.formats.$system;
+					Director.formats.$system = new ExoWeb.Model.Format.fromTemplate("{Person.LastName}, {Person.FirstName}");
+					Director.formats.$display = new ExoWeb.Model.Format.fromTemplate("{Person.FirstName} {Person.LastName}");
+
+					var adapter = new ExoWeb.View.Adapter(context.model.movie, "Director", null, null, {});
+					var flags = this.flags = { systemValueChanged: false, displayValueChanged: false };
+
+					// Getting a value from the adapter forces it to become observable
+					adapter.get_rawValue();
+
+					Sys.Observer.addSpecificPropertyChanged(adapter, "systemValue", function () { flags.systemValueChanged = true; });
+					Sys.Observer.addSpecificPropertyChanged(adapter, "displayValue", function () { flags.displayValueChanged = true; });
+
+					var oldName = context.model.movie.get_Director().get_Person().get_FirstName();
+					context.model.driver.get_Director().get_Person().set_FirstName("Joe");
+
+					var removedCar = context.model.driver.get_Director().get_AvailableCars()[0];
+					context.model.driver.get_Director().get_AvailableCars().remove(removedCar);
+
+					Director.formats.$system = oldSystemFormat;
+					context.model.driver.get_Director().set_Name(oldName);
+					context.model.driver.get_Director().get_AvailableCars().add(removedCar);
+				},
+				fn: function () {
+					ok(this.flags.systemValueChanged, "System value should broadcast change when property affecting format changes");
+					ok(this.flags.displayValueChanged, "Display value should broadcast change when property affecting format changes");
+				}
 			});
 
-			defineTest("test3", { description: "Adapter formatted values (display, system) refresh based on changes to properties relevant to the format.", expect: 2 }, function ( flags, callback) {
-				ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
-				ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
-				callback();
-			});
+//			defineTest("test3", {
+//				description: "Adapter formatted values (display, system) refresh based on changes to properties relevant to the format.",
+//				expect: 2,
+//				setup: function() {
+//					var oldSystemFormat = Employee.formats.$system;
+//					Employee.formats.$system = new ExoWeb.Model.Format.fromTemplate("{Name}");
+//	
+//					var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson", null, null, {});
+//					adapter.ready(function AdapterReady() {
+//						var flags = { rawValueChanged: false, systemValueChanged: false, displayValueChanged: false };
+//	
+//						// Getting a value from the adapter forces it to become observable
+//						adapter.get_rawValue();
+//	
+//						var opt = adapter.get_options()[0];
+//	
+//						Sys.Observer.addSpecificPropertyChanged(opt, "systemValue", function () { flags.systemValueChanged = true; });
+//						Sys.Observer.addSpecificPropertyChanged(opt, "displayValue", function () { flags.displayValueChanged = true; });
+//	
+//						var oldName = opt.get_rawValue().get_Name();
+//						opt.get_rawValue().set_Name("Joe Schmo");
+//	
+//						executeTest("test3", flags, function () {
+//							Employee.formats.$system = oldSystemFormat;
+//							opt.get_rawValue().set_Name(oldName);
+//							callback.apply(this, arguments);
+//						});
+//					}, this);
+//				},
+//				fn: function () {
+//					ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
+//					ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
+//				}
+//			});
 
-			defineTest("test4", { description: "Adapter formatted values (display, system) refresh based on change to null.", expect: 3 }, function ( flags, callback) {
-				ok(flags.rawValueChanged, "Raw value should broadcast change when the path changes");
-				ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
-				ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
-				callback();
-			});
+//			defineTest("test4", {
+//				description: "Adapter formatted values (display, system) refresh based on change to null.",
+//				expect: 3,
+//				setup: function() {
+//					var oldSystemFormat = Employee.formats.$system;
+//					Employee.formats.$system = new ExoWeb.Model.Format.fromTemplate("{Name}");
+//	
+//					var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson", null, null, {});
+//					adapter.ready(function AdapterReady() {
+//						var flags = { rawValueChanged: false, systemValueChanged: false, displayValueChanged: false };
+//	
+//						// Getting a value from the adapter forces it to become observable
+//						adapter.get_rawValue();
+//	
+//						var opt = adapter.get_options()[0];
+//	
+//						Sys.Observer.addSpecificPropertyChanged(adapter, "rawValue", function () { flags.rawValueChanged = true; });
+//						Sys.Observer.addSpecificPropertyChanged(adapter, "systemValue", function () { flags.systemValueChanged = true; });
+//						Sys.Observer.addSpecificPropertyChanged(adapter, "displayValue", function () { flags.displayValueChanged = true; });
+//	
+//						var oldSalesPerson = opt.get_rawValue();
+//						context.model.driver.set_SalesPerson(null);
+//	
+//						executeTest("test4", flags, function () {
+//							Employee.formats.$system = oldSystemFormat;
+//							context.model.driver.set_SalesPerson(oldSalesPerson);
+//							callback.apply(this, arguments);
+//						});
+//					}, this);
+//				},
+//				fn: function () {
+//					ok(flags.rawValueChanged, "Raw value should broadcast change when the path changes");
+//					ok(flags.systemValueChanged, "System value should broadcast change when the path changes");
+//					ok(flags.displayValueChanged, "Display value should broadcast change when the path changes");
+//				}
+//			});
 
-			defineTest("test5", { description: "Adapter validation is fired when property changes.", expect: 1 }, function (flags, callback) {
-				ok(flags.propertyValidated, true);
-				callback();
-			});
+//			defineTest("test5", {
+//				description: "Adapter validation is fired when property changes.",
+//				expect: 1,
+//				setup: function() {
+//					var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson.Name", null, null, {});
+//					adapter.ready(function AdapterReady() {
+//						var flags = { propertyValidated: false };
+//	
+//						// Getting a value from the adapter forces it to become observable
+//						adapter.get_rawValue();
+//	
+//						adapter.addPropertyValidated("", function () { flags.propertyValidated = true; });
+//	
+//						var target = adapter.get_target();
+//						var oldSales = target.get_SalesPerson();
+//						oldSales.set_Name("testasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdf");
+//						oldSales.set_Name("New Salesperson");
+//	
+//						executeTest("test5", flags, function () {
+//							context.model.driver.set_SalesPerson(oldSales);
+//							callback.apply(this, arguments);
+//						});
+//					});
+//				},
+//				fn: function () {
+//					ok(flags.propertyValidated, true);
+//				}
+//			});
 
-			defineTest("test6", { description: "Adapter validation is fired when last target is changed", expect: 1 }, function (flags, callback) {
-				ok(flags.propertyValidated, true);
-				callback();
-			});
+//			defineTest("test6", {
+//				description: "Adapter validation is fired when last target is changed",
+//				expect: 1,
+//				setup: function() {
+//					var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson.Name", null, null, {});
+//					adapter.ready(function AdapterReady() {
+//						var flags = { propertyValidated: false };
+//	
+//						// Getting a value from the adapter forces it to become observable
+//						adapter.get_rawValue();
+//	
+//						adapter.addPropertyValidated("", function () { flags.propertyValidated = true; });
+//	
+//						var target = adapter.get_target();
+//						var oldSales = target.get_SalesPerson();
+//						var newSales = new Employee();
+//	
+//						target.set_SalesPerson(newSales);
+//						newSales.set_Name("testasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdf");
+//	
+//						executeTest("test6", flags, function () {
+//							context.model.driver.set_SalesPerson(oldSales);
+//							callback.apply(this, arguments);
+//						});
+//					});
+//				},
+//				fn: function () {
+//					ok(flags.propertyValidated, true);
+//				}
+//			});
 
-			defineTest("test7", { description: "Adapter onTargetChanged recursive call test", expect: 1 }, function (flags, callback) {
-				ok(flags.rawValueChanged, true);
-				callback();
-			});
+//			defineTest("test7", {
+//				description: "Adapter onTargetChanged recursive call test",
+//				expect: 1,
+//				setup: function() {
+//					var adapter = new ExoWeb.View.Adapter(context.model.driver, "Dealer.BusinessName", null, null, {});
+//					adapter.ready(function AdapterReady() {
+//						var flags = { rawValueChanged: false };
+//	
+//						// Getting a value from the adapter forces it to become observable
+//						adapter.get_rawValue();
+//	
+//						var target = adapter.get_target();
+//						var oldDealer = target.get_Dealer();
+//						var newDealer = new Dealer();
+//						context.model.driver.set_Dealer(newDealer);
+//	
+//						//now add the watch for addSpecificPropertyChanged
+//						Sys.Observer.addSpecificPropertyChanged(adapter, "rawValue", function () { flags.rawValueChanged = true; });
+//	
+//						//now set a value on the property that is currently null
+//						newDealer.set_BusinessName("test");
+//	
+//						executeTest("test7", flags, function () {
+//							context.model.driver.set_Dealer(oldDealer);
+//							callback.apply(this, arguments);
+//						});
+//					});
+//				},
+//				fn: function () {
+//					ok(flags.rawValueChanged, true);
+//				}
+//			});
 
 			timeoutTests(2000);
 
-			$exoweb({
-				contextReady: function () {
-					executeAllTests();
+			ExoWeb.config.debug = true;
 
-					setupList[0] = function (callback) {
-						var adapter = new ExoWeb.View.Adapter(context.model.driver, "Dealer", null, null, {});
-						adapter.ready(function AdapterReady() {
-							var flags = { rawValueChanged: false, systemValueChanged: false, displayValueChanged: false };
-	
-							// Getting a value from the adapter forces it to become observable
-							adapter.get_rawValue();
-	
-							Sys.Observer.addSpecificPropertyChanged(adapter, "rawValue", function () { flags.rawValueChanged = true; });
-							Sys.Observer.addSpecificPropertyChanged(adapter, "systemValue", function () { flags.systemValueChanged = true; });
-							Sys.Observer.addSpecificPropertyChanged(adapter, "displayValue", function () { flags.displayValueChanged = true; });
-	
-							var target = adapter.get_target();
-							var newDealer = new Dealer();
-							var oldDealer = target.get_Dealer();
-							target.set_Dealer(newDealer);
-	
-							executeTest("test1", flags, function () {
-								context.model.driver.set_Dealer(oldDealer);
-								callback.apply(this, arguments);
-							});
-						});
-					};
-	
-					setupList[1] = function (callback) {
-						var oldSystemFormat = Dealer.formats.$system;
-						Dealer.formats.$system = new ExoWeb.Model.Format.fromTemplate("{Name}");
-	
-						var adapter = new ExoWeb.View.Adapter(context.model.driver, "Dealer", null, null, {});
-						adapter.ready(function AdapterReady() {
-							var flags = { systemValueChanged: false, displayValueChanged: false };
-	
-							// Getting a value from the adapter forces it to become observable
-							adapter.get_rawValue();
-	
-							Sys.Observer.addSpecificPropertyChanged(adapter, "systemValue", function () { flags.systemValueChanged = true; });
-							Sys.Observer.addSpecificPropertyChanged(adapter, "displayValue", function () { flags.displayValueChanged = true; });
-	
-							var oldName = context.model.driver.get_Dealer().get_Name();
-							context.model.driver.get_Dealer().set_Name("Joe Schmo");
-	
-							var removedCar = context.model.driver.get_Dealer().get_AvailableCars()[0];
-							context.model.driver.get_Dealer().get_AvailableCars().remove(removedCar);
-	
-							executeTest("test2", flags, function () {
-								Dealer.formats.$system = oldSystemFormat;
-								context.model.driver.get_Dealer().set_Name(oldName);
-								context.model.driver.get_Dealer().get_AvailableCars().add(removedCar);
-								callback.apply(this, arguments);
-							});
-						}, this);
-					};
-	
-					setupList[2] = function (callback) {
-						var oldSystemFormat = Employee.formats.$system;
-						Employee.formats.$system = new ExoWeb.Model.Format.fromTemplate("{Name}");
-	
-						var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson", null, null, {});
-						adapter.ready(function AdapterReady() {
-							var flags = { rawValueChanged: false, systemValueChanged: false, displayValueChanged: false };
-	
-							// Getting a value from the adapter forces it to become observable
-							adapter.get_rawValue();
-	
-							var opt = adapter.get_options()[0];
-	
-							Sys.Observer.addSpecificPropertyChanged(opt, "systemValue", function () { flags.systemValueChanged = true; });
-							Sys.Observer.addSpecificPropertyChanged(opt, "displayValue", function () { flags.displayValueChanged = true; });
-	
-							var oldName = opt.get_rawValue().get_Name();
-							opt.get_rawValue().set_Name("Joe Schmo");
-	
-							executeTest("test3", flags, function () {
-								Employee.formats.$system = oldSystemFormat;
-								opt.get_rawValue().set_Name(oldName);
-								callback.apply(this, arguments);
-							});
-						}, this);
-					};
-	
-					setupList[3] = function (callback) {
-						var oldSystemFormat = Employee.formats.$system;
-						Employee.formats.$system = new ExoWeb.Model.Format.fromTemplate("{Name}");
-	
-						var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson", null, null, {});
-						adapter.ready(function AdapterReady() {
-							var flags = { rawValueChanged: false, systemValueChanged: false, displayValueChanged: false };
-	
-							// Getting a value from the adapter forces it to become observable
-							adapter.get_rawValue();
-	
-							var opt = adapter.get_options()[0];
-	
-							Sys.Observer.addSpecificPropertyChanged(adapter, "rawValue", function () { flags.rawValueChanged = true; });
-							Sys.Observer.addSpecificPropertyChanged(adapter, "systemValue", function () { flags.systemValueChanged = true; });
-							Sys.Observer.addSpecificPropertyChanged(adapter, "displayValue", function () { flags.displayValueChanged = true; });
-	
-							var oldSalesPerson = opt.get_rawValue();
-							context.model.driver.set_SalesPerson(null);
-	
-							executeTest("test4", flags, function () {
-								Employee.formats.$system = oldSystemFormat;
-								context.model.driver.set_SalesPerson(oldSalesPerson);
-								callback.apply(this, arguments);
-							});
-						}, this);
-					};
-	
-					setupList[4] = function (callback) {
-						var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson.Name", null, null, {});
-						adapter.ready(function AdapterReady() {
-							var flags = { propertyValidated: false };
-	
-							// Getting a value from the adapter forces it to become observable
-							adapter.get_rawValue();
-	
-							adapter.addPropertyValidated("", function () { flags.propertyValidated = true; });
-	
-							var target = adapter.get_target();
-							var oldSales = target.get_SalesPerson();
-							oldSales.set_Name("testasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdf");
-							oldSales.set_Name("New Salesperson");
-	
-							executeTest("test5", flags, function () {
-								context.model.driver.set_SalesPerson(oldSales);
-								callback.apply(this, arguments);
-							});
-						});
-					};
-	
-					setupList[5] = function (callback) {
-						var adapter = new ExoWeb.View.Adapter(context.model.driver, "SalesPerson.Name", null, null, {});
-						adapter.ready(function AdapterReady() {
-							var flags = { propertyValidated: false };
-	
-							// Getting a value from the adapter forces it to become observable
-							adapter.get_rawValue();
-	
-							adapter.addPropertyValidated("", function () { flags.propertyValidated = true; });
-	
-							var target = adapter.get_target();
-							var oldSales = target.get_SalesPerson();
-							var newSales = new Employee();
-	
-							target.set_SalesPerson(newSales);
-							newSales.set_Name("testasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdftestasdfsdf");
-	
-							executeTest("test6", flags, function () {
-								context.model.driver.set_SalesPerson(oldSales);
-								callback.apply(this, arguments);
-							});
-						});
-					};
-	
-					setupList[6] = function (callback) {
-						var adapter = new ExoWeb.View.Adapter(context.model.driver, "Dealer.BusinessName", null, null, {});
-						adapter.ready(function AdapterReady() {
-							var flags = { rawValueChanged: false };
-	
-							// Getting a value from the adapter forces it to become observable
-							adapter.get_rawValue();
-	
-							var target = adapter.get_target();
-							var oldDealer = target.get_Dealer();
-							var newDealer = new Dealer();
-							context.model.driver.set_Dealer(newDealer);
-	
-							//now add the watch for addSpecificPropertyChanged
-							Sys.Observer.addSpecificPropertyChanged(adapter, "rawValue", function () { flags.rawValueChanged = true; });
-	
-							//now set a value on the property that is currently null
-							newDealer.set_BusinessName("test");
-	
-							executeTest("test7", flags, function () {
-								context.model.driver.set_Dealer(oldDealer);
-								callback.apply(this, arguments);
-							});
-						});
-					};
-	
-					Dealer.formats.$display = ExoWeb.Model.Format.fromTemplate("{AvailableCars}");
+			$exoweb({
+				model: {
+					movie: { from: "Movie", id: "robin_hood" }
+				},
+				domReady: function() {
+					executeAllTests();
 				}
 			});
+
 		</script>
 	</head>
 	<body>

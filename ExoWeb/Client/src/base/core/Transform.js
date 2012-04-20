@@ -1,12 +1,23 @@
-function Transform(array) {
+function Transform(array, forLive) {
 	if (array === null || array === undefined) {
-		ExoWeb.trace.throwAndLog("transform", "Transform input is required.");
+		ExoWeb.trace.logError("transform", "Transform input is required.");
+		throw new Error("Transform input is required.");
 	}
 	if (!(array instanceof Array)) {
-		ExoWeb.trace.throwAndLog("transform", "Transform input must be an array.");
+		ExoWeb.trace.logError("transform", "Transform input must be an array.");
+		throw new Error("Transform input must be an array.");
 	}
 
 	this._array = array;
+	if (forLive === true) {
+		this._livePending = true;
+		this._liveComplete = false;
+	}
+}
+
+function TransformGroup(group, items) {
+	this.group = group;
+	this.items = items;
 }
 
 var compileFilterFunction = (function Transform$compileFilterFunction(filter) {
@@ -30,6 +41,10 @@ var compileFilterFunction = (function Transform$compileFilterFunction(filter) {
 	});
 
 	return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
+}).cached();
+
+var compileSelectFunction = (function Transform$compileSelectFunction(selector) {
+	return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + selector + "');");
 }).cached();
 
 var compileGroupsFunction = (function Transform$compileGroupsFunction(groups) {
@@ -83,36 +98,78 @@ var compileOrderingFunction = (function Transform$compileOrderingFunction(orderi
 	};
 }).cached();
 
-function makeTransform(array, priorTransform, fn, args) {
-	Function.mixin(Transform.prototype, array);
-	array._prior = priorTransform;
-	array._transform = { fn: fn, args: args };
-	return array;
-}
+var transforms = {
+	where: function where(input, filter, thisPtr) {
+		var filterFn = filter instanceof Function ? filter : compileFilterFunction(filter);
+		return input.filter(filterFn, thisPtr);
+	},
+	select: function select(input, selector, thisPtr) {
+		var mapFn = selector instanceof Function ? selector : compileSelectFunction(selector);
+		return input.map(mapFn, thisPtr);
+	},
+	groupBy: function groupBy(input, groups, thisPtr) {
+		var groupFn = groups instanceof Function ? groups : compileGroupsFunction(groups);
 
-function updateTransformGroupItems(oldList, newList, nesting) {
-	var i, oldGroup, newGroup, oldItems, newItems;
-	if (nesting === 0) {
-		// when nesting is zero the items are no longer groups themselves.
-		update(oldList, newList);
-	}
-	else {
-		// recursively update items as groups
-		for (i = 0; i < newList.length; i++) {
-			newGroup = newList[i];
-			oldGroup = oldList.filter(function(g) { return g.group === newGroup.group; })[0];
-			if (oldGroup) {
-				updateTransformGroupItems(oldGroup.items, newGroup.items, nesting - 1);
+		var result = [];
+		var len = input.length;
+		for (var i = 0; i < len; i++) {
+			var item = input[i];
+			var groupKey = groupFn.apply(thisPtr || item, [item, i]);
+
+			var group = null;
+			for (var g = 0; g < result.length; ++g) {
+				if (result[g].group == groupKey) {
+					group = result[g];
+					group.items.push(item);
+					break;
+				}
 			}
-			else {
-				Sys.Observer.makeObservable(newGroup.items);
+
+			if (!group) {
+				result.push(new TransformGroup(groupKey, [item]));
 			}
 		}
-		// Update at the group level
-		update(oldList, newList, false, function (a, b) {
-			return a && b && a.group === b.group;
-		});
+
+		return result;
+	},
+	orderBy: function orderBy(input, ordering, thisPtr) {
+		var sortFn = ordering instanceof Function ? ordering : compileOrderingFunction(ordering);
+		return input.copy().sort(thisPtr ? sortFn.bind(thisPtr) : sortFn);
 	}
+};
+
+function copyTransform(steps, array, live) {
+	var result = $transform(array, live);
+	steps.forEach(function(step) {
+		result = result[step._transform.method].call(result, step._transform.arg, step._transform.thisPtr)
+	});
+	return result;
+}
+
+function makeTransform(array, priorTransform, method, arg, thisPtr) {
+	// Make sure that the same transform is not made live more than once since this can cause collisions.
+	if (priorTransform._liveComplete === true) {
+		ExoWeb.trace.logError("transform", "Cannot call live on the same transform multiple times.");
+		throw new Error("Cannot call live on the same transform multiple times.");
+	}
+
+	var result;
+
+	// When creating a live transform, the result cannot be used directly as an array to
+	// discourage using part of the result when the intention is to eventually call "live".
+	// When live mode is not used, then if live is eventually called it will result in a non-optimal
+	// copying of the transform.
+	if (priorTransform._livePending === true) {
+		result = new Transform(array, true);
+	}
+	else {
+		Function.mixin(Transform.prototype, array);
+		result = array;
+	}
+
+	result._prior = priorTransform;
+	result._transform = { method: method, arg: arg, thisPtr: thisPtr };
+	return result;
 }
 
 Transform.mixin({
@@ -120,85 +177,283 @@ Transform.mixin({
 		return this._array || this;
 	},
 	where: function Transform$where(filter, thisPtr) {
-		var filterFn = filter instanceof Function ? filter : compileFilterFunction(filter);
-		var output = this.input().filter(filterFn, thisPtr);
-		return makeTransform(output, this, this.where, arguments);
+		var output = transforms.where(this.input(), filter, thisPtr);
+		return makeTransform(output, this, "where", filter, thisPtr);
+	},
+	select: function Transform$select(selector, thisPtr) {
+		var output = transforms.select(this.input(), selector, thisPtr);
+		return makeTransform(output, this, "select", selector, thisPtr);
 	},
 	groupBy: function Transform$groupBy(groups, thisPtr) {
-		var groupFn = groups instanceof Function ? groups : compileGroupsFunction(groups);
-
-		var output = [];
-		var input = this.input();
-		var len = input.length;
-		for (var i = 0; i < len; i++) {
-			var item = input[i];
-			var groupKey = groupFn.apply(thisPtr || item, [item, i]);
-
-			var group = null;
-			for (var g = 0; g < output.length; ++g) {
-				if (output[g].group == groupKey) {
-					group = output[g];
-					group.items.push(item);
-					break;
-				}
-			}
-
-			if (!group) {
-				output.push({ group: groupKey, items: [item] });
-			}
+		var output = transforms.groupBy(this.input(), groups, thisPtr);
+		if (this._livePending) {
+			// make the items array observable if the transform is in live mode
+			output.forEach(function(group) {
+				Sys.Observer.makeObservable(group.items);
+			});
 		}
-
-		return makeTransform(output, this, this.groupBy, arguments);
+		return makeTransform(output, this, "groupBy", groups, thisPtr);
 	},
 	orderBy: function Transform$orderBy(ordering, thisPtr) {
-		var sortFn = ordering instanceof Function ? ordering : compileOrderingFunction(ordering);
-		var output = this.input().copy().sort(thisPtr ? sortFn.bind(thisPtr) : sortFn);
-		return makeTransform(output, this, this.orderBy, arguments);
+		var output = transforms.orderBy(this.input(), ordering, thisPtr);
+		return makeTransform(output, this, "orderBy", ordering, thisPtr);
 	},
 	live: function Transform$live() {
 		// Watches for changes on the root input into the transform
 		// and raises observable change events on this item as the 
 		// results change.
 
-		// make a copy of the transform data and make it observable
-		var output = this.copy();
-		Sys.Observer.makeObservable(output);
+		var transform, steps = [], rootStep;
 
-		// determine the set of transform steps
-		// also determine the level of group nesting and make each group's items collection observable
-		var chain = [];
-		var groupCount = 0;
-		var observableSource = output;
+		// determine the set of transform steps and the level of nested grouping
 		for (var step = this; step; step = step._prior) {
-			chain.splice(0, 0, step);
-			if (step._transform && step._transform.fn === Transform.prototype.groupBy) {
-				groupCount++;
-				// make each group's items collection observable
-				observableSource.forEach(function(item) { Sys.Observer.makeObservable(item.items); });
-				// the new observable source is all of the items collections of the current observable source
-				observableSource = observableSource.mapToArray(function(item) { return item.items; });
+			if (step._prior) {
+				steps.splice(0, 0, step);
+			}
+			else {
+				rootStep = step;
 			}
 		}
 
-		// watch for changes to root input and rerun transform chain as needed
-		Sys.Observer.addCollectionChanged(chain[0].input(), function Transform$live$collectionChanged() {
-			// re-run the transform on the newly changed input
-			var newResult = $transform(chain[0].input());
-			for (var i = 1; i < chain.length; ++i) {
-				var step = chain[i];
-				newResult = step._transform.fn.apply(newResult, step._transform.args);
-			}
+		// copy and return a live-mode transform if live mode was not used originally
+		if (this._livePending !== true) {
+			return copyTransform(steps, rootStep.input(), true).live();
+		}
 
-			// apply the changes to the output.
-			// must use the original list so that the events can be seen
+		// make a copy of the final transformed data and make it observable
+		var output = this.input().copy();
+		Sys.Observer.makeObservable(output);
+
+		// watch for changes to root input and update the transform steps as needed
+		Sys.Observer.addCollectionChanged(rootStep.input(), function Transform$live$collectionChanged(sender, args) {
+			var changes, stepInput, stepResult, modifiedItemsArrays = [];
+
+			//Sys.NotifyCollectionChangedAction.add;
+
+			// copy the set of changes since they will be manipulated
+			changes = args.get_changes().map(function(c) {
+				return {
+					action: c.action,
+					oldItems: c.oldItems ? c.oldItems.copy() : null,
+					oldStartingIndex: c.oldStartingIndex,
+					newItems: c.newItems ? c.newItems.copy() : null,
+					newStartingIndex: c.newStartingIndex
+				};
+			});
+
+			// make a copied version of the input so that it can be manipulated without affecting the result
+			stepInput = rootStep.input().copy();
+
+			// re-run the transform on the newly changed input
+			steps.forEach(function(step) {
+				// store a reference to the output of this step
+				stepResult = step.input();
+
+				if (step._transform.method === "where") {
+					changes.purge(function(change) {
+						if (change.oldItems) {
+							var oldItems = change.oldItems;
+							// determine which removed items made it through the filter
+							change.oldItems = transforms[step._transform.method](change.oldItems, step._transform.arg, step._transform.thisPtr);
+							if (change.oldItems.length === 0) {
+								// none of the removed items make it through the filter, so discard
+								change.oldItems = null;
+								change.oldStartingIndex = null;
+								return true;
+							}
+							else {
+								// find the actual index of the first removed item in the resulting array
+								change.oldStartingIndex = stepResult.indexOf(change.oldItems[0]);
+
+								// remove the filtered items from the result array
+								stepResult.splice(change.oldStartingIndex, change.oldItems.length);
+							}
+						}
+						else if (change.newItems) {
+							var newItems = change.newItems;
+							// determine which added items will make it through the filter
+							change.newItems = transforms[step._transform.method](change.newItems, step._transform.arg, step._transform.thisPtr);
+							if (change.newItems.length === 0) {
+								// none of the new items will make it through the filter, so discard
+								change.newItems = null;
+								change.newStartingIndex = null;
+								return true;
+							}
+							else {
+								// if not added to the beginning or end of the list, determine
+								// the real starting index by finding the index of the previous item
+								if (change.newStartingIndex !== 0 && (change.newStartingIndex + change.newItems.length) !== stepInput.length) {
+									var found = false;
+									for (var idx = change.newStartingIndex - 1; !found && idx >= 0; idx--) {
+										if (stepResult.indexOf(stepInput[idx]) >= 0) {
+											found = true;
+										}
+									}
+									change.newStartingIndex = idx + 1;
+								}
+
+								// splice the filtered items into the result array
+								var spliceArgs = change.newItems.copy();
+								spliceArgs.splice(0, 0, change.newStartingIndex, 0);
+								Array.prototype.splice.apply(stepResult, spliceArgs);
+							}
+						}
+						else {
+							return true;
+						}
+					});
+				}
+				else if (step._transform.method === "select") {
+					changes.forEach(function(change) {
+						if (change.oldItems) {
+							change.oldItems = stepResult.splice(change.oldStartingIndex, change.oldItems.length);
+						}
+						else if (change.newItems) {
+							var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectFunction(step._transform.arg);
+							change.newItems = change.newItems.map(function(item) {
+								return mapFn.call(step._transform.thisPtr || item, item);
+							});
+
+							// splice the filtered items into the result array
+							var spliceArgs = change.newItems.copy();
+							spliceArgs.splice(0, 0, change.newStartingIndex, 0);
+							Array.prototype.splice.apply(stepResult, spliceArgs);
+						}
+					});
+				}
+				else if (step._transform.method === "groupBy") {
+					var groupFn = step._transform.arg instanceof Function ? step._transform.arg : compileGroupsFunction(step._transform.arg);
+					var copyOfResults = stepResult.copy();
+					changes.forEach(function(change) {
+						if (change.oldItems) {
+							change.oldItems.forEach(function(item) {
+								var groupKey = groupFn.call(step._transform.thisPtr || item, item);
+								var group = copyOfResults.filter(function(g) { return g.group === groupKey; })[0];
+								// begin and end update on items array
+								if (modifiedItemsArrays.indexOf(group.items) < 0) {
+									group.items.beginUpdate();
+									modifiedItemsArrays.push(group.items);
+								}
+								// remove the item
+								var idx = group.items.indexOf(item);
+								group.items.remove(item);
+								if (idx === 0) {
+									var groupIndex = copyOfResults.indexOf(group),
+										sourceIndex = stepInput.indexOf(group.items[0]),
+										targetIndex = null;
+									for (i = 0; i < copyOfResults.length; i++) {
+										if (sourceIndex > stepInput.indexOf(copyOfResults[i].items[0])) {
+											targetIndex = i + 1;
+											break;
+										}
+									}
+									if (targetIndex !== null) {
+										copyOfResults.splice(groupIndex, 1);
+										copyOfResults.splice(targetIndex, 0, group);
+									}
+								}
+								if (group.items.length === 0) {
+									// remove the group from the copy of the array
+									copyOfResults.splice(copyOfResults.indexOf(group), 1);
+								}
+							});
+						}
+						else if (change.newItems) {
+							change.newItems.forEach(function(item) {
+								var groupKey = groupFn.call(step._transform.thisPtr || item, item),
+									group = copyOfResults.filter(function(g) { return g.group === groupKey; })[0],
+									sourceIndex,
+									targetIndex,
+									resequenceGroup = false,
+									groupIndex,
+									i;
+
+								if (group) {
+									// begin and end update on items array
+									if (modifiedItemsArrays.indexOf(group.items) < 0) {
+										group.items.beginUpdate();
+										modifiedItemsArrays.push(group.items);
+									}
+									sourceIndex = stepInput.indexOf(item), targetIndex = null;
+									for (i = 0; i < group.items.length; i++) {
+										if (sourceIndex < stepInput.indexOf(group.items[i])) {
+											targetIndex = i;
+											break;
+										}
+									}
+									if (targetIndex !== null) {
+										group.items.insert(targetIndex, item);
+										// group's index may have changed as a result
+										if (targetIndex === 0) {
+											resequenceGroup = true;
+										}
+									}
+									else {
+										group.items.add(item);
+									}
+								}
+								else {
+									group = new TransformGroup(groupKey, [item]);
+									Sys.Observer.makeObservable(group.items);
+									copyOfResults.push(group);
+									resequenceGroup = true;
+								}
+
+								if (resequenceGroup === true) {
+									groupIndex = copyOfResults.indexOf(group);
+									sourceIndex = stepInput.indexOf(group.items[0]);
+									targetIndex = null;
+									for (i = 0; i < groupIndex; i++) {
+										if (sourceIndex < stepInput.indexOf(copyOfResults[i].items[0])) {
+											targetIndex = i;
+											break;
+										}
+									}
+									if (targetIndex !== null) {
+										copyOfResults.splice(groupIndex, 1);
+										copyOfResults.splice(targetIndex, 0, group);
+									}
+								}
+							});
+						}
+					});
+
+					// collect new changes to groups
+					changes = update(stepResult, copyOfResults, true);
+				}
+				else if (step._transform.method === "orderBy") {
+					// sort the input and update the step result to match
+					var sorted = transforms[step._transform.method](stepInput, step._transform.arg, step._transform.thisPtr);
+					changes = update(stepResult, sorted, true);
+				}
+
+				// move the input forward to the result of the current step
+				stepInput = stepResult;
+			});
+
+			// apply changes to the ouput array
 			output.beginUpdate();
-			if (groupCount > 0) {
-				updateTransformGroupItems(output, newResult, groupCount);
-			}
-			else {
-				update(output, newResult);
-			}
+			changes.forEach(function(change) {
+				if (change.oldItems) {
+					output.removeRange(change.oldStartingIndex, change.oldItems.length);
+				}
+				else if (change.newItems) {
+					output.insertRange(change.newStartingIndex, change.newItems);
+				}
+			});
 			output.endUpdate();
+
+			// release changes to items arrays of groups, changes to the array occur first to allow
+			// for changes to groups' items to be ignored if the group is no longer a part of the output
+			modifiedItemsArrays.forEach(function(items) {
+				items.endUpdate();
+			});
+		});
+
+		// mark the transform steps as live complete
+		rootStep._liveComplete = true;
+		steps.forEach(function(step) {
+			step._liveComplete = true;
 		});
 
 		return output;
@@ -206,4 +461,4 @@ Transform.mixin({
 });
 
 exports.Transform = Transform;
-window.$transform = function transform(array) { return new Transform(array); };
+window.$transform = function transform(array, forLive) { return new Transform(array, forLive); };

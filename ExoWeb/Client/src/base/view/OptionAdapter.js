@@ -62,10 +62,34 @@ OptionAdapter.prototype = {
 		}
 	},
 	get_selected: function OptionAdapter$get_selected() {
-		return this._parent.get_selected(this._obj);
+		var rawValue = this._parent.get_rawValue();
+
+		if (rawValue instanceof Array) {
+			return Array.contains(rawValue, this._obj);
+		}
+		else {
+			return rawValue === this._obj;
+		}
 	},
 	set_selected: function OptionAdapter$set_selected(value) {
-		this._parent.set_selected(this._obj, value);
+		var rawValue = this._parent.get_rawValue();
+
+		if (rawValue instanceof Array) {
+			if (value && !Array.contains(rawValue, this._obj)) {
+				rawValue.add(this._obj);
+			}
+			else if (!value && Array.contains(rawValue, this._obj)) {
+				rawValue.remove(this._obj);
+			}
+		}
+		else {
+			if (value) {
+				this._parent.set_rawValue(this._obj);
+			}
+			else {
+				this._parent.set_rawValue(null);
+			}
+		}
 	},
 
 	// Pass validation events through to the target

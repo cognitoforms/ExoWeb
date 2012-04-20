@@ -741,7 +741,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 	
 			if (events) {
-				events.push({ type: "remove", index: index, items: removedArray || [removedItem] });
+				events.push({
+					action: Sys.NotifyCollectionChangedAction.remove,
+					oldStartingIndex: index,
+					oldItems: removedArray || [removedItem],
+					newStartingIndex: null,
+					newItems: null
+				});
 			}
 		}
 
@@ -757,7 +763,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			if (events) {
-				events.push({ type: "add", index: index, items: addItems });
+				events.push({
+					action: Sys.NotifyCollectionChangedAction.add,
+					oldStartingIndex: null,
+					oldItems: null,
+					newStartingIndex: index,
+					newItems: addItems
+				});
 			}
 		}
 	}
@@ -857,7 +869,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var source = arr, trackEvents = arguments[2], events = trackEvents ? [] : null, pointer = 0, srcSeek = 0, tgtSeek = 0, equalityFn = arguments[3];
 
 		while (srcSeek < source.length) {
-			if ((!equalityFn && source[srcSeek] === target[tgtSeek]) || (equalityFn && equalityFn(source[srcSeek], target[tgtSeek]) === true)) {
+			if (source[srcSeek] === target[tgtSeek]) {
 				if (pointer === srcSeek && pointer === tgtSeek) {
 					// items match, so advance
 					pointer = srcSeek = tgtSeek = pointer + 1;
@@ -1889,15 +1901,26 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region Transform
 	//////////////////////////////////////////////////
 
-	function Transform(array) {
+	function Transform(array, forLive) {
 		if (array === null || array === undefined) {
-			ExoWeb.trace.throwAndLog("transform", "Transform input is required.");
+			ExoWeb.trace.logError("transform", "Transform input is required.");
+			throw new Error("Transform input is required.");
 		}
 		if (!(array instanceof Array)) {
-			ExoWeb.trace.throwAndLog("transform", "Transform input must be an array.");
+			ExoWeb.trace.logError("transform", "Transform input must be an array.");
+			throw new Error("Transform input must be an array.");
 		}
 
 		this._array = array;
+		if (forLive === true) {
+			this._livePending = true;
+			this._liveComplete = false;
+		}
+	}
+
+	function TransformGroup(group, items) {
+		this.group = group;
+		this.items = items;
 	}
 
 	var compileFilterFunction = (function Transform$compileFilterFunction(filter) {
@@ -1921,6 +1944,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		});
 
 		return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
+	}).cached();
+
+	var compileSelectFunction = (function Transform$compileSelectFunction(selector) {
+		return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + selector + "');");
 	}).cached();
 
 	var compileGroupsFunction = (function Transform$compileGroupsFunction(groups) {
@@ -1974,36 +2001,78 @@ Type.registerNamespace("ExoWeb.DotNet");
 		};
 	}).cached();
 
-	function makeTransform(array, priorTransform, fn, args) {
-		Function.mixin(Transform.prototype, array);
-		array._prior = priorTransform;
-		array._transform = { fn: fn, args: args };
-		return array;
-	}
+	var transforms = {
+		where: function where(input, filter, thisPtr) {
+			var filterFn = filter instanceof Function ? filter : compileFilterFunction(filter);
+			return input.filter(filterFn, thisPtr);
+		},
+		select: function select(input, selector, thisPtr) {
+			var mapFn = selector instanceof Function ? selector : compileSelectFunction(selector);
+			return input.map(mapFn, thisPtr);
+		},
+		groupBy: function groupBy(input, groups, thisPtr) {
+			var groupFn = groups instanceof Function ? groups : compileGroupsFunction(groups);
 
-	function updateTransformGroupItems(oldList, newList, nesting) {
-		var i, oldGroup, newGroup, oldItems, newItems;
-		if (nesting === 0) {
-			// when nesting is zero the items are no longer groups themselves.
-			update(oldList, newList);
-		}
-		else {
-			// recursively update items as groups
-			for (i = 0; i < newList.length; i++) {
-				newGroup = newList[i];
-				oldGroup = oldList.filter(function(g) { return g.group === newGroup.group; })[0];
-				if (oldGroup) {
-					updateTransformGroupItems(oldGroup.items, newGroup.items, nesting - 1);
+			var result = [];
+			var len = input.length;
+			for (var i = 0; i < len; i++) {
+				var item = input[i];
+				var groupKey = groupFn.apply(thisPtr || item, [item, i]);
+
+				var group = null;
+				for (var g = 0; g < result.length; ++g) {
+					if (result[g].group == groupKey) {
+						group = result[g];
+						group.items.push(item);
+						break;
+					}
 				}
-				else {
-					Sys.Observer.makeObservable(newGroup.items);
+
+				if (!group) {
+					result.push(new TransformGroup(groupKey, [item]));
 				}
 			}
-			// Update at the group level
-			update(oldList, newList, false, function (a, b) {
-				return a && b && a.group === b.group;
-			});
+
+			return result;
+		},
+		orderBy: function orderBy(input, ordering, thisPtr) {
+			var sortFn = ordering instanceof Function ? ordering : compileOrderingFunction(ordering);
+			return input.copy().sort(thisPtr ? sortFn.bind(thisPtr) : sortFn);
 		}
+	};
+
+	function copyTransform(steps, array, live) {
+		var result = $transform(array, live);
+		steps.forEach(function(step) {
+			result = result[step._transform.method].call(result, step._transform.arg, step._transform.thisPtr)
+		});
+		return result;
+	}
+
+	function makeTransform(array, priorTransform, method, arg, thisPtr) {
+		// Make sure that the same transform is not made live more than once since this can cause collisions.
+		if (priorTransform._liveComplete === true) {
+			ExoWeb.trace.logError("transform", "Cannot call live on the same transform multiple times.");
+			throw new Error("Cannot call live on the same transform multiple times.");
+		}
+
+		var result;
+
+		// When creating a live transform, the result cannot be used directly as an array to
+		// discourage using part of the result when the intention is to eventually call "live".
+		// When live mode is not used, then if live is eventually called it will result in a non-optimal
+		// copying of the transform.
+		if (priorTransform._livePending === true) {
+			result = new Transform(array, true);
+		}
+		else {
+			Function.mixin(Transform.prototype, array);
+			result = array;
+		}
+
+		result._prior = priorTransform;
+		result._transform = { method: method, arg: arg, thisPtr: thisPtr };
+		return result;
 	}
 
 	Transform.mixin({
@@ -2011,85 +2080,283 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._array || this;
 		},
 		where: function Transform$where(filter, thisPtr) {
-			var filterFn = filter instanceof Function ? filter : compileFilterFunction(filter);
-			var output = this.input().filter(filterFn, thisPtr);
-			return makeTransform(output, this, this.where, arguments);
+			var output = transforms.where(this.input(), filter, thisPtr);
+			return makeTransform(output, this, "where", filter, thisPtr);
+		},
+		select: function Transform$select(selector, thisPtr) {
+			var output = transforms.select(this.input(), selector, thisPtr);
+			return makeTransform(output, this, "select", selector, thisPtr);
 		},
 		groupBy: function Transform$groupBy(groups, thisPtr) {
-			var groupFn = groups instanceof Function ? groups : compileGroupsFunction(groups);
-
-			var output = [];
-			var input = this.input();
-			var len = input.length;
-			for (var i = 0; i < len; i++) {
-				var item = input[i];
-				var groupKey = groupFn.apply(thisPtr || item, [item, i]);
-
-				var group = null;
-				for (var g = 0; g < output.length; ++g) {
-					if (output[g].group == groupKey) {
-						group = output[g];
-						group.items.push(item);
-						break;
-					}
-				}
-
-				if (!group) {
-					output.push({ group: groupKey, items: [item] });
-				}
+			var output = transforms.groupBy(this.input(), groups, thisPtr);
+			if (this._livePending) {
+				// make the items array observable if the transform is in live mode
+				output.forEach(function(group) {
+					Sys.Observer.makeObservable(group.items);
+				});
 			}
-
-			return makeTransform(output, this, this.groupBy, arguments);
+			return makeTransform(output, this, "groupBy", groups, thisPtr);
 		},
 		orderBy: function Transform$orderBy(ordering, thisPtr) {
-			var sortFn = ordering instanceof Function ? ordering : compileOrderingFunction(ordering);
-			var output = this.input().copy().sort(thisPtr ? sortFn.bind(thisPtr) : sortFn);
-			return makeTransform(output, this, this.orderBy, arguments);
+			var output = transforms.orderBy(this.input(), ordering, thisPtr);
+			return makeTransform(output, this, "orderBy", ordering, thisPtr);
 		},
 		live: function Transform$live() {
 			// Watches for changes on the root input into the transform
 			// and raises observable change events on this item as the 
 			// results change.
 
-			// make a copy of the transform data and make it observable
-			var output = this.copy();
-			Sys.Observer.makeObservable(output);
+			var transform, steps = [], rootStep;
 
-			// determine the set of transform steps
-			// also determine the level of group nesting and make each group's items collection observable
-			var chain = [];
-			var groupCount = 0;
-			var observableSource = output;
+			// determine the set of transform steps and the level of nested grouping
 			for (var step = this; step; step = step._prior) {
-				chain.splice(0, 0, step);
-				if (step._transform && step._transform.fn === Transform.prototype.groupBy) {
-					groupCount++;
-					// make each group's items collection observable
-					observableSource.forEach(function(item) { Sys.Observer.makeObservable(item.items); });
-					// the new observable source is all of the items collections of the current observable source
-					observableSource = observableSource.mapToArray(function(item) { return item.items; });
+				if (step._prior) {
+					steps.splice(0, 0, step);
+				}
+				else {
+					rootStep = step;
 				}
 			}
 
-			// watch for changes to root input and rerun transform chain as needed
-			Sys.Observer.addCollectionChanged(chain[0].input(), function Transform$live$collectionChanged() {
-				// re-run the transform on the newly changed input
-				var newResult = $transform(chain[0].input());
-				for (var i = 1; i < chain.length; ++i) {
-					var step = chain[i];
-					newResult = step._transform.fn.apply(newResult, step._transform.args);
-				}
+			// copy and return a live-mode transform if live mode was not used originally
+			if (this._livePending !== true) {
+				return copyTransform(steps, rootStep.input(), true).live();
+			}
 
-				// apply the changes to the output.
-				// must use the original list so that the events can be seen
+			// make a copy of the final transformed data and make it observable
+			var output = this.input().copy();
+			Sys.Observer.makeObservable(output);
+
+			// watch for changes to root input and update the transform steps as needed
+			Sys.Observer.addCollectionChanged(rootStep.input(), function Transform$live$collectionChanged(sender, args) {
+				var changes, stepInput, stepResult, modifiedItemsArrays = [];
+
+				//Sys.NotifyCollectionChangedAction.add;
+
+				// copy the set of changes since they will be manipulated
+				changes = args.get_changes().map(function(c) {
+					return {
+						action: c.action,
+						oldItems: c.oldItems ? c.oldItems.copy() : null,
+						oldStartingIndex: c.oldStartingIndex,
+						newItems: c.newItems ? c.newItems.copy() : null,
+						newStartingIndex: c.newStartingIndex
+					};
+				});
+
+				// make a copied version of the input so that it can be manipulated without affecting the result
+				stepInput = rootStep.input().copy();
+
+				// re-run the transform on the newly changed input
+				steps.forEach(function(step) {
+					// store a reference to the output of this step
+					stepResult = step.input();
+
+					if (step._transform.method === "where") {
+						changes.purge(function(change) {
+							if (change.oldItems) {
+								var oldItems = change.oldItems;
+								// determine which removed items made it through the filter
+								change.oldItems = transforms[step._transform.method](change.oldItems, step._transform.arg, step._transform.thisPtr);
+								if (change.oldItems.length === 0) {
+									// none of the removed items make it through the filter, so discard
+									change.oldItems = null;
+									change.oldStartingIndex = null;
+									return true;
+								}
+								else {
+									// find the actual index of the first removed item in the resulting array
+									change.oldStartingIndex = stepResult.indexOf(change.oldItems[0]);
+
+									// remove the filtered items from the result array
+									stepResult.splice(change.oldStartingIndex, change.oldItems.length);
+								}
+							}
+							else if (change.newItems) {
+								var newItems = change.newItems;
+								// determine which added items will make it through the filter
+								change.newItems = transforms[step._transform.method](change.newItems, step._transform.arg, step._transform.thisPtr);
+								if (change.newItems.length === 0) {
+									// none of the new items will make it through the filter, so discard
+									change.newItems = null;
+									change.newStartingIndex = null;
+									return true;
+								}
+								else {
+									// if not added to the beginning or end of the list, determine
+									// the real starting index by finding the index of the previous item
+									if (change.newStartingIndex !== 0 && (change.newStartingIndex + change.newItems.length) !== stepInput.length) {
+										var found = false;
+										for (var idx = change.newStartingIndex - 1; !found && idx >= 0; idx--) {
+											if (stepResult.indexOf(stepInput[idx]) >= 0) {
+												found = true;
+											}
+										}
+										change.newStartingIndex = idx + 1;
+									}
+
+									// splice the filtered items into the result array
+									var spliceArgs = change.newItems.copy();
+									spliceArgs.splice(0, 0, change.newStartingIndex, 0);
+									Array.prototype.splice.apply(stepResult, spliceArgs);
+								}
+							}
+							else {
+								return true;
+							}
+						});
+					}
+					else if (step._transform.method === "select") {
+						changes.forEach(function(change) {
+							if (change.oldItems) {
+								change.oldItems = stepResult.splice(change.oldStartingIndex, change.oldItems.length);
+							}
+							else if (change.newItems) {
+								var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectFunction(step._transform.arg);
+								change.newItems = change.newItems.map(function(item) {
+									return mapFn.call(step._transform.thisPtr || item, item);
+								});
+
+								// splice the filtered items into the result array
+								var spliceArgs = change.newItems.copy();
+								spliceArgs.splice(0, 0, change.newStartingIndex, 0);
+								Array.prototype.splice.apply(stepResult, spliceArgs);
+							}
+						});
+					}
+					else if (step._transform.method === "groupBy") {
+						var groupFn = step._transform.arg instanceof Function ? step._transform.arg : compileGroupsFunction(step._transform.arg);
+						var copyOfResults = stepResult.copy();
+						changes.forEach(function(change) {
+							if (change.oldItems) {
+								change.oldItems.forEach(function(item) {
+									var groupKey = groupFn.call(step._transform.thisPtr || item, item);
+									var group = copyOfResults.filter(function(g) { return g.group === groupKey; })[0];
+									// begin and end update on items array
+									if (modifiedItemsArrays.indexOf(group.items) < 0) {
+										group.items.beginUpdate();
+										modifiedItemsArrays.push(group.items);
+									}
+									// remove the item
+									var idx = group.items.indexOf(item);
+									group.items.remove(item);
+									if (idx === 0) {
+										var groupIndex = copyOfResults.indexOf(group),
+											sourceIndex = stepInput.indexOf(group.items[0]),
+											targetIndex = null;
+										for (i = 0; i < copyOfResults.length; i++) {
+											if (sourceIndex > stepInput.indexOf(copyOfResults[i].items[0])) {
+												targetIndex = i + 1;
+												break;
+											}
+										}
+										if (targetIndex !== null) {
+											copyOfResults.splice(groupIndex, 1);
+											copyOfResults.splice(targetIndex, 0, group);
+										}
+									}
+									if (group.items.length === 0) {
+										// remove the group from the copy of the array
+										copyOfResults.splice(copyOfResults.indexOf(group), 1);
+									}
+								});
+							}
+							else if (change.newItems) {
+								change.newItems.forEach(function(item) {
+									var groupKey = groupFn.call(step._transform.thisPtr || item, item),
+										group = copyOfResults.filter(function(g) { return g.group === groupKey; })[0],
+										sourceIndex,
+										targetIndex,
+										resequenceGroup = false,
+										groupIndex,
+										i;
+
+									if (group) {
+										// begin and end update on items array
+										if (modifiedItemsArrays.indexOf(group.items) < 0) {
+											group.items.beginUpdate();
+											modifiedItemsArrays.push(group.items);
+										}
+										sourceIndex = stepInput.indexOf(item), targetIndex = null;
+										for (i = 0; i < group.items.length; i++) {
+											if (sourceIndex < stepInput.indexOf(group.items[i])) {
+												targetIndex = i;
+												break;
+											}
+										}
+										if (targetIndex !== null) {
+											group.items.insert(targetIndex, item);
+											// group's index may have changed as a result
+											if (targetIndex === 0) {
+												resequenceGroup = true;
+											}
+										}
+										else {
+											group.items.add(item);
+										}
+									}
+									else {
+										group = new TransformGroup(groupKey, [item]);
+										Sys.Observer.makeObservable(group.items);
+										copyOfResults.push(group);
+										resequenceGroup = true;
+									}
+
+									if (resequenceGroup === true) {
+										groupIndex = copyOfResults.indexOf(group);
+										sourceIndex = stepInput.indexOf(group.items[0]);
+										targetIndex = null;
+										for (i = 0; i < groupIndex; i++) {
+											if (sourceIndex < stepInput.indexOf(copyOfResults[i].items[0])) {
+												targetIndex = i;
+												break;
+											}
+										}
+										if (targetIndex !== null) {
+											copyOfResults.splice(groupIndex, 1);
+											copyOfResults.splice(targetIndex, 0, group);
+										}
+									}
+								});
+							}
+						});
+
+						// collect new changes to groups
+						changes = update(stepResult, copyOfResults, true);
+					}
+					else if (step._transform.method === "orderBy") {
+						// sort the input and update the step result to match
+						var sorted = transforms[step._transform.method](stepInput, step._transform.arg, step._transform.thisPtr);
+						changes = update(stepResult, sorted, true);
+					}
+
+					// move the input forward to the result of the current step
+					stepInput = stepResult;
+				});
+
+				// apply changes to the ouput array
 				output.beginUpdate();
-				if (groupCount > 0) {
-					updateTransformGroupItems(output, newResult, groupCount);
-				}
-				else {
-					update(output, newResult);
-				}
+				changes.forEach(function(change) {
+					if (change.oldItems) {
+						output.removeRange(change.oldStartingIndex, change.oldItems.length);
+					}
+					else if (change.newItems) {
+						output.insertRange(change.newStartingIndex, change.newItems);
+					}
+				});
 				output.endUpdate();
+
+				// release changes to items arrays of groups, changes to the array occur first to allow
+				// for changes to groups' items to be ignored if the group is no longer a part of the output
+				modifiedItemsArrays.forEach(function(items) {
+					items.endUpdate();
+				});
+			});
+
+			// mark the transform steps as live complete
+			rootStep._liveComplete = true;
+			steps.forEach(function(step) {
+				step._liveComplete = true;
 			});
 
 			return output;
@@ -2097,7 +2364,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	ExoWeb.Transform = Transform;
-	window.$transform = function transform(array) { return new Transform(array); };
+	window.$transform = function transform(array, forLive) { return new Transform(array, forLive); };
 
 	// #endregion
 
@@ -5822,15 +6089,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			});
 		}
 	};
+
 	AllowedValuesRule.prototype = {
 		_enforceInited: function AllowedValues$_enforceInited() {
 			if (this._inited !== true) {
 				ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
 			}
 			return this._inited;
-		},
-		addChanged: function AllowedValues$addChanged(handler, obj) {
-			this._allowedValuesProperty.addChanged(handler, obj);
 		},
 		execute: function AllowedValuesRule$execute(obj) {
 			if (this._enforceInited() === true) {
@@ -13791,12 +14056,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 				else if (this._options.transform) {
 					// Generate the transform function
 					if (!this._transformFn) {
-						this._transformFn = new Function("list", "$index", "$dataItem", "return $transform(list)." + this._options.transform + ";");
+						this._transformFn = new Function("list", "$index", "$dataItem", "return $transform(list, true)." + this._options.transform + ";");
 					}
 					// Transform the original list using the given options
 					var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
 					if (transformResult.live !== Transform.prototype.live) {
-						ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", and \"groupBy\".");
+						ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", \"select\", and \"groupBy\".");
 					}
 					return transformResult.live();
 				}
@@ -14040,11 +14305,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._ignoreTargetEvents = false;
 		this._readySignal = new ExoWeb.Signal("Adapter Ready");
 
+		if (options.allowedValuesTransform) {
+			this._allowedValuesTransform = options.allowedValuesTransform;
+		}
+
 		if (options.optionsTransform) {
-			if (options.optionsTransform.indexOf("groupBy(") >= 0) {
-				ExoWeb.trace.throwAndLog(["@", "markupExt"], "The optionsTransform property does not support grouping");
+			if (this._allowedValuesTransform) {
+				ExoWeb.trace.logWarning(["@", "markupExt"], "Obsolete option \"optionsTransform\" was specified, when option \"allowedValuesTransform\" already exists.");
 			}
-			this._optionsTransform = options.optionsTransform;
+			else {
+				ExoWeb.trace.logWarning(["@", "markupExt"], "Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead.");
+				this._allowedValuesTransform = options.optionsTransform;
+			}
 		}
 
 		if (options.allowedValuesMayBeNull) {
@@ -14069,7 +14341,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._extendProperties(options);
 	}
 
-	Adapter.prototype = {
+	Adapter.mixin({
 		// Internal book-keeping and setup methods
 		///////////////////////////////////////////////////////////////////////
 		_extendProperties: function Adapter$_extendProperties(options) {
@@ -14254,26 +14526,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 					this.addPropertyValidating(null, this._propertyValidatingHandler);
 				}
 			}
-		},
-		_reloadOptions: function Adapter$_reloadOptions(allowLazyLoad) {
-			if (!this._disposed) {
-				ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options.");
-	
-				if (allowLazyLoad === true) {
-					// delete backing fields so that allowed values can be recalculated (and loaded)
-					delete this._allowedValues;
-					delete this._options;
-				}
-				else {
-					// clear out backing fields so that allowed values can be recalculated
-					this._allowedValues = undefined;
-					this._options = undefined;
-				}
-	
-				// raise events in order to cause subscribers to fetch the new value
-				Sys.Observer.raisePropertyChanged(this, "allowedValues");
-				Sys.Observer.raisePropertyChanged(this, "options");
-			}
+
+			// Dispose of existing event handlers related to allowed value loading
+			disposeOptions.call(this);
+			signalOptionsReady.call(this);
 		},
 		_setValue: function Adapter$_setValue(value) {
 			var prop = this._propertyChain;
@@ -14412,144 +14668,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// help text may also be included in the model?
 			return this._helptext || "";
 		},
-		get_allowedValuesRule: function Adapter$get_allowedValuesRule() {
-			if (this._allowedValuesRule === undefined) {
-				var prop = this._propertyChain.lastProperty();
-				this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-				if (this._allowedValuesRule) {
 
-					var reloadOptions = function () {
-						//ExoWeb.trace.log(["@", "markupExt"], "Reloading adapter options due to change in allowed values path.");
-
-						this._reloadOptions(true);
-
-						// clear values that are no longer allowed
-						var targetObj = this._propertyChain.lastTarget(this._target);
-						var rawValue = this.get_rawValue();
-						var _this = this;
-
-						if (rawValue instanceof Array) {
-							Array.forEach(rawValue, function (item, index) {
-								this._allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, function (answer) {
-									if (!answer && !_this._disposed) {
-										//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
-										_this.set_selected(item, false);
-									}
-								});
-							}, this);
-						}
-						else {
-							this._allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, function (answer) {
-								if (!answer && !_this._disposed) {
-									//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
-									_this.set_rawValue(null);
-								}
-							});
-						}
-					}
-
-					this._allowedValuesRule.addChanged(reloadOptions.bind(this).prependArguments(true), this._propertyChain.lastTarget(this._target));
-				}
-				else {
-					var _this = this;
-					prop.addRuleRegistered(function (sender, args) {
-						if (!_this._allowedValuesRule) {
-							_this._allowedValuesRule = prop.rule(ExoWeb.Model.Rule.allowedValues);
-							if (_this._allowedValuesRule) {
-								_this._reloadOptions(true);
-							}
-						}
-					});
-				}
-			}
-			return this._allowedValuesRule;
-		},
-		get_allowedValues: function Adapter$get_allowedValues() {
-			if (this._allowedValues === undefined) {
-				var rule = this.get_allowedValuesRule();
-				if (rule) {
-					var targetObj = this._propertyChain.lastTarget(this._target);
-					var allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
-
-					// only do loading if backing field does not exist, which means we've never initialized or need to re-initialize
-					if (!this.hasOwnProperty("_allowedValues")) {
-						// create the backing field so that this logic does not execute again
-						this._allowedValues = undefined;
-
-						if (!allowedValues) {
-							//allowedValues = rule.values(targetObj, !!this._allowedValuesMayBeNull);
-							ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
-							this._reloadOptionsHandler = this._reloadOptions.bind(this);
-							ExoWeb.Model.LazyLoader.eval(rule._allowedValuesProperty.get_isStatic() ? null : targetObj,
-								rule._allowedValuesProperty.get_path(),
-								this._reloadOptionsHandler);
-							return;
-						}
-
-						if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
-							ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [rule]);
-							this._reloadOptionsHandler = this._reloadOptions.bind(this);
-							ExoWeb.Model.LazyLoader.load(allowedValues, null, this._reloadOptionsHandler, this);
-							return;
-						}
-					}
-
-					if (this._optionsTransform)
-						this._allowedValues = (new Function("$array", "{ return $transform($array)." + this._optionsTransform + "; }"))(allowedValues).live();
-					else
-						this._allowedValues = allowedValues;
-				}
-				else if (this.isType(Boolean)) {
-					this._allowedValues = [true, false];
-				}
-			}
-
-			return this._allowedValues;
-		},
-		get_options: function Adapter$get_options() {
-			if (this._options === undefined) {
-
-				var allowed = this.get_allowedValues();
-
-				this._options = [];
-
-				for (var a = 0; allowed && a < allowed.length; a++) {
-					Array.add(this._options, new OptionAdapter(this, allowed[a]));
-				}
-			}
-
-			return this._options;
-		},
-		get_selected: function Adapter$get_selected(obj) {
-			var rawValue = this.get_rawValue();
-
-			if (rawValue instanceof Array) {
-				return Array.contains(rawValue, obj);
-			}
-			else {
-				return rawValue === obj;
-			}
-		},
-		set_selected: function Adapter$set_selected(obj, selected) {
-			var rawValue = this.get_rawValue();
-
-			if (rawValue instanceof Array) {
-				if (selected && !Array.contains(rawValue, obj)) {
-					rawValue.add(obj);
-				}
-				else if (!selected && Array.contains(rawValue, obj)) {
-					rawValue.remove(obj);
-				}
-			}
-			else {
-				if (selected) {
-					this.set_rawValue(obj);
-				}
-				else {
-					this.set_rawValue(null);
-				}
-			}
-		},
 		get_rawValue: function Adapter$get_rawValue() {
 			this._ensureObservable();
 			return this._propertyChain.value(this._target);
@@ -14688,6 +14807,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (!disposed) {
 				this._disposed = true;
+				disposeOptions.call(this);
 				options = this._options;
 				this.clearValidation();
 				if (this._extendedProperties) {
@@ -14712,10 +14832,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 						lastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
 					}
 				}
-				this._allowedValues = this._allowedValuesMayBeNull = this._allowedValuesRule = this._aspects = this._badValue =
+				this._allowedValues = this._allowedValuesMayBeNull = this._aspects = this._badValue =
 					this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =
-					this._observable = this._options = this._optionsTransform = this._parentAdapter = this._propertyChain =
-					this._propertyPath = this._readySignal = this._reloadOptionsHandler = this._target = null;
+					this._observable = this._options = this._allowedValuesTransform = this._parentAdapter = this._propertyChain =
+					this._propertyPath = this._readySignal = this._target = null;
 			}
 
 			Adapter.callBaseMethod(this, "dispose");
@@ -14727,7 +14847,239 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 		}
-	};
+	});
+
+	// #region Options
+
+	function disposeOptions() {
+		var lastProperty = this._propertyChain.lastProperty();
+		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+		if (this._allowedValuesChangedHandler) {
+			allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesChangedHandler);
+			this._allowedValuesChangedHandler = null;
+		}
+		if ( this._allowedValuesRuleExistsHandler) {
+			this._propertyChain.lastProperty().removeRuleRegistered(this._allowedValuesRuleExistsHandler);
+			this._allowedValuesRuleExistsHandler = null;
+		}
+		if (this._allowedValuesExistHandler) {
+			allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesExistHandler);
+			this._allowedValuesExistHandler = null;
+		}
+		this._options = null;
+	}
+
+	// Create an option adapter from the given object
+	function createOptionAdapter(item) {
+		// If it is a transform group then create an option group
+		if (item instanceof TransformGroup) {
+			return new OptionGroupAdapter(this, item.group, item.items);
+		}
+		// Otherwise,create a single option
+		else {
+			return new OptionAdapter(this, item);
+		}
+	}
+
+	// Notify subscribers that options are available
+	function signalOptionsReady() {
+		if (this._disposed) {
+			return;
+		}
+
+		// Delete backing fields so that options can be recalculated (and loaded)
+		delete this._options;
+
+		// Raise events in order to cause subscribers to fetch the new value
+		Sys.Observer.raisePropertyChanged(this, "options");
+	}
+
+	// If the given rule is allowed values, signal options ready
+	function checkAllowedValuesRuleExists(rule) {
+		if (rule instanceof Rule.allowedValues) {
+			this._propertyChain.lastProperty().removeRuleRegistered(this._allowedValuesRuleExistsHandler);
+			signalOptionsReady.call(this);
+		}
+	}
+
+	function checkAllowedValuesExist() {
+		var lastProperty = this._propertyChain.lastProperty();
+		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+		var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
+
+		if (allowedValues instanceof Array) {
+			allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesExistHandler);
+			delete this._allowedValuesExistHandler;
+			signalOptionsReady.call(this);
+		}
+	}
+
+	// If the given value is not valid, then remove it
+	function checkSelectedValue(value, isValid) {
+		if (this._disposed) {
+			return;
+		}
+
+		var rawValue = this.get_rawValue();
+		if (!isValid) {
+			if (rawValue instanceof Array) {
+				if (rawValue.indexOf(value) >= 0) {
+					//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+					rawValue.remove(value);
+				}
+			}
+			else if (this.get_rawValue() === value) {
+				//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
+				this.set_rawValue(null);
+			}
+		}
+	}
+
+	// Update the given options source array to match the current allowed values
+	function refreshOptionsFromAllowedValues(optionsSourceArray) {
+		var lastProperty = this._propertyChain.lastProperty();
+		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+		var targetObj = this._propertyChain.lastTarget(this._target);
+		var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
+		if (allowedValues) {
+			update(optionsSourceArray, allowedValues);
+		}
+		else {
+			optionsSourceArray.clear();
+		}
+	}
+
+	// Perform any required loading of allowed values items
+	function ensureAllowedValuesLoaded(newItems, callback, thisPtr) {
+		var signal = new Signal("ensureAllowedValuesLoaded");
+		newItems.forEach(function(item) {
+			if (!LazyLoader.isLoaded(item)) {
+				LazyLoader.load(item, null, signal.pending());
+			}
+		});
+		signal.waitForAll(callback, thisPtr);
+	}
+
+	function allowedValuesChanged(optionsSourceArray, sender, args) {
+		var lastProperty = this._propertyChain.lastProperty();
+		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+
+		// Load allowed value items that were added
+		if (args.changes) {
+			// Collect all items that were added
+			var newItems = [];
+			args.changes.forEach(function(change) {
+				if (change.newItems) {
+					newItems.addRange(change.newItems);
+				}
+			});
+			if (newItems.length > 0) {
+				ensureAllowedValuesLoaded(newItems, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+			}
+			else {
+				refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
+			}
+		}
+		else if (!args.oldValue && args.newValue) {
+			// If there was previously not a value of the path and now there is, then all items are new
+			ensureAllowedValuesLoaded(rawValue, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+		}
+		else {
+			refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
+		}
+
+		// Remove option values that are no longer valid
+		var rawValue = this.get_rawValue();
+		var targetObj = this._propertyChain.lastTarget(this._target);
+		if (rawValue instanceof Array) {
+			rawValue.forEach(function (item) {
+				allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, checkSelectedValue.bind(this).prependArguments(item));
+			}, this);
+		}
+		else {
+			allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, checkSelectedValue.bind(this).prependArguments(rawValue));
+		}
+	}
+
+	Adapter.mixin({
+		get_options: function Adapter$get_options() {
+			if (!this.hasOwnProperty("_options")) {
+				if (this.isType(Boolean)) {
+					this._options = [createOptionAdapter.call(this, true), createOptionAdapter.call(this, false)];
+				}
+				else {
+					var lastProperty = this._propertyChain.lastProperty();
+					var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+
+					// Watch for the registration of an allowed values rule if it doesn't exist
+					if (!allowedValuesRule) {
+						this._allowedValuesRuleExistsHandler = checkAllowedValuesRuleExists.bind(this);
+						lastProperty.addRuleRegistered(this._allowedValuesRuleExistsHandler);
+						this._options = null;
+						return;
+					}
+
+					// Cache the last target
+					var targetObj = this._propertyChain.lastTarget(this._target);
+
+					// Load allowed values if the path is not inited
+					if (!allowedValuesRule._allowedValuesProperty.isInited(targetObj, false)) {
+						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [allowedValuesRule]);
+						ExoWeb.Model.LazyLoader.eval(allowedValuesRule._allowedValuesProperty.get_isStatic() ? null : targetObj,
+							allowedValuesRule._allowedValuesProperty.get_path(),
+							signalOptionsReady.bind(this));
+						this._options = null;
+						return;
+					}
+
+					// Retrieve the value of allowed values property
+					var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
+
+					// Watch for changes until the allowed values path has a value
+					if (!allowedValues) {
+						this._allowedValuesExistHandler = checkAllowedValuesExist.bind(this);
+						allowedValuesRule._allowedValuesProperty.addChanged(this._allowedValuesExistHandler, targetObj);
+						this._options = null;
+						return;
+					}
+
+					// Load the allowed values list if it is not already loaded
+					if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
+						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [allowedValuesRule]);
+						ExoWeb.Model.LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
+						this._options = null;
+						return;
+					}
+
+					// Create an observable copy of the allowed values that we can keep up to date in our own time
+					var observableAllowedValues = allowedValues.slice();
+					Sys.Observer.makeObservable(observableAllowedValues);
+
+					// Respond to changes to allowed values
+					this._allowedValuesChangedHandler = allowedValuesChanged.bind(this).prependArguments(observableAllowedValues);
+					allowedValuesRule._allowedValuesProperty.addChanged(this._allowedValuesChangedHandler, targetObj);
+
+					// Create a transform that watches the observable copy and uses the user-supplied _allowedValuesTransform if given
+					if (this._allowedValuesTransform) {
+						transformedAllowedValues = (new Function("$array", "{ return $transform($array, true)." + this._allowedValuesTransform + "; }"))(observableAllowedValues);
+						if (transformedAllowedValues.live !== Transform.prototype.live) {
+							ExoWeb.trace.throwAndLog("@", "Invalid options transform result: may only contain \"where\", \"orderBy\", \"select\", and \"groupBy\".");
+						}
+					}
+					else {
+						transformedAllowedValues = $transform(observableAllowedValues, true);
+					}
+
+					// Map the allowed values to option adapters
+					this._options = transformedAllowedValues.select(createOptionAdapter.bind(this)).live();
+				}
+			}
+
+			return this._options;
+		}
+	});
+
+	// #endregion
 
 	ExoWeb.View.Adapter = Adapter;
 	Adapter.registerClass("ExoWeb.View.Adapter", Sys.Component, Sys.UI.ITemplateContextConsumer);
@@ -14801,10 +15153,34 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		get_selected: function OptionAdapter$get_selected() {
-			return this._parent.get_selected(this._obj);
+			var rawValue = this._parent.get_rawValue();
+
+			if (rawValue instanceof Array) {
+				return Array.contains(rawValue, this._obj);
+			}
+			else {
+				return rawValue === this._obj;
+			}
 		},
 		set_selected: function OptionAdapter$set_selected(value) {
-			this._parent.set_selected(this._obj, value);
+			var rawValue = this._parent.get_rawValue();
+
+			if (rawValue instanceof Array) {
+				if (value && !Array.contains(rawValue, this._obj)) {
+					rawValue.add(this._obj);
+				}
+				else if (!value && Array.contains(rawValue, this._obj)) {
+					rawValue.remove(this._obj);
+				}
+			}
+			else {
+				if (value) {
+					this._parent.set_rawValue(this._obj);
+				}
+				else {
+					this._parent.set_rawValue(null);
+				}
+			}
 		},
 
 		// Pass validation events through to the target
@@ -14820,6 +15196,62 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ExoWeb.View.OptionAdapter = OptionAdapter;
+
+	// #endregion
+
+	// #region OptionGroupAdapter
+	//////////////////////////////////////////////////
+
+	function OptionGroupAdapter(parent, obj, items) {
+		this._parent = parent;
+		this._obj = obj;
+		this._options = $transform(items).select(parent._createOption.bind(parent)).live();
+
+		// watch for changes to properties of the source object and update the label
+		this._ensureObservable();
+	}
+
+	OptionGroupAdapter.prototype = {
+		// Properties consumed by UI
+		///////////////////////////////////////////////////////////////////////////
+		get_parent: function OptionGroupAdapter$get_parent() {
+			return this._parent;
+		},
+		get_rawValue: function OptionGroupAdapter$get_rawValue() {
+			return this._obj;
+		},
+		get_displayValue: function OptionGroupAdapter$get_displayValue() {
+			var result = this._obj;
+			if (result !== null && result !== undefined && result.formats && result.formats.$display) {
+				result = result.formats.$display.convert(result);
+			}
+			return result;
+		},
+		get_systemValue: function OptionGroupAdapter$get_systemValue() {
+			var result = this._obj;
+			if (result !== null && result !== undefined && result.formats && result.formats.$system) {
+				result = result.formats.$system.convert(result);
+			}
+			return result;
+		},
+		get_options: function OptionGroupAdapter$get_options() {
+			return this._options;
+		},
+
+		// Pass validation events through to the target
+		///////////////////////////////////////////////////////////////////////////
+		addPropertyValidating: function OptionGroupAdapter$addPropertyValidating(propName, handler) {
+			var prop = this._parent.get_propertyChain();
+			prop.lastTarget(this._parent._target).meta.addPropertyValidating(prop.get_name(), handler);
+		},
+		addPropertyValidated: function OptionGroupAdapter$addPropertyValidated(propName, handler) {
+			var prop = this._parent.get_propertyChain();
+			prop.lastTarget(this._parent._target).meta.addPropertyValidated(prop.get_name(), handler);
+		}
+	};
+
+	ExoWeb.View.OptionGroupAdapter = OptionGroupAdapter;
+	OptionGroupAdapter.registerClass("ExoWeb.View.OptionGroupAdapter");
 
 	// #endregion
 
@@ -14878,17 +15310,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if ((value && value instanceof Array) && (oldValue && oldValue instanceof Array)) {
 				// copy the original array
 				var arr = oldValue.slice();
-				var events = update(arr, value, true);
-				var changes = events.map(function(e) {
-					return {
-						action: Sys.NotifyCollectionChangedAction[e.type],
-						newStartingIndex: e.type === "add" ? e.index : null,
-						newItems: e.type === "add" ? e.items : null,
-						oldStartingIndex: e.type === "remove" ? e.index : null,
-						oldItems: e.type === "remove" ? e.items : null
-					};
-				});
-				this._collectionChanged(value, { get_changes: function() { return changes; } });
+				var changes = update(arr, value, true);
+				this._collectionChanged(value, new Sys.NotifyCollectionChangedEventArgs(changes));
 			}
 			else {
 				this._dirty = true;

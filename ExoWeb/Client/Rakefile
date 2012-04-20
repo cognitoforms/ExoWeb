@@ -129,6 +129,7 @@ end
 		LazyMarkupExtension
 		Adapter
 		OptionAdapter
+		OptionGroupAdapter
 		MsAjax},
 
 	"extensions/jquery-msajax" => %w{
