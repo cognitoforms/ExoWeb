@@ -14905,6 +14905,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	function checkAllowedValuesExist() {
 		var lastProperty = this._propertyChain.lastProperty();
 		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+		var targetObj = this._propertyChain.lastTarget(this._target);
 		var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 		if (allowedValues instanceof Array) {
