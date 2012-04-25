@@ -833,8 +833,10 @@ ServerSync.mixin({
 
 					// Update post-save changes with new id
 					function fixInstance(inst) {
-						if (inst && obj === fromExoModel(inst, this._translator))
+						if (inst && obj === fromExoModel(inst, this._translator)) {
 							inst.id = idChange.newId;
+							inst.isNew = false;
+						}
 					}
 
 					this._changeLog._sets.forEach(function (set) {
