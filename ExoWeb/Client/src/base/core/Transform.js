@@ -280,16 +280,28 @@ Transform.mixin({
 								return true;
 							}
 							else {
-								// if not added to the beginning or end of the list, determine
-								// the real starting index by finding the index of the previous item
-								if (change.newStartingIndex !== 0 && (change.newStartingIndex + change.newItems.length) !== stepInput.length) {
-									var found = false;
-									for (var idx = change.newStartingIndex - 1; !found && idx >= 0; idx--) {
-										if (stepResult.indexOf(stepInput[idx]) >= 0) {
-											found = true;
+								// if not added to the beginning of the list, determine the real starting index
+								if (change.newStartingIndex !== 0) {
+									// adding to the end of the list - use end of new list
+									if ((change.newStartingIndex + change.newItems.length) === stepInput.length) {
+										change.newStartingIndex = stepResult.length;
+									}
+									// otherwise add after preceding item that passes filter, or the beginning/end
+									// if no items pass filter
+									else {
+										var found = false;
+										for (var idx = change.newStartingIndex - 1; idx >= 0; idx--) {
+											var resultIndex = stepResult.indexOf(stepInput[idx])
+											if (resultIndex >= 0) {
+												found = true;
+												change.newStartingIndex = resultIndex + 1;
+												break;
+											}
+										}
+										if (!found) {
+											change.newStartingIndex = 0;
 										}
 									}
-									change.newStartingIndex = idx + 1;
 								}
 
 								// splice the filtered items into the result array
