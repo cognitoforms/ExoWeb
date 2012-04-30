@@ -8830,6 +8830,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	}
 
+	function ServerSync$retroactivelyFixChangeWhereIdChanged(changeInstance, obj) {
+		// Update change to reflect the object's new id if it is referencing a legacy id
+		if (changeInstance.id === obj.meta.legacyId) {
+			changeInstance.id = obj.meta.id;
+		}
+	}
+
 	ServerSync.mixin({
 		// Enable/disable save & related functions
 		///////////////////////////////////////////////////////////////////////
@@ -9562,7 +9569,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						}, this);
 
 						// Update post-save changes with new id
-						function fixInstance(inst) {
+						function fixChangeInstanceDueToIdChange(inst) {
 							if (inst && obj === fromExoModel(inst, this._translator)) {
 								inst.id = idChange.newId;
 								inst.isNew = false;
@@ -9574,19 +9581,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 								// Only process changes to model instances
 								if (!change.instance) return;
 
-								fixInstance.call(this, change.instance);
+								fixChangeInstanceDueToIdChange.call(this, change.instance);
 
 								// For list changes additionally check added and removed objects.
 								if (change.type === "ListChange") {
 									if (change.added.length > 0)
-										change.added.forEach(fixInstance, this);
+										change.added.forEach(fixChangeInstanceDueToIdChange, this);
 									if (change.removed.length > 0)
-										change.removed.forEach(fixInstance, this);
+										change.removed.forEach(fixChangeInstanceDueToIdChange, this);
 								}
 								// For reference changes additionally check oldValue/newValue
 								else if (change.type === "ReferenceChange") {
-									fixInstance.call(this, change.oldValue);
-									fixInstance.call(this, change.newValue);
+									fixChangeInstanceDueToIdChange.call(this, change.oldValue);
+									fixChangeInstanceDueToIdChange.call(this, change.newValue);
 								}
 							}, this);
 						}, this);
@@ -9620,14 +9627,37 @@ Type.registerNamespace("ExoWeb.DotNet");
 		applyRefChange: function (change, before, after) {
 			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+					// Update change to reflect the object's new id
+					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
+
+					// Apply change
 					if (change.newValue) {
 						tryGetJsType(this._model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
 							var refObj = fromExoModel(change.newValue, this._translator, true);
+
+							// Update change to reflect the object's new id
+							ServerSync$retroactivelyFixChangeWhereIdChanged(change.newValue, refObj);
+
+							// Update change to reflect the object's new id
+							if (change.newValue.id === refObj.meta.legacyId) {
+								change.newValue.id = refObj.meta.id;
+							}
+
+							// Change the property value
 							Sys.Observer.setValue(srcObj, change.property, refObj);
 						}, after), this);
 					}
 					else {
 						Sys.Observer.setValue(srcObj, change.property, null);
+					}
+
+					// Update oldValue's id in change object
+					if (change.oldValue) {
+						tryGetJsType(this._model, change.oldValue.type, null, true, this.ignoreChanges(before, function (refType) {
+							// Update change to reflect the object's new id
+							var refObj = fromExoModel(change.oldValue, this._translator, true);
+							ServerSync$retroactivelyFixChangeWhereIdChanged(change.oldValue, refObj);
+						}, after), this);
 					}
 				}, after), this);
 			}, this);
@@ -9635,6 +9665,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		applyValChange: function (change, before, after) {
 			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+					// Update change to reflect the object's new id
+					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
 					// Cache the new value, becuase we access it many times and also it may be modified below
 					// to account for timezone differences, but we don't want to modify the actual change object.
@@ -9667,6 +9699,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		applyListChange: function (change, before, after) {
 			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+					// Update change to reflect the object's new id
+					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
+
 					var prop = srcObj.meta.property(change.property, true);
 					var list = prop.value(srcObj);
 
@@ -9678,6 +9713,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 					change.added.forEach(function (item) {
 						tryGetJsType(this._model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
 							var itemObj = fromExoModel(item, this._translator, true);
+
+							// Update change to reflect the object's new id
+							ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
+
 							if (!list.contains(itemObj)) {
 								list.add(itemObj);
 							}
@@ -9689,6 +9728,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 						// no need to load instance only to remove it from a list
 						tryGetJsType(this._model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
 							var itemObj = fromExoModel(item, this._translator, true);
+
+							// Update change to reflect the object's new id
+							ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
+
 							list.remove(itemObj);
 						}, after), this, true);
 					}, this);
