@@ -379,14 +379,26 @@ ServerSync.mixin({
 	addRequestBegin: function (handler) {
 		this._addEvent("requestBegin", handler);
 	},
+	removeRequestBegin: function (handler) {
+		this._removeEvent("requestBegin", handler);
+	},
 	addRequestEnd: function (handler) {
 		this._addEvent("requestEnd", handler);
+	},
+	removeRequestEnd: function (handler) {
+		this._removeEvent("requestEnd", handler);
 	},
 	addRequestSuccess: function (handler) {
 		this._addEvent("requestSuccess", handler);
 	},
+	removeRequestSuccess: function (handler) {
+		this._removeEvent("requestSuccess", handler);
+	},
 	addRequestFailed: function (handler) {
 		this._addEvent("requestFailed", handler);
+	},
+	removeRequestFailed: function (handler) {
+		this._removeEvent("requestFailed", handler);
 	},
 
 	// Raise Server Event
@@ -474,14 +486,26 @@ ServerSync.mixin({
 	addRaiseServerEventBegin: function (handler) {
 		this._addEvent("raiseServerEventBegin", handler);
 	},
+	removeRaiseServerEventBegin: function (handler) {
+		this._removeEvent("raiseServerEventBegin", handler);
+	},
 	addRaiseServerEventEnd: function (handler) {
 		this._addEvent("raiseServerEventEnd", handler);
+	},
+	removeRaiseServerEventEnd: function (handler) {
+		this._removeEvent("raiseServerEventEnd", handler);
 	},
 	addRaiseServerEventSuccess: function (handler) {
 		this._addEvent("raiseServerEventSuccess", handler);
 	},
+	removeRaiseServerEventSuccess: function (handler) {
+		this._removeEvent("raiseServerEventSuccess", handler);
+	},
 	addRaiseServerEventFailed: function (handler) {
 		this._addEvent("raiseServerEventFailed", handler);
+	},
+	removeRaiseServerEventFailed: function (handler) {
+		this._removeEvent("raiseServerEventFailed", handler);
 	},
 
 	// Roundtrip
@@ -561,6 +585,30 @@ ServerSync.mixin({
 		if (this._roundtripTimeout) {
 			window.clearTimeout(this._roundtripTimeout);
 		}
+	},
+	addRoundtripBegin: function (handler) {
+		this._addEvent("roundtripBegin", handler);
+	},
+	removeRoundtripBegin: function (handler) {
+		this._removeEvent("roundtripBegin", handler);
+	},
+	addRoundtripEnd: function (handler) {
+		this._addEvent("roundtripEnd", handler);
+	},
+	removeRoundtripEnd: function (handler) {
+		this._removeEvent("roundtripEnd", handler);
+	},
+	addRoundtripSuccess: function (handler) {
+		this._addEvent("roundtripSuccess", handler);
+	},
+	removeRoundtripSuccess: function (handler) {
+		this._removeEvent("roundtripSuccess", handler);
+	},
+	addRoundtripFailed: function (handler) {
+		this._addEvent("roundtripFailed", handler);
+	},
+	removeRoundtripFailed: function (handler) {
+		this._removeEvent("roundtripFailed", handler);
 	},
 
 	// Save
@@ -644,14 +692,26 @@ ServerSync.mixin({
 	addSaveBegin: function (handler) {
 		this._addEvent("saveBegin", handler);
 	},
+	removeSaveBegin: function (handler) {
+		this._removeEvent("saveBegin", handler);
+	},
 	addSaveEnd: function (handler) {
 		this._addEvent("saveEnd", handler);
+	},
+	removeSaveEnd: function (handler) {
+		this._removeEvent("saveEnd", handler);
 	},
 	addSaveSuccess: function (handler) {
 		this._addEvent("saveSuccess", handler);
 	},
+	removeSaveSuccess: function (handler) {
+		this._removeEvent("saveSuccess", handler);
+	},
 	addSaveFailed: function (handler) {
 		this._addEvent("saveFailed", handler);
+	},
+	removeSaveFailed: function (handler) {
+		this._removeEvent("saveFailed", handler);
 	},
 
 	// Apply Changes
