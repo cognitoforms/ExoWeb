@@ -164,6 +164,7 @@ function ServerSync$retroactivelyFixChangeWhereIdChanged(changeInstance, obj) {
 	// Update change to reflect the object's new id if it is referencing a legacy id
 	if (changeInstance.id === obj.meta.legacyId) {
 		changeInstance.id = obj.meta.id;
+		changeInstance.isNew = false;
 	}
 }
 
