@@ -1086,6 +1086,7 @@ ServerSync.mixin({
 			this.beginApplyingChanges();
 
 			var signal = new ExoWeb.Signal("ServerSync.rollback");
+			var signalRegistered = false;
 
 			function processNextChange() {
 				var change = null;
@@ -1124,9 +1125,15 @@ ServerSync.mixin({
 
 				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 			}, this);
+
+			// set signalRegistered to true to let the finally block now that the signal will handle calling endApplyingChanges
+			signalRegistered = true;
 		}
 		finally {
-			this.endApplyingChanges();
+			// the signal was not registered, therefore we need to handle endApplyingChanges call here
+			if (!signalRegistered) {
+				this.endApplyingChanges();
+			}
 		}
 	},
 	rollbackValChange: function ServerSync$rollbackValChange(change, callback) {

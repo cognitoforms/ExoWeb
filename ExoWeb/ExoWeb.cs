@@ -412,7 +412,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static ServiceRequest.Query Query<T>(string id, params string[] paths)
 		{
-			return new ServiceRequest.Query(ModelContext.Current.GetModelType<T>(), new string[] { id }, true, false, paths);
+			return Query(typeof(T), id, paths);
 		}
 
 		/// <summary>
@@ -438,7 +438,32 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static ServiceRequest.Query Query<T>(string id, ViewScope scope, params string[] paths)
 		{
-			return new ServiceRequest.Query(ModelContext.Current.GetModelType<T>(), new string[] { id }, scope == ViewScope.InScope, false, paths);
+			return Query(typeof(T), id, scope, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="id"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static ServiceRequest.Query Query(Type type, string id, params string[] paths)
+		{
+			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, true, false, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="id"></param>
+		/// <param name="scope"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
+		public static ServiceRequest.Query Query(Type type, string id, ViewScope scope, params string[] paths)
+		{
+			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, scope == ViewScope.InScope, false, paths);
 		}
 
 		/// <summary>

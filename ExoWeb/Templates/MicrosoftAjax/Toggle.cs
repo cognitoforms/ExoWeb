@@ -345,14 +345,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					render ? new AttributeBinding(new Attribute() { Name = "data-sys-tmplidx", Value = NestedTemplateIndex.ToString() }, null) : null,
 					render ? new AttributeBinding(new Attribute() { Name = "data-sys-tcindex", Value = context.Id }, null) : null);
 
-				if (render)
-				{
-					// Only render the inner blocks if the template would be rendered client-side
-					if ((actionValue == ToggleAction.render && equals.Value) || (actionValue == ToggleAction.dispose && !equals.Value))
-						foreach (var block in Blocks)
-							block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
-				}
-				else
+				// Only render the inner blocks if the template would be rendered client-side
+				if (!render || (actionValue == ToggleAction.render && equals.Value) || (actionValue == ToggleAction.dispose && !equals.Value))
 				{
 					foreach (var block in Blocks)
 						block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
