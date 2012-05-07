@@ -9574,9 +9574,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						// Update post-save changes with new id
 						function fixChangeInstanceDueToIdChange(inst) {
-							if (inst && obj === fromExoModel(inst, this._translator)) {
-								inst.id = idChange.newId;
-								inst.isNew = false;
+							if (inst) {
+								var jstype = Model.getJsType(inst.type, true);
+								if (jstype && obj === fromExoModel(inst, this._translator)) {
+									inst.id = idChange.newId;
+									inst.isNew = false;
+								}
 							}
 						}
 
