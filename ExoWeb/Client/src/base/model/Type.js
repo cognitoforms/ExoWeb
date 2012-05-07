@@ -405,8 +405,11 @@ Type.prototype = {
 
 				// Construct the arguments to pass
 				var args = {};
-				for (var parameter in def.parameters)
-					args[def.parameters[parameter]] = arguments[parameter];
+				for (var parameter in def.parameters) {
+					if (def.parameters.hasOwnProperty(parameter)) {
+						args[def.parameters[parameter]] = arguments[parameter];
+					}
+				}
 
 				// Invoke the server event
 				context.server.raiseServerEvent(def.name, this, args, false, onSuccessFn, onFail, paths);

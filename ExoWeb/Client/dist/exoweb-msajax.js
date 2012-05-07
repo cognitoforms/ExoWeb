@@ -4155,8 +4155,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// Construct the arguments to pass
 					var args = {};
-					for (var parameter in def.parameters)
-						args[def.parameters[parameter]] = arguments[parameter];
+					for (var parameter in def.parameters) {
+						if (def.parameters.hasOwnProperty(parameter)) {
+							args[def.parameters[parameter]] = arguments[parameter];
+						}
+					}
 
 					// Invoke the server event
 					context.server.raiseServerEvent(def.name, this, args, false, onSuccessFn, onFail, paths);
@@ -8834,6 +8837,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// Update change to reflect the object's new id if it is referencing a legacy id
 		if (changeInstance.id === obj.meta.legacyId) {
 			changeInstance.id = obj.meta.id;
+			changeInstance.isNew = false;
 		}
 	}
 
