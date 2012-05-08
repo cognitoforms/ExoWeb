@@ -5348,7 +5348,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				// move to next property in the chain
-				target = target["get_" + prop.get_name()]();
+				target = target[prop._fieldName];
 
 				// break early if the target is undefined
 				if (target === undefined || target === null) {
