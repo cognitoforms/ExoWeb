@@ -1,3 +1,7 @@
+/// <reference path="../core/Array.js" />
+/// <reference path="../core/Function.js" />
+/// <reference path="../core/Signal.js" />
+
 function ServerSync(model) {
 	if (!model || typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
 		throw ExoWeb.trace.logError("server", "A model must be specified when constructing a ServerSync object.");
@@ -689,12 +693,18 @@ ServerSync.mixin({
 
 	// Apply Changes
 	///////////////////////////////////////////////////////////////////////
-	applyChanges: function (checkpoint, changes, source, filter, beforeApply, afterApply) {
+	applyChanges: function (checkpoint, changes, source, filter, beforeApply, afterApply, callback, thisPtr) {
 		if (!changes || !(changes instanceof Array)) {
+			if (callback) {
+				callback.call(thisPtr || this);
+			}
 			return;
 		}
 
 		var newChanges = 0;
+
+		var signal = new Signal("applyChanges");
+		var waitForAllRegistered = false;
 
 		try {
 			var batch = ExoWeb.Batch.start("apply changes");
@@ -765,22 +775,22 @@ ServerSync.mixin({
 			}
 
 			var numPendingSaveChanges = numSaveChanges;
-
-			changes.forEach(function (change, changeIndex) {
+			
+			changes.forEach(function(change, changeIndex) {
 				if (change.type === "InitNew") {
-					this.applyInitChange(change, beforeApply, afterApply);
+					this.applyInitChange(change, beforeApply, afterApply, signal.pending());
 				}
 				else if (change.type === "ReferenceChange") {
-					this.applyRefChange(change, beforeApply, afterApply);
+					this.applyRefChange(change, beforeApply, afterApply, signal.pending());
 				}
 				else if (change.type === "ValueChange") {
-					this.applyValChange(change, beforeApply, afterApply);
+					this.applyValChange(change, beforeApply, afterApply, signal.pending());
 				}
 				else if (change.type === "ListChange") {
-					this.applyListChange(change, beforeApply, afterApply);
+					this.applyListChange(change, beforeApply, afterApply, signal.pending());
 				}
 				else if (change.type === "Save") {
-					this.applySaveChange(change, beforeApply, afterApply);
+					this.applySaveChange(change, beforeApply, afterApply, signal.pending());
 					numPendingSaveChanges--;
 				}
 
@@ -796,17 +806,28 @@ ServerSync.mixin({
 							this._changeLog.add(change);
 						}
 					}
-				}
+				}				
 			}, this);
 
 			// start a new set to capture future changes
 			if (this.isCapturingChanges()) {
 				this._changeLog.start("client");
 			}
+
+			waitForAllRegistered = true;
+			signal.waitForAll(function() {
+				this.endApplyingChanges();
+				ExoWeb.Batch.end(batch);
+				if (callback) {
+					callback.call(thisPtr || this);
+				}
+			}, this, true);
 		}
 		finally {
-			this.endApplyingChanges();
-			ExoWeb.Batch.end(batch);
+			if (!waitForAllRegistered) {
+				this.endApplyingChanges();
+				ExoWeb.Batch.end(batch);
+			}
 		}
 
 		// raise "HasPendingChanges" change event, only new changes were recorded
@@ -814,9 +835,13 @@ ServerSync.mixin({
 			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
 		}
 	},
-	applySaveChange: function (change, before, after) {
-		if (!change.added)
+	applySaveChange: function (change, before, after, callback, thisPtr) {
+		if (!(change.added || change.deleted)) {
+			if (callback) {
+				callback.call(thisPtr || this);
+			}
 			return;
+		}
 
 		change.deleted.forEach(function(instance) {
 			tryGetJsType(this._model, instance.type, null, false, function (type) {
@@ -906,8 +931,13 @@ ServerSync.mixin({
 				}
 			}, after), this);
 		}, this);
+
+		// Callback immediately since nothing will be force loaded
+		if (callback) {
+			callback.call(thisPtr || this);
+		}
 	},
-	applyInitChange: function (change, before, after) {
+	applyInitChange: function (change, before, after, callback, thisPtr) {
 		tryGetJsType(this._model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
 			if (!jstype.meta.get(change.instance.id)) {
 				// Create the new object
@@ -922,8 +952,16 @@ ServerSync.mixin({
 				this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
 			}
 		}, after), this);
+
+		// Callback immediately since nothing will be force loaded
+		if (callback) {
+			callback.call(thisPtr || this);
+		}
 	},
-	applyRefChange: function (change, before, after) {
+	applyRefChange: function (change, before, after, callback, thisPtr) {
+		var exited = false;
+		var callImmediately = true;
+
 		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
 			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 				// Update change to reflect the object's new id
@@ -931,6 +969,11 @@ ServerSync.mixin({
 
 				// Apply change
 				if (change.newValue) {
+					// Don't call immediately since we may need to lazy load the type
+					if (!exited) {
+						callImmediately = false;
+					}
+
 					tryGetJsType(this._model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
 						var refObj = fromExoModel(change.newValue, this._translator, true);
 
@@ -944,6 +987,11 @@ ServerSync.mixin({
 
 						// Change the property value
 						Sys.Observer.setValue(srcObj, change.property, refObj);
+
+						// Callback once the type has been loaded
+						if (!callImmediately && callback) {
+							callback.call(thisPtr || this);
+						}
 					}, after), this);
 				}
 				else {
@@ -960,8 +1008,15 @@ ServerSync.mixin({
 				}
 			}, after), this);
 		}, this);
+
+		// Callback immediately since nothing will be force loaded...yet
+		if (callImmediately && callback) {
+			callback.call(thisPtr || this);
+		}
+
+		exited = true;
 	},
-	applyValChange: function (change, before, after) {
+	applyValChange: function (change, before, after, callback, thisPtr) {
 		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
 			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 				// Update change to reflect the object's new id
@@ -994,8 +1049,16 @@ ServerSync.mixin({
 
 			}, after), this);
 		}, this);
+
+		// Callback immediately since nothing will be force loaded
+		if (callback) {
+			callback.call(thisPtr || this);
+		}
 	},
-	applyListChange: function (change, before, after) {
+	applyListChange: function (change, before, after, callback, thisPtr) {
+		var exited = false;
+		var callImmediately = true;
+
 		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
 			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 				// Update change to reflect the object's new id
@@ -1009,22 +1072,30 @@ ServerSync.mixin({
 				var listSignal = new ExoWeb.Signal("applyListChange-items");
 
 				// apply added items
-				change.added.forEach(function (item) {
-					tryGetJsType(this._model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
-						var itemObj = fromExoModel(item, this._translator, true);
+				if (change.added.length > 0) {
+					// Don't call immediately since we may need to lazy load the type
+					if (!exited) {
+						callImmediately = false;
+					}
 
-						// Update change to reflect the object's new id
-						ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
+					// Add each item to the list after ensuring that the type is loaded
+					change.added.forEach(function (item) {
+						tryGetJsType(this._model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
+							var itemObj = fromExoModel(item, this._translator, true);
 
-						if (!list.contains(itemObj)) {
-							list.add(itemObj);
-						}
-					}, after)), this, true);
-				}, this);
+							// Update change to reflect the object's new id
+							ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
+
+							if (!list.contains(itemObj)) {
+								list.add(itemObj);
+							}
+						}, after)), this, true);
+					}, this);
+				}
 
 				// apply removed items
 				change.removed.forEach(function (item) {
-					// no need to load instance only to remove it from a list
+					// no need to load instance only to remove it from a list when it can't possibly exist
 					tryGetJsType(this._model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
 						var itemObj = fromExoModel(item, this._translator, true);
 
@@ -1037,12 +1108,27 @@ ServerSync.mixin({
 
 				// don't end update until the items have been loaded
 				listSignal.waitForAll(this.ignoreChanges(before, function () {
-					this.beginApplyingChanges();
+					if (exited) {
+						this.beginApplyingChanges();
+					}
 					list.endUpdate();
-					this.endApplyingChanges();
+					if (exited) {
+						this.endApplyingChanges();
+					}
+					// Callback once all instances have been added
+					if (!callImmediately && callback) {
+						callback.call(thisPtr || this);
+					}
 				}, after), this, true);
 			}, after), this);
 		}, this);
+
+		// Callback immediately since nothing will be force loaded...yet
+		if (callImmediately && callback) {
+			callback.call(thisPtr || this);
+		}
+
+		exited = true;
 	},
 
 	// Rollback

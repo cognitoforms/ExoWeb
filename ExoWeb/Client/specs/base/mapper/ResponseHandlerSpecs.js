@@ -146,11 +146,13 @@ describe("ResponseHandler", function () {
 
 				callback.call(thisPtr || this);
 			},
-			applyChanges: function (checkpoint, changesArg, source, serverSync) {
+			applyChanges: function (checkpoint, changesArg, source, serverSync, beforeApply, afterApply, callback, thisPtr) {
 				expect(typeSpy).toHaveBeenCalled();
 				expect(source).toBe("init");
 				arrayEquals(changesArg, changes);
 				expect(objSpy).not.toHaveBeenCalled();
+
+				callback.call(thisPtr || this);
 			}
 		};
 

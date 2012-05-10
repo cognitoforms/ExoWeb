@@ -10,7 +10,7 @@ function ResponseHandler(model, serverSync, options) {
 
 ResponseHandler.mixin({
 	execute: ExoWeb.FunctionChain.prepare(
-		function setServerInfo(callback, thisPtr) {
+		function ResponseHandler$setServerInfo(callback, thisPtr) {
 			/// <summary>
 			/// Set server info from JSON
 			/// </summary>
@@ -22,7 +22,7 @@ ResponseHandler.mixin({
 			callback.call(thisPtr || this);
 		},
 
-		function loadTypes(callback, thisPtr) {
+		function ResponseHandler$loadTypes(callback, thisPtr) {
 			/// <summary>
 			/// Load types from JSON
 			/// </summary>
@@ -55,28 +55,30 @@ ResponseHandler.mixin({
 			callback.call(thisPtr || this);
 		},
 
-		function applyChanges(callback, thisPtr) {
+		function ResponseHandler$applyChanges(callback, thisPtr) {
 			/// <summary>
 			/// Apply changes from JSON
 			/// </summary>
 
 			if (this._options.changes) {
 				if (this._options.changes) {
-					this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.beforeApply, this._options.afterApply);
+					this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
 				}
-				else if (this._options.source) {
-					// no changes, so record empty set
-					this._serverSync._changeLog.start(this._options.source);
-					this._serverSync._changeLog.start("client");
+				else {
+					if (this._options.source) {
+						// no changes, so record empty set
+						this._serverSync._changeLog.start(this._options.source);
+						this._serverSync._changeLog.start("client");
+					}
+					callback.call(thisPtr);
 				}
-				callback.call(thisPtr);
 			}
 			else {
 				callback.call(thisPtr || this);
 			}
 		},
 
-		function loadInstances(callback, thisPtr) {
+		function ResponseHandler$loadInstances(callback, thisPtr) {
 			/// <summary>
 			/// Load instance data from JSON
 			/// </summary>
@@ -93,7 +95,7 @@ ResponseHandler.mixin({
 			}
 		},
 
-		function loadConditions(callback, thisPtr) {
+		function ResponseHandler$loadConditions(callback, thisPtr) {
 			/// <summary>
 			/// Load conditions from JSON
 			/// </summary>
