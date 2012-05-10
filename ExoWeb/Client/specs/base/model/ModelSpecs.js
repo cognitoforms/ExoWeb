@@ -1,23 +1,22 @@
+// Test setup
+///////////////////////////////////////
+var specs = require("../../SpecHelpers");
+specs.debug();
+specs.ensureWindow();
+specs.ensureNamespace("ExoWeb.Model");
+
+//require("../../../src/base/core/Activity");
+//require("../../../src/base/core/Function");
+//require("../../../src/base/core/Functor");
+//require("../../../src/base/core/Array");
+//require("../../../src/base/core/Utilities");
+//require("../../../src/base/core/EventQueue");
+
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
-
-jasmine.jasmine.debug = true;
-
-global.window = global;
-var ExoWeb = global.ExoWeb = { Model: {} };
-
-require("../../../src/base/core/Activity");
-require("../../../src/base/core/Function");
-require("../../../src/base/core/Functor");
-require("../../../src/base/core/Array");
-require("../../../src/base/core/Utilities");
-require("../../../src/base/core/EventQueue");
-
-var typeChecking = require("../../../src/base/core/TypeChecking");
-
-require("../../../src/base/model/Model");
+var typeChecking = specs.require("core.TypeChecking");
+specs.require("core.Utilities");
+specs.require("model.Model");
 
 // References
 ///////////////////////////////////////

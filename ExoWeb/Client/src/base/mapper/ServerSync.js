@@ -1,4 +1,8 @@
 function ServerSync(model) {
+	if (!model || typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
+		throw ExoWeb.trace.logError("server", "A model must be specified when constructing a ServerSync object.");
+	}
+
 	this._model = model;
 	this._changeLog = new ChangeLog();
 	this._pendingServerEvent = false;

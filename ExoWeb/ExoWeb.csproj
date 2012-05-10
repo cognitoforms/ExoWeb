@@ -192,6 +192,7 @@
     <Content Include="Client\specs\base\core\UtilitiesSpecs.js" />
     <Content Include="Client\specs\base\mapper\ChangeSetSpecs.js" />
     <Content Include="Client\specs\base\mapper\ChangeLogSpecs.js" />
+    <Content Include="Client\specs\base\mapper\ServerSyncSpecs.js" />
     <Content Include="Client\specs\base\mapper\ResponseHandlerSpecs.js" />
     <Content Include="Client\specs\base\model\TypeSpecs.js" />
     <Content Include="Client\specs\base\model\ModelSpecs.js" />
@@ -200,6 +201,8 @@
     <Content Include="Client\specs\base\view\BindingSpecs.js" />
     <Content Include="Client\ref\jasmine\jasmine.console.js" />
     <Content Include="Client\ref\jasmine\jasmine.js" />
+    <Content Include="Client\specs\SpecDependencies.js" />
+    <Content Include="Client\specs\SpecHelpers.js" />
     <Content Include="Client\src\base\core\Activity.js" />
     <Content Include="Client\src\base\core\Array.js" />
     <Content Include="Client\src\base\core\Batch.js" />
