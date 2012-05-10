@@ -62,7 +62,7 @@ namespace ExoWeb
 				json.Set("model", Model);
 
 			if (ServerInfo != null)
-				json.Set("serverinfo", ServerInfo);
+				json.Set("serverInfo", ServerInfo);
 
 			if (Changes != null && Changes.Any())
 				json.Set("changes", (IEnumerable<ModelEvent>)Changes.Where(modelEvent => !(modelEvent is ModelValueChangeEvent) || ExoWeb.IncludeInClientModel(((ModelValueChangeEvent)modelEvent).Property)));

@@ -8076,8 +8076,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				/// Set server info from JSON
 				/// </summary>
 
-				if (this._options.serverinfo) {
-					this._serverSync.set_ServerInfo(this._options.serverinfo);
+				if (this._options.serverInfo) {
+					this._serverSync.set_ServerInfo(this._options.serverInfo);
 				}
 
 				callback.call(thisPtr || this);
@@ -8996,7 +8996,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				changes: result.changes,
 				source: source,
 				checkpoint: checkpoint,
-				serverInfo: result.serverinfo,
+				serverInfo: result.serverInfo,
 				beforeApply: beforeApply,
 				afterApply: afterApply
 			});
@@ -11941,7 +11941,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
 			pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
 			pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
-			pendingOptions.serverinfo = pendingOptions.serverinfo ? $.extend(pendingOptions.serverinfo, newOptions.serverinfo) : newOptions.serverinfo;
+			pendingOptions.serverInfo = pendingOptions.serverInfo ? $.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
 		}
 		else {
 			pendingOptions = newOptions;
@@ -11980,7 +11980,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				changes: executingOptions.changes,
 				conditions: executingOptions.conditions,
 				instances: executingOptions.instances,
-				serverinfo: executingOptions.serverinfo
+				serverInfo: executingOptions.serverInfo
 			});
 		}
 		else if (window.context) {

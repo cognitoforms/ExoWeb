@@ -325,7 +325,7 @@ ServerSync.mixin({
 			changes: result.changes,
 			source: source,
 			checkpoint: checkpoint,
-			serverInfo: result.serverinfo,
+			serverInfo: result.serverInfo,
 			beforeApply: beforeApply,
 			afterApply: afterApply
 		});

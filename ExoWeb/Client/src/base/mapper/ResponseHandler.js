@@ -15,8 +15,8 @@ ResponseHandler.mixin({
 			/// Set server info from JSON
 			/// </summary>
 
-			if (this._options.serverinfo) {
-				this._serverSync.set_ServerInfo(this._options.serverinfo);
+			if (this._options.serverInfo) {
+				this._serverSync.set_ServerInfo(this._options.serverInfo);
 			}
 
 			callback.call(thisPtr || this);

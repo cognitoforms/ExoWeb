@@ -55,7 +55,7 @@ var updatePendingOptionsWith = function updatePendingOptionsWith(newOptions) {
 		pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
 		pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
 		pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
-		pendingOptions.serverinfo = pendingOptions.serverinfo ? $.extend(pendingOptions.serverinfo, newOptions.serverinfo) : newOptions.serverinfo;
+		pendingOptions.serverInfo = pendingOptions.serverInfo ? $.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
 	}
 	else {
 		pendingOptions = newOptions;
@@ -94,7 +94,7 @@ var flushPendingOptions = function flushPendingOptions() {
 			changes: executingOptions.changes,
 			conditions: executingOptions.conditions,
 			instances: executingOptions.instances,
-			serverinfo: executingOptions.serverinfo
+			serverInfo: executingOptions.serverInfo
 		});
 	}
 	else if (window.context) {
