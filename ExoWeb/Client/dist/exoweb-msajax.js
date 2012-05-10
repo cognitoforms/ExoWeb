@@ -8977,7 +8977,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return !instanceObj || this.canSaveObject(instanceObj);
 		},
 
-		_handleResult: function ServerSync$handleResult(result, source, checkpoint, callbackOrOptions) {
+		_handleResult: function ServerSync$_handleResult(result, source, checkpoint, callbackOrOptions) {
 			var callback, beforeApply, afterApply;
 
 			if (callbackOrOptions instanceof Function) {
@@ -8997,8 +8997,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				source: source,
 				checkpoint: checkpoint,
 				serverInfo: result.serverinfo,
-				beforeApply: options.beforeApply,
-				afterApply: options.afterApply
+				beforeApply: beforeApply,
+				afterApply: afterApply
 			});
 
 			handler.execute(callback, this);
