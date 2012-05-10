@@ -307,69 +307,30 @@ ServerSync.mixin({
 	},
 
 	_handleResult: function ServerSync$handleResult(result, source, checkpoint, callbackOrOptions) {
-		var options,
-			batch,
-			signal = new ExoWeb.Signal("Success");
+		var callback, beforeApply, afterApply;
 
 		if (callbackOrOptions instanceof Function) {
-			options = { callback: callbackOrOptions };
+			callback = callbackOrOptions;
 		}
 		else {
-			options = callbackOrOptions;
+			callback = callbackOrOptions.callback;
+			beforeApply = callbackOrOptions.beforeApply;
+			afterApply = callbackOrOptions.afterApply;
 		}
 
-		if (result.serverinfo)
-			this.set_ServerInfo(result.serverinfo);
+		var handler = new ResponseHandler(this._model, this, {
+			instances: result.instances,
+			conditions: result.conditions,
+			types: result.types && result.types instanceof Array ? null : result.types,
+			changes: result.changes,
+			source: source,
+			checkpoint: checkpoint,
+			serverInfo: result.serverinfo,
+			beforeApply: options.beforeApply,
+			afterApply: options.afterApply
+		});
 
-		if (result.instances) {
-			batch = ExoWeb.Batch.start();
-
-			objectsFromJson(this._model, result.instances, signal.pending(function () {
-				function processChanges() {
-					ExoWeb.Batch.end(batch);
-
-					if (result.changes && result.changes.length > 0) {
-						this.applyChanges(checkpoint, result.changes, source, null, options.beforeApply, options.afterApply);
-					}
-					else if (source) {
-						// no changes, so record empty set
-						this._changeLog.start(source || "unknown");
-						this._changeLog.start("client");
-					}
-				}
-
-				// if there is instance data to load then wait before loading conditions (since they may reference these instances)
-				if (result.conditions) {
-					conditionsFromJson(this._model, result.conditions, signal.pending(processChanges), this);
-				}
-				else {
-					processChanges.call(this);
-				}
-			}), this);
-		}
-		else if (result.changes && result.changes.length > 0) {
-			this.applyChanges(checkpoint, result.changes, source, null, options.beforeApply, options.afterApply);
-			if (result.conditions) {
-				conditionsFromJson(this._model, result.conditions, signal.pending());
-			}
-		}
-		else {
-			if (source) {
-				// no changes, so record empty set
-				this._changeLog.start(source || "unknown");
-				this._changeLog.start("client");
-			}
-
-			if (result.conditions) {
-				conditionsFromJson(this._model, result.conditions, signal.pending());
-			}
-		}
-
-		signal.waitForAll(function () {
-			if (options.callback && options.callback instanceof Function) {
-				options.callback.call(this);
-			}
-		}, this);
+		handler.execute(callback, this);
 	},
 
 	// General events methods

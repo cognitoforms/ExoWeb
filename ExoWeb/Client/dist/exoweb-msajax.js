@@ -8071,11 +8071,24 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ResponseHandler.mixin({
 		execute: ExoWeb.FunctionChain.prepare(
-		// Load types from JSON
-		//////////////////////////////////////////
+			function setServerInfo(callback, thisPtr) {
+				/// <summary>
+				/// Set server info from JSON
+				/// </summary>
+
+				if (this._options.serverinfo) {
+					this._serverSync.set_ServerInfo(this._options.serverinfo);
+				}
+
+				callback.call(thisPtr || this);
+			},
+
 			function loadTypes(callback, thisPtr) {
+				/// <summary>
+				/// Load types from JSON
+				/// </summary>
+
 				if (this._options.types) {
-					ExoWeb.trace.log("responseHandler", "Loading types.");
 					for (var typeName in this._options.types) {
 						var signal = new ExoWeb.Signal("embeddedType(" + typeName + ")");
 
@@ -8103,20 +8116,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 				callback.call(thisPtr || this);
 			},
 
-		// Apply "init new" changes
-		//////////////////////////////////////////
-			function applyInitChanges(callback, thisPtr) {
+			function applyChanges(callback, thisPtr) {
+				/// <summary>
+				/// Apply changes from JSON
+				/// </summary>
+
 				if (this._options.changes) {
-					ExoWeb.trace.log("responseHandler", "Applying \"init new\" changes.");
-
-					var changes = Array.prototype.slice.apply(this._options.changes);
-
-					var initChanges = changes.filter(function (change) {
-						return change.type === "InitNew";
-					});
-
-					this._serverSync.applyChanges(initChanges, this._options.source);
-
+					if (this._options.changes) {
+						this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.beforeApply, this._options.afterApply);
+					}
+					else if (this._options.source) {
+						// no changes, so record empty set
+						this._serverSync._changeLog.start(this._options.source);
+						this._serverSync._changeLog.start("client");
+					}
 					callback.call(thisPtr);
 				}
 				else {
@@ -8124,44 +8137,29 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			},
 
-		// Load instance data from JSON
-		//////////////////////////////////////////
 			function loadInstances(callback, thisPtr) {
+				/// <summary>
+				/// Load instance data from JSON
+				/// </summary>
+
 				if (this._options.instances) {
-					ExoWeb.trace.log("responseHandler", "Loading instances.");
-					objectsFromJson(this._model, this._options.instances, callback, thisPtr);
+					var batch = ExoWeb.Batch.start();
+					objectsFromJson(this._model, this._options.instances, function() {
+						ExoWeb.Batch.end(batch);
+						callback.apply(this, arguments);
+					}, thisPtr);
 				}
 				else {
 					callback.call(thisPtr || this);
 				}
 			},
 
-		// Apply non-"init new" changes
-		//////////////////////////////////////////
-			function applyNonInitChanges(callback, thisPtr) {
-				if (this._options.changes) {
-					ExoWeb.trace.log("responseHandler", "Applying non-\"init new\" changes.");
-
-					var changes = Array.prototype.slice.apply(this._options.changes);
-
-					var initChanges = changes.filter(function (change) {
-						return change.type !== "InitNew";
-					});
-
-					this._serverSync.applyChanges(initChanges, this._options.source);
-
-					callback.call(thisPtr);
-				}
-				else {
-					callback.call(thisPtr || this);
-				}
-			},
-
-		// Load conditions from JSON
-		//////////////////////////////////////////
 			function loadConditions(callback, thisPtr) {
+				/// <summary>
+				/// Load conditions from JSON
+				/// </summary>
+
 				if (this._options.conditions) {
-					ExoWeb.trace.log("reponseHandler", "Loading conditions.");
 					conditionsFromJson(this._model, this._options.conditions, callback, thisPtr);
 				}
 				else {
@@ -8980,69 +8978,30 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		_handleResult: function ServerSync$handleResult(result, source, checkpoint, callbackOrOptions) {
-			var options,
-				batch,
-				signal = new ExoWeb.Signal("Success");
+			var callback, beforeApply, afterApply;
 
 			if (callbackOrOptions instanceof Function) {
-				options = { callback: callbackOrOptions };
+				callback = callbackOrOptions;
 			}
 			else {
-				options = callbackOrOptions;
+				callback = callbackOrOptions.callback;
+				beforeApply = callbackOrOptions.beforeApply;
+				afterApply = callbackOrOptions.afterApply;
 			}
 
-			if (result.serverinfo)
-				this.set_ServerInfo(result.serverinfo);
+			var handler = new ResponseHandler(this._model, this, {
+				instances: result.instances,
+				conditions: result.conditions,
+				types: result.types && result.types instanceof Array ? null : result.types,
+				changes: result.changes,
+				source: source,
+				checkpoint: checkpoint,
+				serverInfo: result.serverinfo,
+				beforeApply: options.beforeApply,
+				afterApply: options.afterApply
+			});
 
-			if (result.instances) {
-				batch = ExoWeb.Batch.start();
-
-				objectsFromJson(this._model, result.instances, signal.pending(function () {
-					function processChanges() {
-						ExoWeb.Batch.end(batch);
-
-						if (result.changes && result.changes.length > 0) {
-							this.applyChanges(checkpoint, result.changes, source, null, options.beforeApply, options.afterApply);
-						}
-						else if (source) {
-							// no changes, so record empty set
-							this._changeLog.start(source || "unknown");
-							this._changeLog.start("client");
-						}
-					}
-
-					// if there is instance data to load then wait before loading conditions (since they may reference these instances)
-					if (result.conditions) {
-						conditionsFromJson(this._model, result.conditions, signal.pending(processChanges), this);
-					}
-					else {
-						processChanges.call(this);
-					}
-				}), this);
-			}
-			else if (result.changes && result.changes.length > 0) {
-				this.applyChanges(checkpoint, result.changes, source, null, options.beforeApply, options.afterApply);
-				if (result.conditions) {
-					conditionsFromJson(this._model, result.conditions, signal.pending());
-				}
-			}
-			else {
-				if (source) {
-					// no changes, so record empty set
-					this._changeLog.start(source || "unknown");
-					this._changeLog.start("client");
-				}
-
-				if (result.conditions) {
-					conditionsFromJson(this._model, result.conditions, signal.pending());
-				}
-			}
-
-			signal.waitForAll(function () {
-				if (options.callback && options.callback instanceof Function) {
-					options.callback.call(this);
-				}
-			}, this);
+			handler.execute(callback, this);
 		},
 
 		// General events methods
@@ -11413,9 +11372,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (this.options.changes)
 					ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
 
-				if (this.options.serverinfo)
-					this.context.server.set_ServerInfo(this.options.serverinfo);
-
 				// If the allSignals signal is not active, then set up a fake pending callback in
 				// order to ensure that the context is not "loaded" prior to models being initilized.
 				if (!allSignals.isActive()) {
@@ -11583,8 +11539,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						instances: this.options.instances,
 						conditions: this.options.conditions,
 						types: this.options.types && this.options.types instanceof Array ? null : this.options.types,
-						changes: this.options.changes,
-						source: "init"
+						serverInfo: this.options.serverInfo
 					});
 
 					handler.execute(function () {

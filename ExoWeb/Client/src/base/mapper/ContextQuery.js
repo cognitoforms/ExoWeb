@@ -20,9 +20,6 @@ ContextQuery.mixin({
 			if (this.options.changes)
 				ServerSync$storeInitChanges.call(this.context.server, this.options.changes);
 
-			if (this.options.serverinfo)
-				this.context.server.set_ServerInfo(this.options.serverinfo);
-
 			// If the allSignals signal is not active, then set up a fake pending callback in
 			// order to ensure that the context is not "loaded" prior to models being initilized.
 			if (!allSignals.isActive()) {
@@ -190,8 +187,7 @@ ContextQuery.mixin({
 					instances: this.options.instances,
 					conditions: this.options.conditions,
 					types: this.options.types && this.options.types instanceof Array ? null : this.options.types,
-					changes: this.options.changes,
-					source: "init"
+					serverInfo: this.options.serverInfo
 				});
 
 				handler.execute(function () {

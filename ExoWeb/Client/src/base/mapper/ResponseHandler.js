@@ -10,11 +10,24 @@ function ResponseHandler(model, serverSync, options) {
 
 ResponseHandler.mixin({
 	execute: ExoWeb.FunctionChain.prepare(
-	// Load types from JSON
-	//////////////////////////////////////////
+		function setServerInfo(callback, thisPtr) {
+			/// <summary>
+			/// Set server info from JSON
+			/// </summary>
+
+			if (this._options.serverinfo) {
+				this._serverSync.set_ServerInfo(this._options.serverinfo);
+			}
+
+			callback.call(thisPtr || this);
+		},
+
 		function loadTypes(callback, thisPtr) {
+			/// <summary>
+			/// Load types from JSON
+			/// </summary>
+
 			if (this._options.types) {
-				ExoWeb.trace.log("responseHandler", "Loading types.");
 				for (var typeName in this._options.types) {
 					var signal = new ExoWeb.Signal("embeddedType(" + typeName + ")");
 
@@ -42,20 +55,20 @@ ResponseHandler.mixin({
 			callback.call(thisPtr || this);
 		},
 
-	// Apply "init new" changes
-	//////////////////////////////////////////
-		function applyInitChanges(callback, thisPtr) {
+		function applyChanges(callback, thisPtr) {
+			/// <summary>
+			/// Apply changes from JSON
+			/// </summary>
+
 			if (this._options.changes) {
-				ExoWeb.trace.log("responseHandler", "Applying \"init new\" changes.");
-
-				var changes = Array.prototype.slice.apply(this._options.changes);
-
-				var initChanges = changes.filter(function (change) {
-					return change.type === "InitNew";
-				});
-
-				this._serverSync.applyChanges(initChanges, this._options.source);
-
+				if (this._options.changes) {
+					this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.beforeApply, this._options.afterApply);
+				}
+				else if (this._options.source) {
+					// no changes, so record empty set
+					this._serverSync._changeLog.start(this._options.source);
+					this._serverSync._changeLog.start("client");
+				}
 				callback.call(thisPtr);
 			}
 			else {
@@ -63,44 +76,29 @@ ResponseHandler.mixin({
 			}
 		},
 
-	// Load instance data from JSON
-	//////////////////////////////////////////
 		function loadInstances(callback, thisPtr) {
+			/// <summary>
+			/// Load instance data from JSON
+			/// </summary>
+
 			if (this._options.instances) {
-				ExoWeb.trace.log("responseHandler", "Loading instances.");
-				objectsFromJson(this._model, this._options.instances, callback, thisPtr);
+				var batch = ExoWeb.Batch.start();
+				objectsFromJson(this._model, this._options.instances, function() {
+					ExoWeb.Batch.end(batch);
+					callback.apply(this, arguments);
+				}, thisPtr);
 			}
 			else {
 				callback.call(thisPtr || this);
 			}
 		},
 
-	// Apply non-"init new" changes
-	//////////////////////////////////////////
-		function applyNonInitChanges(callback, thisPtr) {
-			if (this._options.changes) {
-				ExoWeb.trace.log("responseHandler", "Applying non-\"init new\" changes.");
-
-				var changes = Array.prototype.slice.apply(this._options.changes);
-
-				var initChanges = changes.filter(function (change) {
-					return change.type !== "InitNew";
-				});
-
-				this._serverSync.applyChanges(initChanges, this._options.source);
-
-				callback.call(thisPtr);
-			}
-			else {
-				callback.call(thisPtr || this);
-			}
-		},
-
-	// Load conditions from JSON
-	//////////////////////////////////////////
 		function loadConditions(callback, thisPtr) {
+			/// <summary>
+			/// Load conditions from JSON
+			/// </summary>
+
 			if (this._options.conditions) {
-				ExoWeb.trace.log("reponseHandler", "Loading conditions.");
 				conditionsFromJson(this._model, this._options.conditions, callback, thisPtr);
 			}
 			else {
