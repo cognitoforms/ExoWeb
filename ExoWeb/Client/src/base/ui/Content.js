@@ -312,37 +312,39 @@ Content.prototype = {
 				this._isRendered = true;
 				this._context = null;
 
-				var pctx = this.get_templateContext();
-				var tmplEl = this._findTemplate();
-
 				if (!this._ctxIdx && this._element.childNodes.length > 0)
 					throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
 
-				var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
-				newContext.data = this._data;
-				newContext.components = [];
-				newContext.nodes = [];
-				newContext.dataItem = this._data;
-				newContext.index = 0;
-				newContext.parentContext = pctx;
-				newContext.containerElement = this._element;
-				newContext.template = new Sys.UI.Template(tmplEl);
-				newContext.template._ensureCompiled();
+				if ((this._data !== null && this._data !== undefined) || this._element.childNodes.length > 0) {
+					var pctx = this.get_templateContext();
+					var tmplEl = this._findTemplate();
 
-				this._context = newContext;
+					var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
+					newContext.data = this._data;
+					newContext.components = [];
+					newContext.nodes = [];
+					newContext.dataItem = this._data;
+					newContext.index = 0;
+					newContext.parentContext = pctx;
+					newContext.containerElement = this._element;
+					newContext.template = new Sys.UI.Template(tmplEl);
+					newContext.template._ensureCompiled();
 
-				// Get the list of template names applicable to the control's children
-				var contentTemplate = this._getResultingTemplateNames(tmplEl);
+					this._context = newContext;
 
-				var element = this._element;
-				Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
+					// Get the list of template names applicable to the control's children
+					var contentTemplate = this._getResultingTemplateNames(tmplEl);
 
-				for (var i = 0; i < element.childNodes.length; i++) {
-					newContext.nodes.push(element.childNodes[i]);
+					var element = this._element;
+					Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
+
+					for (var i = 0; i < element.childNodes.length; i++) {
+						newContext.nodes.push(element.childNodes[i]);
+					}
+
+					newContext._onInstantiated(null, true);
+					this._initializeResults();
 				}
-
-				newContext._onInstantiated(null, true);
-				this._initializeResults();
 
 				ExoWeb.UI.Content.callBaseMethod(this, 'link');
 			}, this);
