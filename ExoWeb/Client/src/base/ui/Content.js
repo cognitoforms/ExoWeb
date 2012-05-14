@@ -346,13 +346,11 @@ Content.prototype = {
 	},
 
 	update: function Content$update(force) {
-		if (this._canRender(force)) {
-			if (this.get_isLinkPending()) {
-				this.link();
-			}
-			else {
-				this._renderStart(force);
-			}
+		if (this.get_isLinkPending()) {
+			this.link();
+		}
+		else if (this._canRender(force)) {
+			this._renderStart(force);
 		}
 	},
 

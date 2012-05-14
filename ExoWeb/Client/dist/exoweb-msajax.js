@@ -12681,15 +12681,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._state = this._strictMode = this._template = this._visible = this._when = null;
 			ExoWeb.UI.Toggle.callBaseMethod(this, "dispose");
 		},
+		link: function Toggle$link() {
+			// Perform custom link logic for the action
+			var actionLink = this["link_" + this._action];
+			if (actionLink) {
+				actionLink.call(this);
+			}
+
+			Sys.UI.DataView.callBaseMethod(this, "link");
+		},
 		initialize: function Toggle$initialize() {
 			Toggle.callBaseMethod(this, "initialize");
 
 			if (this.get_isLinkPending()) {
-				// Perform custom init logic for the action
-				var actionLink = this["link_" + this._action];
-				if (actionLink) {
-					actionLink.call(this);
-				}
+				this.link();
 			}
 			else {
 				// Perform custom init logic for the action
@@ -13478,13 +13483,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 
 		update: function Content$update(force) {
-			if (this._canRender(force)) {
-				if (this.get_isLinkPending()) {
-					this.link();
-				}
-				else {
-					this._renderStart(force);
-				}
+			if (this.get_isLinkPending()) {
+				this.link();
+			}
+			else if (this._canRender(force)) {
+				this._renderStart(force);
 			}
 		},
 
