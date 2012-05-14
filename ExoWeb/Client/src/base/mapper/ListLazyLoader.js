@@ -14,8 +14,12 @@ function listLoad(list, propName, callback, thisPtr) {
 	var propName = list._ownerProperty.get_name();
 	var propType = list._ownerProperty.get_jstype().meta;
 
+	if (!ExoWeb.config.allowListLazyLoading) {
+		throw new ExoWeb.trace.logError(["listInit", "lazyLoad"], "List lazy loading has been disabled: {0}({1}).{2}", ownerType, ownerId, propName);
+	}
+
 	// load the objects in the list
-	ExoWeb.trace.logWarning(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
+	ExoWeb.trace.logWarning(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", ownerType, ownerId, propName);
 
 	var objectJson, conditionsJson;
 

@@ -1,3 +1,5 @@
+// <reference path="../core/Config.js" />
+
 function ObjectLazyLoader() {
 	this._requests = {};
 	this._typePaths = {};
@@ -10,6 +12,10 @@ ExoWeb.registerActivity(function() {
 });
 
 function objLoad(obj, propName, callback, thisPtr) {
+	if (!ExoWeb.config.allowObjectLazyLoading) {
+		throw new ExoWeb.trace.logError(["objectInit", "lazyLoad"], "Object lazy loading has been disabled: {0}({1})", mtype.get_fullName(), id);
+	}
+
 	pendingObjects++;
 
 	var signal = new ExoWeb.Signal("object lazy loader");

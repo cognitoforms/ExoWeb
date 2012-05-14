@@ -15,7 +15,12 @@ var config = {
 	individualQueryLoading: false,
 
 	// Uniquely identifies this application if more than one app is hosted under the same domain name.
-	appInstanceId: "?"
+	appInstanceId: "?",
+
+	// Controls different whether lazy loading are allowed. If set to false, an error is raised when lazy loading occurs.
+	allowTypeLazyLoading: true,
+	allowObjectLazyLoading: true,
+	allowListLazyLoading: true
 };
 
 exports.config = config;

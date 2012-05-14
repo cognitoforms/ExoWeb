@@ -27,7 +27,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 		individualQueryLoading: false,
 
 		// Uniquely identifies this application if more than one app is hosted under the same domain name.
-		appInstanceId: "?"
+		appInstanceId: "?",
+
+		// Controls different whether lazy loading are allowed. If set to false, an error is raised when lazy loading occurs.
+		allowTypeLazyLoading: true,
+		allowObjectLazyLoading: true,
+		allowListLazyLoading: true
 	};
 
 	ExoWeb.config = config;
@@ -11019,6 +11024,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 	}
 
 	function typeLoad(mtype, propName, callback, thisPtr) {
+		if (!ExoWeb.config.allowTypeLazyLoading) {
+			throw new ExoWeb.trace.logError(["typeInit", "lazyLoad"], "Type lazy loading has been disabled: {0}", mtype.get_fullName());
+		}
+
 //				ExoWeb.trace.log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
 		fetchTypes(mtype.get_model(), [mtype.get_fullName()], function(jstypes) {
 			if (callback && callback instanceof Function) {
@@ -11048,6 +11057,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// #region ObjectLazyLoader
 	//////////////////////////////////////////////////
 
+	// <reference path="../core/Config.js" />
+
 	function ObjectLazyLoader() {
 		this._requests = {};
 		this._typePaths = {};
@@ -11060,6 +11071,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 	});
 
 	function objLoad(obj, propName, callback, thisPtr) {
+		if (!ExoWeb.config.allowObjectLazyLoading) {
+			throw new ExoWeb.trace.logError(["objectInit", "lazyLoad"], "Object lazy loading has been disabled: {0}({1})", mtype.get_fullName(), id);
+		}
+
 		pendingObjects++;
 
 		var signal = new ExoWeb.Signal("object lazy loader");
@@ -11199,8 +11214,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var propName = list._ownerProperty.get_name();
 		var propType = list._ownerProperty.get_jstype().meta;
 
+		if (!ExoWeb.config.allowListLazyLoading) {
+			throw new ExoWeb.trace.logError(["listInit", "lazyLoad"], "List lazy loading has been disabled: {0}({1}).{2}", ownerType, ownerId, propName);
+		}
+
 		// load the objects in the list
-		ExoWeb.trace.logWarning(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", [ownerType, ownerId, propName]);
+		ExoWeb.trace.logWarning(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", ownerType, ownerId, propName);
 
 		var objectJson, conditionsJson;
 
