@@ -12688,7 +12688,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				actionLink.call(this);
 			}
 
-			Sys.UI.DataView.callBaseMethod(this, "link");
+			ExoWeb.UI.Toggle.callBaseMethod(this, "link");
 		},
 		initialize: function Toggle$initialize() {
 			Toggle.callBaseMethod(this, "initialize");
