@@ -14488,13 +14488,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		if (options.optionsTransform) {
-			if (this._allowedValuesTransform) {
-				ExoWeb.trace.logWarning(["@", "markupExt"], "Obsolete option \"optionsTransform\" was specified, when option \"allowedValuesTransform\" already exists.  Path = \"{0}\".", propertyPath);
-			}
-			else {
-				ExoWeb.trace.logWarning(["@", "markupExt"], "Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead.  Path = \"{0}\".", propertyPath);
-				this._allowedValuesTransform = options.optionsTransform;
-			}
+			throw ExoWeb.trace.logError(["@", "markupExt"], "Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead. Path = \"{0}\".", propertyPath);
 		}
 
 		if (options.allowedValuesMayBeNull) {

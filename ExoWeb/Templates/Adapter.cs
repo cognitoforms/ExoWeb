@@ -26,7 +26,7 @@ namespace ExoWeb.Templates
 		};
 
 		BindingResult binding;
-		Transform optionsTransform;
+		Transform allowedValuesTransform;
 		Dictionary<string, string> properties;
 
 		internal Adapter(BindingResult binding, IDictionary<string, string> parameters)
@@ -34,13 +34,16 @@ namespace ExoWeb.Templates
 			this.binding = binding;
 			this.properties = new Dictionary<string,string>();
 
-			// Compile the options transform if one is specified
 			if (parameters.ContainsKey("optionsTransform"))
-			{
-				if (parameters["optionsTransform"].Contains("groupBy("))
-					throw new ApplicationException("The optionsTransform property does not support grouping");
+				throw new ApplicationException(string.Format("Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead. Path = \"{0}\".", binding.Property));
 
-				this.optionsTransform = Transform.Compile(parameters["optionsTransform"]);
+			// Compile the allowed values transform if one is specified
+			if (parameters.ContainsKey("allowedValuesTransform"))
+			{
+				if (parameters["allowedValuesTransform"].Contains("groupBy("))
+					throw new ApplicationException("The allowedValuesTransform property does not support grouping");
+
+				this.allowedValuesTransform = Transform.Compile(parameters["allowedValuesTransform"]);
 			}
 
 			// Copy custom properties that are allowed
@@ -155,7 +158,7 @@ namespace ExoWeb.Templates
 			get
 			{
 				IEnumerable<object> options;
-				TryGetAllowedValues(Property, Source, optionsTransform, out options);
+				TryGetAllowedValues(Property, Source, allowedValuesTransform, out options);
 				return options;
 			}
 		}
@@ -167,10 +170,10 @@ namespace ExoWeb.Templates
 		/// </summary>
 		/// <param name="property"></param>
 		/// <param name="source"></param>
-		/// <param name="optionsTransform"></param>
+		/// <param name="allowedValuesTransform"></param>
 		/// <param name="rawOptions"></param>
 		/// <returns></returns>
-		internal static bool TryGetAllowedValues(ModelProperty property, ModelInstance source, Transform optionsTransform, out IEnumerable<object> allowedValues)
+		internal static bool TryGetAllowedValues(ModelProperty property, ModelInstance source, Transform allowedValuesTransform, out IEnumerable<object> allowedValues)
 		{
 			allowedValues = null;
 
@@ -178,10 +181,10 @@ namespace ExoWeb.Templates
 
 			if (allowedInstances != null)
 			{
-				if (optionsTransform != null)
+				if (allowedValuesTransform != null)
 				{
 					IEnumerable transformed;
-					if (optionsTransform.TryExecute(Page.Current, allowedInstances, out transformed))
+					if (allowedValuesTransform.TryExecute(Page.Current, allowedInstances, out transformed))
 						allowedValues = transformed.Cast<object>().ToArray();
 				}
 				else
@@ -308,7 +311,7 @@ namespace ExoWeb.Templates
 					break;
 				case "options":
 					IEnumerable<object> allowedValues;
-					if (isValid = TryGetAllowedValues(Property, Source, optionsTransform, out allowedValues))
+					if (isValid = TryGetAllowedValues(Property, Source, allowedValuesTransform, out allowedValues))
 						value = allowedValues.Select(i => new OptionAdapter(this, i)).ToArray();
 					break;
 				case "rawValue":
