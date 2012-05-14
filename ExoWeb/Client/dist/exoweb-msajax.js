@@ -13442,49 +13442,55 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		link: function Content$link() {
 			/// <summary locid="M:J#ExoWeb.UI.Content.link" />
-			externalTemplatesSignal.waitForAll(function () {
-				this._isRendered = true;
-				this._context = null;
+			if (!this._linkInProgress) {
+				this._linkInProgress = true;
+				externalTemplatesSignal.waitForAll(function () {
+					delete this._linkInProgress;
+					this._isRendered = true;
+					this._context = null;
 
-				var pctx = this.get_templateContext();
-				var tmplEl = this._findTemplate();
+					var pctx = this.get_templateContext();
+					var tmplEl = this._findTemplate();
 
-				if (!this._ctxIdx && this._element.childNodes.length > 0)
-					throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
+					if (!this._ctxIdx && this._element.childNodes.length > 0)
+						throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
 
-				var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
-				newContext.data = this._data;
-				newContext.components = [];
-				newContext.nodes = [];
-				newContext.dataItem = this._data;
-				newContext.index = 0;
-				newContext.parentContext = pctx;
-				newContext.containerElement = this._element;
-				newContext.template = new Sys.UI.Template(tmplEl);
-				newContext.template._ensureCompiled();
+					var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
+					newContext.data = this._data;
+					newContext.components = [];
+					newContext.nodes = [];
+					newContext.dataItem = this._data;
+					newContext.index = 0;
+					newContext.parentContext = pctx;
+					newContext.containerElement = this._element;
+					newContext.template = new Sys.UI.Template(tmplEl);
+					newContext.template._ensureCompiled();
 
-				this._context = newContext;
+					this._context = newContext;
 
-				// Get the list of template names applicable to the control's children
-				var contentTemplate = this._getResultingTemplateNames(tmplEl);
+					// Get the list of template names applicable to the control's children
+					var contentTemplate = this._getResultingTemplateNames(tmplEl);
 
-				var element = this._element;
-				Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
+					var element = this._element;
+					Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
 
-				for (var i = 0; i < element.childNodes.length; i++) {
-					newContext.nodes.push(element.childNodes[i]);
-				}
+					for (var i = 0; i < element.childNodes.length; i++) {
+						newContext.nodes.push(element.childNodes[i]);
+					}
 
-				newContext._onInstantiated(null, true);
-				this._initializeResults();
+					newContext._onInstantiated(null, true);
+					this._initializeResults();
 
-				ExoWeb.UI.Content.callBaseMethod(this, 'link');
-			}, this);
+					ExoWeb.UI.Content.callBaseMethod(this, 'link');
+				}, this);
+			}
 		},
 
 		update: function Content$update(force) {
 			if (this.get_isLinkPending()) {
-				this.link();
+				if (this.hasOwnProperty("_data")) {
+					this.link();
+				}
 			}
 			else if (this._canRender(force)) {
 				this._renderStart(force);

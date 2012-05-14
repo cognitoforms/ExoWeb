@@ -3665,7 +3665,9 @@ false);
 			/// <summary locid="M:J#initialize" />
 			Sys.UI.DataView.callBaseMethod(this, "initialize");
 			if (this.get_isLinkPending()) {
-				this.link();
+				if (this.hasOwnProperty("_data")) {
+					this.link();
+				}
 			}
 			else {
 				this.refresh();
@@ -3769,11 +3771,6 @@ false);
 		}
 		function Sys$UI$DataView$link() {
 			/// <summary locid="M:J#Sys.UI.DataView.link" />
-
-			if (!this.hasOwnProperty("_data")) {
-				// Exit early if the data has not yet been set.
-				return;
-			}
 
 			// Make sure that the control doesn't appear that it needs to re-render
 			this._changed = false;
