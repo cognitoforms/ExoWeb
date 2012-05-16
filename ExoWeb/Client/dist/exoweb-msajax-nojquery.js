@@ -11091,14 +11091,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		// fetch object json
-		ExoWeb.trace.logWarning(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", [mtype.get_fullName(), id]);
+		ExoWeb.trace.logWarning(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", mtype.get_fullName(), id);
 
 		// TODO: reference to server will be a singleton, not context
 		objectProvider(mtype.get_fullName(), [id], paths, false,
 			serializeChanges.call(context.server, true),
 			function(result) {
 				mtype.get_model()._server._handleResult(result, $format("Lazy load: {0}({1})", mtype.get_fullName(), id), null, function() {
-					ExoWeb.Model.LazyLoader.unregister(obj, this);
+					LazyLoader.unregister(obj, this);
 					pendingObjects--;
 
 					// Raise init events if registered.
@@ -11127,8 +11127,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			});
 
 		// does the object's type need to be loaded too?
-		if (! ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-			ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
+		if (!LazyLoader.isLoaded(mtype)) {
+			LazyLoader.load(mtype, null, signal.pending());
 		}
 	}
 
@@ -11160,13 +11160,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var relPaths = [];
 
 			for (var typeName in instance._typePaths) {
-				var jstype = ExoWeb.Model.Model.getJsType(typeName);
+				var jstype = Model.getJsType(typeName);
 
 				if (jstype && jstype.meta) {
 					var paths = instance._typePaths[typeName];
 					for (var i = 0; i < paths.length; i++) {
 						var path = paths[i].expression;
-						var chain = ExoWeb.Model.Model.property(path, jstype.meta);
+						var chain = Model.property(path, jstype.meta);
 						// No need to include static paths since if they were 
 						// cached then they were loaded previously.
 						if (!chain.get_isStatic()) {
@@ -11183,13 +11183,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 		};
 
 		ObjectLazyLoader.register = function(obj) {
-			if (!ExoWeb.Model.LazyLoader.isRegistered(obj, instance)) {
-				ExoWeb.Model.LazyLoader.register(obj, instance);
+			if (!LazyLoader.isRegistered(obj, instance)) {
+				if (obj.meta.type.get_origin() !== "server") {
+					ExoWeb.trace.logError(["objectInit", "lazyLoad"], "Cannot lazy load instance of non-server-origin type: {0}({1})", obj.meta.type.get_fullName(), obj.meta.id);
+				}
+				LazyLoader.register(obj, instance);
 			}
 		};
 
 		ObjectLazyLoader.unregister = function(obj) {
-			ExoWeb.Model.LazyLoader.unregister(obj, instance);
+			LazyLoader.unregister(obj, instance);
 		};
 	})();
 
