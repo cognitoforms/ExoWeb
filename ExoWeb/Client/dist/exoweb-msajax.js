@@ -8800,19 +8800,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// temporary HACK (no, really): splice InitNew changes into init transaction
 		if (simulateInitRoot && simulateInitRoot.meta.isNew) {
-			function isRootChange(change) {
+			function isRootInitChange(change) {
 				return change.type === "InitNew" && change.instance.type === simulateInitRoot.meta.type.get_fullName() &&
 					(change.instance.id === simulateInitRoot.meta.id || this._translator.reverse(change.instance.type, change.instance.id) === simulateInitRoot.meta.id);
 			}
 
 			var found = false;
 			var initSet = changes.filter(function(set) { return set.source === "init"; })[0];
-			if (!initSet || !initSet.changes.some(isRootChange, this)) {
+			if (!initSet || !initSet.changes.some(isRootInitChange, this)) {
 				changes.forEach(function(set) {
 					if (found === true) return;
 					set.changes.forEach(function(change, index) {
 						if (found === true) return;
-						else if (isRootChange.call(this, change)) {
+						else if (isRootInitChange.call(this, change)) {
 							set.changes.splice(index, 1);
 							if (!initSet) {
 								initSet = { changes: [change], source: "init" };
