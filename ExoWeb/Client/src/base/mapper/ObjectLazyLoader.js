@@ -79,6 +79,7 @@ ObjectLazyLoader.mixin({
 
 (function() {
 	var instance = new ObjectLazyLoader();
+	exports.instance = instance; // IGNORE
 
 	ObjectLazyLoader.addPaths = function ObjectLazyLoader$addPaths(rootType, paths) {
 		var typePaths = instance._typePaths[rootType];
@@ -120,7 +121,7 @@ ObjectLazyLoader.mixin({
 			}
 		}
 
-		return relPaths;
+		return relPaths.distinct();
 	};
 
 	ObjectLazyLoader.register = function(obj) {

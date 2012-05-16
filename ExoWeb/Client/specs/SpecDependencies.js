@@ -63,7 +63,7 @@ exports.init = function() {
 	"core.Functor".dependsOn("core.Activity");
 	"model.Model".dependsOn("core.Functor", "core.Function", "core.EventQueue");
 	"mapper.ServerSync".dependsOn("core.Trace", "core.Utilities", "core.Functor", "core.Function");
-	"mapper.ObjectLazyLoader".dependsOn("core.Activity", "core.Function", "model.LazyLoader");
+	"mapper.ObjectLazyLoader".dependsOn("core.Activity", "core.Function", "model.LazyLoader", "core.Array");
 };
 
 // Module loading

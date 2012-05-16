@@ -12,7 +12,9 @@ specs.ensureNamespace("ExoWeb.Mapper");
 
 // Imports
 ///////////////////////////////////////
-var ObjectLazyLoader = specs.require("mapper.ObjectLazyLoader").ObjectLazyLoader;
+var objectLazyLoader = specs.require("mapper.ObjectLazyLoader");
+var ObjectLazyLoader = objectLazyLoader.ObjectLazyLoader;
+var instance = objectLazyLoader.instance;
 
 specs.require("core.Trace");
 
@@ -22,8 +24,8 @@ var logCategories = ["objectInit", "lazyLoad"];
 
 // Test Suites
 ///////////////////////////////////////
-describe("ObjectLazyLoader", function() {
-	it("verifies that an object is of a server-origin type when registered", function() {
+describe("ObjectLazyLoader.register", function() {
+	it("verifies that an object is of a server-origin type", function() {
 		var logError = ExoWeb.trace.logError;
 		var newLogError = jasmine.jasmine.createSpy();
 		ExoWeb.trace.logError = newLogError;
@@ -43,6 +45,69 @@ describe("ObjectLazyLoader", function() {
 		expect(newLogError).toHaveBeenCalledWith(logCategories, "Cannot lazy load instance of non-server-origin type: {0}({1})", "Foo", "1");
 
 		ExoWeb.trace.logError = logError;
+	});
+});
+
+describe("ObjectLazyLoader.getRelativePathsForType", function() {
+	it("returns an empty array if no arguments are passed", function() {
+		specs.arrayEquals(ObjectLazyLoader.getRelativePathsForType(), []);
+	});
+
+	it("returns an empty array if type argument is null or undefined", function() {
+		specs.arrayEquals(ObjectLazyLoader.getRelativePathsForType(null), []);
+		specs.arrayEquals(ObjectLazyLoader.getRelativePathsForType(undefined), []);
+	});
+
+	it("returns an empty array if no type paths have been added", function() {
+		specs.arrayEquals(ObjectLazyLoader.getRelativePathsForType({}), []);
+	});
+
+	it("returns paths that have been added for a type", function() {
+		// Mock type path information
+		instance._typePaths["Foo"] = [{ expression: "this.Prop1" }];
+		Model = {
+			property: function(path, mtype) {
+				return {
+					path: path,
+					get_isStatic: function() { return false; },
+					rootedPath: function(type) { return this.path; }
+				};
+			},
+			getJsType: function(name) {
+				return { meta: {} };
+			}
+		};
+
+		// Perform assertions
+		specs.arrayEquals(ObjectLazyLoader.getRelativePathsForType({}), ["this.Prop1"]);
+
+		// Remove mocked data
+		instance._typePaths["Foo"] = [{ expression: "this.Prop1" }];
+		Model = null;
+		instance._typePaths = {};
+	});
+
+	it("does not return duplicate paths", function() {
+		// Mock type path information
+		instance._typePaths["Foo"] = [{ expression: "this.Prop1" }, { expression: "this.Prop1" }];
+		Model = {
+			property: function(path, mtype) {
+				return {
+					path: path,
+					get_isStatic: function() { return false; },
+					rootedPath: function(type) { return this.path; }
+				};
+			},
+			getJsType: function(name) {
+				return { meta: {} };
+			}
+		};
+
+		// Perform assertions
+		specs.arrayEquals(ObjectLazyLoader.getRelativePathsForType({}), ["this.Prop1"]);
+
+		// Remove mocked data
+		Model = null;
 	});
 });
 

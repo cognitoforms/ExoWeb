@@ -11179,7 +11179,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 
-			return relPaths;
+			return relPaths.distinct();
 		};
 
 		ObjectLazyLoader.register = function(obj) {
