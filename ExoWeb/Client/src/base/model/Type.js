@@ -18,10 +18,6 @@ function Type(model, name, baseType, origin) {
 	// generate class and constructor
 	var jstype = Model.getJsType(name, true);
 
-	if (jstype) {
-		ExoWeb.trace.throwAndLog(["model"], "'{1}' has already been declared", arguments);
-	}
-
 	// create namespaces as needed
 	var nameTokens = name.split("."),
 		token = nameTokens.dequeue(),
@@ -35,7 +31,15 @@ function Type(model, name, baseType, origin) {
 	var finalName = token;
 	jstype = generateClass(this);
 
-	this._jstype = namespaceObj[finalName] = jstype;
+	this._jstype = jstype;
+
+	// If the namespace already contains a type with this name, append a '$' to the name
+	if (!namespaceObj[finalName]) {
+		namespaceObj[finalName] = jstype;
+	}
+	else {
+		namespaceObj['$' + finalName] = jstype;
+	}
 
 	// setup inheritance
 	this.derivedTypes = [];
