@@ -2119,7 +2119,7 @@ Type.prototype.registerEnum = function Type$registerEnum(name, flags) {
 	for (var j in this.prototype) {
 		var val = this.prototype[j];
 		if (!Type.__identifierRegExp.test(j)) throw Error.invalidOperation(String.format(Sys.Res.enumInvalidValueName, j));
-		if (typeof(val) !== 'number' || (val % 1) !== 0) throw Error.invalidOperation(Sys.Res.enumValueNotInteger);
+		if (typeof(val) !== 'number' || (val % 1) !== 0) throw new Error(j);// Error.invalidOperation(Sys.Res.enumValueNotInteger);
 		if (typeof(this[j]) !== 'undefined') throw Error.invalidOperation(String.format(Sys.Res.enumReservedName, j));
 	}
 	Sys.__upperCaseTypes[name.toUpperCase()] = this;

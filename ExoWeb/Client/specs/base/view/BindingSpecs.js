@@ -6,8 +6,8 @@ var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 jasmine.jasmine.debug = true;
 
 window = global;
+global.registerActivity = function() {};
 ExoWeb = {
-	registerActivity: function() { },
 	Model: {
 		LazyLoader: {
 			eval: function(target, path, successCallback, errorCallback, scopeChain, thisPtr) {
@@ -55,8 +55,8 @@ global.Transform = transform.Transform;
 
 var getFormat = global.getFormat = formatProvider.getFormat;
 var setFormatProvider = global.setFormatProvider = formatProvider.setFormatProvider;
-var getValue = global.getValue = ExoWeb.getValue;
-var evalPath = global.evalPath = ExoWeb.evalPath;
+var getValue = global.getValue = utilities.getValue;
+var evalPath = global.evalPath = utilities.evalPath;
 var isObject = global.isObject = typeChecking.isObject;
 var isArray = global.isArray = typeChecking.isArray;
 var isNullOrUndefined = global.isNullOrUndefined = typeChecking.isNullOrUndefined;

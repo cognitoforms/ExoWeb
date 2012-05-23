@@ -1,7 +1,7 @@
 function Model() {
 	this._types = {};
 
-	this._validatingQueue = new ExoWeb.EventQueue(
+	this._validatingQueue = new EventQueue(
 		function(e) {
 			var meta = e.sender;
 			meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName]);
@@ -11,7 +11,7 @@ function Model() {
 		}
 	);
 
-	this._validatedQueue = new ExoWeb.EventQueue(
+	this._validatedQueue = new EventQueue(
 		function(e) {
 			var meta = e.sender;
 			var propName = e.property;
@@ -217,7 +217,7 @@ Model.prototype = {
 	}
 };
 
-Model.mixin(ExoWeb.Functor.eventing);
+Model.mixin(Functor.eventing);
 
 Model.getJsType = function Model$getJsType(name, allowUndefined) {
 	/// <summary>
@@ -242,4 +242,4 @@ Model.getJsType = function Model$getJsType(name, allowUndefined) {
 	return obj;
 };
 
-ExoWeb.Model.Model = Model;
+exports.Model = Model;

@@ -10,7 +10,7 @@ function Property(containingType, name, jstype, isList, label, format, isStatic,
 	this._name = name;
 	this._fieldName = "_" + name;
 	this._jstype = jstype;
-	this._label = label || ExoWeb.makeHumanReadable(name);
+	this._label = label || makeHumanReadable(name);
 	this._format = format;
 	this._isList = !!isList;
 	this._isStatic = !!isStatic;
@@ -518,5 +518,5 @@ Property.mixin({
 		return this;
 	}
 });
-Property.mixin(ExoWeb.Functor.eventing);
-ExoWeb.Model.Property = Property;
+Property.mixin(Functor.eventing);
+exports.Property = Property;

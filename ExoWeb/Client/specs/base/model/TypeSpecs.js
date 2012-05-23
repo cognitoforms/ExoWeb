@@ -1,40 +1,19 @@
+// Test setup
+///////////////////////////////////////
+
+var specs = require("../../SpecHelpers");
+
+specs.debug();
+specs.ensureWindow();
+
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
-jasmine.jasmine.debug = true;
-
-global.window = global;
-var ExoWeb = global.ExoWeb = { Model: {} };
-
-require("../../../src/base/core/Trace");
-require("../../../src/base/core/Activity");
-require("../../../src/base/core/Function");
-require("../../../src/base/core/Functor");
-require("../../../src/base/core/Array");
-require("../../../src/base/core/Utilities");
-require("../../../src/base/core/EventQueue");
-
-var typeChecking = require("../../../src/base/core/TypeChecking");
-
-require("../../../src/base/model/Model");
-require("../../../src/base/model/Type");
-require("../../../src/base/model/Entity");
-
-Model = ExoWeb.Model.Model;
-Entity = ExoWeb.Model.Entity;
-Type = ExoWeb.Model.Type;
-
-// References
-///////////////////////////////////////
-var describe = jasmine.describe;
-var it = jasmine.it;
-var expect = jasmine.expect;
-var beforeEach = jasmine.beforeEach;
+var eventQueueModule = specs.require("model.Type");
 
 // Test Suites
 ///////////////////////////////////////
+
 describe("Type", function() {
 	var model = new Model();
 	var foo = new Type(model, "Foo");

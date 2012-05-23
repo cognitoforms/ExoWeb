@@ -109,11 +109,11 @@ function ServerSync(model) {
 	Sys.Observer.makeObservable(this);
 }
 
-ServerSync.mixin(ExoWeb.Functor.eventing);
+ServerSync.mixin(Functor.eventing);
 
 var pendingRequests = 0;
 
-ExoWeb.registerActivity(function() {
+registerActivity(function() {
 	return pendingRequests > 0;
 });
 

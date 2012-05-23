@@ -1,28 +1,19 @@
+// Test setup
+///////////////////////////////////////
+
+var specs = require("../../SpecHelpers");
+
+specs.debug();
+specs.ensureWindow();
+
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
-window = {};
-ExoWeb = window.ExoWeb = {};
-
-var functions = require("../../../src/base/core/Function");
-var arrays = require("../../../src/base/core/Array");
-var signal = require("../../../src/base/core/Signal");
-var config = require("../../../src/base/core/Config");
-var trace = require("../../../src/base/core/Trace");
-
-ExoWeb.config = config.config;
-
-// References
-///////////////////////////////////////
-var Signal = ExoWeb.Signal;
-var describe = jasmine.describe;
-var it = jasmine.it;
-var expect = jasmine.expect;
+var signalModule = specs.require("core.Signal");
 
 // Test Suites
 ///////////////////////////////////////
+
 describe("synchronous signal", function() {
 	var signal0;
 	var callback0;
@@ -47,6 +38,7 @@ describe("synchronous signal", function() {
 
 // Run Tests
 ///////////////////////////////////////
+
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());
 jasmine.jasmine.getEnv().execute();
 

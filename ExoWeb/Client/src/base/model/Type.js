@@ -320,7 +320,7 @@ Type.prototype = {
 
 				if (prop.get_origin() !== "server") {
 					this._initExistingProps.push({ property: prop, valueFn: function () { return []; } });
-					Array.forEach(this.known(), function (obj) {
+					this.known().forEach(function (obj) {
 						prop.init(obj, []);
 					});
 				}
@@ -729,5 +729,5 @@ Type.prototype = {
 	}
 };
 
-Type.mixin(ExoWeb.Functor.eventing);
-ExoWeb.Model.Type = Type;
+Type.mixin(Functor.eventing);
+exports.Type = Type;

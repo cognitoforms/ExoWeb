@@ -9,7 +9,7 @@ global.window = {};
 global.ExoWeb = global.window.ExoWeb = {};
 
 var utilities = require("../../../src/base/core/Utilities");
-var getValue = ExoWeb.getValue;
+var getValue = utilities.getValue;
 var $format = global.window.$format;
 var isNullOrUndefined = utilities.isNullOrUndefined;
 

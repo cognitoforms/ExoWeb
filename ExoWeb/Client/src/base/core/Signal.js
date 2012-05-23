@@ -4,14 +4,14 @@ function Signal(debugLabel) {
 	this._waitForAll = [];
 	this._pending = 0;
 	var _this = this;
-	this._oneDoneFn = function Signal$_oneDoneFn() { ExoWeb.Signal.prototype.oneDone.apply(_this, arguments); };
+	this._oneDoneFn = function Signal$_oneDoneFn() { Signal.prototype.oneDone.apply(_this, arguments); };
 
 	this._debugLabel = debugLabel;
 }
 
 var setupCallbacks = function setupCallbacks() {
 	window.setTimeout(function () {
-		var callbacks, maxBatch = isNumber(ExoWeb.config.signalMaxBatchSize) ? ExoWeb.config.signalMaxBatchSize : null;
+		var callbacks, maxBatch = isNumber(config.signalMaxBatchSize) ? config.signalMaxBatchSize : null;
 		if (maxBatch && pendingSignalTimeouts.length > maxBatch) {
 			// Exceeds max batch size, so only invoke the max number and delay the rest
 			callbacks = pendingSignalTimeouts.splice(0, maxBatch);
@@ -28,7 +28,7 @@ var setupCallbacks = function setupCallbacks() {
 };
 
 function doCallback(name, thisPtr, callback, args, executeImmediately) {
-	if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
+	if (executeImmediately === false || (config.signalTimeout === true && executeImmediately !== true)) {
 		var batch = Batch.suspendCurrent("_doCallback");
 
 		// manage a queue of callbacks to ensure the order of execution
@@ -40,7 +40,7 @@ function doCallback(name, thisPtr, callback, args, executeImmediately) {
 		}
 
 		pendingSignalTimeouts.push(function() {
-			ExoWeb.Batch.resume(batch);
+			Batch.resume(batch);
 			callback.apply(thisPtr, args || []);
 		});
 
@@ -67,7 +67,7 @@ Signal.mixin({
 		return this._genCallback(callback, thisPtr, executeImmediately);
 	},
 	_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
-		if (ExoWeb.config.debug === true) {
+		if (config.debug === true) {
 			doCallback.apply(this, arguments);
 		}
 		else {
@@ -127,4 +127,4 @@ Signal.mixin({
 
 Signal.allPending = [];
 
-ExoWeb.Signal = Signal;
+exports.Signal = Signal;

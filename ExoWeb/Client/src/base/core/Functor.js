@@ -57,7 +57,7 @@ Functor.isEmpty = function Functor$isEmpty() {
 var eventsInProgress = 0;
 
 // busy if there are any events in progress
-ExoWeb.registerActivity(function() {
+registerActivity(function() {
 	return eventsInProgress > 0;
 });
 
@@ -92,4 +92,4 @@ Functor.eventing = {
 	}
 };
 
-ExoWeb.Functor = Functor;
+exports.Functor = Functor;

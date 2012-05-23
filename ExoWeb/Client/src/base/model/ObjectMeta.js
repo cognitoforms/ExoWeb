@@ -243,5 +243,5 @@ ObjectMeta.mixin({
 	}
 });
 
-ObjectMeta.mixin(ExoWeb.Functor.eventing);
-ExoWeb.Model.ObjectMeta = ObjectMeta;
+ObjectMeta.mixin(Functor.eventing);
+exports.ObjectMeta = ObjectMeta;

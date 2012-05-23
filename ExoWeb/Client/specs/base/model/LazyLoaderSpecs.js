@@ -11,7 +11,7 @@ var ExoWeb = global.ExoWeb = { Model: {} };
 Array.insert = function Array$dequeue(array, index, value) { return array.splice(index, 0, value); };
 
 var config = require("../../../src/base/core/Config");
-ExoWeb.config = config;
+global.config = config.config;
 
 var functions = require("../../../src/base/core/Function");
 var arrays = require("../../../src/base/core/Array");
@@ -21,12 +21,15 @@ logError = ExoWeb.trace.logError;
 log = ExoWeb.trace.log;
 
 var signal = require("../../../src/base/core/Signal");
+global.Signal = signal.Signal;
 
 // utilities are attached to ExoWeb object
 var typeChecking = require("../../../src/base/core/TypeChecking");
 global.isObject = typeChecking.isObject;
 
 var utilities = require("../../../src/base/core/Utilities");
+global.isType = utilities.isType;
+global.getValue = utilities.getValue;
 
 // PathTokens is referenced directly
 var PathTokens = global.PathTokens = require("../../../src/base/model/PathTokens").PathTokens;

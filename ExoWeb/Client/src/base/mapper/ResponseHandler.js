@@ -29,7 +29,7 @@ ResponseHandler.mixin({
 
 			if (this._options.types) {
 				for (var typeName in this._options.types) {
-					var signal = new ExoWeb.Signal("embeddedType(" + typeName + ")");
+					var signal = new Signal("embeddedType(" + typeName + ")");
 
 					// load type(s)
 					var typesToUse = {};
@@ -84,9 +84,9 @@ ResponseHandler.mixin({
 			/// </summary>
 
 			if (this._options.instances) {
-				var batch = ExoWeb.Batch.start();
+				var batch = Batch.start();
 				objectsFromJson(this._model, this._options.instances, function() {
-					ExoWeb.Batch.end(batch);
+					Batch.end(batch);
 					callback.apply(this, arguments);
 				}, thisPtr);
 			}

@@ -8,13 +8,13 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		path = "";
 	}
 
-	if (ExoWeb.isType(path, String)) {
+	if (isType(path, String)) {
 		path = new PathTokens(path);
 	}
-	else if (ExoWeb.isType(path, Array)) {
+	else if (isType(path, Array)) {
 		path = new PathTokens(path.join("."));
 	}
-	else if (!ExoWeb.isType(path, PathTokens)) {
+	else if (!isType(path, PathTokens)) {
 		throw new Error("Unknown path \"" + path + "\" of type " + ExoWeb.parseFunctionName(path.constructor) + ".");
 	}
 
@@ -77,7 +77,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		}
 
 		// Get the value of the current step
-		value = ExoWeb.getValue(target, step.property);
+		value = getValue(target, step.property);
 
 		// If the value is undefined then there is a problem since getValue returns null if a property exists but returns no value.
 		if (value === undefined) {
@@ -104,7 +104,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		}
 		// The next target is null (nothing left to evaluate) or there is a cast of the current property and the value is 
 		// not of the cast type (no need to continue evaluating).
-		else if (value === null || (step.cast && !ExoWeb.isType(value, step.cast))) {
+		else if (value === null || (step.cast && !isType(value, step.cast))) {
 			if (successCallback) {
 				successCallback.apply(thisPtr || this, [null, performedLoading, root]);
 			}
@@ -154,7 +154,7 @@ LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, 
 		return;
 	}
 
-	var signal = new ExoWeb.Signal("evalAll - " + path);
+	var signal = new Signal("evalAll - " + path);
 	var results = [];
 	var errors = [];
 	var successCallbacks = [];

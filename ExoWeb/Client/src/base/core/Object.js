@@ -31,7 +31,7 @@ Object.copy = function Object$Copy(obj, options/*, level*/) {
 				return new obj.constructor(value);
 			} else {
 				// don't clone entities
-				if (ExoWeb.Model && obj instanceof ExoWeb.Model.Entity) {
+				if (typeof(Entity) !== "undefined" && obj instanceof Entity) {
 					return obj;
 				}
 				else {

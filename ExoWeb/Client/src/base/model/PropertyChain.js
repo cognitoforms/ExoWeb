@@ -204,7 +204,7 @@ PropertyChain.mixin({
 					// take into account any any chain filters along the way
 					if (!this._filters[p] || this._filters[p](target[i])) {
 
-						if (enableCallback && callback(target[i], prop) === false) {
+						if (enableCallback && callback(target[i], prop, i, target) === false) {
 							return false;
 						}
 
@@ -419,18 +419,21 @@ PropertyChain.mixin({
 		/// <summary>
 		/// Determines if the property chain is initialized, akin to single Property initialization.
 		/// </summary>
-		var allInited = true, numProperties = 0;
+		var allInited = true, numProperties = 0, expectedProperties = this._properties.length, numSteps = 0, expectedSteps = 0, properties = [];
 
-		this.each(obj, function(target, property) {
-			numProperties++;
+		this.each(obj, function(target, property, targetIndex, targetArray) {
+			if (!targetArray || targetIndex === 0) {
+				// Property encountered for the first time
+				properties.push(property);
+			}
 			if (!property.isInited(target)) {
-				numProperties--;
+				properties.remove(property);
 				allInited = false;
 				return false;
 			}
 		});
 
-		return allInited && (numProperties === this._properties.length || !enforceCompleteness);
+		return allInited && (!enforceCompleteness || (properties.length === expectedProperties && numSteps === expectedSteps));
 	},
 	toString: function PropertyChain$toString() {
 		if (this._isStatic) {
@@ -443,4 +446,4 @@ PropertyChain.mixin({
 	}
 });
 
-ExoWeb.Model.PropertyChain = PropertyChain;
+exports.PropertyChain = PropertyChain;

@@ -1,41 +1,16 @@
+// Test setup
+///////////////////////////////////////
+
+var specs = require("../../SpecHelpers");
+
+specs.debug();
+specs.ensureWindow();
+
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
-var arrays = require("../../../src/base/core/Array");
-forEach = arrays.forEach;
-
-var functions = require("../../../src/base/core/Function");
-
-ExoWeb = {};
-ExoWeb.registerActivity = function() { };
-
-var functor = require("../../../src/base/core/Functor");
-Functor = ExoWeb.Functor;
-//ExoWeb.Functor = Functor = functor.Functor;
-
-var config = require("../../../src/base/core/Config");
-ExoWeb.config = config.config;
-
-var signal = require("../../../src/base/core/Signal");
-Signal = ExoWeb.Signal;
-
-var mergeFunctions = functions.mergeFunctions;
-var equals = functions.equals;
-var not = functions.not;
-var bind = functions.bind;
-var before = functions.before;
-var after = functions.after;
-var callArgument = functions.callArgument;
-
-jasmine.jasmine.debug = true;
-
-// References
-///////////////////////////////////////
-var describe = jasmine.describe;
-var it = jasmine.it;
-var expect = jasmine.expect;
+var eventQueueModule = specs.require("core.Function");
+var signalModule = specs.require("core.Signal");
 
 // Test Suites
 ///////////////////////////////////////
@@ -305,7 +280,7 @@ describe("mergeFunctions", function() {
 		});
 
 		// invoke the joined function
-		fn3.call(jasmine, 0, outerCallback, functions);
+		fn3.call(jasmine, 0, outerCallback, {});
 
 		expect(fn1).toHaveBeenCalled();
 		expect(fn2).toHaveBeenCalled();
@@ -653,6 +628,7 @@ describe("callArgument", function() {
 
 // Run Tests
 ///////////////////////////////////////
+
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());
 jasmine.jasmine.getEnv().execute();
 

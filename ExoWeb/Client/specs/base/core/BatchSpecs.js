@@ -1,26 +1,19 @@
+// Test setup
+///////////////////////////////////////
+
+var specs = require("../../SpecHelpers");
+
+specs.debug();
+specs.ensureWindow();
+
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
-window = {};
-ExoWeb = window.ExoWeb = {};
-
-var functions = require("../../../src/base/core/Function");
-var arrays = require("../../../src/base/core/Array");
-var activity = require("../../../src/base/core/Activity");
-var trace = require("../../../src/base/core/Trace");
-var batch = require("../../../src/base/core/Batch");
-
-// References
-///////////////////////////////////////
-var Batch = batch.Batch;
-var describe = jasmine.describe;
-var it = jasmine.it;
-var expect = jasmine.expect;
+var batchModule = specs.require("core.Batch");
 
 // Test Suites
 ///////////////////////////////////////
+
 describe("current batch", function() {
 	it("is no longer active after ending", function() {
 		var batch0 = Batch.start("0");
@@ -101,6 +94,6 @@ describe("batch that is resumed when a current batch exists", function() {
 
 // Run Tests
 ///////////////////////////////////////
+
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());
 jasmine.jasmine.getEnv().execute();
-

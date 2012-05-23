@@ -18,7 +18,7 @@ function registerActivity(callback, thisPtr) {
 	activityCallbacks.push(item);
 }
 
-ExoWeb.registerActivity = registerActivity;
+exports.registerActivity = registerActivity;
 
 function isBusy() {
 	for (var i = 0, len = activityCallbacks.length; i < len; i++) {
@@ -32,4 +32,4 @@ function isBusy() {
 	return false;
 }
 
-ExoWeb.isBusy = isBusy;
+exports.isBusy = isBusy;

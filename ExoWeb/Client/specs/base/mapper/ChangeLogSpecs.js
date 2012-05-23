@@ -16,9 +16,11 @@ var isNatural = global.isNatural = typeChecking.isNatural;
 var isInteger = global.isInteger = typeChecking.isInteger;
 
 var activity = require("../../../src/base/core/Activity");
+global.registerActivity = activity.registerActivity;
+
 var functions = require("../../../src/base/core/Function");
 var functor = require("../../../src/base/core/Functor");
-global.Functor = ExoWeb.Functor;
+global.Functor = functor.Functor;
 
 var arrays = require("../../../src/base/core/Array");
 var trace = require("../../../src/base/core/Trace");

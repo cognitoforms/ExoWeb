@@ -75,4 +75,4 @@ Entity.fromIdString = function Entity$fromIdString(id) {
 	return jstype.meta.get(ids[1]);
 };
 
-ExoWeb.Model.Entity = Entity;
+exports.Entity = Entity;

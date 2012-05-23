@@ -195,6 +195,7 @@
     <Content Include="Client\specs\base\mapper\ObjectLazyLoaderSpecs.js" />
     <Content Include="Client\specs\base\mapper\ServerSyncSpecs.js" />
     <Content Include="Client\specs\base\mapper\ResponseHandlerSpecs.js" />
+    <Content Include="Client\specs\base\model\PropertyChainSpecs.js" />
     <Content Include="Client\specs\base\model\TypeSpecs.js" />
     <Content Include="Client\specs\base\model\ModelSpecs.js" />
     <Content Include="Client\specs\base\model\LazyLoaderSpecs.js" />

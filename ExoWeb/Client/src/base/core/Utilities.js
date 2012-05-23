@@ -11,7 +11,7 @@ function evalPath(obj, path, nullValue, undefinedValue) {
 	for (i = 0; i < steps.length; ++i) {
 		name = steps[i];
 		source = value;
-		value = ExoWeb.getValue(source, name);
+		value = getValue(source, name);
 
 		if (value === null) {
 			return arguments.length >= 3 ? nullValue : null;
@@ -31,7 +31,7 @@ function evalPath(obj, path, nullValue, undefinedValue) {
 	return value;
 }
 
-ExoWeb.evalPath = evalPath;
+exports.evalPath = evalPath;
 
 function getLastTarget(target, propertyPath) {
 	var i, path = propertyPath, finalTarget = target;
@@ -40,19 +40,19 @@ function getLastTarget(target, propertyPath) {
 		path = path.split(".");
 	}
 	else if (!(path instanceof Array)) {
-		ExoWeb.trace.throwAndLog(["$lastTarget", "core"], "invalid parameter propertyPath");
+		throw ExoWeb.trace.logError(["$lastTarget", "core"], "invalid parameter propertyPath");
 	}
 
 	for (i = 0; i < path.length - 1; i++) {
 		if (finalTarget) {
-			finalTarget = ExoWeb.getValue(finalTarget, path[i]);
+			finalTarget = getValue(finalTarget, path[i]);
 		}
 	}
 
 	return finalTarget;
 }
 
-ExoWeb.getLastTarget = getLastTarget;
+exports.getLastTarget = getLastTarget;
 window.$lastTarget = getLastTarget;
 
 // If a getter method matching the given property name is found on the target it is invoked and returns the 
@@ -85,7 +85,7 @@ function getValue(target, property) {
 	return value;
 }
 
-ExoWeb.getValue = getValue;
+exports.getValue = getValue;
 
 function getCtor(type) {
 
@@ -93,14 +93,14 @@ function getCtor(type) {
 	if (type !== undefined && type !== null) {
 
 		// If the argument is a function then return it immediately.
-		if (ExoWeb.isType(type, Function)) {
+		if (isType(type, Function)) {
 			return type;
 
 		}
 		else {
 			var ctor;
 
-			if (ExoWeb.isType(type, String)) {
+			if (isType(type, String)) {
 				// remove "window." from the type name since it is implied
 				type = type.replace(/(window\.)?(.*)/, "$2");
 
@@ -109,7 +109,7 @@ function getCtor(type) {
 			}
 
 			// warn (and implicitly return undefined) if the result is not a javascript function
-			if (ctor !== undefined && ctor !== null && !ExoWeb.isType(ctor, Function)) {
+			if (ctor !== undefined && ctor !== null && !isType(ctor, Function)) {
 				ExoWeb.trace.logWarning("", "The given type \"{0}\" is not a function.", [type]);
 			}
 			else {
@@ -119,7 +119,7 @@ function getCtor(type) {
 	}
 }
 
-ExoWeb.getCtor = getCtor;
+exports.getCtor = getCtor;
 
 function isType(val, type) {
 
@@ -137,7 +137,7 @@ function isType(val, type) {
 			(val instanceof ctor || val.constructor === ctor);
 }
 
-ExoWeb.isType = isType;
+exports.isType = isType;
 
 function eachProp(obj, callback, thisPtr) {
 	var prop;
@@ -150,7 +150,7 @@ function eachProp(obj, callback, thisPtr) {
 	}
 }
 
-ExoWeb.eachProp = eachProp;
+exports.eachProp = eachProp;
 
 function objectToArray(obj) {
 	var list = [];
@@ -160,7 +160,7 @@ function objectToArray(obj) {
 	return list;
 }
 
-ExoWeb.objectToArray = objectToArray;
+exports.objectToArray = objectToArray;
 
 function $format(str, values) {
 	var source = null, arrayMode = false;
@@ -193,4 +193,4 @@ function makeHumanReadable(text) {
 	return text.replace(/([^A-Z]+)([A-Z])/g, "$1 $2");
 }
 
-ExoWeb.makeHumanReadable = makeHumanReadable;
+exports.makeHumanReadable = makeHumanReadable;

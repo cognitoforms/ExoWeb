@@ -1,19 +1,15 @@
+// Test setup
+///////////////////////////////////////
+
+var specs = require("../../SpecHelpers");
+
+specs.debug();
+specs.ensureWindow();
+
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
-ExoWeb = {};
-var eventQueue = require("../../../src/base/core/EventQueue");
-
-jasmine.jasmine.debug = true;
-
-// References
-///////////////////////////////////////
-var describe = jasmine.describe;
-var it = jasmine.it;
-var expect = jasmine.expect;
-var beforeEach = jasmine.beforeEach;
+var eventQueueModule = specs.require("core.EventQueue");
 
 // Test Suites
 ///////////////////////////////////////
@@ -21,7 +17,7 @@ var beforeEach = jasmine.beforeEach;
 describe("EventQueue", function() {
 	it("raises events immediately if queueing has not been enabled", function() {
 		var value = 0;
-		var queue = new ExoWeb.EventQueue(function(amount) {
+		var queue = new EventQueue(function(amount) {
 			value += amount;
 		});
 
@@ -31,7 +27,7 @@ describe("EventQueue", function() {
 
 	it("defers raising events until queueing is stopped", function() {
 		var value = 0;
-		var queue = new ExoWeb.EventQueue(function(amount) {
+		var queue = new EventQueue(function(amount) {
 			value += amount;
 		});
 
@@ -45,7 +41,7 @@ describe("EventQueue", function() {
 
 	it("only raises distinct events according to the equality function", function() {
 		var value = 0;
-		var queue = new ExoWeb.EventQueue(
+		var queue = new EventQueue(
 			function(amount) {
 				value += amount;
 			},
@@ -69,5 +65,6 @@ describe("EventQueue", function() {
 
 // Run Tests
 ///////////////////////////////////////
+
 jasmine.jasmine.getEnv().addReporter(new jasmineConsole.Reporter());
 jasmine.jasmine.getEnv().execute();

@@ -7,7 +7,7 @@ function ObjectLazyLoader() {
 
 var pendingObjects = 0;
 
-ExoWeb.registerActivity(function() {
+registerActivity(function() {
 	return pendingObjects > 0;
 });
 

@@ -31,10 +31,10 @@ var beforeEach = jasmine.beforeEach;
 describe("Model", function() {
 	it("tracks a collection of types, which is initially empty", function() {
 		// TODO: change to "types()"
-		var model = new ExoWeb.Model.Model();
+		var model = new Model();
 
 		expect(typeChecking.type(model._types)).toBe("object");
-		expect(ExoWeb.objectToArray(model._types).length).toBe(0);
+		expect(objectToArray(model._types).length).toBe(0);
 
 		expect(typeChecking.type(model.get_types())).toBe("array");
 		expect(model.get_types().length).toBe(0);

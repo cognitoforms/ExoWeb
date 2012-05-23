@@ -1270,12 +1270,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._rootLabel = label;
 		this._subscribers = [];
 
-		ExoWeb.trace.log("batch", "[{0}] {1} - created.", [this._index, this._rootLabel]);
+		//ExoWeb.trace.log("batch", "[{0}] {1} - created.", [this._index, this._rootLabel]);
 
 		allBatches.push(this);
 	}
 
-	ExoWeb.registerActivity(function() {
+	registerActivity(function() {
 		return Batch.all().length > 0;
 	});
 
@@ -1292,7 +1292,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	Batch.suspendCurrent = function Batch_$suspendCurrent(message) {
 		if (currentBatch !== null) {
 			var batch = currentBatch;
-			ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [currentBatch._index, currentBatch._rootLabel, message || ""]);
+			//ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [currentBatch._index, currentBatch._rootLabel, message || ""]);
 			currentBatch = null;
 			return batch;
 		}
@@ -1334,7 +1334,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	Batch.mixin({
 		_begin: function Batch$_begin(label) {
-			ExoWeb.trace.log("batch", "[{0}] {1} - beginning label {2}.", [this._index, this._rootLabel, label]);
+			//ExoWeb.trace.log("batch", "[{0}] {1} - beginning label {2}.", [this._index, this._rootLabel, label]);
 
 			this._labels.push(label);
 
@@ -1350,10 +1350,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Remove the last label from the list.
 			var label = this._labels.pop();
 
-			ExoWeb.trace.log("batch", "[{0}] {1} - ending label {2}.", [this._index, this._rootLabel, label]);
+			//ExoWeb.trace.log("batch", "[{0}] {1} - ending label {2}.", [this._index, this._rootLabel, label]);
 
 			if (this.isEnded()) {
-				ExoWeb.trace.log("batch", "[{0}] {1} - complete.", [this._index, this._rootLabel]);
+				//ExoWeb.trace.log("batch", "[{0}] {1} - complete.", [this._index, this._rootLabel]);
 
 				// If we are ending the current batch, then null out the current batch 
 				// variable so that new batches can be created with a new root label.
@@ -1376,7 +1376,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// given batch.  From this point forward this batch defers
 			// its behavior to the given batch.
 
-			ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
+			//ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
 
 			// Transfer labels from one batch to another.
 			otherBatch._labels.addRange(this._labels);
@@ -1397,7 +1397,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return currentBatch;
 			}
 
-			ExoWeb.trace.log("batch", "[{0}] {1} - resuming.", [this._index, this._rootLabel]);
+			//ExoWeb.trace.log("batch", "[{0}] {1} - resuming.", [this._index, this._rootLabel]);
 			currentBatch = this;
 
 			return this;
@@ -1406,7 +1406,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._labels.length === 0;
 		},
 		whenDone: function Batch$whenDone(fn, thisPtr) {
-			ExoWeb.trace.log("batch", "[{0}] {1} - subscribing to batch done.", [this._index, this._rootLabel]);
+			//ExoWeb.trace.log("batch", "[{0}] {1} - subscribing to batch done.", [this._index, this._rootLabel]);
 
 			this._subscribers.push({ fn: fn, thisPtr: thisPtr });
 
@@ -1427,14 +1427,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._waitForAll = [];
 		this._pending = 0;
 		var _this = this;
-		this._oneDoneFn = function Signal$_oneDoneFn() { ExoWeb.Signal.prototype.oneDone.apply(_this, arguments); };
+		this._oneDoneFn = function Signal$_oneDoneFn() { Signal.prototype.oneDone.apply(_this, arguments); };
 
 		this._debugLabel = debugLabel;
 	}
 
 	var setupCallbacks = function setupCallbacks() {
 		window.setTimeout(function () {
-			var callbacks, maxBatch = isNumber(ExoWeb.config.signalMaxBatchSize) ? ExoWeb.config.signalMaxBatchSize : null;
+			var callbacks, maxBatch = isNumber(config.signalMaxBatchSize) ? config.signalMaxBatchSize : null;
 			if (maxBatch && pendingSignalTimeouts.length > maxBatch) {
 				// Exceeds max batch size, so only invoke the max number and delay the rest
 				callbacks = pendingSignalTimeouts.splice(0, maxBatch);
@@ -1451,7 +1451,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	function doCallback(name, thisPtr, callback, args, executeImmediately) {
-		if (executeImmediately === false || (ExoWeb.config.signalTimeout === true && executeImmediately !== true)) {
+		if (executeImmediately === false || (config.signalTimeout === true && executeImmediately !== true)) {
 			var batch = Batch.suspendCurrent("_doCallback");
 
 			// manage a queue of callbacks to ensure the order of execution
@@ -1463,7 +1463,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			pendingSignalTimeouts.push(function() {
-				ExoWeb.Batch.resume(batch);
+				Batch.resume(batch);
 				callback.apply(thisPtr, args || []);
 			});
 
@@ -1490,7 +1490,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this._genCallback(callback, thisPtr, executeImmediately);
 		},
 		_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
-			if (ExoWeb.config.debug === true) {
+			if (config.debug === true) {
 				doCallback.apply(this, arguments);
 			}
 			else {
@@ -1616,7 +1616,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	var eventsInProgress = 0;
 
 	// busy if there are any events in progress
-	ExoWeb.registerActivity(function() {
+	registerActivity(function() {
 		return eventsInProgress > 0;
 	});
 
@@ -2446,7 +2446,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		for (i = 0; i < steps.length; ++i) {
 			name = steps[i];
 			source = value;
-			value = ExoWeb.getValue(source, name);
+			value = getValue(source, name);
 
 			if (value === null) {
 				return arguments.length >= 3 ? nullValue : null;
@@ -2475,12 +2475,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			path = path.split(".");
 		}
 		else if (!(path instanceof Array)) {
-			ExoWeb.trace.throwAndLog(["$lastTarget", "core"], "invalid parameter propertyPath");
+			throw ExoWeb.trace.logError(["$lastTarget", "core"], "invalid parameter propertyPath");
 		}
 
 		for (i = 0; i < path.length - 1; i++) {
 			if (finalTarget) {
-				finalTarget = ExoWeb.getValue(finalTarget, path[i]);
+				finalTarget = getValue(finalTarget, path[i]);
 			}
 		}
 
@@ -2528,14 +2528,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		if (type !== undefined && type !== null) {
 
 			// If the argument is a function then return it immediately.
-			if (ExoWeb.isType(type, Function)) {
+			if (isType(type, Function)) {
 				return type;
 
 			}
 			else {
 				var ctor;
 
-				if (ExoWeb.isType(type, String)) {
+				if (isType(type, String)) {
 					// remove "window." from the type name since it is implied
 					type = type.replace(/(window\.)?(.*)/, "$2");
 
@@ -2544,7 +2544,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				// warn (and implicitly return undefined) if the result is not a javascript function
-				if (ctor !== undefined && ctor !== null && !ExoWeb.isType(ctor, Function)) {
+				if (ctor !== undefined && ctor !== null && !isType(ctor, Function)) {
 					ExoWeb.trace.logWarning("", "The given type \"{0}\" is not a function.", [type]);
 				}
 				else {
@@ -2824,7 +2824,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					return new obj.constructor(value);
 				} else {
 					// don't clone entities
-					if (ExoWeb.Model && obj instanceof ExoWeb.Model.Entity) {
+					if (typeof(Entity) !== "undefined" && obj instanceof Entity) {
 						return obj;
 					}
 					else {
@@ -3421,7 +3421,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	function Model() {
 		this._types = {};
 
-		this._validatingQueue = new ExoWeb.EventQueue(
+		this._validatingQueue = new EventQueue(
 			function(e) {
 				var meta = e.sender;
 				meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName]);
@@ -3431,7 +3431,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		);
 
-		this._validatedQueue = new ExoWeb.EventQueue(
+		this._validatedQueue = new EventQueue(
 			function(e) {
 				var meta = e.sender;
 				var propName = e.property;
@@ -3637,7 +3637,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	};
 
-	Model.mixin(ExoWeb.Functor.eventing);
+	Model.mixin(Functor.eventing);
 
 	Model.getJsType = function Model$getJsType(name, allowUndefined) {
 		/// <summary>
@@ -3773,10 +3773,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// generate class and constructor
 		var jstype = Model.getJsType(name, true);
 
-		if (jstype) {
-			ExoWeb.trace.throwAndLog(["model"], "'{1}' has already been declared", arguments);
-		}
-
 		// create namespaces as needed
 		var nameTokens = name.split("."),
 			token = nameTokens.dequeue(),
@@ -3790,7 +3786,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var finalName = token;
 		jstype = generateClass(this);
 
-		this._jstype = namespaceObj[finalName] = jstype;
+		this._jstype = jstype;
+
+		// If the namespace already contains a type with this name, append a '$' to the name
+		if (!namespaceObj[finalName]) {
+			namespaceObj[finalName] = jstype;
+		}
+		else {
+			namespaceObj['$' + finalName] = jstype;
+		}
 
 		// setup inheritance
 		this.derivedTypes = [];
@@ -4071,7 +4075,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					if (prop.get_origin() !== "server") {
 						this._initExistingProps.push({ property: prop, valueFn: function () { return []; } });
-						Array.forEach(this.known(), function (obj) {
+						this.known().forEach(function (obj) {
 							prop.init(obj, []);
 						});
 					}
@@ -4480,7 +4484,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	};
 
-	Type.mixin(ExoWeb.Functor.eventing);
+	Type.mixin(Functor.eventing);
 	ExoWeb.Model.Type = Type;
 
 	// #endregion
@@ -4500,7 +4504,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._name = name;
 		this._fieldName = "_" + name;
 		this._jstype = jstype;
-		this._label = label || ExoWeb.makeHumanReadable(name);
+		this._label = label || makeHumanReadable(name);
 		this._format = format;
 		this._isList = !!isList;
 		this._isStatic = !!isStatic;
@@ -5008,7 +5012,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return this;
 		}
 	});
-	Property.mixin(ExoWeb.Functor.eventing);
+	Property.mixin(Functor.eventing);
 	ExoWeb.Model.Property = Property;
 
 	// #endregion
@@ -5321,7 +5325,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						// take into account any any chain filters along the way
 						if (!this._filters[p] || this._filters[p](target[i])) {
 
-							if (enableCallback && callback(target[i], prop) === false) {
+							if (enableCallback && callback(target[i], prop, i, target) === false) {
 								return false;
 							}
 
@@ -5536,18 +5540,21 @@ Type.registerNamespace("ExoWeb.DotNet");
 			/// <summary>
 			/// Determines if the property chain is initialized, akin to single Property initialization.
 			/// </summary>
-			var allInited = true, numProperties = 0;
+			var allInited = true, numProperties = 0, expectedProperties = this._properties.length, numSteps = 0, expectedSteps = 0, properties = [];
 
-			this.each(obj, function(target, property) {
-				numProperties++;
+			this.each(obj, function(target, property, targetIndex, targetArray) {
+				if (!targetArray || targetIndex === 0) {
+					// Property encountered for the first time
+					properties.push(property);
+				}
 				if (!property.isInited(target)) {
-					numProperties--;
+					properties.remove(property);
 					allInited = false;
 					return false;
 				}
 			});
 
-			return allInited && (numProperties === this._properties.length || !enforceCompleteness);
+			return allInited && (!enforceCompleteness || (properties.length === expectedProperties && numSteps === expectedSteps));
 		},
 		toString: function PropertyChain$toString() {
 			if (this._isStatic) {
@@ -5812,7 +5819,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	});
 
-	ObjectMeta.mixin(ExoWeb.Functor.eventing);
+	ObjectMeta.mixin(Functor.eventing);
 	ExoWeb.Model.ObjectMeta = ObjectMeta;
 
 	// #endregion
@@ -7369,13 +7376,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 			path = "";
 		}
 
-		if (ExoWeb.isType(path, String)) {
+		if (isType(path, String)) {
 			path = new PathTokens(path);
 		}
-		else if (ExoWeb.isType(path, Array)) {
+		else if (isType(path, Array)) {
 			path = new PathTokens(path.join("."));
 		}
-		else if (!ExoWeb.isType(path, PathTokens)) {
+		else if (!isType(path, PathTokens)) {
 			throw new Error("Unknown path \"" + path + "\" of type " + ExoWeb.parseFunctionName(path.constructor) + ".");
 		}
 
@@ -7438,7 +7445,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// Get the value of the current step
-			value = ExoWeb.getValue(target, step.property);
+			value = getValue(target, step.property);
 
 			// If the value is undefined then there is a problem since getValue returns null if a property exists but returns no value.
 			if (value === undefined) {
@@ -7465,7 +7472,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 			// The next target is null (nothing left to evaluate) or there is a cast of the current property and the value is 
 			// not of the cast type (no need to continue evaluating).
-			else if (value === null || (step.cast && !ExoWeb.isType(value, step.cast))) {
+			else if (value === null || (step.cast && !isType(value, step.cast))) {
 				if (successCallback) {
 					successCallback.apply(thisPtr || this, [null, performedLoading, root]);
 				}
@@ -7515,7 +7522,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return;
 		}
 
-		var signal = new ExoWeb.Signal("evalAll - " + path);
+		var signal = new Signal("evalAll - " + path);
 		var results = [];
 		var errors = [];
 		var successCallbacks = [];
@@ -8095,7 +8102,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				if (this._options.types) {
 					for (var typeName in this._options.types) {
-						var signal = new ExoWeb.Signal("embeddedType(" + typeName + ")");
+						var signal = new Signal("embeddedType(" + typeName + ")");
 
 						// load type(s)
 						var typesToUse = {};
@@ -8150,9 +8157,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 				/// </summary>
 
 				if (this._options.instances) {
-					var batch = ExoWeb.Batch.start();
+					var batch = Batch.start();
 					objectsFromJson(this._model, this._options.instances, function() {
-						ExoWeb.Batch.end(batch);
+						Batch.end(batch);
 						callback.apply(this, arguments);
 					}, thisPtr);
 				}
@@ -8787,11 +8794,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		Sys.Observer.makeObservable(this);
 	}
 
-	ServerSync.mixin(ExoWeb.Functor.eventing);
+	ServerSync.mixin(Functor.eventing);
 
 	var pendingRequests = 0;
 
-	ExoWeb.registerActivity(function() {
+	registerActivity(function() {
 		return pendingRequests > 0;
 	});
 
@@ -11066,7 +11073,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var pendingObjects = 0;
 
-	ExoWeb.registerActivity(function() {
+	registerActivity(function() {
 		return pendingObjects > 0;
 	});
 

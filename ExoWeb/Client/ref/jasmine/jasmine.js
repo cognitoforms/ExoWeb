@@ -1580,10 +1580,17 @@ jasmine.PrettyPrinter.prototype.format = function(value) {
   }
 };
 
-jasmine.PrettyPrinter.prototype.iterateObject = function(obj, fn) {
+jasmine.PrettyPrinter.prototype.iterateObject = function(includePrototypes, obj, fn) {
+  if (typeof(includePrototypes) !== "boolean") {
+    fn = obj;
+    obj = includePrototypes;
+    includePrototypes = false;
+  }
   for (var property in obj) {
     if (property == '__Jasmine_been_here_before__') continue;
-    fn(property, obj.__lookupGetter__ ? (obj.__lookupGetter__(property) != null) : false);
+    if (includePrototypes || obj.hasOwnProperty(property)) {
+        fn(property, obj.__lookupGetter__ ? (obj.__lookupGetter__(property) != null) : false);
+    }
   }
 };
 
@@ -1634,6 +1641,8 @@ jasmine.StringPrettyPrinter.prototype.emitObject = function(obj) {
     self.append(' : ');
     if (isGetter) {
       self.append('<getter>');
+    } else if (Object.prototype.toString.call(obj[property]) === "[object Object]") {
+        self.append("[object]");
     } else {
       self.format(obj[property]);
     }

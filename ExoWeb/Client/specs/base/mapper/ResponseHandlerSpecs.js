@@ -11,10 +11,18 @@ ExoWeb = {};
 var functions = require("../../../src/base/core/Function");
 var functionChain = require("../../../src/base/core/FunctionChain");
 var arrays = require("../../../src/base/core/Array");
+
 var config = require("../../../src/base/core/Config");
+global.config = config.config;
+
 var trace = require("../../../src/base/core/Trace");
+
 var activity = require("../../../src/base/core/Activity");
+global.registerActivity = activity.registerActivity;
+
 var signal = require("../../../src/base/core/Signal");
+global.Signal = signal.Signal;
+
 var utilities = require("../../../src/base/core/Utilities");
 
 ExoWeb.config = config.config;
@@ -23,7 +31,7 @@ ExoWeb.config.signalDebug = true;
 //ExoWeb.Signal = signal.Signal;
 //ExoWeb.registerActivity = activity.registerActivity;
 var batch = require("../../../src/base/core/Batch");
-ExoWeb.Batch = batch.Batch;
+global.Batch = batch.Batch;
 //var internals = require("../../../src/base/mapper/Internals");
 //var pathTokens = require("../../../src/base/model/PathTokens");
 //var context = require("../../../src/base/mapper/Context");

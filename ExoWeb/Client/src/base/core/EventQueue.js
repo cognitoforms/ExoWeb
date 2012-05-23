@@ -51,4 +51,4 @@ EventQueue.prototype = {
 	}
 };
 
-ExoWeb.EventQueue = EventQueue;
+exports.EventQueue = EventQueue;

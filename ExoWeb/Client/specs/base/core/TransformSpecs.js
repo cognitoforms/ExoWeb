@@ -16,7 +16,7 @@ var functions = require("../../../src/base/core/Array");
 var functions = require("../../../src/base/core/Function");
 var trace = require("../../../src/base/core/Trace");
 var utilities = require("../../../src/base/core/Utilities");
-global.evalPath = ExoWeb.evalPath;
+global.evalPath = ExoWeb.evalPath = utilities.evalPath;
 var transform = require("../../../src/base/core/Transform");
 
 // References

@@ -60,10 +60,16 @@ String.prototype.inNamespace = function(ns) {
 exports.init = function() {
 	ensureNode("core.TypeChecking");
 	ensureNode("core.Utilities");
+	"core.Signal".dependsOn("core.Functor", "core.Function", "core.Config");
 	"core.Functor".dependsOn("core.Activity");
-	"model.Model".dependsOn("core.Functor", "core.Function", "core.EventQueue");
+	"core.Function".dependsOn("core.Array", "core.Functor");
+	"core.Batch".dependsOn("core.Activity", "core.Function", "core.Array");
+	"model.Model".dependsOn("core.Functor", "core.Function", "core.EventQueue", "model.PathTokens");
 	"mapper.ServerSync".dependsOn("core.Trace", "core.Utilities", "core.Functor", "core.Function");
 	"mapper.ObjectLazyLoader".dependsOn("core.Activity", "core.Function", "model.LazyLoader", "core.Array");
+	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity");
+	"model.Property".dependsOn("core.Utilities", "model.LazyLoader");
+	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object");
 };
 
 // Module loading
@@ -75,10 +81,6 @@ function getModulePath(basePath, name) {
 
 var currentlyRequiring = [];
 function requireWithDependencies(moduleNode, basePath, rootModuleName, depth) {
-	if (currentlyRequiring.indexOf(moduleNode) >= 0) {
-		throw new Error("Circular reference detected when loading " + rootModuleName + ": " + currentlyRequiring.join(", "));
-	}
-
 	var prefix = "";
 	for (var i = 0; i < depth; i++) {
 		prefix += "\t";
@@ -89,16 +91,18 @@ function requireWithDependencies(moduleNode, basePath, rootModuleName, depth) {
 		return moduleNode.module;
 	}
 
-	log(prefix + "Loading module \"" + moduleNode.name + "\".");
-
 	prefix += "\t";
 
-	currentlyRequiring.push(moduleNode);
+	if (currentlyRequiring.indexOf(moduleNode) < 0) {
+		log(prefix + "Loading module \"" + moduleNode.name + "\".");
 
-	moduleNode.dependencies.forEach(function(dep) {
-		log(prefix + "Found dependency \"" + dep.name + "\" for \"" + moduleNode.name + "\"");
-		requireWithDependencies(dep, basePath, rootModuleName, depth + 1);
-	});
+		currentlyRequiring.push(moduleNode);
+
+		moduleNode.dependencies.forEach(function(dep) {
+			log(prefix + "Found dependency \"" + dep.name + "\" for \"" + moduleNode.name + "\"");
+			requireWithDependencies(dep, basePath, rootModuleName, depth + 1);
+		});
+	}
 
 	var modulePath = getModulePath(basePath, moduleNode.name);
 	log(prefix + "Requiring \"" + moduleNode.name + "\" from \"" + modulePath + "\"");
