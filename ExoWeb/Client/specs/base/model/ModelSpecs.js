@@ -2,7 +2,7 @@
 ///////////////////////////////////////
 var specs = require("../../SpecHelpers");
 
-specs.debug();
+//specs.debug();
 specs.ensureWindow();
 specs.ensureNamespace("ExoWeb.Model");
 

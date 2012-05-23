@@ -5282,7 +5282,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		append: function PropertyChain$append(prop) {
 			Array.addRange(this._properties, prop.all());
 		},
-		each: function PropertyChain$each(obj, callback, propFilter /*, target, p, lastProp*/) {
+		each: function PropertyChain$each(obj, callback, thisPtr, propFilter /*, target, p, lastProp*/) {
 			/// <summary>
 			/// Iterates over all objects along a property chain starting with the root object (obj).  This
 			/// is analogous to the Array forEach function.  The callback may return a Boolean value to indicate 
@@ -5299,7 +5299,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			/// If specified, only iterates over objects that are RETURNED by the property filter.  In other
 			/// words, steps that correspond to a value or values of the chain at a specific property step).
 			/// For example, if the chain path is "this.PropA.ListPropB", then...
-			///     chain.each(target, callback, ListPropB);
+			///     chain.each(target, callback, null, ListPropB);
 			/// ...will iterate of the values of the list property only.
 			/// </param>
 
@@ -5312,9 +5312,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// invoke callback on obj first
-			var target = arguments[3] || obj;
-			var lastProp = arguments[5] || null;
-			for (var p = arguments[4] || 0; p < this._properties.length; p++) {
+			var target = arguments[4] || obj;
+			var lastProp = arguments[6] || null;
+			var props = this._properties.slice(arguments[5] || 0);
+			for (var p = arguments[5] || 0; p < this._properties.length; p++) {
 				var prop = this._properties[p];
 				var canSkipRemainingProps = propFilter && lastProp === propFilter;
 				var enableCallback = (!propFilter || lastProp === propFilter);
@@ -5325,13 +5326,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 						// take into account any any chain filters along the way
 						if (!this._filters[p] || this._filters[p](target[i])) {
 
-							if (enableCallback && callback(target[i], prop, i, target) === false) {
+							if (enableCallback && callback.call(thisPtr || this, target[i], i, target, prop, p, props) === false) {
 								return false;
 							}
 
 							var targetValue = prop.value(target[i]);
 							// continue along the chain for this list item
-							if (!canSkipRemainingProps && (!targetValue || this.each(obj, callback, propFilter, targetValue, p + 1, prop) === false)){
+							if (!canSkipRemainingProps && (!targetValue || this.each(obj, callback, thisPtr, propFilter, targetValue, p + 1, prop) === false)){
 								return false;
 							}
 						}
@@ -5346,7 +5347,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 
 					// take into account any chain filters along the way
-					if (enableCallback && callback(target, prop) === false) {
+					if (enableCallback && callback.call(thisPtr || this, target, -1, null, prop, p, props) === false) {
 						return false;
 					}
 				}
@@ -5437,7 +5438,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					connected = true;
 					return false;
 				}
-			}, viaProperty);
+			}, this, viaProperty);
 
 			return connected;
 		},
@@ -5536,25 +5537,39 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return (target !== undefined && target !== null) ? prop.value(target) : null;
 			}
 		},
-		isInited: function PropertyChain$isInited(obj, enforceCompleteness) {
+		isInited: function PropertyChain$isInited(obj, enforceCompleteness /*, fromIndex, fromProp*/) {
 			/// <summary>
 			/// Determines if the property chain is initialized, akin to single Property initialization.
 			/// </summary>
-			var allInited = true, numProperties = 0, expectedProperties = this._properties.length, numSteps = 0, expectedSteps = 0, properties = [];
+			var allInited = true, initedProperties = [], fromIndex = arguments[2] || 0, fromProp = arguments[3] || null, expectedProps = this._properties.length - fromIndex;
 
-			this.each(obj, function(target, property, targetIndex, targetArray) {
-				if (!targetArray || targetIndex === 0) {
-					// Property encountered for the first time
-					properties.push(property);
-				}
-				if (!property.isInited(target)) {
-					properties.remove(property);
-					allInited = false;
+			this.each(obj, function(target, targetIndex, targetArray, property, propertyIndex, properties) {
+				if (targetArray && enforceCompleteness) {
+					if (targetArray.every(function(item) { return this.isInited(item, true, propertyIndex, properties[propertyIndex - 1]); }, this)) {
+						Array.prototype.push.apply(initedProperties, properties.slice(propertyIndex));
+					}
+					else {
+						allInited = false;
+					}
+
+					// Stop iterating at an array value
 					return false;
 				}
-			});
+				else {
+					if (!targetArray || targetIndex === 0) {
+						initedProperties.push(property);
+					}
+					if (!property.isInited(target)) {
+						initedProperties.remove(property);
+						allInited = false;
 
-			return allInited && (!enforceCompleteness || (properties.length === expectedProperties && numSteps === expectedSteps));
+						// Exit immediately since chain is not inited
+						return false;
+					}
+				}
+			}, this, null, obj, fromIndex, fromProp);
+
+			return allInited && (!enforceCompleteness || initedProperties.length === expectedProps);
 		},
 		toString: function PropertyChain$toString() {
 			if (this._isStatic) {

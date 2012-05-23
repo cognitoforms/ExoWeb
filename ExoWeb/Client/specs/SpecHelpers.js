@@ -5,6 +5,7 @@ global.describe = jasmine.describe;
 global.it = jasmine.it;
 global.expect = jasmine.expect;
 global.beforeEach = jasmine.beforeEach;
+global.afterEach = jasmine.afterEach;
 
 var jasmineConsole = require("../ref/jasmine/jasmine.console");
 global.jasmineConsole = jasmineConsole;

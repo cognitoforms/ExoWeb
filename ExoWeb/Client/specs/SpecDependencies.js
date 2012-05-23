@@ -67,9 +67,9 @@ exports.init = function() {
 	"model.Model".dependsOn("core.Functor", "core.Function", "core.EventQueue", "model.PathTokens");
 	"mapper.ServerSync".dependsOn("core.Trace", "core.Utilities", "core.Functor", "core.Function");
 	"mapper.ObjectLazyLoader".dependsOn("core.Activity", "core.Function", "model.LazyLoader", "core.Array");
-	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity");
-	"model.Property".dependsOn("core.Utilities", "model.LazyLoader");
-	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object");
+	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity", "model.ObjectMeta");
+	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type");
+	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object", "model.Property");
 };
 
 // Module loading

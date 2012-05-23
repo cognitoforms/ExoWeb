@@ -1626,29 +1626,7 @@ jasmine.StringPrettyPrinter.prototype.emitArray = function(array) {
 };
 
 jasmine.StringPrettyPrinter.prototype.emitObject = function(obj) {
-  var self = this;
-  this.append('{ ');
-  var first = true;
-
-  this.iterateObject(obj, function(property, isGetter) {
-    if (first) {
-      first = false;
-    } else {
-      self.append(', ');
-    }
-
-    self.append(property);
-    self.append(' : ');
-    if (isGetter) {
-      self.append('<getter>');
-    } else if (Object.prototype.toString.call(obj[property]) === "[object Object]") {
-        self.append("[object]");
-    } else {
-      self.format(obj[property]);
-    }
-  });
-
-  this.append(' }');
+  this.append('[object Object]');
 };
 
 jasmine.StringPrettyPrinter.prototype.append = function(value) {
