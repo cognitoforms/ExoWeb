@@ -11,6 +11,7 @@
 		<script src="../Common/Scripts/Microsoft/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/ExoWeb/exoweb-msajax.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
+		<script src="TransformInterface.js" type="text/javascript"></script>
 		
 		<script type="text/javascript">
 			var mh = { FirstName: "Matt", LastName: "Hooper", Grade: "01" };
@@ -26,8 +27,10 @@
 				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade !== null"), [mh, bm, pg, sg, ag]);
 				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == null"), [jd]);
 				same($transform([mh, bm, pg, jd, sg, ag]).where("$item.LastName != 'Doe'"), [mh, bm, pg, sg, ag]);
-				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == '01' || LastName == 'Doe'"), [mh, bm, jd]);
-				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == '02' && FirstName == 'Sam'"), [sg]);
+
+				// TODO
+//				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == '01' || LastName == 'Doe'"), [mh, bm, jd]);
+//				same($transform([mh, bm, pg, jd, sg, ag]).where("Grade == '02' && FirstName == 'Sam'"), [sg]);
 			});
 
 			test("where function", function() {
@@ -99,6 +102,81 @@
 				ok(transform.live() instanceof Array, "The result is an array after live is called.");
 			});
 
+			test("groupBy(item[0])", function() {
+
+				givenList("Apple", "Orange", "Banana", "Artichoke")
+					.whenGroupedBy(function(item) { return item[0]; })
+					.theResultIs({ group: "A", items: ["Apple", "Artichoke"] },
+									 { group: "O", items: ["Orange"] },
+									 { group: "B", items: ["Banana"] });
+
+			});
+
+			test("groupBy(item[0]).live() common constraints", function() {
+
+				givenList("Apple", "Orange", "Banana", "Artichoke")
+					.whenGroupedBy(function(item) { return item[0]; })
+					.andLive()
+					.theLiveResultIsNewArray()
+					.butHasTheSameItems();
+
+			});
+
+			test("groupBy(item[0]).live() removed item results in removed group", function() {
+
+				givenList("Apple", "Orange", "Banana", "Artichoke")
+					.whenGroupedBy(function(item) { return item[0]; })
+					.andLive()
+					.andRemove("Banana")
+					.itemIsRemoved(2, { group: "B", items: [] })
+					.andTheResultIs({ group: "A", items: ["Apple", "Artichoke"] },
+									{ group: "O", items: ["Orange"] });
+
+			});
+
+			test("orderBy(length desc).live() common constraints", function() {
+
+				givenList("Apple", "Orange", "Banana", "Artichoke")
+					.whenOrderedBy("length desc")
+					.andLive()
+					.theLiveResultIsNewArray()
+					.butHasTheSameItems();
+
+			});
+
+			test("orderBy(length desc).live() removed item is removed from result", function() {
+
+				givenList("Apple", "Orange", "Banana", "Artichoke")
+					.whenOrderedBy("length desc")
+					.andLive()
+					.andRemove("Banana")
+					.itemIsRemoved(2, "Banana")
+					.andTheResultIs("Artichoke", "Orange", "Apple");
+
+			});
+
+			test("where($item[0] !== 'A').live() common constraints", function() {
+
+				givenList("Apple", "Orange", "Banana", "Artichoke")
+					.whenFilteredBy("$item[0] !== 'A'")
+					.andLive()
+					.theLiveResultIsNewArray()
+					.butHasTheSameItems();
+
+			});
+
+			test("where($item[0] !== 'A').live() removed item is removed from result", function() {
+
+				givenList("Apple", "Orange", "Banana", "Artichoke")
+					.whenFilteredBy("$item[0] !== 'A'")
+					.theResultIs("Orange", "Banana")
+					.whenLive()
+					.andRemove("Banana")
+					.itemIsRemoved(1, "Banana")
+					.andTheResultIs("Orange");
+
+			});
+
 			test("live function", function() {
 				var list = ["Apple", "Orange", "Banana", "Artichoke"];
 				Sys.Observer.makeObservable(list);
@@ -135,6 +213,19 @@
 				same(where, ["Orange", "Banana"], "non-live where output should not be affected");
 				same(whereLive, ["Orange"], "item should be removed from live where output");
 				list.add("Banana");
+
+				same(list, ["Apple", "Orange", "Artichoke", "Banana"]);
+				list.add("Avocado");
+				list.add("Lemon");
+				same(list, ["Apple", "Orange", "Artichoke", "Banana", "Avocado", "Lemon"]);
+				equals(grouped.length, 3, "non-live grouped output should not be affected");
+				equals(groupedLive.length, 4, "should be three groups after array update");
+				same(ordered, ["Artichoke", "Orange", "Banana", "Apple"], "non-live ordered output should not be affected");
+				same(orderedLive, ["Artichoke", "Avocado", "Orange", "Banana", "Apple", "Lemon"], "item should be added to live ordered output");
+				same(where, ["Orange", "Banana"], "non-live where output should not be affected");
+				same(whereLive, ["Orange", "Banana", "Lemon"], "item should be removed from live where output");
+				list.remove("Lemon");
+				list.remove("Avocado");
 
 				list.insert(0, "Raspberry");
 				equals(grouped.length, 3, "non-live grouped output should not be affected");
