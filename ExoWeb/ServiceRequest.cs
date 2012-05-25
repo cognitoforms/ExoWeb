@@ -242,10 +242,14 @@ namespace ExoWeb
 				response.Events = Events
 					.Select((domainEvent) =>
 					{
-						if (transaction != null)
-							domainEvent.Instance = transaction.GetInstance(domainEvent.Instance.Type, domainEvent.Instance.Id);
-						else
-							domainEvent.Instance.Type.Create(domainEvent.Instance.Id);
+						// Restore the instance to be a valid model instance
+						if (domainEvent.Instance != null)
+						{
+							if (transaction != null)
+								domainEvent.Instance = transaction.GetInstance(domainEvent.Instance.Type, domainEvent.Instance.Id);
+							else
+								domainEvent.Instance.Type.Create(domainEvent.Instance.Id);
+						}
 
 						var result = domainEvent.Raise(transaction);
 
@@ -428,29 +432,40 @@ namespace ExoWeb
 
 				// Get the type of event
 				string eventName = json.Get<string>("type");
-				Type eventType = eventName == "Save" ? typeof(SaveEvent) : instance.Type.GetEventType(eventName);
 
-				// Strongly-type event
-				if (eventType != null)
+				// Instance must be specified for domain events
+				if (instance != null)
 				{
-					// Create a generic event instance
-					DomainEvent domainEvent = (DomainEvent)typeof(DomainEvent<>)
-						.MakeGenericType(eventType)
-						.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { eventType }, null)
-						.Invoke(new object[] { json.Get(eventType, "event") });
+					Type eventType = eventName == "Save" ? typeof(SaveEvent) : instance.Type.GetEventType(eventName);
 
-					// Set the event target and inclusion paths
-					domainEvent.Instance = instance;
-					domainEvent.Include = Include;
+					// Strongly-type event
+					if (eventType != null)
+					{
+						// Create a generic event instance
+						DomainEvent domainEvent = (DomainEvent)typeof(DomainEvent<>)
+							.MakeGenericType(eventType)
+							.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { eventType }, null)
+							.Invoke(new object[] { json.Get(eventType, "event") });
 
-					// Return the new event
-					return domainEvent;
+						// Set the event target and inclusion paths
+						domainEvent.Instance = instance;
+						domainEvent.Include = Include;
+
+						// Return the new event
+						return domainEvent;
+					}
 				}
 
 				// Model method
+				var separator =  eventName.LastIndexOf(".");
+				var type = ModelContext.Current.GetModelType(eventName.Substring(0, separator));
+				var methodName = eventName.Substring(separator + 1);
 				ModelMethod method = null;
-				for(var t = instance.Type; t != null && method == null; t = t.BaseType)
-					method = t.Methods[eventName];
+				while (type != null && method == null)
+				{
+					method = type.Methods[methodName];
+					type = type.BaseType;
+				}
 
 				if (method != null)
 					return new ModelMethodEvent(instance, method, json.Get<Json>("event"), Include);

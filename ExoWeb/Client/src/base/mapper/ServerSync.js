@@ -380,7 +380,7 @@ ServerSync.mixin({
 
 	// Raise Server Event
 	///////////////////////////////////////////////////////////////////////
-	raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed, paths) {
+	raiseServerEvent: function ServerSync$raiseServerEvent(name, instance, event, includeAllChanges, success, failed, paths) {
 		pendingRequests++;
 
 		// Checkpoint the log to ensure that we only truncate changes that were saved.
@@ -388,7 +388,7 @@ ServerSync.mixin({
 
 		Sys.Observer.setValue(this, "PendingServerEvent", true);
 
-		var args = { type: "raiseServerEvent", eventTarget: obj, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
+		var args = { type: "raiseServerEvent", eventTarget: instance, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
 		this._raiseBeginEvents("raiseServerEvent", args);
 
 		// if no event object is provided then use an empty object
@@ -409,12 +409,12 @@ ServerSync.mixin({
 
 		eventProvider(
 			name,
-			toExoModel(obj, this._translator),
+			toExoModel(instance, this._translator),
 			event,
 			paths,
 		// If includeAllChanges is true, then use all changes including those 
 		// that should not be saved, otherwise only use changes that can be saved.
-			serializeChanges.call(this, includeAllChanges, obj),
+			serializeChanges.call(this, includeAllChanges, instance),
 			this._onRaiseServerEventSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
 		);

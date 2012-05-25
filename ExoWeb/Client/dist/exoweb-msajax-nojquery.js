@@ -4092,7 +4092,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				prop.init(null, []);
 			}
 
-
+		 
 			if (prop.get_isStatic()) {
 				// for static properties add member to javascript type
 				this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
@@ -4113,10 +4113,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			this._raiseEvent("propertyAdded", [this, { property: prop}]);
 
-			return prop;
+			return prop; 
 		},
 		addMethod: function Type$addMethod(def) {
-			this._jstype.prototype[def.name] = function () {
+			var methodName = this.get_fullName() + "." + def.name;
+			var method = function () {
 				// Detect the optional success and failure callback delegates
 				var onSuccess;
 				var onFail;
@@ -4145,13 +4146,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				var argCount = arguments.length - (onSuccess === undefined ? 0 : 1) - (onFail === undefined ? 0 : 1);
 				var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length === 0 || arguments[0][def.parameters[0]] === undefined);
+				var instance = this instanceof Entity ? this : null;
 
 				if (argCount >= 1 && argCount <= 2 && arguments[0] instanceof Object &&
 						((argCount == 1 && (def.parameters.length != 1 || firstArgCouldBeParameterSet)) ||
 						((argCount == 2 && (def.parameters.length != 2 || (firstArgCouldBeParameterSet && arguments[1] instanceof Array)))))) {
 
 					// Invoke the server event
-					context.server.raiseServerEvent(def.name, this, arguments[0], false, onSuccessFn, onFail, argCount == 2 ? arguments[1] : null);
+					context.server.raiseServerEvent(methodName, instance, arguments[0], false, onSuccessFn, onFail, argCount == 2 ? arguments[1] : null);
 				}
 
 				// Otherwise, assume that the parameters were all passed in sequential order
@@ -4171,9 +4173,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 
 					// Invoke the server event
-					context.server.raiseServerEvent(def.name, this, args, false, onSuccessFn, onFail, paths);
+					context.server.raiseServerEvent(methodName, instance, args, false, onSuccessFn, onFail, paths);
 				}
 			};
+
+			// Assign the method to the type for static methods, otherwise assign it to the prototype for instance methods
+			if (def.isStatic){
+				this._jstype[def.name] = method;
+			}
+			else {
+				this._jstype.prototype[def.name] = method;
+			}
+
 		},
 		_makeGetter: function Type$_makeGetter(receiver, fn, skipTypeCheck) {
 			return function () {
@@ -9080,7 +9091,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Raise Server Event
 		///////////////////////////////////////////////////////////////////////
-		raiseServerEvent: function ServerSync$raiseServerEvent(name, obj, event, includeAllChanges, success, failed, paths) {
+		raiseServerEvent: function ServerSync$raiseServerEvent(name, instance, event, includeAllChanges, success, failed, paths) {
 			pendingRequests++;
 
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
@@ -9088,7 +9099,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			Sys.Observer.setValue(this, "PendingServerEvent", true);
 
-			var args = { type: "raiseServerEvent", eventTarget: obj, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
+			var args = { type: "raiseServerEvent", eventTarget: instance, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
 			this._raiseBeginEvents("raiseServerEvent", args);
 
 			// if no event object is provided then use an empty object
@@ -9109,12 +9120,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			eventProvider(
 				name,
-				toExoModel(obj, this._translator),
+				toExoModel(instance, this._translator),
 				event,
 				paths,
 			// If includeAllChanges is true, then use all changes including those 
 			// that should not be saved, otherwise only use changes that can be saved.
-				serializeChanges.call(this, includeAllChanges, obj),
+				serializeChanges.call(this, includeAllChanges, instance),
 				this._onRaiseServerEventSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
 			);

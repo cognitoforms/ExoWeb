@@ -337,7 +337,7 @@ Type.prototype = {
 			prop.init(null, []);
 		}
 
-
+		 
 		if (prop.get_isStatic()) {
 			// for static properties add member to javascript type
 			this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
@@ -358,10 +358,11 @@ Type.prototype = {
 
 		this._raiseEvent("propertyAdded", [this, { property: prop}]);
 
-		return prop;
+		return prop; 
 	},
 	addMethod: function Type$addMethod(def) {
-		this._jstype.prototype[def.name] = function () {
+		var methodName = this.get_fullName() + "." + def.name;
+		var method = function () {
 			// Detect the optional success and failure callback delegates
 			var onSuccess;
 			var onFail;
@@ -390,13 +391,14 @@ Type.prototype = {
 
 			var argCount = arguments.length - (onSuccess === undefined ? 0 : 1) - (onFail === undefined ? 0 : 1);
 			var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length === 0 || arguments[0][def.parameters[0]] === undefined);
+			var instance = this instanceof Entity ? this : null;
 
 			if (argCount >= 1 && argCount <= 2 && arguments[0] instanceof Object &&
 					((argCount == 1 && (def.parameters.length != 1 || firstArgCouldBeParameterSet)) ||
 					((argCount == 2 && (def.parameters.length != 2 || (firstArgCouldBeParameterSet && arguments[1] instanceof Array)))))) {
 
 				// Invoke the server event
-				context.server.raiseServerEvent(def.name, this, arguments[0], false, onSuccessFn, onFail, argCount == 2 ? arguments[1] : null);
+				context.server.raiseServerEvent(methodName, instance, arguments[0], false, onSuccessFn, onFail, argCount == 2 ? arguments[1] : null);
 			}
 
 			// Otherwise, assume that the parameters were all passed in sequential order
@@ -416,9 +418,18 @@ Type.prototype = {
 				}
 
 				// Invoke the server event
-				context.server.raiseServerEvent(def.name, this, args, false, onSuccessFn, onFail, paths);
+				context.server.raiseServerEvent(methodName, instance, args, false, onSuccessFn, onFail, paths);
 			}
 		};
+
+		// Assign the method to the type for static methods, otherwise assign it to the prototype for instance methods
+		if (def.isStatic){
+			this._jstype[def.name] = method;
+		}
+		else {
+			this._jstype.prototype[def.name] = method;
+		}
+
 	},
 	_makeGetter: function Type$_makeGetter(receiver, fn, skipTypeCheck) {
 		return function () {
