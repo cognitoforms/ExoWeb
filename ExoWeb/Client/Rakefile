@@ -282,6 +282,10 @@ task :build_mock do
 	minify("exoweb-mock")
 end
 
-task :default => [:run_specs, :build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_mock] do
+task :build => [:build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_mock] do
+	puts("completed default task")
+end
+
+task :default => [:run_specs, :build] do
 	puts("completed default task")
 end
