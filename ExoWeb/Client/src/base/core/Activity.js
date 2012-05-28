@@ -1,6 +1,14 @@
 var activityCallbacks = [];
 
-function registerActivity(callback, thisPtr) {
+function registerActivity(label, callback, thisPtr) {
+	if (label === undefined || label === null) {
+		ExoWeb.trace.throwAndLog("activity", "Activity label cannot be null or undefined.");
+	}
+
+	if (label.constructor !== String) {
+		ExoWeb.trace.throwAndLog("activity", "Activity label must be a string.");
+	}
+
 	if (callback === undefined || callback === null) {
 		ExoWeb.trace.throwAndLog("activity", "Activity callback cannot be null or undefined.");
 	}
@@ -9,7 +17,7 @@ function registerActivity(callback, thisPtr) {
 		ExoWeb.trace.throwAndLog("activity", "Activity callback must be a function.");
 	}
 
-	var item = { callback: callback };
+	var item = { label: label, callback: callback };
 
 	if (thisPtr) {
 		callback.thisPtr = thisPtr;
@@ -20,16 +28,25 @@ function registerActivity(callback, thisPtr) {
 
 exports.registerActivity = registerActivity;
 
-function isBusy() {
+function isBusy(/* logBusyLabel */) {
+	var busy = false;
+	var logBusyLabel = arguments[0];
+
 	for (var i = 0, len = activityCallbacks.length; i < len; i++) {
 		var item = activityCallbacks[i];
 
 		if (item.callback.call(item.thisPtr || this) === true) {
-			return true;
+			if (logBusyLabel) {
+				busy = true;
+				console.log("Item \"" + item.label + "\" is busy.");
+			}
+			else {
+				return true;
+			}
 		}
 	}
 
-	return false;
+	return busy;
 }
 
 exports.isBusy = isBusy;

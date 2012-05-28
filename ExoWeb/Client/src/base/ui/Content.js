@@ -13,7 +13,7 @@ function Content(element) {
 
 var contentControlsRendering = 0;
 
-ExoWeb.registerActivity(function() {
+registerActivity("Content rendering", function() {
 	if (contentControlsRendering < 0) {
 		ExoWeb.trace.logWarning("ui", "Number of content controls rendering should never dip below zero.");
 	}

@@ -7,7 +7,7 @@ function ObjectLazyLoader() {
 
 var pendingObjects = 0;
 
-registerActivity(function() {
+registerActivity("ObjectLazyLoader", function() {
 	return pendingObjects > 0;
 });
 

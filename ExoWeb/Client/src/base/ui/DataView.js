@@ -1,6 +1,6 @@
 var dataViewsRendering = 0;
 
-ExoWeb.registerActivity(function() {
+registerActivity("DataView rendering", function() {
 	if (dataViewsRendering < 0) {
 		ExoWeb.trace.logWarning("ui", "Number of dataview controls rendering should never dip below zero.");
 	}

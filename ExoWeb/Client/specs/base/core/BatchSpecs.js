@@ -5,6 +5,8 @@ var specs = require("../../SpecHelpers");
 
 //specs.debug();
 specs.ensureWindow();
+specs.ensureNamespace("ExoWeb");
+specs.require("core.Trace");
 
 // Imports
 ///////////////////////////////////////

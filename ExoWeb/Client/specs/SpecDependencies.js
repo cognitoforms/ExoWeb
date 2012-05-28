@@ -60,6 +60,7 @@ String.prototype.inNamespace = function(ns) {
 exports.init = function() {
 	ensureNode("core.TypeChecking");
 	ensureNode("core.Utilities");
+	"core.Trace".dependsOn("core.Utilities");
 	"core.Signal".dependsOn("core.Functor", "core.Function", "core.Config");
 	"core.Functor".dependsOn("core.Activity");
 	"core.Function".dependsOn("core.Array", "core.Functor");

@@ -1,7 +1,7 @@
 // Signal to keep track of any ongoing context initialization
 var allSignals = new ExoWeb.Signal("Context : allSignals");
 
-ExoWeb.registerActivity(function() {
+ExoWeb.registerActivity("Context: allSignals", function() {
 	return allSignals.isActive();
 });
 

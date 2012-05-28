@@ -13,7 +13,7 @@ function Batch(label) {
 	allBatches.push(this);
 }
 
-registerActivity(function() {
+registerActivity("Batch", function() {
 	return Batch.all().length > 0;
 });
 

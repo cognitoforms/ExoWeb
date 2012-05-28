@@ -1221,7 +1221,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var activityCallbacks = [];
 
-	function registerActivity(callback, thisPtr) {
+	function registerActivity(label, callback, thisPtr) {
+		if (label === undefined || label === null) {
+			ExoWeb.trace.throwAndLog("activity", "Activity label cannot be null or undefined.");
+		}
+
+		if (label.constructor !== String) {
+			ExoWeb.trace.throwAndLog("activity", "Activity label must be a string.");
+		}
+
 		if (callback === undefined || callback === null) {
 			ExoWeb.trace.throwAndLog("activity", "Activity callback cannot be null or undefined.");
 		}
@@ -1230,7 +1238,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			ExoWeb.trace.throwAndLog("activity", "Activity callback must be a function.");
 		}
 
-		var item = { callback: callback };
+		var item = { label: label, callback: callback };
 
 		if (thisPtr) {
 			callback.thisPtr = thisPtr;
@@ -1241,16 +1249,25 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ExoWeb.registerActivity = registerActivity;
 
-	function isBusy() {
+	function isBusy(/* logBusyLabel */) {
+		var busy = false;
+		var logBusyLabel = arguments[0];
+
 		for (var i = 0, len = activityCallbacks.length; i < len; i++) {
 			var item = activityCallbacks[i];
 
 			if (item.callback.call(item.thisPtr || this) === true) {
-				return true;
+				if (logBusyLabel) {
+					busy = true;
+					console.log("Item \"" + item.label + "\" is busy.");
+				}
+				else {
+					return true;
+				}
 			}
 		}
 
-		return false;
+		return busy;
 	}
 
 	ExoWeb.isBusy = isBusy;
@@ -1275,7 +1292,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		allBatches.push(this);
 	}
 
-	registerActivity(function() {
+	registerActivity("Batch", function() {
 		return Batch.all().length > 0;
 	});
 
@@ -1616,7 +1633,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	var eventsInProgress = 0;
 
 	// busy if there are any events in progress
-	registerActivity(function() {
+	registerActivity("Functor", function() {
 		return eventsInProgress > 0;
 	});
 
@@ -8824,7 +8841,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var pendingRequests = 0;
 
-	registerActivity(function() {
+	registerActivity("ServerSync: request", function() {
 		return pendingRequests > 0;
 	});
 
@@ -11099,7 +11116,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var pendingObjects = 0;
 
-	registerActivity(function() {
+	registerActivity("ObjectLazyLoader", function() {
 		return pendingObjects > 0;
 	});
 
@@ -11427,7 +11444,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// Signal to keep track of any ongoing context initialization
 	var allSignals = new ExoWeb.Signal("Context : allSignals");
 
-	ExoWeb.registerActivity(function() {
+	ExoWeb.registerActivity("Context: allSignals", function() {
 		return allSignals.isActive();
 	});
 
@@ -13205,7 +13222,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var contentControlsRendering = 0;
 
-	ExoWeb.registerActivity(function() {
+	registerActivity("Content rendering", function() {
 		if (contentControlsRendering < 0) {
 			ExoWeb.trace.logWarning("ui", "Number of content controls rendering should never dip below zero.");
 		}
@@ -13596,7 +13613,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var dataViewsRendering = 0;
 
-	ExoWeb.registerActivity(function() {
+	registerActivity("DataView rendering", function() {
 		if (dataViewsRendering < 0) {
 			ExoWeb.trace.logWarning("ui", "Number of dataview controls rendering should never dip below zero.");
 		}

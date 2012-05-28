@@ -57,7 +57,7 @@ Functor.isEmpty = function Functor$isEmpty() {
 var eventsInProgress = 0;
 
 // busy if there are any events in progress
-registerActivity(function() {
+registerActivity("Functor", function() {
 	return eventsInProgress > 0;
 });
 

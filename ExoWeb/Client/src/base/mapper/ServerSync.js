@@ -113,7 +113,7 @@ ServerSync.mixin(Functor.eventing);
 
 var pendingRequests = 0;
 
-registerActivity(function() {
+registerActivity("ServerSync: request", function() {
 	return pendingRequests > 0;
 });
 
