@@ -9,6 +9,7 @@ function Transform(array, forLive) {
 	}
 
 	this._array = array;
+	this.rootInput = array;
 	if (forLive === true) {
 		this._livePending = true;
 		this._liveComplete = false;
@@ -168,6 +169,7 @@ function makeTransform(array, priorTransform, method, arg, thisPtr) {
 	}
 
 	result._prior = priorTransform;
+	result.rootInput = priorTransform.rootInput;
 	result._transform = { method: method, arg: arg, thisPtr: thisPtr };
 	return result;
 }
@@ -223,6 +225,7 @@ Transform.mixin({
 		// make a copy of the final transformed data and make it observable
 		var output = this.input().copy();
 		Sys.Observer.makeObservable(output);
+		output.rootInput = this.rootInput;
 
 		// watch for changes to root input and update the transform steps as needed
 		Sys.Observer.addCollectionChanged(rootStep.input(), function Transform$live$collectionChanged(sender, args) {
