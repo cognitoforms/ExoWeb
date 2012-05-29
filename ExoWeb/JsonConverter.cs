@@ -41,7 +41,8 @@ namespace ExoWeb
 			{ typeof(float?),		"Number"  },
 			{ typeof(double?),		"Number"  },
 			{ typeof(decimal?),		"Number"  },
-			{ typeof(DateTime?),	"Date"    }
+			{ typeof(DateTime?),	"Date"    },
+			{ typeof(Guid?),		"String"  }
 		};
 
 		Type type;
