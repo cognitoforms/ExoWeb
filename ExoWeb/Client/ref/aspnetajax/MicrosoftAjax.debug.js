@@ -1520,7 +1520,7 @@ Sys._isDomElement = function Sys$_isDomElement(obj) {
 }
 
 var isBrowser = Sys._isBrowser = function Sys$_isBrowser(name) {
-	if (name === 'InternetExplorer') return Sys.Browser.agent === Sys.Browser[name] && Sys.Browser.version < 9;
+	if (name === 'InternetExplorer') return Sys.Browser.agent === Sys.Browser[name];
 
 	return Sys.Browser.agent === Sys.Browser[name];
 }

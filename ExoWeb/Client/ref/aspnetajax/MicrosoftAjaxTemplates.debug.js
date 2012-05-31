@@ -393,7 +393,7 @@
 			var i, j, l, m, typeName, isInput, isButton,
 			expressionRegExp = Sys.UI.Template._expressionRegExp,
 			storeElementCode = "  " + (depth ? ("__p[__d-1].appendChild(") : "__topElements.push("),
-			isIE = isBrowser("InternetExplorer");
+			useDirect = isBrowser("InternetExplorer") && Sys.Browser.version < 9;
 			code.push("  __d++;\n");
 			for (i = 0, l = element.childNodes.length; i < l; i++) {
 				var childNode = element.childNodes[i], text = childNode.nodeValue;
@@ -485,7 +485,7 @@
 						for (j = 0, m = typeNames.length; j < m; j++) {
 							typeName = typeNames[j].trim();
 							if (typeIndex[typeName]) continue;
-							var type = Sys.Application._findType(childNode, typeName, isIE);
+							var type = Sys.Application._findType(childNode, typeName, useDirect);
 							if (!type) {
 								throw Error.invalidOperation(String.format(Sys.UI.TemplatesRes.invalidAttach, "sys:attach", typeName));
 							}
@@ -1072,7 +1072,7 @@
 			/// <returns type="Sys.UI.TemplateContext"></returns>
 			var app = Sys.Application,
 		tc = app._context,
-		useDirect = isBrowser("InternetExplorer");
+		useDirect = isBrowser("InternetExplorer") && Sys.Browser.version < 9;
 			tc.dataItem = typeof (bindingContext) === "undefined" ? null : bindingContext;
 			tc.components = tc.components || [];
 			tc.nodes = elements;
@@ -1736,13 +1736,13 @@
 						// context-generating controls that follow will be assigned the correct template
 						if (Sys.UI.Template._isTemplate(node)) {
 							attachName = node.getAttribute("sys:attach");
-							Sys.Application._activateElement(node, currentContext, isBrowser("InternetExplorer"), childContentTemplates, true);
+							Sys.Application._activateElement(node, currentContext, isBrowser("InternetExplorer") && Sys.Browser.version < 9, childContentTemplates, true);
 							Sys.Application._linkAttributes(node, currentContext, attachName);
 						}
 						else {
 							// If the node has any attributes that weren't rendered (i.e. "sys:" attributes), then activate only this node
 							if (Array.prototype.some.call(node.attributes, function (a) { return a.name.indexOf(":") >= 0; })) {
-								Sys.Application._activateElement(node, currentContext, isBrowser("InternetExplorer"), childContentTemplates, false);
+								Sys.Application._activateElement(node, currentContext, isBrowser("InternetExplorer") && Sys.Browser.version < 9, childContentTemplates, false);
 							}
 							Sys.Application._linkAttributes(node, currentContext, attachName);
 							// Recursively link child nodes
@@ -1763,7 +1763,7 @@
 			}
 
 			var controlType = element.getAttribute("data-sys-attach"),
-				type = Sys.Application._findType(element, controlType, isBrowser("InternetExplorer")),
+				type = Sys.Application._findType(element, controlType, isBrowser("InternetExplorer") && Sys.Browser.version < 9),
 				isContext = type.implementsInterface(Sys.UI.ITemplateContextConsumer),
 				control = new type(element);
 
