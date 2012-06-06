@@ -3902,8 +3902,8 @@ window.ExoWeb.DotNet = {};
 				this.meta.type.property(name)._setter(this, value, false);
 			}, this);
 		},
-		get: function Entity$get(path) {
-			return this.meta.type.property(path).value(this);
+		get: function Entity$get(propName) {
+			return this.meta.type.property(propName).value(this);
 		},
 		toString: function Entity$toString(format) {
 			if (format) {
@@ -5753,6 +5753,28 @@ window.ExoWeb.DotNet = {};
 			return true;
 		},
 
+		// determines whether the instance and optionally the specified property value is loaded
+		isLoaded: function ObjectMeta$isLoaded(prop) {
+
+			// first see if the current entity is loaded
+			if (!LazyLoader.isLoaded(this._obj))
+				return false;
+
+			// immediately return true if a property name was not specified
+			if (!prop)
+				return true;
+
+			// coerce property names into property instances
+			if (isString(prop))
+				prop = this.property(prop);
+
+			// otherwise, get the property value and see if it loaded
+			var val = prop.value(this._obj);
+
+			// determine whether the value is loaded
+			return !(val === undefined || !LazyLoader.isLoaded(val));
+		},
+
 		// get some or all of the condition
 		conditions: function ObjectMeta$conditions(criteria) {
 
@@ -6618,7 +6640,7 @@ window.ExoWeb.DotNet = {};
 	// define a global function that determines if a value exists
 	RequiredRule.hasValue = function RequiredRule$hasValue(val) {
 		return val !== undefined && val !== null && (val.constructor !== String || val.trim() !== "") && (!(val instanceof Array) || val.length > 0);
-	}
+	};
 
 	// extend the base type
 	RequiredRule.mixin({
@@ -7042,9 +7064,18 @@ window.ExoWeb.DotNet = {};
 			return message;
 		},
 
-		// determines whether the property is valid based on whether it is conditionally required and has a value
-		isValid: function RequiredIfRule$isValid(obj) {
-			return !this.isRequired(obj) || RequiredRule.hasValue(this.property.value(obj));
+		// returns false if the property is valid, true if invalid, or undefined if unknown
+		assert: function RequiredIfRule$assert(obj) {
+			var isReq;
+
+			if (this.hasOwnProperty("isRequired"))
+				isReq = this.isRequired.call(obj, obj);
+
+			// otherwise, allow "this" to be the current rule to support subclasses that override assert
+			else 
+				isReq = this.isRequired(obj);
+		
+			return isReq && !RequiredRule.hasValue(this.property.value(obj));
 		},
 
 		// perform addition initialization of the rule when it is registered

@@ -79,6 +79,28 @@ ObjectMeta.mixin({
 		return true;
 	},
 
+	// determines whether the instance and optionally the specified property value is loaded
+	isLoaded: function ObjectMeta$isLoaded(prop) {
+
+		// first see if the current entity is loaded
+		if (!LazyLoader.isLoaded(this._obj))
+			return false;
+
+		// immediately return true if a property name was not specified
+		if (!prop)
+			return true;
+
+		// coerce property names into property instances
+		if (isString(prop))
+			prop = this.property(prop);
+
+		// otherwise, get the property value and see if it loaded
+		var val = prop.value(this._obj);
+
+		// determine whether the value is loaded
+		return !(val === undefined || !LazyLoader.isLoaded(val));
+	},
+
 	// get some or all of the condition
 	conditions: function ObjectMeta$conditions(criteria) {
 

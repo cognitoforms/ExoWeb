@@ -95,9 +95,18 @@ RequiredIfRule.mixin({
 		return message;
 	},
 
-	// determines whether the property is valid based on whether it is conditionally required and has a value
-	isValid: function RequiredIfRule$isValid(obj) {
-		return !this.isRequired(obj) || RequiredRule.hasValue(this.property.value(obj));
+	// returns false if the property is valid, true if invalid, or undefined if unknown
+	assert: function RequiredIfRule$assert(obj) {
+		var isReq;
+
+		if (this.hasOwnProperty("isRequired"))
+			isReq = this.isRequired.call(obj, obj);
+
+		// otherwise, allow "this" to be the current rule to support subclasses that override assert
+		else 
+			isReq = this.isRequired(obj);
+		
+		return isReq && !RequiredRule.hasValue(this.property.value(obj));
 	},
 
 	// perform addition initialization of the rule when it is registered

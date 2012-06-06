@@ -36,8 +36,8 @@ Entity.mixin({
 			this.meta.type.property(name)._setter(this, value, false);
 		}, this);
 	},
-	get: function Entity$get(path) {
-		return this.meta.type.property(path).value(this);
+	get: function Entity$get(propName) {
+		return this.meta.type.property(propName).value(this);
 	},
 	toString: function Entity$toString(format) {
 		if (format) {

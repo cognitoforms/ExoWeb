@@ -28,7 +28,7 @@ RequiredRule.prototype.constructor = RequiredRule;
 // define a global function that determines if a value exists
 RequiredRule.hasValue = function RequiredRule$hasValue(val) {
 	return val !== undefined && val !== null && (val.constructor !== String || val.trim() !== "") && (!(val instanceof Array) || val.length > 0);
-}
+};
 
 // extend the base type
 RequiredRule.mixin({
