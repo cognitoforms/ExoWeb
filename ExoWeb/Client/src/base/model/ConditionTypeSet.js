@@ -3,9 +3,10 @@ function ConditionTypeSet(name) {
 		ExoWeb.trace.throwAndLog("conditions", "A set with the name \"{0}\" has already been created.", [name]);
 	}
 
-	this._name = name;
-	this._types = [];
-	this._active = false;
+	Object.defineProperty(this, "name", { value: name });
+	Object.defineProperty(this, "types", { value: [] });
+	Object.defineProperty(this, "active", { value: false, writable: true });
+
 
 	allConditionTypeSets[name] = this;
 }
@@ -15,7 +16,7 @@ var allConditionTypeSets = {};
 ConditionTypeSet.all = function ConditionTypeSet$all() {
 	/// <summary>
 	/// Returns an array of all condition type sets that have been created.
-	/// Not that the array is created each time the function is called.
+	/// Note that the array is created each time the function is called.
 	/// </summary>
 	/// <returns type="Array" />
 
@@ -37,24 +38,17 @@ ConditionTypeSet.get = function ConditionTypeSet$get(name) {
 };
 
 ConditionTypeSet.prototype = {
-	get_name: function ConditionTypeSet$get_name() {
-		return this._name;
-	},
-	get_types: function ConditionTypeSet$get_types() {
-		return this._types;
-	},
-	get_active: function ConditionTypeSet$get_active() {
-		return this._active;
-	},
-	set_active: function ConditionTypeSet$set_active(value) {
-		if (value === true && !this._active) {
+	activate: function ConditionTypeSet$activate(value) {
+		if (!this.active) {
+			this.active = true;
 			this._raiseEvent("activated");
 		}
-		else if (value === false && this._active === true) {
+	},
+	deactivate: function ConditionTypeSet$deactivate() {
+		if (this.active) {
+			this.active = false;
 			this._raiseEvent("deactivated");
 		}
-
-		this._active = value;
 	},
 	addActivated: function ConditionTypeSet$addActivated(handler) {
 		this._addEvent("activated", handler);

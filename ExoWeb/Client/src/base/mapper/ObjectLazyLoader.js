@@ -27,8 +27,8 @@ function objLoad(obj, propName, callback, thisPtr) {
 	var paths = ObjectLazyLoader.getRelativePaths(obj);
 
 	// Add the property to load if specified.  Assumes an instance property.
-	if (propName && paths.indexOf("this." + propName) < 0) {
-		paths.push("this." + propName);
+	if (propName && paths.indexOf(propName) < 0) {
+		paths.push(propName);
 	}
 
 	// fetch object json
@@ -38,7 +38,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 	objectProvider(mtype.get_fullName(), [id], paths, false,
 		serializeChanges.call(context.server, true),
 		function(result) {
-			mtype.get_model()._server._handleResult(result, $format("Lazy load: {0}({1})", mtype.get_fullName(), id), null, function() {
+			mtype.model.server._handleResult(result, $format("Lazy load: {0}({1})", mtype.get_fullName(), id), null, function() {
 				LazyLoader.unregister(obj, this);
 				pendingObjects--;
 

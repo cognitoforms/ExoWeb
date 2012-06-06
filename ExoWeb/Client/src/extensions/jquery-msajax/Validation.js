@@ -1,3 +1,7 @@
+var isError = function (condition) {
+	return condition.type instanceof ExoWeb.Model.ConditionType.Error;
+};
+
 var ensureInited = function ($el) {
 	if (!window.ExoWeb) {
 		return;
@@ -14,16 +18,18 @@ var ensureInited = function ($el) {
 
 			var meta = srcObj.meta || srcObj;
 
-			if (meta && meta.addPropertyValidating) {
-				// wire up validating/validated events
-				meta.addPropertyValidating(propName, function (sender, issues) {
-					$el.trigger('validating');
-				});
+			if (meta instanceof ExoWeb.Model.ObjectMeta) {
+				var property = srcObj.type.property(propName);
+				meta.addConditionsChanged(function (sender, args) {
+					if (isError(args.conditionTarget.condition)) {
+						$el.trigger("validated", meta.conditions(property));
+					}
+				}, property);
 			}
-
-			if (meta && meta.addPropertyValidated) {
-				meta.addPropertyValidated(propName, function (sender, issues) {
-					$el.trigger("validated", [issues]);
+			else if (meta && meta.get_conditions) {
+				var conditions = meta.get_conditions();
+				ExoWeb.Observer.addCollectionChanged(conditions, function (sender, args) {
+					$el.trigger("validated", [conditions.filter(isError)]);
 				});
 			}
 		}
@@ -36,15 +42,6 @@ var ensureInited = function ($el) {
 jQuery.fn.validated = function (f) {
 	this.each(function () {
 		$(this).bind('validated', f);
-		ensureInited($(this));
-	});
-
-	return this;
-};
-
-jQuery.fn.validating = function (f) {
-	this.each(function () {
-		$(this).bind("validating", f);
 		ensureInited($(this));
 	});
 
@@ -65,23 +62,23 @@ jQuery.fn.rules = function (ruleType) {
 		});
 };
 
-jQuery.fn.issues = function (options) {
+jQuery.fn.errors = function () {
 	if (!window.Sys || !window.ExoWeb || !ExoWeb.Model) return [];
 
-	options = options || { refresh: false };
+	return $(this).liveBindings().mapToArray(function (binding) {
 
-	return $(this).liveBindings().mapToArray(function(binding) {
-		var info = ExoWeb.View.getBindingInfo(binding);
-		
-		// Guard against null/undefined target.  This could happen if the target is 
-		// undefined, or if the path is multi-hop, and the full path is not defined.
-		if (!info.target || !info.property) return [];
+		var source = binding.get_source();
+		if (source instanceof ExoWeb.View.Adapter) {
+			return source.get_conditions().filter(isError);
+		}
+		else {
+			var info = ExoWeb.View.getBindingInfo(binding);
 
-		if (options.refresh)
-			info.target.meta.executeValidationRules(info.property);
-		else if (options.ensure)
-			info.target.meta.ensureValidation(info.property);
+			// Guard against null/undefined target.  This could happen if the target is 
+			// undefined, or if the path is multi-hop, and the full path is not defined.
+			if (!info.target || !info.property) return [];
 
-		return info.target.meta.conditions({ property: info.property });
+			return info.target.meta.conditions(info.property).filter(isError);
+		}
 	});
 };

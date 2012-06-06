@@ -23,7 +23,7 @@ Date.prototype.addDays = function addDays(numDays, requireWeekDay) {
 		if (date.getDay() === 0) {
 			date.setDate(date.getDate() + (numDays >= 0 ? 1 : -2));
 		}
-		// Saturday
+		// Saturday 
 		else if (date.getDay() === 6) {
 			date.setDate(date.getDate() + (numDays >= 0 ? 2 : -1));
 		}

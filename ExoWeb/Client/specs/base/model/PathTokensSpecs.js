@@ -1,18 +1,15 @@
+// Test setup
+///////////////////////////////////////
+var specs = require("../../SpecHelpers");
+
+//specs.debug();
+specs.ensureWindow();
+specs.ensureNamespace("ExoWeb.Model");
+specs.ensureNamespace("ExoWeb.Mapper");
+
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
-
-jasmine.jasmine.debug = true;
-
-window = {};
-ExoWeb = window.ExoWeb = {};
-ExoWeb.Model = {};
-
-var functions = require("../../../src/base/core/Function");
-var arrays = require("../../../src/base/core/Array");
-
-var PathTokens = require("../../../src/base/model/PathTokens").PathTokens;
+var pathTokensModule = specs.require("model.PathTokens");
 
 // References
 ///////////////////////////////////////
@@ -61,52 +58,52 @@ describe("PathTokens", function() {
 
 		normalizePaths([], []);
 
-		normalizePaths(["this.Student"], ["this.Student"]);
+		normalizePaths(["Student"], ["Student"]);
 
-		normalizePaths(["this.Student", "this.Parent"],
+		normalizePaths(["Student", "Parent"],
 		[
-			"this.Student",
-			"this.Parent"
+			"Student",
+			"Parent"
 		]);
 
-		normalizePaths(["this.Student{Prop1}"],
+		normalizePaths(["Student{Prop1}"],
 		[
-			"this.Student.Prop1",
+			"Student.Prop1",
 		]);
 
-		normalizePaths(["this.Student{Prop1, Prop2}"],
+		normalizePaths(["Student{Prop1, Prop2}"],
 		[
-			"this.Student.Prop1",
-			"this.Student.Prop2",
+			"Student.Prop1",
+			"Student.Prop2",
 		]);
 
 		normalizePaths(["this{Student{Prop1, Prop2}}"],
 		[
-			"this.Student.Prop1",
-			"this.Student.Prop2",
+			"Student.Prop1",
+			"Student.Prop2",
 		]);
 
-		normalizePaths(["this.Student{Prop1, Prop2{PropA, PropB}, Prop3}}"],
+		normalizePaths(["Student{Prop1, Prop2{PropA, PropB}, Prop3}}"],
 		[
-			"this.Student.Prop1",
-			"this.Student.Prop2.PropA",
-			"this.Student.Prop2.PropB",
-			"this.Student.Prop3",
+			"Student.Prop1",
+			"Student.Prop2.PropA",
+			"Student.Prop2.PropB",
+			"Student.Prop3",
 		]);
 
-		normalizePaths(["this.Student<Type>{Prop1, Prop2}}"],
+		normalizePaths(["Student<Type>{Prop1, Prop2}}"],
 		[
-			"this.Student<Type>.Prop1",
-			"this.Student<Type>.Prop2",
+			"Student<Type>.Prop1",
+			"Student<Type>.Prop2",
 		]);
 
-		normalizePaths(["this.ItemDef{ItemType.IsRootItemType, IsVersioned, ItemOutcomes.NextStatus, DocumentDefinitions{Inputs, FinalizeType}}"],
+		normalizePaths(["ItemDef{ItemType.IsRootItemType, IsVersioned, ItemOutcomes.NextStatus, DocumentDefinitions{Inputs, FinalizeType}}"],
 		[
-			"this.ItemDef.ItemType.IsRootItemType",
-			"this.ItemDef.IsVersioned",
-			"this.ItemDef.ItemOutcomes.NextStatus",
-			"this.ItemDef.DocumentDefinitions.Inputs",
-			"this.ItemDef.DocumentDefinitions.FinalizeType"
+			"ItemDef.ItemType.IsRootItemType",
+			"ItemDef.IsVersioned",
+			"ItemDef.ItemOutcomes.NextStatus",
+			"ItemDef.DocumentDefinitions.Inputs",
+			"ItemDef.DocumentDefinitions.FinalizeType"
 		]);
 	});
 });

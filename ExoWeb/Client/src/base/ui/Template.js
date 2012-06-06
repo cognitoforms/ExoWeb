@@ -280,10 +280,10 @@ Template.load = function Template$load(path, options) {
 
 	// set the last request signal to the new signal and increment
 	var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
-	var callback = externalTemplatesSignal.pending(signal.pending(function (elem) {
+	var callback = externalTemplatesSignal.pending(signal.pending(function () {
 		//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
 		// Activate template controls within the response.
-		Sys.Application.activateElement(elem);
+		Sys.Application.activateElement(this);
 	}));
 
 	$(function ($) {
@@ -294,28 +294,28 @@ Template.load = function Template$load(path, options) {
 		//if the template is stored locally look for the path as a div on the page rather than the cache
 		if (options && options.isLocal === true) {
 			var localTemplate = $('#' + path);
-			callback(localTemplate.get(0));
+			callback.call(localTemplate.get(0));
 		}
 		else {
 			var html = ExoWeb.cache(path);
 
 			if (html) {
 				tmpl.append(html);
-				callback(tmpl.get(0));
-			}
+				callback.call(tmpl.get(0));
+			} 
 			else {
-				tmpl.load(path, function (responseText) {
-					var elem = this;
+				tmpl.load(path, function (responseText, textStatus, jqXHR) {
+					if (jqXHR.isResolved()) {
+						// Cache the template
+						ExoWeb.cache(path, responseText);
 
-					// Cache the template
-					ExoWeb.cache(path, responseText);
-
-					// if there is a pending request then wait for it to complete
-					if (lastReq) {
-						lastReq.waitForAll(function () { callback(elem); });
-					}
-					else {
-						callback(elem);
+						// if there is a pending request then wait for it to complete
+						if (lastReq) {
+							lastReq.waitForAll(callback, this);
+						}
+						else {
+							callback.call(this);
+						}
 					}
 				});
 			}

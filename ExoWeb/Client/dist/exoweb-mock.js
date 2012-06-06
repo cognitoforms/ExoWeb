@@ -1,4 +1,4 @@
-Type.registerNamespace("ExoWeb");
+window.ExoWeb = {};
 
 (function() {
 

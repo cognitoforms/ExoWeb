@@ -67,11 +67,11 @@ describe("ChangeLog", function() {
 	it("requires a string source when calling start", function() {
 		expect(function() {
 			(new ChangeLog()).start();
-		}).toThrow("ChangeLog.start requires a string source argument.");
+		}).toThrow("[changeLog, error]: ChangeLog.start requires a string source argument.");
 
 		expect(function() {
 			(new ChangeLog()).start(5);
-		}).toThrow("ChangeLog.start requires a string source argument.");
+		}).toThrow("[changeLog, error]: ChangeLog.start requires a string source argument.");
 	});
 
 	it("allows a change to be added after calling start", function() {

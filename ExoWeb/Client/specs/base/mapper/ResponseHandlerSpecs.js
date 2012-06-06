@@ -30,8 +30,7 @@ ExoWeb.config.signalDebug = true;
 
 //ExoWeb.Signal = signal.Signal;
 //ExoWeb.registerActivity = activity.registerActivity;
-var batch = require("../../../src/base/core/Batch");
-global.Batch = batch.Batch;
+var Batch = global.Batch = require("../../../src/base/core/Batch").Batch;
 //var internals = require("../../../src/base/mapper/Internals");
 //var pathTokens = require("../../../src/base/model/PathTokens");
 //var context = require("../../../src/base/mapper/Context");
@@ -145,7 +144,7 @@ describe("ResponseHandler", function () {
 
 				callback.call(thisPtr || this);
 			},
-			conditionsFromJson: function (model, json, callback, thisPtr) {
+			conditionsFromJson: function (model, json, forInstances, callback, thisPtr) {
 				expect(model).toBe(modelObj);
 				expect(json).toBe(conditions);
 				expect(typeSpy).toHaveBeenCalled();
@@ -176,7 +175,8 @@ describe("ResponseHandler", function () {
 						return;
 					}
 				};
-			}
+			},
+			registerRules: jasmine.jasmine.createSpy()
 		};
 
 		ExoWeb.Model = { LazyLoader: { load: function() { } } };

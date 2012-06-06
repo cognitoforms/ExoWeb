@@ -17,6 +17,11 @@ function Property(containingType, name, jstype, isList, label, format, isStatic,
 	this._isPersisted = !!isPersisted;
 	this._index = index;
 	this._rules = [];
+	this._defaultValue = 
+		isList ? [] :
+		jstype === Boolean ? false :
+		jstype === Number ? 0 :
+		null;
 
 	if (containingType.get_originForNewProperties()) {
 		this._origin = containingType.get_originForNewProperties();
@@ -30,22 +35,37 @@ function Property(containingType, name, jstype, isList, label, format, isStatic,
 	}
 }
 
+// updates the property and message or conditionType options for property rules
+function preparePropertyRuleOptions(property, options, error) {
+	options.property = property;
+	if (error && error.constructor === String) {
+		options.message = error;
+	}
+	else if (error instanceof ConditionType) {
+		options.conditionType = error;
+	}
+	return options;
+}
+
+// updates the property and message or conditionType options for property rules
+function hasPropertyChangedSubscribers(property, obj) {
+	handler = property._getEventHandler("changed");
+	return handler && !handler.isEmpty([obj]);
+}
+
+// registers a rule with a specific property
+function registerPropertyRule(property, rule) {
+	property._rules.push(rule);
+
+	// Raise events if registered.
+	var handler = property._getEventHandler("ruleRegistered");
+	if (handler)
+		handler(rule, { property: property });
+}
+
 Property.mixin({
 	defaultValue: function Property$defaultValue(value) {
-		function getValue() {
-			return value;
-		}
-
-		this._containingType._initNewProps.push({ property: this, valueFn: getValue });
-		this._containingType._initExistingProps.push({ property: this, valueFn: getValue });
-
-		// Initialize existing instances
-		Array.forEach(this._containingType.known(), function (obj) {
-			if (!this.isInited(obj)) {
-				this.init(obj, value);
-			}
-		}, this);
-
+		this._defaultValue = value;
 		return this;
 	},
 	equals: function Property$equals(prop) {
@@ -59,43 +79,30 @@ Property.mixin({
 			}
 		}
 	},
-	rule: function (type, onlyTargets) {
+	rule: function (type) {
 		if (!type || !(type instanceof Function)) {
 			ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type ? type : (type === undefined ? "undefined" : "null")]);
 		}
 
-		var rule = first(this._rules, function (rule) {
-			if (rule.value instanceof type)
-				if (!onlyTargets || rule.isTarget === true)
-					return true;
+		return first(this._rules, function (rule) {
+			if (rule instanceof type) {
+				return true;
+			}
 		});
-
-		return rule ? rule.value : null;
 	},
+	rules: function (filter) {
+		return filter && filter instanceof Function ? this._rules.filter(filter) : this._rules.slice();
+	},	
 	isDefinedBy: function Property$isDefinedBy(mtype) {
 		return this._containingType === mtype || mtype.isSubclassOf(this._containingType);
-	},
-	_registerRule: function Property$_addRule(rule, isTarget) {
-		this._rules.push({ value: rule, isTarget: isTarget });
-
-		// Raise events if registered.
-		var handler = this._getEventHandler("ruleRegistered");
-		if (handler)
-			handler(rule, { property: this, isTarget: isTarget });
 	},
 	addRuleRegistered: function Property$addRuleRegistered(handler, obj, once) {
 		this._addEvent("ruleRegistered", handler, obj ? equals(obj) : null, once);
 		return this;
 	},
-	rules: function (targetsThis) {
-		return this._rules
-			.filter(function (rule) {
-				return (!targetsThis && targetsThis !== false) || // no filter
-					(targetsThis === true && rule.isTarget === true) || // only targets
-					(targetsThis === false && rule.isTarget === false); // only non-targets
-			}).map(function (rule) {
-				return rule.value;
-			});
+	removeRuleRegistered: function Property$removeRuleRegistered(handler, obj, once) {
+		this._removeEvent("ruleRegistered", handler);
+		return this;
 	},
 	toString: function Property$toString() {
 		if (this._isStatic) {
@@ -130,6 +137,13 @@ Property.mixin({
 	format: function (val) {
 		return this.get_format() ? this.get_format().convert(val) : val;
 	},
+	get_defaultValue: function Property$get_defaultValue() {
+		// clone array and date defaults since they are mutable javascript types
+		return this._defaultValue instanceof Array ? this._defaultValue.slice() :
+			this._defaultValue instanceof Date ? new Date(+this._defaultValue) :
+			this._defaultValue instanceof TimeSpan ? new TimeSpan(this._defaultValue.totalMilliseconds) :
+			this._defaultValue;
+	},
 	get_origin: function Property$get_origin() {
 		return this._origin ? this._origin : this._containingType.get_origin();
 	},
@@ -144,7 +158,7 @@ Property.mixin({
 				ExoWeb.trace.throwAndLog(["model", "entity"], "Type {0} does not define static property {1}.{2}.", [
 					obj.get_fullName(),
 					this._containingType.get_fullName(),
-					this.get_label()
+					this.get_name()
 				]);
 			}
 		}
@@ -157,65 +171,45 @@ Property.mixin({
 				ExoWeb.trace.throwAndLog(["model", "entity"], "Type {0} does not define non-static property {1}.{2}.", [
 					obj.meta.type.get_fullName(),
 					this._containingType.get_fullName(),
-					this.get_label()
+					this.get_name()
 				]);
 			}
 		}
 	},
 	// </DEBUG>
 
-	_getter: function Property$_getter(obj, skipTypeCheck) {
-		//				var key = this.get_containingType().get_fullName() + ":" + this._name + ":" + (obj ? obj.meta.id : "STATIC");
-		//				if(!window.entities[key]){
-		//					window.entities[key] = 1;
-		//				}
-		//				else {
-		//					++window.entities[key];
-		//				}
+	_getter: function Property$_getter(obj) {
 
-		// Generated setter added to entities can skip type validation since it is 
-		// unlikely to be called on an invalid object.
+		// ensure the entity is loaded before accessing property values
+		if (LazyLoader.isLoaded(obj)) {
 
-		// <DEBUG>
-		//				if (!skipTypeCheck) {
-		//					if (obj === undefined || obj === null) {
-		//						ExoWeb.trace.throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
-		//					}
+			// determine if the property has been initialized with a value
+			var isInited = obj.hasOwnProperty(this._fieldName);
 
-		//					this._assertType(obj);
-		// </DEBUG>
+			// initialize the property if necessary
+			if (!isInited) {
 
-		var handler = this._getEventHandler("get");
-		if (handler)
-			handler(obj, { property: this, value: obj[this._fieldName], isInited: obj.hasOwnProperty(this._fieldName) });
+				// initialize to the defined default value
+				this.init(obj, this.get_defaultValue());
 
-		// <DEBUG>
-		//				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
-		//					ExoWeb.trace.logWarning("model",
-		//						"Possible incorrect property usage:  property \"{0}\" is defined on object but field name should be \"{1}\", make sure you are using getters and setters.",
-		//						[this._name, this._fieldName]
-		//					);
-		//				}
-		// </DEBUG>
+				// mark the property as pending initialization
+				obj.meta.pendingInit(this, true);
+			}
 
-		return obj[this._fieldName];
+			// raise get events
+			var handler = this._getEventHandler("get");
+			if (handler)
+				handler(obj, { property: this, value: obj[this._fieldName], isInited: isInited });
+
+			// return the property value
+			return obj[this._fieldName];
+		}
 	},
 
 	_setter: function Property$_setter(obj, val, skipTypeCheck, args) {
-		// Generated setter added to entities can skip type validation since it is 
-		// unlikely to be called on an invalid object.
-		// <DEBUG>
-		//				if (!skipTypeCheck) {
-		//					if (obj === undefined || obj === null) {
-		//						ExoWeb.trace.throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
-		//					}
-
-		//					this._assertType(obj);
-		//				}
-		// </DEBUG>
 
 		if (!this.canSetValue(obj, val)) {
-			ExoWeb.trace.throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
+			throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
 		}
 
 		var old = obj[this._fieldName];
@@ -234,13 +228,13 @@ Property.mixin({
 
 			// NOTE: property change should be broadcast before rules are run so that if 
 			// any rule causes a roundtrip to the server these changes will be available
-			this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old, wasInited);
+			this._containingType.model.notifyAfterPropertySet(obj, this, val, old, wasInited);
 
 			var handler = this._getEventHandler("changed");
 			if (handler)
 				handler(obj, $.extend({ property: this, newValue: val, oldValue: old, wasInited: wasInited }, args));
 
-			Sys.Observer.raisePropertyChanged(obj, this._name);
+			Observer.raisePropertyChanged(obj, this._name);
 		}
 	},
 
@@ -338,20 +332,12 @@ Property.mixin({
 			return;
 		}
 
-		//				if(!window.entities)
-		//					window.entities = {};
-
-		//				var key = this.get_containingType().get_fullName() + ":" + this._name + ":" + (obj ? obj.meta.id : "STATIC");
-		//				if(!window.entities[key]){
-		//					window.entities[key] = 0;
-		//				}
-
 		target[this._fieldName] = val;
 
 		if (val instanceof Array) {
 			var _this = this;
-			Sys.Observer.makeObservable(val);
-			Sys.Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
+			Observer.makeObservable(val);
+			Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
 				if (!LazyLoader.isLoaded(val)) {
 					ExoWeb.trace.logWarning("model", "{0} list {1}.{2} was modified but it has not been loaded.", [
 						_this._isStatic ? "Static" : "Non-static",
@@ -362,19 +348,19 @@ Property.mixin({
 
 				// NOTE: property change should be broadcast before rules are run so that if 
 				// any rule causes a roundtrip to the server these changes will be available
-				_this._containingType.get_model().notifyListChanged(target, _this, args.get_changes());
+				_this._containingType.model.notifyListChanged(target, _this, args.get_changes());
 
 				// NOTE: oldValue is not currently implemented for lists
 				_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: args.get_changes(), wasInited: true, collectionChanged: true}]);
 
-				Sys.Observer.raisePropertyChanged(target, _this._name);
+				Observer.raisePropertyChanged(target, _this._name);
 			});
 		}
-		var handler = this._getEventHandler("changed");
-		if (handler)
-			handler(target, { property: this, newValue: val, oldValue: undefined, wasInited: false });
+		//		var handler = this._getEventHandler("changed");
+		//		if (handler)
+		//			handler(target, { property: this, newValue: val, oldValue: undefined, wasInited: false });
 
-		Sys.Observer.raisePropertyChanged(target, this._name);
+		//		Observer.raisePropertyChanged(target, this._name);
 
 		// Return the property to support method chaining
 		return this;
@@ -386,7 +372,7 @@ Property.mixin({
 			return false;
 		}
 		if (this._isList) {
-			var value = this.value(obj);
+			var value = target[this._fieldName];
 			if (!LazyLoader.isLoaded(value)) {
 				// If the list is not-loaded, then the property is not initialized
 				return false;
@@ -428,16 +414,17 @@ Property.mixin({
 	removeChanged: function Property$removeChanged(handler) {
 		this._removeEvent("changed", handler);
 	},
-	// Adds a rule to the property that will update its value based on a calculation.
-	calculated: function (options, conditionType) {
-		new CalculatedPropertyRule(options.rootType ? options.rootType.meta : this._containingType, {
-			property: this._name,
-			basedOn: options.basedOn,
-			fn: options.fn,
-			isAsync: options.isAsync
-		}, conditionType);
-
+	firstProperty: function Property$firstProperty() {
 		return this;
+	},
+	lastProperty: function Property$lastProperty() {
+		return this;
+	},
+	properties: function Property$properties() {
+		return [this];
+	},
+	lastTarget: function Property$lastTarget(obj) {
+		return obj;
 	},
 	ifExists: function (path) {
 		Model.property(path, this._containingType, true, function (chain) {
@@ -465,57 +452,80 @@ Property.mixin({
 	},
 	rootedPath: function Property$rootedPath(type) {
 		if (this.isDefinedBy(type)) {
-			return (this._isStatic ? this._containingType.get_fullName() : "this") + "." + this._name;
+			return this._isStatic ? this._containingType.get_fullName() + "." + this._name : this._name;
 		}
 	},
 	label: function (label) {
 		this._label = label;
 		return this;
 	},
-	required: function (conditionType) {
-		new ExoWeb.Model.Rule.required(this._containingType, { property: this._name }, conditionType);
+	// Adds a rule to the property that will update its value based on a calculation.
+	calculated: function (options) {
+		options.property = this;
+		new CalculatedPropertyRule(options.rootType ? options.rootType.meta : this._containingType, options);
 		return this;
 	},
-	allowedValues: function (source, conditionType) {
-		new ExoWeb.Model.Rule.allowedValues(this._containingType, { property: this._name, source: source }, conditionType);
+	required: function (error) {
+		var options = preparePropertyRuleOptions(this, {}, error);
+		new ExoWeb.Model.Rule.required(this._containingType, options);
 		return this;
 	},
-	compare: function (operator, source, conditionType) {
-		new ExoWeb.Model.Rule.compare(this._containingType, { property: this._name, compareOperator: operator, compareSource: source }, conditionType);
+	allowedValues: function (source, error) {
+		var options = preparePropertyRuleOptions(this, { source: source }, error);
+		new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
 		return this;
 	},
-	range: function (min, max, conditionType) {
-		new ExoWeb.Model.Rule.range(this._containingType, { property: this._name, min: min, max: max }, conditionType);
+	compare: function (operator, source, error) {
+		var options = preparePropertyRuleOptions(this, { compareOperator: operator, compareSource: source }, error);
+		new ExoWeb.Model.Rule.compare(this._containingType, options);
 		return this;
 	},
-	requiredIf: function (source, operator, value, conditionType) {
-		if (typeof (source) === "string") {
-			new ExoWeb.Model.Rule.requiredIf(this._containingType, { property: this._name, compareSource: source, compareOperator: operator, compareValue: value }, conditionType);
+	range: function (min, max, error) {
+		var options = preparePropertyRuleOptions(this, { min: min, max: max }, error);
+		new ExoWeb.Model.Rule.range(this._containingType, options);
+		return this;
+	},
+	conditionIf: function (options, type) {
+		var options = preparePropertyRuleOptions(this, options, type);
+		new ExoWeb.Model.Rule.condition(this._containingType, options);
+		return this;
+	},
+	errorIf: function (options, error) {
+		return this.conditionIf(options, error);
+	},
+	warningIf: function (options, warning) {
+		return this.conditionIf($.extend(options, { category: ConditionType.Warning }), warning);
+	},
+	requiredIf: function (source, operator, value, error) {
+		if (source.constructor === String) {
+			var options = preparePropertyRuleOptions(this, { compareSource: source, compareOperator: operator, compareValue: value }, error);
+			new ExoWeb.Model.Rule.requiredIf(this._containingType, options);
 		}
 		else {
-			new ExoWeb.Model.Rule.requiredIfExpressions(this._containingType, { property: this._name, fn: source.fn, dependsOn: source.dependsOn }, conditionType);
+			var options = preparePropertyRuleOptions(this, source);
+			new ExoWeb.Model.Rule.requiredIf(this._containingType, options);
 		}
 		return this;
 	},
-	requiredIfExpressions: function (options, conditionType) {
-		new ExoWeb.Model.Rule.requiredIfExpressions(this._containingType, { property: this._name, fn: options.fn, dependsOn: options.dependsOn }, conditionType);
+	stringLength: function (min, max, error) {
+		var options = preparePropertyRuleOptions(this, { min: min, max: max }, error);
+		new ExoWeb.Model.Rule.stringLength(this._containingType, options);
 		return this;
 	},
-	errorIfExpressions: function (options, conditionType) {
-		new ExoWeb.Model.Rule.errorIfExpressions(this._containingType, { property: this._name, fn: options.fn, dependsOn: options.dependsOn, errorMessage: options.errorMessage, isWarning: options.isWarning }, conditionType);
+	stringFormat: function (description, expression, reformat, error) {
+		var options = preparePropertyRuleOptions(this, { description: description, expression: expression, reformat: reformat }, error);
+		new ExoWeb.Model.Rule.stringFormat(this._containingType, options);
 		return this;
 	},
-	stringLength: function (min, max, conditionType) {
-		new ExoWeb.Model.Rule.stringLength(this._containingType, { property: this._name, min: min, max: max }, conditionType);
+	listLength: function (options, error) {
+		var options = preparePropertyRuleOptions(this, { staticLength: options.staticLength, compareSource: options.compareSource, compareOperator: options.compareOperator }, error);
+		new ExoWeb.Model.Rule.listLength(this._containingType, options);
 		return this;
 	},
-	stringFormat: function (description, expression, reformat, conditionType) {
-		new ExoWeb.Model.Rule.stringFormat(this._containingType, { property: this._name, description: description, expression: expression, reformat: reformat }, conditionType);
-		return this;
-	},
-	listLength: function (options, conditionType) {
-		new ExoWeb.Model.Rule.listLength(this._containingType, { property: this._name, staticLength: options.staticLength, compareSource: options.compareSource, compareOperator: options.compareOperator }, conditionType);
-		return this;
+	triggersRoundtrip: function (paths) {
+		this.addChanged(function (sender, args) {
+			sender.meta.type.model.server.roundtrip(sender, paths);
+		});
 	}
 });
 Property.mixin(Functor.eventing);

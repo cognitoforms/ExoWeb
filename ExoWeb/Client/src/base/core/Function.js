@@ -10,20 +10,41 @@ for (var m in {}) {
 if (!overridableNonEnumeratedMethods)
 	overridableNonEnumeratedMethods = ["toString", "toLocaleString", "valueOf"];
 
-Function.prototype.mixin = function mixin(methods, object) {
-	if (!object) {
-		object = this.prototype;
+function addPrototypeMember(obj, name, member) {
+
+	// method
+	if (member instanceof Function) {
+		obj[name] = member;
 	}
 
-	for (var m in methods) {
-		if (methods.hasOwnProperty(m))
-			object[m] = methods[m];
+	// property
+	else if (member instanceof Object) {
+		Object.defineProperty(obj, name, member);
+	}
+
+	// field
+	else {
+		obj[name] = member;
+	}
+}
+
+Function.prototype.mixin = function mixin(members, obj) {
+	if (!obj) {
+		obj = this.prototype;
+	}
+
+	for (var m in members) {
+		var member = members[m];
+		if (members.hasOwnProperty(m)) {
+			addPrototypeMember(obj, m, member);
+		}
 	}
 
 	// IE's "in" operator doesn't return keys for native properties on the Object prototype
 	overridableNonEnumeratedMethods.forEach(function (m) {
-		if (methods.hasOwnProperty(m))
-			object[m] = methods[m];
+		if (members.hasOwnProperty(m)) {
+			addPrototypeMember(obj, m, member);
+		}
 	});
 };
 

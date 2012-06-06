@@ -1,13 +1,13 @@
-Type.registerNamespace("ExoWeb");
-Type.registerNamespace("ExoWeb.Model");
-Type.registerNamespace("ExoWeb.Mapper");
-Type.registerNamespace("ExoWeb.UI");
-Type.registerNamespace("ExoWeb.View");
-Type.registerNamespace("ExoWeb.DotNet");
+window.ExoWeb = {};
+window.ExoWeb.Model = {};
+window.ExoWeb.Mapper = {};
+window.ExoWeb.UI = {};
+window.ExoWeb.View = {};
+window.ExoWeb.DotNet = {};
 
 (function() {
 
-	// #region Config
+	// #region ExoWeb.Config
 	//////////////////////////////////////////////////
 
 	var config = {
@@ -39,7 +39,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region TypeChecking
+	// #region ExoWeb.TypeChecking
 	//////////////////////////////////////////////////
 
 	var typeExpr = /\s([a-z|A-Z]+)/;
@@ -113,7 +113,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Random
+	// #region ExoWeb.Random
 	//////////////////////////////////////////////////
 
 	function randomInteger(min, max) {
@@ -169,7 +169,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Function
+	// #region ExoWeb.Function
 	//////////////////////////////////////////////////
 
 	var overridableNonEnumeratedMethods;
@@ -184,20 +184,41 @@ Type.registerNamespace("ExoWeb.DotNet");
 	if (!overridableNonEnumeratedMethods)
 		overridableNonEnumeratedMethods = ["toString", "toLocaleString", "valueOf"];
 
-	Function.prototype.mixin = function mixin(methods, object) {
-		if (!object) {
-			object = this.prototype;
+	function addPrototypeMember(obj, name, member) {
+
+		// method
+		if (member instanceof Function) {
+			obj[name] = member;
 		}
 
-		for (var m in methods) {
-			if (methods.hasOwnProperty(m))
-				object[m] = methods[m];
+		// property
+		else if (member instanceof Object) {
+			Object.defineProperty(obj, name, member);
+		}
+
+		// field
+		else {
+			obj[name] = member;
+		}
+	}
+
+	Function.prototype.mixin = function mixin(members, obj) {
+		if (!obj) {
+			obj = this.prototype;
+		}
+
+		for (var m in members) {
+			var member = members[m];
+			if (members.hasOwnProperty(m)) {
+				addPrototypeMember(obj, m, member);
+			}
 		}
 
 		// IE's "in" operator doesn't return keys for native properties on the Object prototype
 		overridableNonEnumeratedMethods.forEach(function (m) {
-			if (methods.hasOwnProperty(m))
-				object[m] = methods[m];
+			if (members.hasOwnProperty(m)) {
+				addPrototypeMember(obj, m, member);
+			}
 		});
 	};
 
@@ -567,7 +588,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Array
+	// #region ExoWeb.Array
 	//////////////////////////////////////////////////
 
 	function addRange(arr, items) {
@@ -953,22 +974,22 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region String
+	// #region ExoWeb.String
 	//////////////////////////////////////////////////
 
-	if (!String.prototype.endsWith) {
-		String.prototype.endsWith = function endsWith(text) {
-			return this.length === (this.indexOf(text) + text.length);
-		};
+	// Add String.trim() if not natively supported
+	if (typeof String.prototype.trim !== 'function') {
+		String.prototype.trim = function () {
+			return this.replace(/^\s+|\s+$/g, '');
+		}
 	}
-
 	function isNullOrEmpty(str) {
 		return str === null || str === undefined || str === "";
 	}
 
 	// #endregion
 
-	// #region Trace
+	// #region ExoWeb.Trace
 	//////////////////////////////////////////////////
 
 	var errorHandler = function noOpErrorHandler(message, e) { };
@@ -1147,7 +1168,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Cache
+	// #region ExoWeb.Cache
 	//////////////////////////////////////////////////
 
 	var cacheInited = false;
@@ -1216,7 +1237,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Activity
+	// #region ExoWeb.Activity
 	//////////////////////////////////////////////////
 
 	var activityCallbacks = [];
@@ -1274,7 +1295,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Batch
+	// #region ExoWeb.Batch
 	//////////////////////////////////////////////////
 
 	var batchIndex = 0;
@@ -1435,7 +1456,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Signal
+	// #region ExoWeb.Signal
 	//////////////////////////////////////////////////
 
 	var pendingSignalTimeouts = null;
@@ -1571,7 +1592,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Functor
+	// #region ExoWeb.Functor
 	//////////////////////////////////////////////////
 
 	function Functor() {
@@ -1626,7 +1647,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	};
 
-	Functor.isEmpty = function Functor$isEmpty() {
+	Functor.isEmpty = function Functor$isEmpty(args) {
+		if (args) {
+			return !this._funcs.some(function (item) { return !item.filter || item.filter.apply(this, args); }, this);
+		}
 		return this._funcs.length === 0;
 	};
 
@@ -1672,7 +1696,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region FunctionChain
+	// #region ExoWeb.FunctionChain
 	//////////////////////////////////////////////////
 
 	function FunctionChain(steps, thisPtr) {
@@ -1741,7 +1765,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region EventQueue
+	// #region ExoWeb.EventQueue
 	//////////////////////////////////////////////////
 
 	function EventQueue(raise, areEqual) {
@@ -1801,7 +1825,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region MessageQueue
+	// #region ExoWeb.MessageQueue
 	//////////////////////////////////////////////////
 
 	function MessageQueue(handler, thisPtr) {
@@ -1892,7 +1916,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region EvalWrapper
+	// #region ExoWeb.EvalWrapper
 	//////////////////////////////////////////////////
 
 	// Helper class for interpreting expressions
@@ -1920,7 +1944,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Transform
+	// #region ExoWeb.Transform
 	//////////////////////////////////////////////////
 
 	function Transform(array, forLive) {
@@ -2116,7 +2140,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (this._livePending) {
 				// make the items array observable if the transform is in live mode
 				output.forEach(function(group) {
-					Sys.Observer.makeObservable(group.items);
+					ExoWeb.Observer.makeObservable(group.items);
 				});
 			}
 			return makeTransform(output, this, "groupBy", groups, thisPtr);
@@ -2149,11 +2173,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// make a copy of the final transformed data and make it observable
 			var output = this.input().copy();
-			Sys.Observer.makeObservable(output);
+			ExoWeb.Observer.makeObservable(output);
 			output.rootInput = this.rootInput;
 
 			// watch for changes to root input and update the transform steps as needed
-			Sys.Observer.addCollectionChanged(rootStep.input(), function Transform$live$collectionChanged(sender, args) {
+			ExoWeb.Observer.addCollectionChanged(rootStep.input(), function Transform$live$collectionChanged(sender, args) {
 				var changes, stepInput, stepResult, modifiedItemsArrays = [];
 
 				//Sys.NotifyCollectionChangedAction.add;
@@ -2208,28 +2232,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 									return true;
 								}
 								else {
-									// if not added to the beginning of the list, determine the real starting index
-									if (change.newStartingIndex !== 0) {
-										// adding to the end of the list - use end of new list
-										if ((change.newStartingIndex + change.newItems.length) === stepInput.length) {
-											change.newStartingIndex = stepResult.length;
-										}
-										// otherwise add after preceding item that passes filter, or the beginning/end
-										// if no items pass filter
-										else {
-											var found = false;
-											for (var idx = change.newStartingIndex - 1; idx >= 0; idx--) {
-												var resultIndex = stepResult.indexOf(stepInput[idx])
-												if (resultIndex >= 0) {
-													found = true;
-													change.newStartingIndex = resultIndex + 1;
-													break;
-												}
-											}
-											if (!found) {
-												change.newStartingIndex = 0;
+									// if not added to the beginning or end of the list, determine
+									// the real starting index by finding the index of the previous item
+									if (change.newStartingIndex !== 0 && (change.newStartingIndex + change.newItems.length) !== stepInput.length) {
+										var found = false;
+										for (var idx = change.newStartingIndex - 1; !found && idx >= 0; idx--) {
+											if (stepResult.indexOf(stepInput[idx]) >= 0) {
+												found = true;
 											}
 										}
+										change.newStartingIndex = idx + 1;
 									}
 
 									// splice the filtered items into the result array
@@ -2334,7 +2346,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 									}
 									else {
 										group = new TransformGroup(groupKey, [item]);
-										Sys.Observer.makeObservable(group.items);
+										ExoWeb.Observer.makeObservable(group.items);
 										copyOfResults.push(group);
 										resequenceGroup = true;
 									}
@@ -2405,7 +2417,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Translator
+	// #region ExoWeb.Translator
 	//////////////////////////////////////////////////
 
 	function Translator() {
@@ -2450,9 +2462,111 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Utilities
+	// #region ExoWeb.Utilities
 	//////////////////////////////////////////////////
 
+	// determine whether Object.defineProperty is supported and add legacy support is necessary/possible
+	var definePropertySupported = false;
+	var defineProperty;
+
+	function defineLegacyProperty() {
+		Object.defineProperty = function (obj, prop, desc) {
+
+			// assume getter will only need to calculate once following the constructor
+			if ("get" in desc) {
+				if (desc.init) {
+					// assume objects with prototypes are instances and go ahead and initialize the property using the getter
+					if (obj.prototype) {
+						obj[prop] = desc.get.call(obj, obj);
+					}
+
+					// otherwise, configure the prototype to initialize the property when the constructor is called
+					else if (obj.constructor) {
+						var initProperties = obj.constructor.__initProperties;
+						if (!initProperties) {
+							obj.constructor.__initProperties = initProperties = {};
+						}
+						initProperties[prop] = desc.get;
+					}
+				}
+				else {
+					ExoWeb.trace.throwAndLog("utilities", "Getters are not supported by the current browser.  Use definePropertySupported to check for full support.");
+				}
+			}
+
+			// assume it is just a data property
+			else {
+				obj[prop] = desc.value;
+			}
+
+			// throw an exception if the property has a setter, which is definitely not supported
+			if ("set" in desc) {
+				ExoWeb.trace.throwAndLog("utilities", "Setters are not supported by the current browser.  Use definePropertySupported to check for full support.");
+			}
+		}
+	}
+
+	try {
+		// emulate ES5 getter/setter API using legacy APIs
+		if (Object.prototype.__defineGetter__ && !Object.defineProperty) {
+			Object.defineProperty = function (obj, prop, desc) {
+
+				// property with getter
+				if ("get" in desc) obj.__defineGetter__(prop, desc.get);
+
+				// property with setter
+				if ("set" in desc) obj.__defineSetter__(prop, desc.set);
+
+				// data only property
+				if (!("get" in propDesc || "set" in propDesc)) {
+
+					// read/write property
+					if (propDesc.writable) {
+						var value = propDesc.value;
+						obj.__defineGetter__(prop, function () { return value; });
+						obj.__defineSetter__(prop, function (val) { value = val; });
+					}
+
+					// read only property
+					else {
+						var value = propDesc.value;
+						obj.__defineGetter__(prop, function () { return value; });
+					}
+				}
+			}
+			definePropertySupported = true;
+		}
+
+		// otherwise, ensure defineProperty actually works
+		else if (Object.defineProperty && Object.defineProperty({}, "x", { get: function () { return true } }).x) {
+			definePropertySupported = true;
+		}
+
+		// enable legacy support
+		else {
+			defineLegacyProperty();
+		}
+	} 
+
+	// no getter/setter support
+	catch (e) {
+
+		// enable legacy support
+		defineLegacyProperty();
+	};
+
+	// classes that call define property should
+	function initializeLegacyProperties(obj) {
+		if (definePropertySupported) return;
+		var initProperties = obj.constructor.__initProperties;
+		if (initProperties) {
+			for (var p in initProperties) {
+				obj[p] = initProperties[p].call(obj, obj);
+			}
+		}
+	}
+
+	// evalPath internal utility function
 	function evalPath(obj, path, nullValue, undefinedValue) {
 		var i, name, steps = path.split("."), source, value = obj;
 
@@ -2516,6 +2630,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 	// TODO: better name
 	function getValue(target, property) {
 		var value;
+
+		// the see if there is an explicit getter function for the property
 		var getter = target["get_" + property];
 		if (getter) {
 			value = getter.call(target);
@@ -2523,6 +2639,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				value = null;
 			}
 		}
+
+		// otherwise search for the property
 		else {
 			if ((isObject(target) && property in target) ||
 				Object.prototype.hasOwnProperty.call(target, property) ||
@@ -2652,29 +2770,46 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region TimeSpan
+	// #region ExoWeb.TimeSpan
 	//////////////////////////////////////////////////
 
 	function TimeSpan(ms) {
-		this.totalMilliseconds = ms;
-		this.totalSeconds = this.totalMilliseconds / 1000;
-		this.totalMinutes = this.totalSeconds / 60;
-		this.totalHours = this.totalMinutes / 60;
-		this.totalDays = this.totalHours / 24;
+		/// <field name="totalSeconds" type="Number">The target entity the condition is associated with.</field>
 
-		this.milliseconds = Math.floor(ms % 1000);
-		ms = ms / 1000;
-		this.seconds = Math.floor(ms % 60);
-		ms = ms / 60;
-		this.minutes = Math.floor(ms % 60);
-		ms = ms / 60;
-		this.hours = Math.floor(ms % 24);
-		ms = ms / 24;
-		this.days = Math.floor(ms);
+		this.totalMilliseconds = ms;
+
+		initializeLegacyProperties(this);
 	}
 
 	TimeSpan.mixin({
-		toString: function TimeSpan$toString() {
+		totalSeconds: { get: function () { return this.totalMilliseconds / 1000; }, init: true },
+		totalMinutes: { get: function () { return this.totalSeconds / 60; }, init: true },
+		totalHours: { get: function () { return this.totalMinutes / 60; }, init: true },
+		totalDays: { get: function () { return this.totalHours / 24; }, init: true },
+		milliseconds: { get: function () { return Math.floor(this.totalMilliseconds % 1000); }, init: true },
+		seconds: { get: function () { return Math.floor(this.totalSeconds % 60); }, init: true },
+		minutes: { get: function () { return Math.floor(this.totalMinutes % 60); }, init: true },
+		hours: { get: function () { return Math.floor(this.totalHours % 24); }, init: true },
+		days: { get: function () { return Math.floor(this.totalDays); }, init: true },
+		toObject: function() {
+			return {
+				Hours: this.hours,
+				Minutes: this.minutes,
+				Seconds: this.seconds,
+				Milliseconds: this.milliseconds,
+				Ticks: this.totalMilliseconds * 1000000 / 100,
+				Days: this.days,
+				TotalDays: this.totalDays,
+				TotalHours: this.totalHours,
+				TotalMilliseconds: this.totalMilliseconds,
+				TotalMinutes: this.totalMinutes,
+				TotalSeconds: this.totalSeconds
+			};
+		},
+		valueOf: function() {
+			return this.totalMilliseconds;
+		},
+		toString: function TimeSpan$toString() { 
 			var num;
 			var label;
 
@@ -2705,10 +2840,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return new Date(this.getTime() + timeSpan.totalMilliseconds);
 		}
 	});
-
 	// #endregion
 
-	// #region Date
+	// #region ExoWeb.Date
 	//////////////////////////////////////////////////
 
 	var dayOfWeek = {};
@@ -2736,7 +2870,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (date.getDay() === 0) {
 				date.setDate(date.getDate() + (numDays >= 0 ? 1 : -2));
 			}
-			// Saturday
+			// Saturday 
 			else if (date.getDay() === 6) {
 				date.setDate(date.getDate() + (numDays >= 0 ? 2 : -1));
 			}
@@ -2808,7 +2942,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Object
+	// #region ExoWeb.Object
 	//////////////////////////////////////////////////
 
 	// original code grabbed from http://oranlooney.com/functional-javascript/
@@ -2868,187 +3002,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 	// #endregion
 
-	// #region PropertyObserver
+	// #region ExoWeb.Observer
 	//////////////////////////////////////////////////
 
-	function PropertyObserver(prop) {
-		this._source = null;
-		this._prop = prop;
-		this._handler = null;
-	}
+	﻿var Observer = { };
 
-	PropertyObserver.mixin(Functor.eventing);
-
-	PropertyObserver.mixin({
-		value: function PropertyObserver$value() {
-			return ExoWeb.getValue(this._source, this._prop);
-		},
-		release: function PropertyObserver$release(value) {
-			// Notify subscribers that the old value should be released
-			if (value instanceof Array) {
-				Array.forEach(value, function(item) {
-					this._raiseEvent("valueReleased", [item]);
-				}, this);
-			}
-			else {
-				this._raiseEvent("valueReleased", [value]);
-			}
-		},
-		capture: function PropertyObserver$capture(value) {
-			// Notify subscribers that a new value was captured
-			if (value instanceof Array) {
-				Array.forEach(value, function(item) {
-					this._raiseEvent("valueCaptured", [item]);
-				}, this);
-
-				var _this = this;
-
-				// Have to store the array since if the value changes we won't necessarily be able to retrieve the original array
-				if (this._collectionTarget !== undefined && this._collectionTarget !== null) {
-					Sys.Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
-				}
-
-				this._collectionTarget = value;
-
-				this._collectionHandler = function collectionHandler(sender, args) {
-					var changes = args.get_changes();
-
-					// Call the actual handler
-					_this._handler.apply(this, arguments);
-
-					// remove old observers and add new observers
-					Array.forEach(changes.removed || [], function(removed) {
-						_this._raiseEvent("valueReleased", [removed]);
-					});
-					Array.forEach(changes.added || [], function(added) {
-						_this._raiseEvent("valueCaptured", [added]);
-					});
-				};
-
-				Sys.Observer.addCollectionChanged(this._collectionTarget, this._collectionHandler);
-			}
-			else {
-				this._raiseEvent("valueCaptured", [value]);
-			}
-		},
-		start: function PropertyObserver$start(source, handler) {
-			if (this._source) {
-				ExoWeb.trace.throwAndLog(["observer"], "Cannot start an observer that is already started.");
-			}
-
-			var _this = this;
-
-			this._source = source;
-			this._handler = handler;
-
-			var value = this.value();
-
-			this._propHandler = function propHandler(sender, args) {
-				// Call the actual handler.
-				_this._handler.apply(this, arguments);
-
-				// Release the old value
-				if (value !== undefined && value !== null) {
-					_this.release(value);
-				}
-
-				value = _this.value();
-
-				// Release the old value
-				if (value !== undefined && value !== null) {
-					_this.capture(value);
-				}
-			};
-
-			Sys.Observer.addSpecificPropertyChanged(this._source, this._prop, this._propHandler);
-
-			// If we currently have a value, then notify subscribers
-			if (value !== undefined && value !== null) {
-				this.capture(value);
-			}
-		},
-		stop: function PropertyObserver$stop() {
-			if (this._source) {
-				// Remove the registered event(s)
-				Sys.Observer.removeSpecificPropertyChanged(this._source, this._prop, this._propHandler);
-
-				// Have to store the array since if the value changes we won't necessarily be able to retrieve the original array
-				if (this._collectionTarget !== undefined && this._collectionTarget !== null) {
-					Sys.Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
-					this.release(this._collectionTarget);
-				}
-				else {
-					var value = this.value();
-					if (value !== undefined && value !== null) {
-						this.release(value);
-					}
-				}
-
-				// Null out the source to indicate that it is no longer watching that object
-				this._source = null;
-			}
-		}
-	});
-
-	ExoWeb.PropertyObserver = PropertyObserver;
-
-	// #endregion
-
-	// #region MsAjax
-	//////////////////////////////////////////////////
-
-	function _raiseSpecificPropertyChanged(target, args) {
-		var func = target.__propertyChangeHandlers[args.get_propertyName()];
-		if (func && func instanceof Function) {
-			func.apply(this, arguments);
-		}
-	}
-
-	// Converts observer events from being for ALL properties to a specific one.
-	// This is an optimization that prevents handlers interested only in a single
-	// property from being run when other, unrelated properties change.
-	Sys.Observer.addSpecificPropertyChanged = function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
-		if (!target.__propertyChangeHandlers) {
-			target.__propertyChangeHandlers = {};
-			Sys.Observer.addPropertyChanged(target, _raiseSpecificPropertyChanged);
-		}
-
-		var func = target.__propertyChangeHandlers[property];
-
-		if (!func) {
-			target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
-		}
-
-		func.add(handler);
-	};
-
-	Sys.Observer.removeSpecificPropertyChanged = function Sys$Observer$removeSpecificPropertyChanged(target, property, handler) {
-		var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
-
-		if (func) {
-			func.remove(handler);
-
-			// if the functor is empty then remove the callback as an optimization
-			if (func.isEmpty()) {
-				delete target.__propertyChangeHandlers[property];
-
-				var hasHandlers = false;
-				for (var remainingHandler in target.__propertyChangeHandlers) {
-					if (target.__propertyChangeHandlers.hasOwnProperty(remainingHandler)) {
-						hasHandlers = true;
-					}
-				}
-
-				if (!hasHandlers) {
-					target.__propertyChangeHandlers = null;
-					Sys.Observer.removePropertyChanged(target, _raiseSpecificPropertyChanged);
-				}
-			}
-		}
-	};
-
-
-	Sys.Observer.addPathChanged = function Sys$Observer$addPathChanged(target, path, handler, allowNoTarget) {
+	Observer.addPathChanged = function Observer$addPathChanged(target, path, handler, allowNoTarget) {
 		// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok
 		if (target === undefined || target === null) {
 			if (allowNoTarget === true) {
@@ -3122,7 +3081,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// Watch for changes to the target if it is an array, so that we can
 					// add new observers, remove old ones, and call the handler.
 					if (index === 0) {
-						Sys.Observer.addCollectionChanged(source, function(sender, args) {
+						Observer.addCollectionChanged(source, function(sender, args) {
 							var changes = args.get_changes();
 
 							Array.forEach(changes.removed || [], removeObserver);
@@ -3148,7 +3107,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		pathChangeHandlers.push({ roots: roots, handler: handler });
 	};
 
-	Sys.Observer.removePathChanged = function Sys$Observer$removePathChanged(target, path, handler) {
+	Observer.removePathChanged = function Sys$Observer$removePathChanged(target, path, handler) {
 		path = (path instanceof Array) ? path.join(".") : path;
 
 		var pathChangeHandlers = target.__pathChangeHandlers ? target.__pathChangeHandlers[path] : null;
@@ -3185,56 +3144,231 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	};
 
-	// Supress raising of property changed when a generated setter is already raising the event
-	Sys.Observer._setValue = function Sys$Observer$_setValue$override(target, propertyName, value) {
-		var getter, setter, mainTarget = target, path = propertyName.split('.');
-		for (var i = 0, l = (path.length - 1); i < l; i++) {
-			var name = path[i];
-			getter = target["get_" + name];
-			if (typeof (getter) === "function") {
-				target = getter.call(target);
-			}
-			else {
-				target = target[name];
-			}
-			var type = typeof (target);
-			if ((target === null) || (type === "undefined")) {
-				throw Error.invalidOperation(String.format(Sys.Res.nullReferenceInPath, propertyName));
-			}
-		}
-
-		var notify = true; // added
-		var currentValue, lastPath = path[l];
-		getter = target["get_" + lastPath];
-		setter = target["set_" + lastPath];
-		if (typeof (getter) === 'function') {
-			currentValue = getter.call(target);
-		}
-		else {
-			currentValue = target[lastPath];
-		}
-		if (typeof (setter) === 'function') {
-			notify = !setter.__notifies; // added
-			setter.call(target, value);
-		}
-		else {
-			target[lastPath] = value;
-		}
-		if (currentValue !== value) {
-			var ctx = Sys.Observer._getContext(mainTarget);
-			if (ctx && ctx.updating) {
-				ctx.dirty = true;
-				return;
-			}
-			if (notify) {
-				Sys.Observer.raisePropertyChanged(mainTarget, path[0]);
-			}
+	var observableInterface = {
+		makeObservable: function (target) {
+			throw new Error("Observable provider has not been implemented.  Call ExoWeb.Model.setObservableProvider().");
+		},
+		disposeObservable: function (target) {
+			throw new Error("Observable provider has not been implemented.  Call ExoWeb.Model.setObservableProvider().");
+		},
+		addCollectionChanged: function (target, handler) {
+			throw new Error("Observable provider has not been implemented.  Call ExoWeb.Model.setObservableProvider().");
+		},
+		removeCollectionChanged: function (target, handler) {
+			throw new Error("Observable provider has not been implemented.  Call ExoWeb.Model.setObservableProvider().");
+		},
+		addPropertyChanged: function (target, property, handler) {
+			throw new Error("Observable provider has not been implemented.  Call ExoWeb.Model.setObservableProvider().");
+		},
+		removePropertyChanged: function (target, property, handler) {
+			throw new Error("Observable provider has not been implemented.  Call ExoWeb.Model.setObservableProvider().");
+		},
+		raisePropertyChanged: function (target, property) {
+			throw new Error("Observable provider has not been implemented.  Call ExoWeb.Model.setObservableProvider().");
+		},
+		setValue: function (target, property, value) {
+			throw new Error("Observable provider has not been implemented.  Call ExoWeb.Model.setObservableProvider().");
 		}
 	};
 
+	// sets the observer provider to use, verifying that it matches the defined interface.
+	function setObserverProvider(provider) {
+		for (var method in observableInterface) {
+			var oldDefinition = observableInterface[method];
+			var newDefinition = provider[method];
+			if (!(newDefinition instanceof Function)) {
+				throw new Error("Observable provider does not implement '" + method + "'.");
+			}
+			if (newDefinition.length !== oldDefinition.length) {
+				throw new Error("Observable provider method '" + method + "' has the wrong number of arguments.");
+			}
+			Observer[method] = newDefinition;
+		}
+
+	};
+
+	// expose publicly
+	ExoWeb.Observer = Observer;
 	// #endregion
 
-	// #region Format
+	// #region ExoWeb.PropertyObserver
+	//////////////////////////////////////////////////
+
+	function PropertyObserver(prop) {
+		this._source = null;
+		this._prop = prop;
+		this._handler = null;
+	}
+
+	PropertyObserver.mixin(Functor.eventing);
+
+	PropertyObserver.mixin({
+		value: function PropertyObserver$value() {
+			return ExoWeb.getValue(this._source, this._prop);
+		},
+		release: function PropertyObserver$release(value) {
+			// Notify subscribers that the old value should be released
+			if (value instanceof Array) {
+				Array.forEach(value, function(item) {
+					this._raiseEvent("valueReleased", [item]);
+				}, this);
+			}
+			else {
+				this._raiseEvent("valueReleased", [value]);
+			}
+		},
+		capture: function PropertyObserver$capture(value) {
+			// Notify subscribers that a new value was captured
+			if (value instanceof Array) {
+				Array.forEach(value, function(item) {
+					this._raiseEvent("valueCaptured", [item]);
+				}, this);
+
+				var _this = this;
+
+				// Have to store the array since if the value changes we won't necessarily be able to retrieve the original array
+				if (this._collectionTarget !== undefined && this._collectionTarget !== null) {
+					Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
+				}
+
+				this._collectionTarget = value;
+
+				this._collectionHandler = function collectionHandler(sender, args) {
+					var changes = args.get_changes();
+
+					// Call the actual handler
+					_this._handler.apply(this, arguments);
+
+					// remove old observers and add new observers
+					Array.forEach(changes.removed || [], function(removed) {
+						_this._raiseEvent("valueReleased", [removed]);
+					});
+					Array.forEach(changes.added || [], function(added) {
+						_this._raiseEvent("valueCaptured", [added]);
+					});
+				};
+
+				Observer.addCollectionChanged(this._collectionTarget, this._collectionHandler);
+			}
+			else {
+				this._raiseEvent("valueCaptured", [value]);
+			}
+		},
+		start: function PropertyObserver$start(source, handler) {
+			if (this._source) {
+				ExoWeb.trace.throwAndLog(["observer"], "Cannot start an observer that is already started.");
+			}
+
+			var _this = this;
+
+			this._source = source;
+			this._handler = handler;
+
+			var value = this.value();
+
+			this._propHandler = function propHandler(sender, args) {
+				// Call the actual handler.
+				_this._handler.apply(this, arguments);
+
+				// Release the old value
+				if (value !== undefined && value !== null) {
+					_this.release(value);
+				}
+
+				value = _this.value();
+
+				// Release the old value
+				if (value !== undefined && value !== null) {
+					_this.capture(value);
+				}
+			};
+
+			Observer.addPropertyChanged(this._source, this._prop, this._propHandler);
+
+			// If we currently have a value, then notify subscribers
+			if (value !== undefined && value !== null) {
+				this.capture(value);
+			}
+		},
+		stop: function PropertyObserver$stop() {
+			if (this._source) {
+				// Remove the registered event(s)
+				Observer.removePropertyChanged(this._source, this._prop, this._propHandler);
+
+				// Have to store the array since if the value changes we won't necessarily be able to retrieve the original array
+				if (this._collectionTarget !== undefined && this._collectionTarget !== null) {
+					Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
+					this.release(this._collectionTarget);
+				}
+				else {
+					var value = this.value();
+					if (value !== undefined && value !== null) {
+						this.release(value);
+					}
+				}
+
+				// Null out the source to indicate that it is no longer watching that object
+				this._source = null;
+			}
+		}
+	});
+
+	ExoWeb.PropertyObserver = PropertyObserver;
+
+	// #endregion
+
+	// #region ExoWeb.Model.Resource
+	//////////////////////////////////////////////////
+
+	﻿var Resource = {
+		"allowed-values":							"{property} is not in the list of allowed values.",
+		"compare-after":							"{property} must be after {compareSource}.",
+		"compare-before":							"{property} must be before {compareSource}.",
+		"compare-equal":							"{property} must be the same as {compareSource}.",
+		"compare-greater-than":						"{property} must be greater than {compareSource}.",
+		"compare-greater-than-or-equal":			"{property} must be greater than or equal to {compareSource}.",
+		"compare-less-than":						"{property} must be less than {compareSource}.",
+		"compare-less-than-or-equal":				"{property} must be less than or equal to {compareSource}.",
+		"compare-not-equal":						"{property} must be different from {compareSource}.",
+		"compare-on-or-after":						"{property} must be on or after {compareSource}.",
+		"compare-on-or-before":						"{property} must be on or before {compareSource}.",
+		"listlength-compare-equal":					"{property} length must be the same as {compareSource}.",
+		"listlength-compare-greater-than":			"{property} length must be greater than {compareSource}.",
+		"listlength-compare-greater-than-or-equal":	"{property} length must be greater than or equal to {compareSource}.",
+		"listlength-compare-less-than":				"{property} length must be less than {compareSource}.",
+		"listlength-compare-less-than-or-equal":	"{property} length must be less than or equal to {compareSource}.",
+		"listlength-compare-not-equal":				"{property} length must be different from {compareSource}.",
+		"range-at-least":							"{property} must be at least {min}.",
+		"range-at-most":							"{property} must be at most {max}.",
+		"range-between":							"{property} must be between {min} and {max}.",
+		"range-on-or-after":						"{property} must be on or after {min}.",
+		"range-on-or-before":						"{property} must be on or before {max}.",
+		"required":									"{property} is required.",
+		"required-if-after":						"{property} is required when {compareSource} is after {compareValue}.",
+		"required-if-before":						"{property} is required when {compareSource} is before {compareValue}.",
+		"required-if-equal":						"{property} is required when {compareSource} is {compareValue}.",
+		"required-if-exists":						"{property} is required when {compareSource} is specified.",
+		"required-if-greater-than":					"{property} is required when {compareSource} is greater than {compareValue}.",
+		"required-if-greater-than-or-equal":		"{property} is required when {compareSource} is greater than or equal to {compareValue}.",
+		"required-if-less-than":					"{property} is required when {compareSource} is less than {compareValue}.",
+		"required-if-less-than-or-equal":			"{property} is required when {compareSource} is less than or equal to {compareValue}.",
+		"required-if-not-equal":					"{property} is required when {compareSource} is not {compareValue}.",
+		"required-if-not-exists":					"{property} is required when {compareSource} is not specified.",
+		"required-if-on-or-after":					"{property} is required when {compareSource} is on or after {compareValue}.",
+		"required-if-on-or-before":					"{property} is required when {compareSource} is on or before {compareValue}.",
+		"string-format":							"{property} must be formatted as {formatDescription}.",
+		"string-length-at-least":					"{property} must be at least {min} characters.",
+		"string-length-at-most":					"{property} must be at most {max} characters.",
+		"string-length-between":					"{property} must be between {min} and {max} characters.",
+
+		// gets the resource with the specified name
+		get: function Resource$get(name) {
+			return this[name];
+		}
+	}
+	// #endregion
+
+	// #region ExoWeb.Model.Format
 	//////////////////////////////////////////////////
 
 	function Format(options) {
@@ -3289,7 +3423,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 							// If a property path remains, then attempt to find a default format and paths for the format
 							if (propertyPath) {
-								var property = Model.property("this." + propertyPath, type);
+								var property = Model.property(propertyPath, type);
 								if (property) {
 									// Only allow formats for a property path that is not followed by ".meta..."
 									if (allowFormat) {
@@ -3435,11 +3569,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Model
+	// #region ExoWeb.Model.Model
 	//////////////////////////////////////////////////
 
 	function Model() {
 		this._types = {};
+		this._ruleQueue = [];
 
 		this._validatingQueue = new EventQueue(
 			function(e) {
@@ -3455,117 +3590,135 @@ Type.registerNamespace("ExoWeb.DotNet");
 			function(e) {
 				var meta = e.sender;
 				var propName = e.property;
-
-				var conditions = [];
-				Sys.Observer.makeObservable(conditions);
-				Array.addRange(conditions, meta._propertyConditions[propName] || []);
+				var conditions = meta.conditions(meta.type.property(propName));
 				meta._raiseEvent("propertyValidated:" + propName, [meta, conditions]);
 			},
-			function(a, b) {
+			function (a, b) {
 				return a.sender == b.sender && a.property == b.property;
 			}
 		);
 	}
 
-	Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback, thisPtr*/) {
-		var tokens = new PathTokens(path);
-		var firstStep = tokens.steps[0];
-		var isGlobal = firstStep.property !== "this";
+	function ensureType(type, forceLoad, callback) {
 
-		var type;
+		// immediately invoke the callback if no type was specified or the type is loaded
+		if (!type || LazyLoader.isLoaded(type)) {
+			return callback();
+		}
 
-		var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+		// force type loading if requested
+		if (forceLoad) {
+			LazyLoader.load(type, null, callback);
+		}
+
+		// otherwise, only continue processing when and if dependent types are loaded
+		else {
+			$extend(type._fullName, callback);
+		}
+	};
+
+	Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
+
+		// allow path to be either a string or PathTokens instance
+		var tokens;
+		if (path.constructor === PathTokens) {
+			tokens = path;
+			path = tokens.expression;
+		}
+
+		// get the optional arguments
+		var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
 		var callback = arguments[3];
 		var thisPtr = arguments[4];
 
-		if (isGlobal) {
-			// Get all but the last step in the path.
-			var typePathSteps = tokens.steps.filter(function(item, i) { return i != tokens.steps.length - 1; });
-
-			// Construct a string from these steps.
-			var typeName = typePathSteps.map(function(item) { return item.property; }).join(".");
-
-			// Empty type name is an error.  The type name must be included as a part of the path.
-			if (typeName.length === 0) {
-				ExoWeb.trace.throwAndLog(["model"], "Invalid static property path \"{0}\":  type name must be included.", [path]);
-			}
-
-			// Retrieve the javascript type by name.
-			type = Model.getJsType(typeName, true);
-
-			// Handle non-existant or non-loaded type.
-			if (!type) {
-				if (callback) {
-					// Retry when type is loaded
-					$extend(typeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
-					return;
-				}
-				else {
-					ExoWeb.trace.throwAndLog(["model"], "Invalid static property path \"{0}\":  type \"{1}\" could not be found.", [path, typeName]);
-				}
-			}
-
-			// Get the corresponding meta type.
-			type = type.meta;
-
-			// Chop off type portion of property path.
-			tokens.steps.splice(0, tokens.steps.length - 1);
-		}
-		else {
-			if (firstStep.cast) {
-				var jstype = Model.getJsType(firstStep.cast);
-
-				if (!jstype) {
-					ExoWeb.trace.throwAndLog("model", "Path '{0}' references an unknown type: {1}", [path, firstStep.cast]);
-				}
-				type = jstype.meta;
-			}
-			else if (thisType instanceof Function) {
-				type = thisType.meta;
+		// immediately return cached property chains
+		if (thisType && thisType._chains && thisType._chains[path]) {
+			if (callback) {
+				callback.call(thisPtr || this, thisType._chains[path]);
+				return;
 			}
 			else {
-				type = thisType;
+				return thisType._chains[path];
 			}
-
-			tokens.steps.dequeue();
 		}
 
+		// get tokens for the specified path
+		var tokens = tokens || new PathTokens(path);
+
+		// get the instance type, if specified
+		var type = thisType instanceof Function ? thisType.meta : thisType;
+
+		// create a function to lazily load a property 
+		var loadProperty = function (type, name, callback) {
+			ensureType(type, forceLoadTypes, function () {
+				callback.call(thisPtr || this, type.property(name));
+			});
+		}
+
+		// handle single property expressions efficiently, as they are neither static nor chains
 		if (tokens.steps.length === 1) {
 			var name = tokens.steps[0].property;
 			if (callback) {
-				if (!LazyLoader.isLoaded(type)) {
-					if (lazyLoadTypes) {
-						LazyLoader.load(type, null, function() {
-							callback.call(thisPtr || this, type.property(name, true));
-						});
-					}
-					else {
-						$extend(type._fullName, function() {
-							callback.call(thisPtr || this, type.property(name, true));
-						});
-					}
-				}
-				else {
-					callback.call(thisPtr || this, type.property(name, true));
-				}
+				loadProperty(type, name, callback);
 			}
 			else {
-				return type.property(name, true);
+				return type.property(name);
 			}
 		}
+
+		// otherwise, first see if the path represents a property chain, and if not, a global property
 		else {
+
+			// predetermine the global type name and property name before seeing if the path is an instance path
+			var globalTypeName = tokens.steps
+				.slice(0, tokens.steps.length - 1)
+				.map(function (item) { return item.property; })
+				.join(".");
+
+			var globalPropertyName = tokens.steps[tokens.steps.length - 1].property;
+
+			// create a function to see if the path is a global property if instance processing fails
+			var processGlobal = function (instanceParseError) {
+
+				// Retrieve the javascript type by name.
+				type = Model.getJsType(globalTypeName, true);
+
+				// Handle non-existant or non-loaded type.
+				if (!type) {
+					if (callback) {
+						// Retry when type is loaded
+						$extend(globalTypeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
+						return;
+					}
+					else {
+						ExoWeb.trace.throwAndLog(["model"], instanceParseError);
+					}
+				}
+
+				// Get the corresponding meta type.
+				type = type.meta;
+
+				// return the static property
+				if (callback) {
+					loadProperty(type, globalPropertyName, callback);
+				}
+				else {
+					return type.property(globalPropertyName);
+				}
+			}
+
 			if (callback) {
-				new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+				PropertyChain.create(type, tokens, forceLoadTypes, thisPtr ? callback.bind(thisPtr) : callback, processGlobal);
 			}
 			else {
-				return new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+				return PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal(null);
 			}
 		}
 	};
 
 	Model.prototype = {
 		dispose: function Model$dispose() {
-			for(var key in this._types) {
+			for (var key in this._types) {
 				delete window[key];
 			}
 		},
@@ -3582,13 +3735,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._validatingQueue.stopQueueing();
 			this._validatedQueue.stopQueueing();
 		},
-		get_types: function() {
-			return Array.prototype.slice.call(this._types);
-		},
-		type: function(name) {
+		type: function (name) {
 			return this._types[name];
 		},
-		addBeforeContextReady: function(handler) {
+		types: function (filter) {
+			var result = [];
+			for (var typeName in this._types) {
+				var type = this._types[typeName];
+				if (!filter || filter(type)) {
+					result.push(type);
+				}
+			}
+			return result;
+		},
+		addBeforeContextReady: function (handler) {
 			// Only executes the given handler once, since the event should only fire once
 			if (!this._contextReady) {
 				this._addEvent("beforeContextReady", handler, null, true);
@@ -3597,35 +3757,50 @@ Type.registerNamespace("ExoWeb.DotNet");
 				handler();
 			}
 		},
-		notifyBeforeContextReady: function() {
+
+		// queues a rule to be registered
+		registerRule: function Model$registerRule(rule) {
+			this._ruleQueue.push(rule);
+		},
+
+		// register rules pending registration
+		registerRules: function Model$registerRules() {
+			var rules = this._ruleQueue;
+			this._ruleQueue = [];
+			for (var i = 0; i < rules.length; i++) {
+				rules[i].register();
+			}
+		},
+		notifyBeforeContextReady: function () {
 			this._contextReady = true;
+			this.registerRules();
 			this._raiseEvent("beforeContextReady", []);
 		},
-		addAfterPropertySet: function(handler) {
+		addAfterPropertySet: function (handler) {
 			this._addEvent("afterPropertySet", handler);
 		},
-		notifyAfterPropertySet: function(obj, property, newVal, oldVal) {
+		notifyAfterPropertySet: function (obj, property, newVal, oldVal) {
 			this._raiseEvent("afterPropertySet", [obj, property, newVal, oldVal]);
 		},
-		addObjectRegistered: function(func, objectOrFunction, once) {
+		addObjectRegistered: function (func, objectOrFunction, once) {
 			this._addEvent("objectRegistered", func, objectOrFunction ? (objectOrFunction instanceof Function ? objectOrFunction : equals(objectOrFunction)) : null, once);
 		},
-		removeObjectRegistered: function(func) {
+		removeObjectRegistered: function (func) {
 			this._removeEvent("objectRegistered", func);
 		},
-		notifyObjectRegistered: function(obj) {
+		notifyObjectRegistered: function (obj) {
 			this._raiseEvent("objectRegistered", [obj]);
 		},
-		addObjectUnregistered: function(func) {
+		addObjectUnregistered: function (func) {
 			this._addEvent("objectUnregistered", func);
 		},
-		notifyObjectUnregistered: function(obj) {
+		notifyObjectUnregistered: function (obj) {
 			this._raiseEvent("objectUnregistered", [obj]);
 		},
-		addListChanged: function(func) {
+		addListChanged: function (func) {
 			this._addEvent("listChanged", func);
 		},
-		notifyListChanged: function(obj, property, changes) {
+		notifyListChanged: function (obj, property, changes) {
 			this._raiseEvent("listChanged", [obj, property, changes]);
 		},
 		_ensureNamespace: function Model$_ensureNamespace(name, parentNamespace) {
@@ -3634,7 +3809,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (target.constructor === String) {
 				var nsTokens = target.split(".");
 				target = window;
-				Array.forEach(nsTokens, function(token) {
+				Array.forEach(nsTokens, function (token) {
 					target = target[token];
 
 					if (target === undefined) {
@@ -3686,7 +3861,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Entity
+	// #region ExoWeb.Model.Entity
 	//////////////////////////////////////////////////
 
 	function Entity() {
@@ -3712,7 +3887,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	Entity.mixin({
 		init: function Entity$init(/*[properties] or [propName, propValue] */) {
 			forEachProperty(getProperties.apply(this, arguments), function (name, value) {
-				var prop = this.meta.type.property(name, true);
+				var prop = this.meta.type.property(name);
 
 				if (!prop) {
 					ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
@@ -3724,20 +3899,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		set: function Entity$set(/*[properties] or [propName, propValue] */) {
 			forEachProperty(getProperties.apply(this, arguments), function (name, value) {
-				this._accessor("set", name).call(this, value);
+				this.meta.type.property(name)._setter(this, value, false);
 			}, this);
 		},
-		get: function Entity$get(propName) {
-			return this._accessor("get", propName).call(this);
-		},
-		_accessor: function Entity$_accessor(getOrSet, property) {
-			var fn = this[getOrSet + "_" + property];
-
-			if (!fn) {
-				ExoWeb.trace.throwAndLog("model", "Unknown property: {0}.{1}", [this.meta.type.get_fullName(), property]);
-			}
-
-			return fn;
+		get: function Entity$get(path) {
+			return this.meta.type.property(path).value(this);
 		},
 		toString: function Entity$toString(format) {
 			if (format) {
@@ -3770,11 +3936,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Type
+	// #region ExoWeb.Model.Type
 	//////////////////////////////////////////////////
 
 	function Type(model, name, baseType, origin) {
 		this._fullName = name;
+		this._exports;
 
 		// if origin is not provided it is assumed to be client
 		this._origin = origin || "client";
@@ -3786,9 +3953,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._properties = {}; 
 		this._instanceProperties = {};
 		this._staticProperties = {};
-		this._model = model;
-		this._initNewProps = [];
-		this._initExistingProps = [];
+
+		// define properties
+		Object.defineProperty(this, "model", { value: model });
+		Object.defineProperty(this, "rules", { value: [] });
 
 		// generate class and constructor
 		var jstype = Model.getJsType(name, true);
@@ -3893,7 +4061,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 					}
 
 					type.register(this, id);
-					type._initProperties(this, "_initExistingProps");
 
 					if (props) {
 						this.init(props);
@@ -3901,7 +4068,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 				else {
 					type.register(this);
-					type._initProperties(this, "_initNewProps");
 
 					// set properties passed into constructor
 					if (idOrProps) {
@@ -3974,7 +4140,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var key = id.toLowerCase();
 
 			obj.meta.id = id;
-			Sys.Observer.makeObservable(obj);
+			Observer.makeObservable(obj);
 
 			for (var t = this; t; t = t.baseType) {
 				if (t._pool.hasOwnProperty(key)) {
@@ -3987,7 +4153,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 
-			this._model.notifyObjectRegistered(obj);
+			this.model.notifyObjectRegistered(obj);
 		},
 		changeObjectId: function Type$changeObjectId(oldId, newId) {
 			validateId(this, oldId);
@@ -4033,7 +4199,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 
-			this._model.notifyObjectUnregistered(obj);
+			this.model.notifyObjectUnregistered(obj);
 		},
 		get: function Type$get(id) {
 			validateId(this, id);
@@ -4054,13 +4220,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 					list.push(this._pool[id]);
 				}
 
-				Sys.Observer.makeObservable(list);
+				Observer.makeObservable(list);
 			}
 
 			return list;
 		},
 		addPropertyAdded: function (handler) {
 			this._addEvent("propertyAdded", handler);
+		},
+		addRule: function Type$addRule(def) {
+			return new Rule(this, def);
 		},
 		addProperty: function Type$addProperty(def) {
 			var format = def.format;
@@ -4086,33 +4255,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 			genPropertyShortcut(this, true);
 
-			// does this property need to be inited during object construction?
-			// note: this is an optimization so that all properties defined for a type and 
-			// its sub types don't need to be iterated over each time the constructor is called.
-			if (!prop.get_isStatic()) {
-				if (prop.get_isList()) {
-					this._initNewProps.push({ property: prop, valueFn: function () { return []; } });
-
-					if (prop.get_origin() !== "server") {
-						this._initExistingProps.push({ property: prop, valueFn: function () { return []; } });
-						this.known().forEach(function (obj) {
-							prop.init(obj, []);
-						});
-					}
-				}
-				else {
-					// Previously only server-origin properties were inited in an attempt to allow
-					// calculations of client-origin properties to run when accessed. However, since
-					// rules attempt to run when registered this is no longer necessary.
-					this._initNewProps.push({ property: prop, valueFn: function () { return undefined; } });
-				}
-			}
-			// initially client-based static list properties when added
-			else if (prop.get_isList() && prop.get_origin() === "client") {
-				prop.init(null, []);
-			}
-
-		 
 			if (prop.get_isStatic()) {
 				// for static properties add member to javascript type
 				this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
@@ -4133,7 +4275,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			this._raiseEvent("propertyAdded", [this, { property: prop}]);
 
-			return prop; 
+			return prop;
 		},
 		addMethod: function Type$addMethod(def) {
 			var methodName = this.get_fullName() + "." + def.name;
@@ -4198,7 +4340,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			};
 
 			// Assign the method to the type for static methods, otherwise assign it to the prototype for instance methods
-			if (def.isStatic){
+			if (def.isStatic) {
 				this._jstype[def.name] = method;
 			}
 			else {
@@ -4206,9 +4348,21 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 		},
-		_makeGetter: function Type$_makeGetter(receiver, fn, skipTypeCheck) {
+		_makeGetter: function Type$_makeGetter(property, getter, skipTypeCheck) {
 			return function () {
-				return fn.call(receiver, this, skipTypeCheck);
+				// ensure the property is initialized
+				var result = getter.call(property, this, skipTypeCheck);
+
+				// ensure the property is initialized
+				if (result === undefined || (property.get_isList() && !LazyLoader.isLoaded(result))) {
+					ExoWeb.trace.throwAndLog(["model", "entity"], "Property {0}.{1} is not initialized.  Make sure instances are loaded before accessing property values.", [
+						property._containingType.get_fullName(),
+						property.get_name()
+					]);
+				}
+
+				// return the result
+				return result;
 			};
 		},
 		_makeSetter: function Type$_makeSetter(prop) {
@@ -4222,19 +4376,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			setter.__notifies = true;
 
 			return setter;
-		},
-		_initProperties: function Type$_initProperties(obj, initsArrayName) {
-			for (var t = this; t !== null; t = t.baseType) {
-				var inits = t[initsArrayName];
-
-				for (var i = 0; i < inits.length; ++i) {
-					var init = inits[i];
-					init.property.init(obj, init.valueFn());
-				}
-			}
-		},
-		get_model: function Type$get_model() {
-			return this._model;
 		},
 		get_format: function Type$get_format() {
 			return this._format ? this._format : (this.baseType ? this.baseType.get_format() : undefined);
@@ -4288,11 +4429,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		get_instanceProperties: function Type$get_instanceProperties() {
 			return this._instanceProperties;
 		},
-		property: function Type$property(name, thisOnly) {
-			if (!thisOnly) {
-				return new PropertyChain(this, new PathTokens(name));
-			}
-
+		property: function Type$property(name) {
 			var prop;
 			for (var t = this; t && !prop; t = t.baseType) {
 				prop = t._properties[name];
@@ -4301,183 +4438,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 					return prop;
 				}
 			}
-
 			return null;
 		},
-		addRule: function Type$addRule(rule) {
-			function Type$addRule$init(sender, args) {
-				if (!args.wasInited && (rule.canExecute ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
-					Type$addRule$fn(sender, args.property, rule.execute);
-				}
-			}
-			function Type$addRule$changed(sender, args) {
-				if (args.wasInited && (rule.canExecute ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
-					Type$addRule$fn(sender, args.property, rule.execute);
-				}
-			}
-			function Type$addRule$get(sender, args) {
-				try {
-					// Only execute rule on property get if the property has not been initialized.
-					// This is based on the assumption that a rule should only fire on property
-					// get for the purpose of lazy initializing the property value.
-					if (!args.isInited) {
-						Type$addRule$fn(sender, args.property, rule.execute);
-					}
-				}
-				catch (e) {
-					ExoWeb.trace.log("model", e);
-				}
-			}
-
-			function Type$addRule$_fn(obj, prop, fn) {
-				if (prop.get_isStatic() === true) {
-					Array.forEach(jstype.meta.known(), function (obj) {
-						if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
-							fn.call(rule, obj);
-							obj.meta.markRuleExecuted(rule);
-						}
-					});
-				}
-				else {
-					fn.call(rule, obj);
-					obj.meta.markRuleExecuted(rule);
-				}
-			}
-
-			function Type$addRule$fn(obj, prop, fn) {
-				if (ExoWeb.config.debug === true) {
-					prop.get_containingType().get_model().beginValidation();
-					rule._isExecuting = true;
-					Type$addRule$_fn.apply(this, arguments);
-					rule._isExecuting = false;
-					prop.get_containingType().get_model().endValidation();
-				}
-				else {
-					try {
-						prop.get_containingType().get_model().beginValidation();
-						rule._isExecuting = true;
-						Type$addRule$_fn.apply(this, arguments);
-					}
-					catch (err) {
-						ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
-					}
-					finally {
-						rule._isExecuting = false;
-						prop.get_containingType().get_model().endValidation();
-					}
-				}
-			}
-
-			// Store off javascript type to use for comparison
-			var jstype = this.get_jstype();
-
-			for (var i = 0; i < rule.inputs.length; ++i) {
-				var input = rule.inputs[i];
-				var prop = input.property;
-
-				// If the containing type of the input is the same as the type 
-				// that the rule is attached to, then we do not need to check types.
-				var isSameType = this === prop.get_containingType();
-
-				if (input.get_dependsOnChange()) {
-					prop.addChanged(isSameType ?
-						Type$addRule$changed :
-						function (sender, args) {
-							if (sender instanceof jstype) {
-								Type$addRule$changed.apply(this, arguments);
-							}
-						},
-						null, // no object filter
-						false, // subscribe for all time, not once
-						true // tolerate nulls since rule execution logic will handle guard conditions
-					);
-				}
-
-				if (input.get_dependsOnInit()) {
-					prop.addChanged(isSameType ?
-						Type$addRule$init :
-						function (sender, args) {
-							if (sender instanceof jstype) {
-								Type$addRule$init.apply(this, arguments);
-							}
-						}
-					);
-				}
-
-				if (input.get_dependsOnGet()) {
-					prop.addGet(isSameType ?
-						Type$addRule$get :
-						function (obj, prop, value, isInited) {
-							if (obj instanceof jstype) {
-								Type$addRule$get.apply(this, arguments);
-							}
-						}
-					);
-				}
-
-				(prop instanceof PropertyChain ? prop.lastProperty() : prop)._registerRule(rule, input.get_isTarget());
-			}
-		},
-		// Executes all rules that have a particular property as input
-		executeRules: function Type$executeRules(obj, rules, callback, start) {
-
-			var processing;
-
-			if (start === undefined) {
-				this._model.beginValidation();
-			}
-
-			try {
-				var i = (start ? start : 0);
-
-				processing = (i < rules.length);
-
-				while (processing) {
-					var rule = rules[i];
-
-					// Only execute a rule if it is not currently executing and can be executed for the target object.
-					// If rule doesn't define a custom canExecute this will simply check that all init inputs are inited.
-					if (!rule._isExecuting && (rule.canExecute ? rule.canExecute(obj) : Rule.canExecute(rule, obj))) {
-						rule._isExecuting = true;
-
-						if (rule.isAsync) {
-							// run rule asynchronously, and then pickup running next rules afterwards
-							var _this = this;
-							//									ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-							rule.execute(obj, function () {
-								rule._isExecuting = false;
-								obj.meta.markRuleExecuted(rule);
-								_this.executeRules(obj, rules, callback, i + 1);
-							});
-							break;
-						}
-						else {
-							try {
-								//										ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-								rule.execute(obj);
-								obj.meta.markRuleExecuted(rule);
-							}
-							finally {
-								rule._isExecuting = false;
-							}
-						}
-					}
-
-					++i;
-					processing = (i < rules.length);
-				}
-			}
-			finally {
-				if (!processing) {
-					this._model.endValidation();
-				}
-			}
-
-			if (!processing && callback && callback instanceof Function) {
-				callback();
-			}
-
-			return !processing;
+		conditionIf: function (options) {
+			new ExoWeb.Model.Rule.condition(this, options);
+			return this;
 		},
 		set_originForNewProperties: function Type$set_originForNewProperties(value) {
 			this._originForNewProperties = value;
@@ -4490,6 +4455,33 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		get_origin: function Type$get_origin() {
 			return this._origin;
+		},
+		compileExpression: function Type$compile(expression) {
+
+			// use exports if required
+			if (this._exports) {
+				expression = "return function() { return " + expression + "; }";
+				var args = this._exports.names.concat([expression]);
+				var compile = Function.apply(null, args);
+				return compile.apply(null, this._exports.implementations);
+			}
+
+			// otherwise, just create the function based on the expression
+			else {
+				return new Function("return " + expression + ";");
+			}
+		},
+		set_exports: function Type$set_exports(exports) {
+			var names = [];
+			var script = "return ["
+			for (var name in exports) {
+				names.push(name);
+				script += exports[name] + ",";
+			}
+			if (script.length > 8) {
+				script = script.slice(0, -1) + "];";
+				this._exports = { names: names, implementations: new Function(script)() };
+			}
 		},
 		eachBaseType: function Type$eachBaseType(callback, thisPtr) {
 			for (var baseType = this.baseType; !!baseType; baseType = baseType.baseType) {
@@ -4520,7 +4512,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Property
+	// #region ExoWeb.Model.Property
 	//////////////////////////////////////////////////
 
 	//////////////////////////////////////////////////////////////////////////////////////
@@ -4542,6 +4534,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._isPersisted = !!isPersisted;
 		this._index = index;
 		this._rules = [];
+		this._defaultValue = 
+			isList ? [] :
+			jstype === Boolean ? false :
+			jstype === Number ? 0 :
+			null;
 
 		if (containingType.get_originForNewProperties()) {
 			this._origin = containingType.get_originForNewProperties();
@@ -4555,22 +4552,37 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	}
 
+	// updates the property and message or conditionType options for property rules
+	function preparePropertyRuleOptions(property, options, error) {
+		options.property = property;
+		if (error && error.constructor === String) {
+			options.message = error;
+		}
+		else if (error instanceof ConditionType) {
+			options.conditionType = error;
+		}
+		return options;
+	}
+
+	// updates the property and message or conditionType options for property rules
+	function hasPropertyChangedSubscribers(property, obj) {
+		handler = property._getEventHandler("changed");
+		return handler && !handler.isEmpty([obj]);
+	}
+
+	// registers a rule with a specific property
+	function registerPropertyRule(property, rule) {
+		property._rules.push(rule);
+
+		// Raise events if registered.
+		var handler = property._getEventHandler("ruleRegistered");
+		if (handler)
+			handler(rule, { property: property });
+	}
+
 	Property.mixin({
 		defaultValue: function Property$defaultValue(value) {
-			function getValue() {
-				return value;
-			}
-
-			this._containingType._initNewProps.push({ property: this, valueFn: getValue });
-			this._containingType._initExistingProps.push({ property: this, valueFn: getValue });
-
-			// Initialize existing instances
-			Array.forEach(this._containingType.known(), function (obj) {
-				if (!this.isInited(obj)) {
-					this.init(obj, value);
-				}
-			}, this);
-
+			this._defaultValue = value;
 			return this;
 		},
 		equals: function Property$equals(prop) {
@@ -4584,43 +4596,30 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 			}
 		},
-		rule: function (type, onlyTargets) {
+		rule: function (type) {
 			if (!type || !(type instanceof Function)) {
 				ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type ? type : (type === undefined ? "undefined" : "null")]);
 			}
 
-			var rule = first(this._rules, function (rule) {
-				if (rule.value instanceof type)
-					if (!onlyTargets || rule.isTarget === true)
-						return true;
+			return first(this._rules, function (rule) {
+				if (rule instanceof type) {
+					return true;
+				}
 			});
-
-			return rule ? rule.value : null;
 		},
+		rules: function (filter) {
+			return filter && filter instanceof Function ? this._rules.filter(filter) : this._rules.slice();
+		},	
 		isDefinedBy: function Property$isDefinedBy(mtype) {
 			return this._containingType === mtype || mtype.isSubclassOf(this._containingType);
-		},
-		_registerRule: function Property$_addRule(rule, isTarget) {
-			this._rules.push({ value: rule, isTarget: isTarget });
-
-			// Raise events if registered.
-			var handler = this._getEventHandler("ruleRegistered");
-			if (handler)
-				handler(rule, { property: this, isTarget: isTarget });
 		},
 		addRuleRegistered: function Property$addRuleRegistered(handler, obj, once) {
 			this._addEvent("ruleRegistered", handler, obj ? equals(obj) : null, once);
 			return this;
 		},
-		rules: function (targetsThis) {
-			return this._rules
-				.filter(function (rule) {
-					return (!targetsThis && targetsThis !== false) || // no filter
-						(targetsThis === true && rule.isTarget === true) || // only targets
-						(targetsThis === false && rule.isTarget === false); // only non-targets
-				}).map(function (rule) {
-					return rule.value;
-				});
+		removeRuleRegistered: function Property$removeRuleRegistered(handler, obj, once) {
+			this._removeEvent("ruleRegistered", handler);
+			return this;
 		},
 		toString: function Property$toString() {
 			if (this._isStatic) {
@@ -4655,6 +4654,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		format: function (val) {
 			return this.get_format() ? this.get_format().convert(val) : val;
 		},
+		get_defaultValue: function Property$get_defaultValue() {
+			// clone array and date defaults since they are mutable javascript types
+			return this._defaultValue instanceof Array ? this._defaultValue.slice() :
+				this._defaultValue instanceof Date ? new Date(+this._defaultValue) :
+				this._defaultValue instanceof TimeSpan ? new TimeSpan(this._defaultValue.totalMilliseconds) :
+				this._defaultValue;
+		},
 		get_origin: function Property$get_origin() {
 			return this._origin ? this._origin : this._containingType.get_origin();
 		},
@@ -4669,7 +4675,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					ExoWeb.trace.throwAndLog(["model", "entity"], "Type {0} does not define static property {1}.{2}.", [
 						obj.get_fullName(),
 						this._containingType.get_fullName(),
-						this.get_label()
+						this.get_name()
 					]);
 				}
 			}
@@ -4682,65 +4688,45 @@ Type.registerNamespace("ExoWeb.DotNet");
 					ExoWeb.trace.throwAndLog(["model", "entity"], "Type {0} does not define non-static property {1}.{2}.", [
 						obj.meta.type.get_fullName(),
 						this._containingType.get_fullName(),
-						this.get_label()
+						this.get_name()
 					]);
 				}
 			}
 		},
 		// </DEBUG>
 
-		_getter: function Property$_getter(obj, skipTypeCheck) {
-			//				var key = this.get_containingType().get_fullName() + ":" + this._name + ":" + (obj ? obj.meta.id : "STATIC");
-			//				if(!window.entities[key]){
-			//					window.entities[key] = 1;
-			//				}
-			//				else {
-			//					++window.entities[key];
-			//				}
+		_getter: function Property$_getter(obj) {
 
-			// Generated setter added to entities can skip type validation since it is 
-			// unlikely to be called on an invalid object.
+			// ensure the entity is loaded before accessing property values
+			if (LazyLoader.isLoaded(obj)) {
 
-			// <DEBUG>
-			//				if (!skipTypeCheck) {
-			//					if (obj === undefined || obj === null) {
-			//						ExoWeb.trace.throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
-			//					}
+				// determine if the property has been initialized with a value
+				var isInited = obj.hasOwnProperty(this._fieldName);
 
-			//					this._assertType(obj);
-			// </DEBUG>
+				// initialize the property if necessary
+				if (!isInited) {
 
-			var handler = this._getEventHandler("get");
-			if (handler)
-				handler(obj, { property: this, value: obj[this._fieldName], isInited: obj.hasOwnProperty(this._fieldName) });
+					// initialize to the defined default value
+					this.init(obj, this.get_defaultValue());
 
-			// <DEBUG>
-			//				if (this._name !== this._fieldName && obj.hasOwnProperty(this._name)) {
-			//					ExoWeb.trace.logWarning("model",
-			//						"Possible incorrect property usage:  property \"{0}\" is defined on object but field name should be \"{1}\", make sure you are using getters and setters.",
-			//						[this._name, this._fieldName]
-			//					);
-			//				}
-			// </DEBUG>
+					// mark the property as pending initialization
+					obj.meta.pendingInit(this, true);
+				}
 
-			return obj[this._fieldName];
+				// raise get events
+				var handler = this._getEventHandler("get");
+				if (handler)
+					handler(obj, { property: this, value: obj[this._fieldName], isInited: isInited });
+
+				// return the property value
+				return obj[this._fieldName];
+			}
 		},
 
 		_setter: function Property$_setter(obj, val, skipTypeCheck, args) {
-			// Generated setter added to entities can skip type validation since it is 
-			// unlikely to be called on an invalid object.
-			// <DEBUG>
-			//				if (!skipTypeCheck) {
-			//					if (obj === undefined || obj === null) {
-			//						ExoWeb.trace.throwAndLog(["model", "entity"], "Target object cannot be <{0}>.", [obj === undefined ? "undefined" : "null"]);
-			//					}
-
-			//					this._assertType(obj);
-			//				}
-			// </DEBUG>
 
 			if (!this.canSetValue(obj, val)) {
-				ExoWeb.trace.throwAndLog(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
+				throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
 			}
 
 			var old = obj[this._fieldName];
@@ -4759,13 +4745,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 				// NOTE: property change should be broadcast before rules are run so that if 
 				// any rule causes a roundtrip to the server these changes will be available
-				this._containingType.get_model().notifyAfterPropertySet(obj, this, val, old, wasInited);
+				this._containingType.model.notifyAfterPropertySet(obj, this, val, old, wasInited);
 
 				var handler = this._getEventHandler("changed");
 				if (handler)
 					handler(obj, $.extend({ property: this, newValue: val, oldValue: old, wasInited: wasInited }, args));
 
-				Sys.Observer.raisePropertyChanged(obj, this._name);
+				Observer.raisePropertyChanged(obj, this._name);
 			}
 		},
 
@@ -4863,20 +4849,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return;
 			}
 
-			//				if(!window.entities)
-			//					window.entities = {};
-
-			//				var key = this.get_containingType().get_fullName() + ":" + this._name + ":" + (obj ? obj.meta.id : "STATIC");
-			//				if(!window.entities[key]){
-			//					window.entities[key] = 0;
-			//				}
-
 			target[this._fieldName] = val;
 
 			if (val instanceof Array) {
 				var _this = this;
-				Sys.Observer.makeObservable(val);
-				Sys.Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
+				Observer.makeObservable(val);
+				Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
 					if (!LazyLoader.isLoaded(val)) {
 						ExoWeb.trace.logWarning("model", "{0} list {1}.{2} was modified but it has not been loaded.", [
 							_this._isStatic ? "Static" : "Non-static",
@@ -4887,19 +4865,19 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// NOTE: property change should be broadcast before rules are run so that if 
 					// any rule causes a roundtrip to the server these changes will be available
-					_this._containingType.get_model().notifyListChanged(target, _this, args.get_changes());
+					_this._containingType.model.notifyListChanged(target, _this, args.get_changes());
 
 					// NOTE: oldValue is not currently implemented for lists
 					_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: args.get_changes(), wasInited: true, collectionChanged: true}]);
 
-					Sys.Observer.raisePropertyChanged(target, _this._name);
+					Observer.raisePropertyChanged(target, _this._name);
 				});
 			}
-			var handler = this._getEventHandler("changed");
-			if (handler)
-				handler(target, { property: this, newValue: val, oldValue: undefined, wasInited: false });
+			//		var handler = this._getEventHandler("changed");
+			//		if (handler)
+			//			handler(target, { property: this, newValue: val, oldValue: undefined, wasInited: false });
 
-			Sys.Observer.raisePropertyChanged(target, this._name);
+			//		Observer.raisePropertyChanged(target, this._name);
 
 			// Return the property to support method chaining
 			return this;
@@ -4911,7 +4889,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return false;
 			}
 			if (this._isList) {
-				var value = this.value(obj);
+				var value = target[this._fieldName];
 				if (!LazyLoader.isLoaded(value)) {
 					// If the list is not-loaded, then the property is not initialized
 					return false;
@@ -4953,16 +4931,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 		removeChanged: function Property$removeChanged(handler) {
 			this._removeEvent("changed", handler);
 		},
-		// Adds a rule to the property that will update its value based on a calculation.
-		calculated: function (options, conditionType) {
-			new CalculatedPropertyRule(options.rootType ? options.rootType.meta : this._containingType, {
-				property: this._name,
-				basedOn: options.basedOn,
-				fn: options.fn,
-				isAsync: options.isAsync
-			}, conditionType);
-
+		firstProperty: function Property$firstProperty() {
 			return this;
+		},
+		lastProperty: function Property$lastProperty() {
+			return this;
+		},
+		properties: function Property$properties() {
+			return [this];
+		},
+		lastTarget: function Property$lastTarget(obj) {
+			return obj;
 		},
 		ifExists: function (path) {
 			Model.property(path, this._containingType, true, function (chain) {
@@ -4990,57 +4969,80 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		rootedPath: function Property$rootedPath(type) {
 			if (this.isDefinedBy(type)) {
-				return (this._isStatic ? this._containingType.get_fullName() : "this") + "." + this._name;
+				return this._isStatic ? this._containingType.get_fullName() + "." + this._name : this._name;
 			}
 		},
 		label: function (label) {
 			this._label = label;
 			return this;
 		},
-		required: function (conditionType) {
-			new ExoWeb.Model.Rule.required(this._containingType, { property: this._name }, conditionType);
+		// Adds a rule to the property that will update its value based on a calculation.
+		calculated: function (options) {
+			options.property = this;
+			new CalculatedPropertyRule(options.rootType ? options.rootType.meta : this._containingType, options);
 			return this;
 		},
-		allowedValues: function (source, conditionType) {
-			new ExoWeb.Model.Rule.allowedValues(this._containingType, { property: this._name, source: source }, conditionType);
+		required: function (error) {
+			var options = preparePropertyRuleOptions(this, {}, error);
+			new ExoWeb.Model.Rule.required(this._containingType, options);
 			return this;
 		},
-		compare: function (operator, source, conditionType) {
-			new ExoWeb.Model.Rule.compare(this._containingType, { property: this._name, compareOperator: operator, compareSource: source }, conditionType);
+		allowedValues: function (source, error) {
+			var options = preparePropertyRuleOptions(this, { source: source }, error);
+			new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
 			return this;
 		},
-		range: function (min, max, conditionType) {
-			new ExoWeb.Model.Rule.range(this._containingType, { property: this._name, min: min, max: max }, conditionType);
+		compare: function (operator, source, error) {
+			var options = preparePropertyRuleOptions(this, { compareOperator: operator, compareSource: source }, error);
+			new ExoWeb.Model.Rule.compare(this._containingType, options);
 			return this;
 		},
-		requiredIf: function (source, operator, value, conditionType) {
-			if (typeof (source) === "string") {
-				new ExoWeb.Model.Rule.requiredIf(this._containingType, { property: this._name, compareSource: source, compareOperator: operator, compareValue: value }, conditionType);
+		range: function (min, max, error) {
+			var options = preparePropertyRuleOptions(this, { min: min, max: max }, error);
+			new ExoWeb.Model.Rule.range(this._containingType, options);
+			return this;
+		},
+		conditionIf: function (options, type) {
+			var options = preparePropertyRuleOptions(this, options, type);
+			new ExoWeb.Model.Rule.condition(this._containingType, options);
+			return this;
+		},
+		errorIf: function (options, error) {
+			return this.conditionIf(options, error);
+		},
+		warningIf: function (options, warning) {
+			return this.conditionIf($.extend(options, { category: ConditionType.Warning }), warning);
+		},
+		requiredIf: function (source, operator, value, error) {
+			if (source.constructor === String) {
+				var options = preparePropertyRuleOptions(this, { compareSource: source, compareOperator: operator, compareValue: value }, error);
+				new ExoWeb.Model.Rule.requiredIf(this._containingType, options);
 			}
 			else {
-				new ExoWeb.Model.Rule.requiredIfExpressions(this._containingType, { property: this._name, fn: source.fn, dependsOn: source.dependsOn }, conditionType);
+				var options = preparePropertyRuleOptions(this, source);
+				new ExoWeb.Model.Rule.requiredIf(this._containingType, options);
 			}
 			return this;
 		},
-		requiredIfExpressions: function (options, conditionType) {
-			new ExoWeb.Model.Rule.requiredIfExpressions(this._containingType, { property: this._name, fn: options.fn, dependsOn: options.dependsOn }, conditionType);
+		stringLength: function (min, max, error) {
+			var options = preparePropertyRuleOptions(this, { min: min, max: max }, error);
+			new ExoWeb.Model.Rule.stringLength(this._containingType, options);
 			return this;
 		},
-		errorIfExpressions: function (options, conditionType) {
-			new ExoWeb.Model.Rule.errorIfExpressions(this._containingType, { property: this._name, fn: options.fn, dependsOn: options.dependsOn, errorMessage: options.errorMessage, isWarning: options.isWarning }, conditionType);
+		stringFormat: function (description, expression, reformat, error) {
+			var options = preparePropertyRuleOptions(this, { description: description, expression: expression, reformat: reformat }, error);
+			new ExoWeb.Model.Rule.stringFormat(this._containingType, options);
 			return this;
 		},
-		stringLength: function (min, max, conditionType) {
-			new ExoWeb.Model.Rule.stringLength(this._containingType, { property: this._name, min: min, max: max }, conditionType);
+		listLength: function (options, error) {
+			var options = preparePropertyRuleOptions(this, { staticLength: options.staticLength, compareSource: options.compareSource, compareOperator: options.compareOperator }, error);
+			new ExoWeb.Model.Rule.listLength(this._containingType, options);
 			return this;
 		},
-		stringFormat: function (description, expression, reformat, conditionType) {
-			new ExoWeb.Model.Rule.stringFormat(this._containingType, { property: this._name, description: description, expression: expression, reformat: reformat }, conditionType);
-			return this;
-		},
-		listLength: function (options, conditionType) {
-			new ExoWeb.Model.Rule.listLength(this._containingType, { property: this._name, staticLength: options.staticLength, compareSource: options.compareSource, compareOperator: options.compareOperator }, conditionType);
-			return this;
+		triggersRoundtrip: function (paths) {
+			this.addChanged(function (sender, args) {
+				sender.meta.type.model.server.roundtrip(sender, paths);
+			});
 		}
 	});
 	Property.mixin(Functor.eventing);
@@ -5048,10 +5050,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region PathTokens
+	// #region ExoWeb.Model.PathTokens
 	//////////////////////////////////////////////////
 
 	function PathTokens(expression) {
+	
+		// legacy: remove "this." prefix from instance properties
+		if (expression.substr(0, 5) === "this.")
+			expression = expression.substr(5);
+
 		this.expression = expression;
 
 		// replace "." in type casts so that they do not interfere with splitting path
@@ -5084,7 +5091,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var result = [];
 
 		if (paths) {
-			paths.forEach(function(p) {
+			paths.forEach(function (p) {
+
+				// coerce property and property chains into string paths
+				p = p instanceof Property ? p.get_name() :
+					p instanceof PropertyChain ? p.get_path() :
+					p;
+
 				var stack = [];
 				var parent;
 				var start = 0;
@@ -5147,10 +5160,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region PropertyChain
+	// #region ExoWeb.Model.PropertyChain
 	//////////////////////////////////////////////////
 
-	function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
+	function PropertyChain(rootType, properties, filters) {
 		/// <summary>
 		/// Encapsulates the logic required to work with a chain of properties and
 		/// a root object, allowing interaction with the chain as if it were a 
@@ -5204,43 +5217,70 @@ Type.registerNamespace("ExoWeb.DotNet");
 		};
 
 		this._rootType = rootType;
+		this._properties = properties;
+		this._filters = filters;
+	}
+
+	PropertyChain.create = function PropertyChain$create(rootType, pathTokens/*, forceLoadTypes, success, fail*/) {
+		/// <summary>
+		/// Attempts to synchronously or asynchronously create a property chain for the specified 
+		/// root type and path.  Also handles caching of property chains at the type level.
+		/// </summary>
+
 		var type = rootType;
-		var chain = this;
+		var properties = [];
+		var filters = [];
 
-		this._properties = [];
-		this._filters = [];
-
-		// initialize optional arguments
-		var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-		var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
+		// initialize optional callback arguments
+		var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+		var success = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
+		var fail = arguments.length >= 5 && arguments[4] && arguments[4] instanceof Function ?
+			arguments[4] : function (error) { if (success) { ExoWeb.trace.throwAndLog("model", error); } };
 
 		// process each step in the path either synchronously or asynchronously depending on arguments
 		var processStep = function PropertyChain$processStep() {
+
+			// get the next step
 			var step = pathTokens.steps.dequeue();
-
 			if (!step) {
-				ExoWeb.trace.throwAndLog("model", "Syntax error in property path: {0}", [pathTokens.expression]);
+				fail($format("Syntax error in property path: {0}", [pathTokens.expression]));
+
+				// return null to indicate that the path is not valid
+				return null;
 			}
 
-			var prop = type.property(step.property, true);
-
+			// get the property for the step 
+			var prop = type.property(step.property);
 			if (!prop) {
-				ExoWeb.trace.throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}." +
-					(ExoWeb.Model.LazyLoader.isLoaded(type) ? "" : " The type is not loaded."),
-					[pathTokens.expression, type.get_fullName(), step.property]);
+				fail($format("Path '{0}' references an unknown property: {1}.{2}.", [pathTokens.expression, type.get_fullName(), step.property]));
+
+				// return null if the property does not exist
+				return null;
 			}
 
-			chain._properties.push(prop);
+			// ensure the property is not static because property chains are not valid for static properties
+			if (prop.get_isStatic()) {
+				fail($format("Path '{0}' references a static property: {1}.{2}.", [pathTokens.expression, type.get_fullName(), step.property]));
 
+				// return null to indicate that the path references a static property
+				return null;
+			}
+
+			// store the property for the step
+			properties.push(prop);
+
+			// handle optional type filters
 			if (step.cast) {
-				type = type.get_model().type(step.cast);
 
+				// determine the filter type
+				type = Model.getJsType(step.cast, true).meta;
 				if (!type) {
-					ExoWeb.trace.throwAndLog("model", "Path '{0}' references an unknown type: {1}", [pathTokens.expression, step.cast]);
+					fail($format("Path '{0}' references an invalid type: {1}", [pathTokens.expression, step.cast]));
+					return null;
 				}
 
 				var jstype = type.get_jstype();
-				chain._filters[chain._properties.length] = function(target) {
+				filters[properties.length] = function (target) {
 					return target instanceof jstype;
 				};
 			}
@@ -5248,40 +5288,43 @@ Type.registerNamespace("ExoWeb.DotNet");
 				type = prop.get_jstype().meta;
 			}
 
-			if (pathTokens.steps.length === 0) {
+			// process the next step if not at the end of the path
+			if (pathTokens.steps.length > 0) {
+				return ensureType(type, forceLoadTypes, processStep);
+			}
+
+			// otherwise, create and return the new property chain
+			else {
+
 				// processing the path is complete, verify that chain is not zero-length
-				if (chain._properties.length === 0) {
-					ExoWeb.trace.throwAndLog(["model"], "PropertyChain cannot be zero-length.");
+				if (properties.length === 0) {
+					fail($format("PropertyChain cannot be zero-length."));
+					return null;
 				}
 
-				// if asynchronous processing was allowed, invoke the callback
-				if (callback && callback instanceof Function) {
-					callback(chain);
-				}
-			}
-			else {
-				// process the next step in the path, first ensuring that the type is loaded if lazy loading is allowed
-				if (callback && !LazyLoader.isLoaded(type)) {
-					if (lazyLoadTypes) {
-						LazyLoader.load(type, null, processStep);
+				// ensure filter types on the last step are loaded
+				return ensureType(filters[properties.length - 1], forceLoadTypes, function () {
+
+					// create and cache the new property chain
+					var chain = new PropertyChain(rootType, properties, filters);
+					if (!rootType._chains) {
+						rootType._chains = {};
 					}
-					else {
-						$extend(type._fullName, processStep);
+					rootType._chains[pathTokens.expression] = chain;
+
+					// if asynchronous processing was allowed, invoke the success callback
+					if (success) {
+						success(chain);
 					}
-				}
-				else {
-					processStep();
-				}
+
+					// return the new property chain
+					return chain;
+				});
 			}
 		};
 
 		// begin processing steps in the path
-		if (!LazyLoader.isLoaded(type)) {
-			LazyLoader.load(type, null, processStep);
-		}
-		else {
-			processStep();
-		}
+		return ensureType(type, forceLoadTypes, processStep);
 	}
 
 	PropertyChain.mixin(Functor.eventing);
@@ -5415,7 +5458,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			var previousStepType;
-			this._properties.slice(startIndex).forEach(function(p, i) {
+			this._properties.slice(startIndex).forEach(function (p, i) {
 				if (i !== 0) {
 					if (p.get_containingType() !== previousStepType && p.get_containingType().isSubclassOf(previousStepType)) {
 						steps[steps.length - 1] = steps[steps.length - 1] + "<" + p.get_containingType().get_fullName() + ">";
@@ -5433,28 +5476,34 @@ Type.registerNamespace("ExoWeb.DotNet");
 		lastProperty: function PropertyChain$lastProperty() {
 			return this._properties[this._properties.length - 1];
 		},
-		lastTarget: function PropertyChain$lastTarget(obj, exitEarly) {
+		properties: function PropertyChain$properties() {
+			return this._properties.slice();
+		},
+		lastTarget: function PropertyChain$lastTarget(obj) {
 			for (var p = 0; p < this._properties.length - 1; p++) {
 				var prop = this._properties[p];
 
-				// exit early (and return undefined) on null or undefined
-				if (exitEarly === true && (obj === undefined || obj === null)) {
-					return;
+				// exit early on null or undefined
+				if (obj === undefined || obj === null) {
+					return obj;
 				}
 
 				obj = prop.value(obj);
 			}
 			return obj;
 		},
+
 		prepend: function PropertyChain$prepend(prop) {
 			var newProps = prop.all();
 			for (var p = newProps.length - 1; p >= 0; p--) {
 				Array.insert(this._properties, 0, newProps[p]);
 			}
 		},
+
 		canSetValue: function PropertyChain$canSetValue(obj, value) {
 			return this.lastProperty().canSetValue(this.lastTarget(obj), value);
 		},
+
 		// Determines if this property chain connects two objects.
 		connects: function PropertyChain$connects(fromRoot, toObj, viaProperty) {
 			var connected = false;
@@ -5464,7 +5513,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return fromRoot === toObj;
 			}
 
-			this.each(fromRoot, function(target) {
+			this.each(fromRoot, function (target) {
 				if (target === toObj) {
 					connected = true;
 					return false;
@@ -5477,7 +5526,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			for (var i = 0; i < this._properties.length; i++) {
 				if (this._properties[i].isDefinedBy(rootType)) {
 					var path = this._getPathFromIndex(i);
-					return (this._properties[i]._isStatic ? this._properties[i].get_containingType().get_fullName() : "this") + "." + path;
+					return this._properties[i]._isStatic ? this._properties[i].get_containingType().get_fullName() + "." + path : path;
 				}
 			}
 		},
@@ -5503,14 +5552,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 		addChanged: function PropertyChain$addChanged(handler, obj, once, toleratePartial) {
 			var filter = mergeFunctions(
 
-				// Ensure that the chain is inited from the root if toleratePartial is false
+			// Ensure that the chain is inited from the root if toleratePartial is false
 				this.isInited.bind(this).spliceArguments(1, 1, !toleratePartial),
 
-				// Only raise for the given root object if specified
+			// Only raise for the given root object if specified
 				obj ? equals(obj) : null,
 
-				// If multiple filters exist, both must pass
-				{ andResults: true }
+			// If multiple filters exist, both must pass
+				{andResults: true }
 
 			);
 
@@ -5531,6 +5580,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		get_format: function PropertyChain$get_format() {
 			return this.lastProperty().get_format();
+		},
+		format: function PropertyChain$format(val) {
+			return this.lastProperty().format(val);
 		},
 		get_isList: function PropertyChain$get_isList() {
 			return this.lastProperty().get_isList();
@@ -5554,8 +5606,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		get_isEntityListType: function PropertyChain$get_isEntityListType() {
 			return this.lastProperty().get_isEntityListType();
 		},
-		rules: function(targetsThis) {
-			return this.lastProperty().rules(targetsThis);
+		rules: function (filter) {
+			return this.lastProperty().rules(filter);
 		},
 		value: function PropertyChain$value(obj, val, customInfo) {
 			var target = this.lastTarget(obj, true);
@@ -5565,7 +5617,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				prop.value(target, val, customInfo);
 			}
 			else {
-				return (target !== undefined && target !== null) ? prop.value(target) : null;
+				return target ? prop.value(target) : target;
 			}
 		},
 		isInited: function PropertyChain$isInited(obj, enforceCompleteness /*, fromIndex, fromProp*/) {
@@ -5607,7 +5659,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return this.get_path();
 			}
 			else {
-				var path = this._properties.map(function(e) { return e.get_name(); }).join(".");
+				var path = this._properties.map(function (e) { return e.get_name(); }).join(".");
 				return $format("this<{0}>.{1}", [this.get_containingType(), path]);
 			}
 		}
@@ -5617,220 +5669,118 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ObjectMeta
+	// #region ExoWeb.Model.ObjectMeta
 	//////////////////////////////////////////////////
+
+	/// <reference path="ConditionTarget.js" />
 
 	function ObjectMeta(type, obj) {
 		this._obj = obj;
 		this.type = type;
-		this._conditions = [];
-		this._executedRules = [];
-		this._propertyConditions = {};
+		this._conditions = {};
+		this._pendingInit = [];
 	}
 
 	ObjectMeta.mixin({
-		get_entity: function() {
+
+		get_entity: function () {
 			return this._obj;
 		},
-		ensureValidation: function ObjectMeta$ensureValidation(prop) {
-			// Assumption: existing objects have already been validated.
-			if (!this.isNew) {
-				return;
-			}
 
-			// Exclude rules that have previously been executed or their
-			// conditions have been attached, and allowed values rules (since if the property has
-			// not been interacted with there is no value and the rule does not apply).
-			this.executeValidationRules(prop, function(rule) {
-				return !this._executedRules.contains(rule) && !(rule instanceof AllowedValuesRule);
-			});
-		},
-		executeValidationRules: function ObjectMeta$executeValidationRules(prop, filter) {
-			var rules = prop.rules(true);
-
-			// Exclude non-validation rules
-			rules.purge(function(rule) {
-				return !Rule.isValidation(rule);
-			}, this);
-
-			// Exclude rules based on a custom filter
-			if (filter) {
-				rules.purge(function(rule) {
-					return filter.apply(this, arguments) === false;
-				}, this);
-			}
-
-			if (rules.length > 0) {
-				this.executeRulesImpl(prop, rules);
-			}
-		},
-		executeRules: function ObjectMeta$executeRules(prop) {
-			this.executeRulesImpl(prop, prop.rules(true));
-		},
-		executeRulesImpl: function ObjectMeta$executeRulesImpl(prop, rules) {
-			this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
-			this._raisePropertyValidating(prop.get_name());
-			this.type.executeRules(this._obj, rules);
-		},
-		markRuleExecuted: function ObjectMeta$markRuleExecuted(rule) {
-			if (!this._executedRules.contains(rule)) {
-				this._executedRules.push(rule);
-			}
-		},
+		// gets the property or property chain for the specified property path
 		property: function ObjectMeta$property(propName, thisOnly) {
 			return this.type.property(propName, thisOnly);
 		},
-		clearConditions: function ObjectMeta$clearConditions(origin) {
-			var conditions = this._conditions;
 
-			for (var i = conditions.length - 1; i >= 0; --i) {
-				var condition = conditions[i];
-
-				if (!origin || condition.get_origin() == origin) {
-					this._removeCondition(i);
-					this._raisePropertiesValidated(condition.get_properties());
+		// gets and optionally sets the pending initialization status for a property on the current instance
+		pendingInit: function ObjectMeta$pendingInit(prop, value) {
+			var result = this._obj[prop._fieldName] === undefined || this._pendingInit[prop.get_name()] === true;
+			if (arguments.length > 1) {
+				if (value) {
+					this._pendingInit[prop.get_name()] = true;
 				}
+				else {
+					delete this._pendingInit[prop.get_name()];
+				}
+			}
+			return result;
+		},
+
+		// gets the condition target with the specified condition type
+		getCondition: function ObjectMeta$getCondition(conditionType) {
+			return this._conditions[conditionType.code];
+		},
+
+		// stores the condition target for the current instance
+		setCondition: function ObjectMeta$setCondition(conditionTarget) {
+			if (conditionTarget.condition.type != formatConditionType) {
+				this._conditions[conditionTarget.condition.type.code] = conditionTarget;
 			}
 		},
 
-		conditionIf: function ObjectMeta$conditionIf(condition, when) {
-			// always remove and re-add the condition to preserve order
-			var idx = -1;
-			for (var i = 0; i < this._conditions.length; i++) {
-				if (this._conditions[i].equals(condition)) {
-					idx = i;
-					break;
-				}
-			}
-
-			if ((idx < 0 && when) || (idx >= 0 && !when)) {
-				if (idx >= 0) {
-					this._removeCondition(idx);
-				}
-
-				if (when) {
-					this._addCondition(condition);
-				}
-
-				this._raisePropertiesValidated(condition.get_properties());
-			}
+		// clears the condition for the current instance with the specified condition type
+		clearCondition: function ObjectMeta$clearCondition(conditionType) {
+			delete this._conditions[conditionType.code];
 		},
 
-		_addCondition: function (condition) {
-			condition.get_targets().add(this);
-			this._conditions.push(condition);
-
-			// make sure the rule that drives the condition is marked as executed
-			condition._type._rules.forEach(this.markRuleExecuted.bind(this));
-
-			// update _propertyConditions
-			var props = condition.get_properties();
-			for (var i = 0; i < props.length; ++i) {
-				var propName = props[i].get_name();
-				var pi = this._propertyConditions[propName];
-
-				if (!pi) {
-					pi = [];
-					this._propertyConditions[propName] = pi;
-				}
-
-				pi.push(condition);
-			}
-
-			this._raiseEvent("conditionsChanged", [this, { condition: condition, add: true, remove: false }]);
-		},
-
-		_removeCondition: function (idx) {
-			var condition = this._conditions[idx];
-			condition.get_targets().remove(this);
-			this._conditions.splice(idx, 1);
-
-			// update _propertyConditions
-			var props = condition.get_properties();
-			for (var i = 0; i < props.length; ++i) {
-				var propName = props[i].get_name();
-				var pi = this._propertyConditions[propName];
-
-				var piIdx = $.inArray(condition, pi);
-				pi.splice(piIdx, 1);
-			}
-
-			this._raiseEvent("conditionsChanged", [this, { condition: condition, add: false, remove: true }]);
-		},
-
-		_isAllowedOne: function ObjectMeta$_isAllowedOne(code) {
-			var conditionType = ConditionType.get(code);
-
-			if (conditionType !== undefined) {
-				if (!(conditionType instanceof ConditionType.Permission)) {
-					ExoWeb.trace.throwAndLog(["conditions"], "Condition type \"{0}\" should be a Permission.", [code]);
-				}
-
-				for (var i = 0; i < this._conditions.length; i++) {
-					var condition = this._conditions[i];
-					if (condition.get_type() == conditionType) {
-						return conditionType.get_isAllowed();
-					}
-				}
-
-				return !conditionType.get_isAllowed();
-			}
-
-			return undefined;
-		},
-
+		// determines if the set of permissions are allowed for the current instance
 		isAllowed: function ObjectMeta$isAllowed(/*codes*/) {
 			if (arguments.length === 0) {
 				return undefined;
 			}
 
-			for (var i = 0; i < arguments.length; i++) {
-				var allowed = this._isAllowedOne(arguments[i]);
-				if (!allowed) {
-					return allowed;
+			// ensure each condition type is allowed for the current instance
+			for (var c = arguments.length - 1; c >= 0; c--) {
+				var code = arguments[c];
+				var conditionType = ConditionType.get(code);
+
+				// return undefined if the condition type does not exist
+				if (conditionType === undefined) {
+					return undefined;
+				}
+
+				// throw an exception if the condition type is not a permission
+				if (!(conditionType instanceof ConditionType.Permission)) {
+					ExoWeb.trace.throwAndLog(["conditions"], "Condition type \"{0}\" should be a Permission.", [code]);
+				}
+
+				// return false if a condition of the current type exists and is a deny permission or does not exist and is a grant permission
+				if (this._conditions[conditionType.code] ? !conditionType.isAllowed : conditionType.isAllowed) {
+					return false;
 				}
 			}
 
 			return true;
 		},
 
-		conditions: function ObjectMeta$conditions(propOrOptions) {
-			if (!propOrOptions) return this._conditions;
+		// get some or all of the condition
+		conditions: function ObjectMeta$conditions(criteria) {
 
-			// backwards compatible with original property-only querying
-			var options = (propOrOptions instanceof Property || propOrOptions instanceof PropertyChain) ?
-				{ property: propOrOptions } :
-				propOrOptions;
-
-			return filter(this._conditions, function(condition) {
-				return (!options.property || condition.get_properties().some(function(p) { return p.equals(options.property); })) &&
-					(!options.set || condition.get_type().get_sets().indexOf(options.set) >= 0) &&
-					(!options.target || condition.get_targets().some(function(t) { return t.get_entity() === options.target; })) &&
-					(!options.type || condition.get_type() === options.type);
-			});
-		},
-
-		_raisePropertiesValidated: function (properties) {
-			var queue = this.type.get_model()._validatedQueue;
-			for (var i = 0; i < properties.length; ++i) {
-				queue.push({ sender: this, property: properties[i].get_name() });
+			// condition type filter
+			if (criteria instanceof ConditionType) {
+				var conditionTarget = this._conditions[criteria.code];
+				return conditionTarget ? [conditionTarget.condition] : [];
 			}
-		},
-		addPropertyValidated: function (propName, handler) {
-			this._addEvent("propertyValidated:" + propName, handler);
-		},
-		removePropertyValidated: function (propName, handler) {
-			this._removeEvent("propertyValidated:" + propName, handler);
-		},
-		_raisePropertyValidating: function (propName) {
-			var queue = this.type.get_model()._validatingQueue;
-			queue.push({ sender: this, propName: propName });
-		},
-		addPropertyValidating: function (propName, handler) {
-			this._addEvent("propertyValidating:" + propName, handler);
-		},
-		removePropertyValidating: function (propName, handler) {
-			this._removeEvent("propertyValidating:" + propName, handler);
+
+			// property filter
+			if (criteria instanceof Property || criteria instanceof PropertyChain) {
+				criteria = criteria.lastProperty();
+				var result = [];
+				for (var type in this._conditions) {
+					var conditionTarget = this._conditions[type];
+					if (conditionTarget.properties.some(function (p) { return p.equals(criteria); })) {
+						result.push(conditionTarget.condition);
+					}
+				}
+				return result;
+			}
+
+			// otherwise, just return all conditions
+			var result = [];
+			for (var type in this._conditions) {
+				result.push(this._conditions[type].condition);
+			}
+			return result;
 		},
 		destroy: function () {
 			this.type.unregister(this.obj);
@@ -5838,24 +5788,22 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// starts listening for change events on the conditions array. Use obj argument to
 		// optionally filter the events to a specific condition type by passing either
 		// the condition type code or type itself.
-		addConditionsChanged: function ObjectMeta$addConditionsChanged(handler, obj) {
+		addConditionsChanged: function ObjectMeta$addConditionsChanged(handler, criteria) {
 			var filter;
-			if (obj) {
-				//check for condition type code.
-				if (obj.constructor === String)
-					obj = ConditionType.get(obj);
 
-				if (!obj)
-					throw new Error(obj + " not found");
-
-				filter = function (target, args) {
-					if (args.condition._type === obj) {
-						handler.apply(this, arguments);
-					}
-				};
+			// condition type filter
+			if (criteria instanceof ConditionType) {
+				filter = function (sender, args) { return args.conditionTarget.condition.type === criteria; };
 			}
 
-			this._addEvent("conditionsChanged", handler, filter); ;
+			// property filter
+			else if (criteria instanceof Property || criteria instanceof PropertyChain) {
+				criteria = criteria.lastProperty();
+				filter = function (sender, args) { return args.conditionTarget.properties.indexOf(criteria) >= 0; };
+			}
+
+			// subscribe to the event
+			this._addEvent("conditionsChanged", handler, filter);
 
 			// Return the object meta to support method chaining
 			return this;
@@ -5870,91 +5818,412 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Rule
+	// #region ExoWeb.Model.RuleInvocationType
 	//////////////////////////////////////////////////
 
-	function Rule() { }
+	﻿var RuleInvocationType = {
 
-	Rule.register = function Rule$register(rule, inputs, isAsync, typeFilter, callback, thisPtr) {
-		rule.isAsync = !!isAsync;
+		/// <summary>
+		/// Occurs when an existing instance is initialized.
+		/// </summary>
+		InitExisting: 2,
 
-		rule.inputs = inputs.map(function(item) {
-			if (item instanceof RuleInput) {
-				return item;
+		/// <summary>
+		/// Occurs when a new instance is initialized.
+		/// </summary>
+		InitNew: 4,
+
+		/// <summary>
+		/// Occurs when a property value is retrieved.
+		/// </summary>
+		PropertyGet: 8,
+
+		/// <summary>
+		/// Occurs when a property value is changed.
+		/// </summary>
+		PropertyChanged: 16
+	}
+
+
+	// #endregion
+
+	// #region ExoWeb.Model.Rule
+	//////////////////////////////////////////////////
+
+	function Rule(rootType, options) {
+		/// <summary>Creates a rule that executes a delegate when specified model events occur.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			name:				the optional unique name of the type of validation rule
+		//			execute:			a function to execute when the rule is triggered
+		///		    onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
+		///		    onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
+		///		    onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
+		///		    onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		///			returns:			an array of properties (string name or Property instance) that the rule is responsible to calculating the value of
+		/// </param>
+		/// <returns type="Rule">The new rule.</returns>
+
+		// exit immediately if called with no arguments
+		if (arguments.length === 0) {
+			return;
+		}
+
+		// ensure a valid root type was provided
+		if (!(rootType instanceof ExoWeb.Model.Type)) {
+			if (rootType && rootType.meta) {
+				rootType = rootType.meta;
 			}
 			else {
-				var input = new RuleInput(item);
-				if(item.get_origin() === "client")
-					input.set_dependsOnInit(true);
-
-				// If inputs are not setup up front then they are 
-				// assumed to be a target of the rule.
-
-				input.set_isTarget(true);
-				return input;
+				ExoWeb.trace.throwAndLog("rules", "A value root model type must be specified when constructing rules.");
 			}
-		});
-
-		// If the type filter was not specified then assume 
-		// the containing type of the first input property.
-		if (arguments.length < 4) {
-			typeFilter = rule.inputs[0].property.get_containingType();
 		}
+
+		// store the initialization options for processing during registration
+		if (options) {
+			if (options instanceof Function) {
+				this._options = {
+					execute: function (obj) {
+						// use the root object as this
+						return options.apply(obj, arguments);
+					}
+				};
+			}
+			else {
+				this._options = options;
+			}
+		}
+		else {
+			this._options = {};
+		}
+	
+		// explicitly override execute if specified
+		if (this._options.execute instanceof Function) {
+			this.execute = this._options.execute;
+		}
+
+		// define properties for the rule
+		Object.defineProperty(this, "rootType", { value: rootType });
+		Object.defineProperty(this, "name", { value: this._options.name });
+		Object.defineProperty(this, "invocationTypes", { value: 0, writable: true });
+		Object.defineProperty(this, "predicates", { value: [], writable: true });
+		Object.defineProperty(this, "returnValues", { value: [], writable: true });
 
 		// register the rule after loading has completed
-		typeFilter.get_model().addBeforeContextReady(function() {
-			typeFilter.addRule(rule);
-			if(callback)
-				callback.call(thisPtr || this, rule);
-		});
-	};
+		rootType.model.registerRule(this);
+	}
 
-	Rule.canExecute = function(rule, sender, args) {
-		return rule.inputs.every(function(input) { return (args && input.property === args.property) || !input.get_dependsOnInit() || input.property.isInited(sender); });
-	};
+	// base rule implementation
+	Rule.mixin({
 
-	Rule.ensureError = function Rule$ensureError(ruleName, prop) {
-		var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), ruleName]);
-		var counter = "";
+		// indicates that the rule should run only for new instances when initialized
+		onInitNew: function () {
 
-		while(ConditionType.get(generatedCode + counter))
-			counter++;
+			// ensure the rule has not already been registered
+			if (!this._options) {
+				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			}
 
-		return new ConditionType.Error(generatedCode + counter, $format("Generated condition type for {0} rule.", [ruleName]));
-	};
+			// configure the rule to run on init new
+			this.invocationTypes |= RuleInvocationType.InitNew;
+			return this;
+		},
 
-	Rule.ensureWarning = function Rule$ensureWarning(ruleName, prop, dependsOn) {
-		var generatedCode = $format("{0}.{1}.{2}", [prop.get_containingType().get_fullName(), prop.get_label(), ruleName]);
-		var counter = "";
+		// indicates that the rule should run only for existing instances when initialized
+		onInitExisting: function () {
 
-		while(ConditionType.get(generatedCode + counter))
-			counter++;
+			// ensure the rule has not already been registered
+			if (!this._options) {
+				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			}
 
-		return new ConditionType.Warning(generatedCode + counter, $format("Generated condition type for {0} rule.", [ruleName]));
-	};
+			// configure the rule to run on init existingh
+			this.invocationTypes |= RuleInvocationType.InitExisting;
+			return this;
+		},
 
-	Rule.inferInputs = function Rule$inferInputs(rootType, func) {
-		var inputs = [];
-		var expr = /this\.get_([a-zA-Z0-9_.]+)/g;
+		// indicates that the rule should run for both new and existing instances when initialized
+		onInit: function () {
 
-		var match = expr.exec(func.toString());
-		while (match) {
-			inputs.push(new RuleInput(rootType.property(match[1]).lastProperty()));
-			match = expr.exec(func.toString());
+			// ensure the rule has not already been registered
+			if (!this._options) {
+				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			}
+
+			// configure the rule to run on both init new and init existing
+			this.invocationTypes |= RuleInvocationType.InitNew | RuleInvocationType.InitExisting;
+			return this;
+		},
+
+		// indicates that the rule should automatically run when one of the specified property paths changes
+		// predicates:  an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		onChangeOf: function (predicates) {
+
+			// ensure the rule has not already been registered
+			if (!this._options) {
+				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			}
+
+			// allow change of predicates to be specified as a parameter array without []'s
+			if (predicates && predicates.constructor === String) {
+				predicates = Array.prototype.slice.call(arguments);
+			}
+
+			// add to the set of existing change predicates
+			this.predicates = this.predicates.length > 0 ? this.predicates.concat(predicates) : predicates;
+
+			// also configure the rule to run on property change unless it has already been configured to run on property get
+			if ((this.invocationTypes & RuleInvocationType.PropertyGet) == 0) {
+				this.invocationTypes |= RuleInvocationType.PropertyChanged;
+			}
+			return this;
+		},
+
+		// indicates that the rule is responsible for calculating and returning values of one or more properties on the root type
+		// properties:	an array of properties (string name or Property instance) that the rule is responsible to calculating the value of
+		returns: function (properties) {
+			if (!this._options) {
+				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			}
+			// allow return properties to be specified as a parameter array without []'s
+			if (properties && properties.constructor === String) {
+				properties = Array.prototype.slice.call(arguments); ;
+			}
+			if (!properties) {
+				ExoWeb.trace.throwAndLog("rules", "Rule must specify at least 1 property for returns.");
+			}
+
+			// add to the set of existing return value properties
+			this.returnValues = this.returnValues.length > 0 ? this.returnValues.concat(properties) : properties;
+
+			// configure the rule to run on property get and not on property change
+			this.invocationTypes |= RuleInvocationType.PropertyGet;
+			this.invocationTypes &= ~RuleInvocationType.PropertyChanged;
+			return this;
+		},
+
+		// registers the rule based on the configured invocation types, predicates, and return values
+		register: function Rule$register() {
+
+			// track the rule with the root type
+			this.rootType.rules.push(this);
+
+			// configure the rule based on any specified options
+			if (this._options) {
+				if (this._options.onInit)
+					this.onInit();
+				if (this._options.onInitNew)
+					this.onInitNew();
+				if (this._options.onInitExisting)
+					this.onInitExisting();
+				if (this._options.onChangeOf)
+					this.onChangeOf(this._options.onChangeOf);
+				if (this._options.returns)
+					this.returns(this._options.returns);
+
+				// legacy support for basedOn option syntax
+				if (this._options.basedOn) {
+					this._options.basedOn.forEach(function (input) {
+						var parts = input.split(" of ");
+						if (parts.length >= 2) {
+							if (parts[0].split(",").indexOf("change") >= 0) {
+								this.onChangeOf([parts[1]]);
+							}
+						}
+						else {
+							this.onChangeOf(input);
+						}
+					}, this);
+				}
+			}
+
+			// indicate that the rule should now be considered registered and cannot be reconfigured
+			delete this._options;
+
+			// create a function to safely execute the rule
+			var execute = function (rule, obj, args) {
+
+				// ensure the rule target is a valid rule root type
+				if (!(obj instanceof rule.rootType.get_jstype())) { return; }
+
+				try {
+					rule.rootType.model.beginValidation();
+					rule.execute.call(rule, obj, args);
+				}
+				finally {
+					rule.rootType.model.endValidation();
+				}
+			};
+
+			// create function to perform rule registration once predicates and return values have been prepared
+			var register = function () {
+
+				// create a scope variable to reference the current rule when creating event handlers
+				var rule = this;
+
+				// register for init new
+				if (this.invocationTypes & RuleInvocationType.InitNew) {
+					this.rootType.addInitNew(function (sender, args) {
+						execute(rule, sender, args);
+					});
+				}
+
+				// register for init existing
+				if (this.invocationTypes & RuleInvocationType.InitExisting) {
+					this.rootType.addInitExisting(function (sender, args) {
+						execute(rule, sender, args);
+					});
+				}
+
+				// register for property change
+				if (this.invocationTypes & RuleInvocationType.PropertyChanged) {
+					this.predicates.forEach(function (predicate) {
+						predicate.addChanged(
+							function (sender, args) {
+								execute(rule, sender, args);
+							},
+							null, // no object filter
+							false, // subscribe for all time, not once
+							true // tolerate nulls since rule execution logic will handle guard conditions
+						);
+					}, this);
+				}
+
+				// register for property get
+				if (this.invocationTypes & RuleInvocationType.PropertyGet && this.returnValues) {
+
+					// register for property get events for each return value to calculate the property when accessed
+					this.returnValues.forEach(function (returnValue) {
+						returnValue.addGet(function (sender, args) {
+
+							// run the rule to initialize the property if it is pending initialization
+							if (sender.meta.pendingInit(returnValue)) {
+								sender.meta.pendingInit(returnValue, false);
+								execute(rule, sender, args);
+							}
+						});
+					});
+
+					// register for property change events for each predicate to invalidate the property value when inputs change
+					this.predicates.forEach(function (predicate) {
+						predicate.addChanged(
+							function (sender, args) {
+
+								// immediately execute the rule if there are explicit event subscriptions for the property
+								if (rule.returnValues.some(function (returnValue) { return hasPropertyChangedSubscribers(returnValue, sender); })) {
+									execute(rule, sender, args);
+								}
+
+								// Otherwise, just mark the property as pending initialization and raise property change for UI subscribers
+								else {
+									rule.returnValues.forEach(function (returnValue) {
+										sender.meta.pendingInit(returnValue, true);
+										Observer.raisePropertyChanged(sender, returnValue.get_name());
+									});
+								}
+							},
+							null, // no object filter
+							false, // subscribe for all time, not once
+							true // tolerate nulls since rule execution logic will handle guard conditions
+						);
+					}, this);
+				}
+
+				// allow rule subclasses to perform final initialization when registered
+				if (this.onRegister instanceof Function) {
+					this.onRegister();
+				}
+			};
+
+			// resolve return values, which should all be loaded since the root type is now definitely loaded
+			if (this.returnValues) {
+				this.returnValues.forEach(function (returnValue, i) {
+					if (!(returnValue instanceof Property)) {
+						this.returnValues[i] = this.rootType.property(returnValue);
+					}
+				}, this);
+			}
+
+			// resolve all predicates, because the rule cannot run until the dependent types have all been loaded
+			if (this.predicates) {
+				var signal;
+				var predicates = [];
+
+				// setup loading of each property path that the calculation is based on
+				this.predicates.forEach(function (predicate, i) {
+
+					// simply copy the predicate over if has already a valid property or property chain
+					if (predicate instanceof Property || predicate instanceof PropertyChain) {
+						predicates.push(predicate);
+					}
+
+					// parse string inputs, which may be paths containing nesting {} hierarchial syntax
+					else if (predicate.constructor === String) {
+
+						// create a signal if this is the first string-based input
+						if (!signal) {
+							signal = new Signal("prepare rule predicates");
+						}
+
+						// normalize the paths to accommodate {} hierarchial syntax
+						PathTokens.normalizePaths([predicate]).forEach(function (path) {
+							Model.property(path, this.rootType, false, signal.pending(function (chain) {
+								// add the prepared property or property chain
+								predicates.push(chain);
+							}, this, true), this);
+						}, this);
+					}
+				}, this);
+
+				// wait until all property information is available to initialize the rule
+				if (signal) {
+					signal.waitForAll(function () {
+						this.predicates = predicates;
+						register.call(this);
+					}, this, true);
+				}
+
+				// otherwise, just immediately proceed with rule registration
+				else {
+					this.predicates = predicates;
+					register.call(this);
+				}
+			}
 		}
+	});
 
-		return inputs;
+	// creates a condition type for the specified rule and type or property, of the specified category type (usually Error or Warning)
+	Rule.ensureConditionType = function Rule$ensureConditionType(ruleName, typeOrProp, category, sets) {
+		var generatedCode =
+			typeOrProp instanceof Property ? $format("{0}.{1}.{2}", [typeOrProp.get_containingType().get_fullName(), typeOrProp.get_name(), ruleName]) :
+			typeOrProp instanceof Type ? $format("{0}.{1}", [typeOrProp.get_fullName(), ruleName]) : 
+			ruleName;
+		var counter = "";
+
+		while (ConditionType.get(generatedCode + counter))
+			counter++;
+
+		// return a new client condition type of the specified category
+		return new category(generatedCode + counter, $format("Generated condition type for {0} rule.", [ruleName]), null, "client");
 	};
 
-	Rule.isValidation = function Rule$isValidation(rule) {
-		return rule.ctype && rule.ctype instanceof ExoWeb.Model.ConditionType.Error;
+	// creates an error for the specified rule and type or property
+	Rule.ensureError = function Rule$ensureError(ruleName, typeOrProp, sets) {
+		return Rule.ensureConditionType(ruleName, typeOrProp, ConditionType.Error, sets);
 	};
 
+	// creates an error for the specified rule and type or property
+	Rule.ensureWarning = function Rule$ensureWarning(ruleName, typeOrProp, sets) {
+		return Rule.ensureConditionType(ruleName, typeOrProp, ConditionType.Warning, sets);
+	};
+
+	// publicly expose the rule
 	ExoWeb.Model.Rule = Rule;
 
 	// #endregion
 
-	// #region RuleInput
+	// #region ExoWeb.Model.RuleInput
 	//////////////////////////////////////////////////
 
 	function RuleInput(property) {
@@ -5991,198 +6260,518 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region RequiredRule
+	// #region ExoWeb.Model.ConditionRule
 	//////////////////////////////////////////////////
 
-	function RequiredRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
+	function ConditionRule(rootType, options) {
+		/// <summary>Creates a rule that asserts a condition based on a predicate.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			assert:				a predicate that returns true when the condition should be asserted
+		///			name:				the optional unique name of the type of rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		///			properties:			an array of property paths the validation condition should be attached to when asserted, in addition to the target property
+		///			sets:				the optional array of condition type sets to associate the condition with
+		///			onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
+		///			onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
+		///			onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
+		///			onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		/// </param>
+		/// <returns type="ConditionRule">The new condition rule.</returns>
 
-		if (!ctype) {
-			ctype = Rule.ensureError("required", this.prop);
+		// exit immediately if called with no arguments
+		if (arguments.length === 0) return;
+
+		// store the condition predicate
+		var assert = options.assert || options.fn;
+		if (assert) {
+			this.assert = assert;
 		}
 
-		this.ctype = ctype;
+		// automatically run the condition rule during initialization of new instances
+		options.onInitNew = true;
 
-		this.err = new Condition(ctype, this.prop.get_label() + " is required", [ this.prop ], this);
+		// coerce string to condition type
+		var conditionType = options.conditionType;
+		if (isString(conditionType)) {
+			conditionType = ConditionType.get(conditionType);
+		}
 
-		Rule.register(this, [this.prop], false, mtype, callback, thisPtr);
+		// create a condition type if not passed in, defaulting to Error if a condition category was not specified
+		Object.defineProperty(this, "conditionType", { 
+			value: conditionType || Rule.ensureConditionType(options.name, rootType, options.category || ConditionType.Error, options.sets)
+		});
+
+		// automatically run the condition rule during initialization of existing instances if the condition type was defined on the client
+		if (this.conditionType.origin !== "server") {
+			options.onInitExisting = true;
+		}
+
+		// store the condition message and properties
+		if (options.message) {
+			Object.defineProperty(this, "message", { value: options.message, writable: true });
+		}
+		if (options.properties) {
+			Object.defineProperty(this, "properties", { value: options.properties, writable: true });
+		}
+
+		// Call the base rule constructor
+		Rule.apply(this, [rootType, options]);
 	}
 
-	RequiredRule.hasValue = function RequiredRule$hasValue(obj, prop) {
-		var val = arguments.length === 1 ? obj : prop.value(obj);
+	// setup the inheritance chain
+	ConditionRule.prototype = new Rule();
+	ConditionRule.prototype.constructor = ConditionRule;
 
-		if (val instanceof Array) {
-			return val.length > 0;
-		}
-		else if (val === undefined || val === null) {
-			return false;
-		}
-		else if (val.constructor === String) {
-			return $.trim(val) !== "";
-		}
-		else {
-			return true;
-		}
-	};
+	// implement the execute method
+	ConditionRule.mixin({
 
-	RequiredRule.prototype = {
-		execute: function(obj) {
-			obj.meta.conditionIf(this.err, !RequiredRule.hasValue(obj, this.prop));
+		// subclasses may override this function to return the set of properties to attach conditions to for this rule
+		properties: function ConditionRule$properties() {
+			return this.properties;
 		},
-		toString: function() {
-			return $format("{0}.{1} is required", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
-		}
-	};
 
-	Rule.required = RequiredRule;
-
-	// #endregion
-
-	// #region RangeRule
-	//////////////////////////////////////////////////
-
-	function RangeRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [ this.prop ];
-
-		if (!ctype)
-			ctype = Rule.ensureError("range", this.prop);
-
-		this.ctype = ctype;
-
-		this.min = options.min;
-		this.max = options.max;
-
-		var hasMin = (this.min !== undefined && this.min !== null);
-		var hasMax = (this.max !== undefined && this.max !== null);
-
-		if (hasMin && hasMax) {
-			this._formatString = "{0} must be between {1} and {2}";
-			this._formatArgs = function() { return [this.prop.format(this.min), this.prop.format(this.max)]; };
-			this._test = this._testMinMax;
-		}
-		else if (hasMin) {
-			this._formatString = "{0} must be at least {1}";
-			this._formatArgs = function() { return [this.prop.format(this.min)]; };
-			this._test = this._testMin;
-		}
-		else if (hasMax) {
-			this._formatString = "{0} must be no more than {1}";
-			this._formatArgs = function() { return [this.prop.format(this.max)]; };
-			this._test = this._testMax;
-		}
-
-		Rule.register(this, properties, false, mtype, callback, thisPtr);
-	}
-
-	RangeRule.prototype = {
-		err: function () {
-			return new Condition(this.ctype, $format(this._formatString, [this.prop.get_label()].concat(this._formatArgs.call(this))), [this.prop], this);
+		// subclasses may override this function to calculate an appropriate message for this rule during the registration process
+		message: function ConditionRule$message() {
+			return this.conditionType.message;
 		},
-		execute: function (obj) {
-			var val = this.prop.value(obj);
-			var isNull = val == null || val == undefined;
-			obj.meta.conditionIf(this.err(), !isNull && this._test(val));
+
+		// subclasses may override this function to indicate whether the condition should be asserted
+		assert: function ConditionRule$assert(obj) {
+			ExoWeb.trace.throwAndLog(["rules"], "ConditionRule.assert() must be passed into the constructor or overriden by subclasses.");
 		},
-		_testMinMax: function (val) {
-			return val < this.min || val > this.max;
-		},
-		_testMin: function (val) {
-			return val < this.min;
-		},
-		_testMax: function (val) {
-			return val > this.max;
-		},
-		toString: function () {
-			return $format("{0}.{1} in range, min: {2}, max: {3}",
-				[this.prop.get_containingType().get_fullName(),
-				this.prop.get_name(),
-				this.min === undefined ? "" : this.min,
-				this.max === undefined ? "" : this.max]);
-		}
-	};
 
-	Rule.range = RangeRule;
+		// asserts the condition and adds or removes it from the model if necessary
+		execute: function ConditionRule$execute(obj) {
 
-	// #endregion
+			var assert;
 
-	// #region AllowedValuesRule
-	//////////////////////////////////////////////////
+			// call assert the root object as "this" if the assertion function was overriden in the constructor
+			if (this.hasOwnProperty("assert")) {
 
-	function AllowedValuesRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [ this.prop ];
-
-		if (!ctype) {
-			ctype = Rule.ensureError("allowedValues", this.prop);
-		}
-
-		this.ctype = ctype;
-
-		this._allowedValuesPath = options.source;
-		this._inited = false;
-
-		this.err = new Condition(ctype, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
-
-		var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type, mtype, callback, thisPtr); }).bind(this);
-
-		// If the type is already loaded, then register immediately.
-		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-			register(this.prop.get_containingType().get_jstype());
-		}
-		// Otherwise, wait until the type is loaded.
-		else {
-			$extend(this.prop.get_containingType().get_fullName(), register);
-		}
-	}
-	AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType, mtype, callback, thisPtr) {
-		if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
-			var inputs = [];
-
-			var targetInput = new RuleInput(rule.prop);
-			targetInput.set_isTarget(true);
-			if (rule.prop.get_origin() === "client")
-				targetInput.set_dependsOnInit(true);
-			inputs.push(targetInput);
-
-			Model.property(rule._allowedValuesPath, rule.prop.get_containingType(), false, function(chain) {
-				rule._allowedValuesProperty = chain;
-
-				var allowedValuesInput = new RuleInput(rule._allowedValuesProperty);
-				inputs.push(allowedValuesInput);
-
-				rule._inited = true;
-
-				Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-			});
-		}
-		else {
-			$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
-				AllowedValuesRule.load(rule, baseType);
-			});
-		}
-	};
-
-	AllowedValuesRule.prototype = {
-		_enforceInited: function AllowedValues$_enforceInited() {
-			if (this._inited !== true) {
-				ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+				// convert string functions into compiled functions on first execution
+				if (this.assert.constructor === String) {
+					this.assert = this.rootType.compileExpression(this.assert);
+				}
+				assert = this.assert.call(obj, obj);
 			}
-			return this._inited;
-		},
-		execute: function AllowedValuesRule$execute(obj) {
-			if (this._enforceInited() === true) {
-				// get the current value of the property for the given object
-				var val = this.prop.value(obj);
-				var allowed = this.values(obj);
-				if (allowed !== undefined && LazyLoader.isLoaded(allowed)) {
-					obj.meta.conditionIf(this.err, !this.satisfies(obj, val));
+
+			// otherwise, allow "this" to be the current rule to support subclasses that override assert
+			else {
+				assert = this.assert(obj);
+			}
+
+			var message = this.message;
+			if (message instanceof Function) {
+				if (this.hasOwnProperty("message")) {
+					// When message is overriden, use the root object as this
+					message = message.bind(obj);
+				}
+				else {
+					message = message.bind(this);
 				}
 			}
-		},
-		satisfies: function AllowedValuesRule$satisfies(obj, value) {
-			this._enforceInited();
 
+			// create or remove the condition if necessary
+			if (assert !== undefined) {
+				this.conditionType.when(assert, obj,
+						this.properties instanceof Function ? this.properties(obj) : this.properties,
+						message);
+			}
+		},
+	
+		// gets the string representation of the condition rule
+		toString: function () {
+			return this.message || this.conditionType.message;
+		}
+	});
+
+	// expose the rule publicly
+	Rule.condition = ConditionRule;
+	ExoWeb.Model.ConditionRule = ConditionRule;
+	// #endregion
+
+	// #region ExoWeb.Model.ValidatedPropertyRule
+	//////////////////////////////////////////////////
+
+	﻿function ValidatedPropertyRule(rootType, options) {
+		/// <summary>Creates a rule that validates the value of a property in the model.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:			the property being validated (either a Property instance or string property name)
+		///			isValid:			function (obj, prop, val) { return true; } (a predicate that returns true when the property is valid)
+		///			name:				the optional unique name of the type of validation rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		///			properties:			an array of property paths the validation condition should be attached to when asserted, in addition to the target property
+		///			onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
+		///			onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
+		///			onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
+		///			onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		/// </param>
+		/// <returns type="ValidatedPropertyRule">The new validated property rule.</returns>
+
+		// exit immediately if called with no arguments
+		if (arguments.length == 0) return;
+
+		// ensure the rule name is specified
+		options.name = options.name || "ValidatedProperty";
+
+		// store the property being validated
+		var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
+		Object.defineProperty(this, "property", { value: prop });
+
+		// override the prototype isValid function if specified
+		if (options.isValid instanceof Function) {
+			this.isValid = options.isValid;
+		}
+
+		// ensure the properties and predicates to include the target property
+		if (!options.properties) {
+			options.properties = [prop.get_name()];
+		}
+		else if (options.properties.indexOf(prop.get_name()) < 0 && options.properties.indexOf(prop) < 0) {
+			options.properties.push(prop.get_name());
+		}
+		if (!options.onChangeOf) {
+			options.onChangeOf = [prop];
+		}
+		else if (options.onChangeOf.indexOf(prop.get_name()) < 0 && options.onChangeOf.indexOf(prop) < 0) {
+			options.onChangeOf.push(prop);
+		}
+
+		// create a property specified condition type if not passed in, defaulting to Error if a condition category was not specified
+		options.conditionType = options.conditionType || Rule.ensureConditionType(options.name, this.property, options.category || ConditionType.Error);
+
+		// replace the property label token in the validation message if present
+		if (options.message) {
+			options.message = options.message.replace('{property}', prop.get_label());
+		}
+
+		// call the base rule constructor
+		ConditionRule.apply(this, [rootType, options]);
+	}
+
+	// setup the inheritance chain
+	ValidatedPropertyRule.prototype = new ConditionRule();
+	ValidatedPropertyRule.prototype.constructor = ValidatedPropertyRule;
+
+	// extend the base type
+	ValidatedPropertyRule.mixin({
+
+		// returns false if the property is valid, true if invalid, or undefined if unknown
+		assert: function ValidatedPropertyRule$assert(obj) {
+			var isValid = this.isValid(obj, this.property, this.property.value(obj));
+			return isValid === undefined ? isValid : !isValid;
+		},
+
+		// perform addition initialization of the rule when it is registered
+		onRegister: function () {
+
+			// register the rule with the target property
+			registerPropertyRule(this.property, this);
+		}
+
+	});
+
+	// Expose the rule publicly
+	Rule.validated = ValidatedPropertyRule;
+	ExoWeb.Model.ValidatedPropertyRule = ValidatedPropertyRule;
+	// #endregion
+
+	// #region ExoWeb.Model.CalculatedPropertyRule
+	//////////////////////////////////////////////////
+
+	function CalculatedPropertyRule(rootType, options) {
+		/// <summary>Creates a rule that calculates the value of a property in the model.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:		the property being calculated (either a Property instance or string property name)
+		///			calculate:		a function that returns the value to assign to the property, or undefined if the value cannot be calculated
+		///			name:			the optional unique name of the rule
+		///		    onInit:			true to indicate the rule should run when an instance of the root type is initialized, otherwise false
+		///		    onInitNew:		true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
+		///		    onInitExisting:	true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
+		///		    onChangeOf:		an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		/// </param>
+		/// <returns type="CalculatedPropertyRule">The new calculated property rule.</returns>
+
+		// ensure the rule name is specified
+		options.name = options.name || "CalculatedProperty";
+
+		// store the property being validated
+		var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
+		Object.defineProperty(this, "property", { value: prop });
+
+		// store the calculation function
+		Object.defineProperty(this, "calculate", { value: options.calculate || options.fn, writable: true });
+
+		// indicate that the rule is responsible for returning the value of the calculated property
+		options.returns = [prop];
+
+		// Call the base rule constructor 
+		Rule.apply(this, [rootType, options]);
+	}
+
+	// setup the inheritance chain
+	CalculatedPropertyRule.prototype = new Rule();
+	CalculatedPropertyRule.prototype.constructor = CalculatedPropertyRule;
+
+	// extend the base type
+	CalculatedPropertyRule.mixin({
+		execute: function CalculatedPropertyRule$execute(obj) {
+			var prop = this.property;
+
+			// convert string functions into compiled functions on first execution
+			if (this.calculate.constructor === String) {
+				this.calculate = this.rootType.compileExpression(this.calculate);
+			}
+
+			// calculate the new property value
+			var newValue = this.calculate.apply(obj);
+
+			// exit immediately if the calculated result was undefined
+			if (newValue === undefined) return;
+
+			// modify list properties to match the calculated value instead of overwriting the property
+			if (prop.get_isList()) {
+
+				// re-calculate the list values
+				var newList = newValue;
+
+				// compare the new list to the old one to see if changes were made
+				var curList = prop.value(obj);
+
+				if (newList.length === curList.length) {
+					var noChanges = true;
+
+					for (var i = 0; i < newList.length; ++i) {
+						if (newList[i] !== curList[i]) {
+							noChanges = false;
+							break;
+						}
+					}
+
+					if (noChanges) {
+						return;
+					}
+				}
+
+				// update the current list so observers will receive the change events
+				curList.beginUpdate();
+				update(curList, newList);
+				curList.endUpdate();
+			}
+
+			// otherwise, just set the property to the new value
+			else {
+				prop.value(obj, newValue, { calculated: true });
+			}
+		},
+		toString: function () {
+			return "calculation of " + this.property._name;
+		}
+	});
+
+	// expose the rule publicly
+	Rule.calculated = CalculatedPropertyRule;
+	ExoWeb.Model.CalculatedPropertyRule = CalculatedPropertyRule;
+
+	// #endregion
+
+	// #region ExoWeb.Model.RequiredRule
+	//////////////////////////////////////////////////
+
+	function RequiredRule(rootType, options) {
+		/// <summary>Creates a rule that validates that a property has a value.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:			the property being validated (either a Property instance or string property name)
+		///			name:				the optional unique name of the type of validation rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		/// </param>
+		/// <returns type="RequiredRule">The new required rule.</returns>
+
+		// ensure the rule name is specified
+		options.name = options.name || "Required";
+
+		// ensure the error message is specified
+		options.message = options.message || Resource.get("required");
+
+		// call the base type constructor
+		ValidatedPropertyRule.apply(this, [rootType, options]);
+	}
+
+	// setup the inheritance chain
+	RequiredRule.prototype = new ValidatedPropertyRule();
+	RequiredRule.prototype.constructor = RequiredRule;
+
+	// define a global function that determines if a value exists
+	RequiredRule.hasValue = function RequiredRule$hasValue(val) {
+		return val !== undefined && val !== null && (val.constructor !== String || val.trim() !== "") && (!(val instanceof Array) || val.length > 0);
+	}
+
+	// extend the base type
+	RequiredRule.mixin({
+
+		// returns true if the property is valid, otherwise false
+		isValid: function RequiredRule$isValid(obj, prop, val) { return RequiredRule.hasValue(val); },
+
+		// get the string representation of the rule
+		toString: function() {
+			return $format("{0}.{1} is required", [this.property.get_containingType().get_fullName(), this.property.get_name()]);
+		}
+	});
+
+	// Expose the rule publicly
+	Rule.required = RequiredRule;
+	ExoWeb.Model.RequiredRule = RequiredRule;
+	// #endregion
+
+	// #region ExoWeb.Model.RangeRule
+	//////////////////////////////////////////////////
+
+	function RangeRule(rootType, options) {
+		/// <summary>Creates a rule that validates a property value is within a specific range.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:			the property being validated (either a Property instance or string property name)
+		///			min:				the minimum valid value of the property
+		///			max:				the maximum valid value of the property
+		///			name:				the optional unique name of the type of validation rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		/// </param>
+		/// <returns type="RangeRule">The new range rule.</returns>
+
+		// ensure the rule name is specified
+		options.name = options.name || "Range";
+
+		// store the min and max lengths
+		if (options.min !== undefined && options.min !== null) {
+			Object.defineProperty(this, "min", { value: options.min });
+		}
+		if (options.max !== undefined && options.max !== null) {
+			Object.defineProperty(this, "max", { value: options.max });
+		}
+
+		// get the property being validated in order to determine the data type
+		var property = options.property instanceof Property ? options.property : rootType.property(options.property);
+
+		// ensure the error message is specified
+		options.message = options.message ||
+			this.min !== undefined && this.max !== undefined ? Resource.get("range-between").replace("{min}", this.min).replace("{max}", this.max) : // between date or ordinal
+				property.get_jstype() === Date ?
+					this.min !== undefined ? 
+						Resource.get("range-on-or-after").replace("{min}", this.min) : // on or after date
+						Resource.get("range-on-or-before").replace("{max}", this.max) : // on or before date
+					this.max !== undefined ? 
+						Resource.get("range-at-least").replace("{min}", this.min) : // at least ordinal
+						Resource.get("range-at-most").replace("{max}", this.max); // at most ordinal
+
+		// call the base type constructor
+		ValidatedPropertyRule.apply(this, [rootType, options]);
+	}
+
+	// setup the inheritance chain
+	RangeRule.prototype = new ValidatedPropertyRule();
+	RangeRule.prototype.constructor = RangeRule;
+
+	// extend the base type
+	RangeRule.mixin({
+
+		// returns true if the property is valid, otherwise false
+		isValid: function RangeRule$isValid(obj, prop, val) {
+			return val === null || val === undefined || ((this.min === undefined || val >= this.min) && (this.max === undefined || val <= this.max));
+		},
+
+		// get the string representation of the rule
+		toString: function () {
+			return $format("{0}.{1} in range, min: {2}, max: {3}",
+				[this.get_property().get_containingType().get_fullName(),
+				this.get_property().get_name(),
+				this.min ? "" : this.min,
+				this.max ? "" : this.max]);
+		}
+	});
+
+	// Expose the rule publicly
+	Rule.range = RangeRule;
+	ExoWeb.Model.RangeRule = RangeRule;
+	// #endregion
+
+	// #region ExoWeb.Model.AllowedValuesRule
+	//////////////////////////////////////////////////
+
+	function AllowedValuesRule(rootType, options) {
+		/// <summary>Creates a rule that validates whether a selected value or values is in a list of allowed values.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:		the property being validated (either a Property instance or string property name)
+		///			source:			the source property for the allowed values (either a Property or PropertyChain instance or a string property path)
+		///			name:			the optional unique name of the rule
+		///			conditionType:	the optional condition type to use, which will be automatically created if not specified
+		///			category:		ConditionType.Error || ConditionType.Warning, defaults to ConditionType.Error if not specified
+		///			message:		the message to show the user when the validation fails
+		/// </param>
+		/// <returns type="AllowedValuesRule">The new allowed values rule.</returns>
+
+		// ensure the rule name is specified
+		options.name = options.name || "AllowedValues";
+
+		// ensure the error message is specified
+		options.message = options.message || Resource.get("allowed-values");
+
+		// ensure changes to the allowed values triggers rule execution
+		options.onChangeOf = [options.source];
+
+		// define properties for the rule
+		if (options.source instanceof Property || options.source instanceof PropertyChain) {
+			Object.defineProperty(this, "sourcePath", { value: options.source.get_path() });
+			Object.defineProperty(this, "source", { value: options.source });
+		}
+		else {
+			Object.defineProperty(this, "sourcePath", { value: options.source });
+		}
+
+		// call the base type constructor
+		ValidatedPropertyRule.apply(this, [rootType, options]);
+
+		// never run allowed values rules during initialization of existing instances
+		options.onInitExisting = false;
+	}
+
+	// setup the inheritance chain
+	AllowedValuesRule.prototype = new ValidatedPropertyRule();
+	AllowedValuesRule.prototype.constructor = AllowedValuesRule;
+
+	// extend the base type
+	AllowedValuesRule.mixin({
+		onRegister: function AllowedValuesRule$onRegister() {
+
+			// get the allowed values source, if only the path was specified
+			if (!this.source) {
+				Object.defineProperty(this, "source", { value: Model.property(this.sourcePath, this.rootType) });
+			}
+
+			// call the base method
+			ValidatedPropertyRule.prototype.onRegister.call(this);
+		},
+		isValid: function AllowedValuesRule$isValid(obj, prop, value) {
+
+			// return true if no value is currently selected
 			if (value === undefined || value === null) {
 				return true;
 			}
@@ -6190,620 +6779,454 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// get the list of allowed values of the property for the given object
 			var allowed = this.values(obj);
 
+			// return undefined if the set of allowed values cannot be determined
 			if (allowed === undefined || !LazyLoader.isLoaded(allowed)) {
-				return false;
+				return;
 			}
 
 			// ensure that the value or list of values is in the allowed values list (single and multi-select)				
 			if (value instanceof Array) {
-				return value.every(function(item) { return Array.contains(allowed, item); });
+				return value.every(function (item) { return Array.contains(allowed, item); });
 			}
 			else {
 				return Array.contains(allowed, value);
 			}
 		},
-		satisfiesAsync: function AllowedValuesRule$satisfiesAsync(obj, value, exitEarly, callback) {
-			this._enforceInited();
-
-			this.valuesAsync(obj, exitEarly, function(allowed) {
-				if (value === undefined || value === null) {
-					callback(true);
-				}
-				else if (allowed === undefined) {
-					callback(false);
-				}
-				else if (value instanceof Array) {
-					callback(value.every(function(item) { return Array.contains(allowed, item); }));
-				}
-				else {
-					callback(Array.contains(allowed, value));
-				}
-			});
-
-		},
 		values: function AllowedValuesRule$values(obj, exitEarly) {
-			if (this._enforceInited() && this._allowedValuesProperty && (this._allowedValuesProperty.get_isStatic() || this._allowedValuesProperty instanceof Property || this._allowedValuesProperty.lastTarget(obj, exitEarly))) {
+			if (!this.source) {
+				ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+				return;
+			}
+			if (this.source && (this.source.get_isStatic() || this.source instanceof Property || this.source.lastTarget(obj, exitEarly))) {
 
 				// get the allowed values from the property chain
-				var values = this._allowedValuesProperty.value(obj);
+				var values = this.source.value(obj);
 
 				// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
 				return values;
 			}
 		},
-		valuesAsync: function AllowedValuesRule$valuesAsync(obj, exitEarly, callback) {
-			if (this._enforceInited()) {
-
-				var values;
-
-				if (this._allowedValuesProperty.get_isStatic() || this._allowedValuesProperty instanceof Property || this._allowedValuesProperty.lastTarget(obj, exitEarly)) {
-					// get the allowed values from the property chain
-					values = this._allowedValuesProperty.value(obj);
-				}
-
-				if (values !== undefined) {
-					LazyLoader.load(values, null, function() {
-						callback(values);
-					});
-				}
-				else {
-					callback(values);
-				}
-			}
-		},
 		toString: function AllowedValuesRule$toString() {
-			return $format("{0}.{1} allowed values = {2}", [this.prop.get_containingType().get_fullName(), this.prop.get_name(), this._allowedValuesPath]);
+			return $format("{0}.{1} allowed values = {2}", [this.property.get_containingType().get_fullName(), this.property.get_name(), this._sourcePath]);
 		}
-	};
+	});
 
+	// expose the rule publicly
 	Rule.allowedValues = AllowedValuesRule;
+	ExoWeb.Model.AllowedValuesRule = AllowedValuesRule;
 
 	// #endregion
 
-	// #region CompareRule
+	// #region ExoWeb.Model.CompareRule
 	//////////////////////////////////////////////////
 
-	function CompareRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [ this.prop ];
+	function CompareRule(rootType, options) {
+		/// <summary>Creates a rule that validates a property by comparing it to another property.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:			the property being validated (either a Property instance or string property name)
+		///			compareSource:		the source property to compare to (either a Property or PropertyChain instance or a string property path)
+		///			compareOperator:	the relational comparison operator to use (one of "Equal", "NotEqual", "GreaterThan", "GreaterThanEqual", "LessThan" or "LessThanEqual")
+		///			name:				the optional unique name of the type of validation rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		/// </param>
+		/// <returns type="CompareRule">The new compare rule.</returns>
 
-		if (!ctype) {
-			ctype = Rule.ensureError($format("compare {0} {1}", [options.compareOperator, options.compareSource]), this.prop);
+		options.name = options.name || "Compare";
+	
+		// ensure changes to the compare source triggers rule execution
+		options.onChangeOf = [options.compareSource];
+
+		// define properties for the rule
+		Object.defineProperty(this, "compareOperator", { value: options.compareOperator });
+		if (options.source instanceof Property || options.compareSource instanceof PropertyChain) {
+			Object.defineProperty(this, "comparePath", { value: options.compareSource.get_path() });
+			Object.defineProperty(this, "compareSource", { value: options.compareSource });
 		}
-
-		this.ctype = ctype;
-
-		this._comparePath = options.compareSource;
-		this._compareOp = options.compareOperator;
-
-		this._inited = false;
-
-		// Function to register this rule when its containing type is loaded.
-		var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype, mtype, callback, thisPtr); }).bind(this);
-
-		// If the type is already loaded, then register immediately.
-		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-			CompareRule.load(this, this.prop.get_containingType().get_jstype(), mtype, callback, thisPtr);
-		}
-		// Otherwise, wait until the type is loaded.
 		else {
-			$extend(this.prop.get_containingType().get_fullName(), register);
+			Object.defineProperty(this, "comparePath", { value: options.compareSource });
 		}
+
+		// call the base type constructor
+		ValidatedPropertyRule.apply(this, [rootType, options]);
 	}
 
-	CompareRule.load = function CompareRule$load(rule, loadedType, mtype, callback, thisPtr) {
-		if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
-			var inputs = [];
-
-			var targetInput = new RuleInput(rule.prop);
-			targetInput.set_isTarget(true);
-			if (rule.prop.get_origin() === "client")
-				targetInput.set_dependsOnInit(true);
-			inputs.push(targetInput);
-
-			Model.property(rule._comparePath, rule.prop.get_containingType(), true, function(chain) {
-				rule._compareProperty = chain;
-
-				var compareInput = new RuleInput(rule._compareProperty);
-				inputs.push(compareInput);
-
-				rule._inited = true;
-
-				if (chain.get_jstype() === Boolean && rule._compareOp == "NotEqual" && (rule._compareValue === undefined || rule._compareValue === null)) {
-					rule._compareOp = "Equal";
-					rule._compareValue = true;
-				}
-
-				Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-			});
-		}
-		else {
-			$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
-				CompareRule.load(rule, baseType, mtype, callback, thisPtr);
-			});
-		}
-	};
-
-	CompareRule.compare = function CompareRule$compare(srcValue, cmpOp, cmpValue, defaultValue) {
-		if (cmpValue === undefined || cmpValue === null) {
-			switch (cmpOp) {
-				case "Equal": return !RequiredRule.hasValue(srcValue);
-				case "NotEqual": return RequiredRule.hasValue(srcValue);
+	// compares the source value to a comparison value using the specified operator
+	CompareRule.compare = function CompareRule$compare(sourceValue, compareOp, compareValue, defaultValue) {
+		if (compareValue === undefined || compareValue === null) {
+			switch (compareOp) {
+				case "Equal": return !RequiredRule.hasValue(sourceValue);
+				case "NotEqual": return RequiredRule.hasValue(sourceValue);
 			}
 		}
 
-		if (srcValue !== undefined && srcValue !== null && cmpValue !== undefined && cmpValue !== null) {
-			switch (cmpOp) {
-				case "Equal": return srcValue == cmpValue;
-				case "NotEqual": return srcValue != cmpValue;
-				case "GreaterThan": return srcValue > cmpValue;
-				case "GreaterThanEqual": return srcValue >= cmpValue;
-				case "LessThan": return srcValue < cmpValue;
-				case "LessThanEqual": return srcValue <= cmpValue;
+		if (sourceValue !== undefined && sourceValue !== null && compareValue !== undefined && compareValue !== null) {
+			switch (compareOp) {
+				case "Equal": return sourceValue == compareValue;
+				case "NotEqual": return sourceValue != compareValue;
+				case "GreaterThan": return sourceValue > compareValue;
+				case "GreaterThanEqual": return sourceValue >= compareValue;
+				case "LessThan": return sourceValue < compareValue;
+				case "LessThanEqual": return sourceValue <= compareValue;
 			}
 			// Equality by default.
-			return srcValue == cmpValue;
+			return sourceValue == compareValue;
 		}
 
 		return defaultValue;
 	};
 
-	CompareRule.prototype = {
-		satisfies: function Compare$satisfies(obj) {
-			if (!this._compareProperty) {
-				return true;
+	// setup the inheritance chain
+	CompareRule.prototype = new ValidatedPropertyRule();
+	CompareRule.prototype.constructor = CompareRule;
+
+	// extend the base type
+	CompareRule.mixin({
+
+		// return true of the comparison is valid, otherwise false
+		isValid: function Compare$isValid(obj, prop, value) {
+			var compareValue = this.compareSource.value(obj);
+			return CompareRule.compare(value, this.compareOperator, compareValue, true);
+		},
+
+		// calculates the appropriate message based on the comparison operator and data type
+		message: function () {
+			var message;
+			var isDate = this.compareSource.get_jstype() === Date;
+			if (this.compareOperator === "Equal") {
+				message = Resource.get("compare-equal");
 			}
-
-			var srcValue = this.prop.value(obj);
-			var cmpValue = this._compareProperty.value(obj);
-			return CompareRule.compare(srcValue, this._compareOp, cmpValue, true);
-		},
-		message: function() {
-			return $format("{0} must be {1}{2} {3}", [
-				this.prop.get_label(),
-				ExoWeb.makeHumanReadable(this._compareOp).toLowerCase(),
-				(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
-				this._compareProperty.get_label()
-			]);
-		},
-		execute: function CompareRule$execute(obj) {
-			if (this._inited === true) {
-
-				var isValid = this.satisfies(obj);
-
-				var message = isValid ? '' : this.message();
-				this.err = new Condition(this.ctype, message, [this.prop], this);
-
-				obj.meta.conditionIf(this.err, !isValid);
+			else if (this.compareOperator === "NotEqual") {
+				message = Resource.get("compare-not-equal");
+			}
+			else if (this.compareOperator === "GreaterThan") {
+				message = Resource.get(isDate ? "compare-after" : "compare-greater-than");
+			}
+			else if (this.compareOperator === "GreaterThanEqual") {
+				message = Resource.get(isDate ? "compare-on-or-after" : "compare-greater-than-or-equal");
+			}
+			else if (this.compareOperator === "LessThan") {
+				message = Resource.get(isDate ? "compare-before" : "compare-less-than");
+			}
+			else if (this.compareOperator === "LessThanEqual") {
+				message = Resource.get(isDate ? "compare-on-or-before" : "compare-less-than-or-equal");
 			}
 			else {
-				ExoWeb.trace.logWarning("rule", "Compare rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+				ExoWeb.trace.throwAndLog(["rule"], "Invalid comparison operator for compare rule.");
 			}
-		}
-	};
+			message = message
+				.replace('{property}', this.property.get_label())
+				.replace("{compareSource}", this.compareSource.get_label());
+			return message;
+		},
 
+		// perform addition initialization of the rule when it is registered
+		onRegister: function () {
+
+			// get the compare source, if only the path was specified
+			if (!this.compareSource) {
+				Object.defineProperty(this, "compareSource", { value: Model.property(this.comparePath, this.rootType) });
+			}
+
+			// call the base method
+			ValidatedPropertyRule.prototype.onRegister.call(this);
+		}
+	});
+
+	// expose the rule publicly
 	Rule.compare = CompareRule;
+	ExoWeb.Model.CompareRule = CompareRule;
 
 	// #endregion
 
-	// #region ErrorIfExpressionsRule
+	// #region ExoWeb.Model.RequiredIfRule
 	//////////////////////////////////////////////////
 
-	function ErrorIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [ this.prop ];
+	function RequiredIfRule(rootType, options) {
+		/// <summary>Creates a rule that conditionally validates whether a property has a value.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:			the property being validated (either a Property instance or string property name)
+		///			isRequired:			a predicate function indicating whether the property should be required
+		///			compareSource:		the source property to compare to (either a Property or PropertyChain instance or a string property path)
+		///			compareOperator:	the relational comparison operator to use (one of "Equal", "NotEqual", "GreaterThan", "GreaterThanEqual", "LessThan" or "LessThanEqual")
+		///			compareValue:		the optional value to compare to
+		///			name:				the optional unique name of the type of validation rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		///		    onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
+		///		    onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
+		///		    onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
+		///		    onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		/// </param>
+		/// <returns type="RequiredIfRule">The new required if rule.</returns>
 
-		this._evaluationFunction = options.fn;
-		this._dependsOn = options.dependsOn;
-		this._errorMessage = options.errorMessage;
-		this._isWarning = options.isWarning;
-
-		if (!ctype && !this._isWarning) {
-			ctype = Rule.ensureError("errorIfExpressions", this.prop);
-		}
-		else if(!ctype && this._isWarning) {
-			ctype = Rule.ensureWarning("errorIfExpressions", this.prop);
-		}
-
-		this.ctype = ctype;
-
-		if(this._evaluationFunction === undefined || this._evaluationFunction === null || !(this._evaluationFunction instanceof Function)) {
-			ExoWeb.trace.logError("rule",
-					"Rule configuration error - {0}:  you must define an evaluation function.",
-					[this._expressions]);
-			return;
-		}
-
-		if(this._dependsOn === undefined || this._dependsOn === null || !(this._dependsOn instanceof Array)) {
-			ExoWeb.trace.logError("rule",
-					"Rule configuration error - {0}:  you must setup dependencies for ErrorIfExpression",
-					[this._expressions]);
-			return;
+		options.name = options.name || "RequiredIf";
+	
+		// ensure changes to the compare source triggers rule execution
+		if (!options.onChangeOf && options.compareSource) {
+			options.onChangeOf = [options.compareSource];
 		}
 
-		this._inited = false;
-		this.err = new Condition(ctype, this._errorMessage, properties, this);
-
-		// Function to register this rule when its containing type is loaded.
-		var register = (function ErrorIfExpressionsRule$register(ctype) { this.load(this, ctype, mtype, callback, thisPtr); }).bind(this);
-
-		// If the type is already loaded, then register immediately.
-		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-			register(this.prop.get_containingType().get_jstype());
+		// predicate-based rule
+		var isRequired = options.isRequired || options.fn;
+		if (isRequired instanceof Function) {
+			this.isRequired = isRequired;
+			options.message = options.message || Resource.get("required");
 		}
-		// Otherwise, wait until the type is loaded.
+
+		// comparison-based rule
 		else {
-			$extend(this.prop.get_containingType().get_fullName(), register);
+			Object.defineProperty(this, "comparePath", { value: options.compareSource });
+			Object.defineProperty(this, "compareOperator", {
+				value: options.compareOperator || (options.compareValue !== undefined && options.compareValue !== null ? "Equal" : "NotEqual"),
+				writable: true
+			});
+			Object.defineProperty(this, "compareValue", { value: options.compareValue, writable: true });
 		}
+	
+		// call the base type constructor
+		ValidatedPropertyRule.apply(this, [rootType, options]);
 	}
 
-	ErrorIfExpressionsRule.prototype = {
-		load: function ErrorIfExpressionsRule$load(rule, loadedType, mtype, callback, thisPtr) {
-			if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
-				var inputs = [];
+	// setup the inheritance chain
+	RequiredIfRule.prototype = new ValidatedPropertyRule();
+	RequiredIfRule.prototype.constructor = RequiredIfRule;
 
-				var targetInput = new RuleInput(rule.prop);
-				targetInput.set_isTarget(true);
-				if (rule.prop.get_origin() === "client")
-					targetInput.set_dependsOnInit(true);
-				inputs.push(targetInput);
+	// extend the base type
+	RequiredIfRule.mixin({
 
-				rule._dependsOn.forEach(function(prop, i) {
-					Model.property(prop, rule.prop.get_containingType(), true, function(chain) {
-						rule._dependsOn[i] = chain;
+		// determines whether the property should be considered required
+		isRequired: function RequiredIfRule$required(obj) {
+			var sourceValue = this.compareSource.value(obj);
+			return CompareRule.compare(sourceValue, this.compareOperator, this.compareValue, true);
+		},
 
-						var watchPathInput = new RuleInput(chain);
-						inputs.push(watchPathInput);
-
-						rule._inited = true;
-
-						Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-					});
-				});
+		// calculates the appropriate message based on the comparison operator and data type
+		message: function () {
+			var message;
+			var isDate = this.compareSource.get_jstype() === Date;
+			if (this.compareValue === undefined || this.compareValue === null) {
+				message = this.compareOperator === "Equal" ? "required-if-not-exists" : "required-if-exists";
+			}
+			else if (this.compareOperator === "Equal") {
+				message = Resource.get("required-if-equal");
+			}
+			else if (this.compareOperator === "NotEqual") {
+				message = Resource.get("required-if-not-equal");
+			}
+			else if (this.compareOperator === "GreaterThan") {
+				message = Resource.get(isDate ? "required-if-after" : "required-if-greater-than");
+			}
+			else if (this.compareOperator === "GreaterThanEqual") {
+				message = Resource.get(isDate ? "required-if-on-or-after" : "required-if-greater-than-or-equal");
+			}
+			else if (this.compareOperator === "LessThan") {
+				message = Resource.get(isDate ? "required-if-before" : "required-if-less-than");
+			}
+			else if (this.compareOperator === "LessThanEqual") {
+				message = Resource.get(isDate ? "required-if-on-or-before" : "required-if-less-than-or-equal");
 			}
 			else {
-				$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
-					ErrorIfExpressionsRule.load(rule, baseType);
-				});
+				ExoWeb.trace.throwAndLog(["rule"], "Invalid comparison operator for compare rule.");
 			}
+			message = message
+				.replace('{property}', this.property.get_label())
+				.replace("{compareSource}", this.compareSource.get_label())
+				.replace("{compareValue}", this.compareSource.format(this.compareValue));
+			return message;
 		},
-		evaluate: function ErrorIfExpressionsRule$required(obj) {
-			return this._evaluationFunction.apply(obj,[ obj["get_" + this.prop.get_name()]() ]);
+
+		// determines whether the property is valid based on whether it is conditionally required and has a value
+		isValid: function RequiredIfRule$isValid(obj) {
+			return !this.isRequired(obj) || RequiredRule.hasValue(this.property.value(obj));
 		},
-		satisfies: function ErrorIfRule$satisfies(obj) {
-			return !this.evaluate(obj);
-		},
-		execute: function ErrorIfRule$execute(obj) {
-			if (this._inited === true) {
-				obj.meta.conditionIf(this.err, !this.satisfies(obj));
-			}
-			else {
-				ExoWeb.trace.logWarning("rule", "ErrorIf rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
-			}
-		}
-	};
 
-	Rule.errorIfExpressions = ErrorIfExpressionsRule;
-	// #endregion
+		// perform addition initialization of the rule when it is registered
+		onRegister: function () {
 
-	// #region RequiredIfRule
-	//////////////////////////////////////////////////
+			// call the base method
+			ValidatedPropertyRule.prototype.onRegister.call(this);
 
-	function RequiredIfRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [ this.prop ];
+			// perform addition registration for required if rules with a compare source
+			if (this.comparePath) {
 
-		if (!ctype) {
-			ctype = Rule.ensureError("requiredIf", this.prop);
-		}
+				// get the compare source, which is already a rule predicate and should immediately resolve
+				Object.defineProperty(this, "compareSource", { value: Model.property(this.comparePath, this.rootType) });
 
-		this.ctype = ctype;
-
-		this._comparePath = options.compareSource;
-		this._compareOp = options.compareOperator;
-		this._compareValue = options.compareValue;
-
-		if (this._compareOp === undefined || this._compareOp === null) {
-			if (this._compareValue !== undefined && this._compareValue !== null) {
-				ExoWeb.trace.logWarning("rule",
-					"Possible rule configuration error - {0}:  if a compare value is specified, " +
-					"then an operator should be specified as well.  Falling back to equality check.",
-					[type.get_code()]);
-			}
-			else {
-				this._compareOp = "NotEqual";
-			}
-		}
-
-		this._inited = false;
-
-		this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
-
-		// Function to register this rule when its containing type is loaded.
-		var register = (function RequiredIfRule$register(ctype) { CompareRule.load(this, ctype, mtype, callback, thisPtr); }).bind(this);
-
-		// If the type is already loaded, then register immediately.
-		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-			register(this.prop.get_containingType().get_jstype());
-		}
-		// Otherwise, wait until the type is loaded.
-		else {
-			$extend(this.prop.get_containingType().get_fullName(), register);
-		}
-	}
-
-	RequiredIfRule.prototype = {
-		required: function RequiredIfRule$required(obj) {
-			if (!this._compareProperty) {
-				ExoWeb.trace.logWarning("rule",
-					"Cannot determine requiredness since the property for path \"{0}\" has not been loaded.",
-					[this._comparePath]);
-				return;
-			}
-
-			var cmpValue = this._compareProperty.value(obj);
-			if (cmpValue && cmpValue instanceof String) {
-				cmpValue = $.trim(cmpValue);
-			}
-
-			return CompareRule.compare(cmpValue, this._compareOp, this._compareValue, false);
-		},
-		satisfies: function RequiredIfRule$satisfies(obj) {
-			return !this.required(obj) || RequiredRule.hasValue(obj, this.prop);
-		},
-		execute: function RequiredIfRule$execute(obj) {
-			if (this._inited === true) {
-				obj.meta.conditionIf(this.err, !this.satisfies(obj));
-			}
-			else {
-				ExoWeb.trace.logWarning("rule", "RequiredIf rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
-			}
-		}
-	};
-
-	Rule.requiredIf = RequiredIfRule;
-
-	// #endregion
-
-	// #region RequiredIfExpressionsRule
-	//////////////////////////////////////////////////
-
-	function RequiredIfExpressionsRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [ this.prop ];
-
-		if (!ctype) {
-			ctype = Rule.ensureError("requiredIfExpressions", this.prop);
-		}
-
-		this.ctype = ctype;
-
-		this._evaluationFunction = options.fn;
-		this._dependsOn = options.dependsOn;
-
-		if(this._evaluationFunction === undefined || this._evaluationFunction === null || !(this._evaluationFunction instanceof Function)) {
-			ExoWeb.trace.logError("rule",
-					"Rule configuration error - {0}:  you must define an evaluation function.",
-					[this._expressions]);
-			return;
-		}
-
-		if(this._dependsOn === undefined || this._dependsOn === null || !(this._dependsOn instanceof Array)) {
-			ExoWeb.trace.logError("rule",
-					"Rule configuration error - {0}:  you must setup depencies for RequiredIfExpression",
-					[this._expressions]);
-			return;
-		}
-
-		this._inited = false;
-		this.err = new Condition(ctype, $format("{0} is required", [this.prop.get_label()]), properties, this);
-
-		// Function to register this rule when its containing type is loaded.
-		var register = (function RequiredIfExpressionsRule$register(ctype) {
-			this.load(this, ctype, mtype, callback, thisPtr);
-		}).bind(this);
-
-		// If the type is already loaded, then register immediately.
-		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-			register(this.prop.get_containingType().get_jstype());
-		}
-		// Otherwise, wait until the type is loaded.
-		else {
-			$extend(this.prop.get_containingType().get_fullName(), register);
-		}
-	}
-
-	RequiredIfExpressionsRule.prototype = {
-		load: function RequiredIfExpressionsRule$load(rule, loadedType, mtype, callback, thisPtr) {
-			if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
-				var inputs = [];
-
-				var targetInput = new RuleInput(rule.prop);
-				targetInput.set_isTarget(true);
-				if (rule.prop.get_origin() === "client") {
-					targetInput.set_dependsOnInit(true);
+				// flip the equality rules for boolean data types
+				if (this.compareSource.get_jstype() === Boolean && this.compareOperator == "NotEqual" && (this.compareValue === undefined || this.compareValue === null)) {
+					this.compareOperator = "Equal";
+					this.compareValue = true;
 				}
-				inputs.push(targetInput);
-
-				rule._dependsOn.forEach(function(prop, i) {
-					Model.property(prop, rule.prop.get_containingType(), true, function(chain) {
-						rule._dependsOn[i] = chain;
-
-						var watchPathInput = new RuleInput(chain);
-						inputs.push(watchPathInput);
-
-						rule._inited = true;
-
-						Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-					});
-				});
-			}
-			else {
-				$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
-					RequiredIfExpressionsRule.load(rule, baseType);
-				});
-			}
-		},
-		required: function RequiredIfExpressionsRule$required(obj) {
-			return this._evaluationFunction.apply(obj, [ obj["get_" + this.prop.get_name()]() ]);
-		},
-		satisfies: function RequiredIfRule$satisfies(obj) {
-			return !this.required(obj) || RequiredRule.hasValue(obj, this.prop);
-		},
-		execute: function RequiredIfRule$execute(obj) {
-			if (this._inited === true) {
-				obj.meta.conditionIf(this.err, !this.satisfies(obj));
-			}
-			else {
-				ExoWeb.trace.logWarning("rule", "RequiredIf rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
 			}
 		}
-	};
+	});
 
-	Rule.requiredIfExpressions = RequiredIfExpressionsRule;
+	// Expose the rule publicly
+	Rule.requiredIf = RequiredIfRule;
+	ExoWeb.Model.RequiredIfRule = RequiredIfRule;
+
 	// #endregion
 
-	// #region StringLengthRule
+	// #region ExoWeb.Model.StringLengthRule
 	//////////////////////////////////////////////////
 
-	function StringLengthRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [ this.prop ];
+	function StringLengthRule(rootType, options) {
+		/// <summary>Creates a rule that validates that the length of a string property is within a specific range.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:			the property being validated (either a Property instance or string property name)
+		///			min:				the minimum length of the property
+		///			max:				the maximum length of the property
+		///			name:				the optional unique name of the type of validation rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		/// </param>
+		/// <returns type="RangeRule">The new range rule.</returns>
 
-		if (!ctype) {
-			ctype = Rule.ensureError("stringLength", this.prop);
-		}
+		// ensure the rule name is specified
+		options.name = options.name || "StringLength";
 
-		this.ctype = ctype;
+		// store the min and max lengths
+		Object.defineProperty(this, "min", { value: options.min });
+		Object.defineProperty(this, "max", { value: options.max });
 
-		this.min = options.min;
-		this.max = options.max;
+		// ensure the error message is specified
+		options.message = options.message ||
+			(options.min && options.max ? Resource.get("string-length-between").replace("{min}", this.min).replace("{max}", this.max) :
+			options.min ? Resource.get("string-length-at-least").replace("{min}", this.min) :
+			Resource.get("string-length-at-most").replace("{max}", this.max));
 
-		var hasMin = (this.min !== undefined && this.min !== null);
-		var hasMax = (this.max !== undefined && this.max !== null);
-
-		if (hasMin && hasMax) {
-			this.err = new Condition(ctype, $format("{0} must be between {1} and {2} characters", [this.prop.get_label(), this.min, this.max]), properties, this);
-			this._test = this._testMinMax;
-		}
-		else if (hasMin) {
-			this.err = new Condition(ctype, $format("{0} must be at least {1} characters", [this.prop.get_label(), this.min]), properties, this);
-			this._test = this._testMin;
-		}
-		else if (hasMax) {
-			this.err = new Condition(ctype, $format("{0} must be no more than {1} characters", [this.prop.get_label(), this.max]), properties, this);
-			this._test = this._testMax;
-		}
-
-		Rule.register(this, properties, false, mtype, callback, thisPtr);
+		// call the base type constructor
+		ValidatedPropertyRule.apply(this, [rootType, options]);
 	}
-	StringLengthRule.prototype = {
-		execute: function(obj) {
-			var val = this.prop.value(obj);
-			obj.meta.conditionIf(this.err, this._test(val || ""));
+
+	// setup the inheritance chain
+	StringLengthRule.prototype = new ValidatedPropertyRule();
+	StringLengthRule.prototype.constructor = StringLengthRule;
+
+	// extend the base type
+	StringLengthRule.mixin({
+
+		// returns true if the property is valid, otherwise false
+		isValid: function StringLengthRule$isValid(obj, prop, val) {
+			return !val || val === "" || ((!this.min || val.length >= this.min) && (!this.max || val.length <= this.max));
 		},
-		_testMinMax: function(val) {
-			return val.length < this.min || val.length > this.max;
-		},
-		_testMin: function(val) {
-			return val.length < this.min;
-		},
-		_testMax: function(val) {
-			return val.length > this.max;
-		},
-		toString: function() {
+
+		// get the string representation of the rule
+		toString: function () {
 			return $format("{0}.{1} in range, min: {2}, max: {3}",
-				[this.prop.get_containingType().get_fullName(),
-				this.prop.get_name(),
-				this.min == undefined ? "" : this.min,
-				this.max === undefined ? "" : this.max]);
+				[this.get_property().get_containingType().get_fullName(),
+				this.get_property().get_name(),
+				this.min ? "" : this.min,
+				this.max ? "" : this.max]);
 		}
-	};
+	});
 
+	// Expose the rule publicly
 	Rule.stringLength = StringLengthRule;
+	ExoWeb.Model.StringLengthRule = StringLengthRule;
 
 	// #endregion
 
-	// #region StringFormatRule
+	// #region ExoWeb.Model.StringFormatRule
 	//////////////////////////////////////////////////
 
-	function StringFormatRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [ this.prop ];
+	function StringFormatRule(rootType, options) {
+		/// <summary>Creates a rule that validates that a string property value is correctly formatted.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:			the property being validated (either a Property instance or string property name)
+		///			description:		the human readable description of the format, such as MM/DD/YYY
+		///		    expression:			a regular expression string or RegExp instance that the property value must match
+		///		    reformat:			and optional regular expression reformat string that will be used to correct the value if it matches
+		///			name:				the optional unique name of the type of validation rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		/// </param>
+		/// <returns type="StringFormatRule">The new string format rule.</returns>
 
-		if (!ctype) {
-			ctype = Rule.ensureError("stringFormat", this.prop);
-		}
-	 
-		this.ctype = ctype; 
-	 
-		this.description = options.description; 
-		this.expression = new RegExp(options.expression);
-		this.reformat = options.reformat;
+		// ensure the rule name is specified
+		options.name = options.name || "StringFormat";
 
-		this.err = new Condition(ctype, $format("{0} must be formatted as {1}.", [this.prop.get_label(), this.description]), properties, this);
-	 
-		Rule.register(this, properties, false, mtype, callback, thisPtr);
+		// ensure the error message is specified
+		options.message = options.message || Resource.get("string-format").replace("{formatDescription}", options.description);
+
+		// define properties for the rule
+		Object.defineProperty(this, "description", { value: options.description });
+		Object.defineProperty(this, "expression", { value: options.expression instanceof RegExp ? options.expression : RegExp(options.expression) });
+		Object.defineProperty(this, "reformat", { value: options.reformat });
+
+		// call the base type constructor
+		ValidatedPropertyRule.apply(this, [rootType, options]);
 	}
 
-	StringFormatRule.prototype = {
-		execute: function (obj) {
-			var val = this.prop.value(obj);
+	// setup the inheritance chain
+	StringFormatRule.prototype = new ValidatedPropertyRule();
+	StringFormatRule.prototype.constructor = StringFormatRule;
+
+	// extend the base type
+	StringFormatRule.mixin({
+	
+		// returns true if the property is valid, otherwise false
+		isValid: function StringFormatRule$isValid(obj, prop, val) {
 			var isValid = true;
 			if (val && val != "") {
 				this.expression.lastIndex = 0;
 				isValid = this.expression.test(val);
 				if (isValid && this.reformat) {
 					this.expression.lastIndex = 0;
-					this.prop.value(obj, val.replace(this.expression, this.reformat));
+					prop.value(obj, val.replace(this.expression, this.reformat));
 				}
 			}
-			obj.meta.conditionIf(this.err, !isValid);
+			return isValid;
 		},
+
+		// get the string representation of the rule
 		toString: function () {
 			return $format("{0}.{1} formatted as {2}",
-				[this.prop.get_containingType().get_fullName(),
-				this.prop.get_name(),
+				[this.get_property.get_containingType().get_fullName(),
+				this.get_property().get_name(),
 				this.description]);
 		}
-	};
+	});
 
+	// Expose the rule publicly
 	Rule.stringFormat = StringFormatRule;
+	ExoWeb.Model.StringFormatRule = StringFormatRule;
 
 	// #endregion
 
-	// #region ListLengthRule
+	// #region ExoWeb.Model.ListLengthRule
 	//////////////////////////////////////////////////
 
-	function ListLengthRule(mtype, options, ctype, callback, thisPtr) {
-		this.prop = mtype.property(options.property, true);
-		var properties = [this.prop];
+	function ListLengthRule(rootType, options) {
+		/// <summary>Creates a rule that validates whether a list contains the correct number of items.</summary>
+		/// <param name="rootType" type="Type">The model type the rule is for.</param>
+		/// <param name="options" type="Object">
+		///		The options for the rule, including:
+		///			property:			the property being validated (either a Property instance or string property name)
+		///			compareSource:		the optional source property to compare the list length to (either a Property or PropertyChain instance or a string property path)
+		///			compareOperator:	the relational comparison operator to use (one of "Equal", "NotEqual", "GreaterThan", "GreaterThanEqual", "LessThan" or "LessThanEqual")
+		///			compareValue:		the optional list length value to compare to
+		///			name:				the optional unique name of the type of validation rule
+		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+		///			message:			the message to show the user when the validation fails
+		/// </param>
+		/// <returns type="ListLengthRule">The new list length rule.</returns>
 
-		if (!ctype) {
-			ctype = Rule.ensureError($format("listLength {0} {1}", [options.compareOperator, options.staticLength > 0 ? options.staticLength : options.compareSource]), this.prop);
-		}
 
-		this.ctype = ctype;
-
-		this._comparePath = options.compareSource;
-		this._compareOp = options.compareOperator;
-		this._staticLength = options.staticLength
-
-		this._inited = false;
-
-		// Function to register this rule when its containing type is loaded.
-		var register = (function ListLengthRule$register(ctype) {
-			ListLengthRule.load(this, ctype, mtype, callback, thisPtr);
-		}).bind(this);
-
-		// If the type is already loaded, then register immediately.
-		if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-			ListLengthRule.load(this, this.prop.get_containingType().get_jstype(), mtype, callback, thisPtr);
-		}
-		// Otherwise, wait until the type is loaded.
-		else {
-			$extend(this.prop.get_containingType().get_fullName(), register);
-		}
 	}
 
 	ListLengthRule.load = function ListLengthRule$load(rule, loadedType, mtype, callback, thisPtr) {
@@ -6848,7 +7271,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ListLengthRule.prototype = {
-		satisfies: function Compare$satisfies(obj) {
+		isValid: function Compare$isValid(obj) {
 			if (!this._compareProperty && this._staticLength < 0) {
 				return true;
 			}
@@ -6869,7 +7292,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		execute: function ListLengthRule$execute(obj) {
 			if (this._inited === true) {
 
-				var isValid = this.satisfies(obj);
+				var isValid = this.isValid(obj);
 
 				var message = isValid ? '' : $format("{0} length must be {1}{2} {3}", [
 						this.prop.get_label(),
@@ -6877,7 +7300,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
 						this._staticLength >= 0 ? this._staticLength : this._compareProperty.get_label()
 					]);
-				this.err = new Condition(this.ctype, message, [this.prop], this);
+				this.err = new Condition(this.conditionType, message, [this.prop], this);
 
 				obj.meta.conditionIf(this.err, !isValid);
 			}
@@ -6887,200 +7310,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	};
 
+	// expose the rule publicly
 	Rule.listLength = ListLengthRule;
+	ExoWeb.Model.ListLengthRule = ListLengthRule;
 	// #endregion
 
-	// #region CalculatedPropertyRule
-	//////////////////////////////////////////////////
-
-	function CalculatedPropertyRule(mtype, options, ctype) {
-		var prop = this.prop = mtype.property(options.property, true);
-
-		this.isAsync = options.isAsync; 
-		this.calculateFn = options.fn;
-
-		if (options.basedOn) {
-			var signal = new Signal("calculated property dependencies");
-			var inputs = [];
-
-			// setup loading of each property path that the calculation is based on
-			Array.forEach(options.basedOn, function (p, i) {
-				var dependsOnChange;
-				var dependsOnInit = true;
-
-				// if the event was specified then parse it
-				var parts = p.split(" of ");
-				if (parts.length >= 2) {
-					var events = parts[0].split(",");
-					dependsOnInit = (events.indexOf("init") >= 0);
-					dependsOnChange = (events.indexOf("change") >= 0);
-				}
-
-				var path = (parts.length >= 2) ? parts[1] : p;
-				Model.property(path, mtype, true, signal.pending(function(chain) {
-					var input = new RuleInput(chain);
-
-					if (!input.property) {
-						ExoWeb.trace.throwAndLog("model", "Calculated property {0}.{1} is based on an invalid property: {2}", [mtype.get_fullName(), prop._name, p]);
-					}
-
-					input.set_dependsOnInit(dependsOnInit);
-					if (dependsOnChange !== undefined) {
-						input.set_dependsOnChange(dependsOnChange);
-					}
-
-					inputs.push(input);
-				}));
-			});
-
-			// wait until all property information is available to initialize the calculation
-			signal.waitForAll(function () {
-				ExoWeb.Batch.whenDone(function () {
-					register.call(this, inputs);
-				}, this);
-			}, this);
-		}
-		else {
-			var inferredInputs = Rule.inferInputs(mtype, options.fn);
-			inferredInputs.forEach(function (input) {
-				input.set_dependsOnInit(true);
-			});
-			register.call(this, inferredInputs);
-		}
-
-		function register(inputs) {
-			// calculated property should always be initialized when first accessed
-			var input = new RuleInput(this.prop);
-			input.set_dependsOnGet(true);
-			input.set_dependsOnChange(false);
-			input.set_isTarget(true);
-			inputs.push(input);
-
-			Rule.register(this, inputs, options.isAsync, mtype, function () {
-				// Static check to determine if running when registered makes sense for this calculation based on its inputs.
-				if (this.canExecute(null, null, true)) {
-					// Execute for existing instances if their initialization state allows it.
-					mtype.known().forEach(function (obj) {
-						if (this.canExecute(obj, null, true)) {
-							if (ExoWeb.config.debug === true) {
-								this._isExecuting = true;
-								this.execute(obj);
-								this._isExecuting = false;
-							}
-							else {
-								try {
-									this._isExecuting = true;
-									this.execute(obj);
-								}
-								catch (err) {
-									ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [this, err]);
-								}
-								finally {
-									this._isExecuting = false;
-								}
-							}
-						}
-					}, this);
-				}
-			}, this);
-		}
-	}
-
-	CalculatedPropertyRule.mixin({
-		canExecute: function(sender, args, retroactive) {
-			// If there is no event, check if the calculation is based on some initialization, then defer to the default
-			// input check. This is done so that rules that are based on property changes alone do not fire when created,
-			// but calculations that are based on property initialization are allowed to fire if possible.
-			return ((!!args && !!args.property) || (!!retroactive && this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0)) &&
-				// If no sender exists then this is a static check that is only dependent on the rule's inputs
-				// and not the initialization state of any particular object. If no event is firing (property
-				// argument is undefined) then the property argument will be the property that the rule is
-				// attached to, which should have no effect on the outcome.
-				(!sender || Rule.canExecute(this, sender, args || { property: this.prop }));
-		},
-		execute: function Property$calculated$execute(obj, callback) {
-			var signal = new Signal("calculated rule");
-			var prop = this.prop;
-
-			if (prop._isList) {
-				// Initialize list if needed.  A calculated list property cannot depend on initialization 
-				// of a server-based list property since initialization is done when the object is constructed 
-				// and before data is available.  If it depends only on the change of the server-based list 
-				// property then initialization will not happen until the property value is requested.
-				if (!prop.isInited(obj)) {
-					prop.init(obj, []);
-				}
-
-				// re-calculate the list values
-				var newList;
-				if (this.isAsync) {
-					this.calculateFn.call(obj, signal.pending(function (result) {
-						newList = result;
-					}));
-				}
-				else {
-					newList = this.calculateFn.apply(obj);
-				}
-
-				signal.waitForAll(function () {
-					// compare the new list to the old one to see if changes were made
-					var curList = prop.value(obj);
-
-					if (newList.length === curList.length) {
-						var noChanges = true;
-
-						for (var i = 0; i < newList.length; ++i) {
-							if (newList[i] !== curList[i]) {
-								noChanges = false;
-								break;
-							}
-						}
-
-						if (noChanges) {
-							return;
-						}
-					}
-
-					// update the current list so observers will receive the change events
-					curList.beginUpdate();
-					update(curList, newList);
-					curList.endUpdate();
-
-					if (callback) {
-						callback(obj);
-					}
-				}, null, !this.isAsync);
-			}
-			else {
-				var newValue;
-				if (this.isAsync) {
-					this.calculateFn.call(obj, signal.pending(function (result) {
-						newValue = result;
-					}));
-				}
-				else {
-					newValue = this.calculateFn.apply(obj);
-				}
-
-				signal.waitForAll(function () {
-					prop.value(obj, newValue, { calculated: true });
-
-					if (callback) {
-						callback(obj);
-					}
-				}, null, !this.isAsync);
-			}
-		},
-		toString: function () {
-			return "calculation of " + this.prop._name;
-		}
-	});
-
-	ExoWeb.Model.CalculatedPropertyRule = CalculatedPropertyRule;
-
-	// #endregion
-
-	// #region ConditionTypeSet
+	// #region ExoWeb.Model.ConditionTypeSet
 	//////////////////////////////////////////////////
 
 	function ConditionTypeSet(name) {
@@ -7088,9 +7323,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			ExoWeb.trace.throwAndLog("conditions", "A set with the name \"{0}\" has already been created.", [name]);
 		}
 
-		this._name = name;
-		this._types = [];
-		this._active = false;
+		Object.defineProperty(this, "name", { value: name });
+		Object.defineProperty(this, "types", { value: [] });
+		Object.defineProperty(this, "active", { value: false, writable: true });
+
 
 		allConditionTypeSets[name] = this;
 	}
@@ -7100,7 +7336,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ConditionTypeSet.all = function ConditionTypeSet$all() {
 		/// <summary>
 		/// Returns an array of all condition type sets that have been created.
-		/// Not that the array is created each time the function is called.
+		/// Note that the array is created each time the function is called.
 		/// </summary>
 		/// <returns type="Array" />
 
@@ -7122,24 +7358,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ConditionTypeSet.prototype = {
-		get_name: function ConditionTypeSet$get_name() {
-			return this._name;
-		},
-		get_types: function ConditionTypeSet$get_types() {
-			return this._types;
-		},
-		get_active: function ConditionTypeSet$get_active() {
-			return this._active;
-		},
-		set_active: function ConditionTypeSet$set_active(value) {
-			if (value === true && !this._active) {
+		activate: function ConditionTypeSet$activate(value) {
+			if (!this.active) {
+				this.active = true;
 				this._raiseEvent("activated");
 			}
-			else if (value === false && this._active === true) {
+		},
+		deactivate: function ConditionTypeSet$deactivate() {
+			if (this.active) {
+				this.active = false;
 				this._raiseEvent("deactivated");
 			}
-
-			this._active = value;
 		},
 		addActivated: function ConditionTypeSet$addActivated(handler) {
 			this._addEvent("activated", handler);
@@ -7161,10 +7390,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ConditionType
+	// #region ExoWeb.Model.ConditionType
 	//////////////////////////////////////////////////
 
-	function ConditionType(code, category, message, sets) {
+	function ConditionType(code, category, message, sets, origin) {
 		// So that sub types can use it's prototype.
 		if (arguments.length === 0) {
 			return;
@@ -7174,15 +7403,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 			ExoWeb.trace.throwAndLog("conditions", "A condition type with the code \"{0}\" has already been created.", [code]);
 		}
 
-		this._code = code;
-		this._category = category;
-		this._message = message;
-		this._sets = (sets === undefined || sets === null) ? [] : sets;
-		this._rules = [];
+		Object.defineProperty(this, "code", { value: code });
+		Object.defineProperty(this, "category", { value: category });
+		Object.defineProperty(this, "message", { value: message });
+		Object.defineProperty(this, "sets", { value: sets || [] });
+		Object.defineProperty(this, "rules", { value: [] });
+		Object.defineProperty(this, "origin", { value: origin });
 
 		if (sets && sets.length > 0) {
 			Array.forEach(sets, function(s) {
-				s._types.push(this);
+				s.types.push(this);
 			}, this);
 		}
 
@@ -7194,7 +7424,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	ConditionType.all = function ConditionType$all() {
 		/// <summary>
 		/// Returns an array of all condition types that have been created.
-		/// Not that the array is created each time the function is called.
+		/// Note that the array is created each time the function is called.
 		/// </summary>
 		/// <returns type="Array" />
 
@@ -7216,19 +7446,48 @@ Type.registerNamespace("ExoWeb.DotNet");
 	};
 
 	ConditionType.prototype = {
-		get_code: function ConditionType$get_code() {
-			return this._code;
+
+		// adds or removes a condition from the model for the specified target if necessary
+		when: function ConditionType$when(condition, target, properties, message) {
+
+			// get the current condition if it exists
+			var conditionTarget = target.meta.getCondition(this);
+
+			// add the condition on the target if it does not exist yet
+			if (condition) {
+
+				// if the message is a function, invoke to get the actual message
+				message = message instanceof Function ? message(target) : message;
+
+				// create a new condition if one does not exist
+				if (!conditionTarget) {
+					return new Condition(this, message, target, properties, "client");
+				}
+
+				// replace the condition if the message has changed
+				else if (message && message != conditionTarget.condition.message) {
+
+					// destroy the existing condition
+					conditionTarget.condition.destroy();
+
+					// create a new condition with the updated message
+					return new Condition(this, message, target, properties, "client");
+				}
+
+				// otherwise, just return the existing condition
+				else {
+					return conditionTarget.condition;
+				}
+			}
+
+			// Destroy the condition if it exists on the target and is no longer valid
+			if (conditionTarget != null)
+				conditionTarget.condition.destroy();
+
+			// Return null to indicate that no condition was created
+			return null;
 		},
-		get_category: function ConditionType$get_category() {
-			return this._category;
-		},
-		get_message: function ConditionType$get_message() {
-			return this._message;
-		},
-		get_sets: function ConditionType$get_sets() {
-			return this._sets;
-		},
-		rules: function() {
+		rules: function ConditionType$rules() {
 			return Array.prototype.slice.call(this._rules);
 		},
 		extend: function ConditionType$extend(data) {
@@ -7248,8 +7507,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	(function() {
 		//////////////////////////////////////////////////////////////////////////////////////
-		function Error(code, message, sets) {
-			ConditionType.call(this, code, "Error", message, sets);
+		function Error(code, message, sets, origin) {
+			ConditionType.call(this, code, "Error", message, sets, origin);
 		}
 
 		Error.prototype = new ConditionType();
@@ -7257,8 +7516,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		ExoWeb.Model.ConditionType.Error = Error;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function Warning(code, message, sets) {
-			ConditionType.call(this, code, "Warning", message, sets);
+		function Warning(code, message, sets, origin) {
+			ConditionType.call(this, code, "Warning", message, sets, origin);
 		}
 
 		Warning.prototype = new ConditionType();
@@ -7266,97 +7525,197 @@ Type.registerNamespace("ExoWeb.DotNet");
 		ExoWeb.Model.ConditionType.Warning = Warning;
 
 		//////////////////////////////////////////////////////////////////////////////////////
-		function Permission(code, message, sets, permissionType, isAllowed) {
-			ConditionType.call(this, code, "Permission", message, sets);
-			this._permissionType = permissionType;
-			this._isAllowed = isAllowed;
+		function Permission(code, message, sets, permissionType, isAllowed, origin) {
+			ConditionType.call(this, code, "Permission", message, sets, origin);
+			Object.defineProperty(this, "permissionType", { value: permissionType });
+			Object.defineProperty(this, "isAllowed", { value: isAllowed });
 		}
 
 		Permission.prototype = new ConditionType();
-
-		Permission.mixin({
-			get_permissionType: function Permission$get_permissionType() {
-				return this._permissionType;
-			},
-			get_isAllowed: function Permission$get_isAllowed() {
-				return this._isAllowed;
-			}
-		});
 
 		ExoWeb.Model.ConditionType.Permission = Permission;
 	})();
 
 	// #endregion
 
-	// #region Condition
+	// #region ExoWeb.Model.ConditionTarget
 	//////////////////////////////////////////////////
 
-	function Condition(type, message, relatedProperties, origin) {
-		this._type = type;
-		this._properties = relatedProperties || [];
-		this._message = message;
-		this._origin = origin;
-		this._targets = [];
+	﻿/// <reference path="Entity.js" />
+	/// <reference path="Property.js" />
+	/// <reference path="Condition.js" />
 
-		Sys.Observer.makeObservable(this._targets);
+	function ConditionTarget(condition, target, properties) {
+		/// <summary>Represents the association of a condition to a specific target entity.</summary>
+		/// <param name="condition" type="Condition">The condition the target is for.</param>
+		/// <param name="target" type="Entity">The target entity the condition is associated with.</param>
+		/// <param name="properties" type="Array" elementType="Property">The set of properties on the target entity the condition is related to.</param>
+		/// <returns type="ConditionTarget">The new condition target.</returns>
+
+	    /// <field name="target" type="Entity">The target entity the condition is associated with.</field>
+	    /// <field name="condition" type="Condition">The condition the target is for.</field>
+	    /// <field name="properties" type="Array" elementType="Property">The set of properties on the target entity the condition is related to.</field>
+
+	    Object.defineProperty(this, "target", { value: target });
+		Object.defineProperty(this, "condition", { value: condition });
+		Object.defineProperty(this, "properties", { value: properties });
+
+		// attach the condition target to the target entity
+		target.meta.setCondition(this);
+	}
+	// #endregion
+
+	// #region ExoWeb.Model.Condition
+	//////////////////////////////////////////////////
+
+	/// <reference path="Type.js" />
+	/// <reference path="ObjectMeta.js" />
+	/// <reference path="Entity.js" />
+	/// <reference path="Property.js" />
+	/// <reference path="PathToken.js" />
+	/// <reference path="ConditionTarget.js" />
+
+	function Condition(type, message, target, properties, origin) {
+		/// <summary>Represents an instance of a condition of a specific type associated with one or more entities in a model.</summary>
+	    /// <param name="type" type="ConditionType">The type of condition, which usually is an instance of a subclass like Error, Warning or Permission.</param>
+	    /// <param name="message" type="String">The optional message to use for the condition, which will default to the condition type message if not specified.</param>
+		/// <param name="target" type="Entity">The root target entity the condition is associated with.</param>
+	    /// <param name="properties" type="Array" elementType="String">The set of property paths specifying which properties and entities the condition should be attached to.</param>
+		/// <param name="origin" type="String">The original source of the condition, either "client" or "server".</param>
+		/// <returns type="Condition">The new condition instance.</returns>
+
+		/// <field name="type" type="ConditionType">The type of condition, which usually is an instance of a subclass like Error, Warning or Permission.</field>
+		/// <field name="message" type="String">The optional message to use for the condition, which will default to the condition type message if not specified.</field>
+		/// <field name="origin" type="String">The original source of the condition, either "client" or "server".</field>
+		/// <field name="targets" type="Array" elementType="ConditionTarget">The set of condition targets that link the condition to specific entities and properties.</field>
+
+		Object.defineProperty(this, "type", { value: type });
+		Object.defineProperty(this, "message", { value: message || (type ? type.message : undefined) });
+		Object.defineProperty(this, "origin", { value: origin });
+
+		var targets = [];
+
+		// create targets if a root was specified
+		if (target) {
+
+			// set the properties to an empty array if not specified and normalize the paths to expand {} syntax if used
+			properties = PathTokens.normalizePaths(properties || []);
+
+			// create a single condition target if the specified properties are all on the root
+			if (properties.every(function (p) { return p.length === 1; }))
+				targets.push(new ConditionTarget(this, target, properties));
+
+			// otherwise, process the property paths to create the necessary sources
+			else {
+				// process each property path to build up the condition sources
+				for (var p = properties.length - 1; p >= 0; p--) {
+					var steps = properties[p].steps;
+					var instances = [target];
+
+					// iterate over each step along the path
+					for (var s = steps.length - 1; s >= 0; s--) {
+						var step = steps[s].property;
+						var childInstances = [];
+
+						// create condition targets for all instances for the current step along the path
+						for (var i = instances.length - 1; i >= 0; i--) {
+							var instance = instances[i];
+
+							// see if a target already exists for the current instance
+							var conditionTarget = null;
+							for (var t = targets.length - 1; t >= 0; t--) {
+								if (targets[t].target === instance) {
+									conditionTarget = targets[t];
+									break;
+								}
+							}
+
+							// get the property for the current step and instance type and skip if the property cannot be found
+							var property = instance.meta.type.property(step);
+							if (!property) {
+								continue;
+							}
+
+							// create the condition target if it does not already exist
+							if (!conditionTarget) {
+								conditionTarget = new ConditionTarget(this, instance, [property]);
+								targets.push(conditionTarget);
+							}
+
+							// otherwise, just ensure it references the current step
+							else if (conditionTarget.properties.indexOf(property) < 0)
+								conditionTarget.properties.push(property);
+
+							// get the value of the current step
+							var child = property.value(instance);
+
+							// add the children, if any, to the set of child instances to process for the next step
+							if (child instanceof Entity)
+								childInstances.push(child);
+							else if (child instanceof Array && child.length > 0 && child[0] instanceof Entity)
+								childInstances.concat(child);
+						}
+
+						// assign the set of instances to process for the next step
+						instances = childInstances;
+					}
+				}
+			}
+		}
+
+		// store the condition targets
+		Object.defineProperty(this, "targets", { value: targets });
+
+		// raise events for the new condition
+		if (this.type != formatConditionType) {
+			for (var t = targets.length - 1; t >= 0; t--) {
+				var conditionTarget = targets[t];
+				conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false}]);
+			}
+		}
 	}
 
-	Condition.prototype = {
-		get_type: function () {
-			return this._type;
-		},
-		get_properties: function () {
-			return this._properties;
-		},
-		get_message: function () {
-			return this._message;
-		},
-		set_message: function (message) {
-			this._message = message;
-		},
-		get_origin: function () {
-			return this._origin;
-		},
-		set_origin: function (origin) {
-			this._origin = origin;
-		},
-		get_targets: function () {
-			return this._targets;
-		},
-		equals: function (other) {
-			return this._type === other._type &&
-				this._properties.length === other._properties.length &&
-				!some(this._properties, function(p, i) { return p !== other._properties[i]; }) &&
-				(!this._origin || !other._origin || this._origin === other._origin);
-		}
-	};
+	// implementation
+	Condition.mixin({
+		destroy: function Condition$destroy() {
+			/// <summary>Removes the condition targets from all target instances and raises condition change events.</summary>
 
+			for (var t = this.targets.length - 1; t >= 0; t--) {
+				var conditionTarget = this.targets[t];
+				conditionTarget.target.meta.clearCondition(conditionTarget.condition.type);
+				conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: false, remove: true}]);
+			}
+
+			// remove references to all condition targets
+			this.targets.slice(0, 0);
+		},
+		toString: function Condition$toString() {
+			return this.message;
+		}
+	});
+
+	// Expose the type publicly
 	ExoWeb.Model.Condition = Condition;
 
 	// #endregion
 
-	// #region FormatError
+	// #region ExoWeb.Model.FormatError
 	//////////////////////////////////////////////////
 
 	function FormatError(message, invalidValue) {
-		this._message = message;
-		this._invalidValue = invalidValue;
+		Object.defineProperty(this, "message", { value: message });
+		Object.defineProperty(this, "invalidValue", { value: invalidValue });
 	}
 
-	var formatConditionType = new ConditionType("FormatError", "Error", "The value is not properly formatted.", []);
+	var formatConditionType = new ConditionType.Error("FormatError", "The value is not properly formatted.", []);
 
 	FormatError.mixin({
-		createCondition: function FormatError$createCondition(origin, prop) {
+		createCondition: function FormatError$createCondition(target, prop) {
 			return new Condition(formatConditionType,
-				$format(this.get_message(), prop.get_label()),
-				[prop],
-				origin);
-		},
-		get_message: function FormateError$get_message() {
-			return this._message;
-		},
-		get_invalidValue: function FormateError$get_invalidValue() {
-			return this._invalidValue;
+				$format(this.message, prop.get_label()),
+				target,
+				[prop.get_name()],
+				"client");
 		},
 		toString: function FormateError$toString() {
 			return this._invalidValue;
@@ -7367,7 +7726,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region FormatProvider
+	// #region ExoWeb.Model.FormatProvider
 	//////////////////////////////////////////////////
 
 	var formatProvider = function formatProvider(type, format) {
@@ -7409,7 +7768,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region LazyLoader
+	// #region ExoWeb.Model.LazyLoader
 	//////////////////////////////////////////////////
 
 	function LazyLoader() {
@@ -7736,7 +8095,36 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ObjectProvider
+	// #region ExoWeb.Model.Utilities
+	//////////////////////////////////////////////////
+
+	﻿var coreGetValue = getValue;
+
+	// If a getter method matching the given property name is found on the target it is invoked and returns the 
+	// value, unless the the value is undefined, in which case null is returned instead.  This is done so that 
+	// calling code can interpret a return value of undefined to mean that the property it requested does not exist.
+	// TODO: better name
+	getValue = function getValueOverride(target, property) {
+
+		// first see if the property is a model property
+		if (target instanceof ExoWeb.Model.Entity) {
+			var prop = target.meta.type.property(property);
+			if (prop) {
+				var value = prop.value(target);
+				if (value === undefined) {
+					value = null;
+				}
+				return value;
+			}
+		}
+
+		return coreGetValue(target, property);
+	}
+
+	ExoWeb.getValue = getValue;
+	// #endregion
+
+	// #region ExoWeb.Mapper.ObjectProvider
 	//////////////////////////////////////////////////
 
 	var objectProviderFn = function objectProviderFn(type, ids, paths, inScope, changes, onSuccess, onFailure) {
@@ -7781,7 +8169,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region QueryProvider
+	// #region ExoWeb.Mapper.QueryProvider
 	//////////////////////////////////////////////////
 
 	var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
@@ -7831,7 +8219,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region TypeProvider
+	// #region ExoWeb.Mapper.TypeProvider
 	//////////////////////////////////////////////////
 
 	var typeProviderFn = function typeProviderFn(types, onSuccess, onFailure) {
@@ -7900,6 +8288,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				});
 		}
 		else {
+			ExoWeb.Batch.resume(batch);
 			callback.call(thisPtr || this, true, typesJson);
 		}
 	}
@@ -7919,7 +8308,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ListProvider
+	// #region ExoWeb.Mapper.ListProvider
 	//////////////////////////////////////////////////
 
 	var listProviderFn = function listProvider(ownerType, ownerId, paths, changes, onSuccess, onFailure) {
@@ -7949,13 +8338,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		var batch = ExoWeb.Batch.suspendCurrent("listProvider");
 
-		var listPath = (ownerId == "static" ? ownerType : "this") + "." + listProp;
+		var listPath = ownerId == "static" ? ownerType + "." + listProp : listProp;
 		var paths = [listPath];
 
 		// prepend list prop to beginning of each other prop
 		if (otherProps.length > 0) {
 			Array.forEach(otherProps, function(p) {
-				paths.push(p.startsWith("this.") ? listPath + "." + p.substring(5) : p);
+				paths.push(listPath + "." + p);
 			});
 		}
 
@@ -7976,7 +8365,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region RoundtripProvider
+	// #region ExoWeb.Mapper.RoundtripProvider
 	//////////////////////////////////////////////////
 
 	var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
@@ -8022,7 +8411,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region SaveProvider
+	// #region ExoWeb.Mapper.SaveProvider
 	//////////////////////////////////////////////////
 
 	var saveProviderFn = function saveProviderFn(root, changes, onSuccess, onFailure) {
@@ -8068,7 +8457,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region EventProvider
+	// #region ExoWeb.Mapper.EventProvider
 	//////////////////////////////////////////////////
 
 	var eventProviderFn = function eventProviderFn(eventType, instance, event, paths, changes, onSuccess, onFailure) {
@@ -8114,7 +8503,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ResponseHandler
+	// #region ExoWeb.Mapper.ResponseHandler
 	//////////////////////////////////////////////////
 
 	function ResponseHandler(model, serverSync, options) {
@@ -8129,6 +8518,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ResponseHandler.mixin({
 		execute: ExoWeb.FunctionChain.prepare(
+			function ResponseHandler$startResponseBatch(callback, thisPtr) {
+				/// <summary>
+				/// Start a new response batch.
+				/// </summary>
+
+				this._batch = Batch.start("ResponseHandler");
+				callback.call(thisPtr || this);
+			},
 			function ResponseHandler$setServerInfo(callback, thisPtr) {
 				/// <summary>
 				/// Set server info from JSON
@@ -8158,13 +8555,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 						var mtype = this._model.type(typeName);
 
 						// ensure base classes are loaded too
-						mtype.eachBaseType(function(mtype) {
+						mtype.eachBaseType(function (mtype) {
 							if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 								ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
 							}
 						});
 
-						signal.waitForAll(function() {
+						signal.waitForAll(function () {
 							TypeLazyLoader.unregister(mtype);
 							raiseExtensions(mtype);
 						});
@@ -8189,7 +8586,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							this._serverSync._changeLog.start(this._options.source);
 							this._serverSync._changeLog.start("client");
 						}
-						callback.call(thisPtr);
+						callback.call(thisPtr || this);
 					}
 				}
 				else {
@@ -8203,15 +8600,42 @@ Type.registerNamespace("ExoWeb.DotNet");
 				/// </summary>
 
 				if (this._options.instances) {
-					var batch = Batch.start();
-					objectsFromJson(this._model, this._options.instances, function() {
-						Batch.end(batch);
-						callback.apply(this, arguments);
-					}, thisPtr);
+					objectsFromJson(this._model, this._options.instances, function (instancesPendingInit) {
+						this.instancesPendingInit = instancesPendingInit;
+						callback.apply(thisPtr || this, arguments);
+					}, this);
 				}
 				else {
 					callback.call(thisPtr || this);
 				}
+			},
+
+			function ResponseHandler$registerRules(callback, thisPtr) {
+				/// <summary>
+				/// Register all rules pending registration with the model
+				/// </summary>
+
+				this._model.registerRules();
+				callback.call(thisPtr || this);
+			},
+
+			function ResponseHandler$initInstances(callback, thisPtr) {
+				/// <summary>
+				/// Initialize all instances loaded by the response
+				/// </summary>
+
+				// Raise init events for existing instances loaded by the response
+				if (this.instancesPendingInit) {
+					this.instancesPendingInit.forEach(function (obj) {
+						for (var t = obj.meta.type; t; t = t.baseType) {
+							var handler = t._getEventHandler("initExisting");
+							if (handler)
+								handler(obj, {});
+						}
+					});
+				}
+
+				callback.call(thisPtr || this);
 			},
 
 			function ResponseHandler$loadConditions(callback, thisPtr) {
@@ -8220,11 +8644,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 				/// </summary>
 
 				if (this._options.conditions) {
-					conditionsFromJson(this._model, this._options.conditions, callback, thisPtr);
+					conditionsFromJson(this._model, this._options.conditions, this.instancesPendingInit, callback, thisPtr);
 				}
 				else {
 					callback.call(thisPtr || this);
 				}
+			},
+
+			function ResponseHandler$endResponseBatch(callback, thisPtr) {
+				/// <summary>
+				/// End the response batch.
+				/// </summary>
+
+				Batch.end(this._batch);
+				callback.call(thisPtr || this);
 			}
 		)
 	});
@@ -8233,7 +8666,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Translation
+	// #region ExoWeb.Mapper.Translation
 	//////////////////////////////////////////////////
 
 	// Gets or loads the entity with the specified typed string id
@@ -8320,7 +8753,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ExoModelEventListener
+	// #region ExoWeb.Mapper.ExoModelEventListener
 	//////////////////////////////////////////////////
 
 	function ExoModelEventListener(model, translator, filters) {
@@ -8425,7 +8858,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ChangeSet
+	// #region ExoWeb.Mapper.ChangeSet
 	//////////////////////////////////////////////////
 
 	function ChangeSet(source, initialChanges) {
@@ -8549,7 +8982,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ChangeLog
+	// #region ExoWeb.Mapper.ChangeLog
 	//////////////////////////////////////////////////
 
 	function ChangeLog() {
@@ -8642,7 +9075,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// be added to the new set from this point forward.
 
 			if (!source || source.constructor !== String) {
-				ExoWeb.trace.throwAndLog("changeLog", "ChangeLog.start requires a string source argument.");
+				throw ExoWeb.trace.logError("changeLog", "ChangeLog.start requires a string source argument.");
 			}
 
 			var set = new ChangeSet(source);
@@ -8703,7 +9136,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var currentSet = this._activeSet,
 				currentSetIndex = this._sets.indexOf(currentSet);
 
-			while (!currentSet.changes().some(function(c) { return c.type !== "Checkpoint"; })) {
+			while (currentSet.changes().length === 0) {
 				// remove the set from the log
 				this._sets.splice(currentSetIndex, 1);
 
@@ -8726,7 +9159,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ServerSync
+	// #region ExoWeb.Mapper.ServerSync
 	//////////////////////////////////////////////////
 
 	/// <reference path="../core/Array.js" />
@@ -8738,7 +9171,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			throw ExoWeb.trace.logError("server", "A model must be specified when constructing a ServerSync object.");
 		}
 
-		this._model = model;
 		this._changeLog = new ChangeLog();
 		this._pendingServerEvent = false;
 		this._pendingRoundtrip = false;
@@ -8748,6 +9180,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		this._objectsDeleted = [];
 		this._translator = new ExoWeb.Translator();
 		this._serverInfo = null;
+
+		// define properties
+		Object.defineProperty(this, "model", { value: model });
 
 		function isDeleted(obj, isChange) {
 			if (Array.contains(this._objectsDeleted, obj)) {
@@ -8769,7 +9204,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			return !isDeleted.apply(this, [obj, true]) && property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
 		}
 
-		this._listener = new ExoModelEventListener(this._model, this._translator, {
+		this._listener = new ExoModelEventListener(this.model, this._translator, {
 			listChanged: filterPropertyEvent.bind(this),
 			propertyChanged: filterPropertyEvent.bind(this),
 			objectRegistered: filterObjectEvent.bind(this),
@@ -8833,11 +9268,25 @@ Type.registerNamespace("ExoWeb.DotNet");
 		});
 
 		// Assign back reference
-		model._server = this;
+		Object.defineProperty(model, "server", { value: this });
 
 		this._listener.addChangeDetected(this._captureChange.bind(this));
 
-		Sys.Observer.makeObservable(this);
+		Observer.makeObservable(this);
+	}
+
+	function isPropertyChangePersisted(change) {
+		if (change.property) {
+			var jstype = ExoWeb.Model.Model.getJsType(change.instance.type, true);
+			if (jstype) {
+				var prop = jstype.meta.property(change.property);
+				// Can't save non-persisted properties
+				if (!prop.get_isPersisted()) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	ServerSync.mixin(Functor.eventing);
@@ -8916,8 +9365,20 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			if (Array.contains(this._objectsExcludedFromSave, obj)) {
+				var oldPendingChanges;
+				if (this._saveRoot) {
+					// If autosave is enabled then determine if we need to queue a timeout
+					oldPendingChanges = this.changes(false, this._saveRoot, true);
+				}
 				Array.remove(this._objectsExcludedFromSave, obj);
-				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+				Observer.raisePropertyChanged(this, "HasPendingChanges");
+
+				// Determine if ther are now pending changes
+				if (oldPendingChanges.length === 0 && this._saveInterval && !this._saveTimeout) {
+					if (this.changes(false, this._saveRoot, true).length > 0) {
+						this._queueAutoSave();
+					}
+				}
 				return true;
 			}
 		},
@@ -8927,8 +9388,21 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			if (!Array.contains(this._objectsExcludedFromSave, obj)) {
+				var oldPendingChanges;
+				if (this._saveRoot) {
+					// If autosave is enabled then determine if we need to queue a timeout
+					oldPendingChanges = this.changes(false, this._saveRoot, true);
+				}
 				this._objectsExcludedFromSave.push(obj);
-				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+				Observer.raisePropertyChanged(this, "HasPendingChanges");
+
+				// Determine if ther are no longer pending changes
+				if (oldPendingChanges && oldPendingChanges.length > 0 && this._saveInterval && this._saveTimeout) {
+					if (this.changes(false, this._saveRoot, true).length === 0) {
+						window.clearTimeout(this._saveTimeout);
+						this._saveTimeout = null;
+					}
+				}
 				return true;
 			}
 		},
@@ -9057,7 +9531,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				afterApply = callbackOrOptions.afterApply;
 			}
 
-			var handler = new ResponseHandler(this._model, this, {
+			var handler = new ResponseHandler(this.model, this, {
 				instances: result.instances,
 				conditions: result.conditions,
 				types: result.types && result.types instanceof Array ? null : result.types,
@@ -9117,7 +9591,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
 			var checkpoint = this._changeLog.checkpoint("server event " + name + " " + (new Date()).format("d"));
 
-			Sys.Observer.setValue(this, "PendingServerEvent", true);
+			Observer.setValue(this, "PendingServerEvent", true);
 
 			var args = { type: "raiseServerEvent", eventTarget: instance, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
 			this._raiseBeginEvents("raiseServerEvent", args);
@@ -9151,7 +9625,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			);
 		},
 		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, checkpoint, callback) {
-			Sys.Observer.setValue(this, "PendingServerEvent", false);
+			Observer.setValue(this, "PendingServerEvent", false);
 
 			args.responseObject = result;
 
@@ -9180,7 +9654,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			});
 		},
 		_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(error, args, callback) {
-			Sys.Observer.setValue(this, "PendingServerEvent", false);
+			Observer.setValue(this, "PendingServerEvent", false);
 
 			args.error = error;
 
@@ -9230,7 +9704,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			var checkpoint = this._changeLog.checkpoint("roundtrip " + (new Date()).format("d"));
 
-			Sys.Observer.setValue(this, "PendingRoundtrip", true);
+			Observer.setValue(this, "PendingRoundtrip", true);
 
 			var args = { type: "roundtrip", checkpoint: checkpoint };
 			this._raiseBeginEvents("roundtrip", args);
@@ -9248,7 +9722,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			);
 		},
 		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, args, checkpoint, callback) {
-			Sys.Observer.setValue(this, "PendingRoundtrip", false);
+			Observer.setValue(this, "PendingRoundtrip", false);
 
 			args.responseObject = result;
 
@@ -9262,7 +9736,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			});
 		},
 		_onRoundtripFailed: function ServerSync$_onRoundtripFailed(error, args, callback) {
-			Sys.Observer.setValue(this, "PendingRoundtrip", false);
+			Observer.setValue(this, "PendingRoundtrip", false);
 
 			args.error = error;
 
@@ -9327,7 +9801,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
 			var checkpoint = this._changeLog.checkpoint("save " + (new Date()).format("d"));
 
-			Sys.Observer.setValue(this, "PendingSave", true);
+			Observer.setValue(this, "PendingSave", true);
 
 			var args = { type: "save", root: root, checkpoint: checkpoint };
 			this._raiseBeginEvents("save", args);
@@ -9340,7 +9814,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			);
 		},
 		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, checkpoint, callback) {
-			Sys.Observer.setValue(this, "PendingSave", false);
+			Observer.setValue(this, "PendingSave", false);
 
 			args.responseObject = result;
 
@@ -9354,7 +9828,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			});
 		},
 		_onSaveFailed: function (error, args, callback) {
-			Sys.Observer.setValue(this, "PendingSave", false);
+			Observer.setValue(this, "PendingSave", false);
 
 			args.error = error;
 
@@ -9374,7 +9848,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		stopAutoSave: function ServerSync$stopAutoSave() {
 			if (this._saveTimeout) {
 				window.clearTimeout(this._saveTimeout);
-
 				this._saveTimeout = null;
 			}
 
@@ -9563,7 +10036,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// raise "HasPendingChanges" change event, only new changes were recorded
 			if (newChanges > 0) {
-				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+				Observer.raisePropertyChanged(this, "HasPendingChanges");
 			}
 		},
 		applySaveChange: function (change, before, after, callback, thisPtr) {
@@ -9575,8 +10048,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			change.deleted.forEach(function(instance) {
-				tryGetJsType(this._model, instance.type, null, false, function (type) {
-					tryGetEntity(this._model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
+				tryGetJsType(this.model, instance.type, null, false, function (type) {
+					tryGetEntity(this.model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
 						// Notify server object that the instance is deleted
 						this.notifyDeleted(obj);
 						// Simply a marker flag for debugging purposes
@@ -9588,7 +10061,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}, this);
 
 			change.added.forEach(function (idChange, idChangeIndex) {
-				ensureJsType(this._model, idChange.type, this.ignoreChanges(before, function (jstype) {
+				ensureJsType(this.model, idChange.type, this.ignoreChanges(before, function (jstype) {
 					var serverOldId = idChange.oldId;
 					var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 							this._translator.reverse(idChange.type, serverOldId) :
@@ -9596,7 +10069,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// If the client recognizes the old id then this is an object we have seen before
 					if (clientOldId) {
-						var type = this._model.type(idChange.type);
+						var type = this.model.type(idChange.type);
 
 						// Attempt to load the object.
 						var obj = type.get(clientOldId);
@@ -9611,7 +10084,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						// Change the id and make non-new.
 						type.changeObjectId(clientOldId, idChange.newId);
-						Sys.Observer.setValue(obj.meta, "isNew", false);
+						Observer.setValue(obj.meta, "isNew", false);
 
 						// Update affected scope queries
 						this._scopeQueries.forEach(function (query) {
@@ -9669,7 +10142,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		applyInitChange: function (change, before, after, callback, thisPtr) {
-			tryGetJsType(this._model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
+			tryGetJsType(this.model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
 				if (!jstype.meta.get(change.instance.id)) {
 					// Create the new object
 					var newObj = new jstype();
@@ -9693,8 +10166,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var exited = false;
 			var callImmediately = true;
 
-			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 					// Update change to reflect the object's new id
 					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
@@ -9705,7 +10178,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							callImmediately = false;
 						}
 
-						tryGetJsType(this._model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
+						tryGetJsType(this.model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
 							var refObj = fromExoModel(change.newValue, this._translator, true);
 
 							// Update change to reflect the object's new id
@@ -9717,7 +10190,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							}
 
 							// Change the property value
-							Sys.Observer.setValue(srcObj, change.property, refObj);
+							Observer.setValue(srcObj, change.property, refObj);
 
 							// Callback once the type has been loaded
 							if (!callImmediately && callback) {
@@ -9726,12 +10199,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 						}, after), this);
 					}
 					else {
-						Sys.Observer.setValue(srcObj, change.property, null);
+						Observer.setValue(srcObj, change.property, null);
 					}
 
 					// Update oldValue's id in change object
 					if (change.oldValue) {
-						tryGetJsType(this._model, change.oldValue.type, null, true, this.ignoreChanges(before, function (refType) {
+						tryGetJsType(this.model, change.oldValue.type, null, true, this.ignoreChanges(before, function (refType) {
 							// Update change to reflect the object's new id
 							var refObj = fromExoModel(change.oldValue, this._translator, true);
 							ServerSync$retroactivelyFixChangeWhereIdChanged(change.oldValue, refObj);
@@ -9748,8 +10221,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			exited = true;
 		},
 		applyValChange: function (change, before, after, callback, thisPtr) {
-			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 					// Update change to reflect the object's new id
 					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
@@ -9758,7 +10231,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					var newValue = change.newValue;
 				
 					// Cache the property since it is not a simple property access.
-					var property = srcObj.meta.property(change.property, true);
+					var property = srcObj.meta.property(change.property);
 
 					if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
 
@@ -9775,8 +10248,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 							newValue = newValue.addHours(serverOffset - localOffset);
 						}
 					}
+					else if (newValue && newValue instanceof TimeSpan) {
+						newValue = newValue.toObject();
+					}
 
-					Sys.Observer.setValue(srcObj, change.property, newValue);
+					Observer.setValue(srcObj, change.property, newValue);
 
 				}, after), this);
 			}, this);
@@ -9790,12 +10266,12 @@ Type.registerNamespace("ExoWeb.DotNet");
 			var exited = false;
 			var callImmediately = true;
 
-			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 					// Update change to reflect the object's new id
 					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
-					var prop = srcObj.meta.property(change.property, true);
+					var prop = srcObj.meta.property(change.property);
 					var list = prop.value(srcObj);
 
 					list.beginUpdate();
@@ -9811,7 +10287,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 						// Add each item to the list after ensuring that the type is loaded
 						change.added.forEach(function (item) {
-							tryGetJsType(this._model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
+							tryGetJsType(this.model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
 								var itemObj = fromExoModel(item, this._translator, true);
 
 								// Update change to reflect the object's new id
@@ -9827,7 +10303,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// apply removed items
 					change.removed.forEach(function (item) {
 						// no need to load instance only to remove it from a list when it can't possibly exist
-						tryGetJsType(this._model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
+						tryGetJsType(this.model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
 							var itemObj = fromExoModel(item, this._translator, true);
 
 							// Update change to reflect the object's new id
@@ -9864,8 +10340,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// Rollback
 		///////////////////////////////////////////////////////////////////////
-		rollback: function ServerSync$rollback(steps, callback) {
-			var depth = 0;
+		rollback: function ServerSync$rollback(checkpoint, callback) {
+			var signalRegistered;
 
 			try {
 				this.beginApplyingChanges();
@@ -9874,14 +10350,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 				var signalRegistered = false;
 
 				function processNextChange() {
-					var change = null;
-
-					if (steps === undefined || depth < steps) {
-						change = this._changeLog.undo();
-						depth++;
-					}
+					var change = this._changeLog.undo();
 
 					if (change) {
+						if (change === checkpoint) {
+							// Exit when we find the checkpoint
+							return;
+						}
+
 						var callback = signal.pending(processNextChange, this);
 
 						if (change.type == "InitNew") {
@@ -9908,7 +10384,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						callback();
 					}
 
-					Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+					Observer.raisePropertyChanged(this, "HasPendingChanges");
 				}, this);
 
 				// set signalRegistered to true to let the finally block now that the signal will handle calling endApplyingChanges
@@ -9922,28 +10398,28 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 		rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
 
-					Sys.Observer.setValue(srcObj, change.property, change.oldValue);
+					Observer.setValue(srcObj, change.property, change.oldValue);
 					callback();
 
 				}, this);
 			}, this);
 		},
 		rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
 					if (change.oldValue) {
-						tryGetJsType(this._model, change.oldValue.type, null, true, function (refType) {
-							tryGetEntity(this._model, this._translator, refType, change.oldValue.id, change.property, LazyLoadEnum.None, function (refObj) {
-								Sys.Observer.setValue(srcObj, change.property, refObj);
+						tryGetJsType(this.model, change.oldValue.type, null, true, function (refType) {
+							tryGetEntity(this.model, this._translator, refType, change.oldValue.id, change.property, LazyLoadEnum.None, function (refObj) {
+								Observer.setValue(srcObj, change.property, refObj);
 								callback();
 							}, this);
 						}, this);
 					}
 					else {
-						Sys.Observer.setValue(srcObj, change.property, null);
+						Observer.setValue(srcObj, change.property, null);
 						callback();
 					}
 				}, this);
@@ -9954,9 +10430,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 			callback();
 		},
 		rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
-			tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
-					var prop = srcObj.meta.property(change.property, true);
+			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+					var prop = srcObj.meta.property(change.property);
 					var list = prop.value(srcObj);
 					var translator = this._translator;
 
@@ -9964,7 +10440,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// Rollback added items
 					Array.forEach(change.added, function rollbackListChanges$added(item) {
-						tryGetJsType(this._model, item.type, null, false, function (itemType) {
+						tryGetJsType(this.model, item.type, null, false, function (itemType) {
 							var childObj = fromExoModel(item, translator);
 							if (childObj) {
 								list.remove(childObj);
@@ -9974,7 +10450,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// Rollback removed items
 					Array.forEach(change.removed, function rollbackListChanges$added(item) {
-						tryGetJsType(this._model, item.type, null, true, function (itemType) {
+						tryGetJsType(this.model, item.type, null, true, function (itemType) {
 							var childObj = fromExoModel(item, translator, true);
 
 							list.add(childObj);
@@ -9994,7 +10470,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (!this.isApplyingChanges() && this.isCapturingChanges()) {
 				if (change.property) {
 					var instance = fromExoModel(change.instance, this._translator);
-					var property = instance.meta.property(change.property, true);
+					var property = instance.meta.property(change.property);
 
 					if (property.get_jstype() === Date && change.newValue && property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
 						var serverOffset = this.get_ServerTimezoneOffset();
@@ -10002,27 +10478,38 @@ Type.registerNamespace("ExoWeb.DotNet");
 						var difference = localOffset - serverOffset;
 						change.newValue = change.newValue.addHours(difference);
 					}
+					else if (change.newValue && change.newValue instanceof TimeSpan) {
+						change.newValue = change.newValue.toObject();
+					}
 				}
 
 				this._changeLog.add(change);
 
-				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+				Observer.raisePropertyChanged(this, "HasPendingChanges");
 
-				if (this._saveInterval)
+				if (this._saveInterval && this.canSave(change) && isPropertyChangePersisted(change)) {
 					this._queueAutoSave();
+				}
 			}
+		},
+		changes: function ServerSync$changes(includeAllChanges, simulateInitRoot, excludeNonPersisted) {
+			var list = [];
+			var sets = serializeChanges.call(this, includeAllChanges, simulateInitRoot);
+			sets.forEach(function (set) {
+				if (excludeNonPersisted) {
+					list.addRange(set.changes.filter(isPropertyChangePersisted));
+				}
+				else {
+					list.addRange(set.changes);
+				}
+			});
+			return list;
 		},
 		get_Changes: function ServerSync$get_Changes(includeAllChanges/*, ignoreWarning*/) {
 			if (arguments.length < 2 || arguments[1] !== true) {
 				ExoWeb.trace.logWarning("server", "Method get_Changes is not intended for long-term use - it will be removed in the near future.");
 			}
-
-			var list = [];
-			var sets = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
-			sets.forEach(function (set) {
-				list.addRange(set.changes);
-			});
-			return list;
+			return this.changes(includeAllChanges, null);
 		},
 		get_HasPendingChanges: function ServerSync$get_HasPendingChanges() {
 			return this._changeLog.sets().some(function (set) {
@@ -10042,7 +10529,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._pendingServerEvent = value;
 
 			if (oldValue !== value) {
-				Sys.Observer.raisePropertyChanged(this, "PendingAction");
+				Observer.raisePropertyChanged(this, "PendingAction");
 			}
 		},
 		get_PendingRoundtrip: function ServerSync$get_PendingRoundtrip() {
@@ -10053,7 +10540,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._pendingRoundtrip = value;
 
 			if (oldValue !== value) {
-				Sys.Observer.raisePropertyChanged(this, "PendingAction");
+				Observer.raisePropertyChanged(this, "PendingAction");
 			}
 		},
 		get_PendingSave: function ServerSync$get_PendingSave() {
@@ -10064,7 +10551,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._pendingSave = value;
 
 			if (oldValue !== value) {
-				Sys.Observer.raisePropertyChanged(this, "PendingAction");
+				Observer.raisePropertyChanged(this, "PendingAction");
 			}
 		},
 		get_ServerTimezoneOffset: function ServerSync$get_ServerTimezoneOffset() {
@@ -10085,90 +10572,26 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	ExoWeb.Mapper.ServerSync = ServerSync;
 
-	ServerSync.Roundtrip = function ServerSync$Roundtrip(root, success, failed) {
-		if (root instanceof ExoWeb.Model.Entity) {
-			root = root.meta.type.get_model();
-		}
-
-		if (root instanceof ExoWeb.Model.Model) {
-			if (root._server) {
-				if (!root._server.isApplyingChanges()) {
-					root._server.roundtrip(success, failed);
-				}
-			}
-			else {
-				ExoWeb.trace.logWarning("server", "Unable to perform roundtrip:  root is not a model or entity.");
-			}
-		}
-	};
-
 	ServerSync.Save = function ServerSync$Save(root, success, failed) {
-		var model;
-		if (root instanceof ExoWeb.Model.Entity) {
-			model = root.meta.type.get_model();
-		}
-
-		if (model && model instanceof ExoWeb.Model.Model) {
-			if (model._server) {
-				model._server.save(root, success, failed);
-			}
-			else {
-				// TODO
-			}
-		}
+		root.meta.type.model.server.save(root, success, failed);
 	};
 
 	ServerSync.GetServerTimeZone = function ServerSync$GetServerTimeZone(root) {
-		var model;
-		if (root instanceof ExoWeb.Model.Entity) {
-			model = root.meta.type.get_model();
-		}
-
-		if (model && model instanceof ExoWeb.Model.Model) {
-			if (model._server) {
-				return model._server.get_ServerTimezoneOffset(root);
-			}
-			else {
-				// TODO
-			}
-		}
+		return root.meta.type.model.server.get_ServerTimezoneOffset(root);
 	};
 
 	// #endregion
 
-	// #region TriggersRoundtripRule
+	// #region ExoWeb.Mapper.Internals
 	//////////////////////////////////////////////////
 
-	function TriggerRoundtripRule(property) {
-		var prop = this.prop = property;
-
-		ExoWeb.Model.Rule.register(this, [property], true, property._containingType);
-	}
-
-	TriggerRoundtripRule.prototype = {
-		execute: function(obj, callback) {
-			ServerSync.Roundtrip(obj, callback, callback);
-		},
-		toString: function() {
-			return "trigger roundtrip";
-		}
-	};
-
-	ExoWeb.Mapper.TriggerRoundtripRule = ExoWeb.Model.Rule.triggerRoundtrip = TriggerRoundtripRule;
-
-	ExoWeb.Model.Property.mixin({
-		triggersRoundtrip: function () {
-			if (!this._triggersRoundtrip) {
-				var rule = new TriggerRoundtripRule(this);
-				this._triggersRoundtrip = true;
-			}
-		}
-	});
-
-	// #endregion
-
-	// #region Internals
-	//////////////////////////////////////////////////
+	/// <reference path="../Model/Type.js" />
+	/// <reference path="../Model/ObjectMeta.js" />
+	/// <reference path="../Model/Entity.js" />
+	/// <reference path="../Model/Property.js" />
+	/// <reference path="../Model/PathToken.js" />
+	/// <reference path="../Model/ConditionTarget.js" />
+	/// <reference path="../Model/Condition.js" />
 
 	var STATIC_ID = "static";
 	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
@@ -10193,83 +10616,81 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 	}
 
-	function conditionsFromJson(model, json, callback, thisPtr) {
-		var signal = new Signal("conditionsFromJson");
+	function conditionsFromJson(model, conditionsJson, forInstances, callback, thisPtr) {
 
-		for (var code in json) {
-			conditionFromJson(model, code, json[code], signal.pending());
+		for (var conditionCode in conditionsJson) {
+			conditionFromJson(model, forInstances, conditionCode, conditionsJson[conditionCode]);
 		}
 
-		signal.waitForAll(function() {
-			if (callback && callback instanceof Function) {
-				callback.call(thisPtr || this);
-			}
-		});
+		if (callback && callback instanceof Function) {
+			callback.call(thisPtr || this);
+		}
 	}
 
-	function conditionFromJson(model, code, json, callback, thisPtr) {
-		var type = ExoWeb.Model.ConditionType.get(code);
+	function conditionFromJson(model, forInstances, conditionCode, conditionsJson) {
+		var conditionType = ExoWeb.Model.ConditionType.get(conditionCode);
 
-		if (!type) {
-			ExoWeb.trace.logWarning(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
-			callback.call(thisPtr || this);
+		if (!conditionType) {
+			ExoWeb.trace.logWarning(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [conditionCode]);
 			return;
 		}
 
-		var signal = new Signal("conditionFromJson - " + code);
+		var serverSync = model.server;
 
-		var serverSync = model._server;
-
-		json.forEach(function(condition) {
-			var conditionObj = null;
-
-			condition.targets.forEach(function(target) {
-				tryGetJsType(serverSync._model, target.instance.type, null, false, function (jstype) {
-					tryGetEntity(serverSync._model, serverSync._translator, jstype, target.instance.id, null, LazyLoadEnum.None, function (inst) {
-						var propsSignal = new Signal("conditionFromJson.properties");
-
-						var props = [];
-						distinct(target.properties).forEach(function(p, i) {
-							Model.property("this." + p, inst.meta.type, true, propsSignal.pending(function(chain) {
-								props[i] = chain;
-							}));
+		// process each condition
+		if (forInstances) {
+			conditionsJson.forEach(function (conditionJson) {
+				var rootTarget = conditionJson.targets[0];
+				if (rootTarget) {
+					tryGetJsType(serverSync.model, rootTarget.instance.type, null, false, function (jstype) {
+						tryGetEntity(serverSync.model, serverSync._translator, jstype, rootTarget.instance.id, null, LazyLoadEnum.None, function (rootTargetInstance) {
+							if (forInstances.indexOf(rootTargetInstance) >= 0) {
+								conditionTargetsFromJson(model, conditionType, conditionJson.message, conditionJson.targets);
+							}
 						});
-
-						propsSignal.waitForAll(signal.pending(function() {
-							if (!conditionObj) {
-								conditionObj = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
-							}
-							else {
-								conditionObj.get_properties().addRange(props);
-							}
-
-							inst.meta.conditionIf(conditionObj, true);
-						}));
 					});
+				}
+			});
+		}
+		else {
+			conditionsJson.forEach(function (conditionJson) {
+				conditionTargetsFromJson(model, conditionType, conditionJson.message, conditionJson.targets);
+			});
+		}
+	}
+
+	function conditionTargetsFromJson(model, conditionType, message, targetsJson) {
+		var condition = new Condition(conditionType, message, null, null, "server");
+
+		var serverSync = model.server;
+
+		// process each condition target
+		targetsJson.forEach(function (target) {
+			tryGetJsType(serverSync.model, target.instance.type, null, false, function (jstype) {
+				tryGetEntity(serverSync.model, serverSync._translator, jstype, target.instance.id, null, LazyLoadEnum.None, function (instance) {
+					condition.targets.push(new ConditionTarget(condition, instance, target.properties.map(function (p) { return jstype.meta.property(p); })));
 				});
 			});
-		});
-
-		signal.waitForAll(function() {
-			if (callback && callback instanceof Function) {
-				callback.call(thisPtr || this);
-			}
 		});
 	}
 
 	function objectsFromJson(model, json, callback, thisPtr) {
 		var signal = new ExoWeb.Signal("objectsFromJson");
-
+		var objectsLoaded = [];
 		for (var typeName in json) {
 			var poolJson = json[typeName];
 			for (var id in poolJson) {
 				// locate the object's state in the json
-				objectFromJson(model, typeName, id, poolJson[id], signal.pending(), thisPtr);
+				objectFromJson(model, typeName, id, poolJson[id], signal.pending(function (obj) {
+					if (obj) {
+						objectsLoaded.push(obj);
+					}
+				}), thisPtr);
 			}
 		}
 
 		signal.waitForAll(function() {
-			callback.apply(thisPtr || this, arguments);
+			callback.call(thisPtr || this, objectsLoaded);
 		});
 	}
 
@@ -10304,9 +10725,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 			obj = getObject(model, typeName, id, null, true);
 		}
 
+		var loadedObj;
+
 		///initialize the object if it was ghosted
 		if (id === STATIC_ID || (obj && obj.wasGhosted) || !LazyLoader.isLoaded(obj)) {
-		//			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
 			if (obj) {
 				delete obj.wasGhosted;
 			}
@@ -10355,7 +10777,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						var propType = prop.get_jstype();
 
 						 if (prop.get_isList()) {
-							var list = prop.value(obj);
+						 	var list = prop.get_isStatic() ? prop.value() : obj[prop._fieldName];
 
 							if (propData == "?") {
 								// don't overwrite list if its already a ghost
@@ -10409,34 +10831,32 @@ Type.registerNamespace("ExoWeb.DotNet");
 									//if the underlying property datatype is actually a date and not a datetime
 									//then we need to add the local timezone offset to make sure that the date is displayed acurately.
 									if (prop.get_format() && !hasTimeFormat.test(prop.get_format().toString())) {
-										var serverOffset = model._server.get_ServerTimezoneOffset();
+										var serverOffset = model.server.get_ServerTimezoneOffset();
 										var localOffset = -(new Date().getTimezoneOffset() / 60);
 										propData = propData.addHours(serverOffset - localOffset);
 									}
+								}
+								else if (ctor === TimeSpan) {
+									propData = new TimeSpan(propData.TotalMilliseconds);
 								}
 								prop.init(obj, propData);
 							}
 						}
 					}
-
-					// static fields are potentially loaded one at a time
 				}
 			}
 
 			if (obj) {
-				ObjectLazyLoader.unregister(obj);
+				// track the newly loaded instance to pass to the caller
+				loadedObj = obj;
 
-				// Raise init events if registered.
-				for (var t = mtype; t; t = t.baseType) {
-					var handler = t._getEventHandler("initExisting");
-					if (handler)
-						handler(obj, {});
-				}
+				// unregister the instance from loading
+				ObjectLazyLoader.unregister(obj);
 			}
 		}
 
 		if (callback && callback instanceof Function) {
-			callback(thisPtr || this);
+			callback.call(thisPtr || this, loadedObj);
 		}
 	}
 
@@ -10499,9 +10919,28 @@ Type.registerNamespace("ExoWeb.DotNet");
 				//}
 			}
 
+			// process property specific rules, which have a specialized json syntax to improve readability and minimize type json size
 			if (propJson.rules) {
-				for (var i = 0; i < propJson.rules.length; ++i) {
-					ruleFromJson(propJson.rules[i], prop);
+				for (var rule in propJson.rules) {
+					var options = propJson.rules[rule];
+				
+					// default the type to the rule name if not specified
+					if (!options.type) {
+						options.type = rule;
+
+						// calculate the name of the rule if not specified in the json, assuming it will be unique
+						if (!options.name) {
+							options.name = mtype.get_fullName() + "." + prop.get_name() + "." + rule.substr(0, 1).toUpperCase() + rule.substr(1);
+						}
+					}
+
+					// initialize the name of the rule if not specified in the json
+					else if (!options.name) {
+						options.name = rule;
+					}
+
+					options.property = prop;
+					ruleFromJson(mtype, options);
 				}
 			}
 		}
@@ -10518,22 +10957,38 @@ Type.registerNamespace("ExoWeb.DotNet");
 		// define condition types
 		if (json.conditionTypes)
 			conditionTypesFromJson(model, mtype, json.conditionTypes);
-	}
 
-	function conditionTypesFromJson(model, mtype, json) {
-		for (var code in json) {
-			conditionTypeFromJson(model, mtype, code, json[code]);
+		// define rules 
+		if (json.rules) {
+			for (var i = 0; i < json.rules.length; ++i) {
+				ruleFromJson(mtype, json.rules[i]);
+			}
+		}
+
+		// store exports
+		if (json.exports) {
+			mtype.set_exports(json.exports);
 		}
 	}
 
-	function conditionTypeFromJson(model, mtype, code, json) {
+	function conditionTypesFromJson(model, mtype, json) {
+		json.forEach(function (ctype) {
+			conditionTypeFromJson(mtype, ctype);
+		});
+	}
 
-		// Attempt to retrieve the condition type by code.
-		var conditionType = ExoWeb.Model.ConditionType.get(code);
+	function conditionTypeFromJson(mtype, json) {
 
-		// Create the condition type if it does not already exist.
+		// for rules that assert a single condition, the code will be the unique name of the rule
+		json.code = json.code || json.name;
+
+		// attempt to retrieve the condition type by code.
+		var conditionType = ExoWeb.Model.ConditionType.get(json.code);
+
+		// create the condition type if it does not already exist.
 		if (!conditionType) {
-			// Get a list of condition type sets for this type.
+
+			// get a list of condition type sets for this type.
 			var sets = !json.sets ? [] : json.sets.map(function(name) {
 				var set = ExoWeb.Model.ConditionTypeSet.get(name);
 				if (!set) {
@@ -10542,29 +10997,40 @@ Type.registerNamespace("ExoWeb.DotNet");
 				return set;
 			});
 
-			// Create the appropriate condition type based on the category.
-			if (json.category == "Error") {
-				conditionType = new ExoWeb.Model.ConditionType.Error(code, json.message, sets);
+			// create the appropriate condition type based on the category.
+			if (!json.category || json.category == "Error") {
+				conditionType = new ExoWeb.Model.ConditionType.Error(json.code, json.message, sets, "server");
 			}
 			else if (json.category == "Warning") {
-				conditionType = new ExoWeb.Model.ConditionType.Warning(code, json.message, sets);
+				conditionType = new ExoWeb.Model.ConditionType.Warning(json.code, json.message, sets, "server");
 			}
 			else if (json.category == "Permission") {
-				conditionType = new ExoWeb.Model.ConditionType.Permission(code, json.message, sets, json.permissionType, json.isAllowed);
+				conditionType = new ExoWeb.Model.ConditionType.Permission(json.code, json.message, sets, json.permissionType, json.isAllowed, "server");
 			}
 			else {
-				conditionType = new ExoWeb.Model.ConditionType(code, json.category, json.message, sets);
+				conditionType = new ExoWeb.Model.ConditionType(json.code, json.category, json.message, sets, "server");
 			}
 
-			// Account for the potential for subclasses to be serialized with additional properties.
+			// account for the potential for subclasses to be serialized with additional properties.
 			conditionType.extend(json);
 		}
 
 		if (json.rule && json.rule.hasOwnProperty("type")) {
-			var ruleType = ExoWeb.Model.Rule[json.rule.type];
-			var rule = new ruleType(mtype, json.rule, conditionType);
-			conditionType._rules.push(rule);
+			conditionType._rules.push(ruleFromJson(mtype, json.rule, conditionType));
 		}
+
+		return conditionType;
+	}
+
+	function ruleFromJson(mtype, options) {
+		var ruleType = ExoWeb.Model.Rule[options.type];
+		if (options.conditionType) {
+			options.conditionType = conditionTypeFromJson(mtype, options.conditionType);
+		}
+		else if (ruleType.prototype instanceof ConditionRule) {
+			options.conditionType = conditionTypeFromJson(mtype, options);
+		}
+		return new ruleType(mtype, options);
 	}
 
 	function getJsType(model, typeName, forLoading) {
@@ -10810,14 +11276,15 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	var fetchTypes = fetchTypesImpl.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, partitionedArg: 1, partitionedFilter: moveTypeResults });
 
-	function fetchPathTypes(model, jstype, path, callback) {
+	// fetches model paths and calls success or fail based on the outcome
+	function fetchPathTypes(model, jstype, path, success, fail) {
 		var step = path.steps.dequeue();
 		while (step) {
 			// locate property definition in model
-			var prop = jstype.meta.property(step.property, true);
+			var prop = jstype.meta.property(step.property);
 
 			if (!prop) {
-				ExoWeb.trace.throwAndLog("typeInit", "Could not find property \"{0}\" on type \"{1}\".", [step.property, jstype.meta.get_fullName()]);
+				fail("Could not find property \"" + step.property + "\" on type \"" + jstype.meta.get_fullName() + "\".");
 			}
 
 			// don't need to fetch type information for value types
@@ -10834,7 +11301,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				if (!mtype) {
 					Array.insert(path.steps, 0, step);
 					fetchTypes(model, [step.cast], function() {
-						fetchPathTypes(model, jstype, path, callback);
+						fetchPathTypes(model, jstype, path, success, fail);
 					});
 					return;
 				}
@@ -10846,7 +11313,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// if property's type isn't load it, then fetch it
 			if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 				fetchTypes(model, [mtype.get_fullName()], function(jstypes) {
-					fetchPathTypes(model, jstypes[0], path, callback);
+					fetchPathTypes(model, jstypes[0], path, success, fail);
 				});
 
 				// path walking will resume with callback
@@ -10859,46 +11326,23 @@ Type.registerNamespace("ExoWeb.DotNet");
 			step = path.steps.dequeue();
 		}
 
-		// done walking path
-		if (callback && callback instanceof Function) {
-			callback();
-		}
+		// Inform the caller that the path has been successfully fetched
+		success();
 	}
 
 	function fetchQueryTypes(model, typeName, paths, callback) {
 		var signal = new ExoWeb.Signal("fetchTypes");
 
 		function rootTypeLoaded(jstype) {
+		
+			// process all paths
 			if (paths) {
-				Array.forEach(paths, function(path) {
-					if (path.steps[0].property === "this") {
-						var step = path.steps.dequeue();
-						var mtype = jstype.meta;
+				Array.forEach(paths, function (path) {
 
-						var fetchRootTypePaths = function fetchRootTypePaths() {
-							fetchPathTypes(model, mtype.get_jstype(), path, signal.pending());
-						};
+					// attempt to fetch the path
+					fetchPathTypes(model, jstype, path, signal.pending(), function (err) {
 
-						// handle the case where the root object is cast to a derived type
-						if (step.cast) {
-							mtype = model.type(step.cast);
-							if (!mtype) {
-								fetchTypes(model, [step.cast], signal.pending(function() {
-									mtype = model.type(step.cast);
-									fetchRootTypePaths();
-								}));
-							}
-							else {
-								fetchRootTypePaths();
-							}
-						}
-						else {
-							fetchRootTypePaths();
-						}
-					}
-					else {
-						// This is a static property.  Static property paths
-						// are currently limited to a single property.
+						// determine if the path represents a static property if the path was not valid
 						var step = null, typeName = "";
 						while (path.steps.length > 1) {
 							step = path.steps.dequeue();
@@ -10908,12 +11352,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 						var mtype = model.type(typeName);
 
 						var fetchStaticPathTypes = function fetchStaticPathTypes() {
-							fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), path, signal.pending());
+							fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), path, signal.pending(), function () {
+								ExoWeb.trace.throwAndLog("typeInit", "Invalid query path \"" + path + "\" - " + err);
+							});
 						};
 
 						if (!mtype) {
 							// first time type has been seen, fetch it
-							fetchTypes(model, [typeName], signal.pending(function(jstypes) {
+							fetchTypes(model, [typeName], signal.pending(function (jstypes) {
 								fetchStaticPathTypes(jstypes[0]);
 							}));
 						}
@@ -10924,7 +11370,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 						else {
 							fetchStaticPathTypes();
 						}
-					}
+
+					});
 				});
 			}
 		}
@@ -10945,15 +11392,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 		signal.waitForAll(callback);
-	}
-
-	// {ruleName: ruleConfig}
-	function ruleFromJson(rulesJson, prop) {
-		for (var name in rulesJson) {
-			var json = rulesJson[name];
-			var ruleType = ExoWeb.Model.Rule[json.type];
-			var rule = new ruleType(json, [prop]);
-		}
 	}
 
 	// Recursively searches throught the specified object and restores dates serialized as strings
@@ -11058,8 +11496,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			objSignal.waitForAll(function () {
 				// if a property was specified and its not inited, then wait for it
-				if (property && type.meta.property(property, true).isInited(obj) !== true) {
-					type.meta.property(property, true).addChanged(callback.bind(thisPtr), obj, true);
+				if (property && type.meta.property(property).isInited(obj) !== true) {
+					type.meta.property(property).addChanged(callback.bind(thisPtr), obj, true);
 					return;
 				}
 
@@ -11070,7 +11508,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region TypeLazyLoader
+	// #region ExoWeb.Mapper.TypeLazyLoader
 	//////////////////////////////////////////////////
 
 	function TypeLazyLoader() {
@@ -11082,7 +11520,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		}
 
 //				ExoWeb.trace.log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
-		fetchTypes(mtype.get_model(), [mtype.get_fullName()], function(jstypes) {
+		fetchTypes(mtype.model, [mtype.get_fullName()], function(jstypes) {
 			if (callback && callback instanceof Function) {
 				callback(jstypes[0]);
 			}
@@ -11107,7 +11545,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ObjectLazyLoader
+	// #region ExoWeb.Mapper.ObjectLazyLoader
 	//////////////////////////////////////////////////
 
 	// <reference path="../core/Config.js" />
@@ -11139,8 +11577,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var paths = ObjectLazyLoader.getRelativePaths(obj);
 
 		// Add the property to load if specified.  Assumes an instance property.
-		if (propName && paths.indexOf("this." + propName) < 0) {
-			paths.push("this." + propName);
+		if (propName && paths.indexOf(propName) < 0) {
+			paths.push(propName);
 		}
 
 		// fetch object json
@@ -11150,7 +11588,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		objectProvider(mtype.get_fullName(), [id], paths, false,
 			serializeChanges.call(context.server, true),
 			function(result) {
-				mtype.get_model()._server._handleResult(result, $format("Lazy load: {0}({1})", mtype.get_fullName(), id), null, function() {
+				mtype.model.server._handleResult(result, $format("Lazy load: {0}({1})", mtype.get_fullName(), id), null, function() {
 					LazyLoader.unregister(obj, this);
 					pendingObjects--;
 
@@ -11251,7 +11689,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ListLazyLoader
+	// #region ExoWeb.Mapper.ListLazyLoader
 	//////////////////////////////////////////////////
 
 	function ListLazyLoader() {
@@ -11260,7 +11698,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 	function listLoad(list, propName, callback, thisPtr) {
 		var signal = new ExoWeb.Signal("list lazy loader");
 
-		var model = list._ownerProperty.get_containingType().get_model();
+		var model = list._ownerProperty.get_containingType().model;
 		var ownerId = list._ownerId;
 		var containingType = list._ownerProperty.get_containingType();
 		var owner = ownerId === STATIC_ID ? containingType.get_jstype() : containingType.get(ownerId);
@@ -11403,7 +11841,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			objectsFromJson(model, objectJson, function() {
 				if (conditionsJson) {
-					conditionsFromJson(model, conditionsJson, done);
+					conditionsFromJson(model, conditionsJson, list.slice(0), done);
 				}
 				else {
 					done();
@@ -11441,7 +11879,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Context
+	// #region ExoWeb.Mapper.Context
 	//////////////////////////////////////////////////
 
 	// Signal to keep track of any ongoing context initialization
@@ -11514,7 +11952,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ContextQuery
+	// #region ExoWeb.Mapper.ContextQuery
 	//////////////////////////////////////////////////
 
 	function ContextQuery(context, options) {
@@ -11546,7 +11984,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				// Setup lazy loading on the context object to control lazy evaluation.
-				// Loading is considered complete at the same point model.ready() fires.
+				// Loading is considered complete at the same point model.ready() fires. 
 				ExoWeb.Model.LazyLoader.register(this.context, {
 					load: function context$load(obj, propName, callback, thisPtr) {
 						//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
@@ -11606,7 +12044,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 							// pre-initialize array queries
 							var arr = [];
-							Sys.Observer.makeObservable(arr);
+							Observer.makeObservable(arr);
 							this.context.model[varName] = arr;
 						}
 
@@ -11627,7 +12065,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 									from: query.from,
 									ids: query.ids,
 									// TODO: this will be subset of paths interpreted as scope-of-work
-									include: query.include ? query.include.filter(function (p) { return p.startsWith("this."); }) : [],
+									include: query.include ? query.include : [],
 									inScope: true,
 									forLoad: false
 								};
@@ -11680,18 +12118,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 
 				// Fetch types in a single batch request
-				fetchTypes(model, typesToLoad, signal.pending(), this);
+				if (typesToLoad.length > 0) {
+					fetchTypes(model, typesToLoad, signal.pending(), this);
+				}
 
-				signal.waitForAll(function() {
-					// Fetch additional types based on model queries and paths
-					if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
-						ExoWeb.eachProp(this.options.model, function (varName, query) {
-							fetchQueryTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
-						}, this);
-					}
+				// Fetch additional types based on model queries and paths
+				if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
+					ExoWeb.eachProp(this.options.model, function (varName, query) {
+						fetchQueryTypes(this.context.model.meta, query.from, query.normalized, signal.pending());
+					}, this);
+				}
 
-					callback.call(thisPtr || this);
-				}, this);
+				signal.waitForAll(callback, thisPtr);
 			},
 
 		// Process embedded data as if it had been recieved from the server in
@@ -11714,7 +12152,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						if (this.options.changes) {
 							this.options.changes.forEach(function (change) {
 								if (change.type === "InitNew") {
-									tryGetJsType(this.context.server._model, change.instance.type, null, false, function (jstype) {
+									tryGetJsType(this.context.server.model, change.instance.type, null, false, function (jstype) {
 										var obj = jstype.meta.get(change.instance.id);
 										if (obj) {
 											obj.meta.isNew = true;
@@ -11792,7 +12230,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 							function context$objects$callback(result) {
 								objectsFromJson(this.context.model.meta, result.instances, function () {
 									if (result.conditions) {
-										conditionsFromJson(this.context.model.meta, result.conditions, function () {
+										conditionsFromJson(this.context.model.meta, result.conditions, null, function () {
 											batchQuerySignal.oneDone();
 										});
 									}
@@ -11892,7 +12330,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 										// load the json. this may happen asynchronously to increment the signal just in case
 										objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function () {
 											if (result.conditions) {
-												conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
+												conditionsFromJson(this.context.model.meta, result.conditions, null, allSignals.pending());
 											}
 										}), this);
 									}, this, true),
@@ -11968,7 +12406,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 									}, this);
 
 									if (this.state[varName].conditionsJson) {
-										conditionsFromJson(this.context.model.meta, this.state[varName].conditionsJson, function () {
+										conditionsFromJson(this.context.model.meta, this.state[varName].conditionsJson, null, function () {
 											// model object has been successfully loaded!
 											allSignals.oneDone();
 										}, this);
@@ -12048,7 +12486,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ExoWeb
+	// #region ExoWeb.Mapper.ExoWeb
 	//////////////////////////////////////////////////
 
 	// Don't activate the DOM automatically, instead delay until after context initialization
@@ -12187,7 +12625,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Extend
+	// #region ExoWeb.Mapper.Extend
 	//////////////////////////////////////////////////
 
 	var pendingTypeExtensions = {};
@@ -12318,7 +12756,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Toggle
+	// #region ExoWeb.UI.Toggle
 	//////////////////////////////////////////////////
 
 	function Toggle(element) {
@@ -12630,14 +13068,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (changed) {
 				if (this._on && this._on instanceof Array) {
-					Sys.Observer.removeCollectionChanged(this._on, this._collectionChangedHandler);
+					Observer.removeCollectionChanged(this._on, this._collectionChangedHandler);
 				}
 
 				this._on = value;
 
 				if (this._on && this._on instanceof Array) {
 					this._collectionChangedHandler = this.execute.bind(this);
-					Sys.Observer.addCollectionChanged(this._on, this._collectionChangedHandler);
+					Observer.addCollectionChanged(this._on, this._collectionChangedHandler);
 				}
 
 				this.execute();
@@ -12795,7 +13233,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ToggleGroup
+	// #region ExoWeb.UI.ToggleGroup
 	//////////////////////////////////////////////////
 
 	function ToggleGroup(element) {
@@ -12874,7 +13312,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Template
+	// #region ExoWeb.UI.Template
 	//////////////////////////////////////////////////
 
 	function Template(element) {
@@ -13159,10 +13597,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 		// set the last request signal to the new signal and increment
 		var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
-		var callback = externalTemplatesSignal.pending(signal.pending(function (elem) {
+		var callback = externalTemplatesSignal.pending(signal.pending(function () {
 			//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
 			// Activate template controls within the response.
-			Sys.Application.activateElement(elem);
+			Sys.Application.activateElement(this);
 		}));
 
 		$(function ($) {
@@ -13173,28 +13611,28 @@ Type.registerNamespace("ExoWeb.DotNet");
 			//if the template is stored locally look for the path as a div on the page rather than the cache
 			if (options && options.isLocal === true) {
 				var localTemplate = $('#' + path);
-				callback(localTemplate.get(0));
+				callback.call(localTemplate.get(0));
 			}
 			else {
 				var html = ExoWeb.cache(path);
 
 				if (html) {
 					tmpl.append(html);
-					callback(tmpl.get(0));
-				}
+					callback.call(tmpl.get(0));
+				} 
 				else {
-					tmpl.load(path, function (responseText) {
-						var elem = this;
+					tmpl.load(path, function (responseText, textStatus, jqXHR) {
+						if (jqXHR.isResolved()) {
+							// Cache the template
+							ExoWeb.cache(path, responseText);
 
-						// Cache the template
-						ExoWeb.cache(path, responseText);
-
-						// if there is a pending request then wait for it to complete
-						if (lastReq) {
-							lastReq.waitForAll(function () { callback(elem); });
-						}
-						else {
-							callback(elem);
+							// if there is a pending request then wait for it to complete
+							if (lastReq) {
+								lastReq.waitForAll(callback, this);
+							}
+							else {
+								callback.call(this);
+							}
 						}
 					});
 				}
@@ -13207,7 +13645,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Content
+	// #region ExoWeb.UI.Content
 	//////////////////////////////////////////////////
 
 	function Content(element) {
@@ -13252,7 +13690,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (this._changedHandler) {
 				// Remove old change handler if applicable.
-				Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
+				Observer.removeCollectionChanged(this._data, this._changedHandler);
 				delete this._changedHandler;
 			}
 
@@ -13261,7 +13699,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (value instanceof Array) {
 				// Watch for changes to an array.
 				this._changedHandler = this._collectionChanged.bind(this);
-				Sys.Observer.addCollectionChanged(value, this._changedHandler);
+				Observer.addCollectionChanged(value, this._changedHandler);
 			}
 
 			// Force rendering to occur if we previously had a value and now do not.
@@ -13498,15 +13936,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 							this._isRendered = true;
 							Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 						}
-						catch (e) {
-							if (this._isRendered !== true) {
-								Sys.Observer.raiseEvent(this, "error", e);
-								ExoWeb.trace.logError("content", "An error occurred while rendering content: {0}", e);
-							}
-							else {
-								throw e;
-							}
-						}
 						finally {
 							contentControlsRendering--;
 						}
@@ -13579,7 +14008,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._context.dispose();
 			}
 			if (this._changedHandler) {
-				Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
+				Observer.removeCollectionChanged(this._data, this._changedHandler);
 				this._changedHandler = null;
 			}
 			this._contentTemplate = this._context = this._ctxIdx =
@@ -13611,7 +14040,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region DataView
+	// #region ExoWeb.UI.DataView
 	//////////////////////////////////////////////////
 
 	var dataViewsRendering = 0;
@@ -13640,7 +14069,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Html
+	// #region ExoWeb.UI.Html
 	//////////////////////////////////////////////////
 
 	function Html(element) {
@@ -13704,7 +14133,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Behavior
+	// #region ExoWeb.UI.Behavior
 	//////////////////////////////////////////////////
 
 	function Behavior(element) {
@@ -13820,7 +14249,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Utilities
+	// #region ExoWeb.UI.Utilities
 	//////////////////////////////////////////////////
 
 	function getTemplateSubContainer(childElement) {
@@ -14046,7 +14475,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region AdapterMarkupExtension
+	// #region ExoWeb.View.AdapterMarkupExtension
 	//////////////////////////////////////////////////
 
 	Sys.Application.registerMarkupExtension(
@@ -14086,7 +14515,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			adapter.ready(function AdapterReady() {
-				Sys.Observer.setValue(component, targetProperty, adapter);
+				Observer.setValue(component, targetProperty, adapter);
 			});
 		},
 		false
@@ -14094,7 +14523,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region MetaMarkupExtension
+	// #region ExoWeb.View.MetaMarkupExtension
 	//////////////////////////////////////////////////
 
 	var bindingSetters = [];
@@ -14110,7 +14539,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		"#",
 		function MetaMarkupExtension(component, targetProperty, templateContext, properties) {
 			if (properties.required) {
-				ExoWeb.trace.logWarning(["@", "markupExt"], "Meta markup extension does not support the \"required\" property.");
+				ExoWeb.trace.logWarning(["#", "markupExt"], "Meta markup extension does not support the \"required\" property.");
 			}
 
 			var options, element;
@@ -14157,11 +14586,11 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region ConditionMarkupExtension
+	// #region ExoWeb.View.ConditionMarkupExtension
 	//////////////////////////////////////////////////
 
 	Sys.Application.registerMarkupExtension("?",
-		function(component, targetProperty, templateContext, properties) {
+		function (component, targetProperty, templateContext, properties) {
 			var options = Sys._merge({
 				source: templateContext.dataItem,
 				templateContext: templateContext,
@@ -14169,7 +14598,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}, properties);
 
 			var meta = options.source.meta;
-		
+
 			options.type = options.type || options.$default;
 			delete options.$default;
 
@@ -14179,17 +14608,18 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			var sets = options.set ? options.set.split(",") : null;
 
-			var target = function() {
+			var target = function () {
 				if (options.target && options.target.constructor === String)
 					return evalPath(options.source, options.target);
 				return options.target;
 			};
 
 			function updateConditions() {
-				var conditions = meta.conditions().filter(function(c) {
-					return (!types || types.indexOf(c.get_type().get_code()) >= 0) && // check for type code match (if specified)
-						(!sets || intersect(sets, c.get_type().get_sets().map(function(s) { return s.get_name(); })).length > 0) && // check for set code match (if specified)
-						(!target || c.get_targets().some(function(t) { return t.get_entity() === target(); })); // check for target (if specified)
+				var currentTarget = target();
+				var conditions = meta.conditions().filter(function (c) {
+					return (!types || types.indexOf(c.type.code) >= 0) && // check for type code match (if specified)
+						(!sets || intersect(sets, c.type.sets.map(function (s) { return s.name; })).length > 0) && // check for set code match (if specified)
+						(!target || c.targets.some(function (t) { return t.target === currentTarget; })); // check for target (if specified)
 				});
 
 				if (options.single === true) {
@@ -14200,7 +14630,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 					conditions = conditions.length === 0 ? null : conditions[0];
 				}
 
-				Sys.Observer.setValue(component, properties.targetProperty || targetProperty, conditions);
+				Observer.setValue(component, properties.targetProperty || targetProperty, conditions);
 			}
 
 			updateConditions();
@@ -14210,7 +14640,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Binding
+	// #region ExoWeb.View.Binding
 	//////////////////////////////////////////////////
 
 	function Binding(templateContext, source, sourcePath, target, targetPath, options, scopeChain) {
@@ -14268,14 +14698,14 @@ Type.registerNamespace("ExoWeb.DotNet");
 					this._target.innerHTML = value;
 				else
 					this._target.appendChild(document.createTextNode(value));
-				Sys.Observer.raisePropertyChanged(this._target, this._targetPath);
+				Observer.raisePropertyChanged(this._target, this._targetPath);
 			}
 			else if (this._isTargetElement && value === null) {
 				// IE would set the value to "null"
-				Sys.Observer.setValue(this._target, this._targetPath, "");
+				Observer.setValue(this._target, this._targetPath, "");
 			}
 			else {
-				Sys.Observer.setValue(this._target, this._targetPath, value);
+				Observer.setValue(this._target, this._targetPath, value);
 			}
 		},
 
@@ -14350,7 +14780,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// if necessary, remove an existing collection change handler
 			if (this._collectionChangedHandler) {
-				Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
+				Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
 				delete this._value;
 				delete this._collectionChangedHandler;
 			}
@@ -14359,8 +14789,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (value && value instanceof Array && this._options.required) {
 				this._value = value;
 				this._collectionChangedHandler = this._collectionChanged.bind(this);
-				Sys.Observer.makeObservable(value);
-				Sys.Observer.addCollectionChanged(value, this._collectionChangedHandler);
+				Observer.makeObservable(value);
+				Observer.addCollectionChanged(value, this._collectionChangedHandler);
 			}
 
 			// If additional paths are required then load them before invoking the callback.
@@ -14378,7 +14808,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// Unwatch require path for items that are no longer relevant.
 			if (oldItems && oldItems.length > 0) {
 				oldItems.forEach(function(item) {
-					Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
+					Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
 				}, this);
 				delete this._watchedItemPathChangedHandler;
 			}
@@ -14394,7 +14824,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 						// Watch require path for new items.
 						this._watchedItemPathChangedHandler = this._watchedItemPathChanged.bind(this);
 						forEach(newItems, function(item) {
-							Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
+							Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
 						}, this);
 					}
 
@@ -14444,7 +14874,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			if (this._sourcePath) {
 				this._sourcePathChangedHandler = this._sourcePathChanged.bind(this);
-				Sys.Observer.addPathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler, true);
+				Observer.addPathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler, true);
 			}
 
 			this._sourcePathResult = result;
@@ -14466,16 +14896,16 @@ Type.registerNamespace("ExoWeb.DotNet");
 			if (!this._disposed) {
 				this._disposed = true;
 				if (this._collectionChangedHandler) {
-					Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
+					Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
 					this._collectionChangedHandler = null;
 				}
 				if (this._sourcePathChangedHandler) {
-					Sys.Observer.removePathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler);
+					Observer.removePathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler);
 					this._sourcePathChangedHandler = null;
 				}
 				if (this._watchedItemPathChangedHandler) {
 					ensureArray(this._sourcePathResult).forEach(function(item) {
-						Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
+						Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
 					}, this);
 					this._watchedItemPathChangedHandler = null;
 				}
@@ -14499,7 +14929,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region LazyMarkupExtension
+	// #region ExoWeb.View.LazyMarkupExtension
 	//////////////////////////////////////////////////
 
 	Sys.Application.registerMarkupExtension(
@@ -14558,7 +14988,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region Adapter
+	// #region ExoWeb.View.Adapter
 	//////////////////////////////////////////////////
 
 	function Adapter(target, propertyPath, format, options) {
@@ -14646,7 +15076,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 
 			// get the property chain for this adapter starting at the source object
-			this._propertyChain = sourceObject.meta.property(this._propertyPath);
+			this._propertyChain = Model.property(this._propertyPath, sourceObject.meta.type);
 			if (!this._propertyChain) {
 				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{0}\" could not be found.", this._propertyPath);
 			}
@@ -14665,8 +15095,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 				ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 			});
 			signal.waitForAll(function () {
-				Sys.Observer.raisePropertyChanged(this, "displayValue");
-				Sys.Observer.raisePropertyChanged(this, "systemValue");
+				Observer.raisePropertyChanged(this, "displayValue");
+				Observer.raisePropertyChanged(this, "systemValue");
 			}, this);
 		},
 		_doForFormatPaths: function Adapter$_doForFormatPaths(val, callback, thisPtr) {
@@ -14680,21 +15110,28 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val) {
 			this._doForFormatPaths(val, function (path) {
-				var fn = this._formatSubscribers[path];
-				Sys.Observer.removePathChanged(val, path, fn);
+				var subscription = this._formatSubscribers[path];
+				if (subscription.chain) {
+					subscription.chain.removeChanged(subscription.handler);
+				}
 			});
 		},
 		_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val) {
 			this._doForFormatPaths(val, function (path) {
-				var fn = this._formatSubscribers[path] = this._loadForFormatAndRaiseChange.bind(this).prependArguments(val);
-				Sys.Observer.addPathChanged(val, path, fn);
+				Model.property(path, this._propertyChain.lastProperty().get_jstype().meta, true, function (chain) {
+					var subscription = this._formatSubscribers[path] = { chain: chain, handler: this._loadForFormatAndRaiseChange.bind(this).prependArguments(val) };
+					var entities = val instanceof Array ? val : [val];
+					entities.forEach(function (entity) {
+						chain.addChanged(subscription.handler, entity);
+					});
+				}, this);
 			});
 		},
 		_ensureObservable: function Adapter$_ensureObservable() {
 			var _this = this;
 
 			if (!this._observable) {
-				Sys.Observer.makeObservable(this);
+				Observer.makeObservable(this);
 
 				// subscribe to property changes at all points in the path
 				this._targetChangedHandler = this._onTargetChanged.bind(this);
@@ -14703,7 +15140,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._formatSubscribers = {};
 
 				// set up initial watching of format paths
-				if (this._propertyChain.lastTarget(this._target, true)) {
+				if (this._propertyChain.lastTarget(this._target)) {
 					var rawValue = this._propertyChain.value(this._target);
 					this._subscribeToFormatChanges(rawValue);
 				}
@@ -14727,7 +15164,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 			// raise raw value changed event
 			ExoWeb.Model.LazyLoader.eval(rawValue, null, function () {
-				Sys.Observer.raisePropertyChanged(_this, "rawValue");
+				Observer.raisePropertyChanged(_this, "rawValue");
 			});
 
 			// raise value changed event
@@ -14740,13 +15177,13 @@ Type.registerNamespace("ExoWeb.DotNet");
 				Array.forEach(this._options, function (o) {
 					// Always reload selected for options in an array since we don't know what the old values in the list were
 					if (args.newValue instanceof Array || o.get_rawValue() == args.newValue || o.get_rawValue() == args.oldValue) {
-						Sys.Observer.raisePropertyChanged(o, "selected");
+						Observer.raisePropertyChanged(o, "selected");
 					}
 				});
 			}
 
 			// Re-attach validation handlers if needed
-			var properties = this._propertyChain._properties;
+			var properties = this._propertyChain.properties();
 			var numProps = properties.length;
 
 			// The last target does not change if this is a single-property chain,
@@ -14766,22 +15203,17 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 					// Remove and re-add validation handlers if the last target has changed
 					if (oldLastTarget !== newLastTarget) {
-						if (this._propertyValidatedHandler) {
-							oldLastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
-							this.addPropertyValidated(null, this._propertyValidatedHandler);
-						}
-						if (this._propertyValidatingHandler) {
-							oldLastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
-							this.addPropertyValidating(null, this._propertyValidatingHandler);
+						this._conditions.clear();
+						if (this._conditionsChangedHandler) {
+							oldLastTarget.meta.removeConditionsChanged(this._conditionsChangedHandler);
 						}
 					}
 				}
 
-				if (this._propertyValidatedHandler) {
-					this.addPropertyValidated(null, this._propertyValidatedHandler);
-				}
-				if (this._propertyValidatingHandler) {
-					this.addPropertyValidating(null, this._propertyValidatingHandler);
+				// Add the conditions for the new target and subscribe to changes
+				if (this._conditions && newLastTarget !== null) {
+					this.addRange(newLastTarget.meta.conditions(this._propertyChain.lastProperty()));
+					newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this._propertyChain);
 				}
 			}
 
@@ -14791,39 +15223,22 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		_setValue: function Adapter$_setValue(value) {
 			var prop = this._propertyChain;
-			var meta = prop.lastTarget(this._target).meta;
 
-			meta.clearConditions(this);
-
-			if (value instanceof ExoWeb.Model.FormatError) {
-				this._condition = value.createCondition(this, prop.lastProperty());
-
-				meta.conditionIf(this._condition, true);
-
-				// Update the model with the bad value if possible
-				if (prop.canSetValue(this._target, value)) {
-					prop.value(this._target, value);
-				}
-				// run the rules to preserve the order of conditions
-				else {
-					// store the "bad value" since the actual value will be different
-					this._badValue = value;
-					meta.executeRules(prop);
-				}
+			// clear existing format errors
+			if (this._formatError) {
+				this.get_conditions().remove(this._formatError);
+				this._formatError = undefined;
 			}
+
+			// insert new format errors, if the value is not valid
+			if (value instanceof ExoWeb.Model.FormatError) {
+				this._formatError = value.createCondition(this._propertyChain.lastTarget(this._target), this._propertyChain.lastProperty());
+				this.get_conditions().insert(0, this._formatError);
+			}
+
+			// otherwise, update the property value
 			else {
 				var changed = prop.value(this._target) !== value;
-
-				if (this._badValue !== undefined) {
-					delete this._badValue;
-					delete this._condition;
-
-					// force rules to run again in order to trigger validation events
-					if (!changed) {
-						meta.executeRules(prop);
-					}
-				}
-
 				this.set_rawValue(value, changed);
 			}
 		},
@@ -14926,7 +15341,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			// help text may also be included in the model?
 			return this._helptext || "";
 		},
-
 		get_rawValue: function Adapter$get_rawValue() {
 			this._ensureObservable();
 			return this._propertyChain.value(this._target);
@@ -14972,7 +15386,26 @@ Type.registerNamespace("ExoWeb.DotNet");
 		},
 		set_systemValue: function Adapter$set_systemValue(value) {
 			if (this.get_isEntity()) {
-				this._setValue(value ? Entity.fromIdString(value) : null);
+			
+				// set to null
+				if (!value) {
+					this._setValue(null);
+				}
+				else {
+					var entity = Entity.fromIdString(value);
+
+					// set immediately if loaded
+					if (LazyLoader.isLoaded(entity)) {
+						this._setValue(entity);
+					}
+
+					// lazy load if necessary
+					else {
+						LazyLoader.load(entity, null, function () {
+							this._setValue(entity);
+						}, this);
+					}
+				}
 			}
 			else if (this.isType(Boolean)) {
 				if (value === "true") {
@@ -15032,34 +15465,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		},
 
-		// Used to register validating and validated events through the adapter as if binding directly to an Entity
-		addPropertyValidating: function Adapter$addPropertyValidating(propName, handler) {
-			var lastTarget = this._propertyChain.lastTarget(this._target);
-
-			this._propertyValidatingHandler = handler;
-
-			if (lastTarget) {
-				lastTarget.meta.addPropertyValidating(this._propertyChain.get_name(), handler);
-			}
-		},
-		addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
-			var lastTarget = this._propertyChain.lastTarget(this._target);
-
-			this._propertyValidatedHandler = handler;
-
-			if (lastTarget) {
-				lastTarget.meta.addPropertyValidated(this._propertyChain.get_name(), handler);
-			}
-		},
-
-		clearValidation: function () {
-			if (this._condition) {
-				var prop = this._propertyChain;
-				var meta = prop.lastTarget(this._target).meta;
-				meta.conditionIf(this._condition, false);
-				delete this._condition;
-			}
-		},
 		dispose: function Adapter$dispose() {
 			var disposed = this._disposed, options = null;
 
@@ -15067,7 +15472,6 @@ Type.registerNamespace("ExoWeb.DotNet");
 				this._disposed = true;
 				disposeOptions.call(this);
 				options = this._options;
-				this.clearValidation();
 				if (this._extendedProperties) {
 					var ext = this._extendedProperties;
 					for (var i = 0, l = ext.length; i < l; i++) {
@@ -15081,13 +15485,10 @@ Type.registerNamespace("ExoWeb.DotNet");
 				}
 				this._unsubscribeFromFormatChanges(this.get_rawValue());
 				// Clean up validation event handlers
-				var lastTarget = this._propertyChain.lastTarget(this._target, true);
+				var lastTarget = this._propertyChain.lastTarget(this._target);
 				if (lastTarget) {
-					if (this._propertyValidatedHandler) {
-						lastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
-					}
-					if (this._propertyValidatedHandler) {
-						lastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
+					if (this._conditionsChangedHandler) {
+						lastTarget.meta.removeConditionsChanged(this._conditionsChangedHandler);
 					}
 				}
 				this._allowedValues = this._allowedValuesMayBeNull = this._aspects = this._badValue =
@@ -15099,13 +15500,88 @@ Type.registerNamespace("ExoWeb.DotNet");
 			Adapter.callBaseMethod(this, "dispose");
 
 			if (!disposed) {
-				Sys.Observer.disposeObservable(this);
+				Observer.disposeObservable(this);
 				if (options) {
-					options.forEach(Sys.Observer.disposeObservable);
+					options.forEach(Observer.disposeObservable);
 				}
 			}
 		}
 	});
+
+	// #region Conditions
+
+	function conditionsChangedHandler(conditions, sender, args) {
+		if (args.add) {
+			conditions.add(args.conditionTarget.condition);
+		}
+		else if (args.remove) {
+			conditions.remove(args.conditionTarget.condition);
+		}
+	};
+
+	Adapter.mixin({
+		get_conditions: function Adapter$get_conditions() {
+
+			// initialize the conditions if necessary
+			if (!this._conditions) {
+
+				// get the current target
+				var target = this._propertyChain.lastTarget(this._target);
+
+				// get the current set of conditions
+				var conditions = this._conditions = target ? target.meta.conditions(this._propertyChain.lastProperty()) : [];
+
+				// make the conditions observable
+				Observer.makeObservable(this._conditions);
+
+				// subscribe to condition changes on the current target
+				if (target) {
+					var handler = this._conditionsChangedHandler = conditionsChangedHandler.prependArguments(conditions);
+					target.meta.addConditionsChanged(handler, this._propertyChain);
+				}
+			}
+			return this._conditions;
+		},
+		get_firstError: function Adapter$get_firstError() {
+
+			// gets the first error in a set of conditions, always returning required field errors first, and null if no errors exist
+			var getFirstError = function (conditions) {
+				var firstError = null;
+				for (var c = 0; c < conditions.length; c++) {
+					var condition = conditions[c];
+					if (condition.type instanceof ConditionType.Error && (firstError === null || /Required/i.test(condition.type.code))) {
+						firstError = condition;
+					}
+				}
+				return firstError;
+			};
+
+			// initialize on first access
+			if (!this.hasOwnProperty("_firstError")) {
+
+				var conditions = this.get_conditions();
+				this._firstError = getFirstError(conditions);
+
+				// automatically update when condition changes occur
+				var adapter = this;
+				conditions.add_collectionChanged(function (sender, args) {
+
+					var err = getFirstError(conditions);
+
+					// store the first error and raise property change if it differs from the previous first error
+					if (adapter._firstError !== err) {
+						adapter._firstError = err;
+						Observer.raisePropertyChanged(adapter, "firstError");
+					}
+				});
+			}
+
+			// return the first error
+			return this._firstError;
+		}
+	});
+
+	// #endregion
 
 	// #region Options
 
@@ -15113,7 +15589,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var lastProperty = this._propertyChain.lastProperty();
 		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
 		if (this._allowedValuesChangedHandler) {
-			allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesChangedHandler);
+			allowedValuesRule.source.removeChanged(this._allowedValuesChangedHandler);
 			this._allowedValuesChangedHandler = null;
 		}
 		if ( this._allowedValuesRuleExistsHandler) {
@@ -15121,7 +15597,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			this._allowedValuesRuleExistsHandler = null;
 		}
 		if (this._allowedValuesExistHandler) {
-			allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesExistHandler);
+			allowedValuesRule.source.removeChanged(this._allowedValuesExistHandler);
 			this._allowedValuesExistHandler = null;
 		}
 		this._options = null;
@@ -15149,7 +15625,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 		delete this._options;
 
 		// Raise events in order to cause subscribers to fetch the new value
-		Sys.Observer.raisePropertyChanged(this, "options");
+		ExoWeb.Observer.raisePropertyChanged(this, "options");
 	}
 
 	// If the given rule is allowed values, signal options ready
@@ -15167,30 +15643,9 @@ Type.registerNamespace("ExoWeb.DotNet");
 		var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 		if (allowedValues instanceof Array) {
-			allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesExistHandler);
+			allowedValuesRule.source.removeChanged(this._allowedValuesExistHandler);
 			delete this._allowedValuesExistHandler;
 			signalOptionsReady.call(this);
-		}
-	}
-
-	// If the given value is not valid, then remove it
-	function checkSelectedValue(value, isValid) {
-		if (this._disposed) {
-			return;
-		}
-
-		var rawValue = this.get_rawValue();
-		if (!isValid) {
-			if (rawValue instanceof Array) {
-				if (rawValue.indexOf(value) >= 0) {
-					//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
-					rawValue.remove(value);
-				}
-			}
-			else if (this.get_rawValue() === value) {
-				//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
-				this.set_rawValue(null);
-			}
 		}
 	}
 
@@ -15204,7 +15659,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 			update(optionsSourceArray, allowedValues);
 		}
 		else {
-			optionsSourceArray.clear();
+			signalOptionsReady.call(this);
 		}
 	}
 
@@ -15247,16 +15702,26 @@ Type.registerNamespace("ExoWeb.DotNet");
 			refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
 		}
 
-		// Remove option values that are no longer valid
+	}
+
+	function clearInvalidOptions(allowedValues) {
 		var rawValue = this.get_rawValue();
-		var targetObj = this._propertyChain.lastTarget(this._target);
-		if (rawValue instanceof Array) {
-			rawValue.forEach(function (item) {
-				allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, checkSelectedValue.bind(this).prependArguments(item));
-			}, this);
+		if (allowedValues) {
+			// Remove option values that are no longer valid
+			if (rawValue instanceof Array) {
+				purge(rawValue, function (item) {
+					return allowedValues.indexOf(item) < 0;
+				}, this);
+			}
+			else if (allowedValues.indexOf(rawValue) < 0) {
+				this.set_rawValue(null);
+			}
+		}
+		else if (rawValue instanceof Array) {
+			rawValue.clear();
 		}
 		else {
-			allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, checkSelectedValue.bind(this).prependArguments(rawValue));
+			this.set_rawValue(null);
 		}
 	}
 
@@ -15281,42 +15746,45 @@ Type.registerNamespace("ExoWeb.DotNet");
 					// Cache the last target
 					var targetObj = this._propertyChain.lastTarget(this._target);
 
+					// Retrieve the value of allowed values property
+					var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
+
 					// Load allowed values if the path is not inited
-					if (!allowedValuesRule._allowedValuesProperty.isInited(targetObj, false)) {
-						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [allowedValuesRule]);
-						ExoWeb.Model.LazyLoader.eval(allowedValuesRule._allowedValuesProperty.get_isStatic() ? null : targetObj,
-							allowedValuesRule._allowedValuesProperty.get_path(),
+					if (allowedValues === undefined) {
+						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced eval of allowed values. Rule: {0}", [allowedValuesRule]);
+						ExoWeb.Model.LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
+							allowedValuesRule.source.get_path(),
 							signalOptionsReady.bind(this));
 						this._options = null;
 						return;
 					}
 
-					// Retrieve the value of allowed values property
-					var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
-
 					// Watch for changes until the allowed values path has a value
 					if (!allowedValues) {
 						this._allowedValuesExistHandler = checkAllowedValuesExist.bind(this);
-						allowedValuesRule._allowedValuesProperty.addChanged(this._allowedValuesExistHandler, targetObj);
+						allowedValuesRule.source.addChanged(this._allowedValuesExistHandler, targetObj);
+						clearInvalidOptions.call(this);
 						this._options = null;
 						return;
 					}
 
 					// Load the allowed values list if it is not already loaded
 					if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
-						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [allowedValuesRule]);
+						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values list. Rule: {0}", [allowedValuesRule]);
 						ExoWeb.Model.LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
 						this._options = null;
 						return;
 					}
 
+					clearInvalidOptions.call(this, allowedValues);
+
 					// Create an observable copy of the allowed values that we can keep up to date in our own time
 					var observableAllowedValues = allowedValues.slice();
-					Sys.Observer.makeObservable(observableAllowedValues);
+					ExoWeb.Observer.makeObservable(observableAllowedValues);
 
 					// Respond to changes to allowed values
 					this._allowedValuesChangedHandler = allowedValuesChanged.bind(this).prependArguments(observableAllowedValues);
-					allowedValuesRule._allowedValuesProperty.addChanged(this._allowedValuesChangedHandler, targetObj);
+					allowedValuesRule.source.addChanged(this._allowedValuesChangedHandler, targetObj);
 
 					// Create a transform that watches the observable copy and uses the user-supplied _allowedValuesTransform if given
 					if (this._allowedValuesTransform) {
@@ -15345,7 +15813,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region OptionAdapter
+	// #region ExoWeb.View.OptionAdapter
 	//////////////////////////////////////////////////
 
 	function OptionAdapter(parent, obj) {
@@ -15361,8 +15829,8 @@ Type.registerNamespace("ExoWeb.DotNet");
 		///////////////////////////////////////////////////////////////////////
 		_loadForFormatAndRaiseChange: function OptionAdapter$_loadForFormatAndRaiseChange(val) {
 			if (val === undefined || val === null) {
-				Sys.Observer.raisePropertyChanged(this, "displayValue");
-				Sys.Observer.raisePropertyChanged(this, "systemValue");
+				Observer.raisePropertyChanged(this, "displayValue");
+				Observer.raisePropertyChanged(this, "systemValue");
 				return;
 			}
 
@@ -15371,18 +15839,23 @@ Type.registerNamespace("ExoWeb.DotNet");
 				ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 			}, this);
 			signal.waitForAll(function () {
-				Sys.Observer.raisePropertyChanged(this, "displayValue");
-				Sys.Observer.raisePropertyChanged(this, "systemValue");
+				Observer.raisePropertyChanged(this, "displayValue");
+				Observer.raisePropertyChanged(this, "systemValue");
 			}, this);
 		},
 		_subscribeToFormatChanges: function OptionAdapter$_subscribeToFormatChanges(val) {
 			this._parent._doForFormatPaths(val, function (path) {
-				Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.bind(this).prependArguments(val));
+				Model.property(path, val.meta.type, true, function (chain) {
+					var subscription = this._formatSubscribers[path] = { chain: chain, handler: this._loadForFormatAndRaiseChange.bind(this).prependArguments(val) };
+					chain.addChanged(subscription.handler, val);
+				}, this);
 			}, this);
 		},
 		_ensureObservable: function OptionAdapter$_ensureObservable() {
 			if (!this._observable) {
-				Sys.Observer.makeObservable(this);
+				Observer.makeObservable(this);
+
+				this._formatSubscribers = {};
 
 				// set up initial watching of format paths
 				this._subscribeToFormatChanges(this._obj);
@@ -15458,7 +15931,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region OptionGroupAdapter
+	// #region ExoWeb.View.OptionGroupAdapter
 	//////////////////////////////////////////////////
 
 	function OptionGroupAdapter(parent, obj, items) {
@@ -15514,7 +15987,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region MsAjax
+	// #region ExoWeb.View.MsAjax
 	//////////////////////////////////////////////////
 
 	(function () {
@@ -15641,7 +16114,7 @@ Type.registerNamespace("ExoWeb.DotNet");
 
 	// #endregion
 
-	// #region WebService
+	// #region ExoWeb.DotNet.WebService
 	//////////////////////////////////////////////////
 
 	ExoWeb.DotNet.config = {};
@@ -15926,6 +16399,73 @@ Type.registerNamespace("ExoWeb.DotNet");
 			}
 		});
 
+	});
+	// #endregion
+
+	// #region ObserverProvider
+	//////////////////////////////////////////////////
+
+	﻿function raiseSpecificPropertyChanged(target, args) {
+		var func = target.__propertyChangeHandlers[args.get_propertyName()];
+		if (func && func instanceof Function) {
+			func.apply(this, arguments);
+		}
+	}
+
+	setObserverProvider({
+
+		makeObservable: Sys.Observer.makeObservable,
+
+		disposeObservable: Sys.Observer.disposeObservable,
+
+		addCollectionChanged: Sys.Observer.addCollectionChanged,
+
+		removeCollectionChanged: Sys.Observer.removeCollectionChanged,
+
+		addPropertyChanged: 
+		function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
+			if (!target.__propertyChangeHandlers) {
+				target.__propertyChangeHandlers = {};
+				Sys.Observer.addPropertyChanged(target, raiseSpecificPropertyChanged);
+			}
+
+			var func = target.__propertyChangeHandlers[property];
+
+			if (!func) {
+				target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
+			}
+
+			func.add(handler);
+		},
+
+		removePropertyChanged: function Sys$Observer$removeSpecificPropertyChanged(target, property, handler) {
+			var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
+
+			if (func) {
+				func.remove(handler);
+
+				// if the functor is empty then remove the callback as an optimization
+				if (func.isEmpty()) {
+					delete target.__propertyChangeHandlers[property];
+
+					var hasHandlers = false;
+					for (var remainingHandler in target.__propertyChangeHandlers) {
+						if (target.__propertyChangeHandlers.hasOwnProperty(remainingHandler)) {
+							hasHandlers = true;
+						}
+					}
+
+					if (!hasHandlers) {
+						target.__propertyChangeHandlers = null;
+						Sys.Observer.removePropertyChanged(target, raiseSpecificPropertyChanged);
+					}
+				}
+			}
+		},
+
+		raisePropertyChanged: Sys.Observer.raisePropertyChanged,
+
+		setValue: Sys.Observer.setValue
 	});
 	// #endregion
 })();

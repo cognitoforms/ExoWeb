@@ -55,10 +55,11 @@ end
 		TimeSpan
 		Date
 		Object
-		PropertyObserver
-		MsAjax},
+		Observer
+		PropertyObserver},
 
 	"base/model" => %w{
+		Resource	
 		Format
 		Model
 		Entity
@@ -67,25 +68,28 @@ end
 		PathTokens
 		PropertyChain
 		ObjectMeta
+		RuleInvocationType
 		Rule
 		RuleInput
+		ConditionRule
+		ValidatedPropertyRule
+		CalculatedPropertyRule
 		RequiredRule
 		RangeRule
 		AllowedValuesRule
 		CompareRule
-		ErrorIfExpressionsRule
 		RequiredIfRule
-		RequiredIfExpressionsRule
 		StringLengthRule
 		StringFormatRule
 		ListLengthRule
-		CalculatedPropertyRule
 		ConditionTypeSet
 		ConditionType
+		ConditionTarget
 		Condition
 		FormatError
 		FormatProvider
-		LazyLoader},
+		LazyLoader
+		Utilities},
 
 	"base/mapper" => %w{
 		ObjectProvider
@@ -101,7 +105,6 @@ end
 		ChangeSet
 		ChangeLog
 		ServerSync
-		TriggersRoundtripRule
 		Internals
 		TypeLazyLoader
 		ObjectLazyLoader
@@ -142,7 +145,7 @@ end
 	
 	"extensions/dotnet" => %w{WebService},
 
-	"extensions/msajax" => %w{FormatProvider}
+	"extensions/msajax" => %w{FormatProvider ObserverProvider}
 }
 
 @exports = {
@@ -156,8 +159,12 @@ end
 }
 
 def build_content(header_args, dir, files, indent, exports)
+	namespace = ""
+	if (exports) 
+		namespace = exports + "."
+	end
 	return files.map do |file|
-			str = "\n" + ("\t" * indent) + "// #region " + file
+			str = "\n" + ("\t" * indent) + "// #region " + namespace + file
 			str += "\n" + ("\t" * indent) + ("/" * 50) + "\n\n"
 			str += read(File.join(dir, file + ".js"), indent, exports)
 			str += "\n" + ("\t" * indent) + "// #endregion\n"
@@ -222,8 +229,8 @@ end
 
 task :build_msajax_nojquery do
 	File.open(File.join(@dist_dir, "exoweb-msajax-nojquery.js"), "w") do |f|
-		f.write("Type.registerNamespace(\"ExoWeb\");\n")
-		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
+		f.write("window.ExoWeb = {};\n")
+		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("window.ExoWeb." + ns + " = {};\n") }
 		f.write("\n(function() {\n")
 		
 		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet", "extensions/msajax"].each do |name|
@@ -243,8 +250,8 @@ end
 
 task :build_msajax do
 	File.open(File.join(@dist_dir, "exoweb-msajax.js"), "w") do |f|
-		f.write("Type.registerNamespace(\"ExoWeb\");\n")
-		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("Type.registerNamespace(\"ExoWeb." + ns + "\");\n") }
+		f.write("window.ExoWeb = {};\n")
+		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("window.ExoWeb." + ns + " = {};\n") }
 		f.write("\n(function() {\n")
 		
 		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/jquery-msajax", "extensions/dotnet", "extensions/msajax"].each do |name|
@@ -264,7 +271,7 @@ end
 
 task :build_mock do
 	File.open(File.join(@dist_dir, "exoweb-mock.js"), "w") do |f|
-		f.write("Type.registerNamespace(\"ExoWeb\");\n")
+		f.write("window.ExoWeb = {};\n")
 		f.write("\n(function() {\n")
 		
 		["base/mock"].each do |name|
@@ -286,6 +293,6 @@ task :build => [:build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plug
 	puts("completed default task")
 end
 
-task :default => [:run_specs, :build] do
+task :default => [:build] do
 	puts("completed default task")
 end

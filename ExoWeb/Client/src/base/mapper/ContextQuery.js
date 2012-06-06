@@ -27,7 +27,7 @@ ContextQuery.mixin({
 			}
 
 			// Setup lazy loading on the context object to control lazy evaluation.
-			// Loading is considered complete at the same point model.ready() fires.
+			// Loading is considered complete at the same point model.ready() fires. 
 			ExoWeb.Model.LazyLoader.register(this.context, {
 				load: function context$load(obj, propName, callback, thisPtr) {
 					//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
@@ -87,7 +87,7 @@ ContextQuery.mixin({
 
 						// pre-initialize array queries
 						var arr = [];
-						Sys.Observer.makeObservable(arr);
+						Observer.makeObservable(arr);
 						this.context.model[varName] = arr;
 					}
 
@@ -108,7 +108,7 @@ ContextQuery.mixin({
 								from: query.from,
 								ids: query.ids,
 								// TODO: this will be subset of paths interpreted as scope-of-work
-								include: query.include ? query.include.filter(function (p) { return p.startsWith("this."); }) : [],
+								include: query.include ? query.include : [],
 								inScope: true,
 								forLoad: false
 							};
@@ -161,18 +161,18 @@ ContextQuery.mixin({
 			}
 
 			// Fetch types in a single batch request
-			fetchTypes(model, typesToLoad, signal.pending(), this);
+			if (typesToLoad.length > 0) {
+				fetchTypes(model, typesToLoad, signal.pending(), this);
+			}
 
-			signal.waitForAll(function() {
-				// Fetch additional types based on model queries and paths
-				if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
-					ExoWeb.eachProp(this.options.model, function (varName, query) {
-						fetchQueryTypes(this.context.model.meta, query.from, query.normalized, this.state[varName].signal.pending(null, this, true));
-					}, this);
-				}
+			// Fetch additional types based on model queries and paths
+			if (this.options.model && (!this.options.types || this.options.types instanceof Array)) {
+				ExoWeb.eachProp(this.options.model, function (varName, query) {
+					fetchQueryTypes(this.context.model.meta, query.from, query.normalized, signal.pending());
+				}, this);
+			}
 
-				callback.call(thisPtr || this);
-			}, this);
+			signal.waitForAll(callback, thisPtr);
 		},
 
 	// Process embedded data as if it had been recieved from the server in
@@ -195,7 +195,7 @@ ContextQuery.mixin({
 					if (this.options.changes) {
 						this.options.changes.forEach(function (change) {
 							if (change.type === "InitNew") {
-								tryGetJsType(this.context.server._model, change.instance.type, null, false, function (jstype) {
+								tryGetJsType(this.context.server.model, change.instance.type, null, false, function (jstype) {
 									var obj = jstype.meta.get(change.instance.id);
 									if (obj) {
 										obj.meta.isNew = true;
@@ -273,7 +273,7 @@ ContextQuery.mixin({
 						function context$objects$callback(result) {
 							objectsFromJson(this.context.model.meta, result.instances, function () {
 								if (result.conditions) {
-									conditionsFromJson(this.context.model.meta, result.conditions, function () {
+									conditionsFromJson(this.context.model.meta, result.conditions, null, function () {
 										batchQuerySignal.oneDone();
 									});
 								}
@@ -373,7 +373,7 @@ ContextQuery.mixin({
 									// load the json. this may happen asynchronously to increment the signal just in case
 									objectsFromJson(this.context.model.meta, result.instances, allSignals.pending(function () {
 										if (result.conditions) {
-											conditionsFromJson(this.context.model.meta, result.conditions, allSignals.pending());
+											conditionsFromJson(this.context.model.meta, result.conditions, null, allSignals.pending());
 										}
 									}), this);
 								}, this, true),
@@ -449,7 +449,7 @@ ContextQuery.mixin({
 								}, this);
 
 								if (this.state[varName].conditionsJson) {
-									conditionsFromJson(this.context.model.meta, this.state[varName].conditionsJson, function () {
+									conditionsFromJson(this.context.model.meta, this.state[varName].conditionsJson, null, function () {
 										// model object has been successfully loaded!
 										allSignals.oneDone();
 									}, this);

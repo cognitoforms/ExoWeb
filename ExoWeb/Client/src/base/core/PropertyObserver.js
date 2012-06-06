@@ -32,7 +32,7 @@ PropertyObserver.mixin({
 
 			// Have to store the array since if the value changes we won't necessarily be able to retrieve the original array
 			if (this._collectionTarget !== undefined && this._collectionTarget !== null) {
-				Sys.Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
+				Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
 			}
 
 			this._collectionTarget = value;
@@ -52,7 +52,7 @@ PropertyObserver.mixin({
 				});
 			};
 
-			Sys.Observer.addCollectionChanged(this._collectionTarget, this._collectionHandler);
+			Observer.addCollectionChanged(this._collectionTarget, this._collectionHandler);
 		}
 		else {
 			this._raiseEvent("valueCaptured", [value]);
@@ -87,7 +87,7 @@ PropertyObserver.mixin({
 			}
 		};
 
-		Sys.Observer.addSpecificPropertyChanged(this._source, this._prop, this._propHandler);
+		Observer.addPropertyChanged(this._source, this._prop, this._propHandler);
 
 		// If we currently have a value, then notify subscribers
 		if (value !== undefined && value !== null) {
@@ -97,11 +97,11 @@ PropertyObserver.mixin({
 	stop: function PropertyObserver$stop() {
 		if (this._source) {
 			// Remove the registered event(s)
-			Sys.Observer.removeSpecificPropertyChanged(this._source, this._prop, this._propHandler);
+			Observer.removePropertyChanged(this._source, this._prop, this._propHandler);
 
 			// Have to store the array since if the value changes we won't necessarily be able to retrieve the original array
 			if (this._collectionTarget !== undefined && this._collectionTarget !== null) {
-				Sys.Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
+				Observer.removeCollectionChanged(this._collectionTarget, this._collectionHandler);
 				this.release(this._collectionTarget);
 			}
 			else {

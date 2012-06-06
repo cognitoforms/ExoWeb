@@ -23,7 +23,7 @@ namespace ExoWeb
 			Config = new Dictionary<string, object>();
 		}
 
-		internal ServiceRequest(ModelType[] types)
+		internal ServiceRequest(string[] types)
 		{
 			Types = types;
 			Config = new Dictionary<string, object>();
@@ -36,7 +36,7 @@ namespace ExoWeb
 		/// <summary>
 		/// The set of type metadata to return.
 		/// </summary>
-		public ModelType[] Types { get; private set; }
+		public string[] Types { get; private set; }
 
 		/// <summary>
 		/// The set of queries to load.
@@ -79,8 +79,7 @@ namespace ExoWeb
 			try
 			{
 				// Set the types to return from the request
-				if (Types != null)
-					response.Types = Types.ToDictionary<ModelType, string>(type => type.Name);
+				response.Types = Types;
 
 				// Apply view initialization changes
 				if (Changes != null && Changes.Length > 0 && Changes[0].Source == ChangeSource.Init)
@@ -342,7 +341,7 @@ namespace ExoWeb
 		public override string ToString()
 		{
 			return
-				(Types != null && Types.Length > 0 ? Types.Aggregate("Types: ", (p, t) => p.Length > 7 ? p + "," + t : t.Name) : "") +
+				(Types != null && Types.Length > 0 ? "Types: " + String.Join(",", Types) : "") +
 				(Queries != null && Queries.Length > 0 ? Queries.Aggregate("Queries: ", (p, q) => p.Length > 7 ? p + "," + q : q.ToString()) : "");
 		}
 
@@ -433,8 +432,8 @@ namespace ExoWeb
 				// Get the type of event
 				string eventName = json.Get<string>("type");
 
-				// Instance must be specified for domain events
-				if (instance != null)
+				// First see if it is a custom domain event
+				if (instance != null || eventName == "Save")
 				{
 					Type eventType = eventName == "Save" ? typeof(SaveEvent) : instance.Type.GetEventType(eventName);
 
@@ -456,19 +455,22 @@ namespace ExoWeb
 					}
 				}
 
-				// Model method
+				// Then see if it is a model method invocation
 				var separator =  eventName.LastIndexOf(".");
-				var type = ModelContext.Current.GetModelType(eventName.Substring(0, separator));
-				var methodName = eventName.Substring(separator + 1);
-				ModelMethod method = null;
-				while (type != null && method == null)
+				if (separator > 0)
 				{
-					method = type.Methods[methodName];
-					type = type.BaseType;
-				}
+					var type = ModelContext.Current.GetModelType(eventName.Substring(0, separator));
+					var methodName = eventName.Substring(separator + 1);
+					ModelMethod method = null;
+					while (type != null && method == null)
+					{
+						method = type.Methods[methodName];
+						type = type.BaseType;
+					}
 
-				if (method != null)
-					return new ModelMethodEvent(instance, method, json.Get<Json>("event"), Include);
+					if (method != null)
+						return new ModelMethodEvent(instance, method, json.Get<Json>("event"), Include);
+				}
 
 				// Indicate that the event name could not be resolved
 				throw new ArgumentException(eventName + " is not a valid event for " + instance.Type.Name);
@@ -625,14 +627,14 @@ namespace ExoWeb
 					foreach (var p in Include)
 					{
 						var path = p.Replace(" ", "");
-						if (path.StartsWith("this.") || path.StartsWith("this{"))
-						{
-							if (path.StartsWith("this{"))
-								path = path.Substring(5, path.Length - 6);
-							else
-								path = path.Substring(5);
+						if (path.StartsWith("this."))
+							path = path.Substring(5);
+						else if (path.StartsWith("this{"))
+							path = path.Substring(4);
+
+						ModelPath instancePath;
+						if (From.TryGetPath(path, out instancePath))
 							paths += path + ",";
-						}
 						else
 							PrepareStaticPath(path, response);
 					}
@@ -790,9 +792,7 @@ namespace ExoWeb
 		object IJsonSerializable.Deserialize(Json json)
 		{
 			// Types
-			var types = json.Get<string[]>("types");
-			if (types != null)
-				Types = types.Select(type => ModelContext.Current.GetModelType(type)).ToArray();
+			Types = json.Get<string[]>("types");
 
 			// Queries
 			Queries = json.Get<Query[]>("queries");

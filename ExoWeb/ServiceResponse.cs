@@ -11,9 +11,12 @@ namespace ExoWeb
 	/// Represents a response to a service request.  Depending on the type of request, different values will be 
 	/// initialize on the instance.
 	/// </summary>
-	internal class ServiceResponse : IJsonSerializable
+	internal class ServiceResponse
 	{
-		public Dictionary<string, ModelType> Types { get; internal set; }
+		static string typeCacheHash;
+		static Dictionary<string, string> typeJson;
+
+		public string[] Types { get; internal set; }
 
 		public Dictionary<string, ModelTypeInfo> Instances { get; internal set; }
 
@@ -42,37 +45,68 @@ namespace ExoWeb
 			return typeInfo;
 		}
 
-		#region IJsonSerializable
-
-		void IJsonSerializable.Serialize(Json json)
+		/// <summary>
+		/// Efficiently serializes the request to json leveraging caching for model type requests.
+		/// </summary>
+		/// <returns></returns>
+		internal string ToJson()
 		{
+			var builder = new StringBuilder();
+
+			builder.Append("{");
+
 			if (Types != null && Types.Any())
-				json.Set("types", Types);
+			{
+				builder.Append("\"types\":{");
+				foreach (var type in Types)
+					builder.Append(builder.Length > 10 ? ",\"" : "\"").Append(type).Append("\":").Append(GetTypeJson(type));
+				builder.Append("}");
+			}
 
 			if (Instances != null && Instances.Any())
-				json.Set("instances", Instances);
+				builder.Append(builder.Length > 1 ? "," : "").Append("\"instances\":").Append(ExoWeb.ToJson(Instances.GetType(), Instances));
 
 			if (Conditions != null && Conditions.Any())
-				json.Set("conditions", Conditions);
+				builder.Append(builder.Length > 1 ? "," : "").Append("\"conditions\":").Append(ExoWeb.ToJson(Conditions.GetType(), Conditions));
 
 			if (Events != null && Events.Any())
-				json.Set("events", Events);
+				builder.Append(builder.Length > 1 ? "," : "").Append("\"events\":").Append(ExoWeb.ToJson(Events.GetType(), Events));
 
 			if (Model != null && Model.Any())
-				json.Set("model", Model);
+				builder.Append(builder.Length > 1 ? "," : "").Append("\"model\":").Append(ExoWeb.ToJson(Model.GetType(), Model));
 
 			if (ServerInfo != null)
-				json.Set("serverInfo", ServerInfo);
+				builder.Append(builder.Length > 1 ? "," : "").Append("\"serverInfo\":").Append(ExoWeb.ToJson(ServerInfo.GetType(), ServerInfo));
 
 			if (Changes != null && Changes.Any())
-				json.Set("changes", (IEnumerable<ModelEvent>)Changes.Where(modelEvent => !(modelEvent is ModelValueChangeEvent) || ExoWeb.IncludeInClientModel(((ModelValueChangeEvent)modelEvent).Property)));
+				builder.Append(builder.Length > 1 ? "," : "").Append("\"changes\":").Append(ExoWeb.ToJson(typeof(IEnumerable<ModelEvent>), Changes.Where(modelEvent => !(modelEvent is ModelValueChangeEvent) || ExoWeb.IncludeInClientModel(((ModelValueChangeEvent)modelEvent).Property))));
+
+			builder.Append("}");
+			return builder.ToString();
 		}
 
-		object IJsonSerializable.Deserialize(Json json)
+		/// <summary>
+		/// Gets the type json for the specified <see cref="ModelType"/>.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <returns></returns>
+		static string GetTypeJson(string type)
 		{
-			throw new NotSupportedException("JSON service responses should never be deserialized on the server.");
-		}
+			// Reinitialize the json type cache of the cache hash has changed
+			if (typeCacheHash != ExoWeb.CacheHash)
+			{
+				typeJson = new Dictionary<string, string>();
+				typeCacheHash = ExoWeb.CacheHash;
+			}
 
-		#endregion
+			// Return the type json if it is cached
+			string json;
+			if (typeJson.TryGetValue(type, out json))
+				return json;
+
+			// Create and cache the type json if it does not yet exist
+			typeJson[type] = json = ExoWeb.ToJson(typeof(ModelType), ModelContext.Current.GetModelType(type));
+			return json;
+		}
 	}
 }

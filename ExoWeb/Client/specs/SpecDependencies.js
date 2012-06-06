@@ -57,7 +57,7 @@ String.prototype.inNamespace = function(ns) {
 
 // Dependency definitions
 ///////////////////////////////////////
-exports.init = function() {
+exports.init = function () {
 	ensureNode("core.TypeChecking");
 	ensureNode("core.Utilities");
 	"core.Trace".dependsOn("core.Utilities");
@@ -71,6 +71,7 @@ exports.init = function() {
 	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity", "model.ObjectMeta");
 	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type");
 	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object", "model.Property");
+	"model.PathTokens".dependsOn("core.Function", "model.Property", "model.PropertyChain", "core.Observer");
 };
 
 // Module loading

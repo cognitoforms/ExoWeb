@@ -81,8 +81,25 @@
     <Reference Include="System.Web.Mobile" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Client\docs.htm" />
+    <Content Include="Client\ref\jquery\jquery-1.5.1.js" />
+    <Content Include="Client\ref\jquery\jquery-1.7.2.js" />
+    <Content Include="Client\ref\jquery\jquery.observable.js" />
+    <Content Include="Client\ref\jquery\jquery.views.js" />
+    <Content Include="Client\ref\jquery\jsrender.js" />
+    <Content Include="Client\ref\syntaxhighlighter\shBrushJScript.js" />
+    <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
+    <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
+    <Content Include="Client\src\base\core\Observer.js" />
+    <Content Include="Client\src\base\model\ConditionTarget.js" />
+    <Content Include="Client\src\base\model\Resource.js" />
+    <Content Include="Client\src\base\model\RuleInvocationType.js" />
+    <Content Include="Client\src\base\model\Utilities.js" />
+    <Content Include="Client\src\base\model\ValidatedPropertyRule.js" />
     <Compile Include="EnsureConditionsEventArgs.cs" />
     <Compile Include="ExoWeb.cs" />
+    <Compile Include="JavaScriptExpressionTranslator.cs" />
+    <Compile Include="JsonSerializer.cs" />
     <Compile Include="ModelInstanceInfo.cs" />
     <Compile Include="ModelTypeInfo.cs" />
     <Compile Include="IJsonSerializable.cs" />
@@ -106,6 +123,7 @@
     <Compile Include="Templates\IBindable.cs" />
     <Compile Include="Templates\ITemplate.cs" />
     <Compile Include="Templates\JavaScript\AdapterWrapper.cs" />
+    <Compile Include="Templates\JavaScript\ConditionWrapper.cs" />
     <Compile Include="Templates\JavaScript\PageContextWrapper.cs" />
     <Compile Include="Templates\JavaScript\TemplateContextWrapper.cs" />
     <Compile Include="Templates\JavaScript\DictionaryWrapper.cs" />
@@ -217,7 +235,6 @@
     <Content Include="Client\src\base\core\FunctionChain.js" />
     <Content Include="Client\src\base\core\Functor.js" />
     <Content Include="Client\src\base\core\MessageQueue.js" />
-    <Content Include="Client\src\base\core\MsAjax.js" />
     <Content Include="Client\src\base\core\Object.js" />
     <Content Include="Client\src\base\core\PropertyObserver.js" />
     <Content Include="Client\src\base\core\Random.js" />
@@ -248,7 +265,6 @@
     <Content Include="Client\src\base\mapper\SaveProvider.js" />
     <Content Include="Client\src\base\mapper\ServerSync.js" />
     <Content Include="Client\src\base\mapper\Translation.js" />
-    <Content Include="Client\src\base\mapper\TriggersRoundtripRule.js" />
     <Content Include="Client\src\base\mapper\TypeLazyLoader.js" />
     <Content Include="Client\src\base\mapper\TypeProvider.js" />
     <Content Include="Client\src\base\mock\Mock.js" />
@@ -260,7 +276,7 @@
     <Content Include="Client\src\base\model\ConditionTypeSet.js" />
     <Content Include="Client\src\base\model\StringFormatRule.js" />
     <Content Include="Client\src\base\model\Entity.js" />
-    <Content Include="Client\src\base\model\ErrorIfExpressionsRule.js" />
+    <Content Include="Client\src\base\model\ConditionRule.js" />
     <Content Include="Client\src\base\model\Format.js" />
     <Content Include="Client\src\base\model\FormatError.js" />
     <Content Include="Client\src\base\model\FormatProvider.js" />
@@ -272,7 +288,6 @@
     <Content Include="Client\src\base\model\Property.js" />
     <Content Include="Client\src\base\model\PropertyChain.js" />
     <Content Include="Client\src\base\model\RangeRule.js" />
-    <Content Include="Client\src\base\model\RequiredIfExpressionsRule.js" />
     <Content Include="Client\src\base\model\RequiredIfRule.js" />
     <Content Include="Client\src\base\model\RequiredRule.js" />
     <Content Include="Client\src\base\model\Rule.js" />
@@ -302,6 +317,7 @@
     <Content Include="Client\src\extensions\jquery-msajax\Selectors.js" />
     <Content Include="Client\src\extensions\jquery-msajax\Validation.js" />
     <Content Include="Client\src\extensions\msajax\FormatProvider.js" />
+    <Content Include="Client\src\extensions\msajax\ObserverProvider.js" />
     <Content Include="Dependencies\Jurassic.dll" />
     <Content Include="Dependencies\Jurassic.pdb" />
   </ItemGroup>
@@ -313,9 +329,16 @@
     <None Include="Client\ref\aspnetajax\LICENSE" />
     <None Include="Client\ref\jsmin\jsmin" />
     <None Include="Client\ref\jsmin\jsmin.c" />
+    <None Include="Client\ref\syntaxhighlighter\MIT-LICENSE" />
     <None Include="NuGet\ExoWeb.Scripts.nuspec" />
     <None Include="NuGet\ExoWeb.nuspec" />
-    <None Include="NuGet\Web.config.transform" />
+    <None Include="NuGet\Views\Web.config.transform" />
+    <None Include="NuGet\Web.config.transform">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Client\ref\syntaxhighlighter\scripts\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

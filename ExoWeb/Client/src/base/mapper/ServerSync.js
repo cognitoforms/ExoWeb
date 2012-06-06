@@ -7,7 +7,6 @@ function ServerSync(model) {
 		throw ExoWeb.trace.logError("server", "A model must be specified when constructing a ServerSync object.");
 	}
 
-	this._model = model;
 	this._changeLog = new ChangeLog();
 	this._pendingServerEvent = false;
 	this._pendingRoundtrip = false;
@@ -17,6 +16,9 @@ function ServerSync(model) {
 	this._objectsDeleted = [];
 	this._translator = new ExoWeb.Translator();
 	this._serverInfo = null;
+
+	// define properties
+	Object.defineProperty(this, "model", { value: model });
 
 	function isDeleted(obj, isChange) {
 		if (Array.contains(this._objectsDeleted, obj)) {
@@ -38,7 +40,7 @@ function ServerSync(model) {
 		return !isDeleted.apply(this, [obj, true]) && property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
 	}
 
-	this._listener = new ExoModelEventListener(this._model, this._translator, {
+	this._listener = new ExoModelEventListener(this.model, this._translator, {
 		listChanged: filterPropertyEvent.bind(this),
 		propertyChanged: filterPropertyEvent.bind(this),
 		objectRegistered: filterObjectEvent.bind(this),
@@ -102,11 +104,25 @@ function ServerSync(model) {
 	});
 
 	// Assign back reference
-	model._server = this;
+	Object.defineProperty(model, "server", { value: this });
 
 	this._listener.addChangeDetected(this._captureChange.bind(this));
 
-	Sys.Observer.makeObservable(this);
+	Observer.makeObservable(this);
+}
+
+function isPropertyChangePersisted(change) {
+	if (change.property) {
+		var jstype = ExoWeb.Model.Model.getJsType(change.instance.type, true);
+		if (jstype) {
+			var prop = jstype.meta.property(change.property);
+			// Can't save non-persisted properties
+			if (!prop.get_isPersisted()) {
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 ServerSync.mixin(Functor.eventing);
@@ -185,8 +201,20 @@ ServerSync.mixin({
 		}
 
 		if (Array.contains(this._objectsExcludedFromSave, obj)) {
+			var oldPendingChanges;
+			if (this._saveRoot) {
+				// If autosave is enabled then determine if we need to queue a timeout
+				oldPendingChanges = this.changes(false, this._saveRoot, true);
+			}
 			Array.remove(this._objectsExcludedFromSave, obj);
-			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+			Observer.raisePropertyChanged(this, "HasPendingChanges");
+
+			// Determine if ther are now pending changes
+			if (oldPendingChanges.length === 0 && this._saveInterval && !this._saveTimeout) {
+				if (this.changes(false, this._saveRoot, true).length > 0) {
+					this._queueAutoSave();
+				}
+			}
 			return true;
 		}
 	},
@@ -196,8 +224,21 @@ ServerSync.mixin({
 		}
 
 		if (!Array.contains(this._objectsExcludedFromSave, obj)) {
+			var oldPendingChanges;
+			if (this._saveRoot) {
+				// If autosave is enabled then determine if we need to queue a timeout
+				oldPendingChanges = this.changes(false, this._saveRoot, true);
+			}
 			this._objectsExcludedFromSave.push(obj);
-			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+			Observer.raisePropertyChanged(this, "HasPendingChanges");
+
+			// Determine if ther are no longer pending changes
+			if (oldPendingChanges && oldPendingChanges.length > 0 && this._saveInterval && this._saveTimeout) {
+				if (this.changes(false, this._saveRoot, true).length === 0) {
+					window.clearTimeout(this._saveTimeout);
+					this._saveTimeout = null;
+				}
+			}
 			return true;
 		}
 	},
@@ -326,7 +367,7 @@ ServerSync.mixin({
 			afterApply = callbackOrOptions.afterApply;
 		}
 
-		var handler = new ResponseHandler(this._model, this, {
+		var handler = new ResponseHandler(this.model, this, {
 			instances: result.instances,
 			conditions: result.conditions,
 			types: result.types && result.types instanceof Array ? null : result.types,
@@ -386,7 +427,7 @@ ServerSync.mixin({
 		// Checkpoint the log to ensure that we only truncate changes that were saved.
 		var checkpoint = this._changeLog.checkpoint("server event " + name + " " + (new Date()).format("d"));
 
-		Sys.Observer.setValue(this, "PendingServerEvent", true);
+		Observer.setValue(this, "PendingServerEvent", true);
 
 		var args = { type: "raiseServerEvent", eventTarget: instance, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
 		this._raiseBeginEvents("raiseServerEvent", args);
@@ -420,7 +461,7 @@ ServerSync.mixin({
 		);
 	},
 	_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, checkpoint, callback) {
-		Sys.Observer.setValue(this, "PendingServerEvent", false);
+		Observer.setValue(this, "PendingServerEvent", false);
 
 		args.responseObject = result;
 
@@ -449,7 +490,7 @@ ServerSync.mixin({
 		});
 	},
 	_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(error, args, callback) {
-		Sys.Observer.setValue(this, "PendingServerEvent", false);
+		Observer.setValue(this, "PendingServerEvent", false);
 
 		args.error = error;
 
@@ -499,7 +540,7 @@ ServerSync.mixin({
 
 		var checkpoint = this._changeLog.checkpoint("roundtrip " + (new Date()).format("d"));
 
-		Sys.Observer.setValue(this, "PendingRoundtrip", true);
+		Observer.setValue(this, "PendingRoundtrip", true);
 
 		var args = { type: "roundtrip", checkpoint: checkpoint };
 		this._raiseBeginEvents("roundtrip", args);
@@ -517,7 +558,7 @@ ServerSync.mixin({
 		);
 	},
 	_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, args, checkpoint, callback) {
-		Sys.Observer.setValue(this, "PendingRoundtrip", false);
+		Observer.setValue(this, "PendingRoundtrip", false);
 
 		args.responseObject = result;
 
@@ -531,7 +572,7 @@ ServerSync.mixin({
 		});
 	},
 	_onRoundtripFailed: function ServerSync$_onRoundtripFailed(error, args, callback) {
-		Sys.Observer.setValue(this, "PendingRoundtrip", false);
+		Observer.setValue(this, "PendingRoundtrip", false);
 
 		args.error = error;
 
@@ -596,7 +637,7 @@ ServerSync.mixin({
 		// Checkpoint the log to ensure that we only truncate changes that were saved.
 		var checkpoint = this._changeLog.checkpoint("save " + (new Date()).format("d"));
 
-		Sys.Observer.setValue(this, "PendingSave", true);
+		Observer.setValue(this, "PendingSave", true);
 
 		var args = { type: "save", root: root, checkpoint: checkpoint };
 		this._raiseBeginEvents("save", args);
@@ -609,7 +650,7 @@ ServerSync.mixin({
 		);
 	},
 	_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, checkpoint, callback) {
-		Sys.Observer.setValue(this, "PendingSave", false);
+		Observer.setValue(this, "PendingSave", false);
 
 		args.responseObject = result;
 
@@ -623,7 +664,7 @@ ServerSync.mixin({
 		});
 	},
 	_onSaveFailed: function (error, args, callback) {
-		Sys.Observer.setValue(this, "PendingSave", false);
+		Observer.setValue(this, "PendingSave", false);
 
 		args.error = error;
 
@@ -643,7 +684,6 @@ ServerSync.mixin({
 	stopAutoSave: function ServerSync$stopAutoSave() {
 		if (this._saveTimeout) {
 			window.clearTimeout(this._saveTimeout);
-
 			this._saveTimeout = null;
 		}
 
@@ -832,7 +872,7 @@ ServerSync.mixin({
 
 		// raise "HasPendingChanges" change event, only new changes were recorded
 		if (newChanges > 0) {
-			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+			Observer.raisePropertyChanged(this, "HasPendingChanges");
 		}
 	},
 	applySaveChange: function (change, before, after, callback, thisPtr) {
@@ -844,8 +884,8 @@ ServerSync.mixin({
 		}
 
 		change.deleted.forEach(function(instance) {
-			tryGetJsType(this._model, instance.type, null, false, function (type) {
-				tryGetEntity(this._model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
+			tryGetJsType(this.model, instance.type, null, false, function (type) {
+				tryGetEntity(this.model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
 					// Notify server object that the instance is deleted
 					this.notifyDeleted(obj);
 					// Simply a marker flag for debugging purposes
@@ -857,7 +897,7 @@ ServerSync.mixin({
 		}, this);
 
 		change.added.forEach(function (idChange, idChangeIndex) {
-			ensureJsType(this._model, idChange.type, this.ignoreChanges(before, function (jstype) {
+			ensureJsType(this.model, idChange.type, this.ignoreChanges(before, function (jstype) {
 				var serverOldId = idChange.oldId;
 				var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 						this._translator.reverse(idChange.type, serverOldId) :
@@ -865,7 +905,7 @@ ServerSync.mixin({
 
 				// If the client recognizes the old id then this is an object we have seen before
 				if (clientOldId) {
-					var type = this._model.type(idChange.type);
+					var type = this.model.type(idChange.type);
 
 					// Attempt to load the object.
 					var obj = type.get(clientOldId);
@@ -880,7 +920,7 @@ ServerSync.mixin({
 
 					// Change the id and make non-new.
 					type.changeObjectId(clientOldId, idChange.newId);
-					Sys.Observer.setValue(obj.meta, "isNew", false);
+					Observer.setValue(obj.meta, "isNew", false);
 
 					// Update affected scope queries
 					this._scopeQueries.forEach(function (query) {
@@ -938,7 +978,7 @@ ServerSync.mixin({
 		}
 	},
 	applyInitChange: function (change, before, after, callback, thisPtr) {
-		tryGetJsType(this._model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
+		tryGetJsType(this.model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
 			if (!jstype.meta.get(change.instance.id)) {
 				// Create the new object
 				var newObj = new jstype();
@@ -962,8 +1002,8 @@ ServerSync.mixin({
 		var exited = false;
 		var callImmediately = true;
 
-		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 				// Update change to reflect the object's new id
 				ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
@@ -974,7 +1014,7 @@ ServerSync.mixin({
 						callImmediately = false;
 					}
 
-					tryGetJsType(this._model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
+					tryGetJsType(this.model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
 						var refObj = fromExoModel(change.newValue, this._translator, true);
 
 						// Update change to reflect the object's new id
@@ -986,7 +1026,7 @@ ServerSync.mixin({
 						}
 
 						// Change the property value
-						Sys.Observer.setValue(srcObj, change.property, refObj);
+						Observer.setValue(srcObj, change.property, refObj);
 
 						// Callback once the type has been loaded
 						if (!callImmediately && callback) {
@@ -995,12 +1035,12 @@ ServerSync.mixin({
 					}, after), this);
 				}
 				else {
-					Sys.Observer.setValue(srcObj, change.property, null);
+					Observer.setValue(srcObj, change.property, null);
 				}
 
 				// Update oldValue's id in change object
 				if (change.oldValue) {
-					tryGetJsType(this._model, change.oldValue.type, null, true, this.ignoreChanges(before, function (refType) {
+					tryGetJsType(this.model, change.oldValue.type, null, true, this.ignoreChanges(before, function (refType) {
 						// Update change to reflect the object's new id
 						var refObj = fromExoModel(change.oldValue, this._translator, true);
 						ServerSync$retroactivelyFixChangeWhereIdChanged(change.oldValue, refObj);
@@ -1017,8 +1057,8 @@ ServerSync.mixin({
 		exited = true;
 	},
 	applyValChange: function (change, before, after, callback, thisPtr) {
-		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 				// Update change to reflect the object's new id
 				ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
@@ -1027,7 +1067,7 @@ ServerSync.mixin({
 				var newValue = change.newValue;
 				
 				// Cache the property since it is not a simple property access.
-				var property = srcObj.meta.property(change.property, true);
+				var property = srcObj.meta.property(change.property);
 
 				if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
 
@@ -1044,8 +1084,11 @@ ServerSync.mixin({
 						newValue = newValue.addHours(serverOffset - localOffset);
 					}
 				}
+				else if (newValue && newValue instanceof TimeSpan) {
+					newValue = newValue.toObject();
+				}
 
-				Sys.Observer.setValue(srcObj, change.property, newValue);
+				Observer.setValue(srcObj, change.property, newValue);
 
 			}, after), this);
 		}, this);
@@ -1059,12 +1102,12 @@ ServerSync.mixin({
 		var exited = false;
 		var callImmediately = true;
 
-		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 				// Update change to reflect the object's new id
 				ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
-				var prop = srcObj.meta.property(change.property, true);
+				var prop = srcObj.meta.property(change.property);
 				var list = prop.value(srcObj);
 
 				list.beginUpdate();
@@ -1080,7 +1123,7 @@ ServerSync.mixin({
 
 					// Add each item to the list after ensuring that the type is loaded
 					change.added.forEach(function (item) {
-						tryGetJsType(this._model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
+						tryGetJsType(this.model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
 							var itemObj = fromExoModel(item, this._translator, true);
 
 							// Update change to reflect the object's new id
@@ -1096,7 +1139,7 @@ ServerSync.mixin({
 				// apply removed items
 				change.removed.forEach(function (item) {
 					// no need to load instance only to remove it from a list when it can't possibly exist
-					tryGetJsType(this._model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
+					tryGetJsType(this.model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
 						var itemObj = fromExoModel(item, this._translator, true);
 
 						// Update change to reflect the object's new id
@@ -1133,8 +1176,8 @@ ServerSync.mixin({
 
 	// Rollback
 	///////////////////////////////////////////////////////////////////////
-	rollback: function ServerSync$rollback(steps, callback) {
-		var depth = 0;
+	rollback: function ServerSync$rollback(checkpoint, callback) {
+		var signalRegistered;
 
 		try {
 			this.beginApplyingChanges();
@@ -1143,14 +1186,14 @@ ServerSync.mixin({
 			var signalRegistered = false;
 
 			function processNextChange() {
-				var change = null;
-
-				if (steps === undefined || depth < steps) {
-					change = this._changeLog.undo();
-					depth++;
-				}
+				var change = this._changeLog.undo();
 
 				if (change) {
+					if (change === checkpoint) {
+						// Exit when we find the checkpoint
+						return;
+					}
+
 					var callback = signal.pending(processNextChange, this);
 
 					if (change.type == "InitNew") {
@@ -1177,7 +1220,7 @@ ServerSync.mixin({
 					callback();
 				}
 
-				Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+				Observer.raisePropertyChanged(this, "HasPendingChanges");
 			}, this);
 
 			// set signalRegistered to true to let the finally block now that the signal will handle calling endApplyingChanges
@@ -1191,28 +1234,28 @@ ServerSync.mixin({
 		}
 	},
 	rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
-		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
 
-				Sys.Observer.setValue(srcObj, change.property, change.oldValue);
+				Observer.setValue(srcObj, change.property, change.oldValue);
 				callback();
 
 			}, this);
 		}, this);
 	},
 	rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
-		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
 				if (change.oldValue) {
-					tryGetJsType(this._model, change.oldValue.type, null, true, function (refType) {
-						tryGetEntity(this._model, this._translator, refType, change.oldValue.id, change.property, LazyLoadEnum.None, function (refObj) {
-							Sys.Observer.setValue(srcObj, change.property, refObj);
+					tryGetJsType(this.model, change.oldValue.type, null, true, function (refType) {
+						tryGetEntity(this.model, this._translator, refType, change.oldValue.id, change.property, LazyLoadEnum.None, function (refObj) {
+							Observer.setValue(srcObj, change.property, refObj);
 							callback();
 						}, this);
 					}, this);
 				}
 				else {
-					Sys.Observer.setValue(srcObj, change.property, null);
+					Observer.setValue(srcObj, change.property, null);
 					callback();
 				}
 			}, this);
@@ -1223,9 +1266,9 @@ ServerSync.mixin({
 		callback();
 	},
 	rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
-		tryGetJsType(this._model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this._model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
-				var prop = srcObj.meta.property(change.property, true);
+		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+				var prop = srcObj.meta.property(change.property);
 				var list = prop.value(srcObj);
 				var translator = this._translator;
 
@@ -1233,7 +1276,7 @@ ServerSync.mixin({
 
 				// Rollback added items
 				Array.forEach(change.added, function rollbackListChanges$added(item) {
-					tryGetJsType(this._model, item.type, null, false, function (itemType) {
+					tryGetJsType(this.model, item.type, null, false, function (itemType) {
 						var childObj = fromExoModel(item, translator);
 						if (childObj) {
 							list.remove(childObj);
@@ -1243,7 +1286,7 @@ ServerSync.mixin({
 
 				// Rollback removed items
 				Array.forEach(change.removed, function rollbackListChanges$added(item) {
-					tryGetJsType(this._model, item.type, null, true, function (itemType) {
+					tryGetJsType(this.model, item.type, null, true, function (itemType) {
 						var childObj = fromExoModel(item, translator, true);
 
 						list.add(childObj);
@@ -1263,7 +1306,7 @@ ServerSync.mixin({
 		if (!this.isApplyingChanges() && this.isCapturingChanges()) {
 			if (change.property) {
 				var instance = fromExoModel(change.instance, this._translator);
-				var property = instance.meta.property(change.property, true);
+				var property = instance.meta.property(change.property);
 
 				if (property.get_jstype() === Date && change.newValue && property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
 					var serverOffset = this.get_ServerTimezoneOffset();
@@ -1271,27 +1314,38 @@ ServerSync.mixin({
 					var difference = localOffset - serverOffset;
 					change.newValue = change.newValue.addHours(difference);
 				}
+				else if (change.newValue && change.newValue instanceof TimeSpan) {
+					change.newValue = change.newValue.toObject();
+				}
 			}
 
 			this._changeLog.add(change);
 
-			Sys.Observer.raisePropertyChanged(this, "HasPendingChanges");
+			Observer.raisePropertyChanged(this, "HasPendingChanges");
 
-			if (this._saveInterval)
+			if (this._saveInterval && this.canSave(change) && isPropertyChangePersisted(change)) {
 				this._queueAutoSave();
+			}
 		}
+	},
+	changes: function ServerSync$changes(includeAllChanges, simulateInitRoot, excludeNonPersisted) {
+		var list = [];
+		var sets = serializeChanges.call(this, includeAllChanges, simulateInitRoot);
+		sets.forEach(function (set) {
+			if (excludeNonPersisted) {
+				list.addRange(set.changes.filter(isPropertyChangePersisted));
+			}
+			else {
+				list.addRange(set.changes);
+			}
+		});
+		return list;
 	},
 	get_Changes: function ServerSync$get_Changes(includeAllChanges/*, ignoreWarning*/) {
 		if (arguments.length < 2 || arguments[1] !== true) {
 			ExoWeb.trace.logWarning("server", "Method get_Changes is not intended for long-term use - it will be removed in the near future.");
 		}
-
-		var list = [];
-		var sets = this._changeLog.serialize(includeAllChanges ? null : this.canSave, this);
-		sets.forEach(function (set) {
-			list.addRange(set.changes);
-		});
-		return list;
+		return this.changes(includeAllChanges, null);
 	},
 	get_HasPendingChanges: function ServerSync$get_HasPendingChanges() {
 		return this._changeLog.sets().some(function (set) {
@@ -1311,7 +1365,7 @@ ServerSync.mixin({
 		this._pendingServerEvent = value;
 
 		if (oldValue !== value) {
-			Sys.Observer.raisePropertyChanged(this, "PendingAction");
+			Observer.raisePropertyChanged(this, "PendingAction");
 		}
 	},
 	get_PendingRoundtrip: function ServerSync$get_PendingRoundtrip() {
@@ -1322,7 +1376,7 @@ ServerSync.mixin({
 		this._pendingRoundtrip = value;
 
 		if (oldValue !== value) {
-			Sys.Observer.raisePropertyChanged(this, "PendingAction");
+			Observer.raisePropertyChanged(this, "PendingAction");
 		}
 	},
 	get_PendingSave: function ServerSync$get_PendingSave() {
@@ -1333,7 +1387,7 @@ ServerSync.mixin({
 		this._pendingSave = value;
 
 		if (oldValue !== value) {
-			Sys.Observer.raisePropertyChanged(this, "PendingAction");
+			Observer.raisePropertyChanged(this, "PendingAction");
 		}
 	},
 	get_ServerTimezoneOffset: function ServerSync$get_ServerTimezoneOffset() {
@@ -1354,51 +1408,10 @@ ServerSync.mixin({
 
 ExoWeb.Mapper.ServerSync = ServerSync;
 
-ServerSync.Roundtrip = function ServerSync$Roundtrip(root, success, failed) {
-	if (root instanceof ExoWeb.Model.Entity) {
-		root = root.meta.type.get_model();
-	}
-
-	if (root instanceof ExoWeb.Model.Model) {
-		if (root._server) {
-			if (!root._server.isApplyingChanges()) {
-				root._server.roundtrip(success, failed);
-			}
-		}
-		else {
-			ExoWeb.trace.logWarning("server", "Unable to perform roundtrip:  root is not a model or entity.");
-		}
-	}
-};
-
 ServerSync.Save = function ServerSync$Save(root, success, failed) {
-	var model;
-	if (root instanceof ExoWeb.Model.Entity) {
-		model = root.meta.type.get_model();
-	}
-
-	if (model && model instanceof ExoWeb.Model.Model) {
-		if (model._server) {
-			model._server.save(root, success, failed);
-		}
-		else {
-			// TODO
-		}
-	}
+	root.meta.type.model.server.save(root, success, failed);
 };
 
 ServerSync.GetServerTimeZone = function ServerSync$GetServerTimeZone(root) {
-	var model;
-	if (root instanceof ExoWeb.Model.Entity) {
-		model = root.meta.type.get_model();
-	}
-
-	if (model && model instanceof ExoWeb.Model.Model) {
-		if (model._server) {
-			return model._server.get_ServerTimezoneOffset(root);
-		}
-		else {
-			// TODO
-		}
-	}
+	return root.meta.type.model.server.get_ServerTimezoneOffset(root);
 };

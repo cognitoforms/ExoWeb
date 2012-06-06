@@ -1,184 +1,95 @@
-function CalculatedPropertyRule(mtype, options, ctype) {
-	var prop = this.prop = mtype.property(options.property, true);
+function CalculatedPropertyRule(rootType, options) {
+	/// <summary>Creates a rule that calculates the value of a property in the model.</summary>
+	/// <param name="rootType" type="Type">The model type the rule is for.</param>
+	/// <param name="options" type="Object">
+	///		The options for the rule, including:
+	///			property:		the property being calculated (either a Property instance or string property name)
+	///			calculate:		a function that returns the value to assign to the property, or undefined if the value cannot be calculated
+	///			name:			the optional unique name of the rule
+	///		    onInit:			true to indicate the rule should run when an instance of the root type is initialized, otherwise false
+	///		    onInitNew:		true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
+	///		    onInitExisting:	true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
+	///		    onChangeOf:		an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+	/// </param>
+	/// <returns type="CalculatedPropertyRule">The new calculated property rule.</returns>
 
-	this.isAsync = options.isAsync; 
-	this.calculateFn = options.fn;
+	// ensure the rule name is specified
+	options.name = options.name || "CalculatedProperty";
 
-	if (options.basedOn) {
-		var signal = new Signal("calculated property dependencies");
-		var inputs = [];
+	// store the property being validated
+	var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
+	Object.defineProperty(this, "property", { value: prop });
 
-		// setup loading of each property path that the calculation is based on
-		Array.forEach(options.basedOn, function (p, i) {
-			var dependsOnChange;
-			var dependsOnInit = true;
+	// store the calculation function
+	Object.defineProperty(this, "calculate", { value: options.calculate || options.fn, writable: true });
 
-			// if the event was specified then parse it
-			var parts = p.split(" of ");
-			if (parts.length >= 2) {
-				var events = parts[0].split(",");
-				dependsOnInit = (events.indexOf("init") >= 0);
-				dependsOnChange = (events.indexOf("change") >= 0);
-			}
+	// indicate that the rule is responsible for returning the value of the calculated property
+	options.returns = [prop];
 
-			var path = (parts.length >= 2) ? parts[1] : p;
-			Model.property(path, mtype, true, signal.pending(function(chain) {
-				var input = new RuleInput(chain);
-
-				if (!input.property) {
-					ExoWeb.trace.throwAndLog("model", "Calculated property {0}.{1} is based on an invalid property: {2}", [mtype.get_fullName(), prop._name, p]);
-				}
-
-				input.set_dependsOnInit(dependsOnInit);
-				if (dependsOnChange !== undefined) {
-					input.set_dependsOnChange(dependsOnChange);
-				}
-
-				inputs.push(input);
-			}));
-		});
-
-		// wait until all property information is available to initialize the calculation
-		signal.waitForAll(function () {
-			ExoWeb.Batch.whenDone(function () {
-				register.call(this, inputs);
-			}, this);
-		}, this);
-	}
-	else {
-		var inferredInputs = Rule.inferInputs(mtype, options.fn);
-		inferredInputs.forEach(function (input) {
-			input.set_dependsOnInit(true);
-		});
-		register.call(this, inferredInputs);
-	}
-
-	function register(inputs) {
-		// calculated property should always be initialized when first accessed
-		var input = new RuleInput(this.prop);
-		input.set_dependsOnGet(true);
-		input.set_dependsOnChange(false);
-		input.set_isTarget(true);
-		inputs.push(input);
-
-		Rule.register(this, inputs, options.isAsync, mtype, function () {
-			// Static check to determine if running when registered makes sense for this calculation based on its inputs.
-			if (this.canExecute(null, null, true)) {
-				// Execute for existing instances if their initialization state allows it.
-				mtype.known().forEach(function (obj) {
-					if (this.canExecute(obj, null, true)) {
-						if (ExoWeb.config.debug === true) {
-							this._isExecuting = true;
-							this.execute(obj);
-							this._isExecuting = false;
-						}
-						else {
-							try {
-								this._isExecuting = true;
-								this.execute(obj);
-							}
-							catch (err) {
-								ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [this, err]);
-							}
-							finally {
-								this._isExecuting = false;
-							}
-						}
-					}
-				}, this);
-			}
-		}, this);
-	}
+	// Call the base rule constructor 
+	Rule.apply(this, [rootType, options]);
 }
 
-CalculatedPropertyRule.mixin({
-	canExecute: function(sender, args, retroactive) {
-		// If there is no event, check if the calculation is based on some initialization, then defer to the default
-		// input check. This is done so that rules that are based on property changes alone do not fire when created,
-		// but calculations that are based on property initialization are allowed to fire if possible.
-		return ((!!args && !!args.property) || (!!retroactive && this.inputs.filter(function (input) { return input.get_dependsOnInit(); }).length > 0)) &&
-			// If no sender exists then this is a static check that is only dependent on the rule's inputs
-			// and not the initialization state of any particular object. If no event is firing (property
-			// argument is undefined) then the property argument will be the property that the rule is
-			// attached to, which should have no effect on the outcome.
-			(!sender || Rule.canExecute(this, sender, args || { property: this.prop }));
-	},
-	execute: function Property$calculated$execute(obj, callback) {
-		var signal = new Signal("calculated rule");
-		var prop = this.prop;
+// setup the inheritance chain
+CalculatedPropertyRule.prototype = new Rule();
+CalculatedPropertyRule.prototype.constructor = CalculatedPropertyRule;
 
-		if (prop._isList) {
-			// Initialize list if needed.  A calculated list property cannot depend on initialization 
-			// of a server-based list property since initialization is done when the object is constructed 
-			// and before data is available.  If it depends only on the change of the server-based list 
-			// property then initialization will not happen until the property value is requested.
-			if (!prop.isInited(obj)) {
-				prop.init(obj, []);
-			}
+// extend the base type
+CalculatedPropertyRule.mixin({
+	execute: function CalculatedPropertyRule$execute(obj) {
+		var prop = this.property;
+
+		// convert string functions into compiled functions on first execution
+		if (this.calculate.constructor === String) {
+			this.calculate = this.rootType.compileExpression(this.calculate);
+		}
+
+		// calculate the new property value
+		var newValue = this.calculate.apply(obj);
+
+		// exit immediately if the calculated result was undefined
+		if (newValue === undefined) return;
+
+		// modify list properties to match the calculated value instead of overwriting the property
+		if (prop.get_isList()) {
 
 			// re-calculate the list values
-			var newList;
-			if (this.isAsync) {
-				this.calculateFn.call(obj, signal.pending(function (result) {
-					newList = result;
-				}));
-			}
-			else {
-				newList = this.calculateFn.apply(obj);
-			}
+			var newList = newValue;
 
-			signal.waitForAll(function () {
-				// compare the new list to the old one to see if changes were made
-				var curList = prop.value(obj);
+			// compare the new list to the old one to see if changes were made
+			var curList = prop.value(obj);
 
-				if (newList.length === curList.length) {
-					var noChanges = true;
+			if (newList.length === curList.length) {
+				var noChanges = true;
 
-					for (var i = 0; i < newList.length; ++i) {
-						if (newList[i] !== curList[i]) {
-							noChanges = false;
-							break;
-						}
-					}
-
-					if (noChanges) {
-						return;
+				for (var i = 0; i < newList.length; ++i) {
+					if (newList[i] !== curList[i]) {
+						noChanges = false;
+						break;
 					}
 				}
 
-				// update the current list so observers will receive the change events
-				curList.beginUpdate();
-				update(curList, newList);
-				curList.endUpdate();
-
-				if (callback) {
-					callback(obj);
+				if (noChanges) {
+					return;
 				}
-			}, null, !this.isAsync);
+			}
+
+			// update the current list so observers will receive the change events
+			curList.beginUpdate();
+			update(curList, newList);
+			curList.endUpdate();
 		}
+
+		// otherwise, just set the property to the new value
 		else {
-			var newValue;
-			if (this.isAsync) {
-				this.calculateFn.call(obj, signal.pending(function (result) {
-					newValue = result;
-				}));
-			}
-			else {
-				newValue = this.calculateFn.apply(obj);
-			}
-
-			signal.waitForAll(function () {
-				prop.value(obj, newValue, { calculated: true });
-
-				if (callback) {
-					callback(obj);
-				}
-			}, null, !this.isAsync);
+			prop.value(obj, newValue, { calculated: true });
 		}
 	},
 	toString: function () {
-		return "calculation of " + this.prop._name;
+		return "calculation of " + this.property._name;
 	}
 });
 
+// expose the rule publicly
+Rule.calculated = CalculatedPropertyRule;
 exports.CalculatedPropertyRule = CalculatedPropertyRule;

@@ -36,8 +36,8 @@ describe("Model", function() {
 		expect(typeChecking.type(model._types)).toBe("object");
 		expect(objectToArray(model._types).length).toBe(0);
 
-		expect(typeChecking.type(model.get_types())).toBe("array");
-		expect(model.get_types().length).toBe(0);
+		expect(typeChecking.type(model.types())).toBe("array");
+		expect(model.types().length).toBe(0);
 	});
 });
 

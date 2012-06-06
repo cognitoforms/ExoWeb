@@ -1,3 +1,11 @@
+/// <reference path="../Model/Type.js" />
+/// <reference path="../Model/ObjectMeta.js" />
+/// <reference path="../Model/Entity.js" />
+/// <reference path="../Model/Property.js" />
+/// <reference path="../Model/PathToken.js" />
+/// <reference path="../Model/ConditionTarget.js" />
+/// <reference path="../Model/Condition.js" />
+
 var STATIC_ID = "static";
 var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
 var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
@@ -21,83 +29,81 @@ function ensureJsType(model, typeName, callback, thisPtr) {
 	}
 }
 
-function conditionsFromJson(model, json, callback, thisPtr) {
-	var signal = new Signal("conditionsFromJson");
+function conditionsFromJson(model, conditionsJson, forInstances, callback, thisPtr) {
 
-	for (var code in json) {
-		conditionFromJson(model, code, json[code], signal.pending());
+	for (var conditionCode in conditionsJson) {
+		conditionFromJson(model, forInstances, conditionCode, conditionsJson[conditionCode]);
 	}
 
-	signal.waitForAll(function() {
-		if (callback && callback instanceof Function) {
-			callback.call(thisPtr || this);
-		}
-	});
+	if (callback && callback instanceof Function) {
+		callback.call(thisPtr || this);
+	}
 }
 
-function conditionFromJson(model, code, json, callback, thisPtr) {
-	var type = ExoWeb.Model.ConditionType.get(code);
+function conditionFromJson(model, forInstances, conditionCode, conditionsJson) {
+	var conditionType = ExoWeb.Model.ConditionType.get(conditionCode);
 
-	if (!type) {
-		ExoWeb.trace.logWarning(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [code]);
-		callback.call(thisPtr || this);
+	if (!conditionType) {
+		ExoWeb.trace.logWarning(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [conditionCode]);
 		return;
 	}
 
-	var signal = new Signal("conditionFromJson - " + code);
+	var serverSync = model.server;
 
-	var serverSync = model._server;
-
-	json.forEach(function(condition) {
-		var conditionObj = null;
-
-		condition.targets.forEach(function(target) {
-			tryGetJsType(serverSync._model, target.instance.type, null, false, function (jstype) {
-				tryGetEntity(serverSync._model, serverSync._translator, jstype, target.instance.id, null, LazyLoadEnum.None, function (inst) {
-					var propsSignal = new Signal("conditionFromJson.properties");
-
-					var props = [];
-					distinct(target.properties).forEach(function(p, i) {
-						Model.property("this." + p, inst.meta.type, true, propsSignal.pending(function(chain) {
-							props[i] = chain;
-						}));
+	// process each condition
+	if (forInstances) {
+		conditionsJson.forEach(function (conditionJson) {
+			var rootTarget = conditionJson.targets[0];
+			if (rootTarget) {
+				tryGetJsType(serverSync.model, rootTarget.instance.type, null, false, function (jstype) {
+					tryGetEntity(serverSync.model, serverSync._translator, jstype, rootTarget.instance.id, null, LazyLoadEnum.None, function (rootTargetInstance) {
+						if (forInstances.indexOf(rootTargetInstance) >= 0) {
+							conditionTargetsFromJson(model, conditionType, conditionJson.message, conditionJson.targets);
+						}
 					});
-
-					propsSignal.waitForAll(signal.pending(function() {
-						if (!conditionObj) {
-							conditionObj = new ExoWeb.Model.Condition(type, condition.message ? condition.message : type.get_message(), props);
-						}
-						else {
-							conditionObj.get_properties().addRange(props);
-						}
-
-						inst.meta.conditionIf(conditionObj, true);
-					}));
 				});
+			}
+		});
+	}
+	else {
+		conditionsJson.forEach(function (conditionJson) {
+			conditionTargetsFromJson(model, conditionType, conditionJson.message, conditionJson.targets);
+		});
+	}
+}
+
+function conditionTargetsFromJson(model, conditionType, message, targetsJson) {
+	var condition = new Condition(conditionType, message, null, null, "server");
+
+	var serverSync = model.server;
+
+	// process each condition target
+	targetsJson.forEach(function (target) {
+		tryGetJsType(serverSync.model, target.instance.type, null, false, function (jstype) {
+			tryGetEntity(serverSync.model, serverSync._translator, jstype, target.instance.id, null, LazyLoadEnum.None, function (instance) {
+				condition.targets.push(new ConditionTarget(condition, instance, target.properties.map(function (p) { return jstype.meta.property(p); })));
 			});
 		});
-	});
-
-	signal.waitForAll(function() {
-		if (callback && callback instanceof Function) {
-			callback.call(thisPtr || this);
-		}
 	});
 }
 
 function objectsFromJson(model, json, callback, thisPtr) {
 	var signal = new ExoWeb.Signal("objectsFromJson");
-
+	var objectsLoaded = [];
 	for (var typeName in json) {
 		var poolJson = json[typeName];
 		for (var id in poolJson) {
 			// locate the object's state in the json
-			objectFromJson(model, typeName, id, poolJson[id], signal.pending(), thisPtr);
+			objectFromJson(model, typeName, id, poolJson[id], signal.pending(function (obj) {
+				if (obj) {
+					objectsLoaded.push(obj);
+				}
+			}), thisPtr);
 		}
 	}
 
 	signal.waitForAll(function() {
-		callback.apply(thisPtr || this, arguments);
+		callback.call(thisPtr || this, objectsLoaded);
 	});
 }
 
@@ -132,9 +138,10 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 		obj = getObject(model, typeName, id, null, true);
 	}
 
+	var loadedObj;
+
 	///initialize the object if it was ghosted
 	if (id === STATIC_ID || (obj && obj.wasGhosted) || !LazyLoader.isLoaded(obj)) {
-	//			ExoWeb.trace.log("objectInit", "{0}({1})   <.>", [typeName, id]);
 		if (obj) {
 			delete obj.wasGhosted;
 		}
@@ -183,7 +190,7 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 					var propType = prop.get_jstype();
 
 					 if (prop.get_isList()) {
-						var list = prop.value(obj);
+					 	var list = prop.get_isStatic() ? prop.value() : obj[prop._fieldName];
 
 						if (propData == "?") {
 							// don't overwrite list if its already a ghost
@@ -237,34 +244,32 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 								//if the underlying property datatype is actually a date and not a datetime
 								//then we need to add the local timezone offset to make sure that the date is displayed acurately.
 								if (prop.get_format() && !hasTimeFormat.test(prop.get_format().toString())) {
-									var serverOffset = model._server.get_ServerTimezoneOffset();
+									var serverOffset = model.server.get_ServerTimezoneOffset();
 									var localOffset = -(new Date().getTimezoneOffset() / 60);
 									propData = propData.addHours(serverOffset - localOffset);
 								}
+							}
+							else if (ctor === TimeSpan) {
+								propData = new TimeSpan(propData.TotalMilliseconds);
 							}
 							prop.init(obj, propData);
 						}
 					}
 				}
-
-				// static fields are potentially loaded one at a time
 			}
 		}
 
 		if (obj) {
-			ObjectLazyLoader.unregister(obj);
+			// track the newly loaded instance to pass to the caller
+			loadedObj = obj;
 
-			// Raise init events if registered.
-			for (var t = mtype; t; t = t.baseType) {
-				var handler = t._getEventHandler("initExisting");
-				if (handler)
-					handler(obj, {});
-			}
+			// unregister the instance from loading
+			ObjectLazyLoader.unregister(obj);
 		}
 	}
 
 	if (callback && callback instanceof Function) {
-		callback(thisPtr || this);
+		callback.call(thisPtr || this, loadedObj);
 	}
 }
 
@@ -327,9 +332,28 @@ function typeFromJson(model, typeName, json) {
 			//}
 		}
 
+		// process property specific rules, which have a specialized json syntax to improve readability and minimize type json size
 		if (propJson.rules) {
-			for (var i = 0; i < propJson.rules.length; ++i) {
-				ruleFromJson(propJson.rules[i], prop);
+			for (var rule in propJson.rules) {
+				var options = propJson.rules[rule];
+				
+				// default the type to the rule name if not specified
+				if (!options.type) {
+					options.type = rule;
+
+					// calculate the name of the rule if not specified in the json, assuming it will be unique
+					if (!options.name) {
+						options.name = mtype.get_fullName() + "." + prop.get_name() + "." + rule.substr(0, 1).toUpperCase() + rule.substr(1);
+					}
+				}
+
+				// initialize the name of the rule if not specified in the json
+				else if (!options.name) {
+					options.name = rule;
+				}
+
+				options.property = prop;
+				ruleFromJson(mtype, options);
 			}
 		}
 	}
@@ -346,22 +370,38 @@ function typeFromJson(model, typeName, json) {
 	// define condition types
 	if (json.conditionTypes)
 		conditionTypesFromJson(model, mtype, json.conditionTypes);
-}
 
-function conditionTypesFromJson(model, mtype, json) {
-	for (var code in json) {
-		conditionTypeFromJson(model, mtype, code, json[code]);
+	// define rules 
+	if (json.rules) {
+		for (var i = 0; i < json.rules.length; ++i) {
+			ruleFromJson(mtype, json.rules[i]);
+		}
+	}
+
+	// store exports
+	if (json.exports) {
+		mtype.set_exports(json.exports);
 	}
 }
 
-function conditionTypeFromJson(model, mtype, code, json) {
+function conditionTypesFromJson(model, mtype, json) {
+	json.forEach(function (ctype) {
+		conditionTypeFromJson(mtype, ctype);
+	});
+}
 
-	// Attempt to retrieve the condition type by code.
-	var conditionType = ExoWeb.Model.ConditionType.get(code);
+function conditionTypeFromJson(mtype, json) {
 
-	// Create the condition type if it does not already exist.
+	// for rules that assert a single condition, the code will be the unique name of the rule
+	json.code = json.code || json.name;
+
+	// attempt to retrieve the condition type by code.
+	var conditionType = ExoWeb.Model.ConditionType.get(json.code);
+
+	// create the condition type if it does not already exist.
 	if (!conditionType) {
-		// Get a list of condition type sets for this type.
+
+		// get a list of condition type sets for this type.
 		var sets = !json.sets ? [] : json.sets.map(function(name) {
 			var set = ExoWeb.Model.ConditionTypeSet.get(name);
 			if (!set) {
@@ -370,29 +410,40 @@ function conditionTypeFromJson(model, mtype, code, json) {
 			return set;
 		});
 
-		// Create the appropriate condition type based on the category.
-		if (json.category == "Error") {
-			conditionType = new ExoWeb.Model.ConditionType.Error(code, json.message, sets);
+		// create the appropriate condition type based on the category.
+		if (!json.category || json.category == "Error") {
+			conditionType = new ExoWeb.Model.ConditionType.Error(json.code, json.message, sets, "server");
 		}
 		else if (json.category == "Warning") {
-			conditionType = new ExoWeb.Model.ConditionType.Warning(code, json.message, sets);
+			conditionType = new ExoWeb.Model.ConditionType.Warning(json.code, json.message, sets, "server");
 		}
 		else if (json.category == "Permission") {
-			conditionType = new ExoWeb.Model.ConditionType.Permission(code, json.message, sets, json.permissionType, json.isAllowed);
+			conditionType = new ExoWeb.Model.ConditionType.Permission(json.code, json.message, sets, json.permissionType, json.isAllowed, "server");
 		}
 		else {
-			conditionType = new ExoWeb.Model.ConditionType(code, json.category, json.message, sets);
+			conditionType = new ExoWeb.Model.ConditionType(json.code, json.category, json.message, sets, "server");
 		}
 
-		// Account for the potential for subclasses to be serialized with additional properties.
+		// account for the potential for subclasses to be serialized with additional properties.
 		conditionType.extend(json);
 	}
 
 	if (json.rule && json.rule.hasOwnProperty("type")) {
-		var ruleType = ExoWeb.Model.Rule[json.rule.type];
-		var rule = new ruleType(mtype, json.rule, conditionType);
-		conditionType._rules.push(rule);
+		conditionType._rules.push(ruleFromJson(mtype, json.rule, conditionType));
 	}
+
+	return conditionType;
+}
+
+function ruleFromJson(mtype, options) {
+	var ruleType = ExoWeb.Model.Rule[options.type];
+	if (options.conditionType) {
+		options.conditionType = conditionTypeFromJson(mtype, options.conditionType);
+	}
+	else if (ruleType.prototype instanceof ConditionRule) {
+		options.conditionType = conditionTypeFromJson(mtype, options);
+	}
+	return new ruleType(mtype, options);
 }
 
 function getJsType(model, typeName, forLoading) {
@@ -638,14 +689,15 @@ function moveTypeResults(originalArgs, invocationArgs, callbackArgs) {
 
 var fetchTypes = fetchTypesImpl.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, partitionedArg: 1, partitionedFilter: moveTypeResults });
 
-function fetchPathTypes(model, jstype, path, callback) {
+// fetches model paths and calls success or fail based on the outcome
+function fetchPathTypes(model, jstype, path, success, fail) {
 	var step = path.steps.dequeue();
 	while (step) {
 		// locate property definition in model
-		var prop = jstype.meta.property(step.property, true);
+		var prop = jstype.meta.property(step.property);
 
 		if (!prop) {
-			ExoWeb.trace.throwAndLog("typeInit", "Could not find property \"{0}\" on type \"{1}\".", [step.property, jstype.meta.get_fullName()]);
+			fail("Could not find property \"" + step.property + "\" on type \"" + jstype.meta.get_fullName() + "\".");
 		}
 
 		// don't need to fetch type information for value types
@@ -662,7 +714,7 @@ function fetchPathTypes(model, jstype, path, callback) {
 			if (!mtype) {
 				Array.insert(path.steps, 0, step);
 				fetchTypes(model, [step.cast], function() {
-					fetchPathTypes(model, jstype, path, callback);
+					fetchPathTypes(model, jstype, path, success, fail);
 				});
 				return;
 			}
@@ -674,7 +726,7 @@ function fetchPathTypes(model, jstype, path, callback) {
 		// if property's type isn't load it, then fetch it
 		if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 			fetchTypes(model, [mtype.get_fullName()], function(jstypes) {
-				fetchPathTypes(model, jstypes[0], path, callback);
+				fetchPathTypes(model, jstypes[0], path, success, fail);
 			});
 
 			// path walking will resume with callback
@@ -687,46 +739,23 @@ function fetchPathTypes(model, jstype, path, callback) {
 		step = path.steps.dequeue();
 	}
 
-	// done walking path
-	if (callback && callback instanceof Function) {
-		callback();
-	}
+	// Inform the caller that the path has been successfully fetched
+	success();
 }
 
 function fetchQueryTypes(model, typeName, paths, callback) {
 	var signal = new ExoWeb.Signal("fetchTypes");
 
 	function rootTypeLoaded(jstype) {
+		
+		// process all paths
 		if (paths) {
-			Array.forEach(paths, function(path) {
-				if (path.steps[0].property === "this") {
-					var step = path.steps.dequeue();
-					var mtype = jstype.meta;
+			Array.forEach(paths, function (path) {
 
-					var fetchRootTypePaths = function fetchRootTypePaths() {
-						fetchPathTypes(model, mtype.get_jstype(), path, signal.pending());
-					};
+				// attempt to fetch the path
+				fetchPathTypes(model, jstype, path, signal.pending(), function (err) {
 
-					// handle the case where the root object is cast to a derived type
-					if (step.cast) {
-						mtype = model.type(step.cast);
-						if (!mtype) {
-							fetchTypes(model, [step.cast], signal.pending(function() {
-								mtype = model.type(step.cast);
-								fetchRootTypePaths();
-							}));
-						}
-						else {
-							fetchRootTypePaths();
-						}
-					}
-					else {
-						fetchRootTypePaths();
-					}
-				}
-				else {
-					// This is a static property.  Static property paths
-					// are currently limited to a single property.
+					// determine if the path represents a static property if the path was not valid
 					var step = null, typeName = "";
 					while (path.steps.length > 1) {
 						step = path.steps.dequeue();
@@ -736,12 +765,14 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 					var mtype = model.type(typeName);
 
 					var fetchStaticPathTypes = function fetchStaticPathTypes() {
-						fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), path, signal.pending());
+						fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), path, signal.pending(), function () {
+							ExoWeb.trace.throwAndLog("typeInit", "Invalid query path \"" + path + "\" - " + err);
+						});
 					};
 
 					if (!mtype) {
 						// first time type has been seen, fetch it
-						fetchTypes(model, [typeName], signal.pending(function(jstypes) {
+						fetchTypes(model, [typeName], signal.pending(function (jstypes) {
 							fetchStaticPathTypes(jstypes[0]);
 						}));
 					}
@@ -752,7 +783,8 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 					else {
 						fetchStaticPathTypes();
 					}
-				}
+
+				});
 			});
 		}
 	}
@@ -773,15 +805,6 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 	}
 
 	signal.waitForAll(callback);
-}
-
-// {ruleName: ruleConfig}
-function ruleFromJson(rulesJson, prop) {
-	for (var name in rulesJson) {
-		var json = rulesJson[name];
-		var ruleType = ExoWeb.Model.Rule[json.type];
-		var rule = new ruleType(json, [prop]);
-	}
 }
 
 // Recursively searches throught the specified object and restores dates serialized as strings
@@ -886,8 +909,8 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 
 		objSignal.waitForAll(function () {
 			// if a property was specified and its not inited, then wait for it
-			if (property && type.meta.property(property, true).isInited(obj) !== true) {
-				type.meta.property(property, true).addChanged(callback.bind(thisPtr), obj, true);
+			if (property && type.meta.property(property).isInited(obj) !== true) {
+				type.meta.property(property).addChanged(callback.bind(thisPtr), obj, true);
 				return;
 			}
 

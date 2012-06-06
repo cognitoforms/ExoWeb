@@ -1,4 +1,9 @@
 function PathTokens(expression) {
+	
+	// legacy: remove "this." prefix from instance properties
+	if (expression.substr(0, 5) === "this.")
+		expression = expression.substr(5);
+
 	this.expression = expression;
 
 	// replace "." in type casts so that they do not interfere with splitting path
@@ -31,7 +36,13 @@ PathTokens.normalizePaths = function PathTokens$normalizePaths(paths) {
 	var result = [];
 
 	if (paths) {
-		paths.forEach(function(p) {
+		paths.forEach(function (p) {
+
+			// coerce property and property chains into string paths
+			p = p instanceof Property ? p.get_name() :
+				p instanceof PropertyChain ? p.get_path() :
+				p;
+
 			var stack = [];
 			var parent;
 			var start = 0;

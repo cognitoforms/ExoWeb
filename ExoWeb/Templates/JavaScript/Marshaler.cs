@@ -6,6 +6,7 @@ using ExoModel;
 using Jurassic;
 using Jurassic.Library;
 using System.Collections;
+using ExoRule;
 
 namespace ExoWeb.Templates.JavaScript
 {
@@ -41,6 +42,9 @@ namespace ExoWeb.Templates.JavaScript
 
 			if (clrObject is Templates.Adapter)
 				return new AdapterWrapper(engine, (Adapter)clrObject);
+
+			if (clrObject is Condition)
+				return new ConditionWrapper(engine, (Condition)clrObject);
 			
 			if (clrObject is Templates.OptionAdapter)
 				return new OptionAdapterWrapper(engine, (OptionAdapter)clrObject);

@@ -50,7 +50,7 @@ Format.fromTemplate = function Format$fromTemplate(type, template) {
 
 						// If a property path remains, then attempt to find a default format and paths for the format
 						if (propertyPath) {
-							var property = Model.property("this." + propertyPath, type);
+							var property = Model.property(propertyPath, type);
 							if (property) {
 								// Only allow formats for a property path that is not followed by ".meta..."
 								if (allowFormat) {

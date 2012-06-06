@@ -11,14 +11,14 @@ namespace ExoWeb
 	{
 		static MethodInfo getMethod = typeof(Json).GetMethod("Get", new Type[] { typeof(string) });
 
-		JavaScriptSerializer serializer;
+		JsonSerializer serializer;
 		IDictionary<string, object> values;
 
-		internal Json(JavaScriptSerializer serializer, IDictionary<string, object> values)
+		internal Json(JsonSerializer serializer, IDictionary<string, object> values)
 			: this(serializer, null, values)
 		{ }
 
-		internal Json(JavaScriptSerializer serializer, Type type, IDictionary<string, object> values)
+		internal Json(JsonSerializer serializer, Type type, IDictionary<string, object> values)
 		{
 			this.Type = type;
 			this.serializer = serializer;
@@ -31,6 +31,31 @@ namespace ExoWeb
 		{
 			object value;
 			return !values.TryGetValue(name, out value) || value == null;
+		}
+
+		public bool TryGetGlobal<T>(string name, out T value)
+		{
+			return serializer.TryGetGlobal<T>(name, out value);
+		}
+
+		/// <summary>
+		/// Gets or creates a global variable with the specified type and name.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="name"></param>
+		/// <returns></returns>
+		public T Global<T>(string name)
+			where T : class, new()
+		{
+			T global;
+			if (!TryGetGlobal(name, out global))
+				SetGlobal(name, global = new T());
+			return global;
+		}
+
+		public void SetGlobal<T>(string name, T value)
+		{
+			serializer.Set<T>(name, value);
 		}
 
 		public T Get<T>(string name)

@@ -166,7 +166,7 @@ namespace ExoWeb.Diagnostics
 
 			// Types
 			if (ServiceHandler.IsExecuting && args.Response.Types != null)
-				remoteRequestTypesOut.IncrementBy(args.Response.Types.Count);
+				remoteRequestTypesOut.IncrementBy(args.Response.Types.Length);
 		}
 
 		static void Increment(long amount, PerformanceCounter total, PerformanceCounter remote, PerformanceCounter local)

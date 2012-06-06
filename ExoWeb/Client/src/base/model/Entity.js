@@ -21,7 +21,7 @@ function getProperties(/*[properties] or [propName, propValue] */) {
 Entity.mixin({
 	init: function Entity$init(/*[properties] or [propName, propValue] */) {
 		forEachProperty(getProperties.apply(this, arguments), function (name, value) {
-			var prop = this.meta.type.property(name, true);
+			var prop = this.meta.type.property(name);
 
 			if (!prop) {
 				ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
@@ -33,20 +33,11 @@ Entity.mixin({
 	},
 	set: function Entity$set(/*[properties] or [propName, propValue] */) {
 		forEachProperty(getProperties.apply(this, arguments), function (name, value) {
-			this._accessor("set", name).call(this, value);
+			this.meta.type.property(name)._setter(this, value, false);
 		}, this);
 	},
-	get: function Entity$get(propName) {
-		return this._accessor("get", propName).call(this);
-	},
-	_accessor: function Entity$_accessor(getOrSet, property) {
-		var fn = this[getOrSet + "_" + property];
-
-		if (!fn) {
-			ExoWeb.trace.throwAndLog("model", "Unknown property: {0}.{1}", [this.meta.type.get_fullName(), property]);
-		}
-
-		return fn;
+	get: function Entity$get(path) {
+		return this.meta.type.property(path).value(this);
 	},
 	toString: function Entity$toString(format) {
 		if (format) {

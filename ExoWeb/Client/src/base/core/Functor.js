@@ -50,7 +50,10 @@ Functor.remove = function Functor$remove(old) {
 	}
 };
 
-Functor.isEmpty = function Functor$isEmpty() {
+Functor.isEmpty = function Functor$isEmpty(args) {
+	if (args) {
+		return !this._funcs.some(function (item) { return !item.filter || item.filter.apply(this, args); }, this);
+	}
 	return this._funcs.length === 0;
 };
 

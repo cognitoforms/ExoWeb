@@ -1,32 +1,20 @@
-function ListLengthRule(mtype, options, ctype, callback, thisPtr) {
-	this.prop = mtype.property(options.property, true);
-	var properties = [this.prop];
+function ListLengthRule(rootType, options) {
+	/// <summary>Creates a rule that validates whether a list contains the correct number of items.</summary>
+	/// <param name="rootType" type="Type">The model type the rule is for.</param>
+	/// <param name="options" type="Object">
+	///		The options for the rule, including:
+	///			property:			the property being validated (either a Property instance or string property name)
+	///			compareSource:		the optional source property to compare the list length to (either a Property or PropertyChain instance or a string property path)
+	///			compareOperator:	the relational comparison operator to use (one of "Equal", "NotEqual", "GreaterThan", "GreaterThanEqual", "LessThan" or "LessThanEqual")
+	///			compareValue:		the optional list length value to compare to
+	///			name:				the optional unique name of the type of validation rule
+	///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+	///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+	///			message:			the message to show the user when the validation fails
+	/// </param>
+	/// <returns type="ListLengthRule">The new list length rule.</returns>
 
-	if (!ctype) {
-		ctype = Rule.ensureError($format("listLength {0} {1}", [options.compareOperator, options.staticLength > 0 ? options.staticLength : options.compareSource]), this.prop);
-	}
 
-	this.ctype = ctype;
-
-	this._comparePath = options.compareSource;
-	this._compareOp = options.compareOperator;
-	this._staticLength = options.staticLength
-
-	this._inited = false;
-
-	// Function to register this rule when its containing type is loaded.
-	var register = (function ListLengthRule$register(ctype) {
-		ListLengthRule.load(this, ctype, mtype, callback, thisPtr);
-	}).bind(this);
-
-	// If the type is already loaded, then register immediately.
-	if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-		ListLengthRule.load(this, this.prop.get_containingType().get_jstype(), mtype, callback, thisPtr);
-	}
-	// Otherwise, wait until the type is loaded.
-	else {
-		$extend(this.prop.get_containingType().get_fullName(), register);
-	}
 }
 
 ListLengthRule.load = function ListLengthRule$load(rule, loadedType, mtype, callback, thisPtr) {
@@ -71,7 +59,7 @@ ListLengthRule.load = function ListLengthRule$load(rule, loadedType, mtype, call
 };
 
 ListLengthRule.prototype = {
-	satisfies: function Compare$satisfies(obj) {
+	isValid: function Compare$isValid(obj) {
 		if (!this._compareProperty && this._staticLength < 0) {
 			return true;
 		}
@@ -92,7 +80,7 @@ ListLengthRule.prototype = {
 	execute: function ListLengthRule$execute(obj) {
 		if (this._inited === true) {
 
-			var isValid = this.satisfies(obj);
+			var isValid = this.isValid(obj);
 
 			var message = isValid ? '' : $format("{0} length must be {1}{2} {3}", [
 					this.prop.get_label(),
@@ -100,7 +88,7 @@ ListLengthRule.prototype = {
 					(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
 					this._staticLength >= 0 ? this._staticLength : this._compareProperty.get_label()
 				]);
-			this.err = new Condition(this.ctype, message, [this.prop], this);
+			this.err = new Condition(this.conditionType, message, [this.prop], this);
 
 			obj.meta.conditionIf(this.err, !isValid);
 		}
@@ -110,4 +98,6 @@ ListLengthRule.prototype = {
 	}
 };
 
+// expose the rule publicly
 Rule.listLength = ListLengthRule;
+exports.ListLengthRule = ListLengthRule;

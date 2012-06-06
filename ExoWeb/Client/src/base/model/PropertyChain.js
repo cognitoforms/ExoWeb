@@ -1,4 +1,4 @@
-function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
+function PropertyChain(rootType, properties, filters) {
 	/// <summary>
 	/// Encapsulates the logic required to work with a chain of properties and
 	/// a root object, allowing interaction with the chain as if it were a 
@@ -52,43 +52,70 @@ function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
 	};
 
 	this._rootType = rootType;
+	this._properties = properties;
+	this._filters = filters;
+}
+
+PropertyChain.create = function PropertyChain$create(rootType, pathTokens/*, forceLoadTypes, success, fail*/) {
+	/// <summary>
+	/// Attempts to synchronously or asynchronously create a property chain for the specified 
+	/// root type and path.  Also handles caching of property chains at the type level.
+	/// </summary>
+
 	var type = rootType;
-	var chain = this;
+	var properties = [];
+	var filters = [];
 
-	this._properties = [];
-	this._filters = [];
-
-	// initialize optional arguments
-	var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-	var callback = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
+	// initialize optional callback arguments
+	var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+	var success = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
+	var fail = arguments.length >= 5 && arguments[4] && arguments[4] instanceof Function ?
+		arguments[4] : function (error) { if (success) { ExoWeb.trace.throwAndLog("model", error); } };
 
 	// process each step in the path either synchronously or asynchronously depending on arguments
 	var processStep = function PropertyChain$processStep() {
+
+		// get the next step
 		var step = pathTokens.steps.dequeue();
-
 		if (!step) {
-			ExoWeb.trace.throwAndLog("model", "Syntax error in property path: {0}", [pathTokens.expression]);
+			fail($format("Syntax error in property path: {0}", [pathTokens.expression]));
+
+			// return null to indicate that the path is not valid
+			return null;
 		}
 
-		var prop = type.property(step.property, true);
-
+		// get the property for the step 
+		var prop = type.property(step.property);
 		if (!prop) {
-			ExoWeb.trace.throwAndLog("model", "Path '{0}' references an unknown property: {1}.{2}." +
-				(ExoWeb.Model.LazyLoader.isLoaded(type) ? "" : " The type is not loaded."),
-				[pathTokens.expression, type.get_fullName(), step.property]);
+			fail($format("Path '{0}' references an unknown property: {1}.{2}.", [pathTokens.expression, type.get_fullName(), step.property]));
+
+			// return null if the property does not exist
+			return null;
 		}
 
-		chain._properties.push(prop);
+		// ensure the property is not static because property chains are not valid for static properties
+		if (prop.get_isStatic()) {
+			fail($format("Path '{0}' references a static property: {1}.{2}.", [pathTokens.expression, type.get_fullName(), step.property]));
 
+			// return null to indicate that the path references a static property
+			return null;
+		}
+
+		// store the property for the step
+		properties.push(prop);
+
+		// handle optional type filters
 		if (step.cast) {
-			type = type.get_model().type(step.cast);
 
+			// determine the filter type
+			type = Model.getJsType(step.cast, true).meta;
 			if (!type) {
-				ExoWeb.trace.throwAndLog("model", "Path '{0}' references an unknown type: {1}", [pathTokens.expression, step.cast]);
+				fail($format("Path '{0}' references an invalid type: {1}", [pathTokens.expression, step.cast]));
+				return null;
 			}
 
 			var jstype = type.get_jstype();
-			chain._filters[chain._properties.length] = function(target) {
+			filters[properties.length] = function (target) {
 				return target instanceof jstype;
 			};
 		}
@@ -96,40 +123,43 @@ function PropertyChain(rootType, pathTokens/*, lazyLoadTypes, callback*/) {
 			type = prop.get_jstype().meta;
 		}
 
-		if (pathTokens.steps.length === 0) {
+		// process the next step if not at the end of the path
+		if (pathTokens.steps.length > 0) {
+			return ensureType(type, forceLoadTypes, processStep);
+		}
+
+		// otherwise, create and return the new property chain
+		else {
+
 			// processing the path is complete, verify that chain is not zero-length
-			if (chain._properties.length === 0) {
-				ExoWeb.trace.throwAndLog(["model"], "PropertyChain cannot be zero-length.");
+			if (properties.length === 0) {
+				fail($format("PropertyChain cannot be zero-length."));
+				return null;
 			}
 
-			// if asynchronous processing was allowed, invoke the callback
-			if (callback && callback instanceof Function) {
-				callback(chain);
-			}
-		}
-		else {
-			// process the next step in the path, first ensuring that the type is loaded if lazy loading is allowed
-			if (callback && !LazyLoader.isLoaded(type)) {
-				if (lazyLoadTypes) {
-					LazyLoader.load(type, null, processStep);
+			// ensure filter types on the last step are loaded
+			return ensureType(filters[properties.length - 1], forceLoadTypes, function () {
+
+				// create and cache the new property chain
+				var chain = new PropertyChain(rootType, properties, filters);
+				if (!rootType._chains) {
+					rootType._chains = {};
 				}
-				else {
-					$extend(type._fullName, processStep);
+				rootType._chains[pathTokens.expression] = chain;
+
+				// if asynchronous processing was allowed, invoke the success callback
+				if (success) {
+					success(chain);
 				}
-			}
-			else {
-				processStep();
-			}
+
+				// return the new property chain
+				return chain;
+			});
 		}
 	};
 
 	// begin processing steps in the path
-	if (!LazyLoader.isLoaded(type)) {
-		LazyLoader.load(type, null, processStep);
-	}
-	else {
-		processStep();
-	}
+	return ensureType(type, forceLoadTypes, processStep);
 }
 
 PropertyChain.mixin(Functor.eventing);
@@ -263,7 +293,7 @@ PropertyChain.mixin({
 		}
 
 		var previousStepType;
-		this._properties.slice(startIndex).forEach(function(p, i) {
+		this._properties.slice(startIndex).forEach(function (p, i) {
 			if (i !== 0) {
 				if (p.get_containingType() !== previousStepType && p.get_containingType().isSubclassOf(previousStepType)) {
 					steps[steps.length - 1] = steps[steps.length - 1] + "<" + p.get_containingType().get_fullName() + ">";
@@ -281,28 +311,34 @@ PropertyChain.mixin({
 	lastProperty: function PropertyChain$lastProperty() {
 		return this._properties[this._properties.length - 1];
 	},
-	lastTarget: function PropertyChain$lastTarget(obj, exitEarly) {
+	properties: function PropertyChain$properties() {
+		return this._properties.slice();
+	},
+	lastTarget: function PropertyChain$lastTarget(obj) {
 		for (var p = 0; p < this._properties.length - 1; p++) {
 			var prop = this._properties[p];
 
-			// exit early (and return undefined) on null or undefined
-			if (exitEarly === true && (obj === undefined || obj === null)) {
-				return;
+			// exit early on null or undefined
+			if (obj === undefined || obj === null) {
+				return obj;
 			}
 
 			obj = prop.value(obj);
 		}
 		return obj;
 	},
+
 	prepend: function PropertyChain$prepend(prop) {
 		var newProps = prop.all();
 		for (var p = newProps.length - 1; p >= 0; p--) {
 			Array.insert(this._properties, 0, newProps[p]);
 		}
 	},
+
 	canSetValue: function PropertyChain$canSetValue(obj, value) {
 		return this.lastProperty().canSetValue(this.lastTarget(obj), value);
 	},
+
 	// Determines if this property chain connects two objects.
 	connects: function PropertyChain$connects(fromRoot, toObj, viaProperty) {
 		var connected = false;
@@ -312,7 +348,7 @@ PropertyChain.mixin({
 			return fromRoot === toObj;
 		}
 
-		this.each(fromRoot, function(target) {
+		this.each(fromRoot, function (target) {
 			if (target === toObj) {
 				connected = true;
 				return false;
@@ -325,7 +361,7 @@ PropertyChain.mixin({
 		for (var i = 0; i < this._properties.length; i++) {
 			if (this._properties[i].isDefinedBy(rootType)) {
 				var path = this._getPathFromIndex(i);
-				return (this._properties[i]._isStatic ? this._properties[i].get_containingType().get_fullName() : "this") + "." + path;
+				return this._properties[i]._isStatic ? this._properties[i].get_containingType().get_fullName() + "." + path : path;
 			}
 		}
 	},
@@ -351,14 +387,14 @@ PropertyChain.mixin({
 	addChanged: function PropertyChain$addChanged(handler, obj, once, toleratePartial) {
 		var filter = mergeFunctions(
 
-			// Ensure that the chain is inited from the root if toleratePartial is false
+		// Ensure that the chain is inited from the root if toleratePartial is false
 			this.isInited.bind(this).spliceArguments(1, 1, !toleratePartial),
 
-			// Only raise for the given root object if specified
+		// Only raise for the given root object if specified
 			obj ? equals(obj) : null,
 
-			// If multiple filters exist, both must pass
-			{ andResults: true }
+		// If multiple filters exist, both must pass
+			{andResults: true }
 
 		);
 
@@ -379,6 +415,9 @@ PropertyChain.mixin({
 	},
 	get_format: function PropertyChain$get_format() {
 		return this.lastProperty().get_format();
+	},
+	format: function PropertyChain$format(val) {
+		return this.lastProperty().format(val);
 	},
 	get_isList: function PropertyChain$get_isList() {
 		return this.lastProperty().get_isList();
@@ -402,8 +441,8 @@ PropertyChain.mixin({
 	get_isEntityListType: function PropertyChain$get_isEntityListType() {
 		return this.lastProperty().get_isEntityListType();
 	},
-	rules: function(targetsThis) {
-		return this.lastProperty().rules(targetsThis);
+	rules: function (filter) {
+		return this.lastProperty().rules(filter);
 	},
 	value: function PropertyChain$value(obj, val, customInfo) {
 		var target = this.lastTarget(obj, true);
@@ -413,7 +452,7 @@ PropertyChain.mixin({
 			prop.value(target, val, customInfo);
 		}
 		else {
-			return (target !== undefined && target !== null) ? prop.value(target) : null;
+			return target ? prop.value(target) : target;
 		}
 	},
 	isInited: function PropertyChain$isInited(obj, enforceCompleteness /*, fromIndex, fromProp*/) {
@@ -455,7 +494,7 @@ PropertyChain.mixin({
 			return this.get_path();
 		}
 		else {
-			var path = this._properties.map(function(e) { return e.get_name(); }).join(".");
+			var path = this._properties.map(function (e) { return e.get_name(); }).join(".");
 			return $format("this<{0}>.{1}", [this.get_containingType(), path]);
 		}
 	}

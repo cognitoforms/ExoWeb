@@ -1,214 +1,112 @@
+/// <reference path="ConditionTarget.js" />
+
 function ObjectMeta(type, obj) {
 	this._obj = obj;
 	this.type = type;
-	this._conditions = [];
-	this._executedRules = [];
-	this._propertyConditions = {};
+	this._conditions = {};
+	this._pendingInit = [];
 }
 
 ObjectMeta.mixin({
-	get_entity: function() {
+
+	get_entity: function () {
 		return this._obj;
 	},
-	ensureValidation: function ObjectMeta$ensureValidation(prop) {
-		// Assumption: existing objects have already been validated.
-		if (!this.isNew) {
-			return;
-		}
 
-		// Exclude rules that have previously been executed or their
-		// conditions have been attached, and allowed values rules (since if the property has
-		// not been interacted with there is no value and the rule does not apply).
-		this.executeValidationRules(prop, function(rule) {
-			return !this._executedRules.contains(rule) && !(rule instanceof AllowedValuesRule);
-		});
-	},
-	executeValidationRules: function ObjectMeta$executeValidationRules(prop, filter) {
-		var rules = prop.rules(true);
-
-		// Exclude non-validation rules
-		rules.purge(function(rule) {
-			return !Rule.isValidation(rule);
-		}, this);
-
-		// Exclude rules based on a custom filter
-		if (filter) {
-			rules.purge(function(rule) {
-				return filter.apply(this, arguments) === false;
-			}, this);
-		}
-
-		if (rules.length > 0) {
-			this.executeRulesImpl(prop, rules);
-		}
-	},
-	executeRules: function ObjectMeta$executeRules(prop) {
-		this.executeRulesImpl(prop, prop.rules(true));
-	},
-	executeRulesImpl: function ObjectMeta$executeRulesImpl(prop, rules) {
-		this.type.get_model()._validatedQueue.push({ sender: this, property: prop.get_name() });
-		this._raisePropertyValidating(prop.get_name());
-		this.type.executeRules(this._obj, rules);
-	},
-	markRuleExecuted: function ObjectMeta$markRuleExecuted(rule) {
-		if (!this._executedRules.contains(rule)) {
-			this._executedRules.push(rule);
-		}
-	},
+	// gets the property or property chain for the specified property path
 	property: function ObjectMeta$property(propName, thisOnly) {
 		return this.type.property(propName, thisOnly);
 	},
-	clearConditions: function ObjectMeta$clearConditions(origin) {
-		var conditions = this._conditions;
 
-		for (var i = conditions.length - 1; i >= 0; --i) {
-			var condition = conditions[i];
-
-			if (!origin || condition.get_origin() == origin) {
-				this._removeCondition(i);
-				this._raisePropertiesValidated(condition.get_properties());
+	// gets and optionally sets the pending initialization status for a property on the current instance
+	pendingInit: function ObjectMeta$pendingInit(prop, value) {
+		var result = this._obj[prop._fieldName] === undefined || this._pendingInit[prop.get_name()] === true;
+		if (arguments.length > 1) {
+			if (value) {
+				this._pendingInit[prop.get_name()] = true;
 			}
+			else {
+				delete this._pendingInit[prop.get_name()];
+			}
+		}
+		return result;
+	},
+
+	// gets the condition target with the specified condition type
+	getCondition: function ObjectMeta$getCondition(conditionType) {
+		return this._conditions[conditionType.code];
+	},
+
+	// stores the condition target for the current instance
+	setCondition: function ObjectMeta$setCondition(conditionTarget) {
+		if (conditionTarget.condition.type != formatConditionType) {
+			this._conditions[conditionTarget.condition.type.code] = conditionTarget;
 		}
 	},
 
-	conditionIf: function ObjectMeta$conditionIf(condition, when) {
-		// always remove and re-add the condition to preserve order
-		var idx = -1;
-		for (var i = 0; i < this._conditions.length; i++) {
-			if (this._conditions[i].equals(condition)) {
-				idx = i;
-				break;
-			}
-		}
-
-		if ((idx < 0 && when) || (idx >= 0 && !when)) {
-			if (idx >= 0) {
-				this._removeCondition(idx);
-			}
-
-			if (when) {
-				this._addCondition(condition);
-			}
-
-			this._raisePropertiesValidated(condition.get_properties());
-		}
+	// clears the condition for the current instance with the specified condition type
+	clearCondition: function ObjectMeta$clearCondition(conditionType) {
+		delete this._conditions[conditionType.code];
 	},
 
-	_addCondition: function (condition) {
-		condition.get_targets().add(this);
-		this._conditions.push(condition);
-
-		// make sure the rule that drives the condition is marked as executed
-		condition._type._rules.forEach(this.markRuleExecuted.bind(this));
-
-		// update _propertyConditions
-		var props = condition.get_properties();
-		for (var i = 0; i < props.length; ++i) {
-			var propName = props[i].get_name();
-			var pi = this._propertyConditions[propName];
-
-			if (!pi) {
-				pi = [];
-				this._propertyConditions[propName] = pi;
-			}
-
-			pi.push(condition);
-		}
-
-		this._raiseEvent("conditionsChanged", [this, { condition: condition, add: true, remove: false }]);
-	},
-
-	_removeCondition: function (idx) {
-		var condition = this._conditions[idx];
-		condition.get_targets().remove(this);
-		this._conditions.splice(idx, 1);
-
-		// update _propertyConditions
-		var props = condition.get_properties();
-		for (var i = 0; i < props.length; ++i) {
-			var propName = props[i].get_name();
-			var pi = this._propertyConditions[propName];
-
-			var piIdx = $.inArray(condition, pi);
-			pi.splice(piIdx, 1);
-		}
-
-		this._raiseEvent("conditionsChanged", [this, { condition: condition, add: false, remove: true }]);
-	},
-
-	_isAllowedOne: function ObjectMeta$_isAllowedOne(code) {
-		var conditionType = ConditionType.get(code);
-
-		if (conditionType !== undefined) {
-			if (!(conditionType instanceof ConditionType.Permission)) {
-				ExoWeb.trace.throwAndLog(["conditions"], "Condition type \"{0}\" should be a Permission.", [code]);
-			}
-
-			for (var i = 0; i < this._conditions.length; i++) {
-				var condition = this._conditions[i];
-				if (condition.get_type() == conditionType) {
-					return conditionType.get_isAllowed();
-				}
-			}
-
-			return !conditionType.get_isAllowed();
-		}
-
-		return undefined;
-	},
-
+	// determines if the set of permissions are allowed for the current instance
 	isAllowed: function ObjectMeta$isAllowed(/*codes*/) {
 		if (arguments.length === 0) {
 			return undefined;
 		}
 
-		for (var i = 0; i < arguments.length; i++) {
-			var allowed = this._isAllowedOne(arguments[i]);
-			if (!allowed) {
-				return allowed;
+		// ensure each condition type is allowed for the current instance
+		for (var c = arguments.length - 1; c >= 0; c--) {
+			var code = arguments[c];
+			var conditionType = ConditionType.get(code);
+
+			// return undefined if the condition type does not exist
+			if (conditionType === undefined) {
+				return undefined;
+			}
+
+			// throw an exception if the condition type is not a permission
+			if (!(conditionType instanceof ConditionType.Permission)) {
+				ExoWeb.trace.throwAndLog(["conditions"], "Condition type \"{0}\" should be a Permission.", [code]);
+			}
+
+			// return false if a condition of the current type exists and is a deny permission or does not exist and is a grant permission
+			if (this._conditions[conditionType.code] ? !conditionType.isAllowed : conditionType.isAllowed) {
+				return false;
 			}
 		}
 
 		return true;
 	},
 
-	conditions: function ObjectMeta$conditions(propOrOptions) {
-		if (!propOrOptions) return this._conditions;
+	// get some or all of the condition
+	conditions: function ObjectMeta$conditions(criteria) {
 
-		// backwards compatible with original property-only querying
-		var options = (propOrOptions instanceof Property || propOrOptions instanceof PropertyChain) ?
-			{ property: propOrOptions } :
-			propOrOptions;
-
-		return filter(this._conditions, function(condition) {
-			return (!options.property || condition.get_properties().some(function(p) { return p.equals(options.property); })) &&
-				(!options.set || condition.get_type().get_sets().indexOf(options.set) >= 0) &&
-				(!options.target || condition.get_targets().some(function(t) { return t.get_entity() === options.target; })) &&
-				(!options.type || condition.get_type() === options.type);
-		});
-	},
-
-	_raisePropertiesValidated: function (properties) {
-		var queue = this.type.get_model()._validatedQueue;
-		for (var i = 0; i < properties.length; ++i) {
-			queue.push({ sender: this, property: properties[i].get_name() });
+		// condition type filter
+		if (criteria instanceof ConditionType) {
+			var conditionTarget = this._conditions[criteria.code];
+			return conditionTarget ? [conditionTarget.condition] : [];
 		}
-	},
-	addPropertyValidated: function (propName, handler) {
-		this._addEvent("propertyValidated:" + propName, handler);
-	},
-	removePropertyValidated: function (propName, handler) {
-		this._removeEvent("propertyValidated:" + propName, handler);
-	},
-	_raisePropertyValidating: function (propName) {
-		var queue = this.type.get_model()._validatingQueue;
-		queue.push({ sender: this, propName: propName });
-	},
-	addPropertyValidating: function (propName, handler) {
-		this._addEvent("propertyValidating:" + propName, handler);
-	},
-	removePropertyValidating: function (propName, handler) {
-		this._removeEvent("propertyValidating:" + propName, handler);
+
+		// property filter
+		if (criteria instanceof Property || criteria instanceof PropertyChain) {
+			criteria = criteria.lastProperty();
+			var result = [];
+			for (var type in this._conditions) {
+				var conditionTarget = this._conditions[type];
+				if (conditionTarget.properties.some(function (p) { return p.equals(criteria); })) {
+					result.push(conditionTarget.condition);
+				}
+			}
+			return result;
+		}
+
+		// otherwise, just return all conditions
+		var result = [];
+		for (var type in this._conditions) {
+			result.push(this._conditions[type].condition);
+		}
+		return result;
 	},
 	destroy: function () {
 		this.type.unregister(this.obj);
@@ -216,24 +114,22 @@ ObjectMeta.mixin({
 	// starts listening for change events on the conditions array. Use obj argument to
 	// optionally filter the events to a specific condition type by passing either
 	// the condition type code or type itself.
-	addConditionsChanged: function ObjectMeta$addConditionsChanged(handler, obj) {
+	addConditionsChanged: function ObjectMeta$addConditionsChanged(handler, criteria) {
 		var filter;
-		if (obj) {
-			//check for condition type code.
-			if (obj.constructor === String)
-				obj = ConditionType.get(obj);
 
-			if (!obj)
-				throw new Error(obj + " not found");
-
-			filter = function (target, args) {
-				if (args.condition._type === obj) {
-					handler.apply(this, arguments);
-				}
-			};
+		// condition type filter
+		if (criteria instanceof ConditionType) {
+			filter = function (sender, args) { return args.conditionTarget.condition.type === criteria; };
 		}
 
-		this._addEvent("conditionsChanged", handler, filter); ;
+		// property filter
+		else if (criteria instanceof Property || criteria instanceof PropertyChain) {
+			criteria = criteria.lastProperty();
+			filter = function (sender, args) { return args.conditionTarget.properties.indexOf(criteria) >= 0; };
+		}
+
+		// subscribe to the event
+		this._addEvent("conditionsChanged", handler, filter);
 
 		// Return the object meta to support method chaining
 		return this;

@@ -1,3 +1,105 @@
+// determine whether Object.defineProperty is supported and add legacy support is necessary/possible
+var definePropertySupported = false;
+var defineProperty;
+
+function defineLegacyProperty() {
+	Object.defineProperty = function (obj, prop, desc) {
+
+		// assume getter will only need to calculate once following the constructor
+		if ("get" in desc) {
+			if (desc.init) {
+				// assume objects with prototypes are instances and go ahead and initialize the property using the getter
+				if (obj.prototype) {
+					obj[prop] = desc.get.call(obj, obj);
+				}
+
+				// otherwise, configure the prototype to initialize the property when the constructor is called
+				else if (obj.constructor) {
+					var initProperties = obj.constructor.__initProperties;
+					if (!initProperties) {
+						obj.constructor.__initProperties = initProperties = {};
+					}
+					initProperties[prop] = desc.get;
+				}
+			}
+			else {
+				ExoWeb.trace.throwAndLog("utilities", "Getters are not supported by the current browser.  Use definePropertySupported to check for full support.");
+			}
+		}
+
+		// assume it is just a data property
+		else {
+			obj[prop] = desc.value;
+		}
+
+		// throw an exception if the property has a setter, which is definitely not supported
+		if ("set" in desc) {
+			ExoWeb.trace.throwAndLog("utilities", "Setters are not supported by the current browser.  Use definePropertySupported to check for full support.");
+		}
+	}
+}
+
+try {
+	// emulate ES5 getter/setter API using legacy APIs
+	if (Object.prototype.__defineGetter__ && !Object.defineProperty) {
+		Object.defineProperty = function (obj, prop, desc) {
+
+			// property with getter
+			if ("get" in desc) obj.__defineGetter__(prop, desc.get);
+
+			// property with setter
+			if ("set" in desc) obj.__defineSetter__(prop, desc.set);
+
+			// data only property
+			if (!("get" in propDesc || "set" in propDesc)) {
+
+				// read/write property
+				if (propDesc.writable) {
+					var value = propDesc.value;
+					obj.__defineGetter__(prop, function () { return value; });
+					obj.__defineSetter__(prop, function (val) { value = val; });
+				}
+
+				// read only property
+				else {
+					var value = propDesc.value;
+					obj.__defineGetter__(prop, function () { return value; });
+				}
+			}
+		}
+		definePropertySupported = true;
+	}
+
+	// otherwise, ensure defineProperty actually works
+	else if (Object.defineProperty && Object.defineProperty({}, "x", { get: function () { return true } }).x) {
+		definePropertySupported = true;
+	}
+
+	// enable legacy support
+	else {
+		defineLegacyProperty();
+	}
+} 
+
+// no getter/setter support
+catch (e) {
+
+	// enable legacy support
+	defineLegacyProperty();
+};
+
+// classes that call define property should
+function initializeLegacyProperties(obj) {
+	if (definePropertySupported) return;
+	var initProperties = obj.constructor.__initProperties;
+	if (initProperties) {
+		for (var p in initProperties) {
+			obj[p] = initProperties[p].call(obj, obj);
+		}
+	}
+}
+
+// evalPath internal utility function
 function evalPath(obj, path, nullValue, undefinedValue) {
 	var i, name, steps = path.split("."), source, value = obj;
 
@@ -61,6 +163,8 @@ window.$lastTarget = getLastTarget;
 // TODO: better name
 function getValue(target, property) {
 	var value;
+
+	// the see if there is an explicit getter function for the property
 	var getter = target["get_" + property];
 	if (getter) {
 		value = getter.call(target);
@@ -68,6 +172,8 @@ function getValue(target, property) {
 			value = null;
 		}
 	}
+
+	// otherwise search for the property
 	else {
 		if ((isObject(target) && property in target) ||
 			Object.prototype.hasOwnProperty.call(target, property) ||

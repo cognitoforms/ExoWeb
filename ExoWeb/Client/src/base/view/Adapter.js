@@ -83,7 +83,7 @@ Adapter.mixin({
 		}
 
 		// get the property chain for this adapter starting at the source object
-		this._propertyChain = sourceObject.meta.property(this._propertyPath);
+		this._propertyChain = Model.property(this._propertyPath, sourceObject.meta.type);
 		if (!this._propertyChain) {
 			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{0}\" could not be found.", this._propertyPath);
 		}
@@ -102,8 +102,8 @@ Adapter.mixin({
 			ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 		});
 		signal.waitForAll(function () {
-			Sys.Observer.raisePropertyChanged(this, "displayValue");
-			Sys.Observer.raisePropertyChanged(this, "systemValue");
+			Observer.raisePropertyChanged(this, "displayValue");
+			Observer.raisePropertyChanged(this, "systemValue");
 		}, this);
 	},
 	_doForFormatPaths: function Adapter$_doForFormatPaths(val, callback, thisPtr) {
@@ -117,21 +117,28 @@ Adapter.mixin({
 	},
 	_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val) {
 		this._doForFormatPaths(val, function (path) {
-			var fn = this._formatSubscribers[path];
-			Sys.Observer.removePathChanged(val, path, fn);
+			var subscription = this._formatSubscribers[path];
+			if (subscription.chain) {
+				subscription.chain.removeChanged(subscription.handler);
+			}
 		});
 	},
 	_subscribeToFormatChanges: function Adapter$_subscribeToFormatChanges(val) {
 		this._doForFormatPaths(val, function (path) {
-			var fn = this._formatSubscribers[path] = this._loadForFormatAndRaiseChange.bind(this).prependArguments(val);
-			Sys.Observer.addPathChanged(val, path, fn);
+			Model.property(path, this._propertyChain.lastProperty().get_jstype().meta, true, function (chain) {
+				var subscription = this._formatSubscribers[path] = { chain: chain, handler: this._loadForFormatAndRaiseChange.bind(this).prependArguments(val) };
+				var entities = val instanceof Array ? val : [val];
+				entities.forEach(function (entity) {
+					chain.addChanged(subscription.handler, entity);
+				});
+			}, this);
 		});
 	},
 	_ensureObservable: function Adapter$_ensureObservable() {
 		var _this = this;
 
 		if (!this._observable) {
-			Sys.Observer.makeObservable(this);
+			Observer.makeObservable(this);
 
 			// subscribe to property changes at all points in the path
 			this._targetChangedHandler = this._onTargetChanged.bind(this);
@@ -140,7 +147,7 @@ Adapter.mixin({
 			this._formatSubscribers = {};
 
 			// set up initial watching of format paths
-			if (this._propertyChain.lastTarget(this._target, true)) {
+			if (this._propertyChain.lastTarget(this._target)) {
 				var rawValue = this._propertyChain.value(this._target);
 				this._subscribeToFormatChanges(rawValue);
 			}
@@ -164,7 +171,7 @@ Adapter.mixin({
 
 		// raise raw value changed event
 		ExoWeb.Model.LazyLoader.eval(rawValue, null, function () {
-			Sys.Observer.raisePropertyChanged(_this, "rawValue");
+			Observer.raisePropertyChanged(_this, "rawValue");
 		});
 
 		// raise value changed event
@@ -177,13 +184,13 @@ Adapter.mixin({
 			Array.forEach(this._options, function (o) {
 				// Always reload selected for options in an array since we don't know what the old values in the list were
 				if (args.newValue instanceof Array || o.get_rawValue() == args.newValue || o.get_rawValue() == args.oldValue) {
-					Sys.Observer.raisePropertyChanged(o, "selected");
+					Observer.raisePropertyChanged(o, "selected");
 				}
 			});
 		}
 
 		// Re-attach validation handlers if needed
-		var properties = this._propertyChain._properties;
+		var properties = this._propertyChain.properties();
 		var numProps = properties.length;
 
 		// The last target does not change if this is a single-property chain,
@@ -203,22 +210,17 @@ Adapter.mixin({
 
 				// Remove and re-add validation handlers if the last target has changed
 				if (oldLastTarget !== newLastTarget) {
-					if (this._propertyValidatedHandler) {
-						oldLastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
-						this.addPropertyValidated(null, this._propertyValidatedHandler);
-					}
-					if (this._propertyValidatingHandler) {
-						oldLastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
-						this.addPropertyValidating(null, this._propertyValidatingHandler);
+					this._conditions.clear();
+					if (this._conditionsChangedHandler) {
+						oldLastTarget.meta.removeConditionsChanged(this._conditionsChangedHandler);
 					}
 				}
 			}
 
-			if (this._propertyValidatedHandler) {
-				this.addPropertyValidated(null, this._propertyValidatedHandler);
-			}
-			if (this._propertyValidatingHandler) {
-				this.addPropertyValidating(null, this._propertyValidatingHandler);
+			// Add the conditions for the new target and subscribe to changes
+			if (this._conditions && newLastTarget !== null) {
+				this.addRange(newLastTarget.meta.conditions(this._propertyChain.lastProperty()));
+				newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this._propertyChain);
 			}
 		}
 
@@ -228,39 +230,22 @@ Adapter.mixin({
 	},
 	_setValue: function Adapter$_setValue(value) {
 		var prop = this._propertyChain;
-		var meta = prop.lastTarget(this._target).meta;
 
-		meta.clearConditions(this);
-
-		if (value instanceof ExoWeb.Model.FormatError) {
-			this._condition = value.createCondition(this, prop.lastProperty());
-
-			meta.conditionIf(this._condition, true);
-
-			// Update the model with the bad value if possible
-			if (prop.canSetValue(this._target, value)) {
-				prop.value(this._target, value);
-			}
-			// run the rules to preserve the order of conditions
-			else {
-				// store the "bad value" since the actual value will be different
-				this._badValue = value;
-				meta.executeRules(prop);
-			}
+		// clear existing format errors
+		if (this._formatError) {
+			this.get_conditions().remove(this._formatError);
+			this._formatError = undefined;
 		}
+
+		// insert new format errors, if the value is not valid
+		if (value instanceof ExoWeb.Model.FormatError) {
+			this._formatError = value.createCondition(this._propertyChain.lastTarget(this._target), this._propertyChain.lastProperty());
+			this.get_conditions().insert(0, this._formatError);
+		}
+
+		// otherwise, update the property value
 		else {
 			var changed = prop.value(this._target) !== value;
-
-			if (this._badValue !== undefined) {
-				delete this._badValue;
-				delete this._condition;
-
-				// force rules to run again in order to trigger validation events
-				if (!changed) {
-					meta.executeRules(prop);
-				}
-			}
-
 			this.set_rawValue(value, changed);
 		}
 	},
@@ -363,7 +348,6 @@ Adapter.mixin({
 		// help text may also be included in the model?
 		return this._helptext || "";
 	},
-
 	get_rawValue: function Adapter$get_rawValue() {
 		this._ensureObservable();
 		return this._propertyChain.value(this._target);
@@ -409,7 +393,26 @@ Adapter.mixin({
 	},
 	set_systemValue: function Adapter$set_systemValue(value) {
 		if (this.get_isEntity()) {
-			this._setValue(value ? Entity.fromIdString(value) : null);
+			
+			// set to null
+			if (!value) {
+				this._setValue(null);
+			}
+			else {
+				var entity = Entity.fromIdString(value);
+
+				// set immediately if loaded
+				if (LazyLoader.isLoaded(entity)) {
+					this._setValue(entity);
+				}
+
+				// lazy load if necessary
+				else {
+					LazyLoader.load(entity, null, function () {
+						this._setValue(entity);
+					}, this);
+				}
+			}
 		}
 		else if (this.isType(Boolean)) {
 			if (value === "true") {
@@ -469,34 +472,6 @@ Adapter.mixin({
 		}
 	},
 
-	// Used to register validating and validated events through the adapter as if binding directly to an Entity
-	addPropertyValidating: function Adapter$addPropertyValidating(propName, handler) {
-		var lastTarget = this._propertyChain.lastTarget(this._target);
-
-		this._propertyValidatingHandler = handler;
-
-		if (lastTarget) {
-			lastTarget.meta.addPropertyValidating(this._propertyChain.get_name(), handler);
-		}
-	},
-	addPropertyValidated: function Adapter$addPropertyValidated(propName, handler) {
-		var lastTarget = this._propertyChain.lastTarget(this._target);
-
-		this._propertyValidatedHandler = handler;
-
-		if (lastTarget) {
-			lastTarget.meta.addPropertyValidated(this._propertyChain.get_name(), handler);
-		}
-	},
-
-	clearValidation: function () {
-		if (this._condition) {
-			var prop = this._propertyChain;
-			var meta = prop.lastTarget(this._target).meta;
-			meta.conditionIf(this._condition, false);
-			delete this._condition;
-		}
-	},
 	dispose: function Adapter$dispose() {
 		var disposed = this._disposed, options = null;
 
@@ -504,7 +479,6 @@ Adapter.mixin({
 			this._disposed = true;
 			disposeOptions.call(this);
 			options = this._options;
-			this.clearValidation();
 			if (this._extendedProperties) {
 				var ext = this._extendedProperties;
 				for (var i = 0, l = ext.length; i < l; i++) {
@@ -518,13 +492,10 @@ Adapter.mixin({
 			}
 			this._unsubscribeFromFormatChanges(this.get_rawValue());
 			// Clean up validation event handlers
-			var lastTarget = this._propertyChain.lastTarget(this._target, true);
+			var lastTarget = this._propertyChain.lastTarget(this._target);
 			if (lastTarget) {
-				if (this._propertyValidatedHandler) {
-					lastTarget.meta.removePropertyValidating(this._propertyChain.get_name(), this._propertyValidatingHandler);
-				}
-				if (this._propertyValidatedHandler) {
-					lastTarget.meta.removePropertyValidated(this._propertyChain.get_name(), this._propertyValidatedHandler);
+				if (this._conditionsChangedHandler) {
+					lastTarget.meta.removeConditionsChanged(this._conditionsChangedHandler);
 				}
 			}
 			this._allowedValues = this._allowedValuesMayBeNull = this._aspects = this._badValue =
@@ -536,13 +507,88 @@ Adapter.mixin({
 		Adapter.callBaseMethod(this, "dispose");
 
 		if (!disposed) {
-			Sys.Observer.disposeObservable(this);
+			Observer.disposeObservable(this);
 			if (options) {
-				options.forEach(Sys.Observer.disposeObservable);
+				options.forEach(Observer.disposeObservable);
 			}
 		}
 	}
 });
+
+// #region Conditions
+
+function conditionsChangedHandler(conditions, sender, args) {
+	if (args.add) {
+		conditions.add(args.conditionTarget.condition);
+	}
+	else if (args.remove) {
+		conditions.remove(args.conditionTarget.condition);
+	}
+};
+
+Adapter.mixin({
+	get_conditions: function Adapter$get_conditions() {
+
+		// initialize the conditions if necessary
+		if (!this._conditions) {
+
+			// get the current target
+			var target = this._propertyChain.lastTarget(this._target);
+
+			// get the current set of conditions
+			var conditions = this._conditions = target ? target.meta.conditions(this._propertyChain.lastProperty()) : [];
+
+			// make the conditions observable
+			Observer.makeObservable(this._conditions);
+
+			// subscribe to condition changes on the current target
+			if (target) {
+				var handler = this._conditionsChangedHandler = conditionsChangedHandler.prependArguments(conditions);
+				target.meta.addConditionsChanged(handler, this._propertyChain);
+			}
+		}
+		return this._conditions;
+	},
+	get_firstError: function Adapter$get_firstError() {
+
+		// gets the first error in a set of conditions, always returning required field errors first, and null if no errors exist
+		var getFirstError = function (conditions) {
+			var firstError = null;
+			for (var c = 0; c < conditions.length; c++) {
+				var condition = conditions[c];
+				if (condition.type instanceof ConditionType.Error && (firstError === null || /Required/i.test(condition.type.code))) {
+					firstError = condition;
+				}
+			}
+			return firstError;
+		};
+
+		// initialize on first access
+		if (!this.hasOwnProperty("_firstError")) {
+
+			var conditions = this.get_conditions();
+			this._firstError = getFirstError(conditions);
+
+			// automatically update when condition changes occur
+			var adapter = this;
+			conditions.add_collectionChanged(function (sender, args) {
+
+				var err = getFirstError(conditions);
+
+				// store the first error and raise property change if it differs from the previous first error
+				if (adapter._firstError !== err) {
+					adapter._firstError = err;
+					Observer.raisePropertyChanged(adapter, "firstError");
+				}
+			});
+		}
+
+		// return the first error
+		return this._firstError;
+	}
+});
+
+// #endregion
 
 // #region Options
 
@@ -550,7 +596,7 @@ function disposeOptions() {
 	var lastProperty = this._propertyChain.lastProperty();
 	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
 	if (this._allowedValuesChangedHandler) {
-		allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesChangedHandler);
+		allowedValuesRule.source.removeChanged(this._allowedValuesChangedHandler);
 		this._allowedValuesChangedHandler = null;
 	}
 	if ( this._allowedValuesRuleExistsHandler) {
@@ -558,7 +604,7 @@ function disposeOptions() {
 		this._allowedValuesRuleExistsHandler = null;
 	}
 	if (this._allowedValuesExistHandler) {
-		allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesExistHandler);
+		allowedValuesRule.source.removeChanged(this._allowedValuesExistHandler);
 		this._allowedValuesExistHandler = null;
 	}
 	this._options = null;
@@ -586,7 +632,7 @@ function signalOptionsReady() {
 	delete this._options;
 
 	// Raise events in order to cause subscribers to fetch the new value
-	Sys.Observer.raisePropertyChanged(this, "options");
+	ExoWeb.Observer.raisePropertyChanged(this, "options");
 }
 
 // If the given rule is allowed values, signal options ready
@@ -604,30 +650,9 @@ function checkAllowedValuesExist() {
 	var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 	if (allowedValues instanceof Array) {
-		allowedValuesRule._allowedValuesProperty.removeChanged(this._allowedValuesExistHandler);
+		allowedValuesRule.source.removeChanged(this._allowedValuesExistHandler);
 		delete this._allowedValuesExistHandler;
 		signalOptionsReady.call(this);
-	}
-}
-
-// If the given value is not valid, then remove it
-function checkSelectedValue(value, isValid) {
-	if (this._disposed) {
-		return;
-	}
-
-	var rawValue = this.get_rawValue();
-	if (!isValid) {
-		if (rawValue instanceof Array) {
-			if (rawValue.indexOf(value) >= 0) {
-				//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
-				rawValue.remove(value);
-			}
-		}
-		else if (this.get_rawValue() === value) {
-			//ExoWeb.trace.log(["@", "markupExt"], "De-selecting item since it is no longer allowed.");
-			this.set_rawValue(null);
-		}
 	}
 }
 
@@ -641,7 +666,7 @@ function refreshOptionsFromAllowedValues(optionsSourceArray) {
 		update(optionsSourceArray, allowedValues);
 	}
 	else {
-		optionsSourceArray.clear();
+		signalOptionsReady.call(this);
 	}
 }
 
@@ -684,16 +709,26 @@ function allowedValuesChanged(optionsSourceArray, sender, args) {
 		refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
 	}
 
-	// Remove option values that are no longer valid
+}
+
+function clearInvalidOptions(allowedValues) {
 	var rawValue = this.get_rawValue();
-	var targetObj = this._propertyChain.lastTarget(this._target);
-	if (rawValue instanceof Array) {
-		rawValue.forEach(function (item) {
-			allowedValuesRule.satisfiesAsync(targetObj, item, !!this._allowedValuesMayBeNull, checkSelectedValue.bind(this).prependArguments(item));
-		}, this);
+	if (allowedValues) {
+		// Remove option values that are no longer valid
+		if (rawValue instanceof Array) {
+			purge(rawValue, function (item) {
+				return allowedValues.indexOf(item) < 0;
+			}, this);
+		}
+		else if (allowedValues.indexOf(rawValue) < 0) {
+			this.set_rawValue(null);
+		}
+	}
+	else if (rawValue instanceof Array) {
+		rawValue.clear();
 	}
 	else {
-		allowedValuesRule.satisfiesAsync(targetObj, rawValue, !!this._allowedValuesMayBeNull, checkSelectedValue.bind(this).prependArguments(rawValue));
+		this.set_rawValue(null);
 	}
 }
 
@@ -718,42 +753,45 @@ Adapter.mixin({
 				// Cache the last target
 				var targetObj = this._propertyChain.lastTarget(this._target);
 
+				// Retrieve the value of allowed values property
+				var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
+
 				// Load allowed values if the path is not inited
-				if (!allowedValuesRule._allowedValuesProperty.isInited(targetObj, false)) {
-					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [allowedValuesRule]);
-					ExoWeb.Model.LazyLoader.eval(allowedValuesRule._allowedValuesProperty.get_isStatic() ? null : targetObj,
-						allowedValuesRule._allowedValuesProperty.get_path(),
+				if (allowedValues === undefined) {
+					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced eval of allowed values. Rule: {0}", [allowedValuesRule]);
+					ExoWeb.Model.LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
+						allowedValuesRule.source.get_path(),
 						signalOptionsReady.bind(this));
 					this._options = null;
 					return;
 				}
 
-				// Retrieve the value of allowed values property
-				var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
-
 				// Watch for changes until the allowed values path has a value
 				if (!allowedValues) {
 					this._allowedValuesExistHandler = checkAllowedValuesExist.bind(this);
-					allowedValuesRule._allowedValuesProperty.addChanged(this._allowedValuesExistHandler, targetObj);
+					allowedValuesRule.source.addChanged(this._allowedValuesExistHandler, targetObj);
+					clearInvalidOptions.call(this);
 					this._options = null;
 					return;
 				}
 
 				// Load the allowed values list if it is not already loaded
 				if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
-					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values. Rule: {0}", [allowedValuesRule]);
+					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values list. Rule: {0}", [allowedValuesRule]);
 					ExoWeb.Model.LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
 					this._options = null;
 					return;
 				}
 
+				clearInvalidOptions.call(this, allowedValues);
+
 				// Create an observable copy of the allowed values that we can keep up to date in our own time
 				var observableAllowedValues = allowedValues.slice();
-				Sys.Observer.makeObservable(observableAllowedValues);
+				ExoWeb.Observer.makeObservable(observableAllowedValues);
 
 				// Respond to changes to allowed values
 				this._allowedValuesChangedHandler = allowedValuesChanged.bind(this).prependArguments(observableAllowedValues);
-				allowedValuesRule._allowedValuesProperty.addChanged(this._allowedValuesChangedHandler, targetObj);
+				allowedValuesRule.source.addChanged(this._allowedValuesChangedHandler, targetObj);
 
 				// Create a transform that watches the observable copy and uses the user-supplied _allowedValuesTransform if given
 				if (this._allowedValuesTransform) {

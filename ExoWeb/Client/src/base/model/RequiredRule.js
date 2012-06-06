@@ -1,41 +1,47 @@
-function RequiredRule(mtype, options, ctype, callback, thisPtr) {
-	this.prop = mtype.property(options.property, true);
+function RequiredRule(rootType, options) {
+	/// <summary>Creates a rule that validates that a property has a value.</summary>
+	/// <param name="rootType" type="Type">The model type the rule is for.</param>
+	/// <param name="options" type="Object">
+	///		The options for the rule, including:
+	///			property:			the property being validated (either a Property instance or string property name)
+	///			name:				the optional unique name of the type of validation rule
+	///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+	///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+	///			message:			the message to show the user when the validation fails
+	/// </param>
+	/// <returns type="RequiredRule">The new required rule.</returns>
 
-	if (!ctype) {
-		ctype = Rule.ensureError("required", this.prop);
-	}
+	// ensure the rule name is specified
+	options.name = options.name || "Required";
 
-	this.ctype = ctype;
+	// ensure the error message is specified
+	options.message = options.message || Resource.get("required");
 
-	this.err = new Condition(ctype, this.prop.get_label() + " is required", [ this.prop ], this);
-
-	Rule.register(this, [this.prop], false, mtype, callback, thisPtr);
+	// call the base type constructor
+	ValidatedPropertyRule.apply(this, [rootType, options]);
 }
 
-RequiredRule.hasValue = function RequiredRule$hasValue(obj, prop) {
-	var val = arguments.length === 1 ? obj : prop.value(obj);
+// setup the inheritance chain
+RequiredRule.prototype = new ValidatedPropertyRule();
+RequiredRule.prototype.constructor = RequiredRule;
 
-	if (val instanceof Array) {
-		return val.length > 0;
-	}
-	else if (val === undefined || val === null) {
-		return false;
-	}
-	else if (val.constructor === String) {
-		return $.trim(val) !== "";
-	}
-	else {
-		return true;
-	}
-};
+// define a global function that determines if a value exists
+RequiredRule.hasValue = function RequiredRule$hasValue(val) {
+	return val !== undefined && val !== null && (val.constructor !== String || val.trim() !== "") && (!(val instanceof Array) || val.length > 0);
+}
 
-RequiredRule.prototype = {
-	execute: function(obj) {
-		obj.meta.conditionIf(this.err, !RequiredRule.hasValue(obj, this.prop));
-	},
+// extend the base type
+RequiredRule.mixin({
+
+	// returns true if the property is valid, otherwise false
+	isValid: function RequiredRule$isValid(obj, prop, val) { return RequiredRule.hasValue(val); },
+
+	// get the string representation of the rule
 	toString: function() {
-		return $format("{0}.{1} is required", [this.prop.get_containingType().get_fullName(), this.prop.get_name()]);
+		return $format("{0}.{1} is required", [this.property.get_containingType().get_fullName(), this.property.get_name()]);
 	}
-};
+});
 
+// Expose the rule publicly
 Rule.required = RequiredRule;
+exports.RequiredRule = RequiredRule;

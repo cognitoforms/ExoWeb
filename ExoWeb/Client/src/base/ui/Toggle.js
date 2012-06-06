@@ -307,14 +307,14 @@ Toggle.mixin({
 
 		if (changed) {
 			if (this._on && this._on instanceof Array) {
-				Sys.Observer.removeCollectionChanged(this._on, this._collectionChangedHandler);
+				Observer.removeCollectionChanged(this._on, this._collectionChangedHandler);
 			}
 
 			this._on = value;
 
 			if (this._on && this._on instanceof Array) {
 				this._collectionChangedHandler = this.execute.bind(this);
-				Sys.Observer.addCollectionChanged(this._on, this._collectionChangedHandler);
+				Observer.addCollectionChanged(this._on, this._collectionChangedHandler);
 			}
 
 			this.execute();

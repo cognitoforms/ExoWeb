@@ -34,6 +34,7 @@ namespace ExoWeb
 			{ typeof(double),		"Number"  },
 			{ typeof(decimal),		"Number"  },
 			{ typeof(DateTime),		"Date"    },
+			{ typeof(TimeSpan),		"TimeSpan"},
 			{ typeof(bool?),		"Boolean" },
 			{ typeof(byte?),		"Number"  },
 			{ typeof(int?),			"Number"  },
@@ -42,6 +43,7 @@ namespace ExoWeb
 			{ typeof(double?),		"Number"  },
 			{ typeof(decimal?),		"Number"  },
 			{ typeof(DateTime?),	"Date"    },
+			{ typeof(TimeSpan?),	"TimeSpan"},
 			{ typeof(Guid?),		"String"  }
 		};
 
@@ -230,7 +232,7 @@ namespace ExoWeb
 			if (deserialize == null)
 				throw new NotSupportedException("Deserialization of " + type.FullName + " is not supported.");
 
-			return deserialize(new Json(serializer, type, dictionary));
+			return deserialize(new Json((JsonSerializer)serializer, type, dictionary));
 		}
 
 		public override IDictionary<string, object> Serialize(object value, JavaScriptSerializer serializer)
@@ -239,7 +241,7 @@ namespace ExoWeb
 				throw new NotSupportedException("Serialization of " + type.FullName + " is not supported.");
 
 			IDictionary<string, object> values = new Dictionary<string, object>();
-			serialize(value, new Json(serializer, values));
+			serialize(value, new Json((JsonSerializer)serializer, values));
 			return values;
 		}
 

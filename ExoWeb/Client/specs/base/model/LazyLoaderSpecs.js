@@ -13,7 +13,11 @@ Array.insert = function Array$dequeue(array, index, value) { return array.splice
 var config = require("../../../src/base/core/Config");
 global.config = config.config;
 
+var activity = require("../../../src/base/core/Activity");
+global.registerActivity = activity.registerActivity;
 var functions = require("../../../src/base/core/Function");
+var functor = require("../../../src/base/core/Functor");
+global.Functor = functor.Functor;
 var arrays = require("../../../src/base/core/Array");
 
 var trace = require("../../../src/base/core/Trace");
@@ -32,6 +36,8 @@ global.isType = utilities.isType;
 global.getValue = utilities.getValue;
 
 // PathTokens is referenced directly
+var Property = global.Property = require("../../../src/base/model/Property").Property;
+var PropertyChain = global.PropertyChain = require("../../../src/base/model/PropertyChain").PropertyChain;
 var PathTokens = global.PathTokens = require("../../../src/base/model/PathTokens").PathTokens;
 
 var LazyLoader = require("../../../src/base/model/LazyLoader").LazyLoader;

@@ -1,120 +1,119 @@
-function CompareRule(mtype, options, ctype, callback, thisPtr) {
-	this.prop = mtype.property(options.property, true);
-	var properties = [ this.prop ];
+function CompareRule(rootType, options) {
+	/// <summary>Creates a rule that validates a property by comparing it to another property.</summary>
+	/// <param name="rootType" type="Type">The model type the rule is for.</param>
+	/// <param name="options" type="Object">
+	///		The options for the rule, including:
+	///			property:			the property being validated (either a Property instance or string property name)
+	///			compareSource:		the source property to compare to (either a Property or PropertyChain instance or a string property path)
+	///			compareOperator:	the relational comparison operator to use (one of "Equal", "NotEqual", "GreaterThan", "GreaterThanEqual", "LessThan" or "LessThanEqual")
+	///			name:				the optional unique name of the type of validation rule
+	///			conditionType:		the optional condition type to use, which will be automatically created if not specified
+	///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
+	///			message:			the message to show the user when the validation fails
+	/// </param>
+	/// <returns type="CompareRule">The new compare rule.</returns>
 
-	if (!ctype) {
-		ctype = Rule.ensureError($format("compare {0} {1}", [options.compareOperator, options.compareSource]), this.prop);
+	options.name = options.name || "Compare";
+	
+	// ensure changes to the compare source triggers rule execution
+	options.onChangeOf = [options.compareSource];
+
+	// define properties for the rule
+	Object.defineProperty(this, "compareOperator", { value: options.compareOperator });
+	if (options.source instanceof Property || options.compareSource instanceof PropertyChain) {
+		Object.defineProperty(this, "comparePath", { value: options.compareSource.get_path() });
+		Object.defineProperty(this, "compareSource", { value: options.compareSource });
 	}
-
-	this.ctype = ctype;
-
-	this._comparePath = options.compareSource;
-	this._compareOp = options.compareOperator;
-
-	this._inited = false;
-
-	// Function to register this rule when its containing type is loaded.
-	var register = (function CompareRule$register(ctype) { CompareRule.load(this, ctype, mtype, callback, thisPtr); }).bind(this);
-
-	// If the type is already loaded, then register immediately.
-	if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-		CompareRule.load(this, this.prop.get_containingType().get_jstype(), mtype, callback, thisPtr);
-	}
-	// Otherwise, wait until the type is loaded.
 	else {
-		$extend(this.prop.get_containingType().get_fullName(), register);
+		Object.defineProperty(this, "comparePath", { value: options.compareSource });
 	}
+
+	// call the base type constructor
+	ValidatedPropertyRule.apply(this, [rootType, options]);
 }
 
-CompareRule.load = function CompareRule$load(rule, loadedType, mtype, callback, thisPtr) {
-	if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
-		var inputs = [];
-
-		var targetInput = new RuleInput(rule.prop);
-		targetInput.set_isTarget(true);
-		if (rule.prop.get_origin() === "client")
-			targetInput.set_dependsOnInit(true);
-		inputs.push(targetInput);
-
-		Model.property(rule._comparePath, rule.prop.get_containingType(), true, function(chain) {
-			rule._compareProperty = chain;
-
-			var compareInput = new RuleInput(rule._compareProperty);
-			inputs.push(compareInput);
-
-			rule._inited = true;
-
-			if (chain.get_jstype() === Boolean && rule._compareOp == "NotEqual" && (rule._compareValue === undefined || rule._compareValue === null)) {
-				rule._compareOp = "Equal";
-				rule._compareValue = true;
-			}
-
-			Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-		});
-	}
-	else {
-		$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
-			CompareRule.load(rule, baseType, mtype, callback, thisPtr);
-		});
-	}
-};
-
-CompareRule.compare = function CompareRule$compare(srcValue, cmpOp, cmpValue, defaultValue) {
-	if (cmpValue === undefined || cmpValue === null) {
-		switch (cmpOp) {
-			case "Equal": return !RequiredRule.hasValue(srcValue);
-			case "NotEqual": return RequiredRule.hasValue(srcValue);
+// compares the source value to a comparison value using the specified operator
+CompareRule.compare = function CompareRule$compare(sourceValue, compareOp, compareValue, defaultValue) {
+	if (compareValue === undefined || compareValue === null) {
+		switch (compareOp) {
+			case "Equal": return !RequiredRule.hasValue(sourceValue);
+			case "NotEqual": return RequiredRule.hasValue(sourceValue);
 		}
 	}
 
-	if (srcValue !== undefined && srcValue !== null && cmpValue !== undefined && cmpValue !== null) {
-		switch (cmpOp) {
-			case "Equal": return srcValue == cmpValue;
-			case "NotEqual": return srcValue != cmpValue;
-			case "GreaterThan": return srcValue > cmpValue;
-			case "GreaterThanEqual": return srcValue >= cmpValue;
-			case "LessThan": return srcValue < cmpValue;
-			case "LessThanEqual": return srcValue <= cmpValue;
+	if (sourceValue !== undefined && sourceValue !== null && compareValue !== undefined && compareValue !== null) {
+		switch (compareOp) {
+			case "Equal": return sourceValue == compareValue;
+			case "NotEqual": return sourceValue != compareValue;
+			case "GreaterThan": return sourceValue > compareValue;
+			case "GreaterThanEqual": return sourceValue >= compareValue;
+			case "LessThan": return sourceValue < compareValue;
+			case "LessThanEqual": return sourceValue <= compareValue;
 		}
 		// Equality by default.
-		return srcValue == cmpValue;
+		return sourceValue == compareValue;
 	}
 
 	return defaultValue;
 };
 
-CompareRule.prototype = {
-	satisfies: function Compare$satisfies(obj) {
-		if (!this._compareProperty) {
-			return true;
+// setup the inheritance chain
+CompareRule.prototype = new ValidatedPropertyRule();
+CompareRule.prototype.constructor = CompareRule;
+
+// extend the base type
+CompareRule.mixin({
+
+	// return true of the comparison is valid, otherwise false
+	isValid: function Compare$isValid(obj, prop, value) {
+		var compareValue = this.compareSource.value(obj);
+		return CompareRule.compare(value, this.compareOperator, compareValue, true);
+	},
+
+	// calculates the appropriate message based on the comparison operator and data type
+	message: function () {
+		var message;
+		var isDate = this.compareSource.get_jstype() === Date;
+		if (this.compareOperator === "Equal") {
+			message = Resource.get("compare-equal");
 		}
-
-		var srcValue = this.prop.value(obj);
-		var cmpValue = this._compareProperty.value(obj);
-		return CompareRule.compare(srcValue, this._compareOp, cmpValue, true);
-	},
-	message: function() {
-		return $format("{0} must be {1}{2} {3}", [
-			this.prop.get_label(),
-			ExoWeb.makeHumanReadable(this._compareOp).toLowerCase(),
-			(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
-			this._compareProperty.get_label()
-		]);
-	},
-	execute: function CompareRule$execute(obj) {
-		if (this._inited === true) {
-
-			var isValid = this.satisfies(obj);
-
-			var message = isValid ? '' : this.message();
-			this.err = new Condition(this.ctype, message, [this.prop], this);
-
-			obj.meta.conditionIf(this.err, !isValid);
+		else if (this.compareOperator === "NotEqual") {
+			message = Resource.get("compare-not-equal");
+		}
+		else if (this.compareOperator === "GreaterThan") {
+			message = Resource.get(isDate ? "compare-after" : "compare-greater-than");
+		}
+		else if (this.compareOperator === "GreaterThanEqual") {
+			message = Resource.get(isDate ? "compare-on-or-after" : "compare-greater-than-or-equal");
+		}
+		else if (this.compareOperator === "LessThan") {
+			message = Resource.get(isDate ? "compare-before" : "compare-less-than");
+		}
+		else if (this.compareOperator === "LessThanEqual") {
+			message = Resource.get(isDate ? "compare-on-or-before" : "compare-less-than-or-equal");
 		}
 		else {
-			ExoWeb.trace.logWarning("rule", "Compare rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+			ExoWeb.trace.throwAndLog(["rule"], "Invalid comparison operator for compare rule.");
 		}
-	}
-};
+		message = message
+			.replace('{property}', this.property.get_label())
+			.replace("{compareSource}", this.compareSource.get_label());
+		return message;
+	},
 
+	// perform addition initialization of the rule when it is registered
+	onRegister: function () {
+
+		// get the compare source, if only the path was specified
+		if (!this.compareSource) {
+			Object.defineProperty(this, "compareSource", { value: Model.property(this.comparePath, this.rootType) });
+		}
+
+		// call the base method
+		ValidatedPropertyRule.prototype.onRegister.call(this);
+	}
+});
+
+// expose the rule publicly
 Rule.compare = CompareRule;
+exports.CompareRule = CompareRule;

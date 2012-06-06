@@ -1,9 +1,9 @@
-if (!String.prototype.endsWith) {
-	String.prototype.endsWith = function endsWith(text) {
-		return this.length === (this.indexOf(text) + text.length);
-	};
+// Add String.trim() if not natively supported
+if (typeof String.prototype.trim !== 'function') {
+	String.prototype.trim = function () {
+		return this.replace(/^\s+|\s+$/g, '');
+	}
 }
-
 function isNullOrEmpty(str) {
 	return str === null || str === undefined || str === "";
 }

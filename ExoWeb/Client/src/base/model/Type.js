@@ -1,5 +1,6 @@
 function Type(model, name, baseType, origin) {
 	this._fullName = name;
+	this._exports;
 
 	// if origin is not provided it is assumed to be client
 	this._origin = origin || "client";
@@ -11,9 +12,10 @@ function Type(model, name, baseType, origin) {
 	this._properties = {}; 
 	this._instanceProperties = {};
 	this._staticProperties = {};
-	this._model = model;
-	this._initNewProps = [];
-	this._initExistingProps = [];
+
+	// define properties
+	Object.defineProperty(this, "model", { value: model });
+	Object.defineProperty(this, "rules", { value: [] });
 
 	// generate class and constructor
 	var jstype = Model.getJsType(name, true);
@@ -118,7 +120,6 @@ function generateClass(type) {
 				}
 
 				type.register(this, id);
-				type._initProperties(this, "_initExistingProps");
 
 				if (props) {
 					this.init(props);
@@ -126,7 +127,6 @@ function generateClass(type) {
 			}
 			else {
 				type.register(this);
-				type._initProperties(this, "_initNewProps");
 
 				// set properties passed into constructor
 				if (idOrProps) {
@@ -199,7 +199,7 @@ Type.prototype = {
 		var key = id.toLowerCase();
 
 		obj.meta.id = id;
-		Sys.Observer.makeObservable(obj);
+		Observer.makeObservable(obj);
 
 		for (var t = this; t; t = t.baseType) {
 			if (t._pool.hasOwnProperty(key)) {
@@ -212,7 +212,7 @@ Type.prototype = {
 			}
 		}
 
-		this._model.notifyObjectRegistered(obj);
+		this.model.notifyObjectRegistered(obj);
 	},
 	changeObjectId: function Type$changeObjectId(oldId, newId) {
 		validateId(this, oldId);
@@ -258,7 +258,7 @@ Type.prototype = {
 			}
 		}
 
-		this._model.notifyObjectUnregistered(obj);
+		this.model.notifyObjectUnregistered(obj);
 	},
 	get: function Type$get(id) {
 		validateId(this, id);
@@ -279,13 +279,16 @@ Type.prototype = {
 				list.push(this._pool[id]);
 			}
 
-			Sys.Observer.makeObservable(list);
+			Observer.makeObservable(list);
 		}
 
 		return list;
 	},
 	addPropertyAdded: function (handler) {
 		this._addEvent("propertyAdded", handler);
+	},
+	addRule: function Type$addRule(def) {
+		return new Rule(this, def);
 	},
 	addProperty: function Type$addProperty(def) {
 		var format = def.format;
@@ -311,33 +314,6 @@ Type.prototype = {
 		}
 		genPropertyShortcut(this, true);
 
-		// does this property need to be inited during object construction?
-		// note: this is an optimization so that all properties defined for a type and 
-		// its sub types don't need to be iterated over each time the constructor is called.
-		if (!prop.get_isStatic()) {
-			if (prop.get_isList()) {
-				this._initNewProps.push({ property: prop, valueFn: function () { return []; } });
-
-				if (prop.get_origin() !== "server") {
-					this._initExistingProps.push({ property: prop, valueFn: function () { return []; } });
-					this.known().forEach(function (obj) {
-						prop.init(obj, []);
-					});
-				}
-			}
-			else {
-				// Previously only server-origin properties were inited in an attempt to allow
-				// calculations of client-origin properties to run when accessed. However, since
-				// rules attempt to run when registered this is no longer necessary.
-				this._initNewProps.push({ property: prop, valueFn: function () { return undefined; } });
-			}
-		}
-		// initially client-based static list properties when added
-		else if (prop.get_isList() && prop.get_origin() === "client") {
-			prop.init(null, []);
-		}
-
-		 
 		if (prop.get_isStatic()) {
 			// for static properties add member to javascript type
 			this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
@@ -358,7 +334,7 @@ Type.prototype = {
 
 		this._raiseEvent("propertyAdded", [this, { property: prop}]);
 
-		return prop; 
+		return prop;
 	},
 	addMethod: function Type$addMethod(def) {
 		var methodName = this.get_fullName() + "." + def.name;
@@ -423,7 +399,7 @@ Type.prototype = {
 		};
 
 		// Assign the method to the type for static methods, otherwise assign it to the prototype for instance methods
-		if (def.isStatic){
+		if (def.isStatic) {
 			this._jstype[def.name] = method;
 		}
 		else {
@@ -431,9 +407,21 @@ Type.prototype = {
 		}
 
 	},
-	_makeGetter: function Type$_makeGetter(receiver, fn, skipTypeCheck) {
+	_makeGetter: function Type$_makeGetter(property, getter, skipTypeCheck) {
 		return function () {
-			return fn.call(receiver, this, skipTypeCheck);
+			// ensure the property is initialized
+			var result = getter.call(property, this, skipTypeCheck);
+
+			// ensure the property is initialized
+			if (result === undefined || (property.get_isList() && !LazyLoader.isLoaded(result))) {
+				ExoWeb.trace.throwAndLog(["model", "entity"], "Property {0}.{1} is not initialized.  Make sure instances are loaded before accessing property values.", [
+					property._containingType.get_fullName(),
+					property.get_name()
+				]);
+			}
+
+			// return the result
+			return result;
 		};
 	},
 	_makeSetter: function Type$_makeSetter(prop) {
@@ -447,19 +435,6 @@ Type.prototype = {
 		setter.__notifies = true;
 
 		return setter;
-	},
-	_initProperties: function Type$_initProperties(obj, initsArrayName) {
-		for (var t = this; t !== null; t = t.baseType) {
-			var inits = t[initsArrayName];
-
-			for (var i = 0; i < inits.length; ++i) {
-				var init = inits[i];
-				init.property.init(obj, init.valueFn());
-			}
-		}
-	},
-	get_model: function Type$get_model() {
-		return this._model;
 	},
 	get_format: function Type$get_format() {
 		return this._format ? this._format : (this.baseType ? this.baseType.get_format() : undefined);
@@ -513,11 +488,7 @@ Type.prototype = {
 	get_instanceProperties: function Type$get_instanceProperties() {
 		return this._instanceProperties;
 	},
-	property: function Type$property(name, thisOnly) {
-		if (!thisOnly) {
-			return new PropertyChain(this, new PathTokens(name));
-		}
-
+	property: function Type$property(name) {
 		var prop;
 		for (var t = this; t && !prop; t = t.baseType) {
 			prop = t._properties[name];
@@ -526,183 +497,11 @@ Type.prototype = {
 				return prop;
 			}
 		}
-
 		return null;
 	},
-	addRule: function Type$addRule(rule) {
-		function Type$addRule$init(sender, args) {
-			if (!args.wasInited && (rule.canExecute ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
-				Type$addRule$fn(sender, args.property, rule.execute);
-			}
-		}
-		function Type$addRule$changed(sender, args) {
-			if (args.wasInited && (rule.canExecute ? rule.canExecute(sender, args) : Rule.canExecute(rule, sender, args))) {
-				Type$addRule$fn(sender, args.property, rule.execute);
-			}
-		}
-		function Type$addRule$get(sender, args) {
-			try {
-				// Only execute rule on property get if the property has not been initialized.
-				// This is based on the assumption that a rule should only fire on property
-				// get for the purpose of lazy initializing the property value.
-				if (!args.isInited) {
-					Type$addRule$fn(sender, args.property, rule.execute);
-				}
-			}
-			catch (e) {
-				ExoWeb.trace.log("model", e);
-			}
-		}
-
-		function Type$addRule$_fn(obj, prop, fn) {
-			if (prop.get_isStatic() === true) {
-				Array.forEach(jstype.meta.known(), function (obj) {
-					if (rule.inputs.every(function (input) { return !input.get_dependsOnInit() || input.property.isInited(obj); })) {
-						fn.call(rule, obj);
-						obj.meta.markRuleExecuted(rule);
-					}
-				});
-			}
-			else {
-				fn.call(rule, obj);
-				obj.meta.markRuleExecuted(rule);
-			}
-		}
-
-		function Type$addRule$fn(obj, prop, fn) {
-			if (ExoWeb.config.debug === true) {
-				prop.get_containingType().get_model().beginValidation();
-				rule._isExecuting = true;
-				Type$addRule$_fn.apply(this, arguments);
-				rule._isExecuting = false;
-				prop.get_containingType().get_model().endValidation();
-			}
-			else {
-				try {
-					prop.get_containingType().get_model().beginValidation();
-					rule._isExecuting = true;
-					Type$addRule$_fn.apply(this, arguments);
-				}
-				catch (err) {
-					ExoWeb.trace.throwAndLog("rules", "Error running rule '{0}': {1}", [rule, err]);
-				}
-				finally {
-					rule._isExecuting = false;
-					prop.get_containingType().get_model().endValidation();
-				}
-			}
-		}
-
-		// Store off javascript type to use for comparison
-		var jstype = this.get_jstype();
-
-		for (var i = 0; i < rule.inputs.length; ++i) {
-			var input = rule.inputs[i];
-			var prop = input.property;
-
-			// If the containing type of the input is the same as the type 
-			// that the rule is attached to, then we do not need to check types.
-			var isSameType = this === prop.get_containingType();
-
-			if (input.get_dependsOnChange()) {
-				prop.addChanged(isSameType ?
-					Type$addRule$changed :
-					function (sender, args) {
-						if (sender instanceof jstype) {
-							Type$addRule$changed.apply(this, arguments);
-						}
-					},
-					null, // no object filter
-					false, // subscribe for all time, not once
-					true // tolerate nulls since rule execution logic will handle guard conditions
-				);
-			}
-
-			if (input.get_dependsOnInit()) {
-				prop.addChanged(isSameType ?
-					Type$addRule$init :
-					function (sender, args) {
-						if (sender instanceof jstype) {
-							Type$addRule$init.apply(this, arguments);
-						}
-					}
-				);
-			}
-
-			if (input.get_dependsOnGet()) {
-				prop.addGet(isSameType ?
-					Type$addRule$get :
-					function (obj, prop, value, isInited) {
-						if (obj instanceof jstype) {
-							Type$addRule$get.apply(this, arguments);
-						}
-					}
-				);
-			}
-
-			(prop instanceof PropertyChain ? prop.lastProperty() : prop)._registerRule(rule, input.get_isTarget());
-		}
-	},
-	// Executes all rules that have a particular property as input
-	executeRules: function Type$executeRules(obj, rules, callback, start) {
-
-		var processing;
-
-		if (start === undefined) {
-			this._model.beginValidation();
-		}
-
-		try {
-			var i = (start ? start : 0);
-
-			processing = (i < rules.length);
-
-			while (processing) {
-				var rule = rules[i];
-
-				// Only execute a rule if it is not currently executing and can be executed for the target object.
-				// If rule doesn't define a custom canExecute this will simply check that all init inputs are inited.
-				if (!rule._isExecuting && (rule.canExecute ? rule.canExecute(obj) : Rule.canExecute(rule, obj))) {
-					rule._isExecuting = true;
-
-					if (rule.isAsync) {
-						// run rule asynchronously, and then pickup running next rules afterwards
-						var _this = this;
-						//									ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-						rule.execute(obj, function () {
-							rule._isExecuting = false;
-							obj.meta.markRuleExecuted(rule);
-							_this.executeRules(obj, rules, callback, i + 1);
-						});
-						break;
-					}
-					else {
-						try {
-							//										ExoWeb.trace.log("rule", "executing rule '{0}' that depends on property '{1}'", [rule, prop]);
-							rule.execute(obj);
-							obj.meta.markRuleExecuted(rule);
-						}
-						finally {
-							rule._isExecuting = false;
-						}
-					}
-				}
-
-				++i;
-				processing = (i < rules.length);
-			}
-		}
-		finally {
-			if (!processing) {
-				this._model.endValidation();
-			}
-		}
-
-		if (!processing && callback && callback instanceof Function) {
-			callback();
-		}
-
-		return !processing;
+	conditionIf: function (options) {
+		new ExoWeb.Model.Rule.condition(this, options);
+		return this;
 	},
 	set_originForNewProperties: function Type$set_originForNewProperties(value) {
 		this._originForNewProperties = value;
@@ -715,6 +514,33 @@ Type.prototype = {
 	},
 	get_origin: function Type$get_origin() {
 		return this._origin;
+	},
+	compileExpression: function Type$compile(expression) {
+
+		// use exports if required
+		if (this._exports) {
+			expression = "return function() { return " + expression + "; }";
+			var args = this._exports.names.concat([expression]);
+			var compile = Function.apply(null, args);
+			return compile.apply(null, this._exports.implementations);
+		}
+
+		// otherwise, just create the function based on the expression
+		else {
+			return new Function("return " + expression + ";");
+		}
+	},
+	set_exports: function Type$set_exports(exports) {
+		var names = [];
+		var script = "return ["
+		for (var name in exports) {
+			names.push(name);
+			script += exports[name] + ",";
+		}
+		if (script.length > 8) {
+			script = script.slice(0, -1) + "];";
+			this._exports = { names: names, implementations: new Function(script)() };
+		}
 	},
 	eachBaseType: function Type$eachBaseType(callback, thisPtr) {
 		for (var baseType = this.baseType; !!baseType; baseType = baseType.baseType) {

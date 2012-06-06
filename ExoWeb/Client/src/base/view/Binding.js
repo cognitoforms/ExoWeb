@@ -53,14 +53,14 @@ Binding.mixin({
 				this._target.innerHTML = value;
 			else
 				this._target.appendChild(document.createTextNode(value));
-			Sys.Observer.raisePropertyChanged(this._target, this._targetPath);
+			Observer.raisePropertyChanged(this._target, this._targetPath);
 		}
 		else if (this._isTargetElement && value === null) {
 			// IE would set the value to "null"
-			Sys.Observer.setValue(this._target, this._targetPath, "");
+			Observer.setValue(this._target, this._targetPath, "");
 		}
 		else {
-			Sys.Observer.setValue(this._target, this._targetPath, value);
+			Observer.setValue(this._target, this._targetPath, value);
 		}
 	},
 
@@ -135,7 +135,7 @@ Binding.mixin({
 
 		// if necessary, remove an existing collection change handler
 		if (this._collectionChangedHandler) {
-			Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
+			Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
 			delete this._value;
 			delete this._collectionChangedHandler;
 		}
@@ -144,8 +144,8 @@ Binding.mixin({
 		if (value && value instanceof Array && this._options.required) {
 			this._value = value;
 			this._collectionChangedHandler = this._collectionChanged.bind(this);
-			Sys.Observer.makeObservable(value);
-			Sys.Observer.addCollectionChanged(value, this._collectionChangedHandler);
+			Observer.makeObservable(value);
+			Observer.addCollectionChanged(value, this._collectionChangedHandler);
 		}
 
 		// If additional paths are required then load them before invoking the callback.
@@ -163,7 +163,7 @@ Binding.mixin({
 		// Unwatch require path for items that are no longer relevant.
 		if (oldItems && oldItems.length > 0) {
 			oldItems.forEach(function(item) {
-				Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
+				Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
 			}, this);
 			delete this._watchedItemPathChangedHandler;
 		}
@@ -179,7 +179,7 @@ Binding.mixin({
 					// Watch require path for new items.
 					this._watchedItemPathChangedHandler = this._watchedItemPathChanged.bind(this);
 					forEach(newItems, function(item) {
-						Sys.Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
+						Observer.addPathChanged(item, this._options.required, this._watchedItemPathChangedHandler, true);
 					}, this);
 				}
 
@@ -229,7 +229,7 @@ Binding.mixin({
 
 		if (this._sourcePath) {
 			this._sourcePathChangedHandler = this._sourcePathChanged.bind(this);
-			Sys.Observer.addPathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler, true);
+			Observer.addPathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler, true);
 		}
 
 		this._sourcePathResult = result;
@@ -251,16 +251,16 @@ Binding.mixin({
 		if (!this._disposed) {
 			this._disposed = true;
 			if (this._collectionChangedHandler) {
-				Sys.Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
+				Observer.removeCollectionChanged(this._value, this._collectionChangedHandler);
 				this._collectionChangedHandler = null;
 			}
 			if (this._sourcePathChangedHandler) {
-				Sys.Observer.removePathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler);
+				Observer.removePathChanged(this._source, this._sourcePath, this._sourcePathChangedHandler);
 				this._sourcePathChangedHandler = null;
 			}
 			if (this._watchedItemPathChangedHandler) {
 				ensureArray(this._sourcePathResult).forEach(function(item) {
-					Sys.Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
+					Observer.removePathChanged(item, this._options.required, this._watchedItemPathChangedHandler);
 				}, this);
 				this._watchedItemPathChangedHandler = null;
 			}

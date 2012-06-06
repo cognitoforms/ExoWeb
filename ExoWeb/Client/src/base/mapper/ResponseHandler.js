@@ -10,6 +10,14 @@ function ResponseHandler(model, serverSync, options) {
 
 ResponseHandler.mixin({
 	execute: ExoWeb.FunctionChain.prepare(
+		function ResponseHandler$startResponseBatch(callback, thisPtr) {
+			/// <summary>
+			/// Start a new response batch.
+			/// </summary>
+
+			this._batch = Batch.start("ResponseHandler");
+			callback.call(thisPtr || this);
+		},
 		function ResponseHandler$setServerInfo(callback, thisPtr) {
 			/// <summary>
 			/// Set server info from JSON
@@ -39,13 +47,13 @@ ResponseHandler.mixin({
 					var mtype = this._model.type(typeName);
 
 					// ensure base classes are loaded too
-					mtype.eachBaseType(function(mtype) {
+					mtype.eachBaseType(function (mtype) {
 						if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 							ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
 						}
 					});
 
-					signal.waitForAll(function() {
+					signal.waitForAll(function () {
 						TypeLazyLoader.unregister(mtype);
 						raiseExtensions(mtype);
 					});
@@ -70,7 +78,7 @@ ResponseHandler.mixin({
 						this._serverSync._changeLog.start(this._options.source);
 						this._serverSync._changeLog.start("client");
 					}
-					callback.call(thisPtr);
+					callback.call(thisPtr || this);
 				}
 			}
 			else {
@@ -84,15 +92,42 @@ ResponseHandler.mixin({
 			/// </summary>
 
 			if (this._options.instances) {
-				var batch = Batch.start();
-				objectsFromJson(this._model, this._options.instances, function() {
-					Batch.end(batch);
-					callback.apply(this, arguments);
-				}, thisPtr);
+				objectsFromJson(this._model, this._options.instances, function (instancesPendingInit) {
+					this.instancesPendingInit = instancesPendingInit;
+					callback.apply(thisPtr || this, arguments);
+				}, this);
 			}
 			else {
 				callback.call(thisPtr || this);
 			}
+		},
+
+		function ResponseHandler$registerRules(callback, thisPtr) {
+			/// <summary>
+			/// Register all rules pending registration with the model
+			/// </summary>
+
+			this._model.registerRules();
+			callback.call(thisPtr || this);
+		},
+
+		function ResponseHandler$initInstances(callback, thisPtr) {
+			/// <summary>
+			/// Initialize all instances loaded by the response
+			/// </summary>
+
+			// Raise init events for existing instances loaded by the response
+			if (this.instancesPendingInit) {
+				this.instancesPendingInit.forEach(function (obj) {
+					for (var t = obj.meta.type; t; t = t.baseType) {
+						var handler = t._getEventHandler("initExisting");
+						if (handler)
+							handler(obj, {});
+					}
+				});
+			}
+
+			callback.call(thisPtr || this);
 		},
 
 		function ResponseHandler$loadConditions(callback, thisPtr) {
@@ -101,11 +136,20 @@ ResponseHandler.mixin({
 			/// </summary>
 
 			if (this._options.conditions) {
-				conditionsFromJson(this._model, this._options.conditions, callback, thisPtr);
+				conditionsFromJson(this._model, this._options.conditions, this.instancesPendingInit, callback, thisPtr);
 			}
 			else {
 				callback.call(thisPtr || this);
 			}
+		},
+
+		function ResponseHandler$endResponseBatch(callback, thisPtr) {
+			/// <summary>
+			/// End the response batch.
+			/// </summary>
+
+			Batch.end(this._batch);
+			callback.call(thisPtr || this);
 		}
 	)
 });

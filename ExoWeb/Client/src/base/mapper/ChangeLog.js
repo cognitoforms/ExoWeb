@@ -88,7 +88,7 @@ ChangeLog.mixin({
 		// be added to the new set from this point forward.
 
 		if (!source || source.constructor !== String) {
-			ExoWeb.trace.throwAndLog("changeLog", "ChangeLog.start requires a string source argument.");
+			throw ExoWeb.trace.logError("changeLog", "ChangeLog.start requires a string source argument.");
 		}
 
 		var set = new ChangeSet(source);
@@ -149,7 +149,7 @@ ChangeLog.mixin({
 		var currentSet = this._activeSet,
 			currentSetIndex = this._sets.indexOf(currentSet);
 
-		while (!currentSet.changes().some(function(c) { return c.type !== "Checkpoint"; })) {
+		while (currentSet.changes().length === 0) {
 			// remove the set from the log
 			this._sets.splice(currentSetIndex, 1);
 

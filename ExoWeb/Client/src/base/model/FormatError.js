@@ -1,22 +1,17 @@
 function FormatError(message, invalidValue) {
-	this._message = message;
-	this._invalidValue = invalidValue;
+	Object.defineProperty(this, "message", { value: message });
+	Object.defineProperty(this, "invalidValue", { value: invalidValue });
 }
 
-var formatConditionType = new ConditionType("FormatError", "Error", "The value is not properly formatted.", []);
+var formatConditionType = new ConditionType.Error("FormatError", "The value is not properly formatted.", []);
 
 FormatError.mixin({
-	createCondition: function FormatError$createCondition(origin, prop) {
+	createCondition: function FormatError$createCondition(target, prop) {
 		return new Condition(formatConditionType,
-			$format(this.get_message(), prop.get_label()),
-			[prop],
-			origin);
-	},
-	get_message: function FormateError$get_message() {
-		return this._message;
-	},
-	get_invalidValue: function FormateError$get_invalidValue() {
-		return this._invalidValue;
+			$format(this.message, prop.get_label()),
+			target,
+			[prop.get_name()],
+			"client");
 	},
 	toString: function FormateError$toString() {
 		return this._invalidValue;

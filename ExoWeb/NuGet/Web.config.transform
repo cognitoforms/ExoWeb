@@ -1,4 +1,19 @@
 ﻿<configuration>
+	<system.web>
+		<compilation>
+			<assemblies>
+				<add assembly="System.Data.Entity, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"/>
+			</assemblies>
+		</compilation>
+		<pages>
+			<namespaces>
+				<add namespace="ExoWeb"/>
+			</namespaces>
+		</pages>
+		<httpHandlers>
+			<add verb="*" path="ExoWeb.axd" type="ExoWeb.ServiceHandler, ExoWeb" />
+		</httpHandlers>
+	</system.web>
   <system.webServer>
     <modules>
       <add name="ExoModel" type="ExoModel.ModelContextProvider+PoolModule, ExoModel"/>

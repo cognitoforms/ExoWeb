@@ -11,8 +11,8 @@ OptionAdapter.prototype = {
 	///////////////////////////////////////////////////////////////////////
 	_loadForFormatAndRaiseChange: function OptionAdapter$_loadForFormatAndRaiseChange(val) {
 		if (val === undefined || val === null) {
-			Sys.Observer.raisePropertyChanged(this, "displayValue");
-			Sys.Observer.raisePropertyChanged(this, "systemValue");
+			Observer.raisePropertyChanged(this, "displayValue");
+			Observer.raisePropertyChanged(this, "systemValue");
 			return;
 		}
 
@@ -21,18 +21,23 @@ OptionAdapter.prototype = {
 			ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
 		}, this);
 		signal.waitForAll(function () {
-			Sys.Observer.raisePropertyChanged(this, "displayValue");
-			Sys.Observer.raisePropertyChanged(this, "systemValue");
+			Observer.raisePropertyChanged(this, "displayValue");
+			Observer.raisePropertyChanged(this, "systemValue");
 		}, this);
 	},
 	_subscribeToFormatChanges: function OptionAdapter$_subscribeToFormatChanges(val) {
 		this._parent._doForFormatPaths(val, function (path) {
-			Sys.Observer.addPathChanged(val, path, this._loadForFormatAndRaiseChange.bind(this).prependArguments(val));
+			Model.property(path, val.meta.type, true, function (chain) {
+				var subscription = this._formatSubscribers[path] = { chain: chain, handler: this._loadForFormatAndRaiseChange.bind(this).prependArguments(val) };
+				chain.addChanged(subscription.handler, val);
+			}, this);
 		}, this);
 	},
 	_ensureObservable: function OptionAdapter$_ensureObservable() {
 		if (!this._observable) {
-			Sys.Observer.makeObservable(this);
+			Observer.makeObservable(this);
+
+			this._formatSubscribers = {};
 
 			// set up initial watching of format paths
 			this._subscribeToFormatChanges(this._obj);

@@ -1,77 +1,61 @@
-function AllowedValuesRule(mtype, options, ctype, callback, thisPtr) {
-	this.prop = mtype.property(options.property, true);
-	var properties = [ this.prop ];
+function AllowedValuesRule(rootType, options) {
+	/// <summary>Creates a rule that validates whether a selected value or values is in a list of allowed values.</summary>
+	/// <param name="rootType" type="Type">The model type the rule is for.</param>
+	/// <param name="options" type="Object">
+	///		The options for the rule, including:
+	///			property:		the property being validated (either a Property instance or string property name)
+	///			source:			the source property for the allowed values (either a Property or PropertyChain instance or a string property path)
+	///			name:			the optional unique name of the rule
+	///			conditionType:	the optional condition type to use, which will be automatically created if not specified
+	///			category:		ConditionType.Error || ConditionType.Warning, defaults to ConditionType.Error if not specified
+	///			message:		the message to show the user when the validation fails
+	/// </param>
+	/// <returns type="AllowedValuesRule">The new allowed values rule.</returns>
 
-	if (!ctype) {
-		ctype = Rule.ensureError("allowedValues", this.prop);
+	// ensure the rule name is specified
+	options.name = options.name || "AllowedValues";
+
+	// ensure the error message is specified
+	options.message = options.message || Resource.get("allowed-values");
+
+	// ensure changes to the allowed values triggers rule execution
+	options.onChangeOf = [options.source];
+
+	// define properties for the rule
+	if (options.source instanceof Property || options.source instanceof PropertyChain) {
+		Object.defineProperty(this, "sourcePath", { value: options.source.get_path() });
+		Object.defineProperty(this, "source", { value: options.source });
 	}
-
-	this.ctype = ctype;
-
-	this._allowedValuesPath = options.source;
-	this._inited = false;
-
-	this.err = new Condition(ctype, $format("{0} has an invalid value", [this.prop.get_label()]), properties, this);
-
-	var register = (function AllowedValuesRule$register(type) { AllowedValuesRule.load(this, type, mtype, callback, thisPtr); }).bind(this);
-
-	// If the type is already loaded, then register immediately.
-	if (LazyLoader.isLoaded(this.prop.get_containingType())) {
-		register(this.prop.get_containingType().get_jstype());
-	}
-	// Otherwise, wait until the type is loaded.
 	else {
-		$extend(this.prop.get_containingType().get_fullName(), register);
+		Object.defineProperty(this, "sourcePath", { value: options.source });
 	}
+
+	// call the base type constructor
+	ValidatedPropertyRule.apply(this, [rootType, options]);
+
+	// never run allowed values rules during initialization of existing instances
+	options.onInitExisting = false;
 }
-AllowedValuesRule.load = function AllowedValuesRule$load(rule, loadedType, mtype, callback, thisPtr) {
-	if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
-		var inputs = [];
 
-		var targetInput = new RuleInput(rule.prop);
-		targetInput.set_isTarget(true);
-		if (rule.prop.get_origin() === "client")
-			targetInput.set_dependsOnInit(true);
-		inputs.push(targetInput);
+// setup the inheritance chain
+AllowedValuesRule.prototype = new ValidatedPropertyRule();
+AllowedValuesRule.prototype.constructor = AllowedValuesRule;
 
-		Model.property(rule._allowedValuesPath, rule.prop.get_containingType(), false, function(chain) {
-			rule._allowedValuesProperty = chain;
+// extend the base type
+AllowedValuesRule.mixin({
+	onRegister: function AllowedValuesRule$onRegister() {
 
-			var allowedValuesInput = new RuleInput(rule._allowedValuesProperty);
-			inputs.push(allowedValuesInput);
-
-			rule._inited = true;
-
-			Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-		});
-	}
-	else {
-		$extend(loadedType.meta.baseType.get_fullName(), function(baseType) {
-			AllowedValuesRule.load(rule, baseType);
-		});
-	}
-};
-
-AllowedValuesRule.prototype = {
-	_enforceInited: function AllowedValues$_enforceInited() {
-		if (this._inited !== true) {
-			ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+		// get the allowed values source, if only the path was specified
+		if (!this.source) {
+			Object.defineProperty(this, "source", { value: Model.property(this.sourcePath, this.rootType) });
 		}
-		return this._inited;
-	},
-	execute: function AllowedValuesRule$execute(obj) {
-		if (this._enforceInited() === true) {
-			// get the current value of the property for the given object
-			var val = this.prop.value(obj);
-			var allowed = this.values(obj);
-			if (allowed !== undefined && LazyLoader.isLoaded(allowed)) {
-				obj.meta.conditionIf(this.err, !this.satisfies(obj, val));
-			}
-		}
-	},
-	satisfies: function AllowedValuesRule$satisfies(obj, value) {
-		this._enforceInited();
 
+		// call the base method
+		ValidatedPropertyRule.prototype.onRegister.call(this);
+	},
+	isValid: function AllowedValuesRule$isValid(obj, prop, value) {
+
+		// return true if no value is currently selected
 		if (value === undefined || value === null) {
 			return true;
 		}
@@ -79,70 +63,38 @@ AllowedValuesRule.prototype = {
 		// get the list of allowed values of the property for the given object
 		var allowed = this.values(obj);
 
+		// return undefined if the set of allowed values cannot be determined
 		if (allowed === undefined || !LazyLoader.isLoaded(allowed)) {
-			return false;
+			return;
 		}
 
 		// ensure that the value or list of values is in the allowed values list (single and multi-select)				
 		if (value instanceof Array) {
-			return value.every(function(item) { return Array.contains(allowed, item); });
+			return value.every(function (item) { return Array.contains(allowed, item); });
 		}
 		else {
 			return Array.contains(allowed, value);
 		}
 	},
-	satisfiesAsync: function AllowedValuesRule$satisfiesAsync(obj, value, exitEarly, callback) {
-		this._enforceInited();
-
-		this.valuesAsync(obj, exitEarly, function(allowed) {
-			if (value === undefined || value === null) {
-				callback(true);
-			}
-			else if (allowed === undefined) {
-				callback(false);
-			}
-			else if (value instanceof Array) {
-				callback(value.every(function(item) { return Array.contains(allowed, item); }));
-			}
-			else {
-				callback(Array.contains(allowed, value));
-			}
-		});
-
-	},
 	values: function AllowedValuesRule$values(obj, exitEarly) {
-		if (this._enforceInited() && this._allowedValuesProperty && (this._allowedValuesProperty.get_isStatic() || this._allowedValuesProperty instanceof Property || this._allowedValuesProperty.lastTarget(obj, exitEarly))) {
+		if (!this.source) {
+			ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+			return;
+		}
+		if (this.source && (this.source.get_isStatic() || this.source instanceof Property || this.source.lastTarget(obj, exitEarly))) {
 
 			// get the allowed values from the property chain
-			var values = this._allowedValuesProperty.value(obj);
+			var values = this.source.value(obj);
 
 			// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
 			return values;
 		}
 	},
-	valuesAsync: function AllowedValuesRule$valuesAsync(obj, exitEarly, callback) {
-		if (this._enforceInited()) {
-
-			var values;
-
-			if (this._allowedValuesProperty.get_isStatic() || this._allowedValuesProperty instanceof Property || this._allowedValuesProperty.lastTarget(obj, exitEarly)) {
-				// get the allowed values from the property chain
-				values = this._allowedValuesProperty.value(obj);
-			}
-
-			if (values !== undefined) {
-				LazyLoader.load(values, null, function() {
-					callback(values);
-				});
-			}
-			else {
-				callback(values);
-			}
-		}
-	},
 	toString: function AllowedValuesRule$toString() {
-		return $format("{0}.{1} allowed values = {2}", [this.prop.get_containingType().get_fullName(), this.prop.get_name(), this._allowedValuesPath]);
+		return $format("{0}.{1} allowed values = {2}", [this.property.get_containingType().get_fullName(), this.property.get_name(), this._sourcePath]);
 	}
-};
+});
 
+// expose the rule publicly
 Rule.allowedValues = AllowedValuesRule;
+exports.AllowedValuesRule = AllowedValuesRule;

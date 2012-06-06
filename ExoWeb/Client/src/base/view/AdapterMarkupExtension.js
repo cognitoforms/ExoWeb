@@ -35,7 +35,7 @@ Sys.Application.registerMarkupExtension(
 		}
 
 		adapter.ready(function AdapterReady() {
-			Sys.Observer.setValue(component, targetProperty, adapter);
+			Observer.setValue(component, targetProperty, adapter);
 		});
 	},
 	false

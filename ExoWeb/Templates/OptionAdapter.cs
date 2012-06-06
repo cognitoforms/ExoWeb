@@ -65,7 +65,8 @@ namespace ExoWeb.Templates
 		}
 		#endregion
 
-		#region Jurassic Interface
+		#region IBindable
+
 		BindingResult IBindable.Evaluate(string expression)
 		{
 			bool isValid = false;
@@ -100,6 +101,7 @@ namespace ExoWeb.Templates
 
 			return new BindingResult() { IsValid = isValid, Value = value };
 		}
+
 		#endregion
 	}
 }

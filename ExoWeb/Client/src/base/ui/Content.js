@@ -40,7 +40,7 @@ Content.prototype = {
 
 		if (this._changedHandler) {
 			// Remove old change handler if applicable.
-			Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
+			Observer.removeCollectionChanged(this._data, this._changedHandler);
 			delete this._changedHandler;
 		}
 
@@ -49,7 +49,7 @@ Content.prototype = {
 		if (value instanceof Array) {
 			// Watch for changes to an array.
 			this._changedHandler = this._collectionChanged.bind(this);
-			Sys.Observer.addCollectionChanged(value, this._changedHandler);
+			Observer.addCollectionChanged(value, this._changedHandler);
 		}
 
 		// Force rendering to occur if we previously had a value and now do not.
@@ -286,15 +286,6 @@ Content.prototype = {
 						this._isRendered = true;
 						Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 					}
-					catch (e) {
-						if (this._isRendered !== true) {
-							Sys.Observer.raiseEvent(this, "error", e);
-							ExoWeb.trace.logError("content", "An error occurred while rendering content: {0}", e);
-						}
-						else {
-							throw e;
-						}
-					}
 					finally {
 						contentControlsRendering--;
 					}
@@ -367,7 +358,7 @@ Content.prototype = {
 			this._context.dispose();
 		}
 		if (this._changedHandler) {
-			Sys.Observer.removeCollectionChanged(this._data, this._changedHandler);
+			Observer.removeCollectionChanged(this._data, this._changedHandler);
 			this._changedHandler = null;
 		}
 		this._contentTemplate = this._context = this._ctxIdx =

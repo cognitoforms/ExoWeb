@@ -191,7 +191,7 @@ Transform.mixin({
 		if (this._livePending) {
 			// make the items array observable if the transform is in live mode
 			output.forEach(function(group) {
-				Sys.Observer.makeObservable(group.items);
+				ExoWeb.Observer.makeObservable(group.items);
 			});
 		}
 		return makeTransform(output, this, "groupBy", groups, thisPtr);
@@ -224,11 +224,11 @@ Transform.mixin({
 
 		// make a copy of the final transformed data and make it observable
 		var output = this.input().copy();
-		Sys.Observer.makeObservable(output);
+		ExoWeb.Observer.makeObservable(output);
 		output.rootInput = this.rootInput;
 
 		// watch for changes to root input and update the transform steps as needed
-		Sys.Observer.addCollectionChanged(rootStep.input(), function Transform$live$collectionChanged(sender, args) {
+		ExoWeb.Observer.addCollectionChanged(rootStep.input(), function Transform$live$collectionChanged(sender, args) {
 			var changes, stepInput, stepResult, modifiedItemsArrays = [];
 
 			//Sys.NotifyCollectionChangedAction.add;
@@ -283,28 +283,16 @@ Transform.mixin({
 								return true;
 							}
 							else {
-								// if not added to the beginning of the list, determine the real starting index
-								if (change.newStartingIndex !== 0) {
-									// adding to the end of the list - use end of new list
-									if ((change.newStartingIndex + change.newItems.length) === stepInput.length) {
-										change.newStartingIndex = stepResult.length;
-									}
-									// otherwise add after preceding item that passes filter, or the beginning/end
-									// if no items pass filter
-									else {
-										var found = false;
-										for (var idx = change.newStartingIndex - 1; idx >= 0; idx--) {
-											var resultIndex = stepResult.indexOf(stepInput[idx])
-											if (resultIndex >= 0) {
-												found = true;
-												change.newStartingIndex = resultIndex + 1;
-												break;
-											}
-										}
-										if (!found) {
-											change.newStartingIndex = 0;
+								// if not added to the beginning or end of the list, determine
+								// the real starting index by finding the index of the previous item
+								if (change.newStartingIndex !== 0 && (change.newStartingIndex + change.newItems.length) !== stepInput.length) {
+									var found = false;
+									for (var idx = change.newStartingIndex - 1; !found && idx >= 0; idx--) {
+										if (stepResult.indexOf(stepInput[idx]) >= 0) {
+											found = true;
 										}
 									}
+									change.newStartingIndex = idx + 1;
 								}
 
 								// splice the filtered items into the result array
@@ -409,7 +397,7 @@ Transform.mixin({
 								}
 								else {
 									group = new TransformGroup(groupKey, [item]);
-									Sys.Observer.makeObservable(group.items);
+									ExoWeb.Observer.makeObservable(group.items);
 									copyOfResults.push(group);
 									resequenceGroup = true;
 								}

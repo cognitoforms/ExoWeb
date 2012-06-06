@@ -21,7 +21,7 @@ namespace ExoWeb
 
 		static readonly Regex dateRegex = new Regex("\"\\\\/Date\\((?<ticks>-?[0-9]+)(?:[a-zA-Z]|(?:\\+|-)[0-9]{4})?\\)\\\\/\"", RegexOptions.Compiled);
 		static string cacheHash;
-		static JavaScriptSerializer serializer;
+		static JsonSerializer serializer;
 		static HashSet<Type> serializableTypes;
 		static MethodInfo deserialize;
 		static long minJsonTicks = new DateTime(0x7b2, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
@@ -36,6 +36,9 @@ namespace ExoWeb
 		{
 			// Configure default serialization
 			InitializeSerialization();
+
+			// Create the javascript translator
+			ExpressionTranslator = new JavaScriptExpressionTranslator();
 
 			// Cache the .NET 4.0 method info to create HTML strings when using MVC
 			var assembly = Assembly.LoadWithPartialName("System.Web.Mvc");
@@ -99,6 +102,8 @@ namespace ExoWeb
 		/// part of the initial page request.
 		/// </summary>
 		public static bool EnableServerRendering { get; set; }
+
+		public static JavaScriptExpressionTranslator ExpressionTranslator { get; private set; }
 
 		#endregion
 
@@ -340,7 +345,7 @@ namespace ExoWeb
 				Templates.Page.Current.Model[root.Key] = root.Value.IsList ? (object)root.Value.Roots : (root.Value.Roots.Length == 1 ?root.Value.Roots[0] : null);
 
 			// Return the response
-			return GetHtmlString("<script type=\"text/javascript\">$exoweb(" + ToJson(typeof(ServiceResponse), response) + ");</script>");
+			return GetHtmlString("<script type=\"text/javascript\">$exoweb(" + response.ToJson() + ");</script>");
 		}
 
 		/// <summary>
@@ -650,8 +655,7 @@ namespace ExoWeb
 
 		public static string ProcessRequest(string json)
 		{
-			ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
-			return ExoWeb.ToJson(typeof(ServiceResponse), request.Invoke(null));
+			return ExoWeb.FromJson<ServiceRequest>(json).Invoke(null).ToJson();
 		}
 
 		public static void RegisterForSerialization(Assembly assembly)
@@ -669,20 +673,20 @@ namespace ExoWeb
 			return serializableTypes.Contains(type);
 		}
 
-		public static string GetTypes(params string[] types)
-		{
-			return GetTypes(types.Select(type => ModelContext.Current.GetModelType(type)).ToArray());
-		}
-
 		public static string GetType<T>()
 		{
 			return GetTypes(ModelContext.Current.GetModelType<T>());
 		}
 
+		static string GetTypes(params string[] types)
+		{
+			var json = new ServiceRequest(types).Invoke(null).ToJson();
+			return json.Substring(1, json.Length - 2);
+		}
+
 		static string GetTypes(params ModelType[] types)
 		{
-			var json = ToJson(typeof(ServiceResponse), new ServiceRequest(types).Invoke(null));
-			return json.Substring(1, json.Length - 2);
+			return GetTypes(types.Select(t => t.Name).ToArray());
 		}
 
 		#endregion
@@ -691,7 +695,7 @@ namespace ExoWeb
 
 		static void InitializeSerialization()
 		{
-			serializer = new JavaScriptSerializer() { MaxJsonLength = Int32.MaxValue };
+			serializer = new JsonSerializer() { MaxJsonLength = Int32.MaxValue };
 			serializableTypes = new HashSet<Type>();
 
 			// Register converters for types implementing IJsonSerializable or that have DataContract attributes
@@ -767,12 +771,22 @@ namespace ExoWeb
 						// Methods
 						json.Set("methods", modelType.Methods.ToDictionary(method => method.Name));
 
+						// Rules
+						var rules = Rule.GetRegisteredRules(modelType).ToList();
+						var typeRules = rules.Where(rule => (rule.ExecutionLocation & RuleExecutionLocation.Client) > 0 && !(rule is IPropertyRule)).ToArray();
+						if (typeRules.Any())
+							json.Set("rules", typeRules);
+
 						// Condition Types
-						json.Set("conditionTypes", 
-							Rule.GetRegisteredRules(modelType)
-								.Where(rule => !(rule is PropertyRule) || IncludeInClientModel(((PropertyRule)rule).Property))
-								.SelectMany(rule => rule.ConditionTypes)
-								.ToDictionary(conditionType => conditionType.Code));
+						var serverConditionTypes = rules
+							.Where(rule => (rule.ExecutionLocation & RuleExecutionLocation.Client) == 0) 
+							.SelectMany(rule => rule.ConditionTypes)
+							.ToArray();
+						if (serverConditionTypes.Any())
+							json.Set("conditionTypes", serverConditionTypes);	
+
+						// Exports
+						json.Set("exports", json.Global<Dictionary<string, string>>("exports"));
 					}, 
 					json => { throw new NotSupportedException("ModelType cannot be deserialized."); }),
 
@@ -816,6 +830,18 @@ namespace ExoWeb
 						string label = property.Label;
 						if (!string.IsNullOrEmpty(label))
 							json.Set("label", label);
+
+						// Rules
+						var rules = Rule
+							.GetRegisteredRules(property.DeclaringType)
+							.Where(rule => (rule.ExecutionLocation & RuleExecutionLocation.Client) > 0 && rule is IPropertyRule && rule.RootType.Properties[((IPropertyRule)rule).Property] == property)
+							.ToDictionary(rule => 
+								rule is ICalculationRule ? "calculated" :
+								String.Format("{0}.{1}.{2}", rule.RootType.Name, ((IPropertyRule)rule).Property, ((IPropertyRule)rule).Name) == rule.Name ? 
+								((IPropertyRule)rule).Name.Substring(0, 1).ToLower() + ((IPropertyRule)rule).Name.Substring(1) : 
+								rule.Name);
+						if (rules.Any())
+							json.Set("rules", rules);
 					}, 
 					json => { throw new NotSupportedException("ModelProperty cannot be deserialized."); }),
 
@@ -942,16 +968,13 @@ namespace ExoWeb
 					new JsonConverter<ConditionType>(
 						(conditionType, json) =>
 						{
+							json.Set("code", conditionType.Code);
 							json.Set("category", conditionType.Category.ToString());
 
 							if (conditionType.Sets != null && conditionType.Sets.Any())
 								json.Set("sets", conditionType.Sets.Select(set => set.Name));
 
 							json.Set("message", conditionType.Message);
-
-							// Only serialize rules that are explicitly marked for client execution
-							if ((conditionType.ConditionRule != null && (conditionType.ConditionRule.ExecutionLocation & RuleExecutionLocation.Client) == RuleExecutionLocation.Client))
-								json.Set("rule", conditionType.ConditionRule);
 						},
 						json => { throw new NotSupportedException("ConditionType cannot be deserialized."); }),
 
@@ -974,12 +997,52 @@ namespace ExoWeb
 						},
 						json => { throw new NotSupportedException("ConditionTarget cannot be deserialized."); }),
 
+					// Rule
+					new JsonConverter<Rule>(
+					    (rule, json) =>
+					    {
+							if (rule is ICalculationRule)
+							{
+								var calculation = (ICalculationRule)rule;
+								json.Set("onChangeOf", calculation.Predicates);
+
+								// Translate the calculate expression to javascript
+								var exp = ExpressionTranslator.Translate(calculation.Calculation);
+								json.Set("calculate", exp.Body);
+
+								// Record dependency exports globally
+								foreach (var export in exp.Exports)
+									json.Global<Dictionary<string, string>>("exports").Add(export.Key, export.Value);
+							}
+
+							else if (rule is IConditionRule)
+							{
+								var condition = (IConditionRule)rule;
+								json.Set("type", "condition");
+								json.Set("properties", condition.Properties);
+								json.Set("onChangeOf", condition.Predicates);
+								json.Set("conditionType", condition.ConditionType);
+
+								// Translate the assert expression to javascript
+								var exp = ExpressionTranslator.Translate(condition.Condition);
+								json.Set("assert", exp.Body);
+
+								// Record dependency exports globally
+								foreach (var export in exp.Exports)
+									json.Global<Dictionary<string, string>>("exports").Add(export.Key, export.Value);
+							}
+
+							else
+								throw new NotSupportedException("Rules of type " + rule.GetType().FullName + " cannot be serialized.  Call ExoWeb.RegisterConverters() to register a converter to support serializing rules of this type.");
+					    },
+					    json => { throw new NotSupportedException("Rule cannot be deserialized."); }),
+
 					// AllowedValuesRule
 					new JsonConverter<AllowedValuesRule>(
 						(rule, json) =>
 						{
 							SerializePropertyRule(rule, json);
-							json.Set("source", rule.IsStaticSource ? rule.Source : "this." + rule.Source);
+							json.Set("source", rule.Source);
 						},
 						json => { throw new NotSupportedException("AllowedValuesRule cannot be deserialized."); }),
 						
@@ -989,7 +1052,7 @@ namespace ExoWeb
 						{
 							SerializePropertyRule(rule, json);
 							json.Set("compareOperator", rule.CompareOperator.ToString());
-							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
+							json.Set("compareSource", rule.CompareSource);
 						},
 						json => { throw new NotSupportedException("CompareRule cannot be deserialized."); }),
 
@@ -999,8 +1062,10 @@ namespace ExoWeb
 						{
 							SerializePropertyRule(rule, json);
 							json.Set("compareOperator", rule.CompareOperator.ToString());
-							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
-							json.Set("staticLength", rule.StaticLength.ToString());
+							if (!String.IsNullOrEmpty(rule.CompareSource))
+								json.Set("compareSource", rule.CompareSource);
+							else
+								json.Set("compareValue", rule.CompareValue.ToString());
 						},
 						json => { throw new NotSupportedException("ListLengthRule cannot be deserialized."); }),
 
@@ -1016,11 +1081,7 @@ namespace ExoWeb
 
 					// RequiredRule
 					new JsonConverter<RequiredRule>(
-						(rule, json) =>
-						{
-							json.Set("type", "required");
-							json.Set("property", rule.Property.Name);
-						},
+						(rule, json) =>	SerializePropertyRule(rule, json),
 						json => { throw new NotSupportedException("RequiredRule cannot be deserialized."); }),
 
 					// RequiredIfRule
@@ -1029,17 +1090,14 @@ namespace ExoWeb
 						{
 							SerializePropertyRule(rule, json);
 							json.Set("compareOperator", rule.CompareOperator.ToString());
-							json.Set("compareSource", rule.CompareSourceIsStatic ? rule.CompareSource : "this." + rule.CompareSource);
+							json.Set("compareSource", rule.CompareSource);
 							json.Set("compareValue", rule.CompareValue);
 						},
 						json => { throw new NotSupportedException("RequiredIfRule cannot be deserialized."); }),
 
 					// OwnerRule
 					new JsonConverter<OwnerRule>(
-						(rule, json) =>
-						{
-							SerializePropertyRule(rule, json);
-						},
+						(rule, json) => SerializePropertyRule(rule, json),
 						json => { throw new NotSupportedException("OwnerRule cannot be deserialized."); }),
 
 					// StringLengthRule
@@ -1079,15 +1137,23 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="rule"></param>
 		/// <param name="json"></param>
-		static void SerializePropertyRule(PropertyRule rule, Json json)
+		static void SerializePropertyRule(IPropertyRule rule, Json json)
 		{
-			string ruleName = rule.GetType().Name;
-			if (ruleName.EndsWith("Rule"))
-				ruleName = ruleName.Substring(0, ruleName.Length - 4);
-			ruleName = ruleName[0].ToString().ToLower() + ruleName.Substring(1);
-			json.Set("type", ruleName);
-			json.Set("property", rule.Property.Name);
-			//json.Set("error", rule.ConditionTypes.First().Code);
+			// Assume the type does not need to be included if the name can be inferred from context
+			if (String.Format("{0}.{1}.{2}", ((Rule)rule).RootType.Name, rule.Property, rule.Name) != ((Rule)rule).Name)
+				json.Set("type", rule.Name.Substring(0, 1).ToLower() + rule.Name.Substring(1));
+				
+			// Embed the condition type, if present, along with the rule
+			if (rule.ConditionType != null)
+			{
+				if (rule.ConditionType.Category != ConditionCategory.Error)
+					json.Set("category", rule.ConditionType.Category.ToString());
+
+				json.Set("message", rule.ConditionType.Message);
+
+				if (rule.ConditionType.Sets != null && rule.ConditionType.Sets.Any())
+					json.Set("sets", rule.ConditionType.Sets.Select(set => set.Name));
+			}
 		}
 
 		static Dictionary<string, string> GetEventInstance(ModelInstance instance, string id)
@@ -1132,5 +1198,6 @@ namespace ExoWeb
 		}
 
 		#endregion
+
 	}
 }

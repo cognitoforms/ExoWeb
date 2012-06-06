@@ -2381,7 +2381,7 @@ Sys.Observer.isUpdating = function Sys$Observer$isUpdating(target) {
 
 Sys.Observer._setValue = function Sys$Observer$_setValue(target, propertyName, value) {
 	var getter, setter, mainTarget = target, path = propertyName.split('.');
-	for (var i = 0, l = (path.length - 1); i < l ; i++) {
+	for (var i = 0, l = (path.length - 1); i < l; i++) {
 		var name = path[i];
 		getter = target["get_" + name];
 		if (typeof (getter) === "function") {
@@ -2395,16 +2395,19 @@ Sys.Observer._setValue = function Sys$Observer$_setValue(target, propertyName, v
 			throw Error.invalidOperation(String.format(Sys.Res.nullReferenceInPath, propertyName));
 		}
 	}
+
+	var notify = true; // added
 	var currentValue, lastPath = path[l];
-		getter = target["get_" + lastPath];
+	getter = target["get_" + lastPath];
 	setter = target["set_" + lastPath];
-	if (typeof(getter) === 'function') {
+	if (typeof (getter) === 'function') {
 		currentValue = getter.call(target);
 	}
 	else {
 		currentValue = target[lastPath];
 	}
-	if (typeof(setter) === 'function') {
+	if (typeof (setter) === 'function') {
+		notify = !setter.__notifies; // added
 		setter.call(target, value);
 	}
 	else {
@@ -2415,8 +2418,10 @@ Sys.Observer._setValue = function Sys$Observer$_setValue(target, propertyName, v
 		if (ctx && ctx.updating) {
 			ctx.dirty = true;
 			return;
-		};
-		Sys.Observer.raisePropertyChanged(mainTarget, path[0]);
+		}
+		if (notify) {
+			Sys.Observer.raisePropertyChanged(mainTarget, path[0]);
+		}
 	}
 }
 Sys.Observer.setValue = function Sys$Observer$setValue(target, propertyName, value) {

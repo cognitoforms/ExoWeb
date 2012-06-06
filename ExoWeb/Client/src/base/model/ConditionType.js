@@ -1,4 +1,4 @@
-function ConditionType(code, category, message, sets) {
+function ConditionType(code, category, message, sets, origin) {
 	// So that sub types can use it's prototype.
 	if (arguments.length === 0) {
 		return;
@@ -8,15 +8,16 @@ function ConditionType(code, category, message, sets) {
 		ExoWeb.trace.throwAndLog("conditions", "A condition type with the code \"{0}\" has already been created.", [code]);
 	}
 
-	this._code = code;
-	this._category = category;
-	this._message = message;
-	this._sets = (sets === undefined || sets === null) ? [] : sets;
-	this._rules = [];
+	Object.defineProperty(this, "code", { value: code });
+	Object.defineProperty(this, "category", { value: category });
+	Object.defineProperty(this, "message", { value: message });
+	Object.defineProperty(this, "sets", { value: sets || [] });
+	Object.defineProperty(this, "rules", { value: [] });
+	Object.defineProperty(this, "origin", { value: origin });
 
 	if (sets && sets.length > 0) {
 		Array.forEach(sets, function(s) {
-			s._types.push(this);
+			s.types.push(this);
 		}, this);
 	}
 
@@ -28,7 +29,7 @@ var allConditionTypes = {};
 ConditionType.all = function ConditionType$all() {
 	/// <summary>
 	/// Returns an array of all condition types that have been created.
-	/// Not that the array is created each time the function is called.
+	/// Note that the array is created each time the function is called.
 	/// </summary>
 	/// <returns type="Array" />
 
@@ -50,19 +51,48 @@ ConditionType.get = function ConditionType$get(code) {
 };
 
 ConditionType.prototype = {
-	get_code: function ConditionType$get_code() {
-		return this._code;
+
+	// adds or removes a condition from the model for the specified target if necessary
+	when: function ConditionType$when(condition, target, properties, message) {
+
+		// get the current condition if it exists
+		var conditionTarget = target.meta.getCondition(this);
+
+		// add the condition on the target if it does not exist yet
+		if (condition) {
+
+			// if the message is a function, invoke to get the actual message
+			message = message instanceof Function ? message(target) : message;
+
+			// create a new condition if one does not exist
+			if (!conditionTarget) {
+				return new Condition(this, message, target, properties, "client");
+			}
+
+			// replace the condition if the message has changed
+			else if (message && message != conditionTarget.condition.message) {
+
+				// destroy the existing condition
+				conditionTarget.condition.destroy();
+
+				// create a new condition with the updated message
+				return new Condition(this, message, target, properties, "client");
+			}
+
+			// otherwise, just return the existing condition
+			else {
+				return conditionTarget.condition;
+			}
+		}
+
+		// Destroy the condition if it exists on the target and is no longer valid
+		if (conditionTarget != null)
+			conditionTarget.condition.destroy();
+
+		// Return null to indicate that no condition was created
+		return null;
 	},
-	get_category: function ConditionType$get_category() {
-		return this._category;
-	},
-	get_message: function ConditionType$get_message() {
-		return this._message;
-	},
-	get_sets: function ConditionType$get_sets() {
-		return this._sets;
-	},
-	rules: function() {
+	rules: function ConditionType$rules() {
 		return Array.prototype.slice.call(this._rules);
 	},
 	extend: function ConditionType$extend(data) {
@@ -82,8 +112,8 @@ ExoWeb.Model.ConditionType = ConditionType;
 
 (function() {
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Error(code, message, sets) {
-		ConditionType.call(this, code, "Error", message, sets);
+	function Error(code, message, sets, origin) {
+		ConditionType.call(this, code, "Error", message, sets, origin);
 	}
 
 	Error.prototype = new ConditionType();
@@ -91,8 +121,8 @@ ExoWeb.Model.ConditionType = ConditionType;
 	ExoWeb.Model.ConditionType.Error = Error;
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Warning(code, message, sets) {
-		ConditionType.call(this, code, "Warning", message, sets);
+	function Warning(code, message, sets, origin) {
+		ConditionType.call(this, code, "Warning", message, sets, origin);
 	}
 
 	Warning.prototype = new ConditionType();
@@ -100,22 +130,13 @@ ExoWeb.Model.ConditionType = ConditionType;
 	ExoWeb.Model.ConditionType.Warning = Warning;
 
 	//////////////////////////////////////////////////////////////////////////////////////
-	function Permission(code, message, sets, permissionType, isAllowed) {
-		ConditionType.call(this, code, "Permission", message, sets);
-		this._permissionType = permissionType;
-		this._isAllowed = isAllowed;
+	function Permission(code, message, sets, permissionType, isAllowed, origin) {
+		ConditionType.call(this, code, "Permission", message, sets, origin);
+		Object.defineProperty(this, "permissionType", { value: permissionType });
+		Object.defineProperty(this, "isAllowed", { value: isAllowed });
 	}
 
 	Permission.prototype = new ConditionType();
-
-	Permission.mixin({
-		get_permissionType: function Permission$get_permissionType() {
-			return this._permissionType;
-		},
-		get_isAllowed: function Permission$get_isAllowed() {
-			return this._isAllowed;
-		}
-	});
 
 	ExoWeb.Model.ConditionType.Permission = Permission;
 })();

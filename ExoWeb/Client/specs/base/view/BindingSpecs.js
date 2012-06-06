@@ -27,12 +27,25 @@ ExoWeb = {
 				}
 			}
 		}
+	},
+	Observer: {
+		addPathChanged: function () { },
+		removePathChanged: function () { },
+		makeObservable: function () { },
+		disposeObservable: function () { },
+		addCollectionChanged: function () { },
+		removeCollectionChanged: function () { },
+		addPropertyChanged: function () { },
+		removePropertyChanged: function () { },
+		raisePropertyChanged: function () { },
+		setValue: function () { }
 	}
 };
+Observer = ExoWeb.Observer;
 
 Function.prototype.initializeBase = function() { };
 Function.prototype.registerClass = function() { };
-Function.prototype.callBaseMethod = function() { };
+Function.prototype.callBaseMethod = function () { };
 Sys = {
 	Component: null,
 	UI: {
@@ -99,15 +112,6 @@ function onBeforeEach() {
 				isDomElement: function() { return self.isDomElement; }
 			}
 		},
-		Observer: {
-			addPathChanged: function() {},
-			removePathChanged: function() {},
-			addCollectionChanged: function() {},
-			removeCollectionChanged: function() {},
-			makeObservable: function() {},
-			raisePropertyChanged: function() {},
-			setValue: function() {}
-		},
 		Application: {
 			_clearContent: function() { }
 		}
@@ -136,7 +140,7 @@ describe("Basic behavior", function() {
 		beforeEach(onBeforeEach);
 
 		it("watches for a path change if a source path is provided", function() {
-			var addPathChangedSpy = jasmine.spyOn(Sys.Observer, "addPathChanged").andCallThrough();
+			var addPathChangedSpy = jasmine.spyOn(ExoWeb.Observer, "addPathChanged").andCallThrough();
 
 			var source = {};
 			this.evalResult = "value";
@@ -146,7 +150,7 @@ describe("Basic behavior", function() {
 		});
 
 		it("does not watch for a path change if a source path is not provided", function() {
-			var addPathChangedSpy = jasmine.spyOn(Sys.Observer, "addPathChanged").andCallThrough();
+			var addPathChangedSpy = jasmine.spyOn(ExoWeb.Observer, "addPathChanged").andCallThrough();
 
 			var source = {};
 			this.evalResult = source;
@@ -281,7 +285,7 @@ describe("Required option", function() {
 
 		it("watches for changes to the required path", function() {
 			var handlers = [];
-			var addPathChangedSpy = jasmine.spyOn(Sys.Observer, "addPathChanged").andCallFake(function(source, path, handler) {
+			var addPathChangedSpy = jasmine.spyOn(ExoWeb.Observer, "addPathChanged").andCallFake(function (source, path, handler) {
 				handlers.push(handler);
 			});
 			var setTargetSpy = jasmine.spyOn(Binding.prototype, "_setTarget").andCallThrough();
@@ -312,10 +316,10 @@ describe("Required option", function() {
 		});
 
 		it("cleans up path registrations and adds new registrations when resulting value is manipulated (list)", function() {
-			var addPathChangedSpy = jasmine.spyOn(Sys.Observer, "addPathChanged").andCallThrough();
-			var removePathChangedSpy = jasmine.spyOn(Sys.Observer, "removePathChanged").andCallThrough();
-			var addCollectionChangedSpy = jasmine.spyOn(Sys.Observer, "addCollectionChanged").andCallThrough();
-			var removeCollectionChangedSpy = jasmine.spyOn(Sys.Observer, "removeCollectionChanged").andCallThrough();
+			var addPathChangedSpy = jasmine.spyOn(ExoWeb.Observer, "addPathChanged").andCallThrough();
+			var removePathChangedSpy = jasmine.spyOn(ExoWeb.Observer, "removePathChanged").andCallThrough();
+			var addCollectionChangedSpy = jasmine.spyOn(ExoWeb.Observer, "addCollectionChanged").andCallThrough();
+			var removeCollectionChangedSpy = jasmine.spyOn(ExoWeb.Observer, "removeCollectionChanged").andCallThrough();
 			var setTargetSpy = jasmine.spyOn(Binding.prototype, "_setTarget").andCallThrough();
 
 			var value = [{ val: 2 }, { val: 3 }, { val: 4 }];

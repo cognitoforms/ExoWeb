@@ -151,7 +151,7 @@ namespace ExoWeb.Templates
 		}
 
 		/// <summary>
-		/// The list of objects that represent options for the property
+		/// The list of objects that represent options for the property.
 		/// </summary>
 		IEnumerable<object> Options
 		{
@@ -162,11 +162,39 @@ namespace ExoWeb.Templates
 				return options;
 			}
 		}
+
+		/// <summary>
+		/// The list of conditions associated with the property.
+		/// </summary>
+		public IEnumerable<Condition> Conditions
+		{
+			get
+			{
+				var source = Source;
+				if (source == null)
+					return new Condition[] { };
+
+				return Condition.GetConditions(source, ct => ct.Properties.Contains(Property.Name));
+			}
+		}
+
+		/// <summary>
+		/// Gets the first <see cref="Error"/>, if any, associated with the property.
+		/// </summary>
+		public Condition FirstError
+		{
+			get
+			{
+				return Conditions.FirstOrDefault(c => c.Type is Error);
+			}
+		}
+
 		#endregion
 
-		#region Error Tolerant Methods
+		#region Methods
+
 		/// <summary>
-		/// Attemps to retrieve 
+		/// Attempts to retrieve 
 		/// </summary>
 		/// <param name="property"></param>
 		/// <param name="source"></param>
@@ -268,9 +296,7 @@ namespace ExoWeb.Templates
 
 			return true;
 		}
-		#endregion
-
-		#region Jurassic Interface
+		
 		/// <summary>
 		/// Returns a value indicating whether the adapter
 		/// defines a custom property of the given name
@@ -293,6 +319,10 @@ namespace ExoWeb.Templates
 			properties.TryGetValue(name, out value);
 			return value;
 		}
+
+		#endregion
+
+		#region IBindable
 
 		BindingResult IBindable.Evaluate(string expression)
 		{
@@ -322,6 +352,18 @@ namespace ExoWeb.Templates
 					string displayValue;
 					isValid = TryGetDisplayValue(Property, Format, RawValue, out displayValue);
 					value = displayValue;
+					break;
+				case "conditions":
+					isValid = true;
+					value = Conditions;
+					break;
+				case "firstError":
+					isValid = true;
+					value = FirstError;
+					break;
+				case "firstError.message":
+					isValid = true;
+					value = FirstError == null ? "" : FirstError.Message;
 					break;
 				case "systemValue":
 					string systemValue;

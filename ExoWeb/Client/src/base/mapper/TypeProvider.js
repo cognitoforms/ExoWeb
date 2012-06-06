@@ -64,6 +64,7 @@ function typeProviderImpl(types, callback, thisPtr) {
 			});
 	}
 	else {
+		ExoWeb.Batch.resume(batch);
 		callback.call(thisPtr || this, true, typesJson);
 	}
 }

@@ -1,5 +1,6 @@
 function Model() {
 	this._types = {};
+	this._ruleQueue = [];
 
 	this._validatingQueue = new EventQueue(
 		function(e) {
@@ -15,117 +16,135 @@ function Model() {
 		function(e) {
 			var meta = e.sender;
 			var propName = e.property;
-
-			var conditions = [];
-			Sys.Observer.makeObservable(conditions);
-			Array.addRange(conditions, meta._propertyConditions[propName] || []);
+			var conditions = meta.conditions(meta.type.property(propName));
 			meta._raiseEvent("propertyValidated:" + propName, [meta, conditions]);
 		},
-		function(a, b) {
+		function (a, b) {
 			return a.sender == b.sender && a.property == b.property;
 		}
 	);
 }
 
-Model.property = function Model$property(path, thisType/*, lazyLoadTypes, callback, thisPtr*/) {
-	var tokens = new PathTokens(path);
-	var firstStep = tokens.steps[0];
-	var isGlobal = firstStep.property !== "this";
+function ensureType(type, forceLoad, callback) {
 
-	var type;
+	// immediately invoke the callback if no type was specified or the type is loaded
+	if (!type || LazyLoader.isLoaded(type)) {
+		return callback();
+	}
 
-	var lazyLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+	// force type loading if requested
+	if (forceLoad) {
+		LazyLoader.load(type, null, callback);
+	}
+
+	// otherwise, only continue processing when and if dependent types are loaded
+	else {
+		$extend(type._fullName, callback);
+	}
+};
+
+Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
+
+	// allow path to be either a string or PathTokens instance
+	var tokens;
+	if (path.constructor === PathTokens) {
+		tokens = path;
+		path = tokens.expression;
+	}
+
+	// get the optional arguments
+	var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
 	var callback = arguments[3];
 	var thisPtr = arguments[4];
 
-	if (isGlobal) {
-		// Get all but the last step in the path.
-		var typePathSteps = tokens.steps.filter(function(item, i) { return i != tokens.steps.length - 1; });
-
-		// Construct a string from these steps.
-		var typeName = typePathSteps.map(function(item) { return item.property; }).join(".");
-
-		// Empty type name is an error.  The type name must be included as a part of the path.
-		if (typeName.length === 0) {
-			ExoWeb.trace.throwAndLog(["model"], "Invalid static property path \"{0}\":  type name must be included.", [path]);
-		}
-
-		// Retrieve the javascript type by name.
-		type = Model.getJsType(typeName, true);
-
-		// Handle non-existant or non-loaded type.
-		if (!type) {
-			if (callback) {
-				// Retry when type is loaded
-				$extend(typeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
-				return;
-			}
-			else {
-				ExoWeb.trace.throwAndLog(["model"], "Invalid static property path \"{0}\":  type \"{1}\" could not be found.", [path, typeName]);
-			}
-		}
-
-		// Get the corresponding meta type.
-		type = type.meta;
-
-		// Chop off type portion of property path.
-		tokens.steps.splice(0, tokens.steps.length - 1);
-	}
-	else {
-		if (firstStep.cast) {
-			var jstype = Model.getJsType(firstStep.cast);
-
-			if (!jstype) {
-				ExoWeb.trace.throwAndLog("model", "Path '{0}' references an unknown type: {1}", [path, firstStep.cast]);
-			}
-			type = jstype.meta;
-		}
-		else if (thisType instanceof Function) {
-			type = thisType.meta;
+	// immediately return cached property chains
+	if (thisType && thisType._chains && thisType._chains[path]) {
+		if (callback) {
+			callback.call(thisPtr || this, thisType._chains[path]);
+			return;
 		}
 		else {
-			type = thisType;
+			return thisType._chains[path];
 		}
-
-		tokens.steps.dequeue();
 	}
 
+	// get tokens for the specified path
+	var tokens = tokens || new PathTokens(path);
+
+	// get the instance type, if specified
+	var type = thisType instanceof Function ? thisType.meta : thisType;
+
+	// create a function to lazily load a property 
+	var loadProperty = function (type, name, callback) {
+		ensureType(type, forceLoadTypes, function () {
+			callback.call(thisPtr || this, type.property(name));
+		});
+	}
+
+	// handle single property expressions efficiently, as they are neither static nor chains
 	if (tokens.steps.length === 1) {
 		var name = tokens.steps[0].property;
 		if (callback) {
-			if (!LazyLoader.isLoaded(type)) {
-				if (lazyLoadTypes) {
-					LazyLoader.load(type, null, function() {
-						callback.call(thisPtr || this, type.property(name, true));
-					});
-				}
-				else {
-					$extend(type._fullName, function() {
-						callback.call(thisPtr || this, type.property(name, true));
-					});
-				}
-			}
-			else {
-				callback.call(thisPtr || this, type.property(name, true));
-			}
+			loadProperty(type, name, callback);
 		}
 		else {
-			return type.property(name, true);
+			return type.property(name);
 		}
 	}
+
+	// otherwise, first see if the path represents a property chain, and if not, a global property
 	else {
+
+		// predetermine the global type name and property name before seeing if the path is an instance path
+		var globalTypeName = tokens.steps
+			.slice(0, tokens.steps.length - 1)
+			.map(function (item) { return item.property; })
+			.join(".");
+
+		var globalPropertyName = tokens.steps[tokens.steps.length - 1].property;
+
+		// create a function to see if the path is a global property if instance processing fails
+		var processGlobal = function (instanceParseError) {
+
+			// Retrieve the javascript type by name.
+			type = Model.getJsType(globalTypeName, true);
+
+			// Handle non-existant or non-loaded type.
+			if (!type) {
+				if (callback) {
+					// Retry when type is loaded
+					$extend(globalTypeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
+					return;
+				}
+				else {
+					ExoWeb.trace.throwAndLog(["model"], instanceParseError);
+				}
+			}
+
+			// Get the corresponding meta type.
+			type = type.meta;
+
+			// return the static property
+			if (callback) {
+				loadProperty(type, globalPropertyName, callback);
+			}
+			else {
+				return type.property(globalPropertyName);
+			}
+		}
+
 		if (callback) {
-			new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+			PropertyChain.create(type, tokens, forceLoadTypes, thisPtr ? callback.bind(thisPtr) : callback, processGlobal);
 		}
 		else {
-			return new PropertyChain(type, tokens, lazyLoadTypes, thisPtr ? callback.bind(thisPtr) : callback);
+			return PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal(null);
 		}
 	}
 };
 
 Model.prototype = {
 	dispose: function Model$dispose() {
-		for(var key in this._types) {
+		for (var key in this._types) {
 			delete window[key];
 		}
 	},
@@ -142,13 +161,20 @@ Model.prototype = {
 		this._validatingQueue.stopQueueing();
 		this._validatedQueue.stopQueueing();
 	},
-	get_types: function() {
-		return Array.prototype.slice.call(this._types);
-	},
-	type: function(name) {
+	type: function (name) {
 		return this._types[name];
 	},
-	addBeforeContextReady: function(handler) {
+	types: function (filter) {
+		var result = [];
+		for (var typeName in this._types) {
+			var type = this._types[typeName];
+			if (!filter || filter(type)) {
+				result.push(type);
+			}
+		}
+		return result;
+	},
+	addBeforeContextReady: function (handler) {
 		// Only executes the given handler once, since the event should only fire once
 		if (!this._contextReady) {
 			this._addEvent("beforeContextReady", handler, null, true);
@@ -157,35 +183,50 @@ Model.prototype = {
 			handler();
 		}
 	},
-	notifyBeforeContextReady: function() {
+
+	// queues a rule to be registered
+	registerRule: function Model$registerRule(rule) {
+		this._ruleQueue.push(rule);
+	},
+
+	// register rules pending registration
+	registerRules: function Model$registerRules() {
+		var rules = this._ruleQueue;
+		this._ruleQueue = [];
+		for (var i = 0; i < rules.length; i++) {
+			rules[i].register();
+		}
+	},
+	notifyBeforeContextReady: function () {
 		this._contextReady = true;
+		this.registerRules();
 		this._raiseEvent("beforeContextReady", []);
 	},
-	addAfterPropertySet: function(handler) {
+	addAfterPropertySet: function (handler) {
 		this._addEvent("afterPropertySet", handler);
 	},
-	notifyAfterPropertySet: function(obj, property, newVal, oldVal) {
+	notifyAfterPropertySet: function (obj, property, newVal, oldVal) {
 		this._raiseEvent("afterPropertySet", [obj, property, newVal, oldVal]);
 	},
-	addObjectRegistered: function(func, objectOrFunction, once) {
+	addObjectRegistered: function (func, objectOrFunction, once) {
 		this._addEvent("objectRegistered", func, objectOrFunction ? (objectOrFunction instanceof Function ? objectOrFunction : equals(objectOrFunction)) : null, once);
 	},
-	removeObjectRegistered: function(func) {
+	removeObjectRegistered: function (func) {
 		this._removeEvent("objectRegistered", func);
 	},
-	notifyObjectRegistered: function(obj) {
+	notifyObjectRegistered: function (obj) {
 		this._raiseEvent("objectRegistered", [obj]);
 	},
-	addObjectUnregistered: function(func) {
+	addObjectUnregistered: function (func) {
 		this._addEvent("objectUnregistered", func);
 	},
-	notifyObjectUnregistered: function(obj) {
+	notifyObjectUnregistered: function (obj) {
 		this._raiseEvent("objectUnregistered", [obj]);
 	},
-	addListChanged: function(func) {
+	addListChanged: function (func) {
 		this._addEvent("listChanged", func);
 	},
-	notifyListChanged: function(obj, property, changes) {
+	notifyListChanged: function (obj, property, changes) {
 		this._raiseEvent("listChanged", [obj, property, changes]);
 	},
 	_ensureNamespace: function Model$_ensureNamespace(name, parentNamespace) {
@@ -194,7 +235,7 @@ Model.prototype = {
 		if (target.constructor === String) {
 			var nsTokens = target.split(".");
 			target = window;
-			Array.forEach(nsTokens, function(token) {
+			Array.forEach(nsTokens, function (token) {
 				target = target[token];
 
 				if (target === undefined) {

@@ -4,7 +4,7 @@ function ListLazyLoader() {
 function listLoad(list, propName, callback, thisPtr) {
 	var signal = new ExoWeb.Signal("list lazy loader");
 
-	var model = list._ownerProperty.get_containingType().get_model();
+	var model = list._ownerProperty.get_containingType().model;
 	var ownerId = list._ownerId;
 	var containingType = list._ownerProperty.get_containingType();
 	var owner = ownerId === STATIC_ID ? containingType.get_jstype() : containingType.get(ownerId);
@@ -147,7 +147,7 @@ function listLoad(list, propName, callback, thisPtr) {
 
 		objectsFromJson(model, objectJson, function() {
 			if (conditionsJson) {
-				conditionsFromJson(model, conditionsJson, done);
+				conditionsFromJson(model, conditionsJson, list.slice(0), done);
 			}
 			else {
 				done();

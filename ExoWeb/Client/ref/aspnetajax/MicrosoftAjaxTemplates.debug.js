@@ -2730,28 +2730,10 @@ false);
 			Sys.UI.DataView.initializeBase(this, [element]);
 		}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+		// Global dataview configuration
+		Sys.UI.DataView.config = {
+			useOptimalUpdates: false
+		};
 
 		function Sys$UI$DataView$add_command(handler) {
 			/// <summary locid="E:J#Sys.UI.DataView.command" />
@@ -3084,7 +3066,7 @@ false);
 					template._ensureCompiled();
 					var templateUsesDollarIndex = /with\s*\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
 
-					if (templateUsesDollarIndex) {
+					if (Sys.UI.DataView.config.useOptimalUpdates !== true || templateUsesDollarIndex) {
 						this.refresh();
 					}
 					else {

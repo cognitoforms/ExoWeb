@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web;
 using ExoModel;
 using ExoWeb.Templates.JavaScript;
+using ExoRule;
 
 namespace ExoWeb.Templates
 {
@@ -183,11 +184,6 @@ namespace ExoWeb.Templates
 					return result;
 			}
 
-			// Otherwise see if the path represents a static property
-			else
-			{
-			}
-
 			// Transform grouping
 			if (context is Transform.Grouping)
 			{
@@ -248,6 +244,10 @@ namespace ExoWeb.Templates
 					return result;
 				}
 			}
+
+			// Condition
+			if (context is Condition)
+				return ConditionWrapper.Evaluate((Condition)context, path);
 
 			// IBindable
 			if (context is IBindable)
