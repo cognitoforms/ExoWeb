@@ -167,17 +167,12 @@ var observableInterface = {
 // sets the observer provider to use, verifying that it matches the defined interface.
 function setObserverProvider(provider) {
 	for (var method in observableInterface) {
-		var oldDefinition = observableInterface[method];
-		var newDefinition = provider[method];
-		if (!(newDefinition instanceof Function)) {
+		var definition = provider[method];
+		if (!(definition instanceof Function)) {
 			throw new Error("Observable provider does not implement '" + method + "'.");
 		}
-		if (newDefinition.length !== oldDefinition.length) {
-			throw new Error("Observable provider method '" + method + "' has the wrong number of arguments.");
-		}
-		Observer[method] = newDefinition;
+		Observer[method] = definition;
 	}
-
 };
 
 // expose publicly

@@ -15,8 +15,7 @@ setObserverProvider({
 
 	removeCollectionChanged: Sys.Observer.removeCollectionChanged,
 
-	addPropertyChanged: 
-	function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
+	addPropertyChanged: function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
 		if (!target.__propertyChangeHandlers) {
 			target.__propertyChangeHandlers = {};
 			Sys.Observer.addPropertyChanged(target, raiseSpecificPropertyChanged);
