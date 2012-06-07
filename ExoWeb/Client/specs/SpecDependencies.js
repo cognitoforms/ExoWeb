@@ -57,7 +57,12 @@ String.prototype.inNamespace = function(ns) {
 
 // Dependency definitions
 ///////////////////////////////////////
+
+var extensions = ["dotnet", "jquery-msajax", "msajax"];
+
 exports.init = function () {
+
+	// Core dependencies
 	ensureNode("core.TypeChecking");
 	ensureNode("core.Utilities");
 	"core.Trace".dependsOn("core.Utilities");
@@ -69,16 +74,22 @@ exports.init = function () {
 	"mapper.ServerSync".dependsOn("core.Trace", "core.Utilities", "core.Functor", "core.Function");
 	"mapper.ObjectLazyLoader".dependsOn("core.Activity", "core.Function", "model.LazyLoader", "core.Array");
 	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity", "model.ObjectMeta");
-	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type");
-	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object", "model.Property");
+	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type", "core.Observer");
+	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object", "model.Property", "core.Observer");
 	"model.PathTokens".dependsOn("core.Function", "model.Property", "model.PropertyChain", "core.Observer");
+
+	// Extension dependencies
+	"msajax.ObserverProvider".dependsOn("core.Observer");
+
 };
 
 // Module loading
 ///////////////////////////////////////
 
 function getModulePath(basePath, name) {
-	return basePath + "base/" + name.split(".").join("/");
+	var pair = name.split(".");
+	var root = extensions.indexOf(pair[0]) < 0 ? "base" : "extensions";
+	return basePath + root + "/" + pair.join("/");
 }
 
 var currentlyRequiring = [];

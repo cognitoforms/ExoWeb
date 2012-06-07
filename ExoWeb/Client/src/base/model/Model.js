@@ -42,6 +42,7 @@ function ensureType(type, forceLoad, callback) {
 		$extend(type._fullName, callback);
 	}
 };
+exports.ensureType = ensureType; // IGNORE
 
 Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
 

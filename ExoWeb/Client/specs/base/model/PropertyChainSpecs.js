@@ -12,6 +12,7 @@ specs.ensureWindow();
 specs.requireMsAjax();
 specs.requireJQueryExtend();
 specs.require("model.PropertyChain");
+specs.require("msajax.ObserverProvider");
 
 // Test Suites
 ///////////////////////////////////////
@@ -47,20 +48,20 @@ describe("PropertyChain", function() {
 		foo.get_Bars().add(bar2);
 		this.bar2 = bar2;
 
-		var barsChain = fooType.property("Bars");
-		this.barsChain = barsChain;
+		var barsProp = PropertyChain.create(fooType, new PathTokens("Bars"));
+		this.barsProp = barsProp;
 
-		var barsTypeChain = Model.property("this.Bars.Type", fooType);
-		this.barsTypeChain = barsTypeChain;
+		var barsTypeProp = Model.property("Bars.Type", fooType);
+		this.barsTypeProp = barsTypeProp;
 
-		var nameChain = barTypeType.property("Name");
-		this.nameChain = nameChain;
+		var nameProp = PropertyChain.create(barTypeType, new PathTokens("Name"));
+		this.nameProp = nameProp;
 
-		var typeNameChain = Model.property("this.Type.Name", barType);
-		this.typeNameChain = typeNameChain;
+		var typeNameProp = Model.property("Type.Name", barType);
+		this.typeNameProp = typeNameProp;
 
-		var barsTypeNameChain = Model.property("this.Bars.Type.Name", fooType);
-		this.barsTypeNameChain = barsTypeNameChain;
+		var barsTypeNameProp = Model.property("Bars.Type.Name", fooType);
+		this.barsTypeNameProp = barsTypeNameProp;
 	});
 
 	afterEach(function() {
@@ -73,28 +74,28 @@ describe("PropertyChain", function() {
 
 		it("callback is given the target, target index, target array, property, property index, and property array", function() {
 			var nameSpy = jasmine.jasmine.createSpy();
-			this.nameChain.each(this.aType, nameSpy);
+			this.nameProp.each(this.aType, nameSpy);
 			expect(nameSpy).toHaveBeenCalledWith(this.aType, -1, null, BarType.$Name, 0, [BarType.$Name]);
 
 			var barsSpy = jasmine.jasmine.createSpy();
-			this.barsChain.each(this.foo, barsSpy);
+			this.barsProp.each(this.foo, barsSpy);
 			expect(barsSpy).toHaveBeenCalledWith(this.foo, -1, null, Foo.$Bars, 0, [Foo.$Bars]);
 
 			var barsTypeSpy = jasmine.jasmine.createSpy();
-			this.barsTypeChain.each(this.foo, barsTypeSpy);
+			this.barsTypeProp.each(this.foo, barsTypeSpy);
 			expect(barsTypeSpy).toHaveBeenCalledWith(this.foo, -1, null, Foo.$Bars, 0, [Foo.$Bars, Bar.$Type]);
 		});
 
 		it("iterates over each property in the chain", function() {
 			var spy = jasmine.jasmine.createSpy();
-			this.typeNameChain.each(this.bar1, spy);
+			this.typeNameProp.each(this.bar1, spy);
 			expect(spy).toHaveBeenCalled();
 			expect(spy.callCount).toBe(2);
 		});
 
 		it("also iterates over each target in the chain when one or more properties are an array", function() {
 			var spy = jasmine.jasmine.createSpy();
-			this.barsTypeNameChain.each(this.foo, spy);
+			this.barsTypeNameProp.each(this.foo, spy);
 			expect(spy).toHaveBeenCalled();
 			expect(spy.callCount).toBe(5);
 		});
@@ -104,17 +105,17 @@ describe("PropertyChain", function() {
 	describe("isInited", function() {
 
 		it("returns true if all property values are initialized", function() {
-			expect(this.barsTypeNameChain.isInited(this.foo, true)).toBe(true);
+			expect(this.barsTypeNameProp.isInited(this.foo, true)).toBe(true);
 		});
 
 		it("returns false if the path is not complete", function() {
 			this.bar2.set_Type(null);
-			expect(this.barsTypeNameChain.isInited(this.foo, true)).toBe(false);
+			expect(this.barsTypeNameProp.isInited(this.foo, true)).toBe(false);
 		});
 
 		it("returns true if the path is not complete but enforceCompleteness is not specified", function() {
 			this.bar2.set_Type(null);
-			expect(this.barsTypeNameChain.isInited(this.foo)).toBe(true);
+			expect(this.barsTypeNameProp.isInited(this.foo)).toBe(true);
 		});
 
 	});
@@ -124,13 +125,13 @@ describe("PropertyChain", function() {
 		it("executes if all property values are initialized", function() {
 			debugger;
 			var handler = jasmine.jasmine.createSpy();
-			this.barsTypeNameChain.addChanged(handler);
+			this.barsTypeNameProp.addChanged(handler);
 
 			this.bar2.get_Type().set_Name("b");
 			expect(handler).toHaveBeenCalledWith(this.foo, {
 				wasInited: true,
 				originalSender: this.bType,
-				property: this.barsTypeNameChain,
+				property: this.barsTypeNameProp,
 				triggeredBy: BarType.$Name,
 				oldValue: "B",
 				newValue: "b"
@@ -139,7 +140,7 @@ describe("PropertyChain", function() {
 
 		it("does not execute if one of the paths is not complete", function() {
 			var handler = jasmine.jasmine.createSpy();
-			this.barsTypeNameChain.addChanged(handler);
+			this.barsTypeNameProp.addChanged(handler);
 
 			this.bar2.set_Type(null);
 			expect(handler).not.toHaveBeenCalled();
@@ -147,13 +148,13 @@ describe("PropertyChain", function() {
 
 		it("executes if one of the paths is not complete and tolerate partials is set to true", function() {
 			var handler = jasmine.jasmine.createSpy();
-			this.barsTypeNameChain.addChanged(handler, null, false, true);
+			this.barsTypeNameProp.addChanged(handler, null, false, true);
 
 			this.bar2.set_Type(null);
 			expect(handler).toHaveBeenCalledWith(this.foo, {
 				wasInited: true,
 				originalSender: this.bar2,
-				property: this.barsTypeNameChain,
+				property: this.barsTypeNameProp,
 				triggeredBy: Bar.$Type,
 				oldValue: this.bType,
 				newValue: null
