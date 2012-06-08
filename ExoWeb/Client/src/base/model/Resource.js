@@ -44,3 +44,6 @@
 		return this[name];
 	}
 }
+
+// publicly export the resource object
+exports.Resource = Resource;

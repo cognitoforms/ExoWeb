@@ -27,7 +27,7 @@
 				var meta = srcObj.meta || srcObj;
 
 				if (meta instanceof ExoWeb.Model.ObjectMeta) {
-					var property = srcObj.type.property(propName);
+					var property = meta.type.property(propName);
 					meta.addConditionsChanged(function (sender, args) {
 						if (isError(args.conditionTarget.condition)) {
 							$el.trigger("validated", meta.conditions(property));

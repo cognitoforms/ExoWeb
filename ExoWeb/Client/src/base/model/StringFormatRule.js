@@ -6,13 +6,16 @@ function StringFormatRule(rootType, options) {
 	///			property:			the property being validated (either a Property instance or string property name)
 	///			description:		the human readable description of the format, such as MM/DD/YYY
 	///		    expression:			a regular expression string or RegExp instance that the property value must match
-	///		    reformat:			and optional regular expression reformat string that will be used to correct the value if it matches
+	///		    reformat:			and optional regular expression reformat string or reformat function that will be used to correct the value if it matches
 	///			name:				the optional unique name of the type of validation rule
 	///			conditionType:		the optional condition type to use, which will be automatically created if not specified
 	///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
 	///			message:			the message to show the user when the validation fails
 	/// </param>
 	/// <returns type="StringFormatRule">The new string format rule.</returns>
+
+	// exit immediately if called with no arguments
+	if (arguments.length == 0) return;
 
 	// ensure the rule name is specified
 	options.name = options.name || "StringFormat";
@@ -35,7 +38,7 @@ StringFormatRule.prototype.constructor = StringFormatRule;
 
 // extend the base type
 StringFormatRule.mixin({
-	
+
 	// returns true if the property is valid, otherwise false
 	isValid: function StringFormatRule$isValid(obj, prop, val) {
 		var isValid = true;
@@ -43,8 +46,14 @@ StringFormatRule.mixin({
 			this.expression.lastIndex = 0;
 			isValid = this.expression.test(val);
 			if (isValid && this.reformat) {
-				this.expression.lastIndex = 0;
-				prop.value(obj, val.replace(this.expression, this.reformat));
+				if (this.reformat instanceof Function) {
+					val = this.reformat(val);
+				}
+				else {
+					this.expression.lastIndex = 0;
+					val = val.replace(this.expression, this.reformat);
+				}
+				prop.value(obj, val);
 			}
 		}
 		return isValid;

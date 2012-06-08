@@ -442,7 +442,7 @@ ServerSync.mixin({
 
 			if (arg instanceof Array) {
 				event[key] = arg.map(function (a) { return toExoModel(a, this._translator); }, this);
-				}
+			}
 			else {
 				event[key] = toExoModel(arg, this._translator);
 			}
@@ -759,7 +759,7 @@ ServerSync.mixin({
 			var totalChanges = changes.length;
 
 			// Determine that the target of a change is a new instance
-			var instanceIsNew = function(change) {
+			var instanceIsNew = function (change) {
 				if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
 					var obj = fromExoModel(change.instance, this._translator);
 					return obj && obj.meta.isNew;
@@ -773,15 +773,15 @@ ServerSync.mixin({
 			var numSaveChanges = saveChanges.length;
 			if (numSaveChanges > 0) {
 				// Collect all of the id changes in the response. Multiple saves could occur.
-				var idChanges = saveChanges.mapToArray(function(change) { return change.added || []; });
+				var idChanges = saveChanges.mapToArray(function (change) { return change.added || []; });
 
 				// Create a list of new instances that were saved. Use a typed identifier form since the id stored
 				// in changes in the change log will be a server id rather than client id (if there is a distinction)
 				// and using the typed identifier approach allows for a straightforward search of the array.
-				var newInstancesSaved = idChanges.map(function(idChange) { return idChange.type + "|" + idChange.oldId; });
+				var newInstancesSaved = idChanges.map(function (idChange) { return idChange.type + "|" + idChange.oldId; });
 
 				// Truncate changes that we believe were actually saved based on the response
-				shouldDiscardChange = function(change) {
+				shouldDiscardChange = function (change) {
 					var couldHaveBeenSaved, isNewObjectNotYetSaved;
 
 					// Determine if the change could have been saved in the first place
@@ -815,8 +815,8 @@ ServerSync.mixin({
 			}
 
 			var numPendingSaveChanges = numSaveChanges;
-			
-			changes.forEach(function(change, changeIndex) {
+
+			changes.forEach(function (change, changeIndex) {
 				if (change.type === "InitNew") {
 					this.applyInitChange(change, beforeApply, afterApply, signal.pending());
 				}
@@ -846,7 +846,7 @@ ServerSync.mixin({
 							this._changeLog.add(change);
 						}
 					}
-				}				
+				}
 			}, this);
 
 			// start a new set to capture future changes
@@ -855,7 +855,7 @@ ServerSync.mixin({
 			}
 
 			waitForAllRegistered = true;
-			signal.waitForAll(function() {
+			signal.waitForAll(function () {
 				this.endApplyingChanges();
 				ExoWeb.Batch.end(batch);
 				if (callback) {
@@ -883,7 +883,7 @@ ServerSync.mixin({
 			return;
 		}
 
-		change.deleted.forEach(function(instance) {
+		change.deleted.forEach(function (instance) {
 			tryGetJsType(this.model, instance.type, null, false, function (type) {
 				tryGetEntity(this.model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
 					// Notify server object that the instance is deleted
@@ -1065,7 +1065,7 @@ ServerSync.mixin({
 				// Cache the new value, becuase we access it many times and also it may be modified below
 				// to account for timezone differences, but we don't want to modify the actual change object.
 				var newValue = change.newValue;
-				
+
 				// Cache the property since it is not a simple property access.
 				var property = srcObj.meta.property(change.property);
 
@@ -1172,6 +1172,12 @@ ServerSync.mixin({
 		}
 
 		exited = true;
+	},
+
+	// Checkpoint
+	///////////////////////////////////////////////////////////////////////
+	checkpoint: function ServerSync$checkpoint() {
+		return this._changeLog.checkpoint();
 	},
 
 	// Rollback

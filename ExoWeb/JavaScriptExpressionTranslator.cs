@@ -186,8 +186,8 @@ namespace ExoWeb
 			{ "static String.Copy(String) as String", new string[] {@"String({0})", "", @""} },
 			{ "static String.Equals(String, String) as Boolean", new string[] {@"({0} === {1})", "", @""} },
 			{ "static String.Equals(String, String, StringComparison) as Boolean", new string[] {@"(String_compare({0}, 0, {1}, 0, -1, /IgnoreCase$/.test({2})) === 0)", "", @""} },
-			{ "static String.IsNullOrEmpty(String) as Boolean", new string[] {@"String_isNullOrEmpty({0})", "String_isNullOrEmpty", @"function(s) { return s === null || s === undefined || s === """"; };"} },
-			{ "static String.IsNullOrWhiteSpace(String) as Boolean", new string[] {@"String_isNullOrWhiteSpace({0})", "String_isNullOrWhiteSpace", @"function(s) { return s === null || s === undefined || !!s.match(/^\s*$/); };"} },
+			{ "static String.IsNullOrEmpty(String) as Boolean", new string[] {@"String_isNullOrEmpty({0})", "String_isNullOrEmpty", @"function(s) { return s === null || s === undefined || s === """"; }"} },
+			{ "static String.IsNullOrWhiteSpace(String) as Boolean", new string[] {@"String_isNullOrWhiteSpace({0})", "String_isNullOrWhiteSpace", @"function(s) { return s === null || s === undefined || !!s.match(/^\s*$/); }"} },
 			{ "static String.Join(String, Object[]) as String", new string[] {@"String_join({0}, {1})", "String_join", @"function (s, a) { if (a === undefined || a === null || a.length === 0 || a[0] === undefined || a[0] === null) return """"; return a.map(function(o) { if (o === undefined || o === null) return """"; return o.toString(); }).join(s); }"} },
 			{ "static String.Join(String, String[]) as String", new string[] {@"{1}.join({0})", "", @""} },
 			{ "static String.Join(String, String[], Number, Number) as String", new string[] {@"{1}.slice({2}, {2} + {3}).join({0})", "", @""} },
@@ -469,7 +469,7 @@ namespace ExoWeb
 		/// <summary>
 		/// Gets a unique string signature of a supported member.
 		/// </summary>
-		static string GetSignature(MemberInfo member)
+		public static string GetSignature(MemberInfo member)
 		{
 			// Field
 			if (member is FieldInfo)
@@ -530,10 +530,12 @@ namespace ExoWeb
 		/// <returns></returns>
 		static string GetTypeName(Type type)
 		{
+			string typeName;
 			return
 				type.IsEnum ? type.Name : 
 				type.IsArray ? GetTypeName(type.GetElementType()) + "[]" :
-				supportedTypes[type];
+				supportedTypes.TryGetValue(type, out typeName) ? typeName : 
+				type.FullName;
 		}
 
 		/// <summary>

@@ -1012,7 +1012,9 @@ namespace ExoWeb
 
 								// Record dependency exports globally
 								foreach (var export in exp.Exports)
-									json.Global<Dictionary<string, string>>("exports").Add(export.Key, export.Value);
+								{
+									json.Global<Dictionary<string, string>>("exports")[export.Key] = export.Value;
+								}
 							}
 
 							else if (rule is IConditionRule)

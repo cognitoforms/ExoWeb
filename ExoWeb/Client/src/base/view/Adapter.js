@@ -210,7 +210,7 @@ Adapter.mixin({
 
 				// Remove and re-add validation handlers if the last target has changed
 				if (oldLastTarget !== newLastTarget) {
-					this._conditions.clear();
+					this.get_conditions().clear();
 					if (this._conditionsChangedHandler) {
 						oldLastTarget.meta.removeConditionsChanged(this._conditionsChangedHandler);
 					}
@@ -218,9 +218,9 @@ Adapter.mixin({
 			}
 
 			// Add the conditions for the new target and subscribe to changes
-			if (this._conditions && newLastTarget !== null) {
-				this.addRange(newLastTarget.meta.conditions(this._propertyChain.lastProperty()));
-				newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this._propertyChain);
+			if (this.get_conditions() && newLastTarget !== null) {
+				this.get_conditions().addRange(newLastTarget.meta.conditions(this.get_propertyChain().lastProperty()));
+				newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this.get_propertyChain());
 			}
 		}
 
@@ -533,10 +533,10 @@ Adapter.mixin({
 		if (!this._conditions) {
 
 			// get the current target
-			var target = this._propertyChain.lastTarget(this._target);
+			var target = this.get_propertyChain().lastTarget(this._target);
 
 			// get the current set of conditions
-			var conditions = this._conditions = target ? target.meta.conditions(this._propertyChain.lastProperty()) : [];
+			var conditions = this._conditions = target ? target.meta.conditions(this.get_propertyChain().lastProperty()) : [];
 
 			// make the conditions observable
 			Observer.makeObservable(this._conditions);
@@ -544,7 +544,7 @@ Adapter.mixin({
 			// subscribe to condition changes on the current target
 			if (target) {
 				var handler = this._conditionsChangedHandler = conditionsChangedHandler.prependArguments(conditions);
-				target.meta.addConditionsChanged(handler, this._propertyChain);
+				target.meta.addConditionsChanged(handler, this.get_propertyChain());
 			}
 		}
 		return this._conditions;

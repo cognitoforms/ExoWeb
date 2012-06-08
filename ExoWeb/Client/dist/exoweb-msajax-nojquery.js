@@ -3361,6 +3361,9 @@ window.ExoWeb.DotNet = {};
 			return this[name];
 		}
 	}
+
+	// publicly export the resource object
+	ExoWeb.Model.Resource = Resource;
 	// #endregion
 
 	// #region ExoWeb.Model.Format
@@ -7174,13 +7177,16 @@ window.ExoWeb.DotNet = {};
 		///			property:			the property being validated (either a Property instance or string property name)
 		///			description:		the human readable description of the format, such as MM/DD/YYY
 		///		    expression:			a regular expression string or RegExp instance that the property value must match
-		///		    reformat:			and optional regular expression reformat string that will be used to correct the value if it matches
+		///		    reformat:			and optional regular expression reformat string or reformat function that will be used to correct the value if it matches
 		///			name:				the optional unique name of the type of validation rule
 		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
 		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
 		///			message:			the message to show the user when the validation fails
 		/// </param>
 		/// <returns type="StringFormatRule">The new string format rule.</returns>
+
+		// exit immediately if called with no arguments
+		if (arguments.length == 0) return;
 
 		// ensure the rule name is specified
 		options.name = options.name || "StringFormat";
@@ -7203,7 +7209,7 @@ window.ExoWeb.DotNet = {};
 
 	// extend the base type
 	StringFormatRule.mixin({
-	
+
 		// returns true if the property is valid, otherwise false
 		isValid: function StringFormatRule$isValid(obj, prop, val) {
 			var isValid = true;
@@ -7211,8 +7217,14 @@ window.ExoWeb.DotNet = {};
 				this.expression.lastIndex = 0;
 				isValid = this.expression.test(val);
 				if (isValid && this.reformat) {
-					this.expression.lastIndex = 0;
-					prop.value(obj, val.replace(this.expression, this.reformat));
+					if (this.reformat instanceof Function) {
+						val = this.reformat(val);
+					}
+					else {
+						this.expression.lastIndex = 0;
+						val = val.replace(this.expression, this.reformat);
+					}
+					prop.value(obj, val);
 				}
 			}
 			return isValid;
@@ -9632,7 +9644,7 @@ window.ExoWeb.DotNet = {};
 
 				if (arg instanceof Array) {
 					event[key] = arg.map(function (a) { return toExoModel(a, this._translator); }, this);
-					}
+				}
 				else {
 					event[key] = toExoModel(arg, this._translator);
 				}
@@ -9949,7 +9961,7 @@ window.ExoWeb.DotNet = {};
 				var totalChanges = changes.length;
 
 				// Determine that the target of a change is a new instance
-				var instanceIsNew = function(change) {
+				var instanceIsNew = function (change) {
 					if (ExoWeb.Model.Model.getJsType(change.instance.type, true)) {
 						var obj = fromExoModel(change.instance, this._translator);
 						return obj && obj.meta.isNew;
@@ -9963,15 +9975,15 @@ window.ExoWeb.DotNet = {};
 				var numSaveChanges = saveChanges.length;
 				if (numSaveChanges > 0) {
 					// Collect all of the id changes in the response. Multiple saves could occur.
-					var idChanges = saveChanges.mapToArray(function(change) { return change.added || []; });
+					var idChanges = saveChanges.mapToArray(function (change) { return change.added || []; });
 
 					// Create a list of new instances that were saved. Use a typed identifier form since the id stored
 					// in changes in the change log will be a server id rather than client id (if there is a distinction)
 					// and using the typed identifier approach allows for a straightforward search of the array.
-					var newInstancesSaved = idChanges.map(function(idChange) { return idChange.type + "|" + idChange.oldId; });
+					var newInstancesSaved = idChanges.map(function (idChange) { return idChange.type + "|" + idChange.oldId; });
 
 					// Truncate changes that we believe were actually saved based on the response
-					shouldDiscardChange = function(change) {
+					shouldDiscardChange = function (change) {
 						var couldHaveBeenSaved, isNewObjectNotYetSaved;
 
 						// Determine if the change could have been saved in the first place
@@ -10005,8 +10017,8 @@ window.ExoWeb.DotNet = {};
 				}
 
 				var numPendingSaveChanges = numSaveChanges;
-			
-				changes.forEach(function(change, changeIndex) {
+
+				changes.forEach(function (change, changeIndex) {
 					if (change.type === "InitNew") {
 						this.applyInitChange(change, beforeApply, afterApply, signal.pending());
 					}
@@ -10036,7 +10048,7 @@ window.ExoWeb.DotNet = {};
 								this._changeLog.add(change);
 							}
 						}
-					}				
+					}
 				}, this);
 
 				// start a new set to capture future changes
@@ -10045,7 +10057,7 @@ window.ExoWeb.DotNet = {};
 				}
 
 				waitForAllRegistered = true;
-				signal.waitForAll(function() {
+				signal.waitForAll(function () {
 					this.endApplyingChanges();
 					ExoWeb.Batch.end(batch);
 					if (callback) {
@@ -10073,7 +10085,7 @@ window.ExoWeb.DotNet = {};
 				return;
 			}
 
-			change.deleted.forEach(function(instance) {
+			change.deleted.forEach(function (instance) {
 				tryGetJsType(this.model, instance.type, null, false, function (type) {
 					tryGetEntity(this.model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
 						// Notify server object that the instance is deleted
@@ -10255,7 +10267,7 @@ window.ExoWeb.DotNet = {};
 					// Cache the new value, becuase we access it many times and also it may be modified below
 					// to account for timezone differences, but we don't want to modify the actual change object.
 					var newValue = change.newValue;
-				
+
 					// Cache the property since it is not a simple property access.
 					var property = srcObj.meta.property(change.property);
 
@@ -10362,6 +10374,12 @@ window.ExoWeb.DotNet = {};
 			}
 
 			exited = true;
+		},
+
+		// Checkpoint
+		///////////////////////////////////////////////////////////////////////
+		checkpoint: function ServerSync$checkpoint() {
+			return this._changeLog.checkpoint();
 		},
 
 		// Rollback
@@ -15229,7 +15247,7 @@ window.ExoWeb.DotNet = {};
 
 					// Remove and re-add validation handlers if the last target has changed
 					if (oldLastTarget !== newLastTarget) {
-						this._conditions.clear();
+						this.get_conditions().clear();
 						if (this._conditionsChangedHandler) {
 							oldLastTarget.meta.removeConditionsChanged(this._conditionsChangedHandler);
 						}
@@ -15237,9 +15255,9 @@ window.ExoWeb.DotNet = {};
 				}
 
 				// Add the conditions for the new target and subscribe to changes
-				if (this._conditions && newLastTarget !== null) {
-					this.addRange(newLastTarget.meta.conditions(this._propertyChain.lastProperty()));
-					newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this._propertyChain);
+				if (this.get_conditions() && newLastTarget !== null) {
+					this.get_conditions().addRange(newLastTarget.meta.conditions(this.get_propertyChain().lastProperty()));
+					newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this.get_propertyChain());
 				}
 			}
 
@@ -15552,10 +15570,10 @@ window.ExoWeb.DotNet = {};
 			if (!this._conditions) {
 
 				// get the current target
-				var target = this._propertyChain.lastTarget(this._target);
+				var target = this.get_propertyChain().lastTarget(this._target);
 
 				// get the current set of conditions
-				var conditions = this._conditions = target ? target.meta.conditions(this._propertyChain.lastProperty()) : [];
+				var conditions = this._conditions = target ? target.meta.conditions(this.get_propertyChain().lastProperty()) : [];
 
 				// make the conditions observable
 				Observer.makeObservable(this._conditions);
@@ -15563,7 +15581,7 @@ window.ExoWeb.DotNet = {};
 				// subscribe to condition changes on the current target
 				if (target) {
 					var handler = this._conditionsChangedHandler = conditionsChangedHandler.prependArguments(conditions);
-					target.meta.addConditionsChanged(handler, this._propertyChain);
+					target.meta.addConditionsChanged(handler, this.get_propertyChain());
 				}
 			}
 			return this._conditions;
