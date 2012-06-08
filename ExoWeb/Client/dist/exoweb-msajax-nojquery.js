@@ -880,6 +880,10 @@ window.ExoWeb.DotNet = {};
 		if (items.length > 1)
 			throw new Error("Expected a single item, but found " + items.length + ".");
 
+		if (items.length === 0) {
+			throw new Error("Expected a single item, but did not find a match.");
+		}
+
 		return items[0];
 	}
 
@@ -8768,9 +8772,13 @@ window.ExoWeb.DotNet = {};
 
 				// If the object was not found and a supplemental list was provided, then search for it
 				if (!obj && supplementalObjectsArray && supplementalObjectsArray.length > 0) {
-					obj = supplementalObjectsArray.single(function(o) {
+					var matches = supplementalObjectsArray.filter(function(o) {
 						return o instanceof type && o.meta.id === id;
 					});
+					if (matches.length > 1) {
+						throw ExoWeb.trace.logError("translator", "Expected a single item, but found " + matches.length + ".");
+					}
+					obj = matches[0];
 				}
 
 				if (!obj && create) {

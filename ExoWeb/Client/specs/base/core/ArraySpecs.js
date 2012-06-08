@@ -195,6 +195,13 @@ describe("single", function () {
 			single(arr, function(i) { return i <= 0; });
 		}).toThrow("Expected a single item, but found 2.");
 	});
+
+	it("throws an error if no items match the given filter function", function () {
+		var arr = [5, 2, 3, -4, 0];
+		expect(function() {
+			single(arr, function(i) { return i < -4; });
+		}).toThrow("Expected a single item, but did not find a match.");
+	});
 });
 
 describe("last", function() {

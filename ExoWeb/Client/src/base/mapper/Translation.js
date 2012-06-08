@@ -59,9 +59,13 @@ function fromExoModel(val, translator, create, supplementalObjectsArray) {
 
 			// If the object was not found and a supplemental list was provided, then search for it
 			if (!obj && supplementalObjectsArray && supplementalObjectsArray.length > 0) {
-				obj = supplementalObjectsArray.single(function(o) {
+				var matches = supplementalObjectsArray.filter(function(o) {
 					return o instanceof type && o.meta.id === id;
 				});
+				if (matches.length > 1) {
+					throw ExoWeb.trace.logError("translator", "Expected a single item, but found " + matches.length + ".");
+				}
+				obj = matches[0];
 			}
 
 			if (!obj && create) {

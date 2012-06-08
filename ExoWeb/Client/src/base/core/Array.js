@@ -287,6 +287,10 @@ function single(arr, callback, thisPtr) {
 	if (items.length > 1)
 		throw new Error("Expected a single item, but found " + items.length + ".");
 
+	if (items.length === 0) {
+		throw new Error("Expected a single item, but did not find a match.");
+	}
+
 	return items[0];
 }
 
