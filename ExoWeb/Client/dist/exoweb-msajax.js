@@ -216,6 +216,7 @@ window.ExoWeb.DotNet = {};
 
 		// IE's "in" operator doesn't return keys for native properties on the Object prototype
 		overridableNonEnumeratedMethods.forEach(function (m) {
+			var member = members[m];
 			if (members.hasOwnProperty(m)) {
 				addPrototypeMember(obj, m, member);
 			}
@@ -3901,7 +3902,12 @@ window.ExoWeb.DotNet = {};
 		},
 		set: function Entity$set(/*[properties] or [propName, propValue] */) {
 			forEachProperty(getProperties.apply(this, arguments), function (name, value) {
-				this.meta.type.property(name)._setter(this, value, false);
+				var prop = this.meta.type.property(name);
+				if (!prop) {
+					ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
+				}
+
+				prop._setter(this, value, false);
 			}, this);
 		},
 		get: function Entity$get(propName) {

@@ -42,6 +42,7 @@ Function.prototype.mixin = function mixin(members, obj) {
 
 	// IE's "in" operator doesn't return keys for native properties on the Object prototype
 	overridableNonEnumeratedMethods.forEach(function (m) {
+		var member = members[m];
 		if (members.hasOwnProperty(m)) {
 			addPrototypeMember(obj, m, member);
 		}

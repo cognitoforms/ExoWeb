@@ -33,7 +33,12 @@ Entity.mixin({
 	},
 	set: function Entity$set(/*[properties] or [propName, propValue] */) {
 		forEachProperty(getProperties.apply(this, arguments), function (name, value) {
-			this.meta.type.property(name)._setter(this, value, false);
+			var prop = this.meta.type.property(name);
+			if (!prop) {
+				ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
+			}
+
+			prop._setter(this, value, false);
 		}, this);
 	},
 	get: function Entity$get(propName) {
