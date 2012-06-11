@@ -3763,7 +3763,12 @@ window.ExoWeb.DotNet = {};
 
 		// queues a rule to be registered
 		registerRule: function Model$registerRule(rule) {
-			this._ruleQueue.push(rule);
+			if(!this._contextReady) {
+				this._ruleQueue.push(rule);
+			}
+			else {
+				rule.register();
+			}
 		},
 
 		// register rules pending registration
@@ -5012,7 +5017,7 @@ window.ExoWeb.DotNet = {};
 		},
 		conditionIf: function (options, type) {
 			var options = preparePropertyRuleOptions(this, options, type);
-			new ExoWeb.Model.Rule.condition(this._containingType, options);
+			new ExoWeb.Model.Rule.validated(this._containingType, options);
 			return this;
 		},
 		errorIf: function (options, error) {

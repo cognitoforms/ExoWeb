@@ -487,7 +487,7 @@ Property.mixin({
 	},
 	conditionIf: function (options, type) {
 		var options = preparePropertyRuleOptions(this, options, type);
-		new ExoWeb.Model.Rule.condition(this._containingType, options);
+		new ExoWeb.Model.Rule.validated(this._containingType, options);
 		return this;
 	},
 	errorIf: function (options, error) {

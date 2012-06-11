@@ -187,7 +187,12 @@ Model.prototype = {
 
 	// queues a rule to be registered
 	registerRule: function Model$registerRule(rule) {
-		this._ruleQueue.push(rule);
+		if(!this._contextReady) {
+			this._ruleQueue.push(rule);
+		}
+		else {
+			rule.register();
+		}
 	},
 
 	// register rules pending registration
