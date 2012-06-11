@@ -16204,7 +16204,7 @@ window.ExoWeb.DotNet = {};
 					var property = meta.type.property(propName);
 					meta.addConditionsChanged(function (sender, args) {
 						if (isError(args.conditionTarget.condition)) {
-							$el.trigger("validated", meta.conditions(property));
+							$el.trigger("validated", [meta.conditions(property)]);
 						}
 					}, property);
 				}
