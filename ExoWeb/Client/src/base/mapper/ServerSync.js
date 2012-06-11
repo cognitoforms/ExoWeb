@@ -210,7 +210,7 @@ ServerSync.mixin({
 			Observer.raisePropertyChanged(this, "HasPendingChanges");
 
 			// Determine if ther are now pending changes
-			if (oldPendingChanges.length === 0 && this._saveInterval && !this._saveTimeout) {
+			if (oldPendingChanges && oldPendingChanges.length === 0 && this._saveInterval && !this._saveTimeout) {
 				if (this.changes(false, this._saveRoot, true).length > 0) {
 					this._queueAutoSave();
 				}

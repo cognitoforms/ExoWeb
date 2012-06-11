@@ -9431,7 +9431,7 @@ window.ExoWeb.DotNet = {};
 				Observer.raisePropertyChanged(this, "HasPendingChanges");
 
 				// Determine if ther are now pending changes
-				if (oldPendingChanges.length === 0 && this._saveInterval && !this._saveTimeout) {
+				if (oldPendingChanges && oldPendingChanges.length === 0 && this._saveInterval && !this._saveTimeout) {
 					if (this.changes(false, this._saveRoot, true).length > 0) {
 						this._queueAutoSave();
 					}
@@ -15274,7 +15274,7 @@ window.ExoWeb.DotNet = {};
 				}
 
 				// Add the conditions for the new target and subscribe to changes
-				if (this.get_conditions() && newLastTarget != null) {
+				if (this.get_conditions() && newLastTarget !== null) {
 					this.get_conditions().addRange(newLastTarget.meta.conditions(this.get_propertyChain().lastProperty()));
 					newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this.get_propertyChain());
 				}
