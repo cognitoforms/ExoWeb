@@ -678,7 +678,7 @@ namespace ExoWeb
 			return GetTypes(ModelContext.Current.GetModelType<T>());
 		}
 
-		static string GetTypes(params string[] types)
+		public static string GetTypes(params string[] types)
 		{
 			var json = new ServiceRequest(types).Invoke(null).ToJson();
 			return json.Substring(1, json.Length - 2);
