@@ -129,7 +129,6 @@ describe("PropertyChain", function() {
 
 			this.bar2.get_Type().set_Name("b");
 			expect(handler).toHaveBeenCalledWith(this.foo, {
-				wasInited: true,
 				originalSender: this.bType,
 				property: this.barsTypeNameProp,
 				triggeredBy: BarType.$Name,
@@ -152,7 +151,6 @@ describe("PropertyChain", function() {
 
 			this.bar2.set_Type(null);
 			expect(handler).toHaveBeenCalledWith(this.foo, {
-				wasInited: true,
 				originalSender: this.bar2,
 				property: this.barsTypeNameProp,
 				triggeredBy: Bar.$Type,

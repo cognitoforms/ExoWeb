@@ -3902,7 +3902,7 @@ window.ExoWeb.DotNet = {};
 				}
 
 				// Initialization is not force.  If the propery already has a value it will be ignored.
-				prop.init(this, value);
+				Property$_init.call(prop, this, value);
 			}, this);
 		},
 		set: function Entity$set(/*[properties] or [propName, propValue] */) {
@@ -3912,7 +3912,7 @@ window.ExoWeb.DotNet = {};
 					ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
 				}
 
-				prop._setter(this, value, false);
+				Property$_setter.call(prop, this, value, false);
 			}, this);
 		},
 		get: function Entity$get(propName) {
@@ -4285,11 +4285,11 @@ window.ExoWeb.DotNet = {};
 
 			if (prop.get_isStatic()) {
 				// for static properties add member to javascript type
-				this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
+				this._jstype["get_" + def.name] = this._makeGetter(prop, Property$_getter.bind(prop), true);
 			}
 			else {
 				// for instance properties add member to all instances of this javascript type
-				this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
+				this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, Property$_getter.bind(prop), true);
 			}
 
 			if (!prop.get_isList()) {
@@ -4395,10 +4395,7 @@ window.ExoWeb.DotNet = {};
 		},
 		_makeSetter: function Type$_makeSetter(prop) {
 			var setter = function (val) {
-				if (prop.isInited(this))
-					prop._setter(this, val, true);
-				else
-					prop.init(this, val);
+				Property$_setter.call(prop, this, val, true);
 			};
 
 			setter.__notifies = true;
@@ -4608,6 +4605,126 @@ window.ExoWeb.DotNet = {};
 			handler(rule, { property: property });
 	}
 
+	function Property$_init(obj, val, force) {
+		var target = (this._isStatic ? this._containingType.get_jstype() : obj);
+		var curVal = target[this._fieldName];
+
+		if (curVal !== undefined && !(force === undefined || force)) {
+			return;
+		}
+
+		target[this._fieldName] = val;
+
+		if (val instanceof Array) {
+			var _this = this;
+			Observer.makeObservable(val);
+			Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
+				if (!LazyLoader.isLoaded(val)) {
+					throw new ExoWeb.trace.logError("model", "{0} list {1}.{2} was modified but it has not been loaded.",
+						_this._isStatic ? "Static" : "Non-static",
+						_this._isStatic ? _this._containingType.get_fullName() : "this<" + _this._containingType.get_fullName() + ">",
+						_this._name
+					);
+				}
+
+				// NOTE: property change should be broadcast before rules are run so that if 
+				// any rule causes a roundtrip to the server these changes will be available
+				_this._containingType.model.notifyListChanged(target, _this, args.get_changes());
+
+				// NOTE: oldValue is not currently implemented for lists
+				_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: args.get_changes(), collectionChanged: true}]);
+
+				Observer.raisePropertyChanged(target, _this._name);
+			});
+		}
+
+		Observer.raisePropertyChanged(target, this._name);
+
+		// Return the property to support method chaining
+		return this;
+	}
+
+	function Property$_ensureInited(obj) {
+		// Determine if the property has been initialized with a value
+		// and initialize the property if necessary
+		if (!obj.hasOwnProperty(this._fieldName)) {
+
+			// Initialize to the defined default value
+			Property$_init.call(this, obj, this.get_defaultValue());
+
+			// Mark the property as pending initialization
+			obj.meta.pendingInit(this, true);
+		}
+	}
+
+	function Property$_getter(obj) {
+		// Ensure the entity is loaded before accessing property values
+		if (LazyLoader.isLoaded(obj)) {
+			// Ensure that the property has an initial (possibly default) value
+			Property$_ensureInited.call(this, obj);
+
+			// Raise get events
+			// NOTE: get events may result in a change, so the value cannot be cached
+			var handler = this._getEventHandler("get");
+			if (handler)
+				handler(obj, { property: this, value: obj[this._fieldName] });
+
+			// Return the property value
+			return obj[this._fieldName];
+		}
+	}
+
+	function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
+		// Ensure the entity is loaded before setting property values
+		if (!LazyLoader.isLoaded(obj)) {
+			throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set property {0}={1} for ghosted instance {2}({3}).", this._name, val === undefined ? "<undefined>" : val, obj.meta.type.get_fullName(), obj.meta.id);
+		}
+
+		// Ensure that the property has an initial (possibly default) value
+		Property$_ensureInited.call(this, obj);
+
+		if (!this.canSetValue(obj, val)) {
+			throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set {0}={1} for instance {2}({3}). A value of type {4} was expected.", this._name, val === undefined ? "<undefined>" : val, obj.meta.type.get_fullName(), obj.meta.id, parseFunctionName(this._jstype));
+		}
+
+		var old = obj[this._fieldName];
+
+		// compare values so that this check is accurate for primitives
+		var oldValue = (old === undefined || old === null) ? old : old.valueOf();
+		var newValue = (val === undefined || val === null) ? val : val.valueOf();
+
+		// Do nothing if the new value is the same as the old value. Account for NaN numbers, which are
+		// not equivalent (even to themselves). Although isNaN returns true for non-Number values, we won't
+		// get this far for Number properties unless the value is actually of type Number (a number or NaN).
+		if (oldValue !== newValue && !(this._jstype === Number && isNaN(oldValue) && isNaN(newValue))) {
+			// Set the backing field value
+			obj[this._fieldName] = val;
+
+			// NOTE: property change should be broadcast before rules are run so that if 
+			// any rule causes a roundtrip to the server these changes will be available
+			this._containingType.model.notifyAfterPropertySet(obj, this, val, old);
+
+			var handler = this._getEventHandler("changed");
+			if (handler) {
+				// Create the event argument object
+				var args = { property: this, newValue: val, oldValue: old };
+
+				// Assign custom event argument values
+				if (additionalArgs) {
+					for (var p in additionalArgs) {
+						if (additionalArgs.hasOwnProperty(p)) {
+							args[p] = additionalArgs[p];
+						}
+					}
+				}
+
+				handler(obj, args);
+			}
+
+			Observer.raisePropertyChanged(obj, this._name);
+		}
+	}
+
 	Property.mixin({
 		defaultValue: function Property$defaultValue(value) {
 			this._defaultValue = value;
@@ -4723,66 +4840,6 @@ window.ExoWeb.DotNet = {};
 		},
 		// </DEBUG>
 
-		_getter: function Property$_getter(obj) {
-
-			// ensure the entity is loaded before accessing property values
-			if (LazyLoader.isLoaded(obj)) {
-
-				// determine if the property has been initialized with a value
-				var isInited = obj.hasOwnProperty(this._fieldName);
-
-				// initialize the property if necessary
-				if (!isInited) {
-
-					// initialize to the defined default value
-					this.init(obj, this.get_defaultValue());
-
-					// mark the property as pending initialization
-					obj.meta.pendingInit(this, true);
-				}
-
-				// raise get events
-				var handler = this._getEventHandler("get");
-				if (handler)
-					handler(obj, { property: this, value: obj[this._fieldName], isInited: isInited });
-
-				// return the property value
-				return obj[this._fieldName];
-			}
-		},
-
-		_setter: function Property$_setter(obj, val, skipTypeCheck, args) {
-
-			if (!this.canSetValue(obj, val)) {
-				throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set {0}={1}. A value of type {2} was expected", [this._name, val === undefined ? "<undefined>" : val, this._jstype.getName()]);
-			}
-
-			var old = obj[this._fieldName];
-
-			// compare values so that this check is accurate for primitives
-			var oldValue = (old === undefined || old === null) ? old : old.valueOf();
-			var newValue = (val === undefined || val === null) ? val : val.valueOf();
-
-			// Do nothing if the new value is the same as the old value. Account for NaN numbers, which are
-			// not equivalent (even to themselves). Although isNaN returns true for non-Number values, we won't
-			// get this far for Number properties unless the value is actually of type Number (a number or NaN).
-			if (oldValue !== newValue && !(this._jstype === Number && isNaN(oldValue) && isNaN(newValue))) {
-				var wasInited = this.isInited(obj);
-
-				obj[this._fieldName] = val;
-
-				// NOTE: property change should be broadcast before rules are run so that if 
-				// any rule causes a roundtrip to the server these changes will be available
-				this._containingType.model.notifyAfterPropertySet(obj, this, val, old, wasInited);
-
-				var handler = this._getEventHandler("changed");
-				if (handler)
-					handler(obj, $.extend({ property: this, newValue: val, oldValue: old, wasInited: wasInited }, args));
-
-				Observer.raisePropertyChanged(obj, this._name);
-			}
-		},
-
 		get_isEntityType: function Property$get_isEntityType() {
 			return !!this.get_jstype().meta && !this._isList;
 		},
@@ -4818,8 +4875,14 @@ window.ExoWeb.DotNet = {};
 			return this._isStatic ? (this._containingType.get_fullName() + "." + this._name) : this._name;
 		},
 		canSetValue: function Property$canSetValue(obj, val) {
-			// only allow values of the correct data type to be set in the model
-			if (val === null || val === undefined) {
+			// NOTE: only allow values of the correct data type to be set in the model
+
+			if (val === undefined) {
+				ExoWeb.trace.logWarning("model", "You should not set property values to undefined, use null instead: property = {0}.", this._name);
+				return true;
+			}
+
+			if (val === null) {
 				return true;
 			}
 
@@ -4860,56 +4923,13 @@ window.ExoWeb.DotNet = {};
 			}
 
 			if (arguments.length > 1) {
-				if (this.isInited(target))
-					this._setter(target, val, false, args);
-				else
-					this.init(target, val);
+				Property$_setter.call(this, target, val, false, args);
 			}
 			else {
-				return this._getter(target);
+				return Property$_getter.call(this, target);
 			}
 		},
-		init: function Property$init(obj, val, force) {
-			var target = (this._isStatic ? this._containingType.get_jstype() : obj);
-			var curVal = target[this._fieldName];
 
-			if (curVal !== undefined && !(force === undefined || force)) {
-				return;
-			}
-
-			target[this._fieldName] = val;
-
-			if (val instanceof Array) {
-				var _this = this;
-				Observer.makeObservable(val);
-				Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
-					if (!LazyLoader.isLoaded(val)) {
-						ExoWeb.trace.logWarning("model", "{0} list {1}.{2} was modified but it has not been loaded.", [
-							_this._isStatic ? "Static" : "Non-static",
-							_this._isStatic ? _this._containingType.get_fullName() : "this<" + _this._containingType.get_fullName() + ">",
-							_this._name
-						]);
-					}
-
-					// NOTE: property change should be broadcast before rules are run so that if 
-					// any rule causes a roundtrip to the server these changes will be available
-					_this._containingType.model.notifyListChanged(target, _this, args.get_changes());
-
-					// NOTE: oldValue is not currently implemented for lists
-					_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: args.get_changes(), wasInited: true, collectionChanged: true}]);
-
-					Observer.raisePropertyChanged(target, _this._name);
-				});
-			}
-			//		var handler = this._getEventHandler("changed");
-			//		if (handler)
-			//			handler(target, { property: this, newValue: val, oldValue: undefined, wasInited: false });
-
-			//		Observer.raisePropertyChanged(target, this._name);
-
-			// Return the property to support method chaining
-			return this;
-		},
 		isInited: function Property$isInited(obj) {
 			var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 			if (!target.hasOwnProperty(this._fieldName)) {
@@ -10849,7 +10869,7 @@ window.ExoWeb.DotNet = {};
 					}
 
 					if (propData === null) {
-						prop.init(obj, null);
+						Property$_init.call(prop, obj, null);
 					}
 					else {
 						var propType = prop.get_jstype();
@@ -10861,7 +10881,7 @@ window.ExoWeb.DotNet = {};
 								// don't overwrite list if its already a ghost
 								if (!list) {
 									list = ListLazyLoader.register(obj, prop);
-									prop.init(obj, list, false);
+									Property$_init.call(prop, obj, list, false);
 								}
 							}
 							else {
@@ -10885,7 +10905,7 @@ window.ExoWeb.DotNet = {};
 									}
 
 									if (doInit) {
-										prop.init(obj, list);
+										Property$_init.call(prop, obj, list);
 									}
 								}
 							}
@@ -10895,7 +10915,7 @@ window.ExoWeb.DotNet = {};
 
 							// assume if ctor is not found its a model type not an intrinsic
 							if (!ctor || ctor.meta) {
-								prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
+								Property$_init.call(prop, obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
 							}
 							else {
 								// Coerce strings into dates
@@ -10917,7 +10937,7 @@ window.ExoWeb.DotNet = {};
 								else if (ctor === TimeSpan) {
 									propData = new TimeSpan(propData.TotalMilliseconds);
 								}
-								prop.init(obj, propData);
+								Property$_init.call(prop, obj, propData);
 							}
 						}
 					}
@@ -10987,14 +11007,8 @@ window.ExoWeb.DotNet = {};
 			});
 
 			// setup static properties for lazy loading
-			if (propJson.isStatic) {
-				if (propJson.isList) {
-					prop.init(null, ListLazyLoader.register(null, prop));
-				}
-				//TODO
-				//else {
-				//	PropertyLazyLoader.register(mtype.get_jstype(), prop);
-				//}
+			if (propJson.isStatic && propJson.isList) {
+				Property$_init.call(prop, null, ListLazyLoader.register(null, prop));
 			}
 
 			// process property specific rules, which have a specialized json syntax to improve readability and minimize type json size
@@ -11911,7 +11925,7 @@ window.ExoWeb.DotNet = {};
 				//	being raised for the list property.  Since we don't want to record this as a true observable
 				//	change, raise the event manually so that rules will still run as needed.
 				// This occurs before batch end so that it functions like normal object loading.
-				prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, wasInited: true, collectionChanged: true}]);
+				prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, collectionChanged: true}]);
 
 				ExoWeb.Batch.end(batch);
 				callback.call(thisPtr || this, list);

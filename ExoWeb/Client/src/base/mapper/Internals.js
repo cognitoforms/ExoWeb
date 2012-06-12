@@ -184,7 +184,7 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 				}
 
 				if (propData === null) {
-					prop.init(obj, null);
+					Property$_init.call(prop, obj, null);
 				}
 				else {
 					var propType = prop.get_jstype();
@@ -196,7 +196,7 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 							// don't overwrite list if its already a ghost
 							if (!list) {
 								list = ListLazyLoader.register(obj, prop);
-								prop.init(obj, list, false);
+								Property$_init.call(prop, obj, list, false);
 							}
 						}
 						else {
@@ -220,7 +220,7 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 								}
 
 								if (doInit) {
-									prop.init(obj, list);
+									Property$_init.call(prop, obj, list);
 								}
 							}
 						}
@@ -230,7 +230,7 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 
 						// assume if ctor is not found its a model type not an intrinsic
 						if (!ctor || ctor.meta) {
-							prop.init(obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
+							Property$_init.call(prop, obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
 						}
 						else {
 							// Coerce strings into dates
@@ -252,7 +252,7 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 							else if (ctor === TimeSpan) {
 								propData = new TimeSpan(propData.TotalMilliseconds);
 							}
-							prop.init(obj, propData);
+							Property$_init.call(prop, obj, propData);
 						}
 					}
 				}
@@ -322,14 +322,8 @@ function typeFromJson(model, typeName, json) {
 		});
 
 		// setup static properties for lazy loading
-		if (propJson.isStatic) {
-			if (propJson.isList) {
-				prop.init(null, ListLazyLoader.register(null, prop));
-			}
-			//TODO
-			//else {
-			//	PropertyLazyLoader.register(mtype.get_jstype(), prop);
-			//}
+		if (propJson.isStatic && propJson.isList) {
+			Property$_init.call(prop, null, ListLazyLoader.register(null, prop));
 		}
 
 		// process property specific rules, which have a specialized json syntax to improve readability and minimize type json size

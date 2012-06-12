@@ -74,7 +74,7 @@ exports.init = function () {
 	"mapper.ServerSync".dependsOn("core.Trace", "core.Utilities", "core.Functor", "core.Function");
 	"mapper.ObjectLazyLoader".dependsOn("core.Activity", "core.Function", "model.LazyLoader", "core.Array");
 	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity", "model.ObjectMeta");
-	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type", "core.Observer");
+	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type", "core.Observer", "core.TimeSpan");
 	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object", "model.Property", "core.Observer");
 	"model.PathTokens".dependsOn("core.Function", "model.Property", "model.PropertyChain", "core.Observer");
 

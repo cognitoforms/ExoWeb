@@ -28,7 +28,7 @@ Entity.mixin({
 			}
 
 			// Initialization is not force.  If the propery already has a value it will be ignored.
-			prop.init(this, value);
+			Property$_init.call(prop, this, value);
 		}, this);
 	},
 	set: function Entity$set(/*[properties] or [propName, propValue] */) {
@@ -38,7 +38,7 @@ Entity.mixin({
 				ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
 			}
 
-			prop._setter(this, value, false);
+			Property$_setter.call(prop, this, value, false);
 		}, this);
 	},
 	get: function Entity$get(propName) {

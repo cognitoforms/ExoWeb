@@ -331,11 +331,11 @@ Type.prototype = {
 
 		if (prop.get_isStatic()) {
 			// for static properties add member to javascript type
-			this._jstype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
+			this._jstype["get_" + def.name] = this._makeGetter(prop, Property$_getter.bind(prop), true);
 		}
 		else {
 			// for instance properties add member to all instances of this javascript type
-			this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, prop._getter, true);
+			this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, Property$_getter.bind(prop), true);
 		}
 
 		if (!prop.get_isList()) {
@@ -441,10 +441,7 @@ Type.prototype = {
 	},
 	_makeSetter: function Type$_makeSetter(prop) {
 		var setter = function (val) {
-			if (prop.isInited(this))
-				prop._setter(this, val, true);
-			else
-				prop.init(this, val);
+			Property$_setter.call(prop, this, val, true);
 		};
 
 		setter.__notifies = true;

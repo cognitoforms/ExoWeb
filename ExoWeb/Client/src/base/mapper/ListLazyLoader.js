@@ -139,7 +139,7 @@ function listLoad(list, propName, callback, thisPtr) {
 			//	being raised for the list property.  Since we don't want to record this as a true observable
 			//	change, raise the event manually so that rules will still run as needed.
 			// This occurs before batch end so that it functions like normal object loading.
-			prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, wasInited: true, collectionChanged: true}]);
+			prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, collectionChanged: true}]);
 
 			ExoWeb.Batch.end(batch);
 			callback.call(thisPtr || this, list);
