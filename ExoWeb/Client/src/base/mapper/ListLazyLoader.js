@@ -163,8 +163,25 @@ ListLazyLoader.mixin({
 (function() {
 	var instance = new ListLazyLoader();
 
+	var modifiableLists = [];
+
+	function lazyListModified(sender, args) {
+		if (modifiableLists.indexOf(sender) < 0) {
+			throw new ExoWeb.trace.logError(["list", "lazyLoad"], "{0} list {1}.{2} was modified but it has not been loaded.",
+				this._isStatic ? "Static" : "Non-static",
+				this._isStatic ? this._containingType.get_fullName() : "this<" + this._containingType.get_fullName() + ">",
+				this._name
+			);	
+		}
+	}
+
 	ListLazyLoader.register = function(obj, prop) {
 		var list = [];
+
+		// Throw an error if a non-loaded list is modified
+		var collectionChangeHandler = lazyListModified.bind(prop);
+		list._collectionChangeHandler = collectionChangeHandler;
+		Observer.addCollectionChanged(list, collectionChangeHandler);
 
 		list._ownerId = prop.get_isStatic() ? STATIC_ID : obj.meta.id;
 		list._ownerProperty = prop;
@@ -175,10 +192,17 @@ ListLazyLoader.mixin({
 	};
 
 	ListLazyLoader.unregister = function(list) {
+		Observer.removeCollectionChanged(list, list._collectionChangeHandler);
 		ExoWeb.Model.LazyLoader.unregister(list, instance);
 
 		delete list._ownerId;
-		delete list._ownerType;
 		delete list._ownerProperty;
+		delete list._collectionChangeHandler;
+	};
+
+	ListLazyLoader.allowModification = function(list, callback, thisPtr) {
+		modifiableLists.push(list);
+		callback.call(thisPtr || this);
+		modifiableLists.remove(list);
 	};
 })();

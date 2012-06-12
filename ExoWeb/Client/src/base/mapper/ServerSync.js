@@ -1154,7 +1154,9 @@ ServerSync.mixin({
 					if (exited) {
 						this.beginApplyingChanges();
 					}
-					list.endUpdate();
+					ListLazyLoader.allowModification(list, function() {
+						list.endUpdate();
+					});
 					if (exited) {
 						this.endApplyingChanges();
 					}

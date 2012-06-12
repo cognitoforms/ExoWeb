@@ -4619,14 +4619,6 @@ window.ExoWeb.DotNet = {};
 			var _this = this;
 			Observer.makeObservable(val);
 			Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
-				if (!LazyLoader.isLoaded(val)) {
-					throw new ExoWeb.trace.logError("model", "{0} list {1}.{2} was modified but it has not been loaded.",
-						_this._isStatic ? "Static" : "Non-static",
-						_this._isStatic ? _this._containingType.get_fullName() : "this<" + _this._containingType.get_fullName() + ">",
-						_this._name
-					);
-				}
-
 				// NOTE: property change should be broadcast before rules are run so that if 
 				// any rule causes a roundtrip to the server these changes will be available
 				_this._containingType.model.notifyListChanged(target, _this, args.get_changes());
@@ -10410,7 +10402,9 @@ window.ExoWeb.DotNet = {};
 						if (exited) {
 							this.beginApplyingChanges();
 						}
-						list.endUpdate();
+						ListLazyLoader.allowModification(list, function() {
+							list.endUpdate();
+						});
 						if (exited) {
 							this.endApplyingChanges();
 						}
@@ -11949,8 +11943,25 @@ window.ExoWeb.DotNet = {};
 	(function() {
 		var instance = new ListLazyLoader();
 
+		var modifiableLists = [];
+
+		function lazyListModified(sender, args) {
+			if (modifiableLists.indexOf(sender) < 0) {
+				throw new ExoWeb.trace.logError(["list", "lazyLoad"], "{0} list {1}.{2} was modified but it has not been loaded.",
+					this._isStatic ? "Static" : "Non-static",
+					this._isStatic ? this._containingType.get_fullName() : "this<" + this._containingType.get_fullName() + ">",
+					this._name
+				);	
+			}
+		}
+
 		ListLazyLoader.register = function(obj, prop) {
 			var list = [];
+
+			// Throw an error if a non-loaded list is modified
+			var collectionChangeHandler = lazyListModified.bind(prop);
+			list._collectionChangeHandler = collectionChangeHandler;
+			Observer.addCollectionChanged(list, collectionChangeHandler);
 
 			list._ownerId = prop.get_isStatic() ? STATIC_ID : obj.meta.id;
 			list._ownerProperty = prop;
@@ -11961,11 +11972,18 @@ window.ExoWeb.DotNet = {};
 		};
 
 		ListLazyLoader.unregister = function(list) {
+			Observer.removeCollectionChanged(list, list._collectionChangeHandler);
 			ExoWeb.Model.LazyLoader.unregister(list, instance);
 
 			delete list._ownerId;
-			delete list._ownerType;
 			delete list._ownerProperty;
+			delete list._collectionChangeHandler;
+		};
+
+		ListLazyLoader.allowModification = function(list, callback, thisPtr) {
+			modifiableLists.push(list);
+			callback.call(thisPtr || this);
+			modifiableLists.remove(list);
 		};
 	})();
 

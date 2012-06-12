@@ -77,14 +77,6 @@ function Property$_init(obj, val, force) {
 		var _this = this;
 		Observer.makeObservable(val);
 		Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
-			if (!LazyLoader.isLoaded(val)) {
-				throw new ExoWeb.trace.logError("model", "{0} list {1}.{2} was modified but it has not been loaded.",
-					_this._isStatic ? "Static" : "Non-static",
-					_this._isStatic ? _this._containingType.get_fullName() : "this<" + _this._containingType.get_fullName() + ">",
-					_this._name
-				);
-			}
-
 			// NOTE: property change should be broadcast before rules are run so that if 
 			// any rule causes a roundtrip to the server these changes will be available
 			_this._containingType.model.notifyListChanged(target, _this, args.get_changes());
