@@ -3966,6 +3966,7 @@ window.ExoWeb.DotNet = {};
 		this._properties = {}; 
 		this._instanceProperties = {};
 		this._staticProperties = {};
+		this._pendingInit = [];
 
 		// define properties
 		Object.defineProperty(this, "model", { value: model });
@@ -4118,6 +4119,20 @@ window.ExoWeb.DotNet = {};
 		addInitNew: function Type$addInitNew(handler, obj, once) {
 			this._addEvent("initNew", handler, obj ? equals(obj) : null, once);
 			return this;
+		},
+
+		// gets and optionally sets the pending initialization status for a property on the current instance
+		pendingInit: function Type$pendingInit(prop, value) {
+			var result = this[prop._fieldName] === undefined || this._pendingInit[prop.get_name()] === true;
+			if (arguments.length > 1) {
+				if (value) {
+					this._pendingInit[prop.get_name()] = true;
+				}
+				else {
+					delete this._pendingInit[prop.get_name()];
+				}
+			}
+			return result;
 		},
 		addInitExisting: function Type$addInitExisting(handler, obj, once) {
 			this._addEvent("initExisting", handler, obj ? equals(obj) : null, once);
