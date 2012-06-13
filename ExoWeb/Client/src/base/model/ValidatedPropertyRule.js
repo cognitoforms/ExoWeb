@@ -1,4 +1,4 @@
-﻿function ValidatedPropertyRule(rootType, options) {
+function ValidatedPropertyRule(rootType, options) {
 	/// <summary>Creates a rule that validates the value of a property in the model.</summary>
 	/// <param name="rootType" type="Type">The model type the rule is for.</param>
 	/// <param name="options" type="Object">

@@ -1,4 +1,4 @@
-﻿function raiseSpecificPropertyChanged(target, args) {
+function raiseSpecificPropertyChanged(target, args) {
 	var func = target.__propertyChangeHandlers[args.get_propertyName()];
 	if (func && func instanceof Function) {
 		func.apply(this, arguments);

@@ -1,4 +1,4 @@
-﻿var RuleInvocationType = {
+var RuleInvocationType = {
 
 	/// <summary>
 	/// Occurs when an existing instance is initialized.

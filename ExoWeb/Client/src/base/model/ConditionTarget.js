@@ -1,4 +1,4 @@
-﻿/// <reference path="Entity.js" />
+/// <reference path="Entity.js" />
 /// <reference path="Property.js" />
 /// <reference path="Condition.js" />
 

@@ -1,4 +1,4 @@
-﻿var Observer = { };
+var Observer = { };
 
 Observer.addPathChanged = function Observer$addPathChanged(target, path, handler, allowNoTarget) {
 	// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok

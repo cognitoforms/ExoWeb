@@ -1,4 +1,4 @@
-﻿var coreGetValue = getValue;
+var coreGetValue = getValue;
 
 // If a getter method matching the given property name is found on the target it is invoked and returns the 
 // value, unless the the value is undefined, in which case null is returned instead.  This is done so that 

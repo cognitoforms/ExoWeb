@@ -1,4 +1,4 @@
-﻿var Resource = {
+var Resource = {
 	"allowed-values":							"{property} is not in the list of allowed values.",
 	"compare-after":							"{property} must be after {compareSource}.",
 	"compare-before":							"{property} must be before {compareSource}.",

@@ -3010,7 +3010,7 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Observer
 	//////////////////////////////////////////////////
 
-	﻿var Observer = { };
+	var Observer = { };
 
 	Observer.addPathChanged = function Observer$addPathChanged(target, path, handler, allowNoTarget) {
 		// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok
@@ -3320,7 +3320,7 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.Resource
 	//////////////////////////////////////////////////
 
-	﻿var Resource = {
+	var Resource = {
 		"allowed-values":							"{property} is not in the list of allowed values.",
 		"compare-after":							"{property} must be after {compareSource}.",
 		"compare-before":							"{property} must be before {compareSource}.",
@@ -5883,7 +5883,7 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.RuleInvocationType
 	//////////////////////////////////////////////////
 
-	﻿var RuleInvocationType = {
+	var RuleInvocationType = {
 
 		/// <summary>
 		/// Occurs when an existing instance is initialized.
@@ -6459,7 +6459,7 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.ValidatedPropertyRule
 	//////////////////////////////////////////////////
 
-	﻿function ValidatedPropertyRule(rootType, options) {
+	function ValidatedPropertyRule(rootType, options) {
 		/// <summary>Creates a rule that validates the value of a property in the model.</summary>
 		/// <param name="rootType" type="Type">The model type the rule is for.</param>
 		/// <param name="options" type="Object">
@@ -7621,7 +7621,7 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.ConditionTarget
 	//////////////////////////////////////////////////
 
-	﻿/// <reference path="Entity.js" />
+	/// <reference path="Entity.js" />
 	/// <reference path="Property.js" />
 	/// <reference path="Condition.js" />
 
@@ -8178,7 +8178,7 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.Utilities
 	//////////////////////////////////////////////////
 
-	﻿var coreGetValue = getValue;
+	var coreGetValue = getValue;
 
 	// If a getter method matching the given property name is found on the target it is invoked and returns the 
 	// value, unless the the value is undefined, in which case null is returned instead.  This is done so that 
@@ -17192,7 +17192,7 @@ window.ExoWeb.DotNet = {};
 	// #region ObserverProvider
 	//////////////////////////////////////////////////
 
-	﻿function raiseSpecificPropertyChanged(target, args) {
+	function raiseSpecificPropertyChanged(target, args) {
 		var func = target.__propertyChangeHandlers[args.get_propertyName()];
 		if (func && func instanceof Function) {
 			func.apply(this, arguments);
