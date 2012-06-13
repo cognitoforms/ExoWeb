@@ -9,7 +9,7 @@ specs.ensureWindow();
 // Imports
 ///////////////////////////////////////
 
-var eventQueueModule = specs.require("core.Function");
+var functionModule = specs.require("core.Function");
 var signalModule = specs.require("core.Signal");
 
 // Test Suites
@@ -248,6 +248,8 @@ describe("mergeFunctions", function() {
 	it("wraps async functions and only executes merged callback after both have been executed", function() {
 		var innerCallback;
 
+		var context = {};
+
 		var mocks = {
 			fn1: function fn1(arg, callback, thisPtr) {
 				expect(this).toBe(jasmine);
@@ -265,7 +267,7 @@ describe("mergeFunctions", function() {
 				innerCallback = jasmine.spyOn(mocks, "innerCallback").andCallThrough();
 			},
 			outerCallback: function() {
-				expect(this).toBe(functions);
+				expect(this).toBe(context);
 			}
 		};
 
@@ -280,7 +282,7 @@ describe("mergeFunctions", function() {
 		});
 
 		// invoke the joined function
-		fn3.call(jasmine, 0, outerCallback, {});
+		fn3.call(jasmine, 0, outerCallback, context);
 
 		expect(fn1).toHaveBeenCalled();
 		expect(fn2).toHaveBeenCalled();
