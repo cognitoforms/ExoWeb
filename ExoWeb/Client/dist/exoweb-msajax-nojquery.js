@@ -11946,12 +11946,16 @@ window.ExoWeb.DotNet = {};
 		var modifiableLists = [];
 
 		function lazyListModified(sender, args) {
+			// Check that modifications have not been allowed.
 			if (modifiableLists.indexOf(sender) < 0) {
-				throw new ExoWeb.trace.logError(["list", "lazyLoad"], "{0} list {1}.{2} was modified but it has not been loaded.",
-					this._isStatic ? "Static" : "Non-static",
-					this._isStatic ? this._containingType.get_fullName() : "this<" + this._containingType.get_fullName() + ">",
-					this._name
-				);	
+				// Check that at least one change involves adding or removing a non-new instance.
+				if (args.get_changes().mapToArray(function(c) { return c.newItems || []; }).concat(args.get_changes().mapToArray(function(c) { return c.oldItems || []; })).some(function(i) { return !i.meta.isNew; })) {
+					throw new ExoWeb.trace.logError(["list", "lazyLoad"], "{0} list {1}.{2} was modified but it has not been loaded.",
+						this._isStatic ? "Static" : "Non-static",
+						this._isStatic ? this._containingType.get_fullName() : "this<" + this._containingType.get_fullName() + ">",
+						this._name
+					);
+				}
 			}
 		}
 
