@@ -6638,6 +6638,12 @@ window.ExoWeb.DotNet = {};
 		},
 		toString: function () {
 			return "calculation of " + this.property._name;
+		},
+		// perform addition initialization of the rule when it is registered
+		onRegister: function () {
+
+			// register the rule with the target property
+			registerPropertyRule(this.property, this);
 		}
 	});
 
