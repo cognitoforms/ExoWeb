@@ -274,21 +274,13 @@ Content.prototype = {
 
 				this._isRendered = false;
 
-				if (ExoWeb.config.debug === true) {
+				try {
 					this._render();
 					this._isRendered = true;
 					Sys.Observer.raiseEvent(this, "rendered", renderArgs);
-					contentControlsRendering--;
 				}
-				else {
-					try {
-						this._render();
-						this._isRendered = true;
-						Sys.Observer.raiseEvent(this, "rendered", renderArgs);
-					}
-					finally {
-						contentControlsRendering--;
-					}
+				finally {
+					contentControlsRendering--;
 				}
 			}, this);
 		}

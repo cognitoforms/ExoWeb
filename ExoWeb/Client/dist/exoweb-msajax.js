@@ -11,10 +11,6 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	var config = {
-		// General debug setting that can encompose the purpose of other more focused settings.
-		// Determines whether parts of the framework attempt to handle errors and throw more descriptive errors.
-		debug: false,
-
 		// Indicates that signal should use window.setTimeout when invoking callbacks. This is
 		// done in order to get around problems with browser complaining about long-running script.
 		signalTimeout: false,
@@ -1533,17 +1529,7 @@ window.ExoWeb.DotNet = {};
 			return this._genCallback(callback, thisPtr, executeImmediately);
 		},
 		_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
-			if (config.debug === true) {
-				doCallback.apply(this, arguments);
-			}
-			else {
-				try {
-					doCallback.apply(this, arguments);
-				}
-				catch (e) {
-					logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
-				}
-			}
+			doCallback.apply(this, arguments);
 		},
 		_genCallback: function Signal$_genCallback(callback, thisPtr, executeImmediately) {
 			var signal = this, called = false;
@@ -14008,21 +13994,13 @@ window.ExoWeb.DotNet = {};
 
 					this._isRendered = false;
 
-					if (ExoWeb.config.debug === true) {
+					try {
 						this._render();
 						this._isRendered = true;
 						Sys.Observer.raiseEvent(this, "rendered", renderArgs);
-						contentControlsRendering--;
 					}
-					else {
-						try {
-							this._render();
-							this._isRendered = true;
-							Sys.Observer.raiseEvent(this, "rendered", renderArgs);
-						}
-						finally {
-							contentControlsRendering--;
-						}
+					finally {
+						contentControlsRendering--;
 					}
 				}, this);
 			}
