@@ -25,125 +25,9 @@ function Model() {
 	);
 }
 
-function ensureType(type, forceLoad, callback) {
+Model.mixin(Functor.eventing);
 
-	// immediately invoke the callback if no type was specified or the type is loaded
-	if (!type || LazyLoader.isLoaded(type)) {
-		return callback();
-	}
-
-	// force type loading if requested
-	if (forceLoad) {
-		LazyLoader.load(type, null, callback);
-	}
-
-	// otherwise, only continue processing when and if dependent types are loaded
-	else {
-		$extend(type._fullName, callback);
-	}
-};
-exports.ensureType = ensureType; // IGNORE
-
-Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
-
-	// allow path to be either a string or PathTokens instance
-	var tokens;
-	if (path.constructor === PathTokens) {
-		tokens = path;
-		path = tokens.expression;
-	}
-
-	// get the optional arguments
-	var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-	var callback = arguments[3];
-	var thisPtr = arguments[4];
-
-	// immediately return cached property chains
-	if (thisType && thisType._chains && thisType._chains[path]) {
-		if (callback) {
-			callback.call(thisPtr || this, thisType._chains[path]);
-			return;
-		}
-		else {
-			return thisType._chains[path];
-		}
-	}
-
-	// get tokens for the specified path
-	var tokens = tokens || new PathTokens(path);
-
-	// get the instance type, if specified
-	var type = thisType instanceof Function ? thisType.meta : thisType;
-
-	// create a function to lazily load a property 
-	var loadProperty = function (type, name, callback) {
-		ensureType(type, forceLoadTypes, function () {
-			callback.call(thisPtr || this, type.property(name));
-		});
-	}
-
-	// handle single property expressions efficiently, as they are neither static nor chains
-	if (tokens.steps.length === 1) {
-		var name = tokens.steps[0].property;
-		if (callback) {
-			loadProperty(type, name, callback);
-		}
-		else {
-			return type.property(name);
-		}
-	}
-
-	// otherwise, first see if the path represents a property chain, and if not, a global property
-	else {
-
-		// predetermine the global type name and property name before seeing if the path is an instance path
-		var globalTypeName = tokens.steps
-			.slice(0, tokens.steps.length - 1)
-			.map(function (item) { return item.property; })
-			.join(".");
-
-		var globalPropertyName = tokens.steps[tokens.steps.length - 1].property;
-
-		// create a function to see if the path is a global property if instance processing fails
-		var processGlobal = function (instanceParseError) {
-
-			// Retrieve the javascript type by name.
-			type = Model.getJsType(globalTypeName, true);
-
-			// Handle non-existant or non-loaded type.
-			if (!type) {
-				if (callback) {
-					// Retry when type is loaded
-					$extend(globalTypeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
-					return;
-				}
-				else {
-					ExoWeb.trace.throwAndLog(["model"], instanceParseError);
-				}
-			}
-
-			// Get the corresponding meta type.
-			type = type.meta;
-
-			// return the static property
-			if (callback) {
-				loadProperty(type, globalPropertyName, callback);
-			}
-			else {
-				return type.property(globalPropertyName);
-			}
-		}
-
-		if (callback) {
-			PropertyChain.create(type, tokens, forceLoadTypes, thisPtr ? callback.bind(thisPtr) : callback, processGlobal);
-		}
-		else {
-			return PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal(null);
-		}
-	}
-};
-
-Model.prototype = {
+Model.mixin({
 	dispose: function Model$dispose() {
 		for (var key in this._types) {
 			delete window[key];
@@ -262,9 +146,125 @@ Model.prototype = {
 			return target[name];
 		}
 	}
-};
+});
 
-Model.mixin(Functor.eventing);
+function ensureType(type, forceLoad, callback) {
+
+	// immediately invoke the callback if no type was specified or the type is loaded
+	if (!type || LazyLoader.isLoaded(type)) {
+		return callback();
+	}
+
+	// force type loading if requested
+	if (forceLoad) {
+		LazyLoader.load(type, null, callback);
+	}
+
+	// otherwise, only continue processing when and if dependent types are loaded
+	else {
+		$extend(type._fullName, callback);
+	}
+};
+exports.ensureType = ensureType; // IGNORE
+
+Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
+
+	// allow path to be either a string or PathTokens instance
+	var tokens;
+	if (path.constructor === PathTokens) {
+		tokens = path;
+		path = tokens.expression;
+	}
+
+	// get the optional arguments
+	var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
+	var callback = arguments[3];
+	var thisPtr = arguments[4];
+
+	// immediately return cached property chains
+	if (thisType && thisType._chains && thisType._chains[path]) {
+		if (callback) {
+			callback.call(thisPtr || this, thisType._chains[path]);
+			return;
+		}
+		else {
+			return thisType._chains[path];
+		}
+	}
+
+	// get tokens for the specified path
+	var tokens = tokens || new PathTokens(path);
+
+	// get the instance type, if specified
+	var type = thisType instanceof Function ? thisType.meta : thisType;
+
+	// create a function to lazily load a property 
+	var loadProperty = function (type, name, callback) {
+		ensureType(type, forceLoadTypes, function () {
+			callback.call(thisPtr || this, type.property(name));
+		});
+	}
+
+	// handle single property expressions efficiently, as they are neither static nor chains
+	if (tokens.steps.length === 1) {
+		var name = tokens.steps[0].property;
+		if (callback) {
+			loadProperty(type, name, callback);
+		}
+		else {
+			return type.property(name);
+		}
+	}
+
+	// otherwise, first see if the path represents a property chain, and if not, a global property
+	else {
+
+		// predetermine the global type name and property name before seeing if the path is an instance path
+		var globalTypeName = tokens.steps
+			.slice(0, tokens.steps.length - 1)
+			.map(function (item) { return item.property; })
+			.join(".");
+
+		var globalPropertyName = tokens.steps[tokens.steps.length - 1].property;
+
+		// create a function to see if the path is a global property if instance processing fails
+		var processGlobal = function (instanceParseError) {
+
+			// Retrieve the javascript type by name.
+			type = Model.getJsType(globalTypeName, true);
+
+			// Handle non-existant or non-loaded type.
+			if (!type) {
+				if (callback) {
+					// Retry when type is loaded
+					$extend(globalTypeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
+					return;
+				}
+				else {
+					ExoWeb.trace.throwAndLog(["model"], instanceParseError);
+				}
+			}
+
+			// Get the corresponding meta type.
+			type = type.meta;
+
+			// return the static property
+			if (callback) {
+				loadProperty(type, globalPropertyName, callback);
+			}
+			else {
+				return type.property(globalPropertyName);
+			}
+		}
+
+		if (callback) {
+			PropertyChain.create(type, tokens, forceLoadTypes, thisPtr ? callback.bind(thisPtr) : callback, processGlobal);
+		}
+		else {
+			return PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal(null);
+		}
+	}
+};
 
 Model.getJsType = function Model$getJsType(name, allowUndefined) {
 	/// <summary>
