@@ -3578,28 +3578,6 @@ window.ExoWeb.DotNet = {};
 	function Model() {
 		this._types = {};
 		this._ruleQueue = [];
-
-		this._validatingQueue = new EventQueue(
-			function(e) {
-				var meta = e.sender;
-				meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName]);
-			},
-			function(a, b) {
-				return a.sender == b.sender && a.propName == b.propName;
-			}
-		);
-
-		this._validatedQueue = new EventQueue(
-			function(e) {
-				var meta = e.sender;
-				var propName = e.property;
-				var conditions = meta.conditions(meta.type.property(propName));
-				meta._raiseEvent("propertyValidated:" + propName, [meta, conditions]);
-			},
-			function (a, b) {
-				return a.sender == b.sender && a.property == b.property;
-			}
-		);
 	}
 
 	Model.mixin(Functor.eventing);
@@ -3614,14 +3592,6 @@ window.ExoWeb.DotNet = {};
 			var type = new Type(this, name, base, origin, format);
 			this._types[name] = type;
 			return type;
-		},
-		beginValidation: function Model$beginValidation() {
-			this._validatingQueue.startQueueing();
-			this._validatedQueue.startQueueing();
-		},
-		endValidation: function Model$endValidation() {
-			this._validatingQueue.stopQueueing();
-			this._validatedQueue.stopQueueing();
 		},
 		type: function (name) {
 			return this._types[name];
@@ -6109,13 +6079,7 @@ window.ExoWeb.DotNet = {};
 				// ensure the rule target is a valid rule root type
 				if (!(obj instanceof rule.rootType.get_jstype())) { return; }
 
-				try {
-					rule.rootType.model.beginValidation();
-					rule.execute.call(rule, obj, args);
-				}
-				finally {
-					rule.rootType.model.endValidation();
-				}
+				rule.execute.call(rule, obj, args);
 			};
 
 			// create function to perform rule registration once predicates and return values have been prepared

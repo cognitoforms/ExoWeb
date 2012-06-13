@@ -70,7 +70,7 @@ exports.init = function () {
 	"core.Functor".dependsOn("core.Activity");
 	"core.Function".dependsOn("core.Array", "core.Functor");
 	"core.Batch".dependsOn("core.Activity", "core.Function", "core.Array");
-	"model.Model".dependsOn("core.Functor", "core.Function", "core.EventQueue", "model.PathTokens");
+	"model.Model".dependsOn("core.Functor", "core.Function", "model.PathTokens");
 	"mapper.ServerSync".dependsOn("core.Trace", "core.Utilities", "core.Functor", "core.Function");
 	"mapper.ObjectLazyLoader".dependsOn("core.Activity", "core.Function", "model.LazyLoader", "core.Array");
 	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity", "model.ObjectMeta");

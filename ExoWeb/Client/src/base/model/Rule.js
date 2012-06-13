@@ -195,13 +195,7 @@ Rule.mixin({
 			// ensure the rule target is a valid rule root type
 			if (!(obj instanceof rule.rootType.get_jstype())) { return; }
 
-			try {
-				rule.rootType.model.beginValidation();
-				rule.execute.call(rule, obj, args);
-			}
-			finally {
-				rule.rootType.model.endValidation();
-			}
+			rule.execute.call(rule, obj, args);
 		};
 
 		// create function to perform rule registration once predicates and return values have been prepared

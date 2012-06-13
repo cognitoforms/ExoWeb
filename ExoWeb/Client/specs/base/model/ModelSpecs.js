@@ -11,7 +11,6 @@ specs.ensureNamespace("ExoWeb.Model");
 //require("../../../src/base/core/Functor");
 //require("../../../src/base/core/Array");
 //require("../../../src/base/core/Utilities");
-//require("../../../src/base/core/EventQueue");
 
 // Imports
 ///////////////////////////////////////
