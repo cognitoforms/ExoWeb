@@ -1689,17 +1689,17 @@
 							throw Error.invalidOperation("invalidSysContentTemplate");
 						}
 
+						// set the server-generated ctx id
+						if (node.control._setTemplateCtxId) {
+							node.control._setTemplateCtxId(tcIdx);
+						}
+
 						Sys.Application._linkAttributes(node, currentContext, attachName);
 
 						// determine whether the control is a context-generating control (i.e. dataview), in
 						// which case it will be responsible for linking it's own content
 						if (node.control._generatesContext) {
 							generatesContext = node.control._generatesContext();
-						}
-
-						// set the server-generated ctx id
-						if (generatesContext && node.control._setTemplateCtxId) {
-							node.control._setTemplateCtxId(tcIdx);
 						}
 
 						// if the control gets its template from it's parent's template it should use
