@@ -5868,6 +5868,10 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.Rule
 	//////////////////////////////////////////////////
 
+	/// <reference path="../core/Utilities.js" />
+
+	var customRuleIndex = 0;
+
 	function Rule(rootType, options) {
 		/// <summary>Creates a rule that executes a delegate when specified model events occur.</summary>
 		/// <param name="rootType" type="Type">The model type the rule is for.</param>
@@ -5875,10 +5879,10 @@ window.ExoWeb.DotNet = {};
 		///		The options for the rule, including:
 		///			name:				the optional unique name of the type of validation rule
 		//			execute:			a function to execute when the rule is triggered
-		///		    onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
-		///		    onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
-		///		    onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
-		///		    onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		///			onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
+		///			onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
+		///			onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
+		///			onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
 		///			returns:			an array of properties (string name or Property instance) that the rule is responsible to calculating the value of
 		/// </param>
 		/// <returns type="Rule">The new rule.</returns>
@@ -5902,6 +5906,7 @@ window.ExoWeb.DotNet = {};
 		if (options) {
 			if (options instanceof Function) {
 				this._options = {
+					name: rootType.get_fullName() + ".Custom." + (++customRuleIndex),
 					execute: function (obj) {
 						// use the root object as this
 						return options.apply(obj, arguments);
@@ -5910,10 +5915,15 @@ window.ExoWeb.DotNet = {};
 			}
 			else {
 				this._options = options;
+				if (!this._options.name) {
+					this._options.name = rootType.get_fullName() + ".Custom." + (++customRuleIndex);
+				}
 			}
 		}
 		else {
-			this._options = {};
+			this._options = {
+				name: rootType.get_fullName() + ".Custom." + (++customRuleIndex)
+			};
 		}
 	
 		// explicitly override execute if specified
@@ -5992,7 +6002,7 @@ window.ExoWeb.DotNet = {};
 			this.predicates = this.predicates.length > 0 ? this.predicates.concat(predicates) : predicates;
 
 			// also configure the rule to run on property change unless it has already been configured to run on property get
-			if ((this.invocationTypes & RuleInvocationType.PropertyGet) == 0) {
+			if ((this.invocationTypes & RuleInvocationType.PropertyGet) === 0) {
 				this.invocationTypes |= RuleInvocationType.PropertyChanged;
 			}
 			return this;
@@ -6006,7 +6016,7 @@ window.ExoWeb.DotNet = {};
 			}
 			// allow return properties to be specified as a parameter array without []'s
 			if (properties && properties.constructor === String) {
-				properties = Array.prototype.slice.call(arguments); ;
+				properties = Array.prototype.slice.call(arguments);
 			}
 			if (!properties) {
 				ExoWeb.trace.throwAndLog("rules", "Rule must specify at least 1 property for returns.");
@@ -6093,7 +6103,7 @@ window.ExoWeb.DotNet = {};
 					this.predicates.forEach(function (predicate) {
 						predicate.addChanged(
 							function (sender, args) {
-								execute(rule, sender, args);
+										execute(rule, sender, args);
 							},
 							null, // no object filter
 							false, // subscribe for all time, not once
@@ -6124,7 +6134,7 @@ window.ExoWeb.DotNet = {};
 
 								// immediately execute the rule if there are explicit event subscriptions for the property
 								if (rule.returnValues.some(function (returnValue) { return hasPropertyChangedSubscribers(returnValue, sender); })) {
-									execute(rule, sender, args);
+											execute(rule, sender, args);
 								}
 
 								// Otherwise, just mark the property as pending initialization and raise property change for UI subscribers
@@ -6514,12 +6524,12 @@ window.ExoWeb.DotNet = {};
 		/// </param>
 		/// <returns type="CalculatedPropertyRule">The new calculated property rule.</returns>
 
-		// ensure the rule name is specified
-		options.name = options.name || "CalculatedProperty";
-
 		// store the property being validated
 		var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
 		Object.defineProperty(this, "property", { value: prop });
+
+		// ensure the rule name is specified
+		options.name = options.name || (rootType.get_fullName() + "." + prop.get_name() + ".Calculated");
 
 		// store the calculation function
 		Object.defineProperty(this, "calculate", { value: options.calculate || options.fn, writable: true });

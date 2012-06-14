@@ -13,12 +13,12 @@ function CalculatedPropertyRule(rootType, options) {
 	/// </param>
 	/// <returns type="CalculatedPropertyRule">The new calculated property rule.</returns>
 
-	// ensure the rule name is specified
-	options.name = options.name || "CalculatedProperty";
-
 	// store the property being validated
 	var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
 	Object.defineProperty(this, "property", { value: prop });
+
+	// ensure the rule name is specified
+	options.name = options.name || (rootType.get_fullName() + "." + prop.get_name() + ".Calculated");
 
 	// store the calculation function
 	Object.defineProperty(this, "calculate", { value: options.calculate || options.fn, writable: true });
