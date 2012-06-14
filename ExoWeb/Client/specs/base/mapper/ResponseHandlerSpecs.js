@@ -20,10 +20,15 @@ var trace = require("../../../src/base/core/Trace");
 var activity = require("../../../src/base/core/Activity");
 global.registerActivity = activity.registerActivity;
 
+var functor = require("../../../src/base/core/Functor");
+global.Functor = functor.Functor;
+
 var signal = require("../../../src/base/core/Signal");
 global.Signal = signal.Signal;
 
 var utilities = require("../../../src/base/core/Utilities");
+var eventScopeModule = require("../../../src/base/core/EventScope");
+global.EventScope = eventScopeModule.EventScopeCtor;
 
 ExoWeb.config = config.config;
 ExoWeb.config.signalDebug = true;

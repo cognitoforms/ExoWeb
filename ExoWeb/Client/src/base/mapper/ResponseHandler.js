@@ -63,6 +63,15 @@ ResponseHandler.mixin({
 			callback.call(thisPtr || this);
 		},
 
+		function ResponseHandler$startQueueingEvents(callback, thisPtr) {
+			/// <summary>
+			/// Start queueing model events
+			/// </summary>
+
+			this._eventScope = new EventScope();
+			callback.call(thisPtr || this);
+		},
+
 		function ResponseHandler$applyChanges(callback, thisPtr) {
 			/// <summary>
 			/// Apply changes from JSON
@@ -108,6 +117,15 @@ ResponseHandler.mixin({
 			/// </summary>
 
 			this._model.registerRules();
+			callback.call(thisPtr || this);
+		},
+
+		function ResponseHandler$stopQueueingEvents(callback, thisPtr) {
+			/// <summary>
+			/// Stop queueing model events
+			/// </summary>
+
+			this._eventScope.exit();
 			callback.call(thisPtr || this);
 		},
 

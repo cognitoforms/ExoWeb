@@ -1678,6 +1678,12 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 		},
+		_clearEvent: function Functor$_clearEvent(name) {
+			var evtName = "_" + name;
+			if (this.hasOwnProperty(evtName)) {
+				this[evtName] = null;
+			}
+		},
 		_getEventHandler: function Functor$_getEventHandler(name) {
 			return this["_" + name];
 		}
@@ -1756,63 +1762,111 @@ window.ExoWeb.DotNet = {};
 
 	// #endregion
 
-	// #region ExoWeb.EventQueue
+	// #region ExoWeb.EventScope
 	//////////////////////////////////////////////////
 
-	function EventQueue(raise, areEqual) {
-		this._queueing = 0;
-		this._queue = [];
-		this._raise = raise;
-		this._areEqual = areEqual;
+	/// <reference path="Function.js" />
+	/// <reference path="Functor.js" />
+
+	var currentEventScope = null;
+
+	function EventScope() {
+		// If there is a current event scope
+		// then it will be the parent of the new event scope
+		var parent = currentEventScope;
+
+		// Define the parent property
+		Object.defineProperty(this, "parent", { value: parent });
+
+		// Define the isActive property
+		this.isActive = true;
+
+		// Set this to be the current event scope
+		currentEventScope = this;
 	}
 
-	EventQueue.prototype = {
-		startQueueing: function EventQueue$startQueueing() {
-			++this._queueing;
-		},
-		stopQueueing: function EventQueue$stopQueueing() {
-			if (--this._queueing === 0) {
-				this.raiseQueue();
-			}
-		},
-		push: function EventQueue$push(item) {
-			// NOTE:  If a queued event triggers other events when raised, 
-			// the new events will be raised before the events that follow 
-			// after the triggering event.  This means that events will be 
-			// raised in the correct sequence, but they may occur out of order.
-			if (this._queueing) {
-				if (this._areEqual) {
-					for (var i = 0; i < this._queue.length; ++i) {
-						if (this._areEqual(item, this._queue[i])) {
-							return;
-						}
-					}
-				}
+	EventScope.mixin(Functor.eventing);
 
-				this._queue.push(item);
+	EventScope.mixin({
+		exit: function() {
+			if (!this.isActive) {
+				throw new Error("The event scope has already exited.");
 			}
-			else {
-				this._raise(item);
-			}
-		},
-		raiseQueue: function EventQueue$raiseQueue() {
-			var nextQueue = [];
+
 			try {
-				for (var i = 0; i < this._queue.length; ++i) {
-					if (this._raise(this._queue[i]) === false) {
-						nextQueue.push(this._queue[i]);
+				var handler = this._getEventHandler("exit");
+				if (handler && !handler.isEmpty()) {
+					if (this.parent === null || !this.parent.isActive) {
+						// Invoke all subscribers
+						handler();
 					}
+					else {
+						// Move subscribers to the parent scope
+						this.parent._addEvent("exit", handler);
+					}
+
+					// Clear the event to ensure that it isn't
+					// inadvertantly raised again through this scope
+					this._clearEvent("exit");
 				}
 			}
 			finally {
-				if (this._queue.length > 0) {
-					this._queue = nextQueue;
+				// The event scope is no longer active
+				this.isActive = false;
+
+				// Roll back to the closest active scope
+				while (currentEventScope && !currentEventScope.isActive) {
+					currentEventScope = currentEventScope.parent;
 				}
 			}
 		}
+	});
+
+	function EventScope$invoke(callback, thisPtr) {
+		if (thisPtr) {
+			callback.call(thisPtr);
+		}
+		else {
+			callback();
+		}
+	}
+
+	function EventScope$onExit(callback, thisPtr) {
+		if (currentEventScope === null) {
+			// Immediately invoke the callback
+			EventScope$invoke(callback, thisPtr);
+		}
+		else if (!currentEventScope.isActive) {
+			throw new Error("The current event scope cannot be inactive.");
+		}
+		else {
+			// Subscribe to the exit event
+			currentEventScope._addEvent("exit", EventScope$invoke.bind(null, callback, thisPtr));
+		}
+	}
+
+	function EventScope$perform(callback, thisPtr) {
+		try {
+			// Create an event scope
+			var scope = new EventScope();
+
+			// Invoke the callback
+			EventScope$invoke(callback, thisPtr);
+		}
+		finally {
+			// Exit the event scope
+			scope.exit();
+		}
+	}
+
+
+	// Export public functions
+	var eventScopeApi = {
+		onExit: EventScope$onExit,
+		perform: EventScope$perform
 	};
 
-	ExoWeb.EventQueue = EventQueue;
+	ExoWeb.EventScope = eventScopeApi;
 
 	// #endregion
 
@@ -5664,6 +5718,7 @@ window.ExoWeb.DotNet = {};
 		this.type = type;
 		this._conditions = {};
 		this._pendingInit = {};
+		this._pendingInvocation = [];
 	}
 
 	ObjectMeta.mixin({
@@ -5675,6 +5730,20 @@ window.ExoWeb.DotNet = {};
 		// gets the property or property chain for the specified property path
 		property: function ObjectMeta$property(propName, thisOnly) {
 			return this.type.property(propName, thisOnly);
+		},
+
+		// gets and optionally sets the pending initialization status for a property on the current instance
+		pendingInvocation: function ObjectMeta$pendingInvocation(rule, value) {
+			var indexOfRule = this._pendingInvocation.indexOf(rule);
+			if (arguments.length > 1) {
+				if (value && indexOfRule < 0) {
+					this._pendingInvocation.push(rule);
+				}
+				else if (!value && indexOfRule >= 0) {
+					this._pendingInvocation.splice(indexOfRule, 1);
+				}
+			}
+			return indexOfRule >= 0;
 		},
 
 		// gets and optionally sets the pending initialization status for a property on the current instance
@@ -5858,6 +5927,7 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	/// <reference path="../core/Utilities.js" />
+	/// <reference path="../core/EventScope.js" />
 
 	var customRuleIndex = 0;
 
@@ -6064,7 +6134,9 @@ window.ExoWeb.DotNet = {};
 				// ensure the rule target is a valid rule root type
 				if (!(obj instanceof rule.rootType.get_jstype())) { return; }
 
-				rule.execute.call(rule, obj, args);
+				EventScope$perform(function() {
+					rule.execute.call(rule, obj, args);
+				});
 			};
 
 			// create function to perform rule registration once predicates and return values have been prepared
@@ -6092,13 +6164,19 @@ window.ExoWeb.DotNet = {};
 					this.predicates.forEach(function (predicate) {
 						predicate.addChanged(
 							function (sender, args) {
+								if (!sender.meta.pendingInvocation(rule)) {
+									sender.meta.pendingInvocation(rule, true);
+									EventScope$onExit(function() {
+										sender.meta.pendingInvocation(rule, false);
 										execute(rule, sender, args);
+									});
+								}
 							},
 							null, // no object filter
 							false, // subscribe for all time, not once
 							true // tolerate nulls since rule execution logic will handle guard conditions
 						);
-					}, this);
+					});
 				}
 
 				// register for property get
@@ -6123,7 +6201,13 @@ window.ExoWeb.DotNet = {};
 
 								// immediately execute the rule if there are explicit event subscriptions for the property
 								if (rule.returnValues.some(function (returnValue) { return hasPropertyChangedSubscribers(returnValue, sender); })) {
+									if (!sender.meta.pendingInvocation(rule)) {
+										sender.meta.pendingInvocation(rule, true);
+										EventScope$onExit(function() {
+											sender.meta.pendingInvocation(rule, false);
 											execute(rule, sender, args);
+										});
+									}
 								}
 
 								// Otherwise, just mark the property as pending initialization and raise property change for UI subscribers
@@ -6138,7 +6222,7 @@ window.ExoWeb.DotNet = {};
 							false, // subscribe for all time, not once
 							true // tolerate nulls since rule execution logic will handle guard conditions
 						);
-					}, this);
+					});
 				}
 
 				// allow rule subclasses to perform final initialization when registered
@@ -8606,6 +8690,15 @@ window.ExoWeb.DotNet = {};
 				callback.call(thisPtr || this);
 			},
 
+			function ResponseHandler$startQueueingEvents(callback, thisPtr) {
+				/// <summary>
+				/// Start queueing model events
+				/// </summary>
+
+				this._eventScope = new EventScope();
+				callback.call(thisPtr || this);
+			},
+
 			function ResponseHandler$applyChanges(callback, thisPtr) {
 				/// <summary>
 				/// Apply changes from JSON
@@ -8651,6 +8744,15 @@ window.ExoWeb.DotNet = {};
 				/// </summary>
 
 				this._model.registerRules();
+				callback.call(thisPtr || this);
+			},
+
+			function ResponseHandler$stopQueueingEvents(callback, thisPtr) {
+				/// <summary>
+				/// Stop queueing model events
+				/// </summary>
+
+				this._eventScope.exit();
 				callback.call(thisPtr || this);
 			},
 

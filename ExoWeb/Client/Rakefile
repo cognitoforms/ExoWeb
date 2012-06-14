@@ -46,7 +46,7 @@ end
 		Signal
 		Functor
 		FunctionChain
-		EventQueue
+		EventScope
 		MessageQueue
 		EvalWrapper
 		Transform

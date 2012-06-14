@@ -1,4 +1,5 @@
 /// <reference path="../core/Utilities.js" />
+/// <reference path="../core/EventScope.js" />
 
 var customRuleIndex = 0;
 
@@ -205,7 +206,9 @@ Rule.mixin({
 			// ensure the rule target is a valid rule root type
 			if (!(obj instanceof rule.rootType.get_jstype())) { return; }
 
-			rule.execute.call(rule, obj, args);
+			EventScope$perform(function() {
+				rule.execute.call(rule, obj, args);
+			});
 		};
 
 		// create function to perform rule registration once predicates and return values have been prepared
@@ -233,13 +236,19 @@ Rule.mixin({
 				this.predicates.forEach(function (predicate) {
 					predicate.addChanged(
 						function (sender, args) {
+							if (!sender.meta.pendingInvocation(rule)) {
+								sender.meta.pendingInvocation(rule, true);
+								EventScope$onExit(function() {
+									sender.meta.pendingInvocation(rule, false);
 									execute(rule, sender, args);
+								});
+							}
 						},
 						null, // no object filter
 						false, // subscribe for all time, not once
 						true // tolerate nulls since rule execution logic will handle guard conditions
 					);
-				}, this);
+				});
 			}
 
 			// register for property get
@@ -264,7 +273,13 @@ Rule.mixin({
 
 							// immediately execute the rule if there are explicit event subscriptions for the property
 							if (rule.returnValues.some(function (returnValue) { return hasPropertyChangedSubscribers(returnValue, sender); })) {
+								if (!sender.meta.pendingInvocation(rule)) {
+									sender.meta.pendingInvocation(rule, true);
+									EventScope$onExit(function() {
+										sender.meta.pendingInvocation(rule, false);
 										execute(rule, sender, args);
+									});
+								}
 							}
 
 							// Otherwise, just mark the property as pending initialization and raise property change for UI subscribers
@@ -279,7 +294,7 @@ Rule.mixin({
 						false, // subscribe for all time, not once
 						true // tolerate nulls since rule execution logic will handle guard conditions
 					);
-				}, this);
+				});
 			}
 
 			// allow rule subclasses to perform final initialization when registered

@@ -90,6 +90,12 @@ Functor.eventing = {
 			}
 		}
 	},
+	_clearEvent: function Functor$_clearEvent(name) {
+		var evtName = "_" + name;
+		if (this.hasOwnProperty(evtName)) {
+			this[evtName] = null;
+		}
+	},
 	_getEventHandler: function Functor$_getEventHandler(name) {
 		return this["_" + name];
 	}

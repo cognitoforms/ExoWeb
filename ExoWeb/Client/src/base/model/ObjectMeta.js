@@ -5,6 +5,7 @@ function ObjectMeta(type, obj) {
 	this.type = type;
 	this._conditions = {};
 	this._pendingInit = {};
+	this._pendingInvocation = [];
 }
 
 ObjectMeta.mixin({
@@ -16,6 +17,20 @@ ObjectMeta.mixin({
 	// gets the property or property chain for the specified property path
 	property: function ObjectMeta$property(propName, thisOnly) {
 		return this.type.property(propName, thisOnly);
+	},
+
+	// gets and optionally sets the pending initialization status for a property on the current instance
+	pendingInvocation: function ObjectMeta$pendingInvocation(rule, value) {
+		var indexOfRule = this._pendingInvocation.indexOf(rule);
+		if (arguments.length > 1) {
+			if (value && indexOfRule < 0) {
+				this._pendingInvocation.push(rule);
+			}
+			else if (!value && indexOfRule >= 0) {
+				this._pendingInvocation.splice(indexOfRule, 1);
+			}
+		}
+		return indexOfRule >= 0;
 	},
 
 	// gets and optionally sets the pending initialization status for a property on the current instance

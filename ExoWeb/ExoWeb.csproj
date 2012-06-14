@@ -194,7 +194,7 @@
     <Content Include="Client\ref\qunit\qunit.ext.js" />
     <Content Include="Client\ref\qunit\qunit.js" />
     <Content Include="Client\runjshint.js" />
-    <Content Include="Client\specs\base\core\EventQueueSpecs.js" />
+    <Content Include="Client\specs\base\core\EventScopeSpecs.js" />
     <Content Include="Client\specs\base\core\ArraySpecs.js" />
     <Content Include="Client\specs\base\core\DateSpecs.js" />
     <Content Include="Client\specs\base\core\FunctionChainSpecs.js" />
@@ -230,7 +230,7 @@
     <Content Include="Client\src\base\core\Config.js" />
     <Content Include="Client\src\base\core\Date.js" />
     <Content Include="Client\src\base\core\EvalWrapper.js" />
-    <Content Include="Client\src\base\core\EventQueue.js" />
+    <Content Include="Client\src\base\core\EventScope.js" />
     <Content Include="Client\src\base\core\Function.js" />
     <Content Include="Client\src\base\core\FunctionChain.js" />
     <Content Include="Client\src\base\core\Functor.js" />
