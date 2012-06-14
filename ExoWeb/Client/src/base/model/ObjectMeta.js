@@ -4,7 +4,7 @@ function ObjectMeta(type, obj) {
 	this._obj = obj;
 	this.type = type;
 	this._conditions = {};
-	this._pendingInit = [];
+	this._pendingInit = {};
 }
 
 ObjectMeta.mixin({
