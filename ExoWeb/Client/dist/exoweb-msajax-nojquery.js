@@ -4547,8 +4547,8 @@ window.ExoWeb.DotNet = {};
 
 	// updates the property and message or conditionType options for property rules
 	function hasPropertyChangedSubscribers(property, obj) {
-		handler = property._getEventHandler("changed");
-		return handler && !handler.isEmpty([obj]);
+		var changedEvent = property._getEventHandler("changed");
+		return changedEvent && !changedEvent.isEmpty([obj]);
 	}
 
 	// registers a rule with a specific property
@@ -4556,9 +4556,10 @@ window.ExoWeb.DotNet = {};
 		property._rules.push(rule);
 
 		// Raise events if registered.
-		var handler = property._getEventHandler("ruleRegistered");
-		if (handler)
-			handler(rule, { property: property });
+		var ruleRegisteredEvent = property._getEventHandler("ruleRegistered");
+		if (ruleRegisteredEvent && !ruleRegisteredEvent.isEmpty()) {
+			ruleRegisteredEvent(rule, { property: property });
+		}
 	}
 
 	function Property$_init(obj, val, force) {
@@ -4613,9 +4614,10 @@ window.ExoWeb.DotNet = {};
 
 			// Raise get events
 			// NOTE: get events may result in a change, so the value cannot be cached
-			var handler = this._getEventHandler("get");
-			if (handler)
-				handler(obj, { property: this, value: obj[this._fieldName] });
+			var getEvent = this._getEventHandler("get");
+			if (getEvent && !getEvent.isEmpty()) {
+				getEvent(obj, { property: this, value: obj[this._fieldName] });
+			}
 
 			// Return the property value
 			return obj[this._fieldName];
@@ -4652,8 +4654,8 @@ window.ExoWeb.DotNet = {};
 			// any rule causes a roundtrip to the server these changes will be available
 			this._containingType.model.notifyAfterPropertySet(obj, this, val, old);
 
-			var handler = this._getEventHandler("changed");
-			if (handler) {
+			var changedEvent = this._getEventHandler("changed");
+			if (changedEvent && !changedEvent.isEmpty()) {
 				// Create the event argument object
 				var args = { property: this, newValue: val, oldValue: old };
 
@@ -4666,7 +4668,7 @@ window.ExoWeb.DotNet = {};
 					}
 				}
 
-				handler(obj, args);
+				changedEvent(obj, args);
 			}
 
 			Observer.raisePropertyChanged(obj, this._name);
@@ -4896,21 +4898,8 @@ window.ExoWeb.DotNet = {};
 
 		// starts listening for get events on the property. Use obj argument to
 		// optionally filter the events to a specific object
-		addGet: function Property$addGet(handler, obj) {
-			var f;
-
-			if (obj) {
-				f = function (target, property, value, isInited) {
-					if (obj === target) {
-						handler(target, property, value, isInited);
-					}
-				};
-			}
-			else {
-				f = handler;
-			}
-
-			this._addEvent("get", f);
+		addGet: function Property$addGet(handler, obj, once) {
+			this._addEvent("get", handler, obj ? equals(obj) : null, once);
 
 			// Return the property to support method chaining
 			return this;
