@@ -354,6 +354,7 @@ jasmine.Spy.prototype.reset = function() {
   this.wasCalled = false;
   this.callCount = 0;
   this.argsForCall = [];
+  this.contextForCall = undefined;
   this.calls = [];
   this.mostRecentCall = {};
 };
@@ -366,6 +367,7 @@ jasmine.createSpy = function(name) {
     var args = jasmine.util.argsToArray(arguments);
     spyObj.mostRecentCall.object = this;
     spyObj.mostRecentCall.args = args;
+    spyObj.contextForCall = this;
     spyObj.argsForCall.push(args);
     spyObj.calls.push({object: this, args: args});
     return spyObj.plan.apply(this, arguments);
@@ -1307,6 +1309,27 @@ jasmine.Matchers.prototype.toHaveBeenCalledWith = function() {
   };
 
   return this.env.contains_(this.actual.argsForCall, expectedArgs);
+};
+
+/**
+ * Matcher that checks to see if the actual, a Jasmine spy, was called for a given context object.
+ *
+ * @example
+ *
+ */
+jasmine.Matchers.prototype.toHaveBeenCalledFor = function(expectedContext) {
+  if (!jasmine.isSpy(this.actual)) {
+    throw new Error('Expected a spy, but got ' + jasmine.pp(this.actual) + '.');
+  }
+  this.message = function() {
+    if (this.actual.callCount == 0) {
+      return "Expected spy to have been called for " + jasmine.pp(expectedContext) + " but it was never called.";
+    } else {
+      return "Expected spy to have been called for " + jasmine.pp(expectedContext) + " but was called for " + jasmine.pp(this.actual.contextForCall);
+    }
+  };
+
+  return this.actual.contextForCall === expectedContext;
 };
 
 /** @deprecated Use expect(xxx).not.toHaveBeenCalledWith() instead */
