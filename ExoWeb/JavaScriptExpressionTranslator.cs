@@ -433,6 +433,10 @@ namespace ExoWeb
 						{
 							case "any": return new MethodTranslation(method, "{0}.length > 0");
 							case "count": return new MethodTranslation(method, "{0}.length");
+							case "first": return new MethodTranslation(method, "{0}[0]");
+							case "firstordefault": return new MethodTranslation(method, "({0}[0] || null)");
+							case "last": return new MethodTranslation(method, "Array_last({0})").AddExport("Array_last", "function (a) { if (a.length > 0) return a[a.length - 1]; }");
+							case "lastordefault": return new MethodTranslation(method, "(Array_last({0}) || null)").AddExport("Array_last", "function (a) { if (a.length > 0) return a[a.length - 1]; }");
 						}
 					}
 
@@ -442,7 +446,7 @@ namespace ExoWeb
 						parameters[0].ParameterType.GetGenericArguments()[0].IsAssignableFrom(listType.GetGenericArguments()[0]) &&
 						typeof(IEnumerableSignatures).GetMethods().Any(em =>
 							em.GetParameters().Length == 1 && em.Name.Equals(method.Name, StringComparison.OrdinalIgnoreCase) &&
-							em.GetParameters()[0].ParameterType == parameters[0].ParameterType.GetGenericArguments()[1]))
+							em.GetParameters()[0].ParameterType.IsAssignableFrom(parameters[0].ParameterType.GetGenericArguments()[1])))
 					{
 						switch (m.Name.ToLower())
 						{
@@ -454,6 +458,12 @@ namespace ExoWeb
 							case "max": return new MethodTranslation(method, "{0}.map({1}, this).reduce(function (p,c,i) { return i > 0 && p > c ? p : c; })");
 							case "sum": return new MethodTranslation(method, "{0}.map({1}, this).reduce(function (p,c) { return p + c; }, 0)");
 							case "average": return new MethodTranslation(method, "{0}.map({1}, this).reduce(function (p,c,i,a) { return p + c/a.length; }, 0)");
+							case "first": return new MethodTranslation(method, "{0}.filter({1}, this)[0]");
+							case "firstordefault": return new MethodTranslation(method, "({0}.filter({1}, this)[0] || null)");
+							case "last": return new MethodTranslation(method, "Array_last({0}.filter({1}, this))").AddExport("Array_last", "function (a) { if (a.length > 0) return a[a.length - 1]; }");
+							case "lastordefault": return new MethodTranslation(method, "(Array_last({0}.filter({1}, this)) || null)").AddExport("Array_last", "function (a) { if (a.length > 0) return a[a.length - 1]; }");
+							case "orderby": return new MethodTranslation(method, "{0}.map(function (i) { return { key: {1}(i), value: i }; }).sort(function (a, b) { return a.key == b.key ? 0 : a.key < b.key ? -1 : 1; }).map(function (i) { return i.value; })");
+							case "orderbydescending": return new MethodTranslation(method, "{0}.map(function (i) { return { key: {1}(i), value: i }; }).sort(function (a, b) { return a.key == b.key ? 0 : a.key < b.key ? 1 : -1; }).map(function (i) { return i.value; })");
 						}
 					}
 				}
@@ -1282,6 +1292,14 @@ namespace ExoWeb
 
 		interface IEnumerableSignatures
 		{
+			void First(bool predicate);
+			void FirstOrDefault(bool predicate);
+			void First();
+			void FirstOrDefault();
+			void Last(bool predicate);
+			void LastOrDefault(bool predicate);
+			void Last();
+			void LastOrDefault();
 			void Where(bool predicate);
 			void Any();
 			void Any(bool predicate);
@@ -1310,6 +1328,8 @@ namespace ExoWeb
 			void Average(double? selector);
 			void Average(decimal selector);
 			void Average(decimal? selector);
+			void OrderBy(object selector);
+			void OrderDescending(object selector);
 		}
 
 		#endregion

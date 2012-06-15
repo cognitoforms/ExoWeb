@@ -11,6 +11,10 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	var config = {
+		// General debug setting that can encompose the purpose of other more focused settings.
+		// Determines whether parts of the framework attempt to handle errors and throw more descriptive errors.
+		debug: false,
+
 		// Indicates that signal should use window.setTimeout when invoking callbacks. This is
 		// done in order to get around problems with browser complaining about long-running script.
 		signalTimeout: false,
@@ -1529,7 +1533,17 @@ window.ExoWeb.DotNet = {};
 			return this._genCallback(callback, thisPtr, executeImmediately);
 		},
 		_doCallback: function Signal$_doCallback(name, thisPtr, callback, args, executeImmediately) {
-			doCallback.apply(this, arguments);
+			if (config.debug === true) {
+				doCallback.apply(this, arguments);
+			}
+			else {
+				try {
+					doCallback.apply(this, arguments);
+				}
+				catch (e) {
+					logError("signal", "({0}) {1} callback threw an exception: {2}", [this._debugLabel, name, e]);
+				}
+			}
 		},
 		_genCallback: function Signal$_genCallback(callback, thisPtr, executeImmediately) {
 			var signal = this, called = false;
@@ -1678,12 +1692,6 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 		},
-		_clearEvent: function Functor$_clearEvent(name) {
-			var evtName = "_" + name;
-			if (this.hasOwnProperty(evtName)) {
-				this[evtName] = null;
-			}
-		},
 		_getEventHandler: function Functor$_getEventHandler(name) {
 			return this["_" + name];
 		}
@@ -1762,111 +1770,63 @@ window.ExoWeb.DotNet = {};
 
 	// #endregion
 
-	// #region ExoWeb.EventScope
+	// #region ExoWeb.EventQueue
 	//////////////////////////////////////////////////
 
-	/// <reference path="Function.js" />
-	/// <reference path="Functor.js" />
-
-	var currentEventScope = null;
-
-	function EventScope() {
-		// If there is a current event scope
-		// then it will be the parent of the new event scope
-		var parent = currentEventScope;
-
-		// Define the parent property
-		Object.defineProperty(this, "parent", { value: parent });
-
-		// Define the isActive property
-		this.isActive = true;
-
-		// Set this to be the current event scope
-		currentEventScope = this;
+	function EventQueue(raise, areEqual) {
+		this._queueing = 0;
+		this._queue = [];
+		this._raise = raise;
+		this._areEqual = areEqual;
 	}
 
-	EventScope.mixin(Functor.eventing);
-
-	EventScope.mixin({
-		exit: function() {
-			if (!this.isActive) {
-				throw new Error("The event scope has already exited.");
+	EventQueue.prototype = {
+		startQueueing: function EventQueue$startQueueing() {
+			++this._queueing;
+		},
+		stopQueueing: function EventQueue$stopQueueing() {
+			if (--this._queueing === 0) {
+				this.raiseQueue();
 			}
+		},
+		push: function EventQueue$push(item) {
+			// NOTE:  If a queued event triggers other events when raised, 
+			// the new events will be raised before the events that follow 
+			// after the triggering event.  This means that events will be 
+			// raised in the correct sequence, but they may occur out of order.
+			if (this._queueing) {
+				if (this._areEqual) {
+					for (var i = 0; i < this._queue.length; ++i) {
+						if (this._areEqual(item, this._queue[i])) {
+							return;
+						}
+					}
+				}
 
+				this._queue.push(item);
+			}
+			else {
+				this._raise(item);
+			}
+		},
+		raiseQueue: function EventQueue$raiseQueue() {
+			var nextQueue = [];
 			try {
-				var handler = this._getEventHandler("exit");
-				if (handler && !handler.isEmpty()) {
-					if (this.parent === null || !this.parent.isActive) {
-						// Invoke all subscribers
-						handler();
+				for (var i = 0; i < this._queue.length; ++i) {
+					if (this._raise(this._queue[i]) === false) {
+						nextQueue.push(this._queue[i]);
 					}
-					else {
-						// Move subscribers to the parent scope
-						this.parent._addEvent("exit", handler);
-					}
-
-					// Clear the event to ensure that it isn't
-					// inadvertantly raised again through this scope
-					this._clearEvent("exit");
 				}
 			}
 			finally {
-				// The event scope is no longer active
-				this.isActive = false;
-
-				// Roll back to the closest active scope
-				while (currentEventScope && !currentEventScope.isActive) {
-					currentEventScope = currentEventScope.parent;
+				if (this._queue.length > 0) {
+					this._queue = nextQueue;
 				}
 			}
 		}
-	});
-
-	function EventScope$invoke(callback, thisPtr) {
-		if (thisPtr) {
-			callback.call(thisPtr);
-		}
-		else {
-			callback();
-		}
-	}
-
-	function EventScope$onExit(callback, thisPtr) {
-		if (currentEventScope === null) {
-			// Immediately invoke the callback
-			EventScope$invoke(callback, thisPtr);
-		}
-		else if (!currentEventScope.isActive) {
-			throw new Error("The current event scope cannot be inactive.");
-		}
-		else {
-			// Subscribe to the exit event
-			currentEventScope._addEvent("exit", EventScope$invoke.bind(null, callback, thisPtr));
-		}
-	}
-
-	function EventScope$perform(callback, thisPtr) {
-		try {
-			// Create an event scope
-			var scope = new EventScope();
-
-			// Invoke the callback
-			EventScope$invoke(callback, thisPtr);
-		}
-		finally {
-			// Exit the event scope
-			scope.exit();
-		}
-	}
-
-
-	// Export public functions
-	var eventScopeApi = {
-		onExit: EventScope$onExit,
-		perform: EventScope$perform
 	};
 
-	ExoWeb.EventScope = eventScopeApi;
+	ExoWeb.EventQueue = EventQueue;
 
 	// #endregion
 
@@ -3618,122 +3578,29 @@ window.ExoWeb.DotNet = {};
 	function Model() {
 		this._types = {};
 		this._ruleQueue = [];
+
+		this._validatingQueue = new EventQueue(
+			function(e) {
+				var meta = e.sender;
+				meta._raiseEvent("propertyValidating:" + e.propName, [meta, e.propName]);
+			},
+			function(a, b) {
+				return a.sender == b.sender && a.propName == b.propName;
+			}
+		);
+
+		this._validatedQueue = new EventQueue(
+			function(e) {
+				var meta = e.sender;
+				var propName = e.property;
+				var conditions = meta.conditions(meta.type.property(propName));
+				meta._raiseEvent("propertyValidated:" + propName, [meta, conditions]);
+			},
+			function (a, b) {
+				return a.sender == b.sender && a.property == b.property;
+			}
+		);
 	}
-
-	Model.mixin(Functor.eventing);
-
-	Model.mixin({
-		dispose: function Model$dispose() {
-			for (var key in this._types) {
-				delete window[key];
-			}
-		},
-		addType: function Model$addType(name, base, origin, format) {
-			var type = new Type(this, name, base, origin, format);
-			this._types[name] = type;
-			return type;
-		},
-		type: function (name) {
-			return this._types[name];
-		},
-		types: function (filter) {
-			var result = [];
-			for (var typeName in this._types) {
-				var type = this._types[typeName];
-				if (!filter || filter(type)) {
-					result.push(type);
-				}
-			}
-			return result;
-		},
-		addBeforeContextReady: function (handler) {
-			// Only executes the given handler once, since the event should only fire once
-			if (!this._contextReady) {
-				this._addEvent("beforeContextReady", handler, null, true);
-			}
-			else {
-				handler();
-			}
-		},
-
-		// queues a rule to be registered
-		registerRule: function Model$registerRule(rule) {
-			if(!this._contextReady) {
-				this._ruleQueue.push(rule);
-			}
-			else {
-				rule.register();
-			}
-		},
-
-		// register rules pending registration
-		registerRules: function Model$registerRules() {
-			var rules = this._ruleQueue;
-			this._ruleQueue = [];
-			for (var i = 0; i < rules.length; i++) {
-				rules[i].register();
-			}
-		},
-		notifyBeforeContextReady: function () {
-			this._contextReady = true;
-			this.registerRules();
-			this._raiseEvent("beforeContextReady", []);
-		},
-		addAfterPropertySet: function (handler) {
-			this._addEvent("afterPropertySet", handler);
-		},
-		notifyAfterPropertySet: function (obj, property, newVal, oldVal) {
-			this._raiseEvent("afterPropertySet", [obj, property, newVal, oldVal]);
-		},
-		addObjectRegistered: function (func, objectOrFunction, once) {
-			this._addEvent("objectRegistered", func, objectOrFunction ? (objectOrFunction instanceof Function ? objectOrFunction : equals(objectOrFunction)) : null, once);
-		},
-		removeObjectRegistered: function (func) {
-			this._removeEvent("objectRegistered", func);
-		},
-		notifyObjectRegistered: function (obj) {
-			this._raiseEvent("objectRegistered", [obj]);
-		},
-		addObjectUnregistered: function (func) {
-			this._addEvent("objectUnregistered", func);
-		},
-		notifyObjectUnregistered: function (obj) {
-			this._raiseEvent("objectUnregistered", [obj]);
-		},
-		addListChanged: function (func) {
-			this._addEvent("listChanged", func);
-		},
-		notifyListChanged: function (obj, property, changes) {
-			this._raiseEvent("listChanged", [obj, property, changes]);
-		},
-		_ensureNamespace: function Model$_ensureNamespace(name, parentNamespace) {
-			var target = parentNamespace;
-
-			if (target.constructor === String) {
-				var nsTokens = target.split(".");
-				target = window;
-				Array.forEach(nsTokens, function (token) {
-					target = target[token];
-
-					if (target === undefined) {
-						ExoWeb.trace.throwAndLog("model", "Parent namespace \"{0}\" could not be found.", parentNamespace);
-					}
-				});
-			}
-			else if (target === undefined || target === null) {
-				target = window;
-			}
-
-			// create the namespace object if it doesn't exist, otherwise return the existing namespace
-			if (!(name in target)) {
-				var result = target[name] = {};
-				return result;
-			}
-			else {
-				return target[name];
-			}
-		}
-	});
 
 	function ensureType(type, forceLoad, callback) {
 
@@ -3851,6 +3718,129 @@ window.ExoWeb.DotNet = {};
 			}
 		}
 	};
+
+	Model.prototype = {
+		dispose: function Model$dispose() {
+			for (var key in this._types) {
+				delete window[key];
+			}
+		},
+		addType: function Model$addType(name, base, origin, format) {
+			var type = new Type(this, name, base, origin, format);
+			this._types[name] = type;
+			return type;
+		},
+		beginValidation: function Model$beginValidation() {
+			this._validatingQueue.startQueueing();
+			this._validatedQueue.startQueueing();
+		},
+		endValidation: function Model$endValidation() {
+			this._validatingQueue.stopQueueing();
+			this._validatedQueue.stopQueueing();
+		},
+		type: function (name) {
+			return this._types[name];
+		},
+		types: function (filter) {
+			var result = [];
+			for (var typeName in this._types) {
+				var type = this._types[typeName];
+				if (!filter || filter(type)) {
+					result.push(type);
+				}
+			}
+			return result;
+		},
+		addBeforeContextReady: function (handler) {
+			// Only executes the given handler once, since the event should only fire once
+			if (!this._contextReady) {
+				this._addEvent("beforeContextReady", handler, null, true);
+			}
+			else {
+				handler();
+			}
+		},
+
+		// queues a rule to be registered
+		registerRule: function Model$registerRule(rule) {
+			if(!this._contextReady) {
+				this._ruleQueue.push(rule);
+			}
+			else {
+				rule.register();
+			}
+		},
+
+		// register rules pending registration
+		registerRules: function Model$registerRules() {
+			var rules = this._ruleQueue;
+			this._ruleQueue = [];
+			for (var i = 0; i < rules.length; i++) {
+				rules[i].register();
+			}
+		},
+		notifyBeforeContextReady: function () {
+			this._contextReady = true;
+			this.registerRules();
+			this._raiseEvent("beforeContextReady", []);
+		},
+		addAfterPropertySet: function (handler) {
+			this._addEvent("afterPropertySet", handler);
+		},
+		notifyAfterPropertySet: function (obj, property, newVal, oldVal) {
+			this._raiseEvent("afterPropertySet", [obj, property, newVal, oldVal]);
+		},
+		addObjectRegistered: function (func, objectOrFunction, once) {
+			this._addEvent("objectRegistered", func, objectOrFunction ? (objectOrFunction instanceof Function ? objectOrFunction : equals(objectOrFunction)) : null, once);
+		},
+		removeObjectRegistered: function (func) {
+			this._removeEvent("objectRegistered", func);
+		},
+		notifyObjectRegistered: function (obj) {
+			this._raiseEvent("objectRegistered", [obj]);
+		},
+		addObjectUnregistered: function (func) {
+			this._addEvent("objectUnregistered", func);
+		},
+		notifyObjectUnregistered: function (obj) {
+			this._raiseEvent("objectUnregistered", [obj]);
+		},
+		addListChanged: function (func) {
+			this._addEvent("listChanged", func);
+		},
+		notifyListChanged: function (obj, property, changes) {
+			this._raiseEvent("listChanged", [obj, property, changes]);
+		},
+		_ensureNamespace: function Model$_ensureNamespace(name, parentNamespace) {
+			var target = parentNamespace;
+
+			if (target.constructor === String) {
+				var nsTokens = target.split(".");
+				target = window;
+				Array.forEach(nsTokens, function (token) {
+					target = target[token];
+
+					if (target === undefined) {
+						ExoWeb.trace.throwAndLog("model", "Parent namespace \"{0}\" could not be found.", parentNamespace);
+					}
+				});
+			}
+			else if (target === undefined || target === null) {
+				target = window;
+			}
+
+			// create the namespace object if it doesn't exist, otherwise return the existing namespace
+			if (!(name in target)) {
+				var result = target[name] = {};
+				return result;
+			}
+			else {
+				return target[name];
+			}
+		}
+	};
+
+	Model.mixin(Functor.eventing);
 
 	Model.getJsType = function Model$getJsType(name, allowUndefined) {
 		/// <summary>
@@ -4601,8 +4591,8 @@ window.ExoWeb.DotNet = {};
 
 	// updates the property and message or conditionType options for property rules
 	function hasPropertyChangedSubscribers(property, obj) {
-		var changedEvent = property._getEventHandler("changed");
-		return changedEvent && !changedEvent.isEmpty([obj]);
+		handler = property._getEventHandler("changed");
+		return handler && !handler.isEmpty([obj]);
 	}
 
 	// registers a rule with a specific property
@@ -4610,10 +4600,9 @@ window.ExoWeb.DotNet = {};
 		property._rules.push(rule);
 
 		// Raise events if registered.
-		var ruleRegisteredEvent = property._getEventHandler("ruleRegistered");
-		if (ruleRegisteredEvent && !ruleRegisteredEvent.isEmpty()) {
-			ruleRegisteredEvent(rule, { property: property });
-		}
+		var handler = property._getEventHandler("ruleRegistered");
+		if (handler)
+			handler(rule, { property: property });
 	}
 
 	function Property$_init(obj, val, force) {
@@ -4668,10 +4657,9 @@ window.ExoWeb.DotNet = {};
 
 			// Raise get events
 			// NOTE: get events may result in a change, so the value cannot be cached
-			var getEvent = this._getEventHandler("get");
-			if (getEvent && !getEvent.isEmpty()) {
-				getEvent(obj, { property: this, value: obj[this._fieldName] });
-			}
+			var handler = this._getEventHandler("get");
+			if (handler)
+				handler(obj, { property: this, value: obj[this._fieldName] });
 
 			// Return the property value
 			return obj[this._fieldName];
@@ -4708,8 +4696,8 @@ window.ExoWeb.DotNet = {};
 			// any rule causes a roundtrip to the server these changes will be available
 			this._containingType.model.notifyAfterPropertySet(obj, this, val, old);
 
-			var changedEvent = this._getEventHandler("changed");
-			if (changedEvent && !changedEvent.isEmpty()) {
+			var handler = this._getEventHandler("changed");
+			if (handler) {
 				// Create the event argument object
 				var args = { property: this, newValue: val, oldValue: old };
 
@@ -4722,7 +4710,7 @@ window.ExoWeb.DotNet = {};
 					}
 				}
 
-				changedEvent(obj, args);
+				handler(obj, args);
 			}
 
 			Observer.raisePropertyChanged(obj, this._name);
@@ -4952,8 +4940,21 @@ window.ExoWeb.DotNet = {};
 
 		// starts listening for get events on the property. Use obj argument to
 		// optionally filter the events to a specific object
-		addGet: function Property$addGet(handler, obj, once) {
-			this._addEvent("get", handler, obj ? equals(obj) : null, once);
+		addGet: function Property$addGet(handler, obj) {
+			var f;
+
+			if (obj) {
+				f = function (target, property, value, isInited) {
+					if (obj === target) {
+						handler(target, property, value, isInited);
+					}
+				};
+			}
+			else {
+				f = handler;
+			}
+
+			this._addEvent("get", f);
 
 			// Return the property to support method chaining
 			return this;
@@ -5717,8 +5718,7 @@ window.ExoWeb.DotNet = {};
 		this._obj = obj;
 		this.type = type;
 		this._conditions = {};
-		this._pendingInit = {};
-		this._pendingInvocation = [];
+		this._pendingInit = [];
 	}
 
 	ObjectMeta.mixin({
@@ -5730,20 +5730,6 @@ window.ExoWeb.DotNet = {};
 		// gets the property or property chain for the specified property path
 		property: function ObjectMeta$property(propName, thisOnly) {
 			return this.type.property(propName, thisOnly);
-		},
-
-		// gets and optionally sets the pending initialization status for a property on the current instance
-		pendingInvocation: function ObjectMeta$pendingInvocation(rule, value) {
-			var indexOfRule = this._pendingInvocation.indexOf(rule);
-			if (arguments.length > 1) {
-				if (value && indexOfRule < 0) {
-					this._pendingInvocation.push(rule);
-				}
-				else if (!value && indexOfRule >= 0) {
-					this._pendingInvocation.splice(indexOfRule, 1);
-				}
-			}
-			return indexOfRule >= 0;
 		},
 
 		// gets and optionally sets the pending initialization status for a property on the current instance
@@ -5926,10 +5912,7 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.Rule
 	//////////////////////////////////////////////////
 
-	/// <reference path="../core/Utilities.js" />
-	/// <reference path="../core/EventScope.js" />
-
-	var customRuleIndex = 0;
+	var ruleExecutionCount = {};
 
 	function Rule(rootType, options) {
 		/// <summary>Creates a rule that executes a delegate when specified model events occur.</summary>
@@ -5938,10 +5921,10 @@ window.ExoWeb.DotNet = {};
 		///		The options for the rule, including:
 		///			name:				the optional unique name of the type of validation rule
 		//			execute:			a function to execute when the rule is triggered
-		///			onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
-		///			onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
-		///			onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
-		///			onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		///		    onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
+		///		    onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
+		///		    onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
+		///		    onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
 		///			returns:			an array of properties (string name or Property instance) that the rule is responsible to calculating the value of
 		/// </param>
 		/// <returns type="Rule">The new rule.</returns>
@@ -5965,7 +5948,6 @@ window.ExoWeb.DotNet = {};
 		if (options) {
 			if (options instanceof Function) {
 				this._options = {
-					name: rootType.get_fullName() + ".Custom." + (++customRuleIndex),
 					execute: function (obj) {
 						// use the root object as this
 						return options.apply(obj, arguments);
@@ -5974,15 +5956,10 @@ window.ExoWeb.DotNet = {};
 			}
 			else {
 				this._options = options;
-				if (!this._options.name) {
-					this._options.name = rootType.get_fullName() + ".Custom." + (++customRuleIndex);
-				}
 			}
 		}
 		else {
-			this._options = {
-				name: rootType.get_fullName() + ".Custom." + (++customRuleIndex)
-			};
+			this._options = {};
 		}
 	
 		// explicitly override execute if specified
@@ -6061,7 +6038,7 @@ window.ExoWeb.DotNet = {};
 			this.predicates = this.predicates.length > 0 ? this.predicates.concat(predicates) : predicates;
 
 			// also configure the rule to run on property change unless it has already been configured to run on property get
-			if ((this.invocationTypes & RuleInvocationType.PropertyGet) === 0) {
+			if ((this.invocationTypes & RuleInvocationType.PropertyGet) == 0) {
 				this.invocationTypes |= RuleInvocationType.PropertyChanged;
 			}
 			return this;
@@ -6075,7 +6052,7 @@ window.ExoWeb.DotNet = {};
 			}
 			// allow return properties to be specified as a parameter array without []'s
 			if (properties && properties.constructor === String) {
-				properties = Array.prototype.slice.call(arguments);
+				properties = Array.prototype.slice.call(arguments); ;
 			}
 			if (!properties) {
 				ExoWeb.trace.throwAndLog("rules", "Rule must specify at least 1 property for returns.");
@@ -6134,9 +6111,16 @@ window.ExoWeb.DotNet = {};
 				// ensure the rule target is a valid rule root type
 				if (!(obj instanceof rule.rootType.get_jstype())) { return; }
 
-				EventScope$perform(function() {
+				// track rule executions
+				ruleExecutionCount[rule.name] = (ruleExecutionCount[rule.name] || 0) + 1;
+
+				try {
+					rule.rootType.model.beginValidation();
 					rule.execute.call(rule, obj, args);
-				});
+				}
+				finally {
+					rule.rootType.model.endValidation();
+				}
 			};
 
 			// create function to perform rule registration once predicates and return values have been prepared
@@ -6164,19 +6148,13 @@ window.ExoWeb.DotNet = {};
 					this.predicates.forEach(function (predicate) {
 						predicate.addChanged(
 							function (sender, args) {
-								if (!sender.meta.pendingInvocation(rule)) {
-									sender.meta.pendingInvocation(rule, true);
-									EventScope$onExit(function() {
-										sender.meta.pendingInvocation(rule, false);
-										execute(rule, sender, args);
-									});
-								}
+								execute(rule, sender, args);
 							},
 							null, // no object filter
 							false, // subscribe for all time, not once
 							true // tolerate nulls since rule execution logic will handle guard conditions
 						);
-					});
+					}, this);
 				}
 
 				// register for property get
@@ -6201,13 +6179,7 @@ window.ExoWeb.DotNet = {};
 
 								// immediately execute the rule if there are explicit event subscriptions for the property
 								if (rule.returnValues.some(function (returnValue) { return hasPropertyChangedSubscribers(returnValue, sender); })) {
-									if (!sender.meta.pendingInvocation(rule)) {
-										sender.meta.pendingInvocation(rule, true);
-										EventScope$onExit(function() {
-											sender.meta.pendingInvocation(rule, false);
-											execute(rule, sender, args);
-										});
-									}
+									execute(rule, sender, args);
 								}
 
 								// Otherwise, just mark the property as pending initialization and raise property change for UI subscribers
@@ -6222,7 +6194,7 @@ window.ExoWeb.DotNet = {};
 							false, // subscribe for all time, not once
 							true // tolerate nulls since rule execution logic will handle guard conditions
 						);
-					});
+					}, this);
 				}
 
 				// allow rule subclasses to perform final initialization when registered
@@ -6597,12 +6569,12 @@ window.ExoWeb.DotNet = {};
 		/// </param>
 		/// <returns type="CalculatedPropertyRule">The new calculated property rule.</returns>
 
+		// ensure the rule name is specified
+		options.name = options.name || "CalculatedProperty";
+
 		// store the property being validated
 		var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
 		Object.defineProperty(this, "property", { value: prop });
-
-		// ensure the rule name is specified
-		options.name = options.name || (rootType.get_fullName() + "." + prop.get_name() + ".Calculated");
 
 		// store the calculation function
 		Object.defineProperty(this, "calculate", { value: options.calculate || options.fn, writable: true });
@@ -8690,15 +8662,6 @@ window.ExoWeb.DotNet = {};
 				callback.call(thisPtr || this);
 			},
 
-			function ResponseHandler$startQueueingEvents(callback, thisPtr) {
-				/// <summary>
-				/// Start queueing model events
-				/// </summary>
-
-				this._eventScope = new EventScope();
-				callback.call(thisPtr || this);
-			},
-
 			function ResponseHandler$applyChanges(callback, thisPtr) {
 				/// <summary>
 				/// Apply changes from JSON
@@ -8744,15 +8707,6 @@ window.ExoWeb.DotNet = {};
 				/// </summary>
 
 				this._model.registerRules();
-				callback.call(thisPtr || this);
-			},
-
-			function ResponseHandler$stopQueueingEvents(callback, thisPtr) {
-				/// <summary>
-				/// Stop queueing model events
-				/// </summary>
-
-				this._eventScope.exit();
 				callback.call(thisPtr || this);
 			},
 
@@ -12697,6 +12651,8 @@ window.ExoWeb.DotNet = {};
 					if (domReady) {
 						domReady(window.context);
 					}
+
+					window.ruleExecutionCount = ruleExecutionCount;
 				});
 			});
 		};
@@ -14095,13 +14051,21 @@ window.ExoWeb.DotNet = {};
 
 					this._isRendered = false;
 
-					try {
+					if (ExoWeb.config.debug === true) {
 						this._render();
 						this._isRendered = true;
 						Sys.Observer.raiseEvent(this, "rendered", renderArgs);
-					}
-					finally {
 						contentControlsRendering--;
+					}
+					else {
+						try {
+							this._render();
+							this._isRendered = true;
+							Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+						}
+						finally {
+							contentControlsRendering--;
+						}
 					}
 				}, this);
 			}

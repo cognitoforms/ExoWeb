@@ -1008,6 +1008,8 @@ namespace ExoWeb
 
 								// Translate the calculate expression to javascript
 								var exp = ExpressionTranslator.Translate(calculation.Calculation);
+								if (exp.Exceptions.Any())
+									throw exp.Exceptions.Last();
 								json.Set("calculate", exp.Body);
 
 								// Record dependency exports globally
@@ -1027,6 +1029,8 @@ namespace ExoWeb
 
 								// Translate the assert expression to javascript
 								var exp = ExpressionTranslator.Translate(condition.Condition);
+								if (exp.Exceptions.Any())
+									throw exp.Exceptions.Last();
 								json.Set("assert", exp.Body);
 
 								// Record dependency exports globally
