@@ -681,39 +681,6 @@ function ensureAllowedValuesLoaded(newItems, callback, thisPtr) {
 	signal.waitForAll(callback, thisPtr);
 }
 
-function allowedValuesChanged(optionsSourceArray, sender, args) {
-	var lastProperty = this._propertyChain.lastProperty();
-	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
-
-	// Load allowed value items that were added
-	if (args.changes) {
-		// Collect all items that were added
-		var newItems = [];
-		args.changes.forEach(function(change) {
-			if (change.newItems) {
-				newItems.addRange(change.newItems);
-			}
-		});
-		if (newItems.length > 0) {
-			ensureAllowedValuesLoaded(newItems, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
-		}
-		else {
-			refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
-		}
-	}
-	else if (!args.oldValue && args.newValue) {
-		// Retrieve the value of allowed values property
-		var newValues = allowedValuesRule.values(this._propertyChain.lastTarget(this._target), !!this._allowedValuesMayBeNull);
-
-		// If there was previously not a value of the path and now there is, then all items are new
-		ensureAllowedValuesLoaded(newValues, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
-	}
-	else {
-		refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
-	}
-
-}
-
 function clearInvalidOptions(allowedValues) {
 	var rawValue = this.get_rawValue();
 	if (allowedValues) {
@@ -733,6 +700,40 @@ function clearInvalidOptions(allowedValues) {
 	else {
 		this.set_rawValue(null);
 	}
+}
+
+function allowedValuesChanged(optionsSourceArray, sender, args) {
+	var lastProperty = this._propertyChain.lastProperty();
+	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+	var allowedValues = allowedValuesRule.values(this._propertyChain.lastTarget(this._target), !!this._allowedValuesMayBeNull);
+
+	// Clear out invalid selections
+	clearInvalidOptions.call(this, allowedValues);
+
+	// Load allowed value items that were added
+	if (args.changes) {
+		// Collect all items that were added
+		var newItems = [];
+		args.changes.forEach(function(change) {
+			if (change.newItems) {
+				newItems.addRange(change.newItems);
+			}
+		});
+		if (newItems.length > 0) {
+			ensureAllowedValuesLoaded(newItems, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+		}
+		else {
+			refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
+		}
+	}
+	else if (!args.oldValue && args.newValue) {
+		// If there was previously not a value of the path and now there is, then all items are new
+		ensureAllowedValuesLoaded(allowedValues, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+	}
+	else {
+		refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
+	}
+
 }
 
 Adapter.mixin({

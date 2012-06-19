@@ -78,14 +78,19 @@ function Property$_init(obj, val, force) {
 		var _this = this;
 		Observer.makeObservable(val);
 		Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
-			// NOTE: property change should be broadcast before rules are run so that if 
-			// any rule causes a roundtrip to the server these changes will be available
-			_this._containingType.model.notifyListChanged(target, _this, args.get_changes());
+			var changes = args.get_changes();
 
-			// NOTE: oldValue is not currently implemented for lists
-			_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: args.get_changes(), collectionChanged: true}]);
+			// Don't raise the change event unless there is actually a change to the collection
+			if (changes && changes.some(function(change) { return (change.newItems && change.newItems.length > 0) || (change.oldItems && change.oldItems.length > 0); })) {
+				// NOTE: property change should be broadcast before rules are run so that if 
+				// any rule causes a roundtrip to the server these changes will be available
+				_this._containingType.model.notifyListChanged(target, _this, changes);
 
-			Observer.raisePropertyChanged(target, _this._name);
+				// NOTE: oldValue is not currently implemented for lists
+				_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: changes, collectionChanged: true}]);
+
+				Observer.raisePropertyChanged(target, _this._name);
+			}
 		});
 	}
 

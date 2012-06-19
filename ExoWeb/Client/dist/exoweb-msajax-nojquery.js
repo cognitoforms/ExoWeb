@@ -4645,14 +4645,19 @@ window.ExoWeb.DotNet = {};
 			var _this = this;
 			Observer.makeObservable(val);
 			Observer.addCollectionChanged(val, function Property$collectionChanged(sender, args) {
-				// NOTE: property change should be broadcast before rules are run so that if 
-				// any rule causes a roundtrip to the server these changes will be available
-				_this._containingType.model.notifyListChanged(target, _this, args.get_changes());
+				var changes = args.get_changes();
 
-				// NOTE: oldValue is not currently implemented for lists
-				_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: args.get_changes(), collectionChanged: true}]);
+				// Don't raise the change event unless there is actually a change to the collection
+				if (changes && changes.some(function(change) { return (change.newItems && change.newItems.length > 0) || (change.oldItems && change.oldItems.length > 0); })) {
+					// NOTE: property change should be broadcast before rules are run so that if 
+					// any rule causes a roundtrip to the server these changes will be available
+					_this._containingType.model.notifyListChanged(target, _this, changes);
 
-				Observer.raisePropertyChanged(target, _this._name);
+					// NOTE: oldValue is not currently implemented for lists
+					_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: changes, collectionChanged: true}]);
+
+					Observer.raisePropertyChanged(target, _this._name);
+				}
 			});
 		}
 
@@ -15869,39 +15874,6 @@ window.ExoWeb.DotNet = {};
 		signal.waitForAll(callback, thisPtr);
 	}
 
-	function allowedValuesChanged(optionsSourceArray, sender, args) {
-		var lastProperty = this._propertyChain.lastProperty();
-		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
-
-		// Load allowed value items that were added
-		if (args.changes) {
-			// Collect all items that were added
-			var newItems = [];
-			args.changes.forEach(function(change) {
-				if (change.newItems) {
-					newItems.addRange(change.newItems);
-				}
-			});
-			if (newItems.length > 0) {
-				ensureAllowedValuesLoaded(newItems, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
-			}
-			else {
-				refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
-			}
-		}
-		else if (!args.oldValue && args.newValue) {
-			// Retrieve the value of allowed values property
-			var newValues = allowedValuesRule.values(this._propertyChain.lastTarget(this._target), !!this._allowedValuesMayBeNull);
-
-			// If there was previously not a value of the path and now there is, then all items are new
-			ensureAllowedValuesLoaded(newValues, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
-		}
-		else {
-			refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
-		}
-
-	}
-
 	function clearInvalidOptions(allowedValues) {
 		var rawValue = this.get_rawValue();
 		if (allowedValues) {
@@ -15921,6 +15893,40 @@ window.ExoWeb.DotNet = {};
 		else {
 			this.set_rawValue(null);
 		}
+	}
+
+	function allowedValuesChanged(optionsSourceArray, sender, args) {
+		var lastProperty = this._propertyChain.lastProperty();
+		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
+		var allowedValues = allowedValuesRule.values(this._propertyChain.lastTarget(this._target), !!this._allowedValuesMayBeNull);
+
+		// Clear out invalid selections
+		clearInvalidOptions.call(this, allowedValues);
+
+		// Load allowed value items that were added
+		if (args.changes) {
+			// Collect all items that were added
+			var newItems = [];
+			args.changes.forEach(function(change) {
+				if (change.newItems) {
+					newItems.addRange(change.newItems);
+				}
+			});
+			if (newItems.length > 0) {
+				ensureAllowedValuesLoaded(newItems, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+			}
+			else {
+				refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
+			}
+		}
+		else if (!args.oldValue && args.newValue) {
+			// If there was previously not a value of the path and now there is, then all items are new
+			ensureAllowedValuesLoaded(allowedValues, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+		}
+		else {
+			refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
+		}
+
 	}
 
 	Adapter.mixin({
