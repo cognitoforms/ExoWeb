@@ -129,7 +129,7 @@ Adapter.mixin({
 				var subscription = this._formatSubscribers[path] = { chain: chain, handler: this._loadForFormatAndRaiseChange.bind(this).prependArguments(val) };
 				var entities = val instanceof Array ? val : [val];
 				entities.forEach(function (entity) {
-					chain.addChanged(subscription.handler, entity);
+					chain.addChanged(subscription.handler, entity, false, true);
 				});
 			}, this);
 		});
@@ -142,7 +142,7 @@ Adapter.mixin({
 
 			// subscribe to property changes at all points in the path
 			this._targetChangedHandler = this._onTargetChanged.bind(this);
-			this._propertyChain.addChanged(this._targetChangedHandler, this._target);
+			this._propertyChain.addChanged(this._targetChangedHandler, this._target, false, true);
 
 			this._formatSubscribers = {};
 
@@ -156,7 +156,7 @@ Adapter.mixin({
 			this._propertyChain.addChanged(function (sender, args) {
 				_this._unsubscribeFromFormatChanges(args.oldValue);
 				_this._subscribeToFormatChanges(args.newValue);
-			}, this._target);
+			}, this._target, false, true);
 
 			this._observable = true;
 		}
@@ -794,7 +794,7 @@ Adapter.mixin({
 
 				// Respond to changes to allowed values
 				this._allowedValuesChangedHandler = allowedValuesChanged.bind(this).prependArguments(observableAllowedValues);
-				allowedValuesRule.source.addChanged(this._allowedValuesChangedHandler, targetObj);
+				allowedValuesRule.source.addChanged(this._allowedValuesChangedHandler, targetObj, false, true);
 
 				// Create a transform that watches the observable copy and uses the user-supplied _allowedValuesTransform if given
 				if (this._allowedValuesTransform) {

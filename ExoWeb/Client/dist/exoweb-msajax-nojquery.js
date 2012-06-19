@@ -6898,14 +6898,27 @@ window.ExoWeb.DotNet = {};
 				ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
 				return;
 			}
-			if (this.source && (this.source.get_isStatic() || this.source instanceof Property || this.source.lastTarget(obj, exitEarly))) {
 
-				// get the allowed values from the property chain
-				var values = this.source.value(obj);
+			// For non-static properties, verify that a final target exists and
+			// if not return an appropriate null or undefined value instead.
+			if (!this.source.get_isStatic()) {
+				// Get the value of the last target for the source property (chain).
+				var lastTarget = this.source.lastTarget(obj, exitEarly);
 
-				// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
-				return values;
+				// Use the last target to distinguish between the absence of data and
+				// data that has not been loaded, if a final value cannot be obtained.
+				if (lastTarget === undefined) {
+					// Undefined signifies unloaded data
+					return undefined;
+				}
+				else if (lastTarget === null) {
+					// Null signifies the absensce of a value
+					return null;
+				}
 			}
+
+			// Return the value of the source for the given object
+			return this.source.value(obj);
 		},
 		toString: function AllowedValuesRule$toString() {
 			return $format("{0}.{1} allowed values = {2}", [this.property.get_containingType().get_fullName(), this.property.get_name(), this._sourcePath]);
@@ -15285,7 +15298,7 @@ window.ExoWeb.DotNet = {};
 					var subscription = this._formatSubscribers[path] = { chain: chain, handler: this._loadForFormatAndRaiseChange.bind(this).prependArguments(val) };
 					var entities = val instanceof Array ? val : [val];
 					entities.forEach(function (entity) {
-						chain.addChanged(subscription.handler, entity);
+						chain.addChanged(subscription.handler, entity, false, true);
 					});
 				}, this);
 			});
@@ -15298,7 +15311,7 @@ window.ExoWeb.DotNet = {};
 
 				// subscribe to property changes at all points in the path
 				this._targetChangedHandler = this._onTargetChanged.bind(this);
-				this._propertyChain.addChanged(this._targetChangedHandler, this._target);
+				this._propertyChain.addChanged(this._targetChangedHandler, this._target, false, true);
 
 				this._formatSubscribers = {};
 
@@ -15312,7 +15325,7 @@ window.ExoWeb.DotNet = {};
 				this._propertyChain.addChanged(function (sender, args) {
 					_this._unsubscribeFromFormatChanges(args.oldValue);
 					_this._subscribeToFormatChanges(args.newValue);
-				}, this._target);
+				}, this._target, false, true);
 
 				this._observable = true;
 			}
@@ -15950,7 +15963,7 @@ window.ExoWeb.DotNet = {};
 
 					// Respond to changes to allowed values
 					this._allowedValuesChangedHandler = allowedValuesChanged.bind(this).prependArguments(observableAllowedValues);
-					allowedValuesRule.source.addChanged(this._allowedValuesChangedHandler, targetObj);
+					allowedValuesRule.source.addChanged(this._allowedValuesChangedHandler, targetObj, false, true);
 
 					// Create a transform that watches the observable copy and uses the user-supplied _allowedValuesTransform if given
 					if (this._allowedValuesTransform) {

@@ -81,14 +81,27 @@ AllowedValuesRule.mixin({
 			ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
 			return;
 		}
-		if (this.source && (this.source.get_isStatic() || this.source instanceof Property || this.source.lastTarget(obj, exitEarly))) {
 
-			// get the allowed values from the property chain
-			var values = this.source.value(obj);
+		// For non-static properties, verify that a final target exists and
+		// if not return an appropriate null or undefined value instead.
+		if (!this.source.get_isStatic()) {
+			// Get the value of the last target for the source property (chain).
+			var lastTarget = this.source.lastTarget(obj, exitEarly);
 
-			// ignore if allowed values list is undefined (non-existent or unloaded type) or has not been loaded
-			return values;
+			// Use the last target to distinguish between the absence of data and
+			// data that has not been loaded, if a final value cannot be obtained.
+			if (lastTarget === undefined) {
+				// Undefined signifies unloaded data
+				return undefined;
+			}
+			else if (lastTarget === null) {
+				// Null signifies the absensce of a value
+				return null;
+			}
 		}
+
+		// Return the value of the source for the given object
+		return this.source.value(obj);
 	},
 	toString: function AllowedValuesRule$toString() {
 		return $format("{0}.{1} allowed values = {2}", [this.property.get_containingType().get_fullName(), this.property.get_name(), this._sourcePath]);
