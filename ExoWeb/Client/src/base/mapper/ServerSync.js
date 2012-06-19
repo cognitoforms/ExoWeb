@@ -1130,7 +1130,9 @@ ServerSync.mixin({
 							ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
 							if (!list.contains(itemObj)) {
-								list.add(itemObj);
+								ListLazyLoader.allowModification(list, function() {
+									list.add(itemObj);
+								});
 							}
 						}, after)), this, true);
 					}, this);
@@ -1145,7 +1147,9 @@ ServerSync.mixin({
 						// Update change to reflect the object's new id
 						ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
-						list.remove(itemObj);
+						ListLazyLoader.allowModification(list, function() {
+							list.remove(itemObj);
+						});
 					}, after), this, true);
 				}, this);
 
