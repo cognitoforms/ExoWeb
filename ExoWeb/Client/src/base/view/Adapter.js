@@ -702,8 +702,11 @@ function allowedValuesChanged(optionsSourceArray, sender, args) {
 		}
 	}
 	else if (!args.oldValue && args.newValue) {
+		// Retrieve the value of allowed values property
+		var newValues = allowedValuesRule.values(this._propertyChain.lastTarget(this._target), !!this._allowedValuesMayBeNull);
+
 		// If there was previously not a value of the path and now there is, then all items are new
-		ensureAllowedValuesLoaded(rawValue, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
+		ensureAllowedValuesLoaded(newValues, refreshOptionsFromAllowedValues.prependArguments(optionsSourceArray), this);
 	}
 	else {
 		refreshOptionsFromAllowedValues.call(this, optionsSourceArray);
