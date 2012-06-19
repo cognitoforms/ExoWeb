@@ -12697,8 +12697,6 @@ window.ExoWeb.DotNet = {};
 					if (domReady) {
 						domReady(window.context);
 					}
-
-					window.ruleExecutionCount = ruleExecutionCount;
 				});
 			});
 		};
