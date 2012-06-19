@@ -13,6 +13,7 @@ function Type(model, name, baseType, origin) {
 	this._instanceProperties = {};
 	this._staticProperties = {};
 	this._pendingInit = [];
+	this._pendingInvocation = [];
 
 	// define properties
 	Object.defineProperty(this, "model", { value: model });
@@ -162,12 +163,26 @@ Type.setNewIdPrefix = function setNewIdPrefix(prefix) {
 };
 
 Type.prototype = {
+	// gets and optionally sets the pending initialization status for a static property on the type
+	pendingInvocation: function Type$pendingInvocation(rule, value) {
+		var indexOfRule = this._pendingInvocation.indexOf(rule);
+		if (arguments.length > 1) {
+			if (value && indexOfRule < 0) {
+				this._pendingInvocation.push(rule);
+			}
+			else if (!value && indexOfRule >= 0) {
+				this._pendingInvocation.splice(indexOfRule, 1);
+			}
+		}
+		return indexOfRule >= 0;
+	},
+
 	addInitNew: function Type$addInitNew(handler, obj, once) {
 		this._addEvent("initNew", handler, obj ? equals(obj) : null, once);
 		return this;
 	},
 
-	// gets and optionally sets the pending initialization status for a property on the current instance
+	// gets and optionally sets the pending initialization status for a static property on the type
 	pendingInit: function Type$pendingInit(prop, value) {
 		var result = this[prop._fieldName] === undefined || this._pendingInit[prop.get_name()] === true;
 		if (arguments.length > 1) {
