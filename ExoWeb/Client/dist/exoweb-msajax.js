@@ -5552,10 +5552,9 @@ window.ExoWeb.DotNet = {};
 			return obj;
 		},
 
-		prepend: function PropertyChain$prepend(prop) {
-			var newProps = prop.all();
-			for (var p = newProps.length - 1; p >= 0; p--) {
-				Array.insert(this._properties, 0, newProps[p]);
+		prepend: function PropertyChain$prepend(props) {
+			for (var p = props.length - 1; p >= 0; p--) {
+				Array.insert(this._properties, 0, props[p]);
 			}
 		},
 
@@ -15218,7 +15217,7 @@ window.ExoWeb.DotNet = {};
 		this._format = format ? getFormat(this._propertyChain.get_jstype(), format) : this._propertyChain.get_format();
 
 		// Load the object this adapter is bound to and then load allowed values.
-		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyPath,
+		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyChain.get_path(),
 			this._readySignal.pending(),
 			this._readySignal.orPending(function(err) {
 				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Couldn't evaluate path '{0}', {1}", [propertyPath, err]);
@@ -15284,7 +15283,13 @@ window.ExoWeb.DotNet = {};
 			// If the target is an adapter, prepend its property chain.  Cannot simply concatenate paths
 			// since the child path could be instance-dependent (i.e. the parents value is a subtype).
 			if (this._target instanceof Adapter) {
-				this._propertyChain.prepend(this._target.get_propertyChain());
+				if (this._propertyChain instanceof Property) {
+					this._propertyChain = new PropertyChain(this._propertyChain.get_jstype().meta, [this._propertyChain], []);
+				}
+
+				var parentProp = this._target.get_propertyChain();
+
+				this._propertyChain.prepend(parentProp instanceof PropertyChain ? parentProp.all() : [parentProp]);
 				this._parentAdapter = this._target;
 				this._target = this._target.get_target();
 			}
@@ -15411,7 +15416,7 @@ window.ExoWeb.DotNet = {};
 				}
 
 				// Add the conditions for the new target and subscribe to changes
-				if (this.get_conditions() && newLastTarget) { 
+				if (this.get_conditions() && newLastTarget) {
 					this.get_conditions().addRange(newLastTarget.meta.conditions(this.get_propertyChain().lastProperty()));
 					newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this.get_propertyChain());
 				}
@@ -15586,7 +15591,7 @@ window.ExoWeb.DotNet = {};
 		},
 		set_systemValue: function Adapter$set_systemValue(value) {
 			if (this.get_isEntity()) {
-			
+
 				// set to null
 				if (!value) {
 					this._setValue(null);

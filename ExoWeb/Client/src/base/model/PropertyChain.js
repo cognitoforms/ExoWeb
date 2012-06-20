@@ -328,10 +328,9 @@ PropertyChain.mixin({
 		return obj;
 	},
 
-	prepend: function PropertyChain$prepend(prop) {
-		var newProps = prop.all();
-		for (var p = newProps.length - 1; p >= 0; p--) {
-			Array.insert(this._properties, 0, newProps[p]);
+	prepend: function PropertyChain$prepend(props) {
+		for (var p = props.length - 1; p >= 0; p--) {
+			Array.insert(this._properties, 0, props[p]);
 		}
 	},
 
