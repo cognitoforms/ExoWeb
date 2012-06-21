@@ -5038,7 +5038,11 @@ window.ExoWeb.DotNet = {};
 		// Adds a rule to the property that will update its value based on a calculation.
 		calculated: function (options) {
 			options.property = this;
-			new CalculatedPropertyRule(options.rootType ? options.rootType.meta : this._containingType, options);
+			var definedType = options.rootType ? options.rootType.meta : this._containingType;
+			delete options.rootType;
+
+			new CalculatedPropertyRule(definedType, options);
+		
 			return this;
 		},
 		required: function (error) {
@@ -5062,8 +5066,11 @@ window.ExoWeb.DotNet = {};
 			return this;
 		},
 		conditionIf: function (options, type) {
-			var options = preparePropertyRuleOptions(this, options, type);
-			new ExoWeb.Model.Rule.validated(this._containingType, options);
+			var definedType = options.rootType ? options.rootType.meta : this._containingType;
+			delete options.rootType;
+
+			options = preparePropertyRuleOptions(this, options, type);
+			new ExoWeb.Model.Rule.validated(definedType, options);
 			return this;
 		},
 		errorIf: function (options, error) {
