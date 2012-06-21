@@ -66,7 +66,7 @@ ConditionRule.mixin({
 
 	// subclasses may override this function to return the set of properties to attach conditions to for this rule
 	properties: function ConditionRule$properties() {
-		return this.properties;
+		return this.hasOwnProperty("properties") ? this.properties : [];
 	},
 
 	// subclasses may override this function to calculate an appropriate message for this rule during the registration process
