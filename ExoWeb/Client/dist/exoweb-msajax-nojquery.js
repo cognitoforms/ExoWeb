@@ -7144,7 +7144,7 @@ window.ExoWeb.DotNet = {};
 		// determines whether the property should be considered required
 		isRequired: function RequiredIfRule$required(obj) {
 			var sourceValue = this.compareSource.value(obj);
-			return CompareRule.compare(sourceValue, this.compareOperator, this.compareValue, true);
+			return CompareRule.compare(sourceValue, this.compareOperator, this.compareValue, false);
 		},
 
 		// calculates the appropriate message based on the comparison operator and data type
