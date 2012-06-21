@@ -800,7 +800,12 @@ namespace ExoWeb
 
 			protected override Expression VisitUnary(UnaryExpression u)
 			{
-				return base.VisitUnary(u);
+				if (u.NodeType == ExpressionType.Not)
+					builder.Append("!(");
+				var expr = base.VisitUnary(u);
+				if (u.NodeType == ExpressionType.Not)
+					builder.Append(")");
+				return expr;
 			}
 
 			protected override Expression VisitLambda(LambdaExpression lambda)
