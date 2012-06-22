@@ -142,7 +142,7 @@ function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 	Property$_ensureInited.call(this, obj);
 
 	if (!this.canSetValue(obj, val)) {
-		throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set {0}={1} for instance {2}({3}). A value of type {4} was expected.", this._name, val === undefined ? "<undefined>" : val, obj.meta.type.get_fullName(), obj.meta.id, parseFunctionName(this._jstype));
+		throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set {0}={1} for instance {2}({3}). A value of type {4} was expected.", this._name, val === undefined ? "<undefined>" : val, obj.meta.type.get_fullName(), obj.meta.id, this._jstype && this._jstype.meta ? this._jstype.meta.get_fullName() : parseFunctionName(this._jstype));
 	}
 
 	var old = obj[this._fieldName];
