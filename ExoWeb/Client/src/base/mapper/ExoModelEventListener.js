@@ -65,7 +65,9 @@ ExoModelEventListener.mixin({
 		if (this._filters && this._filters.objectUnregistered && this._filters.objectUnregistered(obj) !== true)
 			return;
 
-		ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {0}({1})", obj.meta.type.fullName, obj.meta.id);
+		if (obj.meta.type.get_origin() === "server") {
+			ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {0}({1})", obj.meta.type.fullName, obj.meta.id);
+		}
 	},
 	onPropertyChanged: function ExoModelEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 		if (this._filters && this._filters.propertyChanged && this._filters.propertyChanged(obj, property, newValue, oldValue) !== true)
