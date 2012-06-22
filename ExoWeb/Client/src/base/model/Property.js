@@ -520,8 +520,11 @@ Property.mixin({
 			new ExoWeb.Model.Rule.requiredIf(this._containingType, options);
 		}
 		else {
-			var options = preparePropertyRuleOptions(this, source);
-			new ExoWeb.Model.Rule.requiredIf(this._containingType, options);
+			var definedType = source.rootType ? source.rootType.meta : this._containingType;
+			delete source.rootType;
+			source = preparePropertyRuleOptions(this, source);
+
+			new ExoWeb.Model.Rule.requiredIf(definedType, source);
 		}
 		return this;
 	},
