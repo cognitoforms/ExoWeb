@@ -5888,7 +5888,7 @@ window.ExoWeb.DotNet = {};
 			return result;
 		},
 		destroy: function () {
-			this.type.unregister(this.obj);
+			this.type.unregister(this._obj);
 		},
 		// starts listening for change events on the conditions array. Use obj argument to
 		// optionally filter the events to a specific condition type by passing either
