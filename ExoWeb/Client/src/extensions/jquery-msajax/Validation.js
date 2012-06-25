@@ -2,6 +2,10 @@ var isError = function (condition) {
 	return condition.type instanceof ExoWeb.Model.ConditionType.Error;
 };
 
+var isValidationCondition = function (condition) {
+	return condition.type instanceof ExoWeb.Model.ConditionType.Error || condition.type instanceof ExoWeb.Model.ConditionType.Warning;
+};
+
 var ensureInited = function ($el) {
 	if (!window.ExoWeb) {
 		return;
@@ -21,7 +25,7 @@ var ensureInited = function ($el) {
 			if (meta instanceof ExoWeb.Model.ObjectMeta) {
 				var property = meta.type.property(propName);
 				meta.addConditionsChanged(function (sender, args) {
-					if (isError(args.conditionTarget.condition)) {
+					if (isValidationCondition(args.conditionTarget.condition)) {
 						$el.trigger("validated", [meta.conditions(property)]);
 					}
 				}, property);
@@ -29,7 +33,7 @@ var ensureInited = function ($el) {
 			else if (meta && meta.get_conditions) {
 				var conditions = meta.get_conditions();
 				ExoWeb.Observer.addCollectionChanged(conditions, function (sender, args) {
-					$el.trigger("validated", [conditions.filter(isError)]);
+					$el.trigger("validated", [conditions.filter(isValidationCondition)]);
 				});
 			}
 		}
