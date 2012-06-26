@@ -15005,7 +15005,7 @@ window.ExoWeb.DotNet = {};
 					// Transform the original list using the given options
 					var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
 					if (transformResult.live !== Transform.prototype.live) {
-						ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", \"select\", and \"groupBy\".");
+						ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
 					}
 					return transformResult.live();
 				}
@@ -16050,7 +16050,7 @@ window.ExoWeb.DotNet = {};
 					if (this._allowedValuesTransform) {
 						transformedAllowedValues = (new Function("$array", "{ return $transform($array, true)." + this._allowedValuesTransform + "; }"))(observableAllowedValues);
 						if (transformedAllowedValues.live !== Transform.prototype.live) {
-							ExoWeb.trace.throwAndLog("@", "Invalid options transform result: may only contain \"where\", \"orderBy\", \"select\", and \"groupBy\".");
+							ExoWeb.trace.throwAndLog("@", "Invalid options transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
 						}
 					}
 					else {
