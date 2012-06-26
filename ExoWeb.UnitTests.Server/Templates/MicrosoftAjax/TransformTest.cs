@@ -23,36 +23,9 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 
 		#region Tests
 		[TestMethod]
-		public void BalancedText()
+		public void WhereExpression_WhereExpression()
 		{
-			string run;
-			string remainder;
-
-			run = Accessors.GetBalancedText("[outer[inner] []] - extra", '[', ']', out remainder);
-			run.Should().Be("[outer[inner] []]");
-			remainder.Should().Be(" - extra");
-
-			run = Accessors.GetBalancedText("{Owner{FirstName,LastName}},Tag{Number}", '{', '}', out remainder);
-			run.Should().Be("{Owner{FirstName,LastName}}");
-			remainder.Should().Be(",Tag{Number}");
-
-			Action openAndClosedAreTheSame = () => Accessors.GetBalancedText("", '|', '|', out remainder);
-			openAndClosedAreTheSame.ShouldThrow<ArgumentException>().WithMessage("Open and closed characters cannot be the same.");
-
-			Action doesNotStartWithOpen = () => Accessors.GetBalancedText("abcd", '<', '>', out remainder);
-			doesNotStartWithOpen.ShouldThrow<ArgumentException>().WithMessage("Input text must begin with the open character.");
-
-			Action unbalanced = () => Accessors.GetBalancedText("<abc<d>", '<', '>', out remainder);
-			unbalanced.ShouldThrow<ArgumentException>().WithMessage("The input text is not balanced.");
-
-			Action missingEnd = () => Accessors.GetBalancedText("<abcd", '<', '>', out remainder);
-			missingEnd.ShouldThrow<ArgumentException>().WithMessage("The input text is not valid.");
-		}
-
-		[TestMethod]
-		public void SimpleWhereFilter()
-		{
-			DoTransform(requests =>
+			DoRequestTransform(requests =>
 			{
 				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
 
@@ -70,9 +43,9 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		}
 
 		[TestMethod]
-		public void SimpleGrouping()
+		public void WhereExpression_GroupByExpression()
 		{
-			DoTransform(requests =>
+			DoRequestTransform(requests =>
 			{
 				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
 
@@ -90,9 +63,9 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		}
 
 		[TestMethod]
-		public void FilterGrouping()
+		public void GroupByExpression_FilterExpression()
 		{
-			DoTransform(requests =>
+			DoRequestTransform(requests =>
 			{
 				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
 
@@ -110,9 +83,9 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 		}
 
 		[TestMethod]
-		public void DoubleGrouping()
+		public void GroupByExpression_GroupByExpression_OrderByExpression()
 		{
-			DoTransform(requests =>
+			DoRequestTransform(requests =>
 			{
 				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
 
@@ -133,10 +106,147 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 				Assert.AreEqual("ArchivedUser", ((User)((ModelInstance)firstInactiveGroup).Instance).UserName);
 			});
 		}
+
+		[TestMethod]
+		public void SelectExpression()
+		{
+			DoRequestTransform(requests =>
+			{
+				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
+
+				IEnumerable results = Accessors.DoTransform(inputInstances, "select('User')");
+
+				Assert.IsNotNull(results);
+				Assert.AreEqual(4, results.Cast<object>().Count());
+
+				var outputUsers = results.Cast<ModelInstance>().Select(i => (User)i.Instance);
+				Assert.AreEqual(string.Join(",", requests.Select(r => r.User.UserName).ToArray()), string.Join(",", outputUsers.Select(u => u.UserName).ToArray()));
+			});
+		}
+
+		[TestMethod]
+		public void SelectExpression_WhereExpression()
+		{
+			DoRequestTransform(requests =>
+			{
+				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
+
+				IEnumerable results = Accessors.DoTransform(inputInstances, "select('User')", "where('IsActive')");
+
+				Assert.IsNotNull(results);
+				Assert.AreEqual(3, results.Cast<object>().Count());
+
+				var outputUsers = results.Cast<ModelInstance>().Select(i => (User)i.Instance);
+				Assert.AreEqual(string.Join(",", requests.Where(r => r.User.IsActive).Select(r => r.User.UserName).ToArray()), string.Join(",", outputUsers.Select(u => u.UserName).ToArray()));
+			});
+		}
+
+		[TestMethod]
+		public void SelectFunction()
+		{
+			DoRequestTransform(requests =>
+			{
+				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
+
+				IEnumerable results = Accessors.DoTransform(inputInstances, "select(function(obj) { return obj.get_User(); })");
+
+				Assert.IsNotNull(results);
+				Assert.AreEqual(4, results.Cast<object>().Count());
+
+				var outputUsers = results.Cast<ModelInstance>().Select(i => (User)i.Instance);
+				Assert.AreEqual(string.Join(",", requests.Select(r => r.User.UserName).ToArray()), string.Join(",", outputUsers.Select(u => u.UserName).ToArray()));
+			});
+		}
+
+		[TestMethod]
+		public void SelectFunction_WhereExpression()
+		{
+			DoRequestTransform(requests =>
+			{
+				IEnumerable inputInstances = requests.Select(r => ModelContext.Current.GetModelInstance(r));
+
+				IEnumerable results = Accessors.DoTransform(inputInstances, "select(function(obj) { return obj.get_User(); })", "where('IsActive')");
+
+				Assert.IsNotNull(results);
+				Assert.AreEqual(3, results.Cast<object>().Count());
+
+				var outputUsers = results.Cast<ModelInstance>().Select(i => (User)i.Instance);
+				Assert.AreEqual(string.Join(",", requests.Where(r => r.User.IsActive).Select(r => r.User.UserName).ToArray()), string.Join(",", outputUsers.Select(u => u.UserName).ToArray()));
+			});
+		}
+
+		[TestMethod]
+		public void SelectManyExpression()
+		{
+			DoUserTransform(users =>
+			{
+				IEnumerable inputInstances = users.Select(r => ModelContext.Current.GetModelInstance(r));
+
+				IEnumerable results = Accessors.DoTransform(inputInstances, "selectMany('Requests')");
+
+				Assert.IsNotNull(results);
+				Assert.AreEqual(4, results.Cast<object>().Count());
+
+				var outputRequests = results.Cast<ModelInstance>().Select(i => (Request)i.Instance);
+				Assert.AreEqual(string.Join(",", users.SelectMany(u => u.Requests).Select(r => r.Description).ToArray()), string.Join(",", outputRequests.Select(r => r.Description).ToArray()));
+			});
+		}
+
+		[TestMethod]
+		public void SelectManyExpression_WhereExpression()
+		{
+			DoUserTransform(users =>
+			{
+				IEnumerable inputInstances = users.Select(r => ModelContext.Current.GetModelInstance(r));
+
+				IEnumerable results = Accessors.DoTransform(inputInstances, "selectMany('Requests')", "where('User.IsActive')");
+
+				Assert.IsNotNull(results);
+				Assert.AreEqual(3, results.Cast<object>().Count());
+
+				var outputRequests = results.Cast<ModelInstance>().Select(i => (Request)i.Instance);
+				Assert.AreEqual(string.Join(",", users.SelectMany(u => u.Requests).Where(r => r.User.IsActive).Select(r => r.Description).ToArray()), string.Join(",", outputRequests.Select(r => r.Description).ToArray()));
+			});
+		}
+
+		[TestMethod]
+		public void SelectManyFunction()
+		{
+			DoUserTransform(users =>
+			{
+				IEnumerable inputInstances = users.Select(r => ModelContext.Current.GetModelInstance(r));
+
+				IEnumerable results = Accessors.DoTransform(inputInstances, "selectMany(function(obj) { return obj.get_Requests(); })");
+
+				Assert.IsNotNull(results);
+				Assert.AreEqual(4, results.Cast<object>().Count());
+
+				var outputRequests = results.Cast<ModelInstance>().Select(i => (Request)i.Instance);
+				Assert.AreEqual(string.Join(",", users.SelectMany(u => u.Requests).Select(r => r.Description).ToArray()), string.Join(",", outputRequests.Select(r => r.Description).ToArray()));
+			});
+		}
+
+		[TestMethod]
+		public void SelectManyFunction_WhereExpression()
+		{
+			DoUserTransform(users =>
+			{
+				IEnumerable inputInstances = users.Select(r => ModelContext.Current.GetModelInstance(r));
+
+				IEnumerable results = Accessors.DoTransform(inputInstances, "selectMany(function(obj) { return obj.get_Requests(); })", "where('User.IsActive')");
+
+				Assert.IsNotNull(results);
+				Assert.AreEqual(3, results.Cast<object>().Count());
+
+				var outputRequests = results.Cast<ModelInstance>().Select(i => (Request)i.Instance);
+				Assert.AreEqual(string.Join(",", users.SelectMany(u => u.Requests).Where(r => r.User.IsActive).Select(r => r.Description).ToArray()), string.Join(",", outputRequests.Select(r => r.Description).ToArray()));
+			});
+		}
+
 		#endregion
 
 		#region Helpers
-		private void DoTransform(Action<IEnumerable<Request>> action)
+		private void CreateTransformData(Action<User, Request, Request, Request, User, Request> action)
 		{
 			User user = new User() { IsActive = true, UserName = "TestUser" };
 			Category serverCategory = new Category() { Name = "Server" };
@@ -150,18 +260,21 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 			request1.Category = serverCategory;
 			request1.Priority = normalPriority;
 			request1.Description = "Server request";
+			user.Requests.Add(request1);
 
 			Request request2 = new Request();
 			request2.User = user;
 			request2.Category = clientCategory;
 			request2.Priority = normalPriority;
 			request2.Description = "Client request";
+			user.Requests.Add(request2);
 
 			Request request3 = new Request();
 			request3.User = user;
 			request3.Category = clientCategory;
 			request3.Priority = lowPriority;
 			request3.Description = "Low priority client request";
+			user.Requests.Add(request3);
 
 			User archivedUser = new User() { IsActive = false, UserName = "ArchivedUser" };
 
@@ -170,8 +283,19 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 			archivedRequest.Category = new Category() { Name = "Legacy" };
 			archivedRequest.Priority = lowPriority;
 			archivedRequest.Description = "Archived request";
+			archivedUser.Requests.Add(archivedRequest);
 
-			action(new Request[] { request1, request2, request3, archivedRequest });
+			action(user, request1, request2, request3, archivedUser, archivedRequest);
+		}
+
+		private void DoRequestTransform(Action<IEnumerable<Request>> action)
+		{
+			CreateTransformData((user, request1, request2, request3, archivedUser, archivedRequest) => action(new Request[] { request1, request2, request3, archivedRequest }));
+		}
+
+		private void DoUserTransform(Action<IEnumerable<User>> action)
+		{
+			CreateTransformData((user, request1, request2, request3, archivedUser, archivedRequest) => action(new User[] { user, archivedUser }));
 		}
 		#endregion
 		

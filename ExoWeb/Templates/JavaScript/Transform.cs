@@ -61,8 +61,12 @@ namespace ExoWeb.Templates.JavaScript
 							GroupIndex = Operations.Count;
 						Operations.Add(GroupBy(value));
 					}
+					else if (name == "select")
+						Operations.Add(Select(value));
+					else if (name == "selectMany")
+						Operations.Add(SelectMany(value));
 					else if (name != "live")
-						throw new NotSupportedException("Only orderBy, where, groupBy, and live are supported.");
+						throw new NotSupportedException("Only orderBy, where, groupBy, select, selectMany, and live are supported.");
 
 					if (expression.Length > 0)
 					{
@@ -182,14 +186,26 @@ namespace ExoWeb.Templates.JavaScript
 		{
 			var modelSource = new ModelSource(instance.Type, path);
 			var source = modelSource.GetSource(instance);
+
 			if (source == null)
 				return null;
+
 			var property = source.Properties[modelSource.SourceProperty];
 			var isReference = property is ModelReferenceProperty;
 			var value = modelSource.GetValue(instance);
+
 			if (value == null)
 				return null;
-			return isReference ? ModelContext.Current.GetModelInstance(value) : value;
+
+			if (isReference)
+			{
+				if (value is IEnumerable)
+					return ((IEnumerable)value).Cast<object>().Select(o => ModelContext.Current.GetModelInstance(o));
+				else
+					return ModelContext.Current.GetModelInstance(value);
+			}
+
+			return value;
 		}
 
 		/// <summary>
@@ -312,7 +328,7 @@ namespace ExoWeb.Templates.JavaScript
 			// TODO: optimize for constants
 			if (expression.StartsWith("function"))
 			{
-				// The where filter is an anonymous function, so generate a new function that declares common
+				// The groupBy filter is an anonymous function, so generate a new function that declares common
 				// variables in the parent scope, and also passes the hidden argument to the function itself.
 				var function = GenerateFunction(expression, "(", ")(arguments[4])");
 				return (transform, opIndex, page, enumerable) =>
@@ -359,6 +375,130 @@ namespace ExoWeb.Templates.JavaScript
 						return enumerable.Cast<ModelInstance>()
 							.GroupBy(obj => TryEvaluatePath(obj, groupByText))
 							.Select(g => new Grouping(g.Key, g));
+					}
+				};
+			}
+		}
+
+		static Func<Transform, int, Page, IEnumerable, IEnumerable> Select(string expression)
+		{
+			// TODO: optimize for constants
+			if (expression.StartsWith("function"))
+			{
+				// The select filter is an anonymous function, so generate a new function that declares common
+				// variables in the parent scope, and also passes the hidden argument to the function itself.
+				var function = GenerateFunction(expression, "(", ")(arguments[4])");
+				return (transform, opIndex, page, enumerable) =>
+				{
+					var globalContext = Page.ScriptMarshaller.Wrap(page);
+					var list = Page.ScriptMarshaller.Wrap(enumerable);
+					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
+					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
+					return enumerable.Cast<object>().Select(obj =>
+					{
+						return Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem, obj));
+					});
+				};
+			}
+			else
+			{
+				var function = GenerateFunction(expression);
+				return (transform, opIndex, page, enumerable) =>
+				{
+					// Determine whether the given enumerable is a grouping.
+					var isGrouping = transform.IsGrouping(opIndex);
+
+					var globalContext = Page.ScriptMarshaller.Wrap(page);
+					var list = Page.ScriptMarshaller.Wrap(enumerable);
+					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
+					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
+					var selectText = (string)Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem));
+
+					if (isGrouping)
+					{
+						return enumerable.Cast<Grouping>().Select((obj, i) =>
+						{
+							object result;
+							var path = selectText;
+							if (!obj.TryGetValue(path, out path, out result))
+								throw new InvalidGroupByException(selectText);
+							if (!string.IsNullOrEmpty(path))
+								result = TryEvaluatePath((ModelInstance)result, path);
+							return result;
+						});
+					}
+					else
+					{
+						return enumerable.Cast<ModelInstance>().Select((obj, i) => TryEvaluatePath(obj, selectText));
+					}
+				};
+			}
+		}
+
+		static Func<Transform, int, Page, IEnumerable, IEnumerable> SelectMany(string expression)
+		{
+			// TODO: optimize for constants
+			if (expression.StartsWith("function"))
+			{
+				// The selectMany filter is an anonymous function, so generate a new function that declares common
+				// variables in the parent scope, and also passes the hidden argument to the function itself.
+				var function = GenerateFunction(expression, "(", ")(arguments[4])");
+				return (transform, opIndex, page, enumerable) =>
+				{
+					var globalContext = Page.ScriptMarshaller.Wrap(page);
+					var list = Page.ScriptMarshaller.Wrap(enumerable);
+					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
+					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
+					return enumerable.Cast<object>().SelectMany(obj =>
+					{
+						var result = ExecuteFunction(function, globalContext, list, index, dataItem, obj);
+						if (!(result is IEnumerable))
+							throw new InvalidSelectManyExpression(expression);
+						var results = (IEnumerable)result;
+						return results.Cast<object>().Select(o => Page.ScriptMarshaller.Unwrap(o));
+					});
+				};
+			}
+			else
+			{
+				var function = GenerateFunction(expression);
+				return (transform, opIndex, page, enumerable) =>
+				{
+					// Determine whether the given enumerable is a grouping.
+					var isGrouping = transform.IsGrouping(opIndex);
+
+					var globalContext = Page.ScriptMarshaller.Wrap(page);
+					var list = Page.ScriptMarshaller.Wrap(enumerable);
+					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
+					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
+					var selectManyText = (string)Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem));
+
+					if (isGrouping)
+					{
+						return enumerable.Cast<Grouping>().SelectMany((obj, i) =>
+						{
+							object result;
+							var path = selectManyText;
+							if (!obj.TryGetValue(path, out path, out result))
+								throw new InvalidGroupByException(selectManyText);
+							if (!string.IsNullOrEmpty(path))
+								result = TryEvaluatePath((ModelInstance)result, path);
+							if (!(result is IEnumerable))
+								throw new InvalidSelectManyExpression(expression);
+							var results = (IEnumerable)result;
+							return results.Cast<object>().Select(o => Page.ScriptMarshaller.Unwrap(o));
+						});
+					}
+					else
+					{
+						return enumerable.Cast<ModelInstance>().SelectMany((obj, i) =>
+						{
+							var result = TryEvaluatePath(obj, selectManyText);
+							if (!(result is IEnumerable))
+								throw new InvalidSelectManyExpression(expression);
+							var results = (IEnumerable)result;
+							return results.Cast<object>().Select(o => Page.ScriptMarshaller.Unwrap(o));
+						});
 					}
 				};
 			}
@@ -697,6 +837,24 @@ namespace ExoWeb.Templates.JavaScript
 			get
 			{
 				return string.Format("Expression \"{0}\" is not valid for a grouping.", Expression);
+			}
+		}
+	}
+
+	public class InvalidSelectManyExpression : ApplicationException
+	{
+		public string Expression { get; private set; }
+
+		public InvalidSelectManyExpression(string expression)
+		{
+			this.Expression = expression;
+		}
+
+		public override string Message
+		{
+			get
+			{
+				return string.Format("The result of expression \"{0}\" is not an enumerable.", Expression);
 			}
 		}
 	}

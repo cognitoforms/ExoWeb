@@ -12,7 +12,7 @@
 		<script src="../Common/Scripts/ExoWeb/exoweb-msajax.js" type="text/javascript"></script>
 		<script src="../Common/Scripts/QUnit/qunit.ext.js" type="text/javascript"></script>
 		<script src="TransformInterface.js" type="text/javascript"></script>
-		
+
 		<script type="text/javascript">
 			var mh = { FirstName: "Matt", LastName: "Hooper", Grade: "01" };
 			var bm = { FirstName: "Bryan", LastName: "Matthews", Grade: "01" };
@@ -89,11 +89,21 @@
 				var selected = $transform(list).select(function(item) { return item.toLowerCase(); });
 				same(selected, ["apple", "orange", "banana", "artichoke"], "should result in lower-case versions of input");
 			});
-			
+
 			test("select path", function() {
 				var list = ["Apple", "Orange", "Banana", "Artichoke"];
 				var selected = $transform(list).select("length");
 				same(selected, [5, 6, 6, 9], "should result in string lengths");
+			});
+
+			test("selectMany function", function() {
+				var list = ["Apple", "Orange"];
+				var selected = $transform(list).selectMany(function(item) { return Array.prototype.map.call(item, function(c) { return c; }); });
+				same(selected, ["A", "p", "p", "l", "e", "O", "r", "a", "n", "g", "e"], "should result in all characters");
+			});
+
+			test("selectMany path", function() {
+				same($transform([{ Users: [mh, bm, pg] }, { Users: [jd, sg, ag] }]).selectMany("Users"), [mh, bm, pg, jd, sg, ag]);
 			});
 
 			test("live mode", function() {
@@ -367,6 +377,18 @@
 				equals(live[0].group, "o");
 				equals(live[1].group, "a");
 				equals(live[2].group, "b");
+
+				list = ["Apple", "Orange"];
+				Sys.Observer.makeObservable(list);
+				var live = $transform(list).selectMany(function(item) { return Array.prototype.map.call(item, function(c) { return c; }); }).live();
+				equals(live.length, 11, "should be 11 characters");
+				equals(live.join(""), "AppleOrange", "should be 'AppleOrange'");
+				list.insert(0, "Olive");
+				equals(live.length, 16, "should now be 16 characters");
+				equals(live.join(""), "OliveAppleOrange", "should be 'OliveAppleOrange'");
+				list.removeAt(1);
+				equals(live.length, 11, "should now be 16 characters");
+				equals(live.join(""), "OliveOrange", "should be 'OliveOrange'");
 			});
 
 		</script>

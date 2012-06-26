@@ -2042,6 +2042,10 @@ window.ExoWeb.DotNet = {};
 		return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + selector + "');");
 	}).cached();
 
+	var compileSelectManyFunction = (function Transform$compileSelectManyFunction(selector) {
+		return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + selector + "');");
+	}).cached();
+
 	var compileGroupsFunction = (function Transform$compileGroupsFunction(groups) {
 		return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
 	}).cached();
@@ -2101,6 +2105,10 @@ window.ExoWeb.DotNet = {};
 		select: function select(input, selector, thisPtr) {
 			var mapFn = selector instanceof Function ? selector : compileSelectFunction(selector);
 			return input.map(mapFn, thisPtr);
+		},
+		selectMany: function select(input, selector, thisPtr) {
+			var mapFn = selector instanceof Function ? selector : compileSelectFunction(selector);
+			return input.mapToArray(mapFn, thisPtr);
 		},
 		groupBy: function groupBy(input, groups, thisPtr) {
 			var groupFn = groups instanceof Function ? groups : compileGroupsFunction(groups);
@@ -2179,6 +2187,10 @@ window.ExoWeb.DotNet = {};
 		select: function Transform$select(selector, thisPtr) {
 			var output = transforms.select(this.input(), selector, thisPtr);
 			return makeTransform(output, this, "select", selector, thisPtr);
+		},
+		selectMany: function Transform$selectMany(selector, thisPtr) {
+			var output = transforms.selectMany(this.input(), selector, thisPtr);
+			return makeTransform(output, this, "selectMany", selector, thisPtr);
 		},
 		groupBy: function Transform$groupBy(groups, thisPtr) {
 			var output = transforms.groupBy(this.input(), groups, thisPtr);
@@ -2308,6 +2320,33 @@ window.ExoWeb.DotNet = {};
 							else if (change.newItems) {
 								var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectFunction(step._transform.arg);
 								change.newItems = change.newItems.map(function(item) {
+									return mapFn.call(step._transform.thisPtr || item, item);
+								});
+
+								// splice the filtered items into the result array
+								var spliceArgs = change.newItems.copy();
+								spliceArgs.splice(0, 0, change.newStartingIndex, 0);
+								Array.prototype.splice.apply(stepResult, spliceArgs);
+							}
+						});
+					}
+					else if (step._transform.method === "selectMany") {
+						changes.forEach(function(change) {
+							if (change.oldItems) {
+								var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectManyFunction(step._transform.arg);
+								var oldItemsMany = change.oldItems.mapToArray(function(item) {
+									return mapFn.call(step._transform.thisPtr || item, item);
+								});
+								var oldPreceeding = stepInput.slice(0, change.oldStartingIndex);
+								var oldPreceedingMany = oldPreceeding.mapToArray(function(item) {
+									return mapFn.call(step._transform.thisPtr || item, item);
+								});
+								change.oldItems = stepResult.splice(oldPreceedingMany.length, oldItemsMany.length);
+								change.oldStartingIndex = oldPreceedingMany.length;
+							}
+							else if (change.newItems) {
+								var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectManyFunction(step._transform.arg);
+								change.newItems = change.newItems.mapToArray(function(item) {
 									return mapFn.call(step._transform.thisPtr || item, item);
 								});
 

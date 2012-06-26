@@ -10,6 +10,7 @@ using System.Reflection;
 using ExoModel;
 using System.Threading;
 using System.Collections;
+using FluentAssertions;
 
 namespace ExoWeb.UnitTests.Server
 {
@@ -292,6 +293,34 @@ namespace ExoWeb.UnitTests.Server
 
 			Assert.AreEqual(Accessors.GetUnwrappedArray(unwrapped1), Accessors.GetUnwrappedArray(unwrapped2));
 		}
+
+		[TestMethod]
+		public void BalancedText()
+		{
+			string run;
+			string remainder;
+
+			run = Accessors.GetBalancedText("[outer[inner] []] - extra", '[', ']', out remainder);
+			run.Should().Be("[outer[inner] []]");
+			remainder.Should().Be(" - extra");
+
+			run = Accessors.GetBalancedText("{Owner{FirstName,LastName}},Tag{Number}", '{', '}', out remainder);
+			run.Should().Be("{Owner{FirstName,LastName}}");
+			remainder.Should().Be(",Tag{Number}");
+
+			Action openAndClosedAreTheSame = () => Accessors.GetBalancedText("", '|', '|', out remainder);
+			openAndClosedAreTheSame.ShouldThrow<ArgumentException>().WithMessage("Open and closed characters cannot be the same.");
+
+			Action doesNotStartWithOpen = () => Accessors.GetBalancedText("abcd", '<', '>', out remainder);
+			doesNotStartWithOpen.ShouldThrow<ArgumentException>().WithMessage("Input text must begin with the open character.");
+
+			Action unbalanced = () => Accessors.GetBalancedText("<abc<d>", '<', '>', out remainder);
+			unbalanced.ShouldThrow<ArgumentException>().WithMessage("The input text is not balanced.");
+
+			Action missingEnd = () => Accessors.GetBalancedText("<abcd", '<', '>', out remainder);
+			missingEnd.ShouldThrow<ArgumentException>().WithMessage("The input text is not valid.");
+		}
+
 		#endregion
 
 		#region Helpers
