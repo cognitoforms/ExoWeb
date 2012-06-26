@@ -51,18 +51,18 @@ try {
 			if ("set" in desc) obj.__defineSetter__(prop, desc.set);
 
 			// data only property
-			if (!("get" in propDesc || "set" in propDesc)) {
+			if (!("get" in desc || "set" in desc)) {
 
 				// read/write property
-				if (propDesc.writable) {
-					var value = propDesc.value;
+				if (desc.writable) {
+					var value = desc.value;
 					obj.__defineGetter__(prop, function () { return value; });
 					obj.__defineSetter__(prop, function (val) { value = val; });
 				}
 
 				// read only property
 				else {
-					var value = propDesc.value;
+					var value = desc.value;
 					obj.__defineGetter__(prop, function () { return value; });
 				}
 			}
