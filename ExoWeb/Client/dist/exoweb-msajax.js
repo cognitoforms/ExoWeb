@@ -16174,16 +16174,8 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 		},
-
-		// Pass validation events through to the target
-		///////////////////////////////////////////////////////////////////////////
-		addPropertyValidating: function OptionAdapter$addPropertyValidating(propName, handler) {
-			var prop = this._parent.get_propertyChain();
-			prop.lastTarget(this._parent._target).meta.addPropertyValidating(prop.get_name(), handler);
-		},
-		addPropertyValidated: function OptionAdapter$addPropertyValidated(propName, handler) {
-			var prop = this._parent.get_propertyChain();
-			prop.lastTarget(this._parent._target).meta.addPropertyValidated(prop.get_name(), handler);
+		get_conditions: function OptionAdapter$get_conditions() {
+			return this._parent.get_conditions();
 		}
 	};
 
@@ -16229,16 +16221,8 @@ window.ExoWeb.DotNet = {};
 		get_options: function OptionGroupAdapter$get_options() {
 			return this._options;
 		},
-
-		// Pass validation events through to the target
-		///////////////////////////////////////////////////////////////////////////
-		addPropertyValidating: function OptionGroupAdapter$addPropertyValidating(propName, handler) {
-			var prop = this._parent.get_propertyChain();
-			prop.lastTarget(this._parent._target).meta.addPropertyValidating(prop.get_name(), handler);
-		},
-		addPropertyValidated: function OptionGroupAdapter$addPropertyValidated(propName, handler) {
-			var prop = this._parent.get_propertyChain();
-			prop.lastTarget(this._parent._target).meta.addPropertyValidated(prop.get_name(), handler);
+		get_conditions: function OptionGroupAdapter$get_conditions() {
+			return this._parent.get_conditions();
 		}
 	};
 
