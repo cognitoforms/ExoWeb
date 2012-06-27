@@ -386,7 +386,7 @@ Type.prototype = {
 			else if (arguments.length > 0)
 				onSuccess = arguments[arguments.length - 1];
 
-			if (!onSuccess instanceof Function)
+			if (!(onSuccess instanceof Function))
 				onSuccess = undefined;
 
 			var onSuccessFn = function (result) {
