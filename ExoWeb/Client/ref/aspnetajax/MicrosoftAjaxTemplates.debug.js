@@ -1172,8 +1172,8 @@
 								break;
 							case "sys:command":
 								var command = Sys.Application._getPropertyValue(null, null, null, value, templateContext, element, null, true);
-								var commandArg = Sys.Application._getCommandAttr(element, "sys:commandargument", useDirect),
-						commandTarget = Sys.Application._getCommandAttr(element, "sys:commandtarget", useDirect);
+								var commandArg = Sys.Application._getCommandAttr(element, templateContext, "sys:commandargument", useDirect),
+						commandTarget = Sys.Application._getCommandAttr(element, templateContext, "sys:commandtarget", useDirect);
 								Sys.UI.DomElement.setCommand(element, command || "", commandArg || null, Sys.UI.DomElement._ensureGet(commandTarget, templateContext, "sys:commandtarget"));
 								break;
 							case "sys:content-template":
@@ -1826,7 +1826,7 @@
 				}
 			}
 		}
-		Sys.Application._getCommandAttr = function Sys$Application$_getCommandAttr(element, name, useDirect) {
+		Sys.Application._getCommandAttr = function Sys$Application$_getCommandAttr(element, templateContext, name, useDirect) {
 			var err, value = null;
 			try {
 				value = useDirect ? element[name] : element.getAttribute(name);
