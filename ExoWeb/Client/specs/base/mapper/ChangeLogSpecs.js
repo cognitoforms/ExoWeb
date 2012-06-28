@@ -146,6 +146,12 @@ describe("ChangeLog", function() {
 		expect(this.log.activeSet().changes().length).toBe(0);
 		expect(change).toBe(3);
 	});
+
+	it("returns the checkpoint if it is the next change", function() {
+		var checkpoint = { type: "Checkpoint", code: "abc" };
+		this.log.add(checkpoint);
+		expect(this.log.undo()).toBe(checkpoint);
+	});
 });
 
 describe("ChangeLog.truncate", function() {

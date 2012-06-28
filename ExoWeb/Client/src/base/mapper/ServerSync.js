@@ -1201,7 +1201,7 @@ ServerSync.mixin({
 				var change = this._changeLog.undo();
 
 				if (change) {
-					if (change === checkpoint) {
+					if (change.type === "Checkpoint" && change.code === checkpoint) {
 						// Exit when we find the checkpoint
 						return;
 					}
