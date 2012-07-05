@@ -65,7 +65,7 @@ RequiredIfRule.mixin({
 		var message;
 		var isDate = this.compareSource.get_jstype() === Date;
 		if (this.compareValue === undefined || this.compareValue === null) {
-			message = this.compareOperator === "Equal" ? "required-if-not-exists" : "required-if-exists";
+			message = Resource.get(this.compareOperator === "Equal" ? "required-if-not-exists" : "required-if-exists");
 		}
 		else if (this.compareOperator === "Equal") {
 			message = Resource.get("required-if-equal");
