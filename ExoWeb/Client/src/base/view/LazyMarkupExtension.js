@@ -39,12 +39,24 @@ Sys.Application.registerMarkupExtension(
 			scopeChain = [];
 		}
 
-		var binding = new Binding(templateContext, source, path, component, properties.targetProperty || targetProperty, {
-			required: properties.required,
-			transform: properties.transform,
-			format: properties.format,
-			nullValue: properties.nullValue
-		}, scopeChain);
+		// Build an options object that represents only the options that the binding
+		// expects, and only if they were specified in the markup extension
+		var options = {};
+		if (properties.hasOwnProperty("required")) {
+			options.required = properties.required;
+		}
+		if (properties.hasOwnProperty("transform")) {
+			options.transform = properties.transform;
+		}
+		if (properties.hasOwnProperty("format")) {
+			options.format = properties.format;
+		}
+		if (properties.hasOwnProperty("nullValue")) {
+			options.nullValue = properties.nullValue;
+		}
+
+		// Construct the new binding class
+		var binding = new Binding(templateContext, source, path, component, properties.targetProperty || targetProperty, options, scopeChain);
 
 		// register with the template context as a child component
 		templateContext.components.push(binding);

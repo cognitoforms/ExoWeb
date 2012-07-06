@@ -64,7 +64,7 @@ Binding.mixin({
 		}
 	},
 
-	_queue: function(value) {
+	_queue: function (value) {
 		if (this._pendingValue) {
 			this._pendingValue = value;
 			return;
@@ -128,7 +128,7 @@ Binding.mixin({
 		}, null, null, this);
 	},
 
-	_update: function(value, oldItems, newItems) {
+	_update: function (value, oldItems, newItems) {
 		if (this._disposed === true) {
 			return;
 		}
