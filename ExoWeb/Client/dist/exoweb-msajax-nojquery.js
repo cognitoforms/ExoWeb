@@ -10276,6 +10276,15 @@ window.ExoWeb.DotNet = {};
 						obj.meta.isDeleted = true;
 						// Unregister the object so that it can't be retrieved via get, known, or have rules execute against it
 						type.meta.unregister(obj);
+						// Remove affected scope queries
+						this._scopeQueries.purge(function (query) {
+							// Remove the deleted object's id from the scope query
+							query.ids.purge(function (id) {
+								return (id === obj.meta.id);
+							}, this);
+							// Remove the scope query if it is empty
+							return query.ids.length === 0;
+						}, this);
 					}, after), this);
 				}, this);
 			}, this);
