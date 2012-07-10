@@ -25,8 +25,9 @@ $exoweb({
 				Roles: { index: 6, type: "Role", isList: true },
 				PosterUrl: { index: 7, type: "String" }
 			},
-			conditionTypes: {
-				"Movie.Genres.AllowedValues": {
+			conditionTypes: [
+				{
+					code: "Movie.Genres.AllowedValues",
 					category: "Error",
 					message: "Genres is not in the list of allowed values.",
 					rule: {
@@ -35,7 +36,8 @@ $exoweb({
 						type: "allowedValues"
 					}
 				},
-				"Movie.Director.AllowedValues": {
+				{
+					code: "Movie.Director.AllowedValues",
 					category: "Error",
 					message: "Director is not in the list of allowed values.",
 					rule: {
@@ -44,7 +46,7 @@ $exoweb({
 						type: "allowedValues"
 					}
 				}
-			}
+			]
 		},
 		Person: {
 			format: "[FirstName] [LastName]",

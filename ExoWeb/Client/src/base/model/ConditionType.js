@@ -92,9 +92,6 @@ ConditionType.prototype = {
 		// Return null to indicate that no condition was created
 		return null;
 	},
-	rules: function ConditionType$rules() {
-		return Array.prototype.slice.call(this._rules);
-	},
 	extend: function ConditionType$extend(data) {
 		for (var prop in data) {
 			if (prop !== "type" && prop !== "rule" && !this["get_" + prop]) {

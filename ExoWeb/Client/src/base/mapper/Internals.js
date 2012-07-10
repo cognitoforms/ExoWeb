@@ -423,7 +423,7 @@ function conditionTypeFromJson(mtype, json) {
 	}
 
 	if (json.rule && json.rule.hasOwnProperty("type")) {
-		conditionType._rules.push(ruleFromJson(mtype, json.rule, conditionType));
+		conditionType.rules.push(ruleFromJson(mtype, json.rule, conditionType));
 	}
 
 	return conditionType;
