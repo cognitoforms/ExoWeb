@@ -1623,7 +1623,7 @@
 						node.removeAttribute("data-sys-tmplidx");
 					}
 
-					// Assign context index (mimicks compiled code)
+					// Assign context index (mimics compiled code)
 					node.__mstcindex = currentContext._tcindex;
 
 					if (node.hasAttribute("data-continue")) {
@@ -1652,7 +1652,17 @@
 						if (node.id) {
 							throw new Error("Found a sys:id binding in pre-rendered markup, but the element already has an id.");
 						}
-						node.id = currentContext.getInstanceId(node.getAttribute("sys:id"));
+						value = node.getAttribute("sys:id");
+						// Evaluate expression value in the current context
+						if (value.startsWith("{") && value.endsWith("}")) {
+							msAttrib = Sys.Application._splitAttribute("id", false);
+							value = Sys.Application._getPropertyValue(msAttrib, parentElement, "id", value, currentContext, parentElement, null, true);
+						}
+						// Otherwise, call getInstanceId to generate a unique id
+						else {
+							value = currentContext.getInstanceId(value);
+						}
+						node.id = value;
 						node.removeAttribute("sys:id");
 					}
 					else if (generateChildIds && node.hasAttribute("id")) {
