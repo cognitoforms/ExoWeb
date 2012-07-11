@@ -86,6 +86,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssertLists.cs" />
+    <Compile Include="JavaScriptExpressionTranslatorTest.cs" />
     <Compile Include="JavascriptHelpersTest.cs" />
     <Compile Include="Templates\JavaScript\EvaluatorTest.cs" />
     <Compile Include="ExoWebTest.cs" />
@@ -104,6 +105,10 @@
     <Compile Include="Templates\MicrosoftAjax\TransformTest.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\ExoModel\ExoModel.Json\ExoModel.Json.csproj">
+      <Project>{67E8A5CD-DEFB-47C7-9B2E-48A142EEC404}</Project>
+      <Name>ExoModel.Json</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\ExoModel\ExoModel.UnitTest\ExoModel.UnitTest.csproj">
       <Project>{943D65C3-5E48-4771-8BA8-A8494C0FFB32}</Project>
       <Name>ExoModel.UnitTest</Name>
