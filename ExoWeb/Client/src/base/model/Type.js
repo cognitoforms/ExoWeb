@@ -369,6 +369,8 @@ Type.prototype = {
 	addMethod: function Type$addMethod(def) {
 		var methodName = this.get_fullName() + "." + def.name;
 		var method = function () {
+			//signature: p1, p2, p#, paths, onSuccess, onFail
+
 			// Detect the optional success and failure callback delegates
 			var onSuccess;
 			var onFail;
@@ -414,6 +416,9 @@ Type.prototype = {
 					paths = arguments[argCount - 1];
 				else if (def.parameters.length != argCount)
 					ExoWeb.trace.throwAndLog("type", "Invalid number of arguments passed to \"{0}.{1}\" method.", [this._fullName, def.name]);
+
+				if (def.isStatic && paths)
+					ExoWeb.trace.throwAndLog("type", "Cannot include paths when invoking a static method - \"{0}.{1}\".", [this.meta._fullName, def.name]);
 
 				// Construct the arguments to pass
 				var args = {};
