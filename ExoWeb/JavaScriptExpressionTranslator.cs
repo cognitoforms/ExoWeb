@@ -14,7 +14,7 @@ namespace ExoWeb
 	/// <summary>
 	/// Builds a JavaScript expression based on an <see cref="Expression"/> tree.
 	/// </summary>
-	public class JavaScriptExpressionTranslator : ModelExpression.ExpressionVisitor
+	public class JavaScriptExpressionTranslator 
 	{
 		#region Fields
 
