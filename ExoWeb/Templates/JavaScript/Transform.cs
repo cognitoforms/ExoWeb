@@ -728,20 +728,19 @@ namespace ExoWeb.Templates.JavaScript
 			/// <param name="type"></param>
 			/// <param name="path"></param>
 			/// <returns></returns>
-			private ModelType DetermineRootType(ModelType type, string path)
+			private ModelPath GetModelPath(ModelType type, string path)
 			{
-				ModelType result = null;
+				ModelType rootType = type;
 				ModelPath modelPath;
-
-				// Recursively check the base type first.
-				if (type.BaseType != null)
-					result = DetermineRootType(type.BaseType, path);
-
-				// If the path is not valid for the base type, then check this type.
-				if (result == null && type.TryGetPath(path, out modelPath))
-					result = type;
-
-				return result;
+				if (rootType.TryGetPath(path, out modelPath))
+					return modelPath;
+				else
+				{
+					rootType = rootType.BaseType;
+					if (rootType == null)
+						throw new InvalidPropertyException(type, path);
+					return GetModelPath(type, path);
+				}
 			}
 
 			/// <summary>
@@ -752,12 +751,7 @@ namespace ExoWeb.Templates.JavaScript
 			/// <returns></returns>
 			private ModelSource GetPathSource(ModelInstance instance, string path)
 			{
-				var rootType = DetermineRootType(instance.Type, path);
-
-				if (rootType == null)
-					throw new InvalidPropertyException(instance.Type, path);
-
-				return new ModelSource(rootType, path);
+				return new ModelSource(GetModelPath(instance.Type, path));
 			}
 
 			public int Compare(object x, object y)
