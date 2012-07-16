@@ -3564,7 +3564,7 @@ window.ExoWeb.DotNet = {};
 					if (token.prefix)
 						result = result + token.prefix;
 					if (token.path) {
-						var value = evalPath(obj, token.path, "", token.path);
+						var value = evalPath(obj, token.path);
 						if (value === undefined || value === null)
 							value = "";
 						else if (token.format) {
