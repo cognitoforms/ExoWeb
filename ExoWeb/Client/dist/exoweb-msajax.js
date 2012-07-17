@@ -4329,7 +4329,7 @@ window.ExoWeb.DotNet = {};
 				format = getFormat(def.type, format);
 			}
 
-			var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic, def.isPersisted, def.index);
+			var prop = new Property(this, def.name, def.type, def.label, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index);
 
 			this._properties[def.name] = prop;
 			(def.isStatic ? this._staticProperties : this._instanceProperties)[def.name] = prop;
@@ -4616,16 +4616,17 @@ window.ExoWeb.DotNet = {};
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, jstype, isList, label, format, isStatic, isPersisted, index) {
+	function Property(containingType, name, jstype, label, format, isList, isStatic, isPersisted, isCalculated, index) {
 		this._containingType = containingType;
 		this._name = name;
 		this._fieldName = "_" + name;
 		this._jstype = jstype;
 		this._label = label || makeHumanReadable(name);
 		this._format = format;
-		this._isList = !!isList;
-		this._isStatic = !!isStatic;
-		this._isPersisted = !!isPersisted;
+		this._isList = isList === true;
+		this._isStatic = isStatic === true;
+		this._isPersisted = isPersisted === true;
+		this._isCalculated = isCalculated === true;
 		this._index = index;
 		this._rules = [];
 		this._defaultValue = 
@@ -4794,10 +4795,12 @@ window.ExoWeb.DotNet = {};
 	}
 
 	Property.mixin({
+
 		defaultValue: function Property$defaultValue(value) {
 			this._defaultValue = value;
 			return this;
 		},
+
 		equals: function Property$equals(prop) {
 			if (prop !== undefined && prop !== null) {
 				if (prop instanceof Property) {
@@ -4809,6 +4812,7 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 		},
+
 		rule: function (type) {
 			if (!type || !(type instanceof Function)) {
 				ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type ? type : (type === undefined ? "undefined" : "null")]);
@@ -4822,9 +4826,6 @@ window.ExoWeb.DotNet = {};
 		},
 		rules: function (filter) {
 			return filter && filter instanceof Function ? this._rules.filter(filter) : this._rules.slice();
-		},	
-		isDefinedBy: function Property$isDefinedBy(mtype) {
-			return this._containingType === mtype || mtype.isSubclassOf(this._containingType);
 		},
 		addRuleRegistered: function Property$addRuleRegistered(handler, obj, once) {
 			this._addEvent("ruleRegistered", handler, obj ? equals(obj) : null, once);
@@ -4834,6 +4835,7 @@ window.ExoWeb.DotNet = {};
 			this._removeEvent("ruleRegistered", handler);
 			return this;
 		},
+
 		toString: function Property$toString() {
 			if (this._isStatic) {
 				return this.get_path();
@@ -4842,16 +4844,22 @@ window.ExoWeb.DotNet = {};
 				return $format("this<{0}>.{1}", [this.get_containingType(), this.get_name()]);
 			}
 		},
+
 		get_containingType: function Property$get_containingType() {
 			return this._containingType;
+		},
+		isDefinedBy: function Property$isDefinedBy(mtype) {
+			return this._containingType === mtype || mtype.isSubclassOf(this._containingType);
 		},
 
 		get_jstype: function Property$get_jstype() {
 			return this._jstype;
 		},
+
 		get_index: function Property$get_index() {
 			return this._index;
 		},
+
 		get_format: function Property$get_format() {
 			if (!this._format) {
 				if (this._jstype.meta instanceof ExoWeb.Model.Type)
@@ -4867,6 +4875,7 @@ window.ExoWeb.DotNet = {};
 		format: function (val) {
 			return this.get_format() ? this.get_format().convert(val) : val;
 		},
+
 		get_defaultValue: function Property$get_defaultValue() {
 			// clone array and date defaults since they are mutable javascript types
 			return this._defaultValue instanceof Array ? this._defaultValue.slice() :
@@ -4874,46 +4883,23 @@ window.ExoWeb.DotNet = {};
 				this._defaultValue instanceof TimeSpan ? new TimeSpan(this._defaultValue.totalMilliseconds) :
 				this._defaultValue;
 		},
+
 		get_origin: function Property$get_origin() {
 			return this._origin ? this._origin : this._containingType.get_origin();
 		},
-		// <DEBUG>
-		_assertType: function Property$_assertType(obj) {
-			if (this._isStatic === true) {
-				if (!ExoWeb.isType(obj.meta, Type)) {
-					ExoWeb.trace.throwAndLog(["model", "entity"], "A model type was expected, found \"{0}\".", [ExoWeb.parseFunctionName(obj.constructor)]);
-				}
-
-				if (!this.isDefinedBy(obj.meta)) {
-					ExoWeb.trace.throwAndLog(["model", "entity"], "Type {0} does not define static property {1}.{2}.", [
-						obj.get_fullName(),
-						this._containingType.get_fullName(),
-						this.get_name()
-					]);
-				}
-			}
-			else {
-				if (!ExoWeb.isType(obj, Entity)) {
-					ExoWeb.trace.throwAndLog(["model", "entity"], "An entity was expected, found \"{0}\".", [ExoWeb.parseFunctionName(obj.constructor)]);
-				}
-
-				if (!this.isDefinedBy(obj.meta.type)) {
-					ExoWeb.trace.throwAndLog(["model", "entity"], "Type {0} does not define non-static property {1}.{2}.", [
-						obj.meta.type.get_fullName(),
-						this._containingType.get_fullName(),
-						this.get_name()
-					]);
-				}
-			}
-		},
-		// </DEBUG>
 
 		get_isEntityType: function Property$get_isEntityType() {
-			return !!this.get_jstype().meta && !this._isList;
+			if (!this.get_jstype().meta) {
+				return false;
+			}
+			return !this._isList;
 		},
 
 		get_isEntityListType: function Property$get_isEntityListType() {
-			return !!this.get_jstype().meta && this._isList;
+			if (!this.get_jstype().meta) {
+				return false;
+			}
+			return this._isList;
 		},
 
 		get_isValueType: function Property$get_isValueType() {
@@ -4932,6 +4918,10 @@ window.ExoWeb.DotNet = {};
 			return this._isPersisted;
 		},
 
+		get_isCalculated: function Property$get_isCalculated() {
+			return this._isCalculated;
+		},
+
 		get_label: function Property$get_label() {
 			return this._label;
 		},
@@ -4939,9 +4929,11 @@ window.ExoWeb.DotNet = {};
 		get_name: function Property$get_name() {
 			return this._name;
 		},
+
 		get_path: function Property$get_path() {
 			return this._isStatic ? (this._containingType.get_fullName() + "." + this._name) : this._name;
 		},
+
 		canSetValue: function Property$canSetValue(obj, val) {
 			// NOTE: only allow values of the correct data type to be set in the model
 
@@ -4981,6 +4973,7 @@ window.ExoWeb.DotNet = {};
 				return valObjectType === this._jstype;
 			}
 		},
+
 		value: function Property$value(obj, val, args) {
 			var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 
@@ -5034,6 +5027,7 @@ window.ExoWeb.DotNet = {};
 		removeChanged: function Property$removeChanged(handler) {
 			this._removeEvent("changed", handler);
 		},
+
 		firstProperty: function Property$firstProperty() {
 			return this;
 		},
@@ -5043,9 +5037,11 @@ window.ExoWeb.DotNet = {};
 		properties: function Property$properties() {
 			return [this];
 		},
+
 		lastTarget: function Property$lastTarget(obj) {
 			return obj;
 		},
+
 		ifExists: function (path) {
 			Model.property(path, this._containingType, true, function (chain) {
 				this.calculated({
@@ -5058,6 +5054,7 @@ window.ExoWeb.DotNet = {};
 
 			return this;
 		},
+
 		alias: function (path, eventName) {
 			Model.property(path, this._containingType, true, function (chain) {
 				this.calculated({
@@ -5070,15 +5067,18 @@ window.ExoWeb.DotNet = {};
 
 			return this;
 		},
+
 		rootedPath: function Property$rootedPath(type) {
 			if (this.isDefinedBy(type)) {
 				return this._isStatic ? this._containingType.get_fullName() + "." + this._name : this._name;
 			}
 		},
+
 		label: function (label) {
 			this._label = label;
 			return this;
 		},
+
 		// Adds a rule to the property that will update its value based on a calculation.
 		calculated: function (options) {
 			options.property = this;
@@ -9641,6 +9641,14 @@ window.ExoWeb.DotNet = {};
 		canSend: function (change) {
 			if (change.type === "Checkpoint") return false;
 
+			// Don't send changes to calculated properties since they can be reproduced at any point when accessed.
+			if (change.type === "ListChange" || change.type === "ReferenceChange" || change.type === "ValueChange") {
+				var jstype = ExoWeb.Model.Model.getJsType(change.instance.type, true);
+				if (jstype && LazyLoader.isLoaded(jstype.meta) && jstype.meta.property(change.property).get_isCalculated()) {
+					return false;
+				}
+			}
+
 			return true;
 		},
 		canSaveObject: function ServerSync$canSaveObject(objOrMeta) {
@@ -11143,11 +11151,12 @@ window.ExoWeb.DotNet = {};
 			var prop = mtype.addProperty({
 				name: propName,
 				type: propType,
-				isList: propJson.isList,
 				label: propJson.label,
 				format: format,
-				isStatic: propJson.isStatic,
+				isList: propJson.isList === true,
+				isStatic: propJson.isStatic === true,
 				isPersisted: propJson.isPersisted !== false,
+				isCalculated: propJson.isCalculated === true,
 				index: propJson.index
 			});
 

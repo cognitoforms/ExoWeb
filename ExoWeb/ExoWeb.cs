@@ -689,6 +689,23 @@ namespace ExoWeb
 			return GetTypes(types.Select(t => t.Name).ToArray());
 		}
 
+		static readonly Dictionary<string, bool> calculatedProperties = new Dictionary<string, bool>();
+
+		/// <summary>
+		/// Determines whether the specified <see cref="ModelProperty"/> is calculated by a rule.
+		/// </summary>
+		/// <param name="property"></param>
+		/// <returns></returns>
+		public static bool IsCalculated(ModelProperty property)
+		{
+			bool isCalculated;
+			if (!calculatedProperties.TryGetValue(property.DeclaringType.Name + "." + property.Name, out isCalculated))
+				isCalculated = calculatedProperties[property.DeclaringType.Name + "." + property.Name] =
+					ExoRule.Rule.GetRegisteredRules(property.DeclaringType).Any(
+						rule => rule.ReturnValues != null && rule.ReturnValues.Contains(property.Name));
+			return isCalculated;
+		}
+
 		#endregion
 
 		#region JSON Serialization
@@ -808,6 +825,10 @@ namespace ExoWeb
 						// IsPersisted
 						if (!property.IsPersisted && !property.IsStatic)
 							json.Set("isPersisted", false);
+
+						// IsCalculated
+						if (IsCalculated(property))
+							json.Set("isCalculated", true);
 
 						// Index
 						int index = 0;

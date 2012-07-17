@@ -313,11 +313,12 @@ function typeFromJson(model, typeName, json) {
 		var prop = mtype.addProperty({
 			name: propName,
 			type: propType,
-			isList: propJson.isList,
 			label: propJson.label,
 			format: format,
-			isStatic: propJson.isStatic,
+			isList: propJson.isList === true,
+			isStatic: propJson.isStatic === true,
 			isPersisted: propJson.isPersisted !== false,
+			isCalculated: propJson.isCalculated === true,
 			index: propJson.index
 		});
 

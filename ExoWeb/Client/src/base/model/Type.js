@@ -326,7 +326,7 @@ Type.prototype = {
 			format = getFormat(def.type, format);
 		}
 
-		var prop = new Property(this, def.name, def.type, def.isList, def.label, format, def.isStatic, def.isPersisted, def.index);
+		var prop = new Property(this, def.name, def.type, def.label, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index);
 
 		this._properties[def.name] = prop;
 		(def.isStatic ? this._staticProperties : this._instanceProperties)[def.name] = prop;
