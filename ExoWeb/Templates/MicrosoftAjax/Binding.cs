@@ -285,6 +285,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						result.Value = page.Context.DataItem;
 					}
 					else
+					{
+						ExoWeb.OnBeforeCreateAdapter(this, result.Source, result.Property);
+
 						result = new BindingResult()
 						{
 							Value = new Adapter(result, Parameters),
@@ -292,6 +295,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							Property = result.Property,
 							Source = result.Source
 						};
+					}
 				}
 
 				return new AttributeBinding(Attribute, result);

@@ -14744,6 +14744,19 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.View.AdapterMarkupExtension
 	//////////////////////////////////////////////////
 
+	/// <reference path="..\core\Function.js" />
+	/// <reference path="..\core\Functor.js" />
+
+	Sys._Application.mixin(Functor.eventing);
+
+	Sys._Application.prototype.addBeforeCreateAdapter = function Application$addBeforeCreateAdapter(handler) {
+	    this._addEvent("beforeCreateAdapter", handler);
+	};
+
+	Sys._Application.prototype.removeBeforeCreateAdapter = function Application$removeBeforeCreateAdapter(handler) {
+	    this._removeEvent("beforeCreateAdapter", handler);
+	};
+
 	Sys.Application.registerMarkupExtension(
 		"@",
 		function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
@@ -14776,6 +14789,7 @@ window.ExoWeb.DotNet = {};
 				adapter = source;
 			}
 			else {
+			    Sys.Application._raiseEvent("beforeCreateAdapter", [Sys.Application, { source: source, path: path, properties: properties }]);
 				adapter = new Adapter(source, path, properties.format, properties);
 				templateContext.components.push(adapter);
 			}

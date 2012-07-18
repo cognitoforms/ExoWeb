@@ -12,12 +12,23 @@ namespace ExoWeb.Templates.JavaScript
 	class Meta : ObjectInstance
 	{
 		ModelInstance instance;
+		TypeWrapper typeWrapper;
 
 		internal Meta(ScriptEngine engine, ModelInstance instance)
 			: base(engine, engine.Object.InstancePrototype)
 		{
 			this.PopulateFunctions();
 			this.instance = instance;
+			this.typeWrapper = new TypeWrapper(engine, instance.Type);
+		}
+
+		[JSProperty(Name = "type")]
+		public TypeWrapper TypeWrapper
+		{
+			get
+			{
+				return typeWrapper;
+			}
 		}
 
 		[JSFunction(Name = "isAllowed")]

@@ -12,6 +12,7 @@ using ExoWeb.Templates;
 using System.IO;
 using ExoWeb.Templates.JavaScript;
 using System.Web;
+using ExoWeb.Templates.MicrosoftAjax;
 
 namespace ExoWeb
 {
@@ -115,6 +116,8 @@ namespace ExoWeb
 
 		public static event EventHandler<Templates.RenderEventArgs> BeginRender;
 
+		public static event EventHandler<CreateAdapterEventArgs> BeforeCreateAdapter;
+
 		public static event EventHandler<Templates.RenderEventArgs> EndRender;
 
 		public static event EventHandler<ServiceErrorEventArgs> Error;
@@ -132,6 +135,12 @@ namespace ExoWeb
 		{
 			if (BeginRequest != null)
 				BeginRequest(request, new ServiceRequestEventArgs(request, null));
+		}
+
+		internal static void OnBeforeCreateAdapter(Binding binding, ModelInstance source, ModelProperty property)
+		{
+			if (BeforeCreateAdapter != null)
+				BeforeCreateAdapter(binding, new CreateAdapterEventArgs(binding, source, property));
 		}
 
 		/// <summary>
