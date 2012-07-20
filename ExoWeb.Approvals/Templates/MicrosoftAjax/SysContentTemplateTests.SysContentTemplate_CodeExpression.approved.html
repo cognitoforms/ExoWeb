@@ -1,0 +1,13 @@
+<output xmlns:sys="javascript:Sys" xmlns:dataview="javascript:Sys.UI.DataView" xmlns:content="javascript:ExoWeb.UI.Content" xmlns:template="javascript:ExoWeb.UI.Template" xmlns:toggle="javascript:ExoWeb.UI.Toggle" xmlns:behavior="javascript:ExoWeb.UI.Behavior" xmlns:html="javascript:ExoWeb.UI.Html" xmlns:togglegroup="javascript:ExoWeb.UI.ToggleGroup">
+  <div class="sys-template" id="exo0">
+    <div sys:content-template="{{ $dataItem.get_User().get_IsActive() ? '' : 'readonly' }}" sys:attach="content" content:data="{{ $dataItem }}"></div>
+  </div>
+  <div data-sys-attach="dataview" data-dataview-data="{~ context.model.request, source=window }" data-sys-tmplidx="0" id="exo1" class="sys-ignore">
+    <!--item:s1-->
+    <div data-sys-attach="content" data-content-data="{{ $dataItem }}" content-template="" data-sys-tcindex="s2">
+      <span>Description: <input type="text" data-sys-value="{binding Description}" value="Something doesn't work" /></span>
+    </div>
+    <!--/item-->
+  </div>
+  <script type="text/javascript">$exoweb({ domReady: function() { Sys.Application.linkElement(document.getElementById("exo1"), document.getElementById("exo0")); } });</script>
+</output>

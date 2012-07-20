@@ -25,20 +25,15 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <param name="writer"></param>
 		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
 		{
-			// Exit immediately if the element is conditionally hidden
-			AttributeBinding ifBinding = null;
-			if (If != null)
+			bool canRender;
+			AttributeBinding ifBinding;
+			if (!TryRenderIf(page, templateNames, writer, out ifBinding, out canRender))
 			{
-				ifBinding = If.Evaluate(page);
-
-				if (!ifBinding.IsValid)
-				{
-					Abort(page, templateNames, writer);
-					return;
-				}
-				else if (!JavaScriptHelpers.IsTruthy(ifBinding.Value))
-					return;
+				Abort(page, templateNames, writer);
+				return;
 			}
+			else if (!canRender)
+				return;
 
 			// Output the original template if data source was not specified
 			if (Data == null)
@@ -81,7 +76,18 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				writer.Write(">");
 			}
 
-			RenderStartTag(page, writer, ifBinding, dataBinding,
+			AttributeBinding contentTemplateBinding;
+			if (!TryContentTemplate(page, templateNames, writer, out contentTemplateBinding))
+			{
+				Abort(page, templateNames, writer);
+				return;
+			}
+
+			var ownTemplateNames = contentTemplateBinding != null ?
+				((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+				new string[0];
+
+			RenderStartTag(page, writer, ifBinding, dataBinding, contentTemplateBinding,
 				// Include the nested template index as a special attribute
 				new AttributeBinding(new Attribute() { Name = "data-sys-tmplidx", Value = NestedTemplateIndex.ToString() }, null),
 				// If this is a top-level dataview then we will need to ensure an id so that linking can occur
@@ -112,7 +118,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						writer.Write("<!--item:" + page.Context.Id + "-->");
 
 					foreach (var block in Blocks)
-						block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
+						block.Render(page, templateNames.Concat(ownTemplateNames), writer);
 
 					if (isSelect && page.IsIE)
 						writer.Write("<end />");

@@ -147,5 +147,10 @@ namespace ExoWeb.UnitTests
 		{
 			return ((Transform.Grouping)obj).Items;
 		}
+
+		public static void AddTemplates(string templateMarkup)
+		{
+			Templates.Page.Current.Templates.AddRange(Templates.Page.Current.ParseTemplates(Guid.NewGuid().ToString(), templateMarkup).Reverse());
+		}
 	}
 }

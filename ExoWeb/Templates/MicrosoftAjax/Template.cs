@@ -31,6 +31,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public string[] Class { get; internal set; }
 
+		public string[] ContentTemplateNames { get; set; }
+
 		public static new Template Parse(string source, string template)
 		{
 			return new Template() { Markup = template, Source = source, Blocks = Block.Parse(source, template), ContentTemplateNames = new string[0] };

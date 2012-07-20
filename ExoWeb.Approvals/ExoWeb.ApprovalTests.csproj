@@ -6,11 +6,11 @@
     <ProductVersion>
     </ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{390E2A10-D560-4DF0-8342-B1B686F74189}</ProjectGuid>
+    <ProjectGuid>{2C0952B3-A474-4E83-89AA-7744C6365E55}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ExoWeb.UnitTests.Server</RootNamespace>
-    <AssemblyName>ExoWeb.UnitTests.Server</AssemblyName>
+    <RootNamespace>ExoWeb.Approvals</RootNamespace>
+    <AssemblyName>ExoWeb.Approvals</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -18,8 +18,6 @@
     <SccLocalPath>SAK</SccLocalPath>
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
-    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
-    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -39,45 +37,15 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FluentAssertions">
-      <HintPath>..\Dependencies\FluentAssertions1.6.0\.NetFramework 4.0\FluentAssertions.dll</HintPath>
-    </Reference>
-    <Reference Include="Interop.SHDocVw">
-      <HintPath>..\Dependencies\WatiN\net20\Interop.SHDocVw.dll</HintPath>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-    </Reference>
-    <Reference Include="Jurassic, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\ExoWeb\Dependencies\Jurassic.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.mshtml, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <SpecificVersion>False</SpecificVersion>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-      <HintPath>..\Dependencies\WatiN\net20\Microsoft.mshtml.dll</HintPath>
+    <Reference Include="ApprovalTests">
+      <HintPath>..\Dependencies\ApprovalTests\ApprovalTests.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="System" />
-    <Reference Include="System.ComponentModel.DataAnnotations" />
-    <Reference Include="System.Configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
-    <Reference Include="System.Data" />
-    <Reference Include="System.Data.Linq" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.EnterpriseServices" />
-    <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.ServiceModel" />
-    <Reference Include="System.ServiceModel.Web" />
-    <Reference Include="System.Web" />
-    <Reference Include="System.Web.Extensions" />
-    <Reference Include="System.Web.Mobile" />
-    <Reference Include="System.Web.Services" />
-    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="WatiN.Core">
-      <HintPath>..\Dependencies\WatiN\net20\WatiN.Core.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <CodeAnalysisDependentAssemblyPaths Condition=" '$(VS100COMNTOOLS)' != '' " Include="$(VS100COMNTOOLS)..\IDE\PrivateAssemblies">
@@ -85,30 +53,12 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssertLists.cs" />
-    <Compile Include="JavaScriptExpressionTranslatorTest.cs" />
-    <Compile Include="JavascriptHelpersTest.cs" />
-    <Compile Include="Templates\JavaScript\EvaluatorTest.cs" />
-    <Compile Include="ExoWebTest.cs" />
-    <Compile Include="Jasmine\ViewSpecs.cs" />
-    <Compile Include="Jasmine\ModelSpecs.cs" />
-    <Compile Include="Jasmine\MapperSpecs.cs" />
-    <Compile Include="Jasmine\CoreSpecs.cs" />
-    <Compile Include="Jasmine\JasmineTest.cs" />
-    <Compile Include="JavascriptTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="QUnit\QUnit_UI.cs" />
-    <Compile Include="QUnit\QUnit_Core.cs" />
-    <Compile Include="QUnit\QUnitTest.cs" />
-    <Compile Include="Templates\MicrosoftAjax\AttributeHelperTest.cs" />
-    <Compile Include="Templates\MicrosoftAjax\ToggleTest.cs" />
-    <Compile Include="Templates\MicrosoftAjax\TransformTest.cs" />
+    <Compile Include="Templates\MicrosoftAjax\BaseRenderTests.cs" />
+    <Compile Include="Templates\MicrosoftAjax\ToggleTests.cs" />
+    <Compile Include="Templates\MicrosoftAjax\SysContentTemplateTests.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ExoModel\ExoModel.Json\ExoModel.Json.csproj">
-      <Project>{67E8A5CD-DEFB-47C7-9B2E-48A142EEC404}</Project>
-      <Name>ExoModel.Json</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\ExoModel\ExoModel.UnitTest\ExoModel.UnitTest.csproj">
       <Project>{943D65C3-5E48-4771-8BA8-A8494C0FFB32}</Project>
       <Name>ExoModel.UnitTest</Name>
@@ -123,12 +73,12 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config">
-      <SubType>Designer</SubType>
-    </None>
+    <Content Include="Templates\MicrosoftAjax\SysContentTemplateTests.SysContentTemplate_CodeExpression.approved.html" />
+    <Content Include="Templates\MicrosoftAjax\SysContentTemplateTests.SysContentTemplate_Literal.approved.html" />
+    <Content Include="Templates\MicrosoftAjax\ToggleTests.Toggle_Show.approved.html" />
+    <Content Include="Templates\MicrosoftAjax\ToggleTests.Toggle_ShowWithInlineDisplayStyle.approved.html" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

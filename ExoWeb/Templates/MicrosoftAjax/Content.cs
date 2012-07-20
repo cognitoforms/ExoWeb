@@ -21,20 +21,15 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
 		{
-			// Exit immediately if the element is conditionally hidden
-			AttributeBinding ifBinding = null;
-			if (If != null)
+			bool canRender;
+			AttributeBinding ifBinding;
+			if (!TryRenderIf(page, templateNames, writer, out ifBinding, out canRender))
 			{
-				ifBinding = If.Evaluate(page);
-
-				if (!ifBinding.IsValid)
-				{
-					Abort(page, templateNames, writer);
-					return;
-				}
-				else if (!JavaScriptHelpers.IsTruthy(ifBinding.Value))
-					return;
+				Abort(page, templateNames, writer);
+				return;
 			}
+			else if (!canRender)
+				return;
 
 			// Output the original template if data source was not specified
 			if (Data == null)
@@ -55,10 +50,21 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				return;
 			}
 
+			AttributeBinding contentTemplateBinding;
+			if (!TryContentTemplate(page, templateNames, writer, out contentTemplateBinding))
+			{
+				Abort(page, templateNames, writer);
+				return;
+			}
+
+			var ownTemplateNames = contentTemplateBinding != null ?
+				((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+				new string[0];
+	
 			// Just render an empty content element if the data is null
 			if (dataBinding.IsValid && dataBinding.Value == null)
 			{
-				RenderStartTag(page, writer, ifBinding, dataBinding);
+				RenderStartTag(page, writer, ifBinding, dataBinding, contentTemplateBinding);
 				RenderEndTag(writer);
 				return;
 			}
@@ -98,12 +104,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				if (valueType == null)
 					referenceType = ModelContext.Current.GetModelType(dataType);
 			}
-			
+		
 			// Evaluate content:template binding to get this content control's declare template(s)
 			var templates = templateBinding != null && templateBinding.DisplayValue != null ? templateBinding.DisplayValue.Split(' ') : new string[0];
 
 			// Join in the ContentTemplateNames value (sys:content-template) and the context's template names
-			templates = templateNames.Concat(templates).Concat(ContentTemplateNames).Distinct().ToArray();
+			templates = templateNames.Concat(templates).Concat(ownTemplateNames).Distinct().ToArray();
 
 			// Find the correct template
 			var template = FindTemplate(page, isAdapter, referenceType, valueType, isList, templates);
@@ -120,7 +126,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			using (var context = page.BeginContext(data, null))
 			{
 				// Render the original content start tag
-				RenderStartTag(page, writer, attributes => template.Class.Length > 0 ? MergeClassName(attributes, template) : attributes, ifBinding, dataBinding, templateBinding, new AttributeBinding(new Attribute() { Name = "data-sys-tcindex", Value = context.Id }, null));
+				RenderStartTag(page, writer, attributes => template.Class.Length > 0 ? MergeClassName(attributes, template) : attributes, ifBinding, dataBinding, contentTemplateBinding, templateBinding, new AttributeBinding(new Attribute() { Name = "data-sys-tcindex", Value = context.Id }, null));
 
 				// Render the content template
 				template.Render(page, templates.Where(t => !template.Name.Contains(t)).Concat(template.ContentTemplateNames), writer);

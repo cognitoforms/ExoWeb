@@ -25,48 +25,6 @@ namespace ExoWeb.UnitTests.Server.Templates.MicrosoftAjax
 
 		#region Tests
 		[TestMethod]
-		public void DefaultSimpleShowBehavior()
-		{
-			TestRequest((Request request) =>
-			{
-				request.User = new User();
-				request.Description = "Enter description here...";
-			},"<div class='sys-template' sys:attach='dataview' dataview:data='{~ context.model.request, source=window }'>" +
-				"<div sys:attach='toggle' toggle:on='{binding Description}'>" +
-					"<span>{binding Description}</span>" +
-				"</div>" +
-			"</div>",
-			"<div class='sys-ignore' data-sys-attach='dataview' data-dataview-data='{~ context.model.request, source=window }' data-sys-tmplidx='0' id='__id__'>" +
-				"<!--item-->" +
-				"<div data-sys-attach='toggle' data-toggle-on='{binding Description}' class='toggle-on'>" +
-					"<span data-sys-innerhtml='{binding Description}'>Enter description here...</span>" +
-				"</div>" +
-				"<!--/item-->" +
-			"</div>");
-		}
-
-		[TestMethod]
-		public void SimpleShowBehaviorWithInlineDisplayStyle()
-		{
-			TestRequest((Request request) =>
-			{
-				request.User = new User();
-				request.Description = "Enter description here...";
-			}, "<div class='sys-template' sys:attach='dataview' dataview:data='{~ context.model.request, source=window }'>" +
-				"<div style='display:inline;' sys:attach='toggle' toggle:on='{binding Description}'>" +
-					"<span>{binding Description}</span>" +
-				"</div>" +
-			"</div>",
-			"<div class='sys-ignore' data-sys-attach='dataview' data-dataview-data='{~ context.model.request, source=window }' data-sys-tmplidx='0' id='__id__'>" +
-				"<!--item-->" +
-				"<div style='display:inline;' data-sys-attach='toggle' data-toggle-on='{binding Description}' class='toggle-on'>" +
-					"<span data-sys-innerhtml='{binding Description}'>Enter description here...</span>" +
-				"</div>" +
-				"<!--/item-->" +
-			"</div>");
-		}
-
-		[TestMethod]
 		public void SimpleShowBehaviorWithNoneDisplayStyleRemoved()
 		{
 			TestRequest((Request request) =>

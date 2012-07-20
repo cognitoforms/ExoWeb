@@ -17,7 +17,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public int NestedTemplateIndex { get; internal set; }
 
-		public string[] ContentTemplateNames { get; set; }
+		public Binding ContentTemplate { get; internal set; }
 
 		/// <summary>
 		/// Merges the set of attributes defined on the content tag with attributes from the target template.
@@ -48,27 +48,72 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 		}
 
-		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
+		protected bool TryRenderIf(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer, out AttributeBinding ifBinding, out bool canRender)
 		{
-			// Exit immediately if the element is conditionally hidden
-			AttributeBinding ifBinding = null;
-			if (If != null)
+			if (If == null)
+			{
+				ifBinding = null;
+				canRender = true;
+				return true;
+			}
+			else
 			{
 				ifBinding = If.Evaluate(page);
 
 				if (!ifBinding.IsValid)
 				{
-					Abort(page, templateNames, writer);
-					return;
+					canRender = false;
+					return false;
 				}
-				else if (!JavaScriptHelpers.IsTruthy(ifBinding.Value))
-					return;
+				else
+				{
+					canRender = JavaScriptHelpers.IsTruthy(ifBinding.Value);
+					return true;
+				}
+			}
+		}
+
+		protected bool TryContentTemplate(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer, out AttributeBinding contentTemplateBinding)
+		{
+			if (ContentTemplate == null)
+			{
+				contentTemplateBinding = null;
+				return true;
+			}
+			else
+			{
+				contentTemplateBinding = ContentTemplate.Evaluate(page);
+				return contentTemplateBinding.IsValid && contentTemplateBinding.Value is string;
+			}
+		}
+
+		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
+		{
+			bool canRender;
+			AttributeBinding ifBinding;
+			if (!TryRenderIf(page, templateNames, writer, out ifBinding, out canRender))
+			{
+				Abort(page, templateNames, writer);
+				return;
+			}
+			else if (!canRender)
+				return;
+
+			AttributeBinding contentTemplateBinding;
+			if (!TryContentTemplate(page, templateNames, writer, out contentTemplateBinding))
+			{
+				Abort(page, templateNames, writer);
+				return;
 			}
 
-			RenderStartTag(page, writer, ifBinding);
+			var ownTemplateNames = contentTemplateBinding != null ?
+				((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+				new string[0];
+
+			RenderStartTag(page, writer, ifBinding, contentTemplateBinding);
 
 			foreach (var block in Blocks)
-				block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
+				block.Render(page, templateNames.Concat(ownTemplateNames), writer);
 
 			RenderEndTag(writer);
 		}

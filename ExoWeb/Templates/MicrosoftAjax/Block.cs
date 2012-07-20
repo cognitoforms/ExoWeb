@@ -220,15 +220,15 @@ namespace ExoWeb.Templates.MicrosoftAjax
 									case "template":
 										control = new Template()
 										{
-											Attributes = GetAttributes(child, "class", "sys:attach", "sys:if", "template:name", "template:kind", "template:datatype", "template:islist", "template:isreference"),
-											Name = child.GetAttribute("template:name").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries),
+											Attributes = GetAttributes(child, "class", "sys:attach", "sys:if", "sys:content-template", "template:name", "template:kind", "template:datatype", "template:islist", "template:isreference"),
+											Name = GetLiteralTokens(child, "template:name"),
 											Source = source + " [" + child.GetAttribute("template:name") + "]" + (child.HasAttribute("template:datatype") ? " - " + child.GetAttribute("template:datatype") : ""),
-											IsList = child.HasAttribute("template:islist") ? child.GetAttribute("template:islist").ToLower() == "true" : (bool?)null,
-											IsReference = child.HasAttribute("template:isreference") ? child.GetAttribute("template:isreference").ToLower() == "true" : (bool?)null,
-											Kind = child.HasAttribute("template:kind") ? child.GetAttribute("template:kind") : null,
-											DataType = child.HasAttribute("template:datatype") ? child.GetAttribute("template:datatype") : null,
-											Class = child.GetAttribute("class").Split(' ').Where(c => c != "" && c.ToLower() != "sys-template").ToArray(),
-											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
+											IsList = GetBoolean(child, "template:islist"),
+											IsReference = GetBoolean(child, "template:isreference"),
+											Kind = GetStringLiteral(child, "template:kind"),
+											DataType = GetStringLiteral(child, "template:datatype"),
+											Class = GetLiteralTokens(child, "class").Where(c => c.ToLower() != "sys-template").ToArray(),
+											ContentTemplateNames = GetLiteralTokens(child, "sys:content-template")
 										};
 										break;
 
@@ -236,10 +236,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 									case "dataview":
 										control = new DataView()
 										{
-											Attributes = GetAttributes(child, "sys:attach", "sys:if", "dataview:data"),
+											Attributes = GetAttributes(child, "sys:attach", "sys:if", "sys:content-template", "dataview:data"),
 											Data = GetBinding(child, "dataview:data"),
 											Template = GetTemplate(child),
-											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
+											ContentTemplate = GetBinding(child, "sys:content-template")
 										};
 										break;
 
@@ -247,11 +247,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 									case "content":
 										control = new Content()
 										{
-											Attributes = GetAttributes(child, "sys:attach", "sys:if", "content:data", "content:template"),
+											Attributes = GetAttributes(child, "sys:attach", "sys:if", "sys:content-template", "content:data", "content:template"),
 											Data = GetBinding(child, "content:data"),
 											Template = GetBinding(child, "content:template"),
 											DataType = GetBinding(child, "content:datatype"),
-											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
+											ContentTemplate = GetBinding(child, "sys:content-template")
 										};
 										break;
 
@@ -259,14 +259,14 @@ namespace ExoWeb.Templates.MicrosoftAjax
 									case "toggle":
 										control = new Toggle() 
 										{
-											Attributes = GetAttributes(child, "sys:attach", "sys:if", "toggle:on", "toggle:action", "toggle:class", "toggle:groupname", "toggle:strictmode", "toggle:when"),
+											Attributes = GetAttributes(child, "sys:attach", "sys:if", "sys:content-template", "toggle:on", "toggle:action", "toggle:class", "toggle:groupname", "toggle:strictmode", "toggle:when"),
 											On = GetBinding(child, "toggle:on"),
 											Class = GetBinding(child, "toggle:class"),
 											Action = GetBinding(child, "toggle:action"),
 											GroupName = GetBinding(child, "toggle:groupname"),
 											StrictMode = GetBinding(child, "toggle:strictmode"),
 											When = GetBinding(child, "toggle:when"),
-											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
+											ContentTemplate = GetBinding(child, "sys:content-template")
 										};
 										break;
 
@@ -274,8 +274,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 									case "togglegroup":
 										control = new ToggleGroup()
 										{
-											Attributes = GetAttributes(child, "sys:attach", "sys:if"),
-											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
+											Attributes = GetAttributes(child, "sys:attach", "sys:if", "sys:content-template"),
+											ContentTemplate = GetBinding(child, "sys:content-template")
 										};
 										break;
 
@@ -283,8 +283,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 									case "behavior":
 										control = new Behavior()
 										{
-											Attributes = GetAttributes(child, "sys:attach", "sys:if"),
-											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
+											Attributes = GetAttributes(child, "sys:attach", "sys:if", "sys:content-template"),
+											ContentTemplate = GetBinding(child, "sys:content-template")
 										};
 										break;
 
@@ -292,8 +292,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 									case "html":
 										control = new Html()
 										{
-											Attributes = GetAttributes(child, "sys:attach", "sys:if"),
-											ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
+											Attributes = GetAttributes(child, "sys:attach", "sys:if", "sys:content-template"),
+											ContentTemplate = GetBinding(child, "sys:content-template")
 										};
 										break;
 
@@ -308,8 +308,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							{
 								control = new Control()
 								{
-									Attributes = GetAttributes(child, "sys:if", "sys:innerhtml", "sys:innertext"),
-									ContentTemplateNames = child.HasAttribute("sys:content-template") ? child.GetAttribute("sys:content-template").Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) : new string[0]
+									Attributes = GetAttributes(child, "sys:if", "sys:content-template", "sys:innerhtml", "sys:innertext"),
+									ContentTemplate = GetBinding(child, "sys:content-template")
 								};
 								if (child.InnerXml.Trim().StartsWith("{") && child.InnerXml.Trim().EndsWith("}"))
 								{
@@ -507,14 +507,54 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return xmlnsParser.Replace(element.InnerXml, "");
 		}
 
-		static Binding GetBinding(XmlElement child, string attributeName)
+		static string GetStringLiteral(XmlElement element, string attributeName)
 		{
-			return child.HasAttribute(attributeName) ? Binding.Parse(attributeName, child.GetAttribute(attributeName)) : null;
+			string literalValue;
+
+			if (!element.HasAttribute(attributeName))
+				literalValue = null;
+			else
+			{
+				literalValue = element.GetAttribute(attributeName);
+
+				if (literalValue.StartsWith("{") && literalValue.EndsWith("}"))
+					throw new ApplicationException("The " + attributeName + " attribute must be a literal.");
+			}
+
+			return literalValue;
 		}
 
-		static List<Attribute> GetAttributes(XmlElement child, params string[] exceptions)
+		private static bool? GetBoolean(XmlElement element, string attributeName)
 		{
-			return child.Attributes
+			bool? booleanValue = null;
+			string literalValue = GetStringLiteral(element, attributeName);
+			if (literalValue != null)
+			{
+				literalValue = literalValue.ToLower().Trim();
+				if (literalValue == "true")
+					booleanValue = true;
+				else if (literalValue == "false")
+					booleanValue = false;
+				else
+					throw new ApplicationException("The " + attributeName + " attribute must be either 'true' or 'false'.");
+			}
+			return booleanValue;
+		}
+
+		private static string[] GetLiteralTokens(XmlElement element, string attributeName)
+		{
+			string literalValue = GetStringLiteral(element, attributeName);
+			return string.IsNullOrEmpty(literalValue) ? new string[0] : literalValue.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+		}
+
+		static Binding GetBinding(XmlElement element, string attributeName)
+		{
+			return element.HasAttribute(attributeName) ? Binding.Parse(attributeName, element.GetAttribute(attributeName)) : null;
+		}
+
+		static List<Attribute> GetAttributes(XmlElement element, params string[] exceptions)
+		{
+			return element.Attributes
 				.Cast<XmlAttribute>()
 				.Where(a => exceptions == null || !exceptions.Contains(a.Name))
 				.Select(a => new Attribute()

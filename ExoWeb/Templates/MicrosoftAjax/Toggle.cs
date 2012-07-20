@@ -91,6 +91,17 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				base.Abort(page, templateNames, writer);
 			else
 			{
+				AttributeBinding contentTemplateBinding;
+				if (!TryContentTemplate(page, templateNames, writer, out contentTemplateBinding))
+				{
+					base.Abort(page, templateNames, writer);
+					return;
+				}
+
+				var ownTemplateNames = contentTemplateBinding != null ?
+					((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+					new string[0];
+
 				RenderStartTag(page, writer,
 					// replace data-sys-attach attribute with sys:attach and add data-continue attribute to notify client that children were allowed to render
 					attributes => MergeAttribute(AbortSysAttachDataAttribute(attributes), "data-continue", value => "data-continue"),
@@ -103,11 +114,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					Action == null ? null : Action.Evaluate(page),
 					GroupName == null ? null : GroupName.Evaluate(page),
 					StrictMode == null ? null : StrictMode.Evaluate(page),
-					When == null ? null : When.Evaluate(page));
+					When == null ? null : When.Evaluate(page),
+					contentTemplateBinding);
 
 				// continue rendering child blocks in the same data context
 				foreach (var block in Blocks)
-					block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
+					block.Render(page, templateNames.Concat(ownTemplateNames), writer);
 
 				RenderEndTag(writer);
 			}
@@ -115,20 +127,15 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
 		{
-			// Exit immediately if the element is conditionally hidden
-			AttributeBinding ifBinding = null;
-			if (If != null)
+			bool canRender;
+			AttributeBinding ifBinding;
+			if (!TryRenderIf(page, templateNames, writer, out ifBinding, out canRender))
 			{
-				ifBinding = If.Evaluate(page);
-
-				if (!ifBinding.IsValid)
-				{
-					Abort(page, templateNames, writer);
-					return;
-				}
-				else if (!JavaScriptHelpers.IsTruthy(ifBinding.Value))
-					return;
+				Abort(page, templateNames, writer);
+				return;
 			}
+			else if (!canRender)
+				return;
 
 			// Output the original template if toggle on was not specified
 			if (On == null)
@@ -293,6 +300,17 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 			bool render = actionValue == ToggleAction.render || actionValue == ToggleAction.dispose;
 
+			AttributeBinding contentTemplateBinding;
+			if (!TryContentTemplate(page, templateNames, writer, out contentTemplateBinding))
+			{
+				Abort(page, templateNames, writer);
+				return;
+			}
+
+			var ownTemplateNames = contentTemplateBinding != null ?
+				((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+				new string[0];
+
 			using (var context = render ? page.BeginContext(page.Context.DataItem, null) : null)
 			{
 				RenderStartTag(page, writer, attrs => MergeAttribute(MergeAttribute(MergeAttribute(attrs,
@@ -340,7 +358,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 						}
 
 						return value;
-					}), ifBinding, onBinding, classBinding, actionBinding, groupNameBinding, strictModeBinding, whenBinding,
+					}), ifBinding, onBinding, classBinding, actionBinding, groupNameBinding, strictModeBinding, whenBinding, contentTemplateBinding,
 					// If this is render/dispose, include the nested template index as a special attribute
 					render ? new AttributeBinding(new Attribute() { Name = "data-sys-tmplidx", Value = NestedTemplateIndex.ToString() }, null) : null,
 					render ? new AttributeBinding(new Attribute() { Name = "data-sys-tcindex", Value = context.Id }, null) : null);
@@ -349,7 +367,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				if (!render || (actionValue == ToggleAction.render && equals.Value) || (actionValue == ToggleAction.dispose && !equals.Value))
 				{
 					foreach (var block in Blocks)
-						block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
+						block.Render(page, templateNames.Concat(ownTemplateNames), writer);
 				}
 
 				RenderEndTag(writer);

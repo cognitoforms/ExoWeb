@@ -1177,7 +1177,7 @@
 								Sys.UI.DomElement.setCommand(element, command || "", commandArg || null, Sys.UI.DomElement._ensureGet(commandTarget, templateContext, "sys:commandtarget"));
 								break;
 							case "sys:content-template":
-								contentTemplate = value;
+								contentTemplate = Sys.Application._getPropertyValue(null, null, null, value, templateContext, element, null, true);
 								break;
 							default:
 								attributes2 = attributes2 || [];
