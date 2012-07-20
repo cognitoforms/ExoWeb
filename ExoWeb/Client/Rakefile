@@ -47,7 +47,6 @@ end
 		Functor
 		FunctionChain
 		EventScope
-		MessageQueue
 		EvalWrapper
 		Transform
 		Translator

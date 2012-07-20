@@ -183,7 +183,6 @@
     <Content Include="Client\specs\base\core\FunctionChainSpecs.js" />
     <Content Include="Client\specs\base\core\BatchSpecs.js" />
     <Content Include="Client\specs\base\core\FunctionSpecs.js" />
-    <Content Include="Client\specs\base\core\MessageQueueSpecs.js" />
     <Content Include="Client\specs\base\core\RandomSpecs.js" />
     <Content Include="Client\specs\base\core\SignalSpecs.js" />
     <Content Include="Client\specs\base\core\StringSpecs.js" />
@@ -217,7 +216,6 @@
     <Content Include="Client\src\base\core\Function.js" />
     <Content Include="Client\src\base\core\FunctionChain.js" />
     <Content Include="Client\src\base\core\Functor.js" />
-    <Content Include="Client\src\base\core\MessageQueue.js" />
     <Content Include="Client\src\base\core\Object.js" />
     <Content Include="Client\src\base\core\PropertyObserver.js" />
     <Content Include="Client\src\base\core\Random.js" />
