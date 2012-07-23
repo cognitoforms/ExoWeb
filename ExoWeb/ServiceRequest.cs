@@ -717,8 +717,11 @@ namespace ExoWeb
 				{
 					// Create the root instance
 					Roots[i] = transaction == null ? From.Create(Ids[i]) : transaction.GetInstance(From, Ids[i]);
+				}
 
-					// Access a property to force the instance to initialize
+				// Access a property to force the instance to initialize.  Do a seperate pass so batched loading will work.
+				for (int i = 0; i < Roots.Length; i++)
+				{
 					Roots[i].OnPropertyGet(Roots[i].Type.Properties.First());
 				}
 			}
