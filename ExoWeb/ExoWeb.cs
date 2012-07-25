@@ -588,6 +588,11 @@ namespace ExoWeb
 					{
 						if (rootType.IsSubType(type))
 							type = rootType;
+						else if (type != rootType)
+						{
+							while (!(type.IsSubType(rootType)))
+								type = type.BaseType;
+						}
 					}
 					return true;
 				}
