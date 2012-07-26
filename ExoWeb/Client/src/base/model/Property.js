@@ -406,6 +406,9 @@ Property.mixin({
 		// Return the property to support method chaining
 		return this;
 	},
+	removeGet: function Property$removeGet(handler) {
+		this._removeEvent("get", handler);
+	},
 
 	// starts listening for change events on the property. Use obj argument to
 	// optionally filter the events to a specific object
