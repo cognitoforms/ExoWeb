@@ -458,6 +458,7 @@ namespace ExoWeb
 							case "max": return new MethodTranslation(method, "{0}.map({1}, this).reduce(function (p,c,i) { return i > 0 && p > c ? p : c; })");
 							case "sum": return new MethodTranslation(method, "{0}.map({1}, this).reduce(function (p,c) { return p + c; }, 0)");
 							case "average": return new MethodTranslation(method, "{0}.map({1}, this).reduce(function (p,c,i,a) { return p + c/a.length; }, 0)");
+							case "select": return new MethodTranslation(method, "{0}.map({1}, this)");
 							case "first": return new MethodTranslation(method, "{0}.filter({1}, this)[0]");
 							case "firstordefault": return new MethodTranslation(method, "({0}.filter({1}, this)[0] || null)");
 							case "last": return new MethodTranslation(method, "Array_last({0}.filter({1}, this))").AddExport("Array_last", "function (a) { if (a.length > 0) return a[a.length - 1]; }");
@@ -1313,6 +1314,7 @@ namespace ExoWeb
 			void Count(bool predicate);
 			void Min(object selector);
 			void Max(object selector);
+			void Select(object selector);
 			void Sum(int selector);
 			void Sum(int? selector);
 			void Sum(long selector);
@@ -1334,7 +1336,7 @@ namespace ExoWeb
 			void Average(decimal selector);
 			void Average(decimal? selector);
 			void OrderBy(object selector);
-			void OrderDescending(object selector);
+			void OrderByDescending(object selector);
 		}
 
 		#endregion
