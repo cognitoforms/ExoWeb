@@ -1608,14 +1608,14 @@ window.ExoWeb.DotNet = {};
 		};
 
 		f._funcs = funcs;
-		f.add = Functor.add;
-		f.remove = Functor.remove;
-		f.isEmpty = Functor.isEmpty;
+		f.add = Functor$add;
+		f.remove = Functor$remove;
+		f.isEmpty = Functor$isEmpty;
 
 		return f;
 	}
 
-	Functor.add = function Functor$add(fn, filter, once) {
+	function Functor$add(fn, filter, once) {
 		var item = { fn: fn };
 
 		if (filter !== undefined) {
@@ -1627,29 +1627,29 @@ window.ExoWeb.DotNet = {};
 		}
 
 		this._funcs.push(item);
-	};
+	}
 
-	Functor.remove = function Functor$remove(old) {
+	function Functor$remove(old) {
 		for (var i = this._funcs.length - 1; i >= 0; --i) {
 			if (this._funcs[i].fn === old) {
 				this._funcs.splice(i, 1);
 				break;
 			}
 		}
-	};
+	}
 
-	Functor.isEmpty = function Functor$isEmpty(args) {
+	function Functor$isEmpty(args) {
 		if (args) {
 			return !this._funcs.some(function (item) { return !item.filter || item.filter.apply(this, args); }, this);
 		}
 		return this._funcs.length === 0;
-	};
+	}
 
-	var eventsInProgress = 0;
+	var functorEventsInProgress = 0;
 
 	// busy if there are any events in progress
 	registerActivity("Functor", function() {
-		return eventsInProgress > 0;
+		return functorEventsInProgress > 0;
 	});
 
 	Functor.eventing = {
@@ -1670,11 +1670,11 @@ window.ExoWeb.DotNet = {};
 			var handler = this["_" + name];
 			if (handler) {
 				try {
-					eventsInProgress++;
+					functorEventsInProgress++;
 					handler.apply(this, argsArray || []);
 				}
 				finally {
-					eventsInProgress--;
+					functorEventsInProgress--;
 				}
 			}
 		},
