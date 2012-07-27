@@ -40,7 +40,7 @@ ChangeLog.mixin({
 		this._addEvent("truncated", fn, filter, once);
 	},
 	checkpoint: function (title, code) {
-		if (this._activeSet && this._sets.some(function (s) { return s.changes().length > 0; })) {
+		if (this._activeSet) {
 			return this._activeSet.checkpoint(title, code);
 		}
 	},

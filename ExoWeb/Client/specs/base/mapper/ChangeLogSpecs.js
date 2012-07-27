@@ -181,13 +181,14 @@ describe("ChangeLog.truncate", function() {
 		expect(this.log.activeSet().changes().length).toBe(0);
 	});
 	
-	it("checkpoint returns undefined if there is not an active set or there are no changes", function() {
+	it("checkpoint returns undefined if there is not an active set, but adds the checkpoint if there are no changes", function() {
 		var log = new ChangeLog();
 		expect(log.checkpoint()).toBe(undefined);
 
 		log.start("test");
+		expect(log.checkpoint()).not.toBe(undefined);
 		log.start("test2");
-		expect(log.checkpoint()).toBe(undefined);
+		expect(log.checkpoint()).not.toBe(undefined);
 
 		log.add(1);
 		expect(log.checkpoint()).not.toBe(undefined);

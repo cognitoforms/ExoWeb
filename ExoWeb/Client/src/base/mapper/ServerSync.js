@@ -1139,7 +1139,7 @@ ServerSync.mixin({
 							ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
 							if (!list.contains(itemObj)) {
-								ListLazyLoader.allowModification(list, function() {
+								ListLazyLoader.allowModification(list, function () {
 									list.add(itemObj);
 								});
 							}
@@ -1156,7 +1156,7 @@ ServerSync.mixin({
 						// Update change to reflect the object's new id
 						ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
-						ListLazyLoader.allowModification(list, function() {
+						ListLazyLoader.allowModification(list, function () {
 							list.remove(itemObj);
 						});
 					}, after), this, true);
@@ -1167,7 +1167,7 @@ ServerSync.mixin({
 					if (exited) {
 						this.beginApplyingChanges();
 					}
-					ListLazyLoader.allowModification(list, function() {
+					ListLazyLoader.allowModification(list, function () {
 						list.endUpdate();
 					});
 					if (exited) {
@@ -1197,60 +1197,48 @@ ServerSync.mixin({
 
 	// Rollback
 	///////////////////////////////////////////////////////////////////////
-	rollback: function ServerSync$rollback(checkpoint, callback) {
-		var signalRegistered;
-
+	rollback: function ServerSync$rollback(checkpoint, callback, thisPtr) {
+		var signal = new Signal("rollback");
+		var waitForAllRegistered = false;
+		
 		try {
+			var batch = ExoWeb.Batch.start("rollback changes");
+
 			this.beginApplyingChanges();
 
-			var signal = new ExoWeb.Signal("ServerSync.rollback");
-			var signalRegistered = false;
-
-			function processNextChange() {
-				var change = this._changeLog.undo();
-
-				if (change) {
-					if (change.type === "Checkpoint" && change.code === checkpoint) {
-						// Exit when we find the checkpoint
-						return;
-					}
-
-					var callback = signal.pending(processNextChange, this);
-
-					if (change.type == "InitNew") {
-						this.rollbackInitChange(change, callback);
-					}
-					else if (change.type == "ReferenceChange") {
-						this.rollbackRefChange(change, callback);
-					}
-					else if (change.type == "ValueChange") {
-						this.rollbackValChange(change, callback);
-					}
-					else if (change.type == "ListChange") {
-						this.rollbackListChange(change, callback);
-					}
+			var change = this._changeLog.undo();
+			while (change && !(change.type === "Checkpoint" && change.code === checkpoint)) {
+				if (change.type == "InitNew") {
+					this.rollbackInitChange(change, signal.pending());
 				}
+				else if (change.type == "ReferenceChange") {
+					this.rollbackRefChange(change, signal.pending());
+				}
+				else if (change.type == "ValueChange") {
+					this.rollbackValChange(change, signal.pending());
+				}
+				else if (change.type == "ListChange") {
+					this.rollbackListChange(change, signal.pending());
+				}
+
+				change = this._changeLog.undo();
 			}
 
-			processNextChange.call(this);
-
+			waitForAllRegistered = true;
 			signal.waitForAll(function () {
 				this.endApplyingChanges();
-
-				if (callback && callback instanceof Function) {
-					callback();
+				ExoWeb.Batch.end(batch);
+				if (callback) {
+					callback.call(thisPtr || this);
 				}
-
 				Observer.raisePropertyChanged(this, "HasPendingChanges");
-			}, this);
-
-			// set signalRegistered to true to let the finally block now that the signal will handle calling endApplyingChanges
-			signalRegistered = true;
+			}, this, true);
 		}
 		finally {
 			// the signal was not registered, therefore we need to handle endApplyingChanges call here
-			if (!signalRegistered) {
+			if (!waitForAllRegistered) {
 				this.endApplyingChanges();
+				ExoWeb.Batch.end(batch);
 			}
 		}
 	},
