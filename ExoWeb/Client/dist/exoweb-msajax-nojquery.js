@@ -4595,6 +4595,8 @@ window.ExoWeb.DotNet = {};
 
 		target[this._fieldName] = val;
 
+		target.meta.pendingInit(this, false);
+
 		if (val instanceof Array) {
 			var _this = this;
 			Observer.makeObservable(val);
@@ -4677,6 +4679,8 @@ window.ExoWeb.DotNet = {};
 		if (oldValue !== newValue && !(this._jstype === Number && isNaN(oldValue) && isNaN(newValue))) {
 			// Set the backing field value
 			obj[this._fieldName] = val;
+
+			obj.meta.pendingInit(this, false);
 
 			// NOTE: property change should be broadcast before rules are run so that if 
 			// any rule causes a roundtrip to the server these changes will be available
@@ -9299,6 +9303,7 @@ window.ExoWeb.DotNet = {};
 	/// <reference path="../core/Array.js" />
 	/// <reference path="../core/Function.js" />
 	/// <reference path="../core/Signal.js" />
+	/// <reference path="Internals.js" />
 
 	function ServerSync(model) {
 		if (!model || typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
@@ -10314,6 +10319,9 @@ window.ExoWeb.DotNet = {};
 					// Update change to reflect the object's new id
 					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
+					// Cache the property since it is not a simple property access.
+					var property = srcObj.meta.property(change.property);
+
 					// Apply change
 					if (change.newValue) {
 						// Don't call immediately since we may need to lazy load the type
@@ -10332,7 +10340,13 @@ window.ExoWeb.DotNet = {};
 								change.newValue.id = refObj.meta.id;
 							}
 
-							// Change the property value
+							// Manually ensure a property value, if it doesn't have one then it will be marked as pendingInit
+							Property$_ensureInited.call(property, srcObj);
+
+							// Mark the property as no longer pending init since its value is being established
+							srcObj.meta.pendingInit(property, false);
+
+							// Set the property value
 							Observer.setValue(srcObj, change.property, refObj);
 
 							// Callback once the type has been loaded
@@ -10342,6 +10356,13 @@ window.ExoWeb.DotNet = {};
 						}, after), this);
 					}
 					else {
+						// Manually ensure a property value, if it doesn't have one then it will be marked as pendingInit
+						Property$_ensureInited.call(property, srcObj);
+
+						// Mark the property as no longer pending init since its value is being established
+						srcObj.meta.pendingInit(property, false);
+
+						// Set the property value
 						Observer.setValue(srcObj, change.property, null);
 					}
 
@@ -10395,8 +10416,14 @@ window.ExoWeb.DotNet = {};
 						newValue = newValue.toObject();
 					}
 
-					Observer.setValue(srcObj, change.property, newValue);
+					// Manually ensure a property value, if it doesn't have one then it will be marked as pendingInit
+					Property$_ensureInited.call(property, srcObj);
 
+					// Mark the property as no longer pending init since its value is being established
+					srcObj.meta.pendingInit(property, false);
+
+					// Set the property value
+					Observer.setValue(srcObj, change.property, newValue);
 				}, after), this);
 			}, this);
 

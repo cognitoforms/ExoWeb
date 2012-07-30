@@ -75,6 +75,8 @@ function Property$_init(obj, val, force) {
 
 	target[this._fieldName] = val;
 
+	target.meta.pendingInit(this, false);
+
 	if (val instanceof Array) {
 		var _this = this;
 		Observer.makeObservable(val);
@@ -158,6 +160,8 @@ function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 	if (oldValue !== newValue && !(this._jstype === Number && isNaN(oldValue) && isNaN(newValue))) {
 		// Set the backing field value
 		obj[this._fieldName] = val;
+
+		obj.meta.pendingInit(this, false);
 
 		// NOTE: property change should be broadcast before rules are run so that if 
 		// any rule causes a roundtrip to the server these changes will be available
