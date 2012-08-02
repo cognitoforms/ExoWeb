@@ -16322,7 +16322,22 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.DotNet.WebService
 	//////////////////////////////////////////////////
 
-	ExoWeb.DotNet.config = {};
+	var webServiceConfig = {
+		/*
+		 * Specify the application's root URL. Otherwise it is assumed that
+		 * the root is the URL up to the first forward slash '/'.
+		 */
+		appRoot: null,
+
+		/*
+		 * If set to true, when requests are sent they will use the text "Save", "Roundtrip", or the
+		 * specific method name as an alias for "Request".  If the method name would collide with
+		 * another procedure ("GetType" or "LogError"), then "Request" will be used instead.
+		 */
+		aliasRequests: false
+	};
+
+	ExoWeb.DotNet.config = webServiceConfig;
 
 	var path = window.location.pathname;
 	var idx = path.lastIndexOf("/");
@@ -16338,13 +16353,19 @@ window.ExoWeb.DotNet = {};
 	var host = $format(fmt, window.location.protocol, window.location.hostname, window.location.port);
 
 	function getPath() {
-		return host + (ExoWeb.DotNet.config.appRoot || path) + "ExoWeb.axd";
+		return host + (webServiceConfig.appRoot || path) + "ExoWeb.axd";
 	}
 
-	function processRequest(method, data, success, failure) {
-		$.ajax({ url: getPath() + "/" + method, type: "Post", data: JSON.stringify(data), processData: false, dataType: "text", contentType: "application/json",
+	function sendRequest(options) {
+		$.ajax({
+			url: getPath() + "/" + options.path,
+			type: options.type,
+			data: JSON.stringify(options.data),
+			processData: false,
+			dataType: "text",
+			contentType: "application/json",
 			success: function(result) {
-				success(JSON.parse(result));
+				options.onSuccess(JSON.parse(result));
 			},
 			error: function(result) { 
 				var error = { message: result.statusText };
@@ -16353,23 +16374,23 @@ window.ExoWeb.DotNet = {};
 					error = JSON.parse(result.responseText);
 				}
 				catch(e) {}
-				failure(error);
+				options.onFailure(error);
 			}
 		});
 	}
 
-	// Define the ExoWeb.Request method
-	function request(args, onSuccess, onFailure) {
-		args.config = ExoWeb.DotNet.config;
-		processRequest("Request", args, onSuccess, onFailure);
-	}
-
 	ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
-		request({
-			events: [{type: eventType, instance: instance, event: event, include: paths}],
-			queries: scopeQueries,
-			changes: changes
-		}, onSuccess, onFailure);
+		sendRequest({
+			type: "Post",
+			path: webServiceConfig.aliasRequests && eventType !== "GetType" && eventType !== "LogError" ? eventType : "Request",
+			data: {
+				events: [{type: eventType, instance: instance, event: event, include: paths}],
+				queries: scopeQueries,
+				changes: changes
+			},
+			onSuccess: onSuccess,
+			onFailure: onFailure
+		});
 	});
 
 	ExoWeb.Mapper.setRoundtripProvider(function (type, id, paths, changes, scopeQueries, onSuccess, onFailure) {
@@ -16387,56 +16408,86 @@ window.ExoWeb.DotNet = {};
 
 		queries.addRange(scopeQueries);
 
-		request({
-			changes: changes,
-			queries: queries
-		}, onSuccess, onFailure);
+		sendRequest({
+			type: "Post",
+			path: webServiceConfig.aliasRequests ? "Roundtrip" : "Request",
+			data: {
+				changes: changes,
+				queries: queries
+			},
+			onSuccess: onSuccess,
+			onFailure: onFailure
+		});
 	});
 
 	ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
-		request({
-			queries:[{
-				from: type,
-				ids: ids,
-				include: paths,
-				inScope: inScope,
-				forLoad: true
-			}].concat(scopeQueries),
-			changes:changes
-		}, onSuccess, onFailure);
+		sendRequest({
+			type: "Post",
+			path: webServiceConfig.aliasRequests ? "LoadObject" : "Request",
+			data: {
+				queries:[{
+					from: type,
+					ids: ids,
+					include: paths,
+					inScope: inScope,
+					forLoad: true
+				}].concat(scopeQueries),
+				changes:changes
+			},
+			onSuccess: onSuccess,
+			onFailure: onFailure
+		});
 	});
 
 	ExoWeb.Mapper.setQueryProvider(function WebService$queryProviderFn(queries, changes, scopeQueries, onSuccess, onFailure) {
-		request({
-			changes: changes,
-			queries: queries.concat(scopeQueries)
-		}, onSuccess, onFailure);
+		sendRequest({
+			type: "Post",
+			path: webServiceConfig.aliasRequests ? "Query" : "Request",
+			data: {
+				changes: changes,
+				queries: queries.concat(scopeQueries)
+			},
+			onSuccess: onSuccess,
+			onFailure: onFailure
+		});
 	});
 
 	ExoWeb.Mapper.setSaveProvider(function WebService$saveProviderFn(root, changes, scopeQueries, onSuccess, onFailure) {
-		request({
-			events:[{type: "Save", instance: root}],
-			queries: scopeQueries,
-			changes:changes
-		}, onSuccess, onFailure);
+		sendRequest({
+			type: "Post",
+			path: webServiceConfig.aliasRequests ? "Save" : "Request",
+			data: {
+				events:[{type: "Save", instance: root}],
+				queries: scopeQueries,
+				changes:changes
+			},
+			onSuccess: onSuccess,
+			onFailure: onFailure
+		});
 	});
 
 	ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
-		request({
-			queries: [{
-				from: ownerType,
-				ids: ownerId === null ? [] : [ownerId],
-				include: paths,
-				inScope: false,
-				forLoad: true
-			}].concat(scopeQueries),
-			changes: changes
-		}, onSuccess, onFailure);
+		sendRequest({
+			type: "Post",
+			path: webServiceConfig.aliasRequests ? "LoadList" : "Request",
+			data: {
+				queries: [{
+					from: ownerType,
+					ids: ownerId === null ? [] : [ownerId],
+					include: paths,
+					inScope: false,
+					forLoad: true
+				}].concat(scopeQueries),
+				changes: changes
+			},
+			onSuccess: onSuccess,
+			onFailure: onFailure
+		});
 	});
 
 	ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(types, onSuccess, onFailure) {
 		if (types.length === 1) {
-			var data = { type: types[0], config: ExoWeb.DotNet.config};
+			var data = { type: types[0], config: webServiceConfig};
 
 			if (ExoWeb.cacheHash) {
 				data.cachehash = ExoWeb.cacheHash;
@@ -16445,7 +16496,13 @@ window.ExoWeb.DotNet = {};
 			Sys.Net.WebServiceProxy.invoke(getPath(), "GetType", true, data, onSuccess, onFailure, null, 1000000, false, null);
 		}
 		else {
-			request({ types: types }, onSuccess, onFailure);
+			sendRequest({
+				type: "Post",
+				path: webServiceConfig.aliasRequests ? "GetTypes" : "Request",
+				data: { types: types },
+				onSuccess: onSuccess,
+				onFailure: onFailure
+			});
 		}
 	});
 

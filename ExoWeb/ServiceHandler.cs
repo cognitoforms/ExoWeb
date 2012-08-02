@@ -52,17 +52,6 @@ namespace ExoWeb
 				// Perform the requested operation
 				switch (context.Request.PathInfo)
 				{
-					case "/Request":
-
-						// Deserialize the request
-						ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
-
-						// Invoke the request and output the response
-						context.Response.ContentType = "application/json";
-						context.Response.Write(request.Invoke(null).ToJson());
-
-						break;
-
 					case "/GetType":
 
 						// Enable response caching
@@ -81,6 +70,17 @@ namespace ExoWeb
 						// Raise the error event
 						context.Response.ContentType = "application/json";
 						ExoWeb.OnError(ExoWeb.FromJson<ServiceError>(json));
+
+						break;
+
+					default:
+
+						// Deserialize the request
+						ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
+
+						// Invoke the request and output the response
+						context.Response.ContentType = "application/json";
+						context.Response.Write(request.Invoke(null).ToJson());
 
 						break;
 				}
@@ -119,7 +119,8 @@ namespace ExoWeb
 
 		#endregion
 
-		#region Methods
+		#region Properties
+
 		/// <summary>
 		/// True if the service handler is currently executing a request
 		/// </summary>
@@ -139,6 +140,9 @@ namespace ExoWeb
 			}
 		}
 
+		#endregion
+
+		#region Methods
 
 		/// <summary>
 		/// Utility method for getting the full stack trace for a list
