@@ -1,6 +1,7 @@
 /// <reference path="../core/Array.js" />
 /// <reference path="../core/Function.js" />
 /// <reference path="../core/Signal.js" />
+/// <reference path="../core/EventScope.js" />
 /// <reference path="Internals.js" />
 
 function ServerSync(model) {
@@ -1439,6 +1440,16 @@ ServerSync.mixin({
 });
 
 ExoWeb.Mapper.ServerSync = ServerSync;
+
+Property.prototype.triggersRoundtrip = function (paths) {
+	this.addChanged(function (sender, args) {
+		if (!context.server.isApplyingChanges()) {
+			EventScope$onExit(function() {
+				sender.meta.type.model.server.roundtrip(sender, paths);
+			});
+		}
+	});
+};
 
 ServerSync.Save = function ServerSync$Save(root, success, failed) {
 	root.meta.type.model.server.save(root, success, failed);

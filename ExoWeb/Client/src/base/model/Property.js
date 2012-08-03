@@ -549,11 +549,6 @@ Property.mixin({
 		var options = preparePropertyRuleOptions(this, { staticLength: options.staticLength, compareSource: options.compareSource, compareOperator: options.compareOperator }, error);
 		new ExoWeb.Model.Rule.listLength(this._containingType, options);
 		return this;
-	},
-	triggersRoundtrip: function (paths) {
-		this.addChanged(function (sender, args) {
-			sender.meta.type.model.server.roundtrip(sender, paths);
-		});
 	}
 });
 Property.mixin(Functor.eventing);

@@ -5067,11 +5067,6 @@ window.ExoWeb.DotNet = {};
 			var options = preparePropertyRuleOptions(this, { staticLength: options.staticLength, compareSource: options.compareSource, compareOperator: options.compareOperator }, error);
 			new ExoWeb.Model.Rule.listLength(this._containingType, options);
 			return this;
-		},
-		triggersRoundtrip: function (paths) {
-			this.addChanged(function (sender, args) {
-				sender.meta.type.model.server.roundtrip(sender, paths);
-			});
 		}
 	});
 	Property.mixin(Functor.eventing);
@@ -9303,6 +9298,7 @@ window.ExoWeb.DotNet = {};
 	/// <reference path="../core/Array.js" />
 	/// <reference path="../core/Function.js" />
 	/// <reference path="../core/Signal.js" />
+	/// <reference path="../core/EventScope.js" />
 	/// <reference path="Internals.js" />
 
 	function ServerSync(model) {
@@ -10741,6 +10737,16 @@ window.ExoWeb.DotNet = {};
 	});
 
 	ExoWeb.Mapper.ServerSync = ServerSync;
+
+	Property.prototype.triggersRoundtrip = function (paths) {
+		this.addChanged(function (sender, args) {
+			if (!context.server.isApplyingChanges()) {
+				EventScope$onExit(function() {
+					sender.meta.type.model.server.roundtrip(sender, paths);
+				});
+			}
+		});
+	};
 
 	ServerSync.Save = function ServerSync$Save(root, success, failed) {
 		root.meta.type.model.server.save(root, success, failed);

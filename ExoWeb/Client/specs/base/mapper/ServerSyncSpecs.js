@@ -9,6 +9,7 @@ specs.ensureNamespace("ExoWeb.Mapper");
 
 // Imports
 ///////////////////////////////////////
+var property = specs.require("model.Property");
 var serverSync = specs.require("mapper.ServerSync");
 
 // Test Suites
