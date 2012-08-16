@@ -25,7 +25,7 @@ function Type(model, name, baseType, origin) {
 	// create namespaces as needed
 	var nameTokens = name.split("."),
 		token = nameTokens.dequeue(),
-		namespaceObj = window;
+		namespaceObj = Model.types;
 	while (nameTokens.length > 0) {
 		namespaceObj = model._ensureNamespace(token, namespaceObj);
 		token = nameTokens.dequeue();
@@ -39,10 +39,16 @@ function Type(model, name, baseType, origin) {
 
 	// If the namespace already contains a type with this name, append a '$' to the name
 	if (!namespaceObj[finalName]) {
-		namespaceObj[finalName] = jstype;
+	    namespaceObj[finalName] = jstype;
+	    if (namespaceObj === Model.types) {
+	        window[finalName] = jstype;
+	    }
 	}
 	else {
-		namespaceObj['$' + finalName] = jstype;
+	    namespaceObj['$' + finalName] = jstype;
+	    if (namespaceObj !== Model.types) {
+	        window['$' + finalName] = jstype;
+	    }
 	}
 
 	// setup inheritance

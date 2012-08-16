@@ -236,25 +236,32 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 	}
 };
 
+Model.intrinsicJsTypes = ["Object", "String", "Number", "Boolean", "Date", "TimeSpan", "Array"];
+Model.types = {};
 Model.getJsType = function Model$getJsType(name, allowUndefined) {
 	/// <summary>
 	/// Retrieves the JavaScript constructor function corresponding to the given full type name.
 	/// </summary>
 	/// <returns type="Object" />
 
-	var obj = window;
+    var obj = Model.types;
 	var steps = name.split(".");
 	for (var i = 0; i < steps.length; i++) {
-		var step = steps[i];
-		obj = obj[step];
-		if (obj === undefined) {
-			if (allowUndefined) {
-				return;
-			}
-			else {
-				throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
-			}
-		}
+	    var step = steps[i];
+	    if (Model.intrinsicJsTypes.indexOf(step) > -1) {
+	        obj = window[step];
+	    }
+	    else {
+	        obj = obj[step];
+	    }
+	    if (obj === undefined) {
+	        if (allowUndefined) {
+	            return;
+	        }
+	        else {
+	            throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+	        }
+	    }
 	}
 	return obj;
 };
