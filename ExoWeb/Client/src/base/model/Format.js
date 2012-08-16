@@ -180,9 +180,9 @@ Format.mixin({
 				return err;
 			}
 			else {
-				return new FormatError(this._description ?
-							"{0} must be formatted as " + this._description :
-							"{0} is not properly formatted",
+			    return new FormatError(this._description ? 
+                    Resource.get("format-with-description").replace('{description}', this._description) :
+					Resource.get("format-without-description"),
 							val);
 			}
 		}

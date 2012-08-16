@@ -557,14 +557,21 @@ Adapter.mixin({
 	},
 	get_firstError: function Adapter$get_firstError() {
 
-		// gets the first error in a set of conditions, always returning required field errors first, and null if no errors exist
+	    // gets the first error in a set of conditions, always returning format errors first followed by required field errors, and null if no errors exist
 		var getFirstError = function (conditions) {
 			var firstError = null;
 			for (var c = 0; c < conditions.length; c++) {
 				var condition = conditions[c];
-				if (condition.type instanceof ConditionType.Error && (firstError === null || /Required/i.test(condition.type.code))) {
-					firstError = condition;
-				}
+				if (condition.type instanceof ConditionType.Error) {
+                    if (firstError === null || /FormatError/i.test(condition.type.code)) {
+					    firstError = condition;
+					}
+					// Ensures a format error takes precedence over a required field error
+					else if (!/FormatError/i.test(firstError.type.code) && /Required/i.test(condition.type.code))
+                    {
+                        firstError = condition;
+                    }
+                }
 			}
 			return firstError;
 		};

@@ -27,10 +27,10 @@ setFormatProvider(function FormatProvider(type, format) {
 	if (type === Number) {
 		var isCurrencyFormat = format.match(/[$c]+/i);
 		var isPercentageFormat = format.match(/[%p]+/i);
-		var isIntegerFormat = format.match(/[dnfg]0/i);
+		var isIntegerFormat = format.match(/[dnfg]+/i);
 
 		return new Format({
-			description: "",
+		    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
 			specifier: format,
 			convert: function (val) {
 				// Default to browser formatting for general format

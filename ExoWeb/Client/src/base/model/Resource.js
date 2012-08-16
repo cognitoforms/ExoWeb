@@ -37,7 +37,13 @@ var Resource = {
 	"string-format":							"{property} must be formatted as {formatDescription}.",
 	"string-length-at-least":					"{property} must be at least {min} characters.",
 	"string-length-at-most":					"{property} must be at most {max} characters.",
-	"string-length-between":					"{property} must be between {min} and {max} characters.",
+	"string-length-between":                    "{property} must be between {min} and {max} characters.",
+    "format-with-description":                  "{property} must be formatted as {description}.",
+	"format-without-description":               "{property} is not properly formatted.",
+    "format-currency":                          "$#,###.##",
+    "format-percentage":                        "#.##%",
+    "format-integer":                           "#,###",
+    "format-decimal":                           "#,###.##",
 
 	// gets the resource with the specified name
 	get: function Resource$get(name) {

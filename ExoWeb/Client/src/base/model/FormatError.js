@@ -8,7 +8,7 @@ var formatConditionType = new ConditionType.Error("FormatError", "The value is n
 FormatError.mixin({
 	createCondition: function FormatError$createCondition(target, prop) {
 		return new Condition(formatConditionType,
-			$format(this.message, prop.get_label()),
+			this.message.replace("{property}", prop.get_label()),
 			target,
 			[prop.get_name()],
 			"client");

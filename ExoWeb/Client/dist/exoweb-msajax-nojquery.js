@@ -3347,7 +3347,13 @@ window.ExoWeb.DotNet = {};
 		"string-format":							"{property} must be formatted as {formatDescription}.",
 		"string-length-at-least":					"{property} must be at least {min} characters.",
 		"string-length-at-most":					"{property} must be at most {max} characters.",
-		"string-length-between":					"{property} must be between {min} and {max} characters.",
+		"string-length-between":                    "{property} must be between {min} and {max} characters.",
+	    "format-with-description":                  "{property} must be formatted as {description}.",
+		"format-without-description":               "{property} is not properly formatted.",
+	    "format-currency":                          "$#,###.##",
+	    "format-percentage":                        "#.##%",
+	    "format-integer":                           "#,###",
+	    "format-decimal":                           "#,###.##",
 
 		// gets the resource with the specified name
 		get: function Resource$get(name) {
@@ -3544,9 +3550,9 @@ window.ExoWeb.DotNet = {};
 					return err;
 				}
 				else {
-					return new FormatError(this._description ?
-								"{0} must be formatted as " + this._description :
-								"{0} is not properly formatted",
+				    return new FormatError(this._description ? 
+	                    Resource.get("format-with-description").replace('{description}', this._description) :
+						Resource.get("format-without-description"),
 								val);
 				}
 			}
@@ -3800,25 +3806,32 @@ window.ExoWeb.DotNet = {};
 		}
 	};
 
+	Model.intrinsicJsTypes = ["Object", "String", "Number", "Boolean", "Date", "TimeSpan", "Array"];
+	Model.types = {};
 	Model.getJsType = function Model$getJsType(name, allowUndefined) {
 		/// <summary>
 		/// Retrieves the JavaScript constructor function corresponding to the given full type name.
 		/// </summary>
 		/// <returns type="Object" />
 
-		var obj = window;
+	    var obj = Model.types;
 		var steps = name.split(".");
 		for (var i = 0; i < steps.length; i++) {
-			var step = steps[i];
-			obj = obj[step];
-			if (obj === undefined) {
-				if (allowUndefined) {
-					return;
-				}
-				else {
-					throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
-				}
-			}
+		    var step = steps[i];
+		    if (Model.intrinsicJsTypes.indexOf(step) > -1) {
+		        obj = window[step];
+		    }
+		    else {
+		        obj = obj[step];
+		    }
+		    if (obj === undefined) {
+		        if (allowUndefined) {
+		            return;
+		        }
+		        else {
+		            throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+		        }
+		    }
 		}
 		return obj;
 	};
@@ -3937,7 +3950,7 @@ window.ExoWeb.DotNet = {};
 		// create namespaces as needed
 		var nameTokens = name.split("."),
 			token = nameTokens.dequeue(),
-			namespaceObj = window;
+			namespaceObj = Model.types;
 		while (nameTokens.length > 0) {
 			namespaceObj = model._ensureNamespace(token, namespaceObj);
 			token = nameTokens.dequeue();
@@ -3951,10 +3964,16 @@ window.ExoWeb.DotNet = {};
 
 		// If the namespace already contains a type with this name, append a '$' to the name
 		if (!namespaceObj[finalName]) {
-			namespaceObj[finalName] = jstype;
+		    namespaceObj[finalName] = jstype;
+		    if (namespaceObj === Model.types) {
+		        window[finalName] = jstype;
+		    }
 		}
 		else {
-			namespaceObj['$' + finalName] = jstype;
+		    namespaceObj['$' + finalName] = jstype;
+		    if (namespaceObj !== Model.types) {
+		        window['$' + finalName] = jstype;
+		    }
 		}
 
 		// setup inheritance
@@ -7825,7 +7844,7 @@ window.ExoWeb.DotNet = {};
 	FormatError.mixin({
 		createCondition: function FormatError$createCondition(target, prop) {
 			return new Condition(formatConditionType,
-				$format(this.message, prop.get_label()),
+				this.message.replace("{property}", prop.get_label()),
 				target,
 				[prop.get_name()],
 				"client");
@@ -15767,14 +15786,21 @@ window.ExoWeb.DotNet = {};
 		},
 		get_firstError: function Adapter$get_firstError() {
 
-			// gets the first error in a set of conditions, always returning required field errors first, and null if no errors exist
+		    // gets the first error in a set of conditions, always returning format errors first followed by required field errors, and null if no errors exist
 			var getFirstError = function (conditions) {
 				var firstError = null;
 				for (var c = 0; c < conditions.length; c++) {
 					var condition = conditions[c];
-					if (condition.type instanceof ConditionType.Error && (firstError === null || /Required/i.test(condition.type.code))) {
-						firstError = condition;
-					}
+					if (condition.type instanceof ConditionType.Error) {
+	                    if (firstError === null || /FormatError/i.test(condition.type.code)) {
+						    firstError = condition;
+						}
+						// Ensures a format error takes precedence over a required field error
+						else if (!/FormatError/i.test(firstError.type.code) && /Required/i.test(condition.type.code))
+	                    {
+	                        firstError = condition;
+	                    }
+	                }
 				}
 				return firstError;
 			};
@@ -16570,10 +16596,10 @@ window.ExoWeb.DotNet = {};
 		if (type === Number) {
 			var isCurrencyFormat = format.match(/[$c]+/i);
 			var isPercentageFormat = format.match(/[%p]+/i);
-			var isIntegerFormat = format.match(/[dnfg]0/i);
+			var isIntegerFormat = format.match(/[dnfg]+/i);
 
 			return new Format({
-				description: "",
+			    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
 				specifier: format,
 				convert: function (val) {
 					// Default to browser formatting for general format
