@@ -212,7 +212,7 @@ namespace ExoWeb
 		void ApplyChanges(ServiceResponse response)
 		{
 			// Consolidate previous changes
-			ModelTransaction transaction = 
+			ModelTransaction transaction =
 				ModelTransaction.Combine((Changes ?? new ChangeSet[0])
 				.Where(cs => cs.Source != ChangeSource.Init)
 				.Select(cs => cs.Changes));
@@ -229,7 +229,7 @@ namespace ExoWeb
 			else
 				response.Changes = (response.Changes ?? new ModelTransaction()).Record(() => RaiseEvents(response, null));
 		}
-	
+
 		/// <summary>
 		/// Raises domain events.
 		/// </summary>
@@ -395,7 +395,7 @@ namespace ExoWeb
 			Client,		// Changes performed on the client
 			Server		// Changes performed on the server during roundtrips
 		}
-		
+
 		#endregion
 
 		#region DomainEvent
@@ -407,7 +407,7 @@ namespace ExoWeb
 		{
 			public ModelInstance Instance { get; internal set; }
 
-			public string[] Include { get; internal set; }			
+			public string[] Include { get; internal set; }
 
 			internal virtual object Raise(ModelTransaction transaction)
 			{
@@ -456,7 +456,7 @@ namespace ExoWeb
 				}
 
 				// Then see if it is a model method invocation
-				var separator =  eventName.LastIndexOf(".");
+				var separator = eventName.LastIndexOf(".");
 				if (separator > 0)
 				{
 					var type = ModelContext.Current.GetModelType(eventName.Substring(0, separator));
@@ -613,7 +613,7 @@ namespace ExoWeb
 			/// <summary>
 			/// Gets the set of root model instances for the current query.
 			/// </summary>
-			internal ModelInstance[] Roots { get; set; }	
+			internal ModelInstance[] Roots { get; set; }
 
 			internal ModelPath Path { get; set; }
 
@@ -722,7 +722,8 @@ namespace ExoWeb
 				// Access a property to force the instance to initialize.  Do a seperate pass so batched loading will work.
 				for (int i = 0; i < Roots.Length; i++)
 				{
-					Roots[i].OnPropertyGet(Roots[i].Type.Properties.First());
+					var initProp = Roots[i].Type.Properties.Where(p => p is ModelValueProperty).First() ?? Roots[i].Type.Properties.Where(p => p is ModelReferenceProperty).First();
+					Roots[i].OnPropertyGet(initProp);
 				}
 			}
 
@@ -751,7 +752,7 @@ namespace ExoWeb
 					json.Set("ids", Roots.Select(r => r.Id));
 				else
 					json.Set("id", Roots[0].Id);
-					json.Set("from", From.Name);
+				json.Set("from", From.Name);
 
 				if (Include != null)
 					json.Set("include", Include);
