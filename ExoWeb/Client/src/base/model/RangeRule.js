@@ -16,7 +16,7 @@ function RangeRule(rootType, options) {
 	// ensure the rule name is specified
 	options.name = options.name || "Range";
 
-	// store the min and max lengths
+	// store the min and max lengths 
 	if (options.min !== undefined && options.min !== null) {
 		Object.defineProperty(this, "min", { value: options.min });
 	}
@@ -29,14 +29,14 @@ function RangeRule(rootType, options) {
 
 	// ensure the error message is specified
 	options.message = options.message ||
-		this.min !== undefined && this.max !== undefined ? Resource.get("range-between").replace("{min}", this.min).replace("{max}", this.max) : // between date or ordinal
+		(this.min !== undefined && this.max !== undefined ? Resource.get("range-between").replace("{min}", this.min).replace("{max}", this.max) : // between date or ordinal
 			property.get_jstype() === Date ?
 				this.min !== undefined ? 
 					Resource.get("range-on-or-after").replace("{min}", this.min) : // on or after date
 					Resource.get("range-on-or-before").replace("{max}", this.max) : // on or before date
 				this.max !== undefined ? 
 					Resource.get("range-at-least").replace("{min}", this.min) : // at least ordinal
-					Resource.get("range-at-most").replace("{max}", this.max); // at most ordinal
+					Resource.get("range-at-most").replace("{max}", this.max)); // at most ordinal
 
 	// call the base type constructor
 	ValidatedPropertyRule.apply(this, [rootType, options]);
