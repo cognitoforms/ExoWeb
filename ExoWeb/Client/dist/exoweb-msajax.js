@@ -17071,6 +17071,9 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function sendRequest(options) {
+		// Include config data in request
+		options.data.config = webServiceConfig;
+
 		$.ajax({
 			url: getPath() + "/" + options.path,
 			type: options.type,
@@ -17081,7 +17084,7 @@ window.ExoWeb.DotNet = {};
 			success: function(result) {
 				options.onSuccess(JSON.parse(result));
 			},
-			error: function(result) { 
+			error: function(result) {
 				var error = { message: result.statusText };
 				try
 				{
@@ -17235,7 +17238,7 @@ window.ExoWeb.DotNet = {};
 						stackTrace: ExoWeb.trace.getCallStack().join("\n"),
 						url: window.location.href,
 						refererUrl: document.referrer,
-						config: ExoWeb.DotNet.config
+						config: webServiceConfig
 					}, null, null, null, 1000000, false, null);
 			}
 			finally {
