@@ -124,7 +124,7 @@ Adapter.mixin({
 	_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val) {
 		this._doForFormatPaths(val, function (path) {
 			var subscription = this._formatSubscribers[path];
-			if (subscription.chain) {
+			if (subscription && subscription.chain) {
 				subscription.chain.removeChanged(subscription.handler);
 			}
 		});
@@ -557,21 +557,21 @@ Adapter.mixin({
 	},
 	get_firstError: function Adapter$get_firstError() {
 
-	    // gets the first error in a set of conditions, always returning format errors first followed by required field errors, and null if no errors exist
+		// gets the first error in a set of conditions, always returning format errors first followed by required field errors, and null if no errors exist
 		var getFirstError = function (conditions) {
 			var firstError = null;
 			for (var c = 0; c < conditions.length; c++) {
 				var condition = conditions[c];
 				if (condition.type instanceof ConditionType.Error) {
-                    if (firstError === null || /FormatError/i.test(condition.type.code)) {
-					    firstError = condition;
+					if (firstError === null || /FormatError/i.test(condition.type.code)) {
+						firstError = condition;
 					}
 					// Ensures a format error takes precedence over a required field error
 					else if (!/FormatError/i.test(firstError.type.code) && /Required/i.test(condition.type.code))
-                    {
-                        firstError = condition;
-                    }
-                }
+					{
+						firstError = condition;
+					}
+				}
 			}
 			return firstError;
 		};
