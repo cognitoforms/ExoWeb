@@ -588,6 +588,10 @@ ServerSync.mixin({
 	startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
 		//ExoWeb.trace.log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
 
+		if (!interval || typeof(interval) !== "number" || interval <= 0) {
+			throw new Error("An interval must be specified for auto-save.");
+		}
+
 		// cancel any pending roundtrip schedule
 		this.stopAutoRoundtrip();
 
@@ -678,6 +682,14 @@ ServerSync.mixin({
 		pendingRequests--;
 	},
 	startAutoSave: function ServerSync$startAutoSave(root, interval) {
+		if (!root || !(root instanceof Entity)) {
+			throw new Error("A root object must be specified for auto-save.");
+		}
+
+		if (!interval || typeof(interval) !== "number" || interval <= 0) {
+			throw new Error("An interval must be specified for auto-save.");
+		}
+
 		// cancel any pending save schedule
 		this.stopAutoSave();
 		this._saveInterval = interval;
