@@ -522,16 +522,18 @@ function getObject(model, propType, id, finalType, forLoading) {
 	// get model type
 	var mtype = getType(model, finalType, propType);
 
-	// Try to locate object in pool
-	var obj = mtype.get(id);
+	// Try to locate the instance by id.
+	var obj = mtype.get(id,
+		// If an exact type exists then it should be specified in the call to getObject.
+		true);
 
-	// if it doesn't exist, create a ghost
+	// If it doesn't exist, create a ghosted instance.
 	if (!obj) {
 		obj = new (mtype.get_jstype())(id);
 		obj.wasGhosted = true;
 		if (!forLoading) {
+			// If the instance is not being loaded, then attach a lazy loader.
 			ObjectLazyLoader.register(obj);
-//					ExoWeb.trace.log("entity", "{0}({1})  (ghost)", [mtype.get_fullName(), id]);
 		}
 	}
 
@@ -856,30 +858,52 @@ var LazyLoadEnum = {
 };
 
 function tryGetEntity(model, translator, type, id, property, lazyLoad, callback, thisPtr) {
-	var obj = type.meta.get(translateId(translator, type.meta.get_fullName(), id));
+	// First, attempt to retrieve an existing object.
+	var obj = type.meta.get(
+		// Translate to the client-side id.
+		translateId(translator, type.meta.get_fullName(), id),
+
+		// We know that tryGetEntity is only called internally and the source of the entity
+		// information is always seen as server-origin and so should specify an exact type.
+		true
+	);
 
 	if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
+		// If the object exists and is loaded, then invoke the callback immediately.
 		callback.call(thisPtr || this, obj);
 	}
 	else if (lazyLoad == LazyLoadEnum.Force) {
+		// The caller wants the instance force loaded but doesn't want to wait for it to complete.
+
+		// If the instance doesn't exist then ensure that a ghosted instance is created.
 		if (!obj) {
 			ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
+			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
 		}
+
+		// Invoke the callback immediately.
 		callback.call(thisPtr || this, obj);
+
+		// After the callback has been invoked, force loading to occur.
 		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 		ExoWeb.Model.LazyLoader.load(obj, property);
 	}
 	else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
+		// The caller wants the instance force loaded and will wait for it to complete.
+
+		// If the instance doesn't exist then ensure that a ghosted instance is created.
 		if (!obj) {
 			ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
+			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
 		}
 
+		// Force loading to occur, passing through the callback.
 		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 		ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
 	}
 	else {
+		// The caller does not want to force loading, so wait for the instance to come into existance and invoke the callback when it does.
+
 		ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
 		function invokeCallback() {

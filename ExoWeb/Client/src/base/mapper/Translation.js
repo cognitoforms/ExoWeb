@@ -1,9 +1,25 @@
+/// <reference path="..\model\Type.js" />
+
 // Gets or loads the entity with the specified typed string id
 Entity.fromIdString = function Entity$fromIdString(id) {
+	// Typed identifiers take the form "type|id".
 	var ids = id.split("|");
-	var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
-	var obj = jstype.meta.get(ids[1]);
 
+	// Use the left-hand portion of the id string as the object's type.
+	var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
+
+	// Attempt to retrieve the object with the given id.
+	var obj = jstype.meta.get(
+		// Use the right-hand portion of the id string as the object's id.
+		ids[1],
+
+		// Typed identifiers may or may not be the exact type of the instance.
+		// An id string may be constructed with only knowledge of the base type.
+		false
+	);
+
+	// If the object does not exist, assume it is an existing object that is not
+	// yet in memory client-side, so create a ghosted instance.
 	if (!obj) {
 		obj = new jstype(ids[1]);
 		ObjectLazyLoader.register(obj);
@@ -52,10 +68,14 @@ function fromExoModel(val, translator, create, supplementalObjectsArray) {
 		// and then committed, so that the id actually references an object that already exists on the client but with a different id.
 		//--------------------------------------------------------------------------------------------------------
 		if (type.meta && type.meta instanceof ExoWeb.Model.Type && translator) {
-			// don't alter the original object
+			// NOTE: don't alter the original object
 			var id = translateId(translator, val.type, val.id);
 
-			var obj = type.meta.get(id);
+			var obj = type.meta.get(id,
+				// Since "fromExoModel" operates on the ExoModel change object format,
+				// it can be assumed that the instance type is exact.
+				true
+			);
 
 			// If the object was not found and a supplemental list was provided, then search for it
 			if (!obj && supplementalObjectsArray && supplementalObjectsArray.length > 0) {

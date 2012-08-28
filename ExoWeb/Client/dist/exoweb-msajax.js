@@ -3911,9 +3911,18 @@ window.ExoWeb.DotNet = {};
 
 	// Gets or loads the entity with the specified typed string id
 	Entity.fromIdString = function Entity$fromIdString(id) {
+		// Typed identifiers take the form "type|id".
 		var ids = id.split("|");
+
+		// Use the left-hand portion of the id string as the object's type.
 		var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
-		return jstype.meta.get(ids[1]);
+
+		// Retrieve the object with the given id.
+		return jstype.meta.get(ids[1],
+			// Typed identifiers may or may not be the exact type of the instance.
+			// An id string may be constructed with only knowledge of the base type.
+			false
+		);
 	};
 
 	ExoWeb.Model.Entity = Entity;
@@ -4049,7 +4058,12 @@ window.ExoWeb.DotNet = {};
 			if (!disableConstruction) {
 				if (idOrProps && idOrProps.constructor === String) {
 					var id = idOrProps;
-					var obj = type.get(id);
+					var obj = type.get(id,
+						// When a constructor is called we do not want to silently
+						// return an instance of a sub type, so fetch using exact type.
+						true);
+
+					// If the instance already exists, then initialize properties and return it.
 					if (obj) {
 						if (props) {
 							obj.init(props);
@@ -4057,25 +4071,30 @@ window.ExoWeb.DotNet = {};
 						return obj;
 					}
 
+					// Register the newly constructed existing instance.
 					type.register(this, id);
 
+					// Initialize properties if provided.
 					if (props) {
 						this.init(props);
 					}
 				}
 				else {
+					// Register the newly constructed new instance. It will
+					// be assigned a random client-generated id.
 					type.register(this);
 
-					// set properties passed into constructor
+					// Set properties passed into constructor.
 					if (idOrProps) {
 						this.set(idOrProps);
 					}
 
-					// Raise init events if registered.
+					// Raise initNew event if registered.
 					for (var t = type; t; t = t.baseType) {
 						var handler = t._getEventHandler("initNew");
-						if (handler)
+						if (handler) {
 							handler(this, {});
+						}
 					}
 				}
 			}
@@ -4226,11 +4245,18 @@ window.ExoWeb.DotNet = {};
 
 			this.model.notifyObjectUnregistered(obj);
 		},
-		get: function Type$get(id) {
+		get: function Type$get(id, exactTypeOnly) {
 			validateId(this, id);
 
 			var key = id.toLowerCase();
-			return this._pool[key] || this._legacyPool[key];
+			var obj = this._pool[key] || this._legacyPool[key];
+
+			// If exactTypeOnly is specified, don't return sub-types.
+			if (obj && exactTypeOnly === true && obj.meta.type !== this) {
+				throw ExoWeb.trace.logError("model", "The entity with id='{0}' is expected to be of type '{1}' but found type '{2}'.", id, this._fullName, obj.meta.type._fullName);
+			}
+
+			return obj;
 		},
 		// Gets an array of all objects of this type that have been registered.
 		// The returned array is observable and collection changed events will be raised
@@ -8824,12 +8850,28 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Mapper.Translation
 	//////////////////////////////////////////////////
 
+	/// <reference path="..\model\Type.js" />
+
 	// Gets or loads the entity with the specified typed string id
 	Entity.fromIdString = function Entity$fromIdString(id) {
+		// Typed identifiers take the form "type|id".
 		var ids = id.split("|");
-		var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
-		var obj = jstype.meta.get(ids[1]);
 
+		// Use the left-hand portion of the id string as the object's type.
+		var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
+
+		// Attempt to retrieve the object with the given id.
+		var obj = jstype.meta.get(
+			// Use the right-hand portion of the id string as the object's id.
+			ids[1],
+
+			// Typed identifiers may or may not be the exact type of the instance.
+			// An id string may be constructed with only knowledge of the base type.
+			false
+		);
+
+		// If the object does not exist, assume it is an existing object that is not
+		// yet in memory client-side, so create a ghosted instance.
 		if (!obj) {
 			obj = new jstype(ids[1]);
 			ObjectLazyLoader.register(obj);
@@ -8878,10 +8920,14 @@ window.ExoWeb.DotNet = {};
 			// and then committed, so that the id actually references an object that already exists on the client but with a different id.
 			//--------------------------------------------------------------------------------------------------------
 			if (type.meta && type.meta instanceof ExoWeb.Model.Type && translator) {
-				// don't alter the original object
+				// NOTE: don't alter the original object
 				var id = translateId(translator, val.type, val.id);
 
-				var obj = type.meta.get(id);
+				var obj = type.meta.get(id,
+					// Since "fromExoModel" operates on the ExoModel change object format,
+					// it can be assumed that the instance type is exact.
+					true
+				);
 
 				// If the object was not found and a supplemental list was provided, then search for it
 				if (!obj && supplementalObjectsArray && supplementalObjectsArray.length > 0) {
@@ -10251,8 +10297,15 @@ window.ExoWeb.DotNet = {};
 					if (clientOldId) {
 						var type = this.model.type(idChange.type);
 
-						// Attempt to load the object.
-						var obj = type.get(clientOldId);
+						// Attempt to load the object whos id is changing.
+						var obj = type.get(
+							// Load the object using the object's id prior to saving.
+							clientOldId,
+
+							// When processing server-side changes we can expect that the type of the instance
+							// is exactly the type specified in the change object, not a base type. 
+							true
+						);
 
 						// Ensure that the object exists.
 						if (!obj) {
@@ -10323,9 +10376,20 @@ window.ExoWeb.DotNet = {};
 		},
 		applyInitChange: function (change, before, after, callback, thisPtr) {
 			tryGetJsType(this.model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
-				if (!jstype.meta.get(change.instance.id)) {
+
+				// Attempt to fetch the object in case it has already been created.
+				var newObj = jstype.meta.get(
+					// Since the object is being newly created, we can use the server-generated id.
+					change.instance.id,
+
+					// When processing server-side changes we can expect that the type of the instance
+					// is exactly the type specified in the change object, not a base type. 
+					true
+				);
+
+				if (!newObj) {
 					// Create the new object
-					var newObj = new jstype();
+					newObj = new jstype();
 
 					// Check for a translation between the old id that was reported and an actual old id.  This is
 					// needed since new objects that are created on the server and then committed will result in an accurate
@@ -11321,16 +11385,18 @@ window.ExoWeb.DotNet = {};
 		// get model type
 		var mtype = getType(model, finalType, propType);
 
-		// Try to locate object in pool
-		var obj = mtype.get(id);
+		// Try to locate the instance by id.
+		var obj = mtype.get(id,
+			// If an exact type exists then it should be specified in the call to getObject.
+			true);
 
-		// if it doesn't exist, create a ghost
+		// If it doesn't exist, create a ghosted instance.
 		if (!obj) {
 			obj = new (mtype.get_jstype())(id);
 			obj.wasGhosted = true;
 			if (!forLoading) {
+				// If the instance is not being loaded, then attach a lazy loader.
 				ObjectLazyLoader.register(obj);
-//					ExoWeb.trace.log("entity", "{0}({1})  (ghost)", [mtype.get_fullName(), id]);
 			}
 		}
 
@@ -11655,30 +11721,52 @@ window.ExoWeb.DotNet = {};
 	};
 
 	function tryGetEntity(model, translator, type, id, property, lazyLoad, callback, thisPtr) {
-		var obj = type.meta.get(translateId(translator, type.meta.get_fullName(), id));
+		// First, attempt to retrieve an existing object.
+		var obj = type.meta.get(
+			// Translate to the client-side id.
+			translateId(translator, type.meta.get_fullName(), id),
+
+			// We know that tryGetEntity is only called internally and the source of the entity
+			// information is always seen as server-origin and so should specify an exact type.
+			true
+		);
 
 		if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
+			// If the object exists and is loaded, then invoke the callback immediately.
 			callback.call(thisPtr || this, obj);
 		}
 		else if (lazyLoad == LazyLoadEnum.Force) {
+			// The caller wants the instance force loaded but doesn't want to wait for it to complete.
+
+			// If the instance doesn't exist then ensure that a ghosted instance is created.
 			if (!obj) {
 				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
+				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
 			}
+
+			// Invoke the callback immediately.
 			callback.call(thisPtr || this, obj);
+
+			// After the callback has been invoked, force loading to occur.
 			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 			ExoWeb.Model.LazyLoader.load(obj, property);
 		}
 		else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
+			// The caller wants the instance force loaded and will wait for it to complete.
+
+			// If the instance doesn't exist then ensure that a ghosted instance is created.
 			if (!obj) {
 				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
-				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
+				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
 			}
 
+			// Force loading to occur, passing through the callback.
 			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 			ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
 		}
 		else {
+			// The caller does not want to force loading, so wait for the instance to come into existance and invoke the callback when it does.
+
 			ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
 			function invokeCallback() {
@@ -11908,7 +11996,23 @@ window.ExoWeb.DotNet = {};
 		var model = list._ownerProperty.get_containingType().model;
 		var ownerId = list._ownerId;
 		var containingType = list._ownerProperty.get_containingType();
-		var owner = ownerId === STATIC_ID ? containingType.get_jstype() : containingType.get(ownerId);
+
+		// Determine the instance or type that owns the list.
+		var owner = ownerId === STATIC_ID ?
+
+			// For static lists the owner is a type.
+			containingType.get_jstype() :
+
+			// For non-static lists, retrieve the owner by type and id.
+			containingType.get(
+				// Fetch the owner using the id specified in the lazy loader metadata.
+				ownerId,
+
+				// When loading a list we can expect that the type of the owner is exactly
+				// the type specified in the lazy loader metadata, not a base type.
+				true
+			);
+
 		var ownerType = ownerId === STATIC_ID ? owner.meta.get_fullName() : owner.meta.type.get_fullName();
 		var prop = list._ownerProperty;
 		var propIndex = list._ownerProperty.get_index();
@@ -12388,10 +12492,22 @@ window.ExoWeb.DotNet = {};
 							this.options.changes.forEach(function (change) {
 								if (change.type === "InitNew") {
 									tryGetJsType(this.context.server.model, change.instance.type, null, false, function (jstype) {
-										var obj = jstype.meta.get(change.instance.id);
+
+										// Attempt to find the InitNew instance if it was present in the instances JSON.
+										var obj = jstype.meta.get(
+											// Ok to fetch the instance by the server-generated id?
+											change.instance.id,
+										
+											// When processing embedded changes we can expect that the type of the instance
+											// is exactly the type specified in the change object, not a base type.
+											true
+										);
+
+										// If it exists, then it would have been created as an existing object, so mark it as new.
 										if (obj) {
 											obj.meta.isNew = true;
 										}
+
 									}, this);
 								}
 							}, this);
@@ -12424,11 +12540,21 @@ window.ExoWeb.DotNet = {};
 								// if the type doesn't exist, include the id in the batch query
 								if (!jstype) return true;
 
-								// check to see if the object already exists, i.e. because of embedding
-								var obj = jstype.meta.get(translateId(this.context.server._translator, query.from, id));
+								// Check to see if the object already exists, i.e. because of embedding.
+								var obj = jstype.meta.get(
+									// Translate the specified ID, which may be a server-generated new id,
+									// into the appropriate client-generated id.
+									translateId(this.context.server._translator, query.from, id),
 
-								// if it doesn't exist, include the id in the batch query
-								if (obj === undefined) return true;
+									// The type specified in a query may be a sub-class of the actual type,
+									// since it may be written by hand and not known ahead of time.
+									false
+								);
+
+								// If it doesn't exist, include the id in the batch query.
+								if (obj === undefined) {
+									return true;
+								}
 
 								// otherwise, include it in the model
 								if (this.state[varName].isArray) {
@@ -12502,11 +12628,22 @@ window.ExoWeb.DotNet = {};
 								// TODO: eliminate duplication!!!
 								// get the list of ids that should be individually loaded
 								var individualIds = filter(query.ids, function (id, index) {
-									// check to see if the object already exists, i.e. because of embedding
-									var obj = type.meta.get(translateId(this.context.server._translator, query.from, id));
 
-									// if it doesn't exist, include the id in the batch query
-									if (obj === undefined) return true;
+									// Check to see if the object already exists, i.e. because of embedding.
+									var obj = type.meta.get(
+										// Translate the specified ID, which may be a server-generated new id,
+										// into the appropriate client-generated id.
+										translateId(this.context.server._translator, query.from, id),
+									
+										// The type specified in a query may be a sub-class of the actual type,
+										// since it may be written by hand and not known ahead of time.
+										false
+									);
+
+									// If it doesn't exist, include the id in the batch query.
+									if (obj === undefined) {
+										return true;
+									}
 
 									// otherwise, include it in the model
 									if (this.state[varName].isArray) {
@@ -12625,13 +12762,24 @@ window.ExoWeb.DotNet = {};
 									forEach(query.ids, function (id, index) {
 										// TODO: resolve translator access
 										var clientId = translateId(this.context.server._translator, query.from, id);
-										var obj = mtype.get(clientId);
 
-										// if it doesn't exist, raise an error
-										if (obj === undefined)
+										// Retrieve the existing instance by id.
+										var obj = mtype.get(
+											// Translate the specified ID, which may be a server-generated new id,
+											// into the appropriate client-generated id.
+											clientId,
+
+											// The type specified in a query may be a sub-class of the actual type,
+											// since it may be written by hand and not known ahead of time.
+											false
+										);
+
+										// If it doesn't exist, raise an error.
+										if (obj === undefined) {
 											ExoWeb.trace.throwAndLog("context", "Could not get {0} with id = {1}{2}.", [query.from, clientId, (id !== clientId ? "(" + id + ")" : "")]);
+										}
 
-										// otherwise, include it in the model
+										// Otherwise, include it in the model.
 										if (!this.state[varName].isArray && !this.context.model[varName]) {
 											this.context.model[varName] = obj;
 										}

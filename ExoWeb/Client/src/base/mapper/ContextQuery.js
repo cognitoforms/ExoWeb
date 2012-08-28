@@ -196,10 +196,22 @@ ContextQuery.mixin({
 						this.options.changes.forEach(function (change) {
 							if (change.type === "InitNew") {
 								tryGetJsType(this.context.server.model, change.instance.type, null, false, function (jstype) {
-									var obj = jstype.meta.get(change.instance.id);
+
+									// Attempt to find the InitNew instance if it was present in the instances JSON.
+									var obj = jstype.meta.get(
+										// Ok to fetch the instance by the server-generated id?
+										change.instance.id,
+										
+										// When processing embedded changes we can expect that the type of the instance
+										// is exactly the type specified in the change object, not a base type.
+										true
+									);
+
+									// If it exists, then it would have been created as an existing object, so mark it as new.
 									if (obj) {
 										obj.meta.isNew = true;
 									}
+
 								}, this);
 							}
 						}, this);
@@ -232,11 +244,21 @@ ContextQuery.mixin({
 							// if the type doesn't exist, include the id in the batch query
 							if (!jstype) return true;
 
-							// check to see if the object already exists, i.e. because of embedding
-							var obj = jstype.meta.get(translateId(this.context.server._translator, query.from, id));
+							// Check to see if the object already exists, i.e. because of embedding.
+							var obj = jstype.meta.get(
+								// Translate the specified ID, which may be a server-generated new id,
+								// into the appropriate client-generated id.
+								translateId(this.context.server._translator, query.from, id),
 
-							// if it doesn't exist, include the id in the batch query
-							if (obj === undefined) return true;
+								// The type specified in a query may be a sub-class of the actual type,
+								// since it may be written by hand and not known ahead of time.
+								false
+							);
+
+							// If it doesn't exist, include the id in the batch query.
+							if (obj === undefined) {
+								return true;
+							}
 
 							// otherwise, include it in the model
 							if (this.state[varName].isArray) {
@@ -310,11 +332,22 @@ ContextQuery.mixin({
 							// TODO: eliminate duplication!!!
 							// get the list of ids that should be individually loaded
 							var individualIds = filter(query.ids, function (id, index) {
-								// check to see if the object already exists, i.e. because of embedding
-								var obj = type.meta.get(translateId(this.context.server._translator, query.from, id));
 
-								// if it doesn't exist, include the id in the batch query
-								if (obj === undefined) return true;
+								// Check to see if the object already exists, i.e. because of embedding.
+								var obj = type.meta.get(
+									// Translate the specified ID, which may be a server-generated new id,
+									// into the appropriate client-generated id.
+									translateId(this.context.server._translator, query.from, id),
+									
+									// The type specified in a query may be a sub-class of the actual type,
+									// since it may be written by hand and not known ahead of time.
+									false
+								);
+
+								// If it doesn't exist, include the id in the batch query.
+								if (obj === undefined) {
+									return true;
+								}
 
 								// otherwise, include it in the model
 								if (this.state[varName].isArray) {
@@ -433,13 +466,24 @@ ContextQuery.mixin({
 								forEach(query.ids, function (id, index) {
 									// TODO: resolve translator access
 									var clientId = translateId(this.context.server._translator, query.from, id);
-									var obj = mtype.get(clientId);
 
-									// if it doesn't exist, raise an error
-									if (obj === undefined)
+									// Retrieve the existing instance by id.
+									var obj = mtype.get(
+										// Translate the specified ID, which may be a server-generated new id,
+										// into the appropriate client-generated id.
+										clientId,
+
+										// The type specified in a query may be a sub-class of the actual type,
+										// since it may be written by hand and not known ahead of time.
+										false
+									);
+
+									// If it doesn't exist, raise an error.
+									if (obj === undefined) {
 										ExoWeb.trace.throwAndLog("context", "Could not get {0} with id = {1}{2}.", [query.from, clientId, (id !== clientId ? "(" + id + ")" : "")]);
+									}
 
-									// otherwise, include it in the model
+									// Otherwise, include it in the model.
 									if (!this.state[varName].isArray && !this.context.model[varName]) {
 										this.context.model[varName] = obj;
 									}

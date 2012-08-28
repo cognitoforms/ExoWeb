@@ -66,9 +66,18 @@ Entity.toIdString = function Entity$toIdString(obj) {
 
 // Gets or loads the entity with the specified typed string id
 Entity.fromIdString = function Entity$fromIdString(id) {
+	// Typed identifiers take the form "type|id".
 	var ids = id.split("|");
+
+	// Use the left-hand portion of the id string as the object's type.
 	var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
-	return jstype.meta.get(ids[1]);
+
+	// Retrieve the object with the given id.
+	return jstype.meta.get(ids[1],
+		// Typed identifiers may or may not be the exact type of the instance.
+		// An id string may be constructed with only knowledge of the base type.
+		false
+	);
 };
 
 exports.Entity = Entity;

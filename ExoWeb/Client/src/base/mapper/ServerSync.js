@@ -930,8 +930,15 @@ ServerSync.mixin({
 				if (clientOldId) {
 					var type = this.model.type(idChange.type);
 
-					// Attempt to load the object.
-					var obj = type.get(clientOldId);
+					// Attempt to load the object whos id is changing.
+					var obj = type.get(
+						// Load the object using the object's id prior to saving.
+						clientOldId,
+
+						// When processing server-side changes we can expect that the type of the instance
+						// is exactly the type specified in the change object, not a base type. 
+						true
+					);
 
 					// Ensure that the object exists.
 					if (!obj) {
@@ -1002,9 +1009,20 @@ ServerSync.mixin({
 	},
 	applyInitChange: function (change, before, after, callback, thisPtr) {
 		tryGetJsType(this.model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
-			if (!jstype.meta.get(change.instance.id)) {
+
+			// Attempt to fetch the object in case it has already been created.
+			var newObj = jstype.meta.get(
+				// Since the object is being newly created, we can use the server-generated id.
+				change.instance.id,
+
+				// When processing server-side changes we can expect that the type of the instance
+				// is exactly the type specified in the change object, not a base type. 
+				true
+			);
+
+			if (!newObj) {
 				// Create the new object
-				var newObj = new jstype();
+				newObj = new jstype();
 
 				// Check for a translation between the old id that was reported and an actual old id.  This is
 				// needed since new objects that are created on the server and then committed will result in an accurate

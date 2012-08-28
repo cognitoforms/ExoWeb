@@ -7,7 +7,23 @@ function listLoad(list, propName, callback, thisPtr) {
 	var model = list._ownerProperty.get_containingType().model;
 	var ownerId = list._ownerId;
 	var containingType = list._ownerProperty.get_containingType();
-	var owner = ownerId === STATIC_ID ? containingType.get_jstype() : containingType.get(ownerId);
+
+	// Determine the instance or type that owns the list.
+	var owner = ownerId === STATIC_ID ?
+
+		// For static lists the owner is a type.
+		containingType.get_jstype() :
+
+		// For non-static lists, retrieve the owner by type and id.
+		containingType.get(
+			// Fetch the owner using the id specified in the lazy loader metadata.
+			ownerId,
+
+			// When loading a list we can expect that the type of the owner is exactly
+			// the type specified in the lazy loader metadata, not a base type.
+			true
+		);
+
 	var ownerType = ownerId === STATIC_ID ? owner.meta.get_fullName() : owner.meta.type.get_fullName();
 	var prop = list._ownerProperty;
 	var propIndex = list._ownerProperty.get_index();

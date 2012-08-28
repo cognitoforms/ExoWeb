@@ -124,7 +124,12 @@ function generateClass(type) {
 		if (!disableConstruction) {
 			if (idOrProps && idOrProps.constructor === String) {
 				var id = idOrProps;
-				var obj = type.get(id);
+				var obj = type.get(id,
+					// When a constructor is called we do not want to silently
+					// return an instance of a sub type, so fetch using exact type.
+					true);
+
+				// If the instance already exists, then initialize properties and return it.
 				if (obj) {
 					if (props) {
 						obj.init(props);
@@ -132,25 +137,30 @@ function generateClass(type) {
 					return obj;
 				}
 
+				// Register the newly constructed existing instance.
 				type.register(this, id);
 
+				// Initialize properties if provided.
 				if (props) {
 					this.init(props);
 				}
 			}
 			else {
+				// Register the newly constructed new instance. It will
+				// be assigned a random client-generated id.
 				type.register(this);
 
-				// set properties passed into constructor
+				// Set properties passed into constructor.
 				if (idOrProps) {
 					this.set(idOrProps);
 				}
 
-				// Raise init events if registered.
+				// Raise initNew event if registered.
 				for (var t = type; t; t = t.baseType) {
 					var handler = t._getEventHandler("initNew");
-					if (handler)
+					if (handler) {
 						handler(this, {});
+					}
 				}
 			}
 		}
@@ -301,11 +311,18 @@ Type.prototype = {
 
 		this.model.notifyObjectUnregistered(obj);
 	},
-	get: function Type$get(id) {
+	get: function Type$get(id, exactTypeOnly) {
 		validateId(this, id);
 
 		var key = id.toLowerCase();
-		return this._pool[key] || this._legacyPool[key];
+		var obj = this._pool[key] || this._legacyPool[key];
+
+		// If exactTypeOnly is specified, don't return sub-types.
+		if (obj && exactTypeOnly === true && obj.meta.type !== this) {
+			throw ExoWeb.trace.logError("model", "The entity with id='{0}' is expected to be of type '{1}' but found type '{2}'.", id, this._fullName, obj.meta.type._fullName);
+		}
+
+		return obj;
 	},
 	// Gets an array of all objects of this type that have been registered.
 	// The returned array is observable and collection changed events will be raised
