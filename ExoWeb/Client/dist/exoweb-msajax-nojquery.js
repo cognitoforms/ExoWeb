@@ -12008,9 +12008,9 @@ window.ExoWeb.DotNet = {};
 				// Fetch the owner using the id specified in the lazy loader metadata.
 				ownerId,
 
-				// When loading a list we can expect that the type of the owner is exactly
-				// the type specified in the lazy loader metadata, not a base type.
-				true
+				// When loading a list the type of the owner comes from the containing
+				// type of the property, so it may not be the exact type of the instance.
+				false
 			);
 
 		var ownerType = ownerId === STATIC_ID ? owner.meta.get_fullName() : owner.meta.type.get_fullName();
