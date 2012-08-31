@@ -10407,8 +10407,8 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		applyRefChange: function (change, before, after, callback, thisPtr) {
-			var exited = false;
-			var callImmediately = true;
+			var hasExited = false;
+			var callBeforeExiting = true;
 
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
@@ -10421,8 +10421,8 @@ window.ExoWeb.DotNet = {};
 					// Apply change
 					if (change.newValue) {
 						// Don't call immediately since we may need to lazy load the type
-						if (!exited) {
-							callImmediately = false;
+						if (!hasExited) {
+							callBeforeExiting = false;
 						}
 
 						tryGetJsType(this.model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
@@ -10446,7 +10446,7 @@ window.ExoWeb.DotNet = {};
 							Observer.setValue(srcObj, change.property, refObj);
 
 							// Callback once the type has been loaded
-							if (!callImmediately && callback) {
+							if (!callBeforeExiting && callback) {
 								callback.call(thisPtr || this);
 							}
 						}, after), this);
@@ -10474,11 +10474,11 @@ window.ExoWeb.DotNet = {};
 			}, this);
 
 			// Callback immediately since nothing will be force loaded...yet
-			if (callImmediately && callback) {
+			if (callBeforeExiting && callback) {
 				callback.call(thisPtr || this);
 			}
 
-			exited = true;
+			hasExited = true;
 		},
 		applyValChange: function (change, before, after, callback, thisPtr) {
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
@@ -10529,8 +10529,8 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		applyListChange: function (change, before, after, callback, thisPtr) {
-			var exited = false;
-			var callImmediately = true;
+			var hasExited = false;
+			var callBeforeExiting = true;
 
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
@@ -10547,8 +10547,8 @@ window.ExoWeb.DotNet = {};
 					// apply added items
 					if (change.added.length > 0) {
 						// Don't call immediately since we may need to lazy load the type
-						if (!exited) {
-							callImmediately = false;
+						if (!hasExited) {
+							callBeforeExiting = false;
 						}
 
 						// Add each item to the list after ensuring that the type is loaded
@@ -10585,17 +10585,17 @@ window.ExoWeb.DotNet = {};
 
 					// don't end update until the items have been loaded
 					listSignal.waitForAll(this.ignoreChanges(before, function () {
-						if (exited) {
+						if (hasExited) {
 							this.beginApplyingChanges();
 						}
 						ListLazyLoader.allowModification(list, function () {
 							list.endUpdate();
 						});
-						if (exited) {
+						if (hasExited) {
 							this.endApplyingChanges();
 						}
 						// Callback once all instances have been added
-						if (!callImmediately && callback) {
+						if (!callBeforeExiting && callback) {
 							callback.call(thisPtr || this);
 						}
 					}, after), this, true);
@@ -10603,11 +10603,11 @@ window.ExoWeb.DotNet = {};
 			}, this);
 
 			// Callback immediately since nothing will be force loaded...yet
-			if (callImmediately && callback) {
+			if (callBeforeExiting && callback) {
 				callback.call(thisPtr || this);
 			}
 
-			exited = true;
+			hasExited = true;
 		},
 
 		// Checkpoint
@@ -10663,39 +10663,64 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 		},
-		rollbackValChange: function ServerSync$rollbackValChange(change, callback) {
+		rollbackValChange: function ServerSync$rollbackValChange(change, callback, thisPtr) {
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
-
 					Observer.setValue(srcObj, change.property, change.oldValue);
-					callback();
-
 				}, this);
 			}, this);
+
+			// Callback immediately since nothing will be force loaded
+			if (callback) {
+				callback.call(thisPtr || this);
+			}
 		},
-		rollbackRefChange: function ServerSync$rollbackRefChange(change, callback) {
+		rollbackRefChange: function ServerSync$rollbackRefChange(change, callback, thisPtr) {
+			var hasExited = false;
+			var callBeforeExiting = true;
+
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
 					if (change.oldValue) {
+						// Don't call immediately since we may need to lazy load the type
+						if (!hasExited) {
+							callBeforeExiting = false;
+						}
+
 						tryGetJsType(this.model, change.oldValue.type, null, true, function (refType) {
 							tryGetEntity(this.model, this._translator, refType, change.oldValue.id, change.property, LazyLoadEnum.None, function (refObj) {
 								Observer.setValue(srcObj, change.property, refObj);
-								callback();
+
+								// Callback once the type has been loaded
+								if (!callBeforeExiting && callback) {
+									callback.call(thisPtr || this);
+								}
 							}, this);
 						}, this);
 					}
 					else {
 						Observer.setValue(srcObj, change.property, null);
-						callback();
 					}
 				}, this);
 			}, this);
+
+			// Callback immediately since nothing will be force loaded...yet
+			if (callBeforeExiting && callback) {
+				callback.call(thisPtr || this);
+			}
+
+			hasExited = true;
 		},
-		rollbackInitChange: function ServerSync$rollbackInitChange(change, callback) {
+		rollbackInitChange: function ServerSync$rollbackInitChange(change, callback, thisPtr) {
 			//TODO: need to remove from the translator
-			callback();
+			if (callback) {
+				callback.call(thisPtr || this);
+			}
 		},
-		rollbackListChange: function ServerSync$rollbackListChange(change, callback) {
+		rollbackListChange: function ServerSync$rollbackListChange(change, callback, thisPtr) {
+			var hasExited = false;
+			var callBeforeExiting = true;
+
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
 				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
 					var prop = srcObj.meta.property(change.property);
@@ -10704,30 +10729,58 @@ window.ExoWeb.DotNet = {};
 
 					list.beginUpdate();
 
+					var listSignal = new ExoWeb.Signal("rollbackListChange-items");
+
 					// Rollback added items
-					Array.forEach(change.added, function rollbackListChanges$added(item) {
+					change.added.forEach(function rollbackListChanges$added(item) {
 						tryGetJsType(this.model, item.type, null, false, function (itemType) {
 							var childObj = fromExoModel(item, translator);
 							if (childObj) {
 								list.remove(childObj);
 							}
 						}, this);
-					});
+					}, this);
 
 					// Rollback removed items
-					Array.forEach(change.removed, function rollbackListChanges$added(item) {
-						tryGetJsType(this.model, item.type, null, true, function (itemType) {
-							var childObj = fromExoModel(item, translator, true);
+					if (change.removed.length > 0) {
+						// Don't call immediately since we may need to lazy load the type
+						if (!hasExited) {
+							callBeforeExiting = false;
+						}
 
-							list.add(childObj);
+						change.removed.forEach(function rollbackListChanges$added(item) {
+							tryGetJsType(this.model, item.type, null, true, listSignal.pending(function (itemType) {
+								var childObj = fromExoModel(item, translator, true);
+								list.add(childObj);
+							}, this, true), this);
 						}, this);
-					});
+					}
 
-					list.endUpdate();
-
-					callback();
+					// don't end update until the items have been loaded
+					listSignal.waitForAll(function () {
+						if (hasExited) {
+							this.beginApplyingChanges();
+						}
+						ListLazyLoader.allowModification(list, function () {
+							list.endUpdate();
+						});
+						if (hasExited) {
+							this.endApplyingChanges();
+						}
+						// Callback once all instances have been added
+						if (!callBeforeExiting && callback) {
+							callback.call(thisPtr || this);
+						}
+					}, this);
 				}, this);
 			}, this);
+
+			// Callback immediately since nothing will be force loaded...yet
+			if (callBeforeExiting && callback) {
+				callback.call(thisPtr || this);
+			}
+
+			hasExited = true;
 		},
 
 		// Various
