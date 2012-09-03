@@ -63,6 +63,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Client\docs.htm" />
+    <Content Include="Client\dist\jqueryui.exoweb-dialog.js" />
     <Content Include="Client\ref\jquery\jquery-1.5.1.js" />
     <Content Include="Client\ref\jquery\jquery-1.7.2.js" />
     <Content Include="Client\ref\jquery\jquery.observable.js" />
