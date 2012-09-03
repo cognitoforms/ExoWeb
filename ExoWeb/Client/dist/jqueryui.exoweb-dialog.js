@@ -41,10 +41,8 @@
 
 
     // Override default options with ones passed in
-    $.extend(true, $dialogEl.dialog.options, options);
-    //for (name in options) {
-    //    $dialogEl.dialog('option', name, options[name]);
-    //};
+    var mergedOptions = $.extend(true, $dialogEl.dialog('option'), options);
+    $dialogEl.dialog('option', mergedOptions);
 
     //Databind view with data
     dataview.set_data(data);
