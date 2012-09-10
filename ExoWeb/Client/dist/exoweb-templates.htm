@@ -26,7 +26,7 @@
 
 <!-- field, entity (drop down list) -->
 <span template:name="field" template:kind="@" template:isreference="true" template:islist="false" class="sys-template" sys:attach="template">
-	<select class="sys-template" sys:value="{ binding systemValue }"
+	<select class="sys-template" sys:value="{ binding systemValue }" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}"
 		sys:attach="dataview" dataview:data="{ binding options }">
 		<option sys:if="{{ $index == 0 }}" value=""></option>
 		<option sys:if="{{ $dataItem.get_selected() }}" selected="selected" sys:value="{ binding systemValue, mode=oneTime }">{ binding displayValue, mode=oneTime }</option>
@@ -78,25 +78,25 @@
 
 <!-- field, boolean (check box) -->
 <span template:name="field" template:kind="@" template:datatype="Boolean" class="sys-template" sys:attach="template">
-	<input type='checkbox' sys:checked="{ binding rawValue }" />
+	<input type='checkbox' sys:checked="{ binding rawValue }" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" />
 	<div class="validation">{ binding firstError.message }</div>
 </span>
 
 <!-- field time-only, date (time editor) -->
 <span template:name="field time-only" template:kind="@" template:datatype="Date" class="sys-template" sys:attach="template">
-	<input type='text' sys:value="{ binding displayValue }" />
+	<input type='text' sys:value="{ binding displayValue }" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" />
 	<div class="validation">{ binding firstError.message }</div>
 </span>
 
 <!-- field, date (date picker) -->
 <span template:name="field" template:kind="@" template:datatype="Date" class="sys-template" sys:attach="template">
-	<input type='text' class='datepicker' sys:value="{ binding displayValue }" />
+	<input type='text' class='datepicker' sys:value="{ binding displayValue }" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" />
 	<div class="validation">{ binding firstError.message }</div>
 </span>
 
 <!-- field html, string (text area) -->
 <span template:name="field html" template:kind="@" template:datatype="String" class="sys-template" sys:attach="template">
-	<textarea sys:id="html1" sys:value="{ binding displayValue }"
+	<textarea sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" sys:value="{ binding displayValue }"
 		sys:cols="{{ !!$dataItem.get_htmlCols ? $dataItem.get_htmlCols() : '' }}"
 		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : '' }}"></textarea>
 	<div class="validation">{ binding firstError.message }</div>
@@ -104,7 +104,7 @@
 
 <!-- field text, string (text area) -->
 <span template:name="field text" template:kind="@" template:datatype="String" class="sys-template" sys:attach="template">
-	<textarea sys:id="html1" sys:value="{ binding displayValue }"
+	<textarea sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" sys:value="{ binding displayValue }"
 		sys:cols="{{ !!$dataItem.get_htmlCols ? $dataItem.get_htmlCols() : '' }}"
 		sys:rows="{{ !!$dataItem.get_htmlRows ? $dataItem.get_htmlRows() : '' }}"></textarea>
 	<div class="validation">{ binding firstError.message }</div>
@@ -112,38 +112,38 @@
 
 <!-- field, string (text input) -->
 <span template:name="field" template:kind="@" class="sys-template" sys:attach="template" template:datatype="String" template:isreference="false" template:islist="false">
-	<input type='text' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : '' }}" />
+	<input type='text' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : '' }}" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" />
 	<div class="validation">{ binding firstError.message }</div>
 </span>
 
 <!-- field, string (text password) -->
 <span template:name="password" template:kind="@" class="sys-template" sys:attach="template" template:datatype="String" template:isreference="false" template:islist="false">
-	<input type='password' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : '' }}" />
+	<input type='password' sys:value="{ binding displayValue }" sys:size="{{ ($dataItem.get_size) ? $dataItem.get_size() : '' }}" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" />
 	<div class="validation">{ binding firstError.message }</div>
 </span>
 
 <!-- field, default (text input) -->
 <span template:name="field" template:kind="@" class="sys-template" sys:attach="template" template:isreference="false" template:islist="false">
-	<input type='text' sys:value="{ binding displayValue }" />
+	<input type='text' sys:value="{ binding displayValue }" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" />
 	<div class="validation">{ binding firstError.message }</div>
 </span>
 
 <!-- form (div layout) -->
 <div template:name="form" template:kind="@" class="sys-template field" sys:attach="template">
-	<div class="label">{binding label}</div>
+	<div class="label"><label sys:for="{{ $id($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}">{binding label}</label></div>
 	<div class="editor"><span sys:attach="content" content:template="field" content:data="{@ }"></span></div>
 </div>
 
 <!-- form (div layout password) -->
 <div template:name="password" template:kind="@" class="sys-template password" sys:attach="template">
-	<div class="label">{binding label}</div>
+	<div class="label"><label sys:for="{{ $id($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}">{binding label}</label></div>
 	<div class="editor"><span sys:attach="content" content:template="password" content:data="{@ }"></span></div>
 </div>
 
 <!-- form (table layout) -->
 <table>
 	<tr template:name="form" template:kind="@" class="sys-template field" sys:attach="template">
-		<td class="label">{binding label}</td>
+		<td class="label"><label sys:for="{{ $id($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}">{binding label}</label></td>
 		<td class="editor"><span sys:attach="content" content:template="field" content:data="{@ }"></span></td>
 	</tr>
 </table>
