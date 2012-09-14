@@ -26,7 +26,7 @@
             buttons: {
                 "OK": function () {
                     $(this).dialog("close");
-                    dataview.set_data(null)
+                    dataview.set_data(null);
                 }
             }
         };
@@ -42,7 +42,12 @@
 
     // Override default options with ones passed in
     var mergedOptions = $.extend(true, $dialogEl.dialog('option'), options);
-    $dialogEl.dialog('option', mergedOptions);
+
+	//Buttons are merging but if buttons are passed in then we need to override the default
+    if (options.buttons)
+    	mergedOptions.buttons = options.buttons;
+
+	$dialogEl.dialog('option', mergedOptions);
 
     //Databind view with data
     dataview.set_data(data);
@@ -50,6 +55,7 @@
     dialog.setDialogSize($dialogEl, $dialogEl.attr("width") ? parseInt($dialogEl.attr("width")) : 'auto', $dialogEl.attr("height") ? parseInt($dialogEl.attr("height")) : 'auto');
     // show the dialog
     $dialogEl.dialog("open");
+    return $dialogEl;
 }
 
 dialog.setDialogSize = function ($dialogEl, width, height) {
