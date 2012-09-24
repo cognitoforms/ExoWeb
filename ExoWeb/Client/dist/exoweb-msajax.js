@@ -6578,7 +6578,7 @@ window.ExoWeb.DotNet = {};
 		options.conditionType = options.conditionType || Rule.ensureConditionType(options.name, this.property, options.category || ConditionType.Error);
 
 		// replace the property label token in the validation message if present
-		if (typeof (options.message) !== "function") {
+		if (options.message && typeof (options.message) !== "function") {
 		    options.message = options.message.replace('{property}', prop.get_label());
 		}
 
