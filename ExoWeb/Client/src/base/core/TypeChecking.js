@@ -33,10 +33,10 @@ function isNumber(obj) {
 }
 exports.isNumber = isNumber;
 
-var integerExpr = /^-?[0-9]+$/;
+var integerExpr = /^-?[0-9]{1,10}$/;
 
 function isInteger(obj) {
-	return isNumber(obj) && !isNaN(obj) && integerExpr.test(obj.toString());
+	return isNumber(obj) && !isNaN(obj) && integerExpr.test(obj.toString()) && (obj >= -2147483648 && obj <= 2147483647);
 }
 exports.isInteger = isInteger;
 

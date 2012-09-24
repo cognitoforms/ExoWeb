@@ -73,10 +73,10 @@ window.ExoWeb.DotNet = {};
 	}
 	ExoWeb.isNumber = isNumber;
 
-	var integerExpr = /^-?[0-9]+$/;
+	var integerExpr = /^-?[0-9]{1,10}$/;
 
 	function isInteger(obj) {
-		return isNumber(obj) && !isNaN(obj) && integerExpr.test(obj.toString());
+		return isNumber(obj) && !isNaN(obj) && integerExpr.test(obj.toString()) && (obj >= -2147483648 && obj <= 2147483647);
 	}
 	ExoWeb.isInteger = isInteger;
 
@@ -6793,16 +6793,19 @@ window.ExoWeb.DotNet = {};
 		// ensure the rule name is specified
 		options.name = options.name || "Range";
 
-		// store the min and max lengths 
-		if (options.min !== undefined && options.min !== null) {
-			Object.defineProperty(this, "min", { value: options.min });
-		}
-		if (options.max !== undefined && options.max !== null) {
-			Object.defineProperty(this, "max", { value: options.max });
-		}
-
 		// get the property being validated in order to determine the data type
 		var property = options.property instanceof Property ? options.property : rootType.property(options.property);
+
+		// store the min and max lengths 
+		if (options.min !== undefined && options.min !== null) {
+			property.get_jstype() === Date ? Object.defineProperty(this, "min", { value: new Date(options.min) }) :
+												Object.defineProperty(this, "min", { value: options.min });
+		}
+		if (options.max !== undefined && options.max !== null) {
+
+			property.get_jstype() === Date ? Object.defineProperty(this, "max", { value: new Date(options.max) }) :
+											Object.defineProperty(this, "max", { value: options.max });
+		}
 
 		// ensure the error message is specified
 		options.message = options.message ||
@@ -6827,7 +6830,7 @@ window.ExoWeb.DotNet = {};
 	RangeRule.mixin({
 
 		// returns true if the property is valid, otherwise false
-		isValid: function RangeRule$isValid(obj, prop, val) {
+		isValid: function RangeRule$isValid(obj, prop, val) { 
 			return val === null || val === undefined || ((this.min === undefined || val >= this.min) && (this.max === undefined || val <= this.max));
 		},
 
