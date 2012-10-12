@@ -6248,8 +6248,13 @@ window.ExoWeb.DotNet = {};
 								else {
 									rule.returnValues.forEach(function (returnValue) {
 										sender.meta.pendingInit(returnValue, true);
-										Observer.raisePropertyChanged(sender, returnValue.get_name());
 									});
+									// Defer change notification until the scope of work has completed
+									EventScope$onExit(function () {
+										rule.returnValues.forEach(function (returnValue) { 
+											Observer.raisePropertyChanged(sender, returnValue.get_name());
+										});
+									}, this);
 								}
 							},
 							null, // no object filter
