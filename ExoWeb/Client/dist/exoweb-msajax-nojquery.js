@@ -8714,14 +8714,16 @@ window.ExoWeb.DotNet = {};
 				/// Load types from JSON
 				/// </summary>
 
-				if (this._options.types) {
-					for (var typeName in this._options.types) {
-						var signal = new Signal("embeddedType(" + typeName + ")");
+			    if (this._options.types) {
 
-						// load type(s)
-						var typesToUse = {};
-						typesToUse[typeName] = this._options.types[typeName];
-						typesFromJson(this._model, typesToUse);
+			        //force load types before clean up code below
+			        // load type(s)
+			        //var typesToUse = {};
+			        //typesToUse[typeName] = this._options.types[typeName];
+			        typesFromJson(this._model, this._options.types);
+
+					/*for (var typeName in this._options.types) {
+						var signal = new Signal("embeddedType(" + typeName + ")");
 
 						var mtype = this._model.type(typeName);
 
@@ -8731,11 +8733,12 @@ window.ExoWeb.DotNet = {};
 								ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
 							}
 						});
+					}*/
 
-						signal.waitForAll(function () {
-							TypeLazyLoader.unregister(mtype);
-							raiseExtensions(mtype);
-						});
+					for (var typeName in this._options.types) {
+					    var mtype = this._model.type(typeName);
+					    TypeLazyLoader.unregister(mtype);
+					    raiseExtensions(mtype);
 					}
 				}
 
