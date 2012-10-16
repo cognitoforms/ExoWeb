@@ -162,6 +162,7 @@ namespace ExoWeb
 			{ "Number.CompareTo(Object) as Number", new string[] {@"Number.compareTo({0}, {1})", "", @""} },
 			{ "Number.Equals(Number) as Boolean", new string[] {@"{0} === {1}", "", @""} },
 			{ "Number.Equals(Object) as Boolean", new string[] {@"{0} === {1}", "", @""} },
+			{ "Number.ToString() as String", new string[] {@"{0}.toString()", "", @""} },
 			{ "static Number.Equals(Number, Number) as Boolean", new string[] {@"{0} === {1}", "", @""} },
 			{ "Object.Equals(Object) as Boolean", new string[] {@"{0} === {1}", "", @""} },
 			{ "Object.ToString() as String", new string[] {@"{0}.toString()", "", @""} },
