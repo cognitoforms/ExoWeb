@@ -418,6 +418,17 @@ namespace ExoWeb
 
 					// See if the method represents a linq enumeration expression, such as Sum() or Where()
 					var parameters = method.GetParameters();
+
+					// OfType<>
+					if (parameters.Length == 1 && method.DeclaringType == typeof(System.Linq.Enumerable) && method.Name == "OfType")
+					{
+						var filterType = ModelContext.Current.GetModelType(method.GetGenericArguments()[0]);
+						if (filterType != null)
+							return new MethodTranslation(method, "{0}.filter(function(i) { return i instanceof " + filterType.Name + "; }, this)");
+						else
+							return null;
+					}
+
 					var target = method.IsStatic ? (parameters.Length > 0 ? parameters[0].ParameterType : null) : m.DeclaringType;
 					var listType = target == null ? null : (target.IsGenericType && target.GetGenericTypeDefinition() == typeof(IEnumerable<>) ? target :
 						target.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)).FirstOrDefault());
@@ -442,7 +453,7 @@ namespace ExoWeb
 					}
 
 					// Check for supported IEnumerable<T> methods that take a single Func<T,X> delegate selector
-					if (parameters.Length == 1 &&
+					else if (parameters.Length == 1 &&
 						parameters[0].ParameterType.GetGenericTypeDefinition() == typeof(Func<,>) &&
 						parameters[0].ParameterType.GetGenericArguments()[0].IsAssignableFrom(listType.GetGenericArguments()[0]) &&
 						typeof(IEnumerableSignatures).GetMethods().Any(em =>
@@ -678,6 +689,17 @@ namespace ExoWeb
 			/// Gets the set of translation exceptions that occurred, if any, while translating the expression to javascript.
 			/// </summary>
 			internal LambdaTranslation Translation { get; private set; }
+
+			protected override Expression VisitTypeIs(TypeBinaryExpression node)
+			{
+				builder.Append("(");
+				Visit(node.Expression);
+				builder.Append(" instanceof ");
+				builder.Append(ModelContext.Current.GetModelType(node.TypeOperand).Name);
+				builder.Append(")");
+
+				return node;
+			}
 
 			protected override Expression VisitBinary(BinaryExpression node)
 			{
