@@ -70,6 +70,9 @@ namespace ExoWeb.Diagnostics
 		{
 			string instance = FullyQualifiedApplicationPath.Replace("/", "-");
 
+			if(!PerformanceCounterCategory.Exists(category))
+				throw new InvalidOperationException(string.Format("{0} PerformanceCounterCategory does not exist. Please ensure they've been properly installed.", category));
+
 			requests = new PerformanceCounter(category, "Requests", instance, false);
 			requests.RawValue = 0;
 
