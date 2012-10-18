@@ -1299,6 +1299,7 @@ namespace ExoWeb
 			internal TranslationException(string message, MemberInfo member, TranslationException lastException)
 				: base(message)
 			{
+				System.Diagnostics.Debugger.Launch();
 				this.Member = member;
 				if (lastException != null)
 					lastException.NextException = this;
