@@ -18,7 +18,7 @@ setFormatProvider(function FormatProvider(type, format) {
 				var date = Date.parseLocale(str, format);
 				if (date === null)
 					throw new Error("Invalid date format");
-				return date;
+				return date; 
 			}
 		});
 	}
@@ -27,7 +27,7 @@ setFormatProvider(function FormatProvider(type, format) {
 	if (type === Number) {
 		var isCurrencyFormat = format.match(/[$c]+/i);
 		var isPercentageFormat = format.match(/[%p]+/i);
-		var isIntegerFormat = format.match(/[dnfg]+/i);
+		var isIntegerFormat = format.match(/[dnfg]0?$/i);
 
 		return new Format({
 		    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
