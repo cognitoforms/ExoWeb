@@ -35,7 +35,7 @@ function ensureContext() {
 		window.context = new Context();
 	}
 	else if (!(window.context instanceof Context)) {
-		ExoWeb.trace.throwAndLog("context", "The window object has a context property that is not a valid context.");
+		throw new Error("The window object has a context property that is not a valid context.");
 	}
 	return window.context;
 }

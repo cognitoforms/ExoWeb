@@ -25,8 +25,6 @@ namespace ExoWeb
 
 		public string RefererUrl { get; set; }
 
-		public string RequestJson { get; set; }
-
 		public Dictionary<string, object> AdditionalInfo {get; set;}
 		#endregion
 

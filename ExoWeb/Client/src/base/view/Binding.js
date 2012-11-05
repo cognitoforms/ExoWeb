@@ -110,7 +110,7 @@ Binding.mixin({
 				// Transform the original list using the given options
 				var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
 				if (transformResult.live !== Transform.prototype.live) {
-					ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
+					throw new Error("Invalid transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
 				}
 				return transformResult.live();
 			}
@@ -244,7 +244,7 @@ Binding.mixin({
 
 		delete this._evalFailureHandler;
 
-		ExoWeb.trace.throwAndLog(["~", "markupExt"], "Couldn't evaluate path '{0}', {1}", [this._sourcePath, err]);
+		throw new Error($format("Couldn't evaluate path '{0}', {1}", this._sourcePath, err));
 	},
 
 	dispose: function() {

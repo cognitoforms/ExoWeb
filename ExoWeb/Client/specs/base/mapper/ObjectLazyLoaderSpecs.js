@@ -16,20 +16,10 @@ var objectLazyLoader = specs.require("mapper.ObjectLazyLoader");
 var ObjectLazyLoader = objectLazyLoader.ObjectLazyLoader;
 var instance = objectLazyLoader.instance;
 
-specs.require("core.Trace");
-
-// Constants
-///////////////////////////////////////
-var logCategories = ["objectInit", "lazyLoad"];
-
 // Test Suites
 ///////////////////////////////////////
 describe("ObjectLazyLoader.register", function() {
 	it("verifies that an object is of a server-origin type", function() {
-		var logError = ExoWeb.trace.logError;
-		var newLogError = jasmine.jasmine.createSpy();
-		ExoWeb.trace.logError = newLogError;
-
 		var mockObj = {
 			meta: {
 				id: "1",
@@ -40,11 +30,9 @@ describe("ObjectLazyLoader.register", function() {
 			}
 		};
 
-		ObjectLazyLoader.register(mockObj);
-
-		expect(newLogError).toHaveBeenCalledWith(logCategories, "Cannot lazy load instance of non-server-origin type: {0}({1})", "Foo", "1");
-
-		ExoWeb.trace.logError = logError;
+		expect(function() {
+			ObjectLazyLoader.register(mockObj);
+		}).toThrow("Cannot lazy load instance of non-server-origin type: Foo|1");
 	});
 });
 

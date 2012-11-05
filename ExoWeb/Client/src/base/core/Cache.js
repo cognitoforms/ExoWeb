@@ -45,7 +45,7 @@ if (window.localStorage) {
 				window.localStorage.setItem(localKey, json);
 			}
 			catch (e) {
-				ExoWeb.trace.logWarning("cache", e);
+				logWarning(e.message);
 			}
 			return value;
 		}

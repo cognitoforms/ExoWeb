@@ -35,6 +35,328 @@ window.ExoWeb.DotNet = {};
 
 	// #endregion
 
+	// #region ExoWeb.Errors
+	//////////////////////////////////////////////////
+
+	function ArgumentTypeError (argumentName, expectedType, actualValue) {
+		/// <summary locid="M:J#ArgumentTypeError.#ctor">
+		/// An error type that is raised when an argument to a function
+		/// is of the wrong type.
+		/// </summary>
+		/// <param name="argumentName" type="String">The name of the argument that was of the wrong type.</param>
+		/// <param name="expectedType" type="String">The expected type of the arguments.</param>
+		/// <param name="value">The actual number of arguments that were given.</param>
+
+		if (arguments.length !== 3) throw new ArgumentsLengthError(3, arguments.length);
+		if (argumentName == null) throw new ArgumentNullError("argumentName");
+		if (typeof(argumentName) !== "string") throw new ArgumentTypeError("argumentName", "string", argumentName);
+		if (expectedType == null) throw new ArgumentNullError("expectedType");
+		if (typeof(expectedType) !== "string") throw new ArgumentTypeError("expectedType", "string", expectedType);
+
+		this.name = "ArgumentTypeError";
+		this.argumentName = argumentName;
+		this.expectedType = expectedType;
+		this.actualValue = actualValue;
+		this.message = "Argument '" + argumentName + "' must be of type " + expectedType + ": " + actualValue + ".";
+	}
+
+	ArgumentTypeError.prototype = new Error();
+	ArgumentTypeError.prototype.constructor = ArgumentTypeError;
+
+	ExoWeb.ArgumentTypeError = ArgumentTypeError;
+	window.ArgumentTypeError = ArgumentTypeError;
+
+	function ArgumentsLengthError (expected, actual) {
+		/// <summary locid="M:J#ArgumentsLengthError.#ctor">
+		/// An error type that is raised when the wrong number
+		/// of arguments is passed to a function.
+		/// </summary>
+		/// <param name="expected" type="Number">The expected number of arguments.</param>
+		/// <param name="actual" type="Number">The actual number of arguments that were given.</param>
+
+		if (arguments.length !== 2) throw new ArgumentsLengthError(2, arguments.length);
+		if (expected == null) throw new ArgumentNullError("expected");
+		if (actual == null) throw new ArgumentNullError("actual");
+		if (typeof(expected) !== "number") throw new ArgumentTypeError("expected", "number", expected);
+		if (typeof(actual) !== "number") throw new ArgumentTypeError("actual", "number", actual);
+
+		this.name = "ArgumentsLengthError";
+		this.expected = expected;
+		this.actual = actual;
+		this.message = "The number of arguments is not correct, expected " + expected + ", actual " + actual + ".";
+	}
+
+	ArgumentsLengthError.prototype = new Error();
+	ArgumentsLengthError.prototype.constructor = ArgumentsLengthError;
+
+	ExoWeb.ArgumentsLengthError = ArgumentsLengthError;
+	window.ArgumentsLengthError = ArgumentsLengthError;
+
+	function ArgumentNullError (argumentName, reason) {
+		/// <summary locid="M:J#ArgumentNullError.#ctor">
+		/// An error type that is raised when an argument is
+		/// null or undefined and it must have a value.
+		/// </summary>
+		/// <param name="argumentName" type="String">The name of the argument that was null.</param>
+		/// <param name="reason" type="String">The reason that the argument cannot be null.</param>
+
+		if (arguments.length < 1 && arguments.length > 2) throw new ArgumentsLengthError(2, arguments.length);
+		if (argumentName == null) throw new ArgumentNullError("argumentName");
+		if (typeof(argumentName) !== "string") throw new ArgumentTypeError("argumentName", "string", argumentName);
+		if (reason != null && typeof(reason) !== "string") throw new ArgumentTypeError("reason", "string", reason);
+
+		this.name = "ArgumentNullError";
+		this.argumentName = argumentName;
+		this.reason = reason;
+		this.message = "Argument '" + argumentName + "' cannot be null or undefined" + (reason ? ": " + reason + "." : ".");
+	}
+
+	ArgumentNullError.prototype = new Error();
+	ArgumentNullError.prototype.constructor = ArgumentNullError;
+
+	ExoWeb.ArgumentNullError = ArgumentNullError;
+	window.ArgumentNullError = ArgumentNullError;
+
+	var logErrorProvider = null;
+
+	function setLogErrorProvider(fn) {
+		/// <summary>
+		/// Provide an implementation of the LogError provider.
+		/// </summary>
+		/// <remarks>
+		///
+		/// Event propogation
+		/// =================
+		///
+		/// When the global error event occurs, the log error handler is called last
+		/// before exiting.  This allows existing subscribers to handle the error and
+		/// prevent propogation, also preventing the error from being logged. Subscribers
+		/// that attach to the error event after the log error handler is subscribed
+		/// (i.e. after the framework script has loaded) should execute their logic
+		/// first, then call the original event handler.  Unlike other handlers, the
+		/// log error handler may NOT signal that the error was handled to prevent
+		/// propogation.  The ExoWeb.error event can be used for that purpose. If the
+		/// error reaches the logging phase it is assumed that it will not be handled.  
+		///
+		/// The event handler's argument(s)
+		/// ===============================
+		///
+		/// The function is called with a single object, referred to as "errorData".
+		/// The default object that is passed contains the following properties, which
+		/// correspond to the format of the ServiceError object:
+		///
+		///		"message": The error message.
+		///		"type": The type of error.  By default this is simply "Error".  A custom event
+		///			handler may choose to attempt to infer the error type from the message.
+		///		"url": The URL where the error occured.  By default this is the current URL.
+		///		"refererUrl": By default this is the `document.referrer` property.
+		///		"additionalInfo": By default this is an object with `url` and `lineNumber`
+		///			properties, which correspond to the arguments of that name which were
+		///			passed to the global error event.  Custom error	handlers can remove these
+		///			properties and/or include custom data.  Additional properties should use
+		///			primative types, and should be only one level deep.  In other words,
+		///			`errorData["Foo.Bar"] = 1`, not `errorData.Foo = { Bar: 1 }`.
+		///
+		/// </remarks>
+		/// <param name="fn" type="Function">The error provider function.</param>
+
+		if (arguments.length !== 1) throw new ArgumentsLengthError(1, arguments.length);
+		if (fn == null) throw new ArgumentNullError("fn");
+		if (typeof(fn) !== "function") throw new ArgumentTypeError("fn", "function", fn);
+
+		logErrorProvider = fn;
+	}
+
+	ExoWeb.setLogErrorProvider = setLogErrorProvider;
+
+	var errorEventFns = [];
+
+	function addError (fn) {
+		/// <summary>
+		/// Attach an event handler to the global error event.
+		/// </summary>
+		/// <remarks>
+		///
+		/// Timing of event
+		/// ===============
+		///
+		/// The ExoWeb error event is called when a global error event is raised, immediately
+		/// before the "log error" provider is called.
+		///
+		/// The event handler's argument(s)
+		/// ===============================
+		///
+		/// The event handler is passed four arguments in total: the original three arguments
+		/// of the global error handler (message, url, lineNumber), as well as the "errorData"
+		/// object, which will ultimately be passed to the "log error" provider.  The event
+		/// handler may choose to modified any of the errorData object's properties.
+		/// 
+		/// </remarks>
+		/// <param name="fn" type="Function">The error event function.  Signature: f (message, url, lineNumber)</param>
+
+		if (fn == null) throw new ArgumentNullError("fn");
+		if (typeof(fn) !== "function") throw new ArgumentTypeError("fn", "function", fn);
+
+		errorEventFns.push(fn);
+	}
+
+	ExoWeb.addError = addError;
+
+	/*
+	* Handles an error that 
+	*/
+	function handleError(message, url, lineNumber) {
+
+		// Initialize the default error data based on the error.
+		var errorData = {
+			message: message,
+			type: "Error",
+			url: window.location.href,
+			refererUrl: document.referrer,
+			additionalInfo: {
+				url: url,
+				lineNumber: lineNumber
+			}
+		};
+
+		// The error was not handled, so raise the error event.
+		errorEventFns.forEach(function(fn) {
+			fn(message, url, lineNumber, errorData);
+		});
+
+		if (logErrorProvider) {
+			// Log the error.
+			logErrorProvider(errorData);
+		}
+
+	}
+
+	/*
+	* Explicitly logs an error without throwing.
+	* Raising the 'error' event is optional.
+	*/
+	function logError(message, url, lineNumber) {
+		/// <summary>
+		/// Logs an error.
+		/// </summary>
+		/// <param name="message" type="String">The error message.</param>
+		/// <param name="url" type="String">The url where the error occurred.</param>
+		/// <param name="lineNumber" type="Number">The line number where the error occurred.</param>
+
+		// Ensure that the message (or error) argument was passed in
+		if (message == null) throw new ArgumentNullError("message");
+
+		// Check for {message, url, lineNumber} mode
+		if (arguments.length === 3) {
+
+			// Validate arguments
+			if (!(message.constructor === String)) throw new ArgumentTypeError("message", "string", message);
+			if (url.constructor !== String) throw new ArgumentTypeError("url", "string", url);
+			if (lineNumber != null && typeof(lineNumber) !== "number") throw new ArgumentTypeError("lineNumber", "number", lineNumber);
+
+			// Pass along the information
+			handleError(message, url, lineNumber);
+
+		}
+
+		// Otherwise, attempt {error} mode
+		else if (arguments.length === 1) {
+
+			if (message instanceof Error) {
+
+				// Rewrite arguments
+				var error = message;
+				message = url = lineNumber = null;
+
+				// Pass along the information from the error
+				handleError(error.message, error.fileName, error.lineNumber);
+
+			}
+			else {
+
+				// Pass along the message and simulate the other information
+				handleError(message.toString(), "?", "-1");
+
+			}
+
+		}
+
+		// Incorrect number of arguments
+		else {
+			throw new ArgumentsLengthError(3, arguments.length);
+		}
+
+	}
+
+	ExoWeb.logError = logError;
+
+	/*
+	* Attaches to the global error event and logs the error if
+	* logging is implemented and the error is not handled.
+	*/
+	var oldOnError = window.onerror;
+	window.onerror = function (message, url, lineNumber) {
+
+		// Call previous handler.
+		if (oldOnError && oldOnError.apply(this, arguments) === true) {
+			// Previous handler has handled the error, so exit now and prevent propogation.
+			return true;
+		}
+
+		// Pass the error along to event subscribers and then log.
+		handleError(message, url, lineNumber);
+
+		// Let default handler run.
+		return false;
+
+	};
+
+	// #endregion
+
+	// #region ExoWeb.Warnings
+	//////////////////////////////////////////////////
+
+	var logWarningProvider = function (message) {
+		// if the console is defined then log the message
+		if (typeof (console) !== "undefined") {
+			console.warn(message);
+		}
+	};
+
+	function setLogWarningProvider(fn) {
+		/// <summary>
+		/// Provide an implementation of the logWarning provider.
+		/// </summary>
+		/// <remarks>
+		///
+		/// The event handler's argument(s)
+		/// ===============================
+		///
+		/// The function is called with a single value, the warning message.
+		//
+		/// </remarks>
+		/// <param name="fn" type="Function">The warning provider function.</param>
+
+		if (arguments.length !== 1) throw new ArgumentsLengthError(1, arguments.length);
+		if (fn == null) throw new ArgumentNullError("fn");
+		if (typeof(fn) !== "function") throw new ArgumentTypeError("fn", "function", fn);
+
+		logWarningProvider = fn;
+	}
+
+	ExoWeb.setLogWarningProvider = setLogWarningProvider;
+
+	function logWarning(message) {
+		if (logWarningProvider) {
+			// Log the warning.
+			logWarningProvider(message);
+		}
+	}
+
+	ExoWeb.logWarning = logWarning;
+
+	// #endregion
+
 	// #region ExoWeb.TypeChecking
 	//////////////////////////////////////////////////
 
@@ -141,12 +463,13 @@ window.ExoWeb.DotNet = {};
 			throw new Error("Minimum argument must be less than maximum argument.");
 		}
 
-		return Math.floor(Math.random() * (max - min + 1)) + min;
+		var rand = Math.random();
+		return rand === 1 ? max : Math.floor(rand * (max - min + 1)) + min;
 	}
 
 	ExoWeb.randomInteger = randomInteger;
 
-	function randomText(len) {
+	function randomText(len, includeDigits) {
 		if (arguments.length === 0) {
 			throw new Error("Length argument is required.");
 		}
@@ -156,7 +479,19 @@ window.ExoWeb.DotNet = {};
 
 		var result = "";
 		for (var i = 0; i < len; i++) {
-			result += String.fromCharCode(randomInteger(97, 122));
+			var min = 0;
+			var max = includeDigits ? 35 : 25;
+			var rand = randomInteger(min, max);
+			var charCode;
+			if (rand <= 25) {
+				// Alpha: add 97 for 'a'
+				charCode = rand + 97;
+			}
+			else {
+				// Num: start at 0 and add 48 for 0
+				charCode = (rand - 26) + 48;
+			}
+			result += String.fromCharCode(charCode);
 		}
 		return result;
 	}
@@ -516,10 +851,9 @@ window.ExoWeb.DotNet = {};
 				var idx = options.callbackIndex || 0;
 				var callback = arguments[idx];
 
-				if (!callback || !(callback instanceof Function))
-					ExoWeb.trace.throwAndLog("functions",
-						"Unable to merge async functions: the argument at index {0}{1} is not a function.",
-						[idx, options.callbackIndex ? "" : " (default)"]);
+				// Ensure that there is a callback function
+				if (callback == null) throw new ArgumentNullError("callback", "'mergeFunctions' was called in async mode");
+				if (typeof(callback) !== "function") throw new ArgumentTypeError("callback", "function", callback);
 
 				var signal = new Signal("mergeFunctions");
 
@@ -582,6 +916,13 @@ window.ExoWeb.DotNet = {};
 	function callArgument(arg) {
 		arg.call();
 	};
+
+	var funcRegex = /function\s*([\w_\$]*)/i;
+	function parseFunctionName(f) {
+		var result = funcRegex.exec(f);
+		return result ? (result[1] || "{anonymous}") : "{anonymous}";
+	}
+
 
 	// #endregion
 
@@ -988,184 +1329,6 @@ window.ExoWeb.DotNet = {};
 		return str === null || str === undefined || str === "";
 	}
 
-	// #endregion
-
-	// #region ExoWeb.Trace
-	//////////////////////////////////////////////////
-
-	var errorHandler = function noOpErrorHandler(message, e) { };
-	function setErrorHandler(fn) {
-		errorHandler = fn;
-	}
-	ExoWeb.setErrorHandler = setErrorHandler;
-
-	ExoWeb.trace = {
-		// The following flags can be turned on to see debugging info.
-		// Rather than editing the code below, set them in your application's page
-		flags: {
-			all: false,
-			batch: false,
-			signal: false,
-			typeInit: false,
-			objectInit: false,
-			propInit: false,
-			listInit: false,
-			lazyLoad: false,
-			markupExt: false,
-			"~": false,
-			"@": false,
-			context: false,
-			tests: false,
-			mocks: false,
-			server: false,
-			ui: false,
-			templates: false,
-			rule: false,
-			model: false,
-			conditions: false,
-			responseHandler: false
-		},
-		_isEnabled: function _isEnabled(category) {
-			if (ExoWeb.trace.flags.all) {
-				return true;
-			}
-
-			if (category instanceof Array) {
-				for (var i = 0; i < category.length; ++i) {
-					if (ExoWeb.trace.flags[category[i]]) {
-						return true;
-					}
-				}
-				return false;
-			}
-			else {
-				return !!ExoWeb.trace.flags[category];
-			}
-		},
-		_formatMessage: function _formatMessage(category, message, args/*, ...*/) {
-			if (!(category instanceof Array)) {
-				category = [category];
-			}
-
-			var catStr = category.join(", ");
-
-			var formatArgs = Array.prototype.slice.call(arguments, 1);
-			return "[" + catStr + "]: " + $format.apply(null, formatArgs);
-		},
-		log: function trace$log(category, message, args) {
-			if (typeof (console) === "undefined") {
-				return;
-			}
-
-			if (ExoWeb.trace._isEnabled(category)) {
-				console.log(ExoWeb.trace._formatMessage.apply(this, arguments));
-			}
-		},
-		logWarning: function trace$logWarning(category, message, args) {
-			// append the warning category
-			if (!(category instanceof Array)) {
-				category = [category, "warning"];
-			}
-			else {
-				category.push("warning");
-			}
-
-			// if the console is defined then log the message
-			if (typeof (console) !== "undefined") {
-				console.warn(ExoWeb.trace._formatMessage.apply(this, arguments));
-			}
-		},
-		logError: function trace$logError(category, message, args) {
-			// append the error category
-			if (!(category instanceof Array)) {
-				category = [category, "error"];
-			}
-			else {
-				category.push("error");
-			}
-
-			// format the message text
-			var msg = ExoWeb.trace._formatMessage.apply(this, arguments);
-
-			// handle the error
-			errorHandler(msg, message instanceof Error ? message : null);
-
-			// if the console is defined then log the message
-			if (typeof (console) !== "undefined") {
-				console.error(msg);
-			}
-
-			return new Error(msg);
-		},
-		throwAndLog: function trace$throwAndLog(category, message, args) {
-			ExoWeb.trace.logError(category, message, args);
-
-			throw new Error($format(message, args));
-		},
-		getCallStack: function getCallStack() {
-			var result = [];
-
-			// process the callees until the end of the stack or until the depth limit is reached
-			for (var f = arguments.callee, depth = 0, _f = null; f && depth < 25; _f = f, f = f && f.arguments ? f.arguments.callee.caller : null, depth++) {
-
-				// format the function name and arguments
-				var name = parseFunctionName(f);
-				var args = f && f.arguments ? Array.prototype.slice.call(f.arguments).map(formatArgument).join(", ") : "";
-
-				// append the new item
-				result.push(name + "(" + args + ")");
-
-				// Calling a function recursively will prevent this loop from terminating since arguments.callee.caller
-				// will always refer to the current function.  This is because the property path arguments.callee.caller
-				// is attached to the function definition rather than the function "activation object".  Allow the call
-				// line to be written again to suggest the reason that the call stack could not be inspected further.
-				// see http://bytes.com/topic/javascript/answers/470251-recursive-functions-arguments-callee-caller
-				if (_f !== null & _f === f) {
-					result.push("non-terminating loop detected...");
-					break;
-				}
-			}
-
-			return result;
-		}
-	};
-
-	function formatArgument(arg) {
-		try {
-			if (arg === undefined) {
-				return "undefined";
-			}
-			else if (arg === null) {
-				return "null";
-			}
-			else if (arg instanceof Array) {
-				return "[" + arg.map(formatArgument).join(", ") + "]";
-			}
-			else if (arg instanceof Function) {
-				return parseFunctionName(arg) + "()";
-			}
-			else if (arg.constructor === String) {
-				return "\"" + arg + "\"";
-			}
-			else {
-				return arg.format ? arg.format() : (arg.toString ? arg.toString() : "~unknown");
-			}
-		}
-		catch (e) {
-			return "ERROR (" + parseFunctionName(arg.constructor) + "): " + e.toString();
-		}
-	}
-
-	var funcRegex = /function\s*([\w_\$]*)/i;
-	function parseFunctionName(f) {
-		var result = funcRegex.exec(f);
-		return result ? (result[1] || "{anonymous}") : "{anonymous}";
-	}
-	ExoWeb.parseFunctionName = parseFunctionName;
-
-	var log = ExoWeb.trace.log;
-	var logError = ExoWeb.trace.logError;
-	var throwAndLog = ExoWeb.trace.throwAndLog;
 
 	// #endregion
 
@@ -1219,7 +1382,7 @@ window.ExoWeb.DotNet = {};
 					window.localStorage.setItem(localKey, json);
 				}
 				catch (e) {
-					ExoWeb.trace.logWarning("cache", e);
+					logWarning(e.message);
 				}
 				return value;
 			}
@@ -1244,21 +1407,10 @@ window.ExoWeb.DotNet = {};
 	var activityCallbacks = [];
 
 	function registerActivity(label, callback, thisPtr) {
-		if (label === undefined || label === null) {
-			ExoWeb.trace.throwAndLog("activity", "Activity label cannot be null or undefined.");
-		}
-
-		if (label.constructor !== String) {
-			ExoWeb.trace.throwAndLog("activity", "Activity label must be a string.");
-		}
-
-		if (callback === undefined || callback === null) {
-			ExoWeb.trace.throwAndLog("activity", "Activity callback cannot be null or undefined.");
-		}
-
-		if (!(callback instanceof Function)) {
-			ExoWeb.trace.throwAndLog("activity", "Activity callback must be a function.");
-		}
+		if (label == null) throw new ArgumentNullError("label");
+		if (typeof(label) !== "string") throw new ArgumentTypeError("label", "string", label);
+		if (callback == null) throw new ArgumentNullError("callback");
+		if (typeof(callback) !== "function") throw new ArgumentTypeError("callback", "function", callback);
 
 		var item = { label: label, callback: callback };
 
@@ -1275,25 +1427,41 @@ window.ExoWeb.DotNet = {};
 		var busy = false;
 		var logBusyLabel = arguments[0];
 
-		for (var i = 0, len = activityCallbacks.length; i < len; i++) {
-			var item = activityCallbacks[i];
+		getBusyItems(function (item) {
+			busy = true;
 
-			if (item.callback.call(item.thisPtr || this) === true) {
-				if (logBusyLabel) {
-					busy = true;
-					console.log("Item \"" + item.label + "\" is busy.");
-				}
-				else {
-					return true;
-				}
+			if (logBusyLabel) {
+				console.log("Item \"" + item.label + "\" is busy.");
+				return false;
 			}
-		}
+			else {
+				return true;
+			}
+		});
 
 		return busy;
 	}
 
 	ExoWeb.isBusy = isBusy;
 
+	function getBusyItems(onBusyItemFound) {
+		var busyItems = [];
+
+		for (var i = 0, len = activityCallbacks.length; i < len; i++) {
+			var item = activityCallbacks[i];
+
+			if (item.callback.call(item.thisPtr || this) === true) {
+				busyItems.push(item);
+
+				if (onBusyItemFound && onBusyItemFound(item) === true)
+					return busyItems;
+			}
+		}
+
+		return busyItems;
+	}
+
+	ExoWeb.getBusyItems = getBusyItems;
 	// #endregion
 
 	// #region ExoWeb.Batch
@@ -1308,8 +1476,6 @@ window.ExoWeb.DotNet = {};
 		this._labels = [label];
 		this._rootLabel = label;
 		this._subscribers = [];
-
-		//ExoWeb.trace.log("batch", "[{0}] {1} - created.", [this._index, this._rootLabel]);
 
 		allBatches.push(this);
 	}
@@ -1331,7 +1497,6 @@ window.ExoWeb.DotNet = {};
 	Batch.suspendCurrent = function Batch_$suspendCurrent(message) {
 		if (currentBatch !== null) {
 			var batch = currentBatch;
-			//ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [currentBatch._index, currentBatch._rootLabel, message || ""]);
 			currentBatch = null;
 			return batch;
 		}
@@ -1373,8 +1538,6 @@ window.ExoWeb.DotNet = {};
 
 	Batch.mixin({
 		_begin: function Batch$_begin(label) {
-			//ExoWeb.trace.log("batch", "[{0}] {1} - beginning label {2}.", [this._index, this._rootLabel, label]);
-
 			this._labels.push(label);
 
 			return this;
@@ -1382,18 +1545,13 @@ window.ExoWeb.DotNet = {};
 		_end: function Batch$_end() {
 			// Cannot end a batch that has already been ended.
 			if (this.isEnded()) {
-				ExoWeb.trace.logWarning("batch", "[{0}] {1} - already ended.", [this._index, this._rootLabel]);
 				return this;
 			}
 
 			// Remove the last label from the list.
 			var label = this._labels.pop();
 
-			//ExoWeb.trace.log("batch", "[{0}] {1} - ending label {2}.", [this._index, this._rootLabel, label]);
-
 			if (this.isEnded()) {
-				//ExoWeb.trace.log("batch", "[{0}] {1} - complete.", [this._index, this._rootLabel]);
-
 				// If we are ending the current batch, then null out the current batch 
 				// variable so that new batches can be created with a new root label.
 				if (currentBatch === this) {
@@ -1415,8 +1573,6 @@ window.ExoWeb.DotNet = {};
 			// given batch.  From this point forward this batch defers
 			// its behavior to the given batch.
 
-			//ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
-
 			// Transfer labels from one batch to another.
 			otherBatch._labels.addRange(this._labels);
 			this._labels.clear();
@@ -1436,7 +1592,6 @@ window.ExoWeb.DotNet = {};
 				return currentBatch;
 			}
 
-			//ExoWeb.trace.log("batch", "[{0}] {1} - resuming.", [this._index, this._rootLabel]);
 			currentBatch = this;
 
 			return this;
@@ -1445,8 +1600,6 @@ window.ExoWeb.DotNet = {};
 			return this._labels.length === 0;
 		},
 		whenDone: function Batch$whenDone(fn, thisPtr) {
-			//ExoWeb.trace.log("batch", "[{0}] {1} - subscribing to batch done.", [this._index, this._rootLabel]);
-
 			this._subscribers.push({ fn: fn, thisPtr: thisPtr });
 
 			return this;
@@ -1522,7 +1675,6 @@ window.ExoWeb.DotNet = {};
 			}
 
 			this._pending++;
-			//ExoWeb.trace.log("signal", "(++{_pending}) {_debugLabel}", this);
 			return this._genCallback(callback, thisPtr, executeImmediately);
 		},
 		orPending: function Signal$orPending(callback, thisPtr, executeImmediately) {
@@ -1535,14 +1687,19 @@ window.ExoWeb.DotNet = {};
 			var signal = this, called = false;
 			return function Signal$_genCallback$result() {
 				signal._doCallback("pending", thisPtr || this, function Signal$_genCallback$fn() {
-					if (called) {
-						ExoWeb.trace.throwAndLog("signal", "({0}) signal callback was called more than once.", [signal._debugLabel]);
-					}
+
+					// Throw an error if the signal callback has already been called
+					if (called) throw new Error("(" + signal._debugLabel + ") signal callback was called more than once.");
+
+					// Record the fact that the callback has already been called in case it is called again
 					called = true;
-					if (callback) {
-						callback.apply(this, arguments);
-					}
+
+					// Invoke the callback if it exists
+					if (callback) callback.apply(this, arguments);
+
+					// Signal that the callback is complete
 					signal.oneDone();
+
 				}, arguments, executeImmediately);
 			};
 		},
@@ -1559,8 +1716,6 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		oneDone: function Signal$oneDone() {
-			//ExoWeb.trace.log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
-
 			--this._pending;
 
 			if (this._pending === 0) {
@@ -1697,9 +1852,7 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	function FunctionChain(steps, thisPtr) {
-		if (!(steps instanceof Array)) {
-			ExoWeb.trace.throwAndLog("functionChain", "Steps must be an array of functions.");
-		}
+		if (!(steps instanceof Array)) throw new ArgumentTypeError("steps", "array", steps);
 
 		this._steps = steps;
 		this._thisPtr = thisPtr;
@@ -1764,9 +1917,6 @@ window.ExoWeb.DotNet = {};
 
 	// #region ExoWeb.EventScope
 	//////////////////////////////////////////////////
-
-	/// <reference path="Function.js" />
-	/// <reference path="Functor.js" />
 
 	var currentEventScope = null;
 
@@ -1859,7 +2009,6 @@ window.ExoWeb.DotNet = {};
 		}
 	}
 
-
 	// Export public functions
 	var eventScopeApi = {
 		onExit: EventScope$onExit,
@@ -1902,14 +2051,8 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	function Transform(array, forLive) {
-		if (array === null || array === undefined) {
-			ExoWeb.trace.logError("transform", "Transform input is required.");
-			throw new Error("Transform input is required.");
-		}
-		if (!(array instanceof Array)) {
-			ExoWeb.trace.logError("transform", "Transform input must be an array.");
-			throw new Error("Transform input must be an array.");
-		}
+		if (array == null) throw new ArgumentNullError("array", "transform input is required");
+		if (!(array instanceof Array)) throw new ArgumentTypeError("array", "array", array);
 
 		this._array = array;
 		this.rootInput = array;
@@ -2061,7 +2204,6 @@ window.ExoWeb.DotNet = {};
 	function makeTransform(array, priorTransform, method, arg, thisPtr) {
 		// Make sure that the same transform is not made live more than once since this can cause collisions.
 		if (priorTransform._liveComplete === true) {
-			ExoWeb.trace.logError("transform", "Cannot call live on the same transform multiple times.");
 			throw new Error("Cannot call live on the same transform multiple times.");
 		}
 
@@ -2467,23 +2609,20 @@ window.ExoWeb.DotNet = {};
 
 			// assume getter will only need to calculate once following the constructor
 			if ("get" in desc) {
-				if (desc.init) {
-					// assume objects with prototypes are instances and go ahead and initialize the property using the getter
-					if (obj.prototype) {
-						obj[prop] = desc.get.call(obj, obj);
-					}
+				if (!desc.init) throw new Error("Getters are not supported by the current browser.  Use definePropertySupported to check for full support.");
 
-					// otherwise, configure the prototype to initialize the property when the constructor is called
-					else if (obj.constructor) {
-						var initProperties = obj.constructor.__initProperties;
-						if (!initProperties) {
-							obj.constructor.__initProperties = initProperties = {};
-						}
-						initProperties[prop] = desc.get;
-					}
+				// assume objects with prototypes are instances and go ahead and initialize the property using the getter
+				if (obj.prototype) {
+					obj[prop] = desc.get.call(obj, obj);
 				}
-				else {
-					ExoWeb.trace.throwAndLog("utilities", "Getters are not supported by the current browser.  Use definePropertySupported to check for full support.");
+
+				// otherwise, configure the prototype to initialize the property when the constructor is called
+				else if (obj.constructor) {
+					var initProperties = obj.constructor.__initProperties;
+					if (!initProperties) {
+						obj.constructor.__initProperties = initProperties = {};
+					}
+					initProperties[prop] = desc.get;
 				}
 			}
 
@@ -2493,9 +2632,7 @@ window.ExoWeb.DotNet = {};
 			}
 
 			// throw an exception if the property has a setter, which is definitely not supported
-			if ("set" in desc) {
-				ExoWeb.trace.throwAndLog("utilities", "Setters are not supported by the current browser.  Use definePropertySupported to check for full support.");
-			}
+			if ("set" in desc) throw new Error("Setters are not supported by the current browser.  Use definePropertySupported to check for full support.");
 		}
 	}
 
@@ -2596,18 +2733,21 @@ window.ExoWeb.DotNet = {};
 	ExoWeb.evalPath = evalPath;
 
 	function getLastTarget(target, propertyPath) {
-		var i, path = propertyPath, finalTarget = target;
+		var i, pathArray, finalTarget = target;
 
-		if (path.constructor == String) {
-			path = path.split(".");
+		if (propertyPath == null) throw new ArgumentNullError("propertyPath");
+
+		if (propertyPath.constructor == String) {
+			pathArray = propertyPath.split(".");
 		}
-		else if (!(path instanceof Array)) {
-			throw ExoWeb.trace.logError(["$lastTarget", "core"], "invalid parameter propertyPath");
+		else {
+			if (!(propertyPath instanceof Array)) throw ArgumentTypeError("propertyPath", "string|array", propertyPath);
+			pathArray = propertyPath;
 		}
 
-		for (i = 0; i < path.length - 1; i++) {
+		for (i = 0; i < pathArray.length - 1; i++) {
 			if (finalTarget) {
-				finalTarget = getValue(finalTarget, path[i]);
+				finalTarget = getValue(finalTarget, pathArray[i]);
 			}
 		}
 
@@ -2644,7 +2784,7 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 			else if (/\./.test(property)) {
-				ExoWeb.trace.logWarning("", "Possible incorrect usage of \"getValue()\", the path \"{0}\" does not exist on the target and appears to represent a multi-hop path.", [property]);
+				logWarning("Possible incorrect usage of \"getValue()\", the path \"" + property + "\" does not exist on the target and appears to represent a multi-hop path.");
 			}
 		}
 
@@ -2676,7 +2816,7 @@ window.ExoWeb.DotNet = {};
 
 				// warn (and implicitly return undefined) if the result is not a javascript function
 				if (ctor !== undefined && ctor !== null && !isType(ctor, Function)) {
-					ExoWeb.trace.logWarning("", "The given type \"{0}\" is not a function.", [type]);
+					logWarning("The given type \"" + type + "\" is not a function.");
 				}
 				else {
 					return ctor;
@@ -3002,13 +3142,9 @@ window.ExoWeb.DotNet = {};
 
 	Observer.addPathChanged = function Observer$addPathChanged(target, path, handler, allowNoTarget) {
 		// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok
-		if (target === undefined || target === null) {
-			if (allowNoTarget === true) {
-				return;
-			}
-			else {
-				ExoWeb.trace.throwAndLog("observer", "Cannot watch for changes to \"{0}\" on a null or undefined target.", [path instanceof Array ? path.join(".") : path]);
-			}
+		if (target == null) {
+			if (allowNoTarget === true) return;
+			else throw new ArgumentNullError("target", "'allowNoTarget' is false - path = \"" + (path instanceof Array ? path.join(".") : path) + "\"");
 		}
 
 		// Ensure a set of path change handlers
@@ -3244,7 +3380,7 @@ window.ExoWeb.DotNet = {};
 		},
 		start: function PropertyObserver$start(source, handler) {
 			if (this._source) {
-				ExoWeb.trace.throwAndLog(["observer"], "Cannot start an observer that is already started.");
+				throw new Error("Cannot start an observer that is already started.");
 			}
 
 			var _this = this;
@@ -3670,7 +3806,7 @@ window.ExoWeb.DotNet = {};
 					target = target[token];
 
 					if (target === undefined) {
-						ExoWeb.trace.throwAndLog("model", "Parent namespace \"{0}\" could not be found.", parentNamespace);
+						throw new Error("Parent namespace \"" + parentNamespace + "\" could not be found.");
 					}
 				});
 			}
@@ -3781,7 +3917,7 @@ window.ExoWeb.DotNet = {};
 						return;
 					}
 					else {
-						ExoWeb.trace.throwAndLog(["model"], instanceParseError);
+						throw new Error(instanceParseError ? instanceParseError : ("Error getting type \"" + globalTypeName + "\"."));
 					}
 				}
 
@@ -3814,24 +3950,24 @@ window.ExoWeb.DotNet = {};
 		/// </summary>
 		/// <returns type="Object" />
 
-	    var obj = Model.types;
+		var obj = Model.types;
 		var steps = name.split(".");
 		for (var i = 0; i < steps.length; i++) {
-		    var step = steps[i];
-		    if (Model.intrinsicJsTypes.indexOf(step) > -1) {
-		        obj = window[step];
-		    }
-		    else {
-		        obj = obj[step];
-		    }
-		    if (obj === undefined) {
-		        if (allowUndefined) {
-		            return;
-		        }
-		        else {
-		            throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
-		        }
-		    }
+			var step = steps[i];
+			if (Model.intrinsicJsTypes.indexOf(step) > -1) {
+				obj = window[step];
+			}
+			else {
+				obj = obj[step];
+			}
+			if (obj === undefined) {
+				if (allowUndefined) {
+					return;
+				}
+				else {
+					throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+				}
+			}
 		}
 		return obj;
 	};
@@ -3869,7 +4005,7 @@ window.ExoWeb.DotNet = {};
 				var prop = this.meta.type.property(name);
 
 				if (!prop) {
-					ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
+					throw new Error("Could not find property \"" + name + "\" on type \"" + this.meta.type.get_fullName() + "\".");
 				}
 
 				// Initialization is not force.  If the propery already has a value it will be ignored.
@@ -3880,7 +4016,7 @@ window.ExoWeb.DotNet = {};
 			forEachProperty(getProperties.apply(this, arguments), function (name, value) {
 				var prop = this.meta.type.property(name);
 				if (!prop) {
-					ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
+					throw new Error("Could not find property \"" + name + "\" on type \"" + this.meta.type.get_fullName() + "\".");
 				}
 
 				Property$_setter.call(prop, this, value, false);
@@ -4034,22 +4170,14 @@ window.ExoWeb.DotNet = {};
 
 	var validateId = function Type$validateId(type, id) {
 		if (id === null || id === undefined) {
-			ExoWeb.trace.throwAndLog("model",
-				"Id cannot be {0} (entity = {1}).",
-				[id === null ? "null" : "undefined", type.get_fullName()]
-			);
+			throw new Error($format("Id cannot be {0} (entity = {1}).", id === null ? "null" : "undefined", type.get_fullName()));
 		}
 		else if (id.constructor !== String) {
-			ExoWeb.trace.throwAndLog("model",
-				"Id must be a string:  encountered id {0} of type \"{1}\" (entity = {2}).",
-				[id.toString(), ExoWeb.parseFunctionName(id.constructor), type.get_fullName()]
-			);
+			throw new Error($format("Id must be a string:  encountered id {0} of type \"{1}\" (entity = {2}).",
+				id.toString(), parseFunctionName(id.constructor), type.get_fullName()));
 		}
 		else if (id === "") {
-			ExoWeb.trace.throwAndLog("model",
-				"Id cannot be a blank string (entity = {0}).",
-				[type.get_fullName()]
-			);
+			throw new Error($format("Id cannot be a blank string (entity = {0}).", type.get_fullName()));
 		}
 	};
 
@@ -4188,7 +4316,7 @@ window.ExoWeb.DotNet = {};
 
 			for (var t = this; t; t = t.baseType) {
 				if (t._pool.hasOwnProperty(key)) {
-					ExoWeb.trace.throwAndLog("model", "Object \"{0}|{1}\" has already been registered.", [this.get_fullName(), id]);
+					throw new Error($format("Object \"{0}|{1}\" has already been registered.", this.get_fullName(), id));
 				}
 
 				t._pool[key] = obj;
@@ -4224,10 +4352,7 @@ window.ExoWeb.DotNet = {};
 				return obj;
 			}
 			else {
-				ExoWeb.trace.logWarning("model",
-					"Attempting to change id: Instance of type \"{0}\" with id = \"{1}\" could not be found.",
-					[this.get_fullName(), oldId]
-				);
+				logWarning($format("Attempting to change id: Instance of type \"{0}\" with id = \"{1}\" could not be found.", this.get_fullName(), oldId));
 			}
 		},
 		unregister: function Type$unregister(obj) {
@@ -4253,7 +4378,7 @@ window.ExoWeb.DotNet = {};
 
 			// If exactTypeOnly is specified, don't return sub-types.
 			if (obj && exactTypeOnly === true && obj.meta.type !== this) {
-				throw ExoWeb.trace.logError("model", "The entity with id='{0}' is expected to be of type '{1}' but found type '{2}'.", id, this._fullName, obj.meta.type._fullName);
+				throw new Error($format("The entity with id='{0}' is expected to be of type '{1}' but found type '{2}'.", id, this._fullName, obj.meta.type._fullName));
 			}
 
 			return obj;
@@ -4377,10 +4502,10 @@ window.ExoWeb.DotNet = {};
 					if (def.parameters.length == argCount - 1 && arguments[argCount - 1] instanceof Array)
 						paths = arguments[argCount - 1];
 					else if (def.parameters.length != argCount)
-						ExoWeb.trace.throwAndLog("type", "Invalid number of arguments passed to \"{0}.{1}\" method.", [this._fullName, def.name]);
+						throw new Error($format("Invalid number of arguments passed to \"{0}.{1}\" method.", this._fullName, def.name));
 
 					if (def.isStatic && paths)
-						ExoWeb.trace.throwAndLog("type", "Cannot include paths when invoking a static method - \"{0}.{1}\".", [this.meta._fullName, def.name]);
+						throw new Error($format("Cannot include paths when invoking a static method - \"{0}.{1}\".", this.meta._fullName, def.name));
 
 					// Construct the arguments to pass
 					var args = {};
@@ -4411,10 +4536,13 @@ window.ExoWeb.DotNet = {};
 
 				// ensure the property is initialized
 				if (result === undefined || (property.get_isList() && !LazyLoader.isLoaded(result))) {
-					ExoWeb.trace.throwAndLog(["model", "entity"], "Property {0}.{1} is not initialized.  Make sure instances are loaded before accessing property values.", [
+					throw new Error($format(
+						"Property {0}.{1} is not initialized.  Make sure instances are loaded before accessing property values.  {2}|{3}",
 						property._containingType.get_fullName(),
-						property.get_name()
-					]);
+						property.get_name(),
+						this.meta.type.get_fullName(),
+						this.meta.id
+					));
 				}
 
 				// return the result
@@ -4568,6 +4696,37 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.Property
 	//////////////////////////////////////////////////
 
+	function PropertySetError(property, obj, value, reason) {
+		/// <summary locid="M:J#PropertySetError.#ctor">
+		/// An error type that is raised when an attempt is made to set a property value.
+		/// </summary>
+		/// <param name="property" type="Property">The property that is being set.</param>
+		/// <param name="obj" type="Entity">The object that the property is being set for.</param>
+		/// <param name="value">The value that is being set.</param>
+		/// <param name="reason" type="String">The reason that the set is not allowed.</param>
+
+		if (arguments.length !== 4) throw new ArgumentsLengthError(4, arguments.length);
+		if (property == null) throw new ArgumentNullError("property");
+		if (!(property instanceof Property)) throw new ArgumentTypeError("property", "Property", property);
+		if (obj == null) throw new ArgumentNullError("obj");
+		if (!(obj instanceof Entity)) throw new ArgumentTypeError("obj", "Entity", obj);
+		if (reason == null) throw new ArgumentNullError("reason");
+		if (reason.constructor !== String) throw new ArgumentTypeError("reason", "string", reason);
+
+		this.name = "PropertySetError";
+		this.property = property;
+		this.obj = obj;
+		this.value = value;
+		this.reason = reason;
+		this.message = "Cannot set " + property.get_name() + "=" + (val === undefined ? "<undefined>" : val) + " for instance " + obj.meta.type.get_fullName() + "|" + obj.meta.id + ": " + reason + ".";
+	}
+
+	PropertySetError.prototype = new Error();
+	PropertySetError.prototype.constructor = PropertySetError;
+
+	ExoWeb.Model.PropertySetError = PropertySetError;
+	window.PropertySetError = PropertySetError;
+
 	//////////////////////////////////////////////////////////////////////////////////////
 	/// <remarks>
 	/// If the interface for this class is changed it should also be changed in
@@ -4599,10 +4758,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		if (this._origin === "client" && this._isPersisted) {
-			ExoWeb.trace.logWarning("model",
-				"Client-origin properties should not be marked as persisted: Type = {0}, Name = {1}",
-				containingType.get_fullName(),
-				name);
+			logWarning($format("Client-origin properties should not be marked as persisted: Type = {0}, Name = {1}", containingType.get_fullName(), name));
 		}
 	}
 
@@ -4707,14 +4863,14 @@ window.ExoWeb.DotNet = {};
 	function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 		// Ensure the entity is loaded before setting property values
 		if (!LazyLoader.isLoaded(obj)) {
-			throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set property {0}={1} for ghosted instance {2}({3}).", this._name, val === undefined ? "<undefined>" : val, obj.meta.type.get_fullName(), obj.meta.id);
+			throw new PropertySetError(this, obj, val, "object is ghosted");
 		}
 
 		// Ensure that the property has an initial (possibly default) value
 		Property$_ensureInited.call(this, obj);
 
 		if (!this.canSetValue(obj, val)) {
-			throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set {0}={1} for instance {2}({3}). A value of type {4} was expected.", this._name, val === undefined ? "<undefined>" : val, obj.meta.type.get_fullName(), obj.meta.id, this._jstype && this._jstype.meta ? this._jstype.meta.get_fullName() : parseFunctionName(this._jstype));
+			throw new PropertySetError(this, obj, val, "a value of type " + (this._jstype && this._jstype.meta ? this._jstype.meta.get_fullName() : parseFunctionName(this._jstype)) + " was expected");
 		}
 
 		var old = obj[this._fieldName];
@@ -4777,9 +4933,8 @@ window.ExoWeb.DotNet = {};
 		},
 
 		rule: function (type) {
-			if (!type || !(type instanceof Function)) {
-				ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type ? type : (type === undefined ? "undefined" : "null")]);
-			}
+			if (type == null) throw new ArgumentNullError("type");
+			if (typeof(type) !== "function") throw new ArgumentTypeError("type", "function", type);
 
 			return first(this._rules, function (rule) {
 				if (rule instanceof type) {
@@ -4901,7 +5056,7 @@ window.ExoWeb.DotNet = {};
 			// NOTE: only allow values of the correct data type to be set in the model
 
 			if (val === undefined) {
-				ExoWeb.trace.logWarning("model", "You should not set property values to undefined, use null instead: property = {0}.", this._name);
+				logWarning("You should not set property values to undefined, use null instead: property = ." + this._name + ".");
 				return true;
 			}
 
@@ -4941,9 +5096,9 @@ window.ExoWeb.DotNet = {};
 			var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 
 			if (target === undefined || target === null) {
-				ExoWeb.trace.throwAndLog(["model"],
+				throw new Error($format(
 					"Cannot {0} value for {1}static property \"{2}\" on type \"{3}\": target is null or undefined.",
-					[(arguments.length > 1 ? "set" : "get"), (this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
+					(arguments.length > 1 ? "set" : "get"), (this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()));
 			}
 
 			if (arguments.length > 1) {
@@ -5206,7 +5361,7 @@ window.ExoWeb.DotNet = {};
 				}
 
 				if (stack.length > 0) {
-					ExoWeb.trace.throwAndLog("model", "Unclosed '{' in path: {0}", [p]);
+					throw new Error("Unclosed '{' in path: " + p);
 				}
 
 				if (start === 0) {
@@ -5309,7 +5464,7 @@ window.ExoWeb.DotNet = {};
 		var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
 		var success = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
 		var fail = arguments.length >= 5 && arguments[4] && arguments[4] instanceof Function ?
-			arguments[4] : function (error) { if (success) { ExoWeb.trace.throwAndLog("model", error); } };
+			arguments[4] : function (error) { if (success) { throw new Error(error); } };
 
 		// process each step in the path either synchronously or asynchronously depending on arguments
 		var processStep = function PropertyChain$processStep() {
@@ -5451,13 +5606,9 @@ window.ExoWeb.DotNet = {};
 			/// ...will iterate of the values of the list property only.
 			/// </param>
 
-			if (!callback || typeof (callback) != "function") {
-				ExoWeb.trace.throwAndLog(["model"], "Invalid Parameter: callback function");
-			}
-
-			if (!obj) {
-				ExoWeb.trace.throwAndLog(["model"], "Invalid Parameter: source object");
-			}
+			if (obj == null) throw new ArgumentNullError("obj");
+			if (callback == null) throw new ArgumentNullError("callback");
+			if (typeof (callback) != "function") throw new ArgumentTypeError("callback", "function", callback);
 
 			// invoke callback on obj first
 			var target = arguments[4] || obj;
@@ -5745,8 +5896,6 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.ObjectMeta
 	//////////////////////////////////////////////////
 
-	/// <reference path="ConditionTarget.js" />
-
 	function ObjectMeta(type, obj) {
 		this._obj = obj;
 		this.type = type;
@@ -5829,7 +5978,7 @@ window.ExoWeb.DotNet = {};
 
 				// throw an exception if the condition type is not a permission
 				if (!(conditionType instanceof ConditionType.Permission)) {
-					ExoWeb.trace.throwAndLog(["conditions"], "Condition type \"{0}\" should be a Permission.", [code]);
+					throw new Error("Condition type \"" + code + "\" should be a Permission.");
 				}
 
 				// return false if a condition of the current type exists and is a deny permission or does not exist and is a grant permission
@@ -5960,9 +6109,6 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.Rule
 	//////////////////////////////////////////////////
 
-	/// <reference path="../core/Utilities.js" />
-	/// <reference path="../core/EventScope.js" />
-
 	var customRuleIndex = 0;
 
 	function Rule(rootType, options) {
@@ -5991,7 +6137,7 @@ window.ExoWeb.DotNet = {};
 				rootType = rootType.meta;
 			}
 			else {
-				ExoWeb.trace.throwAndLog("rules", "A value root model type must be specified when constructing rules.");
+				throw new Error("A value root model type must be specified when constructing rules.");
 			}
 		}
 
@@ -6043,7 +6189,8 @@ window.ExoWeb.DotNet = {};
 
 			// ensure the rule has not already been registered
 			if (!this._options) {
-				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+				//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+				return this;
 			}
 
 			// configure the rule to run on init new
@@ -6056,7 +6203,8 @@ window.ExoWeb.DotNet = {};
 
 			// ensure the rule has not already been registered
 			if (!this._options) {
-				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+				//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+				return this;
 			}
 
 			// configure the rule to run on init existingh
@@ -6069,7 +6217,8 @@ window.ExoWeb.DotNet = {};
 
 			// ensure the rule has not already been registered
 			if (!this._options) {
-				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+				//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+				return this;
 			}
 
 			// configure the rule to run on both init new and init existing
@@ -6083,7 +6232,8 @@ window.ExoWeb.DotNet = {};
 
 			// ensure the rule has not already been registered
 			if (!this._options) {
-				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+				//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+				return this;
 			}
 
 			// allow change of predicates to be specified as a parameter array without []'s
@@ -6105,14 +6255,15 @@ window.ExoWeb.DotNet = {};
 		// properties:	an array of properties (string name or Property instance) that the rule is responsible to calculating the value of
 		returns: function (properties) {
 			if (!this._options) {
-				ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+				//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+				return this;
 			}
 			// allow return properties to be specified as a parameter array without []'s
 			if (properties && properties.constructor === String) {
 				properties = Array.prototype.slice.call(arguments);
 			}
 			if (!properties) {
-				ExoWeb.trace.throwAndLog("rules", "Rule must specify at least 1 property for returns.");
+				throw new Error("Rule must specify at least 1 property for returns.");
 			}
 
 			// add to the set of existing return value properties
@@ -6252,8 +6403,8 @@ window.ExoWeb.DotNet = {};
 									// Defer change notification until the scope of work has completed
 									EventScope$onExit(function () {
 										rule.returnValues.forEach(function (returnValue) { 
-											Observer.raisePropertyChanged(sender, returnValue.get_name());
-										});
+										Observer.raisePropertyChanged(sender, returnValue.get_name());
+									});
 									}, this);
 								}
 							},
@@ -6475,7 +6626,7 @@ window.ExoWeb.DotNet = {};
 
 		// subclasses may override this function to indicate whether the condition should be asserted
 		assert: function ConditionRule$assert(obj) {
-			ExoWeb.trace.throwAndLog(["rules"], "ConditionRule.assert() must be passed into the constructor or overriden by subclasses.");
+			throw new Error("ConditionRule.assert() must be passed into the constructor or overriden by subclasses.");
 		},
 
 		// asserts the condition and adds or removes it from the model if necessary
@@ -6937,7 +7088,7 @@ window.ExoWeb.DotNet = {};
 		},
 		values: function AllowedValuesRule$values(obj, exitEarly) {
 			if (!this.source) {
-				ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+				logWarning("AllowedValues rule on type \"" + this.prop.get_containingType().get_fullName() + "\" has not been initialized.");
 				return;
 			}
 
@@ -7071,7 +7222,7 @@ window.ExoWeb.DotNet = {};
 				message = Resource.get(isDate ? "compare-on-or-before" : "compare-less-than-or-equal");
 			}
 			else {
-				ExoWeb.trace.throwAndLog(["rule"], "Invalid comparison operator for compare rule.");
+				throw new Error("Invalid comparison operator for compare rule.");
 			}
 			message = message
 				.replace('{property}', this.property.get_label())
@@ -7189,7 +7340,7 @@ window.ExoWeb.DotNet = {};
 				message = Resource.get(isDate ? "required-if-on-or-before" : "required-if-less-than-or-equal");
 			}
 			else {
-				ExoWeb.trace.throwAndLog(["rule"], "Invalid comparison operator for compare rule.");
+				throw new Error("Invalid comparison operator for compare rule.");
 			}
 			message = message
 				.replace('{property}', this.property.get_label())
@@ -7479,7 +7630,7 @@ window.ExoWeb.DotNet = {};
 				obj.meta.conditionIf(this.err, !isValid);
 			}
 			else {
-				ExoWeb.trace.logWarning("rule", "List Length rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+				logWarning("List Length rule on type \"" + this.prop.get_containingType().get_fullName() + "\" has not been initialized.");
 			}
 		}
 	};
@@ -7494,13 +7645,12 @@ window.ExoWeb.DotNet = {};
 
 	function ConditionTypeSet(name) {
 		if (allConditionTypeSets[name]) {
-			ExoWeb.trace.throwAndLog("conditions", "A set with the name \"{0}\" has already been created.", [name]);
+			throw new Error("A set with the name \"" + name + "\" has already been created.");
 		}
 
 		Object.defineProperty(this, "name", { value: name });
 		Object.defineProperty(this, "types", { value: [] });
 		Object.defineProperty(this, "active", { value: false, writable: true });
-
 
 		allConditionTypeSets[name] = this;
 	}
@@ -7574,7 +7724,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		if (allConditionTypes[code]) {
-			ExoWeb.trace.throwAndLog("conditions", "A condition type with the code \"{0}\" has already been created.", [code]);
+			throw new Error("A condition type with the code \"" + code + "\" has already been created.");
 		}
 
 		Object.defineProperty(this, "code", { value: code });
@@ -7712,10 +7862,6 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.ConditionTarget
 	//////////////////////////////////////////////////
 
-	/// <reference path="Entity.js" />
-	/// <reference path="Property.js" />
-	/// <reference path="Condition.js" />
-
 	function ConditionTarget(condition, target, properties) {
 		/// <summary>Represents the association of a condition to a specific target entity.</summary>
 		/// <param name="condition" type="Condition">The condition the target is for.</param>
@@ -7738,13 +7884,6 @@ window.ExoWeb.DotNet = {};
 
 	// #region ExoWeb.Model.Condition
 	//////////////////////////////////////////////////
-
-	/// <reference path="Type.js" />
-	/// <reference path="ObjectMeta.js" />
-	/// <reference path="Entity.js" />
-	/// <reference path="Property.js" />
-	/// <reference path="PathToken.js" />
-	/// <reference path="ConditionTarget.js" />
 
 	function Condition(type, message, target, properties, origin) {
 		/// <summary>Represents an instance of a condition of a specific type associated with one or more entities in a model.</summary>
@@ -7959,7 +8098,7 @@ window.ExoWeb.DotNet = {};
 			path = new PathTokens(path.join("."));
 		}
 		else if (!isType(path, PathTokens)) {
-			throw new Error("Unknown path \"" + path + "\" of type " + ExoWeb.parseFunctionName(path.constructor) + ".");
+			throw new Error("Unknown path \"" + path + "\" of type " + parseFunctionName(path.constructor) + ".");
 		}
 
 		scopeChain = scopeChain || [window];
@@ -8112,7 +8251,7 @@ window.ExoWeb.DotNet = {};
 				performedLoading = performedLoading || performedLoadingOne;
 				results[i] = result;
 				if (root !== rootOne) {
-					ExoWeb.trace.logWarning("lazyLoad", "Found different roots when evaluating all paths.");
+					logWarning("Found different roots when evaluating all paths.");
 				}
 				root = rootOne;
 			}));
@@ -8189,7 +8328,7 @@ window.ExoWeb.DotNet = {};
 			}
 
 			if (!loader) {
-				ExoWeb.trace.throwAndLog(["lazyLoad"], "Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", [obj, propName]);
+				throw new Error($format("Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", obj, propName));
 			}
 
 			loader.load(obj, propName, callback, thisPtr);
@@ -8861,8 +9000,6 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Mapper.Translation
 	//////////////////////////////////////////////////
 
-	/// <reference path="..\model\Type.js" />
-
 	// Gets or loads the entity with the specified typed string id
 	Entity.fromIdString = function Entity$fromIdString(id) {
 		// Typed identifiers take the form "type|id".
@@ -8946,7 +9083,7 @@ window.ExoWeb.DotNet = {};
 						return o instanceof type && o.meta.id === id;
 					});
 					if (matches.length > 1) {
-						throw ExoWeb.trace.logError("translator", "Expected a single item, but found " + matches.length + ".");
+						throw new Error("Expected a single item, but found " + matches.length + ".");
 					}
 					obj = matches[0];
 				}
@@ -8954,7 +9091,6 @@ window.ExoWeb.DotNet = {};
 				if (!obj && create) {
 					obj = new type(id);
 					ObjectLazyLoader.register(obj);
-					ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [type.meta.get_fullName(), id]);
 				}
 
 				return obj;
@@ -9040,7 +9176,7 @@ window.ExoWeb.DotNet = {};
 				return;
 
 			if (obj.meta.type.get_origin() === "server") {
-				ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {0}({1})", obj.meta.type.fullName, obj.meta.id);
+				throw new Error($format("Unregistering server-type objects is not currently supported: {0}|{1}", obj.meta.type.fullName, obj.meta.id));
 			}
 		},
 		onPropertyChanged: function ExoModelEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
@@ -9080,9 +9216,8 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	function ChangeSet(source, initialChanges) {
-		if (!source || source.constructor !== String) {
-			ExoWeb.trace.throwAndLog("changeLog", "Creating a change set requires a string source argument.");
-		}
+		if (source == null) throw new ArgumentNullError("source");
+		if (source.constructor !== String) throw new ArgumentTypeError("source", "string", source);
 
 		this._source = source;
 		this._changes = (initialChanges && initialChanges instanceof Array) ?
@@ -9194,6 +9329,7 @@ window.ExoWeb.DotNet = {};
 		}
 	});
 
+
 	// #endregion
 
 	// #region ExoWeb.Mapper.ChangeLog
@@ -9288,9 +9424,8 @@ window.ExoWeb.DotNet = {};
 			// Starts a new change set, which means that new changes will
 			// be added to the new set from this point forward.
 
-			if (!source || source.constructor !== String) {
-				throw ExoWeb.trace.logError("changeLog", "ChangeLog.start requires a string source argument.");
-			}
+			if (source == null) throw new ArgumentNullError("source");
+			if (source.constructor !== String) throw new ArgumentTypeError("source", "string", source);
 
 			var set = new ChangeSet(source);
 			var idx = this._sets.push(set) - 1;
@@ -9344,7 +9479,7 @@ window.ExoWeb.DotNet = {};
 		},
 		undo: function () {
 			if (!this._activeSet) {
-				ExoWeb.trace.throwAndLog("server", "The change log is not currently active.");
+				throw new Error("The change log is not currently active.");
 			}
 
 			var currentSet = this._activeSet,
@@ -9371,20 +9506,16 @@ window.ExoWeb.DotNet = {};
 		}
 	});
 
+
 	// #endregion
 
 	// #region ExoWeb.Mapper.ServerSync
 	//////////////////////////////////////////////////
 
-	/// <reference path="../core/Array.js" />
-	/// <reference path="../core/Function.js" />
-	/// <reference path="../core/Signal.js" />
-	/// <reference path="../core/EventScope.js" />
-	/// <reference path="Internals.js" />
-
 	function ServerSync(model) {
-		if (!model || typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
-			throw ExoWeb.trace.logError("server", "A model must be specified when constructing a ServerSync object.");
+		if (model == null) throw new ArgumentNullError("model");
+		if (typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
+			throw new ArgumentTypeError("model", "model", model);
 		}
 
 		this._changeLog = new ChangeLog();
@@ -9403,7 +9534,7 @@ window.ExoWeb.DotNet = {};
 		function isDeleted(obj, isChange) {
 			if (Array.contains(this._objectsDeleted, obj)) {
 				if (isChange) {
-					ExoWeb.trace.logWarning("server", "Object {0}({1}) was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id);
+					logWarning($format("Object {0}|{1} was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id));
 				}
 				return true;
 			}
@@ -9438,7 +9569,7 @@ window.ExoWeb.DotNet = {};
 			applyingChanges--;
 
 			if (applyingChanges < 0)
-				ExoWeb.trace.throwAndLog("Error in transaction log processing: unmatched begin and end applying changes.");
+				throw new Error("Error in transaction log processing: unmatched begin and end applying changes.");
 		};
 
 		var isCapturingChanges;
@@ -9479,7 +9610,6 @@ window.ExoWeb.DotNet = {};
 			// if an existing object is registered then register for lazy loading
 			if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges === true && !applyingChanges) {
 				ObjectLazyLoader.register(obj);
-				//ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
 			}
 		});
 
@@ -9577,7 +9707,7 @@ window.ExoWeb.DotNet = {};
 		///////////////////////////////////////////////////////////////////////
 		enableSave: function ServerSync$enableSave(obj) {
 			if (!(obj instanceof ExoWeb.Model.Entity)) {
-				ExoWeb.trace.throwAndLog("server", "Can only enableSave on entity objects.");
+				throw new Error("Can only enableSave on entity objects.");
 			}
 
 			if (Array.contains(this._objectsExcludedFromSave, obj)) {
@@ -9600,7 +9730,7 @@ window.ExoWeb.DotNet = {};
 		},
 		disableSave: function ServerSync$disableSave(obj) {
 			if (!(obj instanceof ExoWeb.Model.Entity)) {
-				ExoWeb.trace.throwAndLog("server", "Can only disableSave on entity objects.");
+				throw new Error("Can only disableSave on entity objects.");
 			}
 
 			if (!Array.contains(this._objectsExcludedFromSave, obj)) {
@@ -9624,7 +9754,7 @@ window.ExoWeb.DotNet = {};
 		},
 		notifyDeleted: function ServerSync$notifyDeleted(obj) {
 			if (!(obj instanceof ExoWeb.Model.Entity)) {
-				throw ExoWeb.trace.logError("server", "Notified of deleted object that is not an entity.");
+				throw new Error("Notified of deleted object that is not an entity.");
 			}
 
 			if (!Array.contains(this._objectsDeleted, obj)) {
@@ -9641,11 +9771,8 @@ window.ExoWeb.DotNet = {};
 			var obj;
 			var errorFmt = "Unable to test whether object can be saved:  {0}.";
 
-			if (arguments.length === 0) {
-				ExoWeb.trace.throwAndLog("server", errorFmt, ["argument not given"]);
-			}
-			else if (objOrMeta === undefined || objOrMeta === null) {
-				ExoWeb.trace.throwAndLog("server", errorFmt, ["argument is null or undefined"]);
+			if (objOrMeta == null) {
+				throw new ArgumentNullError("objOrMeta");
 			}
 			else if (objOrMeta instanceof ExoWeb.Model.ObjectMeta) {
 				obj = objOrMeta._obj;
@@ -9654,7 +9781,7 @@ window.ExoWeb.DotNet = {};
 				obj = objOrMeta;
 			}
 			else {
-				ExoWeb.trace.throwAndLog("server", errorFmt, ["argument is not of correct type"]);
+				throw new ArgumentTypeError("objOrMeta", "ObjectMeta|Entity", objOrMeta);
 			}
 
 			return !Array.contains(this._objectsExcludedFromSave, obj) && !Array.contains(this._objectsDeleted, obj);
@@ -9964,8 +10091,6 @@ window.ExoWeb.DotNet = {};
 			pendingRequests--;
 		},
 		startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
-			//ExoWeb.trace.log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
-
 			if (!interval || typeof(interval) !== "number" || interval <= 0) {
 				throw new Error("An interval must be specified for auto-save.");
 			}
@@ -9974,9 +10099,7 @@ window.ExoWeb.DotNet = {};
 			this.stopAutoRoundtrip();
 
 			function doRoundtrip() {
-				//ExoWeb.trace.log("server", "auto-roundtrip starting ({0})", [new Date()]);
 				this.roundtrip(function () {
-					//ExoWeb.trace.log("server", "auto-roundtrip complete ({0})", [new Date()]);
 					this._roundtripTimeout = window.setTimeout(doRoundtrip.bind(this), interval);
 				});
 			}
@@ -10087,10 +10210,7 @@ window.ExoWeb.DotNet = {};
 				return;
 
 			function doAutoSave() {
-				//ExoWeb.trace.log("server", "auto-save starting ({0})", [new Date()]);
 				this.save(this._saveRoot, function ServerSync$doAutoSave$callback() {
-					//ExoWeb.trace.log("server", "auto-save complete ({0})", [new Date()]);
-
 					// wait for the next change before next auto save
 					this._saveTimeout = null;
 				});
@@ -10320,10 +10440,9 @@ window.ExoWeb.DotNet = {};
 
 						// Ensure that the object exists.
 						if (!obj) {
-							ExoWeb.trace.throwAndLog("server",
+							throw new Error($format(
 								"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
-								[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
-							);
+								jstype.meta.get_fullName(), idChange.oldId, idChange.newId));
 						}
 
 						// Change the id and make non-new.
@@ -10372,10 +10491,7 @@ window.ExoWeb.DotNet = {};
 					}
 					// Otherwise, log an error.
 					else {
-						ExoWeb.trace.logWarning("server",
-							"Cannot apply id change on type \"{0}\" since old id \"{1}\" was not found.",
-							idChange.type,
-							idChange.oldId);
+						logWarning($format("Cannot apply id change on type \"{0}\" since old id \"{1}\" was not found.", idChange.type, idChange.oldId));
 					}
 				}, after), this);
 			}, this);
@@ -10837,7 +10953,7 @@ window.ExoWeb.DotNet = {};
 		},
 		get_Changes: function ServerSync$get_Changes(includeAllChanges/*, ignoreWarning*/) {
 			if (arguments.length < 2 || arguments[1] !== true) {
-				ExoWeb.trace.logWarning("server", "Method get_Changes is not intended for long-term use - it will be removed in the near future.");
+				logWarning("Method get_Changes is not intended for long-term use - it will be removed in the near future.");
 			}
 			return this.changes(includeAllChanges, null);
 		},
@@ -10925,14 +11041,6 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Mapper.Internals
 	//////////////////////////////////////////////////
 
-	/// <reference path="../Model/Type.js" />
-	/// <reference path="../Model/ObjectMeta.js" />
-	/// <reference path="../Model/Entity.js" />
-	/// <reference path="../Model/Property.js" />
-	/// <reference path="../Model/PathToken.js" />
-	/// <reference path="../Model/ConditionTarget.js" />
-	/// <reference path="../Model/Condition.js" />
-
 	var STATIC_ID = "static";
 	var dateRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{3})?Z$/g;
 	var dateRegexReplace = "$2/$3/$1 $4:$5:$6 GMT";
@@ -10971,7 +11079,7 @@ window.ExoWeb.DotNet = {};
 		var conditionType = ExoWeb.Model.ConditionType.get(conditionCode);
 
 		if (!conditionType) {
-			ExoWeb.trace.logWarning(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [conditionCode]);
+			logWarning("A condition type with code \"" + conditionCode + "\" could not be found.");
 			return;
 		}
 
@@ -11087,10 +11195,8 @@ window.ExoWeb.DotNet = {};
 
 					var prop = props[propName];
 
-		//					ExoWeb.trace.log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
-
 					if (!prop) {
-						ExoWeb.trace.throwAndLog(["objectInit"], "Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
+						throw new Error($format("Cannot load object {0}|{2} because it has an unexpected property '{1}'", typeName, propName, id));
 					}
 
 					if(prop.get_origin() !== "server")
@@ -11207,8 +11313,6 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function typeFromJson(model, typeName, json) {
-//			ExoWeb.trace.log("typeInit", "{1}   <.>", arguments);
-
 		// get model type. it may have already been created for lazy loading
 		var mtype = getType(model, typeName, json.baseType);
 
@@ -11218,7 +11322,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		if (mtype.get_originForNewProperties() === "client") {
-			ExoWeb.trace.throwAndLog("typeInit", "type \"{0}\" has already been loaded", mtype._fullName);
+			throw new Error("Type \"" + mtype._fullName + "\" has already been loaded");
 		}
 
 		// define properties
@@ -11443,7 +11547,7 @@ window.ExoWeb.DotNet = {};
 
 	function getObject(model, propType, id, finalType, forLoading) {
 		if (id === STATIC_ID) {
-			ExoWeb.trace.throwAndLog(["objectInit", "lazyLoad"], "getObject() can only be called for instances (id='{0}')", [id]);
+			throw new Error("Function 'getObject' can only be called for instances (id='" + id + "')");
 		}
 
 		// get model type
@@ -11471,7 +11575,7 @@ window.ExoWeb.DotNet = {};
 		var mtype = model.type(typeName);
 		mtype.eachBaseType(function(mtype) {
 			if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-				ExoWeb.trace.throwAndLog("typeLoad", "Base type " + mtype._fullName + " is not loaded.");
+				throw new Error("Base type " + mtype._fullName + " is not loaded.");
 			}
 		});
 		TypeLazyLoader.unregister(mtype);
@@ -11589,11 +11693,7 @@ window.ExoWeb.DotNet = {};
 			// Handle an error response.  Loading should
 			// *NOT* continue as if the type is available.
 			else {
-				ExoWeb.trace.throwAndLog("typeInit",
-					"Failed to load {0} (HTTP: {1}, Timeout: {2})",
-					typeNames.join(","),
-					types._statusCode,
-					types._timedOut);
+				throw new Error($format("Failed to load {0} (HTTP: {1}, Timeout: {2})", typeNames.join(","), types._statusCode, types._timedOut));
 			}
 		}
 
@@ -11690,7 +11790,7 @@ window.ExoWeb.DotNet = {};
 
 						var fetchStaticPathTypes = function fetchStaticPathTypes() {
 							fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), path, signal.pending(), function () {
-								ExoWeb.trace.throwAndLog("typeInit", "Invalid query path \"" + path + "\" - " + err);
+								throw new Error("Invalid query path \"" + path + "\" - " + err);
 							});
 						};
 
@@ -11762,17 +11862,13 @@ window.ExoWeb.DotNet = {};
 			callback.call(thisPtr || this, jstype);
 		}
 		else if (jstype && forceLoad) {
-//				ExoWeb.trace.log("server", "Forcing lazy loading of type \"{0}\".", [name]);
 			ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
 		}
 		else if (!jstype && forceLoad) {
-//				ExoWeb.trace.log("server", "Force creating type \"{0}\".", [name]);
 			ensureJsType(model, name, callback, thisPtr);
 		}
 		else {
-//				ExoWeb.trace.log("server", "Waiting for existance of type \"{0}\".", [name]);
 			$extend(name, function() {
-//					ExoWeb.trace.log("server", "Type \"{0}\" was loaded, now continuing.", [name]);
 				callback.apply(this, arguments);
 			}, thisPtr);
 		}
@@ -11804,7 +11900,6 @@ window.ExoWeb.DotNet = {};
 
 			// If the instance doesn't exist then ensure that a ghosted instance is created.
 			if (!obj) {
-				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
 			}
 
@@ -11812,7 +11907,6 @@ window.ExoWeb.DotNet = {};
 			callback.call(thisPtr || this, obj);
 
 			// After the callback has been invoked, force loading to occur.
-			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 			ExoWeb.Model.LazyLoader.load(obj, property);
 		}
 		else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
@@ -11820,18 +11914,14 @@ window.ExoWeb.DotNet = {};
 
 			// If the instance doesn't exist then ensure that a ghosted instance is created.
 			if (!obj) {
-				ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
 			}
 
 			// Force loading to occur, passing through the callback.
-			ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 			ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
 		}
 		else {
 			// The caller does not want to force loading, so wait for the instance to come into existance and invoke the callback when it does.
-
-			ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
 			function invokeCallback() {
 				if (filter(obj) !== true)
@@ -11875,10 +11965,9 @@ window.ExoWeb.DotNet = {};
 
 	function typeLoad(mtype, propName, callback, thisPtr) {
 		if (!ExoWeb.config.allowTypeLazyLoading) {
-			throw new ExoWeb.trace.logError(["typeInit", "lazyLoad"], "Type lazy loading has been disabled: {0}", mtype.get_fullName());
+			throw new Error("Type lazy loading has been disabled: " + mtype.get_fullName());
 		}
 
-//				ExoWeb.trace.log(["typeInit", "lazyLoad"], "Lazy load: {0}", [mtype.get_fullName()]);
 		fetchTypes(mtype.model, [mtype.get_fullName()], function(jstypes) {
 			if (callback && callback instanceof Function) {
 				callback(jstypes[0]);
@@ -11922,7 +12011,7 @@ window.ExoWeb.DotNet = {};
 
 	function objLoad(obj, propName, callback, thisPtr) {
 		if (!ExoWeb.config.allowObjectLazyLoading) {
-			throw new ExoWeb.trace.logError(["objectInit", "lazyLoad"], "Object lazy loading has been disabled: {0}({1})", mtype.get_fullName(), id);
+			throw new Error($format("Object lazy loading has been disabled: {0}|{1}", mtype.get_fullName(), id));
 		}
 
 		pendingObjects++;
@@ -11941,13 +12030,13 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// fetch object json
-		ExoWeb.trace.logWarning(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", mtype.get_fullName(), id);
+		logWarning($format("Lazy load: {0}|{1}", mtype.get_fullName(), id));
 
 		// TODO: reference to server will be a singleton, not context
 		objectProvider(mtype.get_fullName(), [id], paths, false,
 			serializeChanges.call(context.server, true),
 			function(result) {
-				mtype.model.server._handleResult(result, $format("Lazy load: {0}({1})", mtype.get_fullName(), id), null, function() {
+				mtype.model.server._handleResult(result, $format("Lazy load: {0}|{1}", mtype.get_fullName(), id), null, function() {
 					LazyLoader.unregister(obj, this);
 					pendingObjects--;
 
@@ -11963,7 +12052,7 @@ window.ExoWeb.DotNet = {};
 			},
 			function(e) {
 				pendingObjects--;
-				var message = $format("Failed to load {0}({1}): ", [mtype.get_fullName(), id]);
+				var message = $format("Failed to load {0}|{1}: ", [mtype.get_fullName(), id]);
 				if (e !== undefined && e !== null &&
 					e.get_message !== undefined && e.get_message !== null &&
 					e.get_message instanceof Function) {
@@ -11973,7 +12062,7 @@ window.ExoWeb.DotNet = {};
 				else {
 					message += "unknown error";
 				}
-				ExoWeb.trace.logError("lazyLoad", message);
+				throw new Error(message);
 			});
 
 		// does the object's type need to be loaded too?
@@ -12035,7 +12124,7 @@ window.ExoWeb.DotNet = {};
 		ObjectLazyLoader.register = function(obj) {
 			if (!LazyLoader.isRegistered(obj, instance)) {
 				if (obj.meta.type.get_origin() !== "server") {
-					ExoWeb.trace.logError(["objectInit", "lazyLoad"], "Cannot lazy load instance of non-server-origin type: {0}({1})", obj.meta.type.get_fullName(), obj.meta.id);
+					throw new Error($format("Cannot lazy load instance of non-server-origin type: {0}|{1}", obj.meta.type.get_fullName(), obj.meta.id));
 				}
 				LazyLoader.register(obj, instance);
 			}
@@ -12045,6 +12134,7 @@ window.ExoWeb.DotNet = {};
 			LazyLoader.unregister(obj, instance);
 		};
 	})();
+
 
 	// #endregion
 
@@ -12084,11 +12174,11 @@ window.ExoWeb.DotNet = {};
 		var propType = list._ownerProperty.get_jstype().meta;
 
 		if (!ExoWeb.config.allowListLazyLoading) {
-			throw new ExoWeb.trace.logError(["listInit", "lazyLoad"], "List lazy loading has been disabled: {0}({1}).{2}", ownerType, ownerId, propName);
+			throw new Error($format("List lazy loading has been disabled: {0}|{1}.{2}", ownerType, ownerId, propName));
 		}
 
 		// load the objects in the list
-		ExoWeb.trace.logWarning(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", ownerType, ownerId, propName);
+		logWarning($format("Lazy load: {0}|{1}.{2}", ownerType, ownerId, propName));
 
 		var objectJson, conditionsJson;
 
@@ -12114,7 +12204,7 @@ window.ExoWeb.DotNet = {};
 					errorMessage = "unknown error";
 				}
 
-				throw ExoWeb.trace.logError(["listInit", "lazyLoad"], "Failed to load {0}({1}).{2}: {3}", ownerType, ownerId, propName, errorMessage);
+				throw new Error($format("Failed to load {0}|{1}.{2}: {3}", ownerType, ownerId, propName, errorMessage));
 			})
 		);
 
@@ -12129,8 +12219,6 @@ window.ExoWeb.DotNet = {};
 			if (!objectJson) {
 				return;
 			}
-
-//					ExoWeb.trace.log("list", "{0}({1}).{2}", [ownerType, ownerId, propName]);
 
 			// The actual type name and id as found in the resulting json.
 			var jsonId = ownerId;
@@ -12167,7 +12255,7 @@ window.ExoWeb.DotNet = {};
 			}
 
 			if (!searchJson(ExoWeb.Model.Model.getJsType(ownerType).meta, ownerId)) {
-				ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, ownerId]);
+				throw new Error($format("Data could not be found for {0}:{1}.", ownerType, ownerId));
 			}
 
 			var listJson = prop.get_isStatic() ?
@@ -12175,9 +12263,7 @@ window.ExoWeb.DotNet = {};
 				objectJson[jsonType][jsonId][propIndex];
 
 			if (!(listJson instanceof Array)) {
-				ExoWeb.trace.throwAndLog(["list", "lazyLoad"],
-					"Attempting to load list {0} of instance {1}:{2}, but the response JSON is not an array: {3}.",
-					[propName, ownerType, ownerId, listJson]);
+				throw new Error($format("Attempting to load list {0} of instance {1}:{2}, but the response JSON is not an array: {3}.", propName, ownerType, ownerId, listJson));
 			}
 
 			// populate the list with objects
@@ -12201,7 +12287,7 @@ window.ExoWeb.DotNet = {};
 
 			ListLazyLoader.unregister(list, this);
 
-			var batch = ExoWeb.Batch.start($format("{0}({1}).{2}", [ownerType, ownerId, propName]));
+			var batch = ExoWeb.Batch.start($format("{0}|{1}.{2}", [ownerType, ownerId, propName]));
 
 			var done = function() {
 				// Collection change driven by user action or other behavior would result in the "change" event
@@ -12239,11 +12325,11 @@ window.ExoWeb.DotNet = {};
 			if (modifiableLists.indexOf(sender) < 0) {
 				// Check that at least one change involves adding or removing a non-new instance.
 				if (args.get_changes().mapToArray(function(c) { return c.newItems || []; }).concat(args.get_changes().mapToArray(function(c) { return c.oldItems || []; })).some(function(i) { return !i.meta.isNew; })) {
-					throw new ExoWeb.trace.logError(["list", "lazyLoad"], "{0} list {1}.{2} was modified but it has not been loaded.",
+					throw new Error($format("{0} list {1}.{2} was modified but it has not been loaded.",
 						this._isStatic ? "Static" : "Non-static",
 						this._isStatic ? this._containingType.get_fullName() : "this<" + this._containingType.get_fullName() + ">",
 						this._name
-					);
+					));
 				}
 			}
 		}
@@ -12322,7 +12408,7 @@ window.ExoWeb.DotNet = {};
 			window.context = new Context();
 		}
 		else if (!(window.context instanceof Context)) {
-			ExoWeb.trace.throwAndLog("context", "The window object has a context property that is not a valid context.");
+			throw new Error("The window object has a context property that is not a valid context.");
 		}
 		return window.context;
 	}
@@ -12373,7 +12459,6 @@ window.ExoWeb.DotNet = {};
 		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$setup(callback, thisPtr) {
 				// start a batch to represent all of the pending work
-				ExoWeb.trace.log("context", "Starting context query batch.");
 				this.batch = ExoWeb.Batch.start("context query");
 
 				// store init changes as early as possible
@@ -12390,12 +12475,8 @@ window.ExoWeb.DotNet = {};
 				// Loading is considered complete at the same point model.ready() fires. 
 				ExoWeb.Model.LazyLoader.register(this.context, {
 					load: function context$load(obj, propName, callback, thisPtr) {
-						//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
-
 						// objects are already loading so just queue up the calls
 						allSignals.waitForAll(function context$load$callback() {
-							//ExoWeb.trace.log(["context", "lazyLoad"], "raising createContext.ready()");
-
 							ExoWeb.Model.LazyLoader.unregister(obj, this);
 
 							if (callback && callback instanceof Function) {
@@ -12414,13 +12495,12 @@ window.ExoWeb.DotNet = {};
 				if (this.options.model) {
 					// Start capturing changes prior to processing any model query
 					this.context.server.beginCapturingChanges();
-					ExoWeb.trace.log("context", "Running init step for model queries.");
 					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						// Assert that the necessary properties are provided
 						if (!query.hasOwnProperty("from") || (!query.hasOwnProperty("id") && !query.hasOwnProperty("ids")))
-							ExoWeb.trace.throwAndLog("types", "The model query \"{0}\" requires a from and id or ids clause.", [varName]);
+							throw new Error("The model query \"" + varName + "\" requires a from and id or ids clause.");
 						if (query.hasOwnProperty("id") && query.hasOwnProperty("ids"))
-							ExoWeb.trace.throwAndLog("types", "The model query \"{0}\" specifies both id or ids.", [varName]);
+							throw new Error("The model query \"" + varName + "\" must specify either id or ids, not both.");
 
 						// common initial setup of state for all model queries
 						this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName), isArray: false };
@@ -12540,8 +12620,6 @@ window.ExoWeb.DotNet = {};
 		// page loads by embedded data, changes, etc.
 		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$processEmbedded(callback, thisPtr) {
-				ExoWeb.trace.log("context", "Processing embedded data in query.");
-
 				if (this.options.instances || this.options.conditions || (this.options.types && !(this.options.types instanceof Array))) {
 					var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
 						instances: this.options.instances,
@@ -12592,8 +12670,6 @@ window.ExoWeb.DotNet = {};
 				if (this.options.model && ExoWeb.config.individualQueryLoading !== true) {
 					var pendingQueries = [];
 					var batchQuerySignal;
-
-					ExoWeb.trace.log("context", "Looking for potential loading requests in query.");
 
 					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						if (!query.load && query.ids.length > 0) {
@@ -12665,8 +12741,7 @@ window.ExoWeb.DotNet = {};
 								}, this);
 							},
 							function context$objects$callback(error) {
-								ExoWeb.trace.logError("objectInit", "Failed to load batch query (HTTP: {_statusCode}, Timeout: {_timedOut})", error);
-								batchQuerySignal.oneDone();
+								throw new Error($format("Failed to load batch query (HTTP: {0}, Timeout: {1})", error._statusCode, error._timedOut));
 							}, this);
 					}
 				}
@@ -12734,12 +12809,8 @@ window.ExoWeb.DotNet = {};
 											this.state[varName].conditionsJson = result.conditions;
 										}, this, true),
 										this.state[varName].signal.orPending(function context$objects$callback(error) {
-											ExoWeb.trace.logError("objectInit",
-												"Failed to load {0}({1}) (HTTP: {3}, Timeout: {4})",
-												query.from,
-												query.ids,
-												error._statusCode,
-												error._timedOut);
+											throw new Error($format("Failed to load {0}|{1} (HTTP: {3}, Timeout: {4})",
+												query.from, query.ids, error._statusCode, error._timedOut));
 										}, this, true), this);
 								}
 							}, this);
@@ -12771,12 +12842,8 @@ window.ExoWeb.DotNet = {};
 										}), this);
 									}, this, true),
 									allSignals.orPending(function context$objects$callback(error) {
-										ExoWeb.trace.logError("objectInit",
-											"Failed to load {0}({1}) (HTTP: {2}, Timeout: {3})",
-											query.from,
-											query.ids,
-											error._statusCode,
-											error._timedOut);
+										throw new Error($format("Failed to load {0}|{1} (HTTP: {2}, Timeout: {3})",
+											query.from, query.ids, error._statusCode, error._timedOut));
 									}, this, true)
 								);
 							}
@@ -12819,7 +12886,7 @@ window.ExoWeb.DotNet = {};
 									var mtype = this.context.model.meta.type(query.from);
 
 									if (!mtype) {
-										ExoWeb.trace.throwAndLog("context", $format("Could not get type {0} required to process query results.", [query.from]));
+										throw new Error($format("Could not get type {0} required to process query results.", query.from));
 									}
 
 									// establish roots for each id
@@ -12839,8 +12906,8 @@ window.ExoWeb.DotNet = {};
 										);
 
 										// If it doesn't exist, raise an error.
-										if (obj === undefined) {
-											ExoWeb.trace.throwAndLog("context", "Could not get {0} with id = {1}{2}.", [query.from, clientId, (id !== clientId ? "(" + id + ")" : "")]);
+										if (obj == null) {
+											throw new Error("Could not get " + query.from + " with id = " + clientId + (id !== clientId ? "(" + id + ")" : "") + ".");
 										}
 
 										// Otherwise, include it in the model.
@@ -12903,7 +12970,6 @@ window.ExoWeb.DotNet = {};
 		///////////////////////////////////////////////////////////////////////////////
 			function ContextQuery$postQueries(callback, thisPtr) {
 				if (this.options.model) {
-					ExoWeb.trace.log("context", "Running post query step for model queries.");
 					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						if (this.state[varName].scopeQuery) {
 							ServerSync$addScopeQuery.call(this.context.server, this.state[varName].scopeQuery);
@@ -13037,7 +13103,7 @@ window.ExoWeb.DotNet = {};
 		}
 		else if (window.context) {
 			if (!(window.context instanceof Context)) {
-				ExoWeb.trace.throwAndLog("context", "The window object has a context property that is not a valid context.");
+				throw new Error("The window object has a context property that is not a valid context.");
 			}
 
 			if (pendingOptions.init) {
@@ -13116,18 +13182,16 @@ window.ExoWeb.DotNet = {};
 	}
 
 	window.$extend = function(typeInfo, callback, thisPtr) {
-		if (!typeInfo) {
-			ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extend, argument must be of type String or String[].");
-		}
+		if (typeInfo == null) throw new ArgumentNullError("typeInfo");
 
 		// If typeInfo is an arry of type names, then use a signal to wait until all types are loaded.
 		if (Object.prototype.toString.call(typeInfo) === "[object Array]") {
 			var signal = new ExoWeb.Signal("extend");
 
 			var types = [];
-			Array.forEach(typeInfo, function(item, index) {
+			typeInfo.forEach(function(item, index) {
 				if (item.constructor !== String) {
-					ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extend, item in array must be of type String.");
+					throw new ArgumentTypeError("typeInfo", "string", item);
 				}
 
 				extendOne(item, signal.pending(function(type) {
@@ -13141,19 +13205,17 @@ window.ExoWeb.DotNet = {};
 			});
 		}
 		// Avoid the overhead of signal and just call extendOne directly.
-		else {
-			if (typeInfo.constructor !== String) {
-				ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extend, argument must be of type String or String[].");
-			}
-
+		else if (typeInfo.constructor === String) {
 			extendOne(typeInfo, callback, thisPtr);
+		}
+		else {
+			throw new ArgumentTypeError("typeInfo", "string|array", typeInfo);
 		}
 	};
 
 	window.$extendSubtypes = function(typeName, callback, thisPtr) {
-		if (!typeName || typeName.constructor !== String) {
-			ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extendSubtypes, argument must be of type String.");
-		}
+		if (typeName == null) throw new ArgumentNullError("typeName");
+		if (typeName.constructor !== String) throw new ArgumentTypeError("typeName", "string", typeName);
 
 		var jstype = ExoWeb.Model.Model.getJsType(typeName, true);
 
@@ -13177,9 +13239,8 @@ window.ExoWeb.DotNet = {};
 	};
 
 	window.$extendProperties = function (typeName, includeBuiltIn, callback, thisPtr) {
-		if (!typeName || typeName.constructor !== String) {
-			ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extendProperties, argument must be of type String.");
-		}
+		if (typeName == null) throw new ArgumentNullError("typeName");
+		if (typeName.constructor !== String) throw new ArgumentTypeError("typeName", "string", typeName);
 
 		if (includeBuiltIn && includeBuiltIn instanceof Function) {
 			thisPtr = callback;
@@ -13333,7 +13394,7 @@ window.ExoWeb.DotNet = {};
 		},
 		init_render: function Toggle$init_render() {
 			if (!this._template && !$(this._element).is(".sys-template")) {
-				ExoWeb.trace.throwAndLog(["ui", "toggle"], "When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
+				throw new Error("When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
 			}
 
 			this._template = new Sys.UI.Template(this._element);
@@ -13481,7 +13542,7 @@ window.ExoWeb.DotNet = {};
 		},
 		set_action: function Toggle$set_action(value) {
 			if (!Array.contains(Toggle_allowedActions, value)) {
-				ExoWeb.trace.throwAndLog("ui", "Invalid toggle action \"{0}\".  Possible values are \"{1}\".", [value, Toggle_allowedActions.join(", ")]);
+				throw new Error($format("Invalid toggle action \"{0}\".  Possible values are \"{1}\".", value, Toggle_allowedActions.join(", ")));
 			}
 
 			this._action = value;
@@ -13582,7 +13643,7 @@ window.ExoWeb.DotNet = {};
 
 				if (this._strictMode === true) {
 					if (this._on.constructor !== Boolean)
-						ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:on should be a value of type Boolean.");
+						throw new Error("With strict mode enabled, toggle:on should be a value of type Boolean.");
 
 					return this._on;
 				}
@@ -13598,7 +13659,7 @@ window.ExoWeb.DotNet = {};
 				var result = this._when(this._on);
 				if (this._strictMode === true) {
 					if (result === null || result === undefined || result.constructor !== Boolean)
-						ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:when function should return a value of type Boolean.");
+						throw new Error("With strict mode enabled, toggle:when function should return a value of type Boolean.");
 					return result;
 				}
 				else {
@@ -13807,7 +13868,7 @@ window.ExoWeb.DotNet = {};
 		},
 		set_dataType: function Template$set_dataType(value) {
 			if (ExoWeb.isType(value, Function)) {
-				this._dataType = ExoWeb.parseFunctionName(value);
+				this._dataType = parseFunctionName(value);
 				this._dataTypeCtor = value;
 			}
 			else if (ExoWeb.isType(value, String)) {
@@ -14003,10 +14064,9 @@ window.ExoWeb.DotNet = {};
 		/// <summary locid="M:J#ExoWeb.UI.Template.find">
 		/// Finds the first field template that match the given data and names and returns the template.
 		/// </summary>
-		ExoWeb.trace.log(["templates"], "attempt to find template match for names = {0}, data = {1}", [names.join(","), data]);
 
 		if (data === undefined || data === null) {
-			ExoWeb.trace.logWarning("templates", "Attempting to find template for {0} data.", [data === undefined ? "undefined" : "null"]);
+			logWarning("Attempting to find template for " + (data === undefined ? "undefined" : "null") + " data.");
 		}
 
 		var cache;
@@ -14045,7 +14105,6 @@ window.ExoWeb.DotNet = {};
 		// set the last request signal to the new signal and increment
 		var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
 		var callback = externalTemplatesSignal.pending(signal.pending(function () {
-			//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
 			// Activate template controls within the response.
 			Sys.Application.activateElement(this);
 		}));
@@ -14112,7 +14171,7 @@ window.ExoWeb.DotNet = {};
 
 	registerActivity("Content rendering", function() {
 		if (contentControlsRendering < 0) {
-			ExoWeb.trace.logWarning("ui", "Number of content controls rendering should never dip below zero.");
+			logWarning("Number of content controls rendering should never dip below zero.");
 		}
 
 		return contentControlsRendering > 0;
@@ -14167,7 +14226,7 @@ window.ExoWeb.DotNet = {};
 				newValue = value.toLowerCase() == "true" ? true : (value.toLowerCase() == "false" ? false : undefined);
 			}
 			else {
-				ExoWeb.trace.throwAndLog(["ui", "content"], "Invalid value for property \"disabled\": {0}.", [value]);
+				throw new Error("Invalid value for property \"disabled\": " + value);
 			}
 
 			var oldValue = this._disabled;
@@ -14261,7 +14320,7 @@ window.ExoWeb.DotNet = {};
 			var tmplEl = findTemplate(this._element.tagName.toLowerCase(), this._data, tmplNames ? tmplNames.trim().split(/\s+/) : []);
 
 			if (!tmplEl) {
-				ExoWeb.trace.throwAndLog(["ui", "templates"], "This content region does not match any available templates. Tag={0}, Data={1}, Template={2}", [this._element.tagName.toLowerCase(), this._data, tmplNames || ""]);
+				throw new Error($format("This content region does not match any available templates. Tag={0}, Data={1}, Template={2}", this._element.tagName.toLowerCase(), this._data, tmplNames || ""));
 			}
 
 			return tmplEl;
@@ -14461,12 +14520,10 @@ window.ExoWeb.DotNet = {};
 
 			if ($(this._element).is(".sys-template")) {
 				if ($(this._element).children().length > 0) {
-					ExoWeb.trace.logWarning(["ui", "content"],
-						"Content control is marked with the \"sys-template\" class, which means that its children will be ignored and discarded.");
+					logWarning("Content control is marked with the \"sys-template\" class, which means that its children will be ignored and discarded.");
 				}
 				else {
-					ExoWeb.trace.logWarning(["ui", "content"],
-						"No need to mark a content control with the \"sys-template\" class.");
+					logWarning("No need to mark a content control with the \"sys-template\" class.");
 				}
 			}
 			this.update();
@@ -14486,7 +14543,7 @@ window.ExoWeb.DotNet = {};
 
 	registerActivity("DataView rendering", function() {
 		if (dataViewsRendering < 0) {
-			ExoWeb.trace.logWarning("ui", "Number of dataview controls rendering should never dip below zero.");
+			logWarning("Number of dataview controls rendering should never dip below zero.");
 		}
 
 		return dataViewsRendering > 0;
@@ -14500,7 +14557,7 @@ window.ExoWeb.DotNet = {};
 			dataViewRefresh.apply(this, arguments);
 		}
 		else {
-			ExoWeb.trace.logWarning("ui", "Attempting to refresh, but DataView was being disposed.");
+			logWarning("Attempting to refresh, but DataView was being disposed.");
 		}
 
 		dataViewsRendering--;
@@ -14561,7 +14618,7 @@ window.ExoWeb.DotNet = {};
 				$(element).removeClass(loadingClass);
 
 				if (status != "success" && status != "notmodified") {
-					ExoWeb.trace.throwAndLog("ui", "Failed to load html: status = {0}", status);
+					throw new Error("Failed to load html: status = " + status);
 				}
 			});
 		}
@@ -14630,9 +14687,7 @@ window.ExoWeb.DotNet = {};
 						var name = Sys.Application._mapToPrototype(prop.substring(5), this.get_classObject());
 
 						if (!name) {
-							ExoWeb.trace.throwAndLog("ui",
-								"Property '{0}' could not be found on type '{1}'.",
-								[prop.substring(5), this._class]);
+							throw new Error($format("Property '{0}' could not be found on type '{1}'.", prop.substring(5), this._class));
 						}
 
 						this._properties[name] = this[prop];
@@ -14650,9 +14705,7 @@ window.ExoWeb.DotNet = {};
 						var name = Sys.Application._mapToPrototype(prop.substring(9), this.get_classObject());
 
 						if (!name) {
-							ExoWeb.trace.throwAndLog("ui",
-								"Event '{0}' could not be found on type '{1}'.",
-								[prop.substring(9), this._class]);
+							throw new Error($format("Event '{0}' could not be found on type '{1}'.", prop.substring(9), this._class));
 						}
 
 						this._events[name] = this[prop];
@@ -14733,10 +14786,7 @@ window.ExoWeb.DotNet = {};
 				}
 
 				if (index !== undefined && index !== null && index.constructor === Number) {
-					if (index >= containerContexts.length) {
-//							ExoWeb.trace.log("ui", "invalid index");
-					}
-					else {
+					if (index < containerContexts.length) {
 						var indexedContext = containerContexts[index];
 						var indexedData = containerData[index];
 						data = (indexedContext) ? indexedContext.dataItem : indexedData;
@@ -14917,9 +14967,6 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.View.AdapterMarkupExtension
 	//////////////////////////////////////////////////
 
-	/// <reference path="..\core\Function.js" />
-	/// <reference path="..\core\Functor.js" />
-
 	Sys._Application.mixin(Functor.eventing);
 
 	Sys._Application.prototype.addBeforeCreateAdapter = function Application$addBeforeCreateAdapter(handler) {
@@ -14934,7 +14981,7 @@ window.ExoWeb.DotNet = {};
 		"@",
 		function AdapterMarkupExtention(component, targetProperty, templateContext, properties) {
 			if (properties.required) {
-				ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter markup extension does not support the \"required\" property.");
+				logWarning("Adapter markup extension does not support the \"required\" property.");
 			}
 
 			var path = properties.path || properties.$default;
@@ -14992,7 +15039,7 @@ window.ExoWeb.DotNet = {};
 		"#",
 		function MetaMarkupExtension(component, targetProperty, templateContext, properties) {
 			if (properties.required) {
-				ExoWeb.trace.logWarning(["#", "markupExt"], "Meta markup extension does not support the \"required\" property.");
+				logWarning("Meta markup extension does not support the \"required\" property.");
 			}
 
 			var options, element;
@@ -15077,7 +15124,7 @@ window.ExoWeb.DotNet = {};
 
 				if (options.single === true) {
 					if (conditions.length > 1) {
-						ExoWeb.trace.throwAndLog("?", "Multiple conditions were found for type \"{0}\".", [options.type]);
+						throw new Error($format("Multiple conditions were found for type \"{0}\".", options.type));
 					}
 
 					conditions = conditions.length === 0 ? null : conditions[0];
@@ -15208,7 +15255,7 @@ window.ExoWeb.DotNet = {};
 					// Transform the original list using the given options
 					var transformResult = this._transformFn(value, this._templateContext.index, this._templateContext.dataItem);
 					if (transformResult.live !== Transform.prototype.live) {
-						ExoWeb.trace.throwAndLog("~", "Invalid transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
+						throw new Error("Invalid transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
 					}
 					return transformResult.live();
 				}
@@ -15342,7 +15389,7 @@ window.ExoWeb.DotNet = {};
 
 			delete this._evalFailureHandler;
 
-			ExoWeb.trace.throwAndLog(["~", "markupExt"], "Couldn't evaluate path '{0}', {1}", [this._sourcePath, err]);
+			throw new Error($format("Couldn't evaluate path '{0}', {1}", this._sourcePath, err));
 		},
 
 		dispose: function() {
@@ -15469,7 +15516,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		if (options.optionsTransform) {
-			throw ExoWeb.trace.logError(["@", "markupExt"], "Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead. Path = \"{0}\".", propertyPath);
+			throw new Error($format("Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead. Path = \"{0}\".", propertyPath));
 		}
 
 		if (options.allowedValuesMayBeNull) {
@@ -15486,7 +15533,7 @@ window.ExoWeb.DotNet = {};
 		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyChain.get_path(),
 			this._readySignal.pending(),
 			this._readySignal.orPending(function(err) {
-				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Couldn't evaluate path '{0}', {1}", [propertyPath, err]);
+				throw new Error($format("Couldn't evaluate path '{0}', {1}", propertyPath, err));
 			})
 		);
 
@@ -15537,13 +15584,13 @@ window.ExoWeb.DotNet = {};
 			var sourceObject = (this._target instanceof Adapter) ? this._target.get_rawValue() : this._target;
 
 			if (!(sourceObject instanceof Entity)) {
-				throw new ExoWeb.trace.logError("@", "Adapter source is not an entity.");
+				throw new Error("Adapter source is not an entity.");
 			}
 
 			// get the property chain for this adapter starting at the source object
 			this._propertyChain = Model.property(this._propertyPath, sourceObject.meta.type);
 			if (!this._propertyChain) {
-				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{0}\" could not be found.", this._propertyPath);
+				throw new Error($format("Property \"{0}\" could not be found.", this._propertyPath));
 			}
 
 			// If the target is an adapter, prepend its property chain.  Cannot simply concatenate paths
@@ -15728,7 +15775,7 @@ window.ExoWeb.DotNet = {};
 				targetType = "undefined";
 			}
 			else {
-				targetType = ExoWeb.parseFunctionName(this._target.constructor);
+				targetType = parseFunctionName(this._target.constructor);
 			}
 
 			var value;
@@ -15851,7 +15898,7 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 			else {
-				ExoWeb.trace.logWarning(["@", "markupExt"], "Possible incorrect usage of systemValue for a type that is not supported");
+				logWarning("Possible incorrect usage of systemValue for a type that is not supported");
 				return rawValue ? rawValue.toString() : "";
 			}
 		},
@@ -15890,7 +15937,7 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 			else {
-				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Cannot set systemValue property of Adapters for non-entity types.");
+				throw new Error("Cannot set systemValue property of Adapters for non-entity types.");
 			}
 		},
 		get_displayValue: function Adapter$get_displayValue() {
@@ -15928,7 +15975,7 @@ window.ExoWeb.DotNet = {};
 		},
 		set_displayValue: function Adapter$set_displayValue(value) {
 			if (this.get_isEntity()) {
-				ExoWeb.trace.throwAndLog(["@", "markupExt"], "Cannot set displayValue property of Adapters for entity types.");
+				throw new Error("Cannot set displayValue property of Adapters for entity types.");
 			}
 			else {
 				value = this._format ? this._format.convertBack(value) : value;
@@ -16233,7 +16280,7 @@ window.ExoWeb.DotNet = {};
 
 					// Load allowed values if the path is not inited
 					if (allowedValues === undefined) {
-						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced eval of allowed values. Rule: {0}", [allowedValuesRule]);
+						logWarning("Adapter forced eval of allowed values. Rule: " + allowedValuesRule);
 						ExoWeb.Model.LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
 							allowedValuesRule.source.get_path(),
 							signalOptionsReady.bind(this));
@@ -16252,7 +16299,7 @@ window.ExoWeb.DotNet = {};
 
 					// Load the allowed values list if it is not already loaded
 					if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
-						ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values list. Rule: {0}", [allowedValuesRule]);
+						logWarning("Adapter forced loading of allowed values list. Rule: " + allowedValuesRule);
 						ExoWeb.Model.LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
 						this._options = null;
 						return;
@@ -16272,7 +16319,7 @@ window.ExoWeb.DotNet = {};
 					if (this._allowedValuesTransform) {
 						transformedAllowedValues = (new Function("$array", "{ return $transform($array, true)." + this._allowedValuesTransform + "; }"))(observableAllowedValues);
 						if (transformedAllowedValues.live !== Transform.prototype.live) {
-							ExoWeb.trace.throwAndLog("@", "Invalid options transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
+							throw new Error("Invalid options transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
 						}
 					}
 					else {
@@ -16690,7 +16737,7 @@ window.ExoWeb.DotNet = {};
 		var ruleType = ExoWeb.Model.Rule[ruleName];
 
 		if (!ruleType) {
-			ExoWeb.trace.throwAndLog(["ui", "jquery"], "Unknown rule in selector: " + ruleName);
+			throw new Error("Unknown rule in selector: " + ruleName);
 		}
 
 		return $(obj).rules(ruleType).length > 0;
@@ -17179,7 +17226,7 @@ window.ExoWeb.DotNet = {};
 			if (window.ExoWeb) {
 				for (var opt in options) {
 					if (options.hasOwnProperty(opt) && !/^(selector|source|added|deleted|bound|unbound)$/.test(opt)) {
-						ExoWeb.trace.logWarning("ever", "Unexpected option \"" + opt + "\"");
+						logWarning("Unexpected option \"" + opt + "\"");
 					}
 				}
 			}
@@ -17211,19 +17258,14 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 			else if (!options.selector) {
-				if (window.ExoWeb) {
-					ExoWeb.trace.throwAndLog("ever", "Ever requires a selector");
-				}
-				else {
-					throw new Error("Ever requires a selector");
-				}
+				throw new Error("Ever requires a selector");
 			}
 			if (window.ExoWeb && options.source) {
 				if (!(options.added || options.deleted)) {
-					ExoWeb.trace.logWarning("ever", "The source option only applies to added and deleted handlers");
+					logWarning("The source option only applies to added and deleted handlers");
 				}
 				if (options.source !== "template" && options.source !== "updatePanel") {
-					ExoWeb.trace.logWarning("ever", "Unexpected source \"" + options.source + "\"");
+					logWarning("Unexpected source \"" + options.source + "\"");
 				}
 			}
 		}
@@ -17448,22 +17490,13 @@ window.ExoWeb.DotNet = {};
 	});
 
 	var loggingError = false;
-	ExoWeb.setErrorHandler(function WebService$errorHandlerFn(message, e) {
+	ExoWeb.setLogErrorProvider(function WebService$logErrorProviderFn(errorData) {
 		if (loggingError === false) {
 			try {
 				loggingError = true;
-				Sys.Net.WebServiceProxy.invoke(
-					getPath(),
-					"LogError",
-					false,
-					{
-						message: message,
-						type: e ? parseFunctionName(e.constructor) : "Error",
-						stackTrace: ExoWeb.trace.getCallStack().join("\n"),
-						url: window.location.href,
-						refererUrl: document.referrer,
-						config: webServiceConfig
-					}, null, null, null, 1000000, false, null);
+				Sys.Net.WebServiceProxy.invoke(getPath(), "LogError", false, errorData, null, function onFailure () {
+					// Do nothing.  Don't log errors that occur when trying to log an error.
+				}, null, 1000000, false, null);
 			}
 			finally {
 				loggingError = false;
@@ -17625,7 +17658,7 @@ window.ExoWeb.DotNet = {};
 
 		removeCollectionChanged: Sys.Observer.removeCollectionChanged,
 
-		addPropertyChanged: function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
+		addPropertyChanged: function Sys$Observer$addPropertyChanged(target, property, handler) {
 			if (!target.__propertyChangeHandlers) {
 				target.__propertyChangeHandlers = {};
 				Sys.Observer.addPropertyChanged(target, raiseSpecificPropertyChanged);
@@ -17640,7 +17673,7 @@ window.ExoWeb.DotNet = {};
 			func.add(handler);
 		},
 
-		removePropertyChanged: function Sys$Observer$removeSpecificPropertyChanged(target, property, handler) {
+		removePropertyChanged: function Sys$Observer$removePropertyChanged(target, property, handler) {
 			var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
 
 			if (func) {

@@ -43,7 +43,7 @@ Template.prototype = {
 	},
 	set_dataType: function Template$set_dataType(value) {
 		if (ExoWeb.isType(value, Function)) {
-			this._dataType = ExoWeb.parseFunctionName(value);
+			this._dataType = parseFunctionName(value);
 			this._dataTypeCtor = value;
 		}
 		else if (ExoWeb.isType(value, String)) {
@@ -239,10 +239,9 @@ function findTemplate(tagName, data, names) {
 	/// <summary locid="M:J#ExoWeb.UI.Template.find">
 	/// Finds the first field template that match the given data and names and returns the template.
 	/// </summary>
-	ExoWeb.trace.log(["templates"], "attempt to find template match for names = {0}, data = {1}", [names.join(","), data]);
 
 	if (data === undefined || data === null) {
-		ExoWeb.trace.logWarning("templates", "Attempting to find template for {0} data.", [data === undefined ? "undefined" : "null"]);
+		logWarning("Attempting to find template for " + (data === undefined ? "undefined" : "null") + " data.");
 	}
 
 	var cache;
@@ -281,7 +280,6 @@ Template.load = function Template$load(path, options) {
 	// set the last request signal to the new signal and increment
 	var signal = lastTemplateRequestSignal = new ExoWeb.Signal(id);
 	var callback = externalTemplatesSignal.pending(signal.pending(function () {
-		//				ExoWeb.trace.log("ui", "Activating elements for templates \"{0}\"", [id]);
 		// Activate template controls within the response.
 		Sys.Application.activateElement(this);
 	}));

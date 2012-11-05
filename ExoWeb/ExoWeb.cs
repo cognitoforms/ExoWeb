@@ -1019,7 +1019,7 @@ namespace ExoWeb
 						{
 							if (condition.Message != condition.Type.Message)
 								json.Set("message", condition.Message);
-							json.Set("targets", condition.Targets);
+							json.Set("targets", condition.Targets.Where(ct => ct.Target != null));
 						},
 						json => { throw new NotSupportedException("Condition cannot be deserialized."); }),
 

@@ -11,7 +11,7 @@ function Adapter(target, propertyPath, format, options) {
 	}
 
 	if (options.optionsTransform) {
-		throw ExoWeb.trace.logError(["@", "markupExt"], "Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead. Path = \"{0}\".", propertyPath);
+		throw new Error($format("Option \"optionsTransform\" is obsolete, use \"allowedValuesTransform\" instead. Path = \"{0}\".", propertyPath));
 	}
 
 	if (options.allowedValuesMayBeNull) {
@@ -28,7 +28,7 @@ function Adapter(target, propertyPath, format, options) {
 	ExoWeb.Model.LazyLoader.eval(this._target, this._propertyChain.get_path(),
 		this._readySignal.pending(),
 		this._readySignal.orPending(function(err) {
-			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Couldn't evaluate path '{0}', {1}", [propertyPath, err]);
+			throw new Error($format("Couldn't evaluate path '{0}', {1}", propertyPath, err));
 		})
 	);
 
@@ -79,13 +79,13 @@ Adapter.mixin({
 		var sourceObject = (this._target instanceof Adapter) ? this._target.get_rawValue() : this._target;
 
 		if (!(sourceObject instanceof Entity)) {
-			throw new ExoWeb.trace.logError("@", "Adapter source is not an entity.");
+			throw new Error("Adapter source is not an entity.");
 		}
 
 		// get the property chain for this adapter starting at the source object
 		this._propertyChain = Model.property(this._propertyPath, sourceObject.meta.type);
 		if (!this._propertyChain) {
-			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Property \"{0}\" could not be found.", this._propertyPath);
+			throw new Error($format("Property \"{0}\" could not be found.", this._propertyPath));
 		}
 
 		// If the target is an adapter, prepend its property chain.  Cannot simply concatenate paths
@@ -270,7 +270,7 @@ Adapter.mixin({
 			targetType = "undefined";
 		}
 		else {
-			targetType = ExoWeb.parseFunctionName(this._target.constructor);
+			targetType = parseFunctionName(this._target.constructor);
 		}
 
 		var value;
@@ -393,7 +393,7 @@ Adapter.mixin({
 			}
 		}
 		else {
-			ExoWeb.trace.logWarning(["@", "markupExt"], "Possible incorrect usage of systemValue for a type that is not supported");
+			logWarning("Possible incorrect usage of systemValue for a type that is not supported");
 			return rawValue ? rawValue.toString() : "";
 		}
 	},
@@ -432,7 +432,7 @@ Adapter.mixin({
 			}
 		}
 		else {
-			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Cannot set systemValue property of Adapters for non-entity types.");
+			throw new Error("Cannot set systemValue property of Adapters for non-entity types.");
 		}
 	},
 	get_displayValue: function Adapter$get_displayValue() {
@@ -470,7 +470,7 @@ Adapter.mixin({
 	},
 	set_displayValue: function Adapter$set_displayValue(value) {
 		if (this.get_isEntity()) {
-			ExoWeb.trace.throwAndLog(["@", "markupExt"], "Cannot set displayValue property of Adapters for entity types.");
+			throw new Error("Cannot set displayValue property of Adapters for entity types.");
 		}
 		else {
 			value = this._format ? this._format.convertBack(value) : value;
@@ -775,7 +775,7 @@ Adapter.mixin({
 
 				// Load allowed values if the path is not inited
 				if (allowedValues === undefined) {
-					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced eval of allowed values. Rule: {0}", [allowedValuesRule]);
+					logWarning("Adapter forced eval of allowed values. Rule: " + allowedValuesRule);
 					ExoWeb.Model.LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
 						allowedValuesRule.source.get_path(),
 						signalOptionsReady.bind(this));
@@ -794,7 +794,7 @@ Adapter.mixin({
 
 				// Load the allowed values list if it is not already loaded
 				if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
-					ExoWeb.trace.logWarning(["@", "markupExt"], "Adapter forced loading of allowed values list. Rule: {0}", [allowedValuesRule]);
+					logWarning("Adapter forced loading of allowed values list. Rule: " + allowedValuesRule);
 					ExoWeb.Model.LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
 					this._options = null;
 					return;
@@ -814,7 +814,7 @@ Adapter.mixin({
 				if (this._allowedValuesTransform) {
 					transformedAllowedValues = (new Function("$array", "{ return $transform($array, true)." + this._allowedValuesTransform + "; }"))(observableAllowedValues);
 					if (transformedAllowedValues.live !== Transform.prototype.live) {
-						ExoWeb.trace.throwAndLog("@", "Invalid options transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
+						throw new Error("Invalid options transform result: may only contain \"where\", \"orderBy\", \"select\", \"selectMany\", and \"groupBy\".");
 					}
 				}
 				else {

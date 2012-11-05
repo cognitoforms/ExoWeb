@@ -100,22 +100,14 @@ var disableConstruction = false;
 
 var validateId = function Type$validateId(type, id) {
 	if (id === null || id === undefined) {
-		ExoWeb.trace.throwAndLog("model",
-			"Id cannot be {0} (entity = {1}).",
-			[id === null ? "null" : "undefined", type.get_fullName()]
-		);
+		throw new Error($format("Id cannot be {0} (entity = {1}).", id === null ? "null" : "undefined", type.get_fullName()));
 	}
 	else if (id.constructor !== String) {
-		ExoWeb.trace.throwAndLog("model",
-			"Id must be a string:  encountered id {0} of type \"{1}\" (entity = {2}).",
-			[id.toString(), ExoWeb.parseFunctionName(id.constructor), type.get_fullName()]
-		);
+		throw new Error($format("Id must be a string:  encountered id {0} of type \"{1}\" (entity = {2}).",
+			id.toString(), parseFunctionName(id.constructor), type.get_fullName()));
 	}
 	else if (id === "") {
-		ExoWeb.trace.throwAndLog("model",
-			"Id cannot be a blank string (entity = {0}).",
-			[type.get_fullName()]
-		);
+		throw new Error($format("Id cannot be a blank string (entity = {0}).", type.get_fullName()));
 	}
 };
 
@@ -254,7 +246,7 @@ Type.prototype = {
 
 		for (var t = this; t; t = t.baseType) {
 			if (t._pool.hasOwnProperty(key)) {
-				ExoWeb.trace.throwAndLog("model", "Object \"{0}|{1}\" has already been registered.", [this.get_fullName(), id]);
+				throw new Error($format("Object \"{0}|{1}\" has already been registered.", this.get_fullName(), id));
 			}
 
 			t._pool[key] = obj;
@@ -290,10 +282,7 @@ Type.prototype = {
 			return obj;
 		}
 		else {
-			ExoWeb.trace.logWarning("model",
-				"Attempting to change id: Instance of type \"{0}\" with id = \"{1}\" could not be found.",
-				[this.get_fullName(), oldId]
-			);
+			logWarning($format("Attempting to change id: Instance of type \"{0}\" with id = \"{1}\" could not be found.", this.get_fullName(), oldId));
 		}
 	},
 	unregister: function Type$unregister(obj) {
@@ -319,7 +308,7 @@ Type.prototype = {
 
 		// If exactTypeOnly is specified, don't return sub-types.
 		if (obj && exactTypeOnly === true && obj.meta.type !== this) {
-			throw ExoWeb.trace.logError("model", "The entity with id='{0}' is expected to be of type '{1}' but found type '{2}'.", id, this._fullName, obj.meta.type._fullName);
+			throw new Error($format("The entity with id='{0}' is expected to be of type '{1}' but found type '{2}'.", id, this._fullName, obj.meta.type._fullName));
 		}
 
 		return obj;
@@ -443,10 +432,10 @@ Type.prototype = {
 				if (def.parameters.length == argCount - 1 && arguments[argCount - 1] instanceof Array)
 					paths = arguments[argCount - 1];
 				else if (def.parameters.length != argCount)
-					ExoWeb.trace.throwAndLog("type", "Invalid number of arguments passed to \"{0}.{1}\" method.", [this._fullName, def.name]);
+					throw new Error($format("Invalid number of arguments passed to \"{0}.{1}\" method.", this._fullName, def.name));
 
 				if (def.isStatic && paths)
-					ExoWeb.trace.throwAndLog("type", "Cannot include paths when invoking a static method - \"{0}.{1}\".", [this.meta._fullName, def.name]);
+					throw new Error($format("Cannot include paths when invoking a static method - \"{0}.{1}\".", this.meta._fullName, def.name));
 
 				// Construct the arguments to pass
 				var args = {};
@@ -477,10 +466,13 @@ Type.prototype = {
 
 			// ensure the property is initialized
 			if (result === undefined || (property.get_isList() && !LazyLoader.isLoaded(result))) {
-				ExoWeb.trace.throwAndLog(["model", "entity"], "Property {0}.{1} is not initialized.  Make sure instances are loaded before accessing property values.", [
+				throw new Error($format(
+					"Property {0}.{1} is not initialized.  Make sure instances are loaded before accessing property values.  {2}|{3}",
 					property._containingType.get_fullName(),
-					property.get_name()
-				]);
+					property.get_name(),
+					this.meta.type.get_fullName(),
+					this.meta.id
+				));
 			}
 
 			// return the result

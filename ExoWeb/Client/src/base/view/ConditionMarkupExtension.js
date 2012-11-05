@@ -33,7 +33,7 @@ Sys.Application.registerMarkupExtension("?",
 
 			if (options.single === true) {
 				if (conditions.length > 1) {
-					ExoWeb.trace.throwAndLog("?", "Multiple conditions were found for type \"{0}\".", [options.type]);
+					throw new Error($format("Multiple conditions were found for type \"{0}\".", options.type));
 				}
 
 				conditions = conditions.length === 0 ? null : conditions[0];

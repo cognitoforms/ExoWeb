@@ -1,7 +1,7 @@
+/// <reference path="Errors.js" />
+
 function FunctionChain(steps, thisPtr) {
-	if (!(steps instanceof Array)) {
-		ExoWeb.trace.throwAndLog("functionChain", "Steps must be an array of functions.");
-	}
+	if (!(steps instanceof Array)) throw new ArgumentTypeError("steps", "array", steps);
 
 	this._steps = steps;
 	this._thisPtr = thisPtr;

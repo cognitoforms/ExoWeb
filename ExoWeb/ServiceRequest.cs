@@ -114,22 +114,19 @@ namespace ExoWeb
 				// Send conditions for instances loaded in the request
 				if (response.Instances != null || response.Changes != null)
 				{
-					// Get instances loaded by the request
-					var instances = response.Instances != null ?
-						response.Instances.Values.SelectMany(d => d.Instances.Values).Select(instance => instance.Instance) :
-						new ModelInstance[0];
-
 					// Add instances created during the request
-					instances = response.Changes != null ?
-						instances.Union(response.Changes.OfType<ModelInitEvent.InitNew>().Select(modelEvent => modelEvent.Instance)) :
-						instances;
+					if (response.Changes != null)
+					{
+						foreach (var instance in response.Changes.OfType<ModelInitEvent.InitNew>().Select(modelEvent => modelEvent.Instance))
+							response.inScopeInstances.Add(instance);
+					}
 
 					// Ensure conditions are evaluated before extracting them
-					ExoWeb.OnEnsureConditions(response, instances);
+					ExoWeb.OnEnsureConditions(response, response.inScopeInstances);
 
 					// Extract conditions for all instances involved in the request
 					Dictionary<string, List<Condition>> conditionsByType = new Dictionary<string, List<Condition>>();
-					foreach (var condition in instances.SelectMany(instance => Condition.GetConditions(instance)))
+					foreach (var condition in response.inScopeInstances.SelectMany(instance => Condition.GetConditions(instance)))
 					{
 						List<Condition> conditions;
 						if (!conditionsByType.TryGetValue(condition.Type.Code, out conditions))
@@ -306,6 +303,10 @@ namespace ExoWeb
 				// Add the current instance to the dictionary if it is not already there
 				if (!typeInfo.Instances.TryGetValue(instance.Id, out instanceInfo))
 					typeInfo.Instances[instance.Id] = instanceInfo = new ModelInstanceInfo(instance);
+
+				// Track in scope instances to limit conditions
+				if (inScope)
+					response.inScopeInstances.Add(instance);
 			}
 
 			// Exit immediately if there are no child steps to process

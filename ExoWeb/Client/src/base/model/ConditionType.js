@@ -5,7 +5,7 @@ function ConditionType(code, category, message, sets, origin) {
 	}
 
 	if (allConditionTypes[code]) {
-		ExoWeb.trace.throwAndLog("conditions", "A condition type with the code \"{0}\" has already been created.", [code]);
+		throw new Error("A condition type with the code \"" + code + "\" has already been created.");
 	}
 
 	Object.defineProperty(this, "code", { value: code });

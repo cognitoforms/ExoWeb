@@ -1,30 +1,25 @@
+/// <reference path="../../SpecDependencies.js" />
+/// <reference path="../../SpecHelpers.js" />
+
+// Test setup
+///////////////////////////////////////
+
+var specs = require("../../SpecHelpers");
+
+specs.announce("Transform");
+
+//specs.debug();
+// Simulate global window object and exoweb namespace
+specs.ensureWindow();
+specs.ensureNamespace("ExoWeb");
+
 // Imports
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
-jasmine.jasmine.debug = true;
+var transformModule = specs.require("core.Transform");
 
-// Simulate global window object and exoweb namespace
-global.window = global;
-global.ExoWeb = {};
-
-var typeChecking = require("../../../src/base/core/TypeChecking");
-var isObject = global.isObject = typeChecking.isObject;
-
-var functions = require("../../../src/base/core/Array");
-var functions = require("../../../src/base/core/Function");
-var trace = require("../../../src/base/core/Trace");
-var utilities = require("../../../src/base/core/Utilities");
-global.evalPath = ExoWeb.evalPath = utilities.evalPath;
-var transform = require("../../../src/base/core/Transform");
-
-// References
+// Test Suites
 ///////////////////////////////////////
-var describe = jasmine.describe;
-var it = jasmine.it;
-var expect = jasmine.expect;
-var beforeEach = jasmine.beforeEach;
 
 function arrayEquals(arr1, arr2, unordered) {
 	expect(arr1.length).toBe(arr2.length);
@@ -55,13 +50,13 @@ describe("constructor", function() {
 	it("throws an error if no array is given", function() {
 		expect(function() {
 			$transform();
-		}).toThrow("Transform input is required.");
+		}).toThrow("Argument 'array' cannot be null or undefined: transform input is required.");
 	});
 
 	it("throws an error if a non-array input is given", function() {
 		expect(function() {
 			$transform("foo");
-		}).toThrow("Transform input must be an array.");
+		}).toThrow("Argument 'array' must be of type array: foo.");
 	});
 });
 

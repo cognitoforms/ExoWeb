@@ -1,44 +1,23 @@
-﻿// Imports
+﻿/// <reference path="../../SpecDependencies.js" />
+/// <reference path="../../SpecHelpers.js" />
+
+// Test setup
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
-jasmine.jasmine.debug = true;
+var specs = require("../../SpecHelpers");
 
-global.window = global;
-global.ExoWeb = {};
+specs.announce("ChangeLog");
 
-var random = require("../../../src/base/core/Random");
-var randomText = global.randomText = random.randomText;
+//specs.debug();
+specs.ensureWindow();
 
-var typeChecking = require("../../../src/base/core/TypeChecking");
-var isNatural = global.isNatural = typeChecking.isNatural;
-var isInteger = global.isInteger = typeChecking.isInteger;
+// Imports
+///////////////////////////////////////
 
-var activity = require("../../../src/base/core/Activity");
-global.registerActivity = activity.registerActivity;
+var functionModule = specs.require("mapper.ChangeLog");
 
-var functions = require("../../../src/base/core/Function");
-var functor = require("../../../src/base/core/Functor");
-global.Functor = functor.Functor;
-
-var arrays = require("../../../src/base/core/Array");
-var trace = require("../../../src/base/core/Trace");
-var utilities = require("../../../src/base/core/Utilities");
-var strings = require("../../../src/base/core/String");
-
-global.forEach = arrays.forEach;
-
-var changeSet = require("../../../src/base/mapper/ChangeSet");
-global.ChangeSet = changeSet.ChangeSet;
-
-var changeLog = require("../../../src/base/mapper/ChangeLog");
-global.ChangeLog = changeLog.ChangeLog;
-
-var describe = jasmine.describe;
-var it = jasmine.it;
-var expect = jasmine.expect;
-var beforeEach = jasmine.beforeEach;
+// Test Suites
+///////////////////////////////////////
 
 function setup() {
 	var log = new ChangeLog();
@@ -51,8 +30,6 @@ function setup() {
 	this.log = log;
 }
 
-// Test Suites
-///////////////////////////////////////
 describe("ChangeLog", function() {
 	it("initially has no sets", function() {
 		expect((new ChangeLog()).sets().length).toBe(0);
@@ -67,11 +44,11 @@ describe("ChangeLog", function() {
 	it("requires a string source when calling start", function() {
 		expect(function() {
 			(new ChangeLog()).start();
-		}).toThrow("[changeLog, error]: ChangeLog.start requires a string source argument.");
+		}).toThrow("Argument 'source' cannot be null or undefined.");
 
 		expect(function() {
 			(new ChangeLog()).start(5);
-		}).toThrow("[changeLog, error]: ChangeLog.start requires a string source argument.");
+		}).toThrow("Argument 'source' must be of type string: 5.");
 	});
 
 	it("allows a change to be added after calling start", function() {

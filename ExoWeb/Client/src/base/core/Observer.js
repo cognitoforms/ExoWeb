@@ -1,14 +1,12 @@
+/// <reference path="Errors.js" />
+
 var Observer = { };
 
 Observer.addPathChanged = function Observer$addPathChanged(target, path, handler, allowNoTarget) {
 	// Throw an error if the target is null or undefined, unless the calling code specifies that this is ok
-	if (target === undefined || target === null) {
-		if (allowNoTarget === true) {
-			return;
-		}
-		else {
-			ExoWeb.trace.throwAndLog("observer", "Cannot watch for changes to \"{0}\" on a null or undefined target.", [path instanceof Array ? path.join(".") : path]);
-		}
+	if (target == null) {
+		if (allowNoTarget === true) return;
+		else throw new ArgumentNullError("target", "'allowNoTarget' is false - path = \"" + (path instanceof Array ? path.join(".") : path) + "\"");
 	}
 
 	// Ensure a set of path change handlers

@@ -11,7 +11,6 @@ jasmine.jasmine.debug = true;
 var arrays = require("../../../src/base/core/Array");
 var functions = require("../../../src/base/core/Function");
 var functionChain = require("../../../src/base/core/FunctionChain");
-var trace = require("../../../src/base/core/Trace");
 var utilities = require("../../../src/base/core/Utilities");
 
 $format = window.$format;

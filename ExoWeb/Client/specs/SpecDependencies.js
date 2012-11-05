@@ -65,19 +65,26 @@ exports.init = function () {
 	// Core dependencies
 	ensureNode("core.TypeChecking");
 	ensureNode("core.Utilities");
-	"core.Trace".dependsOn("core.Utilities");
+	"core.Warnings".dependsOn("core.Errors");
+	"core.Cache".dependsOn("core.Warnings");
 	"core.Signal".dependsOn("core.Functor", "core.Function", "core.Config");
 	"core.Functor".dependsOn("core.Activity");
-	"core.Function".dependsOn("core.Array", "core.Functor");
+	"core.Function".dependsOn("core.Array", "core.Functor", "core.Errors");
+	"core.Random".dependsOn("core.TypeChecking");
+	"core.Utilities".dependsOn("core.Warnings");
+	"core.Transform".dependsOn("core.Errors", "core.Function", "core.Utilities", "core.TypeChecking");
 	"core.Batch".dependsOn("core.Activity", "core.Function", "core.Array");
 	"core.EventScope".dependsOn("core.Function", "core.Functor");
 	"model.Model".dependsOn("core.Functor", "core.Function", "model.PathTokens");
-	"mapper.ServerSync".dependsOn("core.Trace", "core.Utilities", "core.Functor", "core.Function");
-	"mapper.ObjectLazyLoader".dependsOn("core.Activity", "core.Function", "model.LazyLoader", "core.Array");
 	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity", "model.ObjectMeta");
 	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type", "core.Observer", "core.TimeSpan");
 	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object", "model.Property", "core.Observer");
 	"model.PathTokens".dependsOn("core.Function", "model.Property", "model.PropertyChain", "core.Observer");
+	"mapper.Internals".dependsOn("core.Warnings");
+	"mapper.ServerSync".dependsOn("core.Utilities", "core.Functor", "core.Function");
+	"mapper.ObjectLazyLoader".dependsOn("core.Utilities", "core.Activity", "core.Function", "model.LazyLoader", "core.Array");
+	"mapper.ChangeSet".dependsOn("core.Function", "core.Functor", "core.Random");
+	"mapper.ChangeLog".dependsOn("core.Function", "core.Functor", "mapper.ChangeSet");
 
 	// Extension dependencies
 	"msajax.ObserverProvider".dependsOn("core.Observer");

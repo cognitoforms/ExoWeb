@@ -2,7 +2,7 @@ var dataViewsRendering = 0;
 
 registerActivity("DataView rendering", function() {
 	if (dataViewsRendering < 0) {
-		ExoWeb.trace.logWarning("ui", "Number of dataview controls rendering should never dip below zero.");
+		logWarning("Number of dataview controls rendering should never dip below zero.");
 	}
 
 	return dataViewsRendering > 0;
@@ -16,7 +16,7 @@ Sys.UI.DataView.prototype.refresh = function refresh() {
 		dataViewRefresh.apply(this, arguments);
 	}
 	else {
-		ExoWeb.trace.logWarning("ui", "Attempting to refresh, but DataView was being disposed.");
+		logWarning("Attempting to refresh, but DataView was being disposed.");
 	}
 
 	dataViewsRendering--;

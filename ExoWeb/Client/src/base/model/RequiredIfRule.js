@@ -86,7 +86,7 @@ RequiredIfRule.mixin({
 			message = Resource.get(isDate ? "required-if-on-or-before" : "required-if-less-than-or-equal");
 		}
 		else {
-			ExoWeb.trace.throwAndLog(["rule"], "Invalid comparison operator for compare rule.");
+			throw new Error("Invalid comparison operator for compare rule.");
 		}
 		message = message
 			.replace('{property}', this.property.get_label())

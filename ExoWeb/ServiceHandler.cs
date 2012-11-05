@@ -94,7 +94,10 @@ namespace ExoWeb
 				error.StackTrace = GetFullStackTrace(e);
 				error.Message = e.GetBaseException().Message;
 				error.Url = context.Request.RawUrl;
-				error.RequestJson = json;
+
+				if (error.AdditionalInfo == null)
+					error.AdditionalInfo = new Dictionary<string, object>();
+				error.AdditionalInfo.Add("Client.RequestJson", json);
 
 				// Raise the error event
 				ExoWeb.OnError(error);

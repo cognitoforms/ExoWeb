@@ -1,3 +1,5 @@
+/// <reference path="../core/Errors.js" />
+
 function PropertyChain(rootType, properties, filters) {
 	/// <summary>
 	/// Encapsulates the logic required to work with a chain of properties and
@@ -70,7 +72,7 @@ PropertyChain.create = function PropertyChain$create(rootType, pathTokens/*, for
 	var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
 	var success = arguments.length >= 4 && arguments[3] && arguments[3] instanceof Function ? arguments[3] : null;
 	var fail = arguments.length >= 5 && arguments[4] && arguments[4] instanceof Function ?
-		arguments[4] : function (error) { if (success) { ExoWeb.trace.throwAndLog("model", error); } };
+		arguments[4] : function (error) { if (success) { throw new Error(error); } };
 
 	// process each step in the path either synchronously or asynchronously depending on arguments
 	var processStep = function PropertyChain$processStep() {
@@ -212,13 +214,9 @@ PropertyChain.mixin({
 		/// ...will iterate of the values of the list property only.
 		/// </param>
 
-		if (!callback || typeof (callback) != "function") {
-			ExoWeb.trace.throwAndLog(["model"], "Invalid Parameter: callback function");
-		}
-
-		if (!obj) {
-			ExoWeb.trace.throwAndLog(["model"], "Invalid Parameter: source object");
-		}
+		if (obj == null) throw new ArgumentNullError("obj");
+		if (callback == null) throw new ArgumentNullError("callback");
+		if (typeof (callback) != "function") throw new ArgumentTypeError("callback", "function", callback);
 
 		// invoke callback on obj first
 		var target = arguments[4] || obj;

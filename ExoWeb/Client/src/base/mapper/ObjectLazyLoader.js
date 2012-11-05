@@ -13,7 +13,7 @@ registerActivity("ObjectLazyLoader", function() {
 
 function objLoad(obj, propName, callback, thisPtr) {
 	if (!ExoWeb.config.allowObjectLazyLoading) {
-		throw new ExoWeb.trace.logError(["objectInit", "lazyLoad"], "Object lazy loading has been disabled: {0}({1})", mtype.get_fullName(), id);
+		throw new Error($format("Object lazy loading has been disabled: {0}|{1}", mtype.get_fullName(), id));
 	}
 
 	pendingObjects++;
@@ -32,13 +32,13 @@ function objLoad(obj, propName, callback, thisPtr) {
 	}
 
 	// fetch object json
-	ExoWeb.trace.logWarning(["objectInit", "lazyLoad"], "Lazy load: {0}({1})", mtype.get_fullName(), id);
+	logWarning($format("Lazy load: {0}|{1}", mtype.get_fullName(), id));
 
 	// TODO: reference to server will be a singleton, not context
 	objectProvider(mtype.get_fullName(), [id], paths, false,
 		serializeChanges.call(context.server, true),
 		function(result) {
-			mtype.model.server._handleResult(result, $format("Lazy load: {0}({1})", mtype.get_fullName(), id), null, function() {
+			mtype.model.server._handleResult(result, $format("Lazy load: {0}|{1}", mtype.get_fullName(), id), null, function() {
 				LazyLoader.unregister(obj, this);
 				pendingObjects--;
 
@@ -54,7 +54,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 		},
 		function(e) {
 			pendingObjects--;
-			var message = $format("Failed to load {0}({1}): ", [mtype.get_fullName(), id]);
+			var message = $format("Failed to load {0}|{1}: ", [mtype.get_fullName(), id]);
 			if (e !== undefined && e !== null &&
 				e.get_message !== undefined && e.get_message !== null &&
 				e.get_message instanceof Function) {
@@ -64,7 +64,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 			else {
 				message += "unknown error";
 			}
-			ExoWeb.trace.logError("lazyLoad", message);
+			throw new Error(message);
 		});
 
 	// does the object's type need to be loaded too?
@@ -79,6 +79,7 @@ ObjectLazyLoader.mixin({
 
 (function() {
 	var instance = new ObjectLazyLoader();
+
 	exports.instance = instance; // IGNORE
 
 	ObjectLazyLoader.addPaths = function ObjectLazyLoader$addPaths(rootType, paths) {
@@ -127,7 +128,7 @@ ObjectLazyLoader.mixin({
 	ObjectLazyLoader.register = function(obj) {
 		if (!LazyLoader.isRegistered(obj, instance)) {
 			if (obj.meta.type.get_origin() !== "server") {
-				ExoWeb.trace.logError(["objectInit", "lazyLoad"], "Cannot lazy load instance of non-server-origin type: {0}({1})", obj.meta.type.get_fullName(), obj.meta.id);
+				throw new Error($format("Cannot lazy load instance of non-server-origin type: {0}|{1}", obj.meta.type.get_fullName(), obj.meta.id));
 			}
 			LazyLoader.register(obj, instance);
 		}
@@ -137,4 +138,5 @@ ObjectLazyLoader.mixin({
 		LazyLoader.unregister(obj, instance);
 	};
 })();
+
 exports.ObjectLazyLoader = ObjectLazyLoader; // IGNORE

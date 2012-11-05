@@ -1,40 +1,23 @@
-﻿// Imports
+﻿/// <reference path="../../SpecDependencies.js" />
+/// <reference path="../../SpecHelpers.js" />
+
+// Test setup
 ///////////////////////////////////////
-var jasmine = require("../../../ref/jasmine/jasmine");
-var jasmineConsole = require("../../../ref/jasmine/jasmine.console");
 
-jasmine.jasmine.debug = true;
+var specs = require("../../SpecHelpers");
 
-global.window = global;
-global.ExoWeb = {};
+specs.announce("ChangeSet");
 
-var random = require("../../../src/base/core/Random");
-var randomText = global.randomText = random.randomText;
+//specs.debug();
+specs.ensureWindow();
 
-var typeChecking = require("../../../src/base/core/TypeChecking");
-var isNatural = global.isNatural = typeChecking.isNatural;
-var isInteger = global.isInteger = typeChecking.isInteger;
+// Imports
+///////////////////////////////////////
 
-var activity = require("../../../src/base/core/Activity");
-global.registerActivity = activity.registerActivity;
+var functionModule = specs.require("mapper.ChangeSet");
 
-var functions = require("../../../src/base/core/Function");
-var functor = require("../../../src/base/core/Functor");
-global.Functor = functor.Functor;
-
-var arrays = require("../../../src/base/core/Array");
-var trace = require("../../../src/base/core/Trace");
-var utilities = require("../../../src/base/core/Utilities");
-
-var strings = require("../../../src/base/core/String");
-
-var changeSet = require("../../../src/base/mapper/ChangeSet");
-global.ChangeSet = changeSet.ChangeSet;
-
-var describe = jasmine.describe;
-var it = jasmine.it;
-var expect = jasmine.expect;
-var beforeEach = jasmine.beforeEach;
+// Test Suites
+///////////////////////////////////////
 
 function setup() {
 	var set = new ChangeSet("client");
@@ -45,17 +28,15 @@ function setup() {
 	this.set = set;
 }
 
-// Test Suites
-///////////////////////////////////////
 describe("ChangeSet", function() {
 	it("throws an error if a string source is not given", function() {
 		expect(function() {
 			(new ChangeSet());
-		}).toThrow("Creating a change set requires a string source argument.");
+		}).toThrow("Argument 'source' cannot be null or undefined.");
 
 		expect(function() {
 			(new ChangeSet(5));
-		}).toThrow("Creating a change set requires a string source argument.");
+		}).toThrow("Argument 'source' must be of type string: 5.");
 	});
 
 	it("initially has no changes", function() {

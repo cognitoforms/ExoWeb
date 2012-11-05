@@ -76,7 +76,7 @@ ConditionRule.mixin({
 
 	// subclasses may override this function to indicate whether the condition should be asserted
 	assert: function ConditionRule$assert(obj) {
-		ExoWeb.trace.throwAndLog(["rules"], "ConditionRule.assert() must be passed into the constructor or overriden by subclasses.");
+		throw new Error("ConditionRule.assert() must be passed into the constructor or overriden by subclasses.");
 	},
 
 	// asserts the condition and adds or removes it from the model if necessary

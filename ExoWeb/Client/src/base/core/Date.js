@@ -46,6 +46,7 @@ function getDayOfWeek(day) {
 
 	return day >= 0 && day < days.length ? day : null;
 }
+
 exports.getDayOfWeek = getDayOfWeek; // IGNORE
 
 Date.prototype.startOfWeek = function(startOfWeekDay) {

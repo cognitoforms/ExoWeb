@@ -48,7 +48,7 @@ Html.prototype = {
 			$(element).removeClass(loadingClass);
 
 			if (status != "success" && status != "notmodified") {
-				ExoWeb.trace.throwAndLog("ui", "Failed to load html: status = {0}", status);
+				throw new Error("Failed to load html: status = " + status);
 			}
 		});
 	}

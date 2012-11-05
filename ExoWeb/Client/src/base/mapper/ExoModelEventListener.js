@@ -66,7 +66,7 @@ ExoModelEventListener.mixin({
 			return;
 
 		if (obj.meta.type.get_origin() === "server") {
-			ExoWeb.trace.throwAndLog("server", "Unregistering server-type objects is not currently supported: {0}({1})", obj.meta.type.fullName, obj.meta.id);
+			throw new Error($format("Unregistering server-type objects is not currently supported: {0}|{1}", obj.meta.type.fullName, obj.meta.id));
 		}
 	},
 	onPropertyChanged: function ExoModelEventListener$onPropertyChanged(obj, property, newValue, oldValue) {

@@ -1,21 +1,12 @@
+/// <reference path="Errors.js" />
+
 var activityCallbacks = [];
 
 function registerActivity(label, callback, thisPtr) {
-	if (label === undefined || label === null) {
-		ExoWeb.trace.throwAndLog("activity", "Activity label cannot be null or undefined.");
-	}
-
-	if (label.constructor !== String) {
-		ExoWeb.trace.throwAndLog("activity", "Activity label must be a string.");
-	}
-
-	if (callback === undefined || callback === null) {
-		ExoWeb.trace.throwAndLog("activity", "Activity callback cannot be null or undefined.");
-	}
-
-	if (!(callback instanceof Function)) {
-		ExoWeb.trace.throwAndLog("activity", "Activity callback must be a function.");
-	}
+	if (label == null) throw new ArgumentNullError("label");
+	if (typeof(label) !== "string") throw new ArgumentTypeError("label", "string", label);
+	if (callback == null) throw new ArgumentNullError("callback");
+	if (typeof(callback) !== "function") throw new ArgumentTypeError("callback", "function", callback);
 
 	var item = { label: label, callback: callback };
 
@@ -32,21 +23,38 @@ function isBusy(/* logBusyLabel */) {
 	var busy = false;
 	var logBusyLabel = arguments[0];
 
-	for (var i = 0, len = activityCallbacks.length; i < len; i++) {
-		var item = activityCallbacks[i];
+	getBusyItems(function (item) {
+		busy = true;
 
-		if (item.callback.call(item.thisPtr || this) === true) {
-			if (logBusyLabel) {
-				busy = true;
-				console.log("Item \"" + item.label + "\" is busy.");
-			}
-			else {
-				return true;
-			}
+		if (logBusyLabel) {
+			console.log("Item \"" + item.label + "\" is busy.");
+			return false;
 		}
-	}
+		else {
+			return true;
+		}
+	});
 
 	return busy;
 }
 
 exports.isBusy = isBusy;
+
+function getBusyItems(onBusyItemFound) {
+	var busyItems = [];
+
+	for (var i = 0, len = activityCallbacks.length; i < len; i++) {
+		var item = activityCallbacks[i];
+
+		if (item.callback.call(item.thisPtr || this) === true) {
+			busyItems.push(item);
+
+			if (onBusyItemFound && onBusyItemFound(item) === true)
+				return busyItems;
+		}
+	}
+
+	return busyItems;
+}
+
+exports.getBusyItems = getBusyItems;

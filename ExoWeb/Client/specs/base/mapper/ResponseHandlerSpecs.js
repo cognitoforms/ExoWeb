@@ -15,8 +15,6 @@ var arrays = require("../../../src/base/core/Array");
 var config = require("../../../src/base/core/Config");
 global.config = config.config;
 
-var trace = require("../../../src/base/core/Trace");
-
 var activity = require("../../../src/base/core/Activity");
 global.registerActivity = activity.registerActivity;
 
@@ -43,15 +41,11 @@ var Batch = global.Batch = require("../../../src/base/core/Batch").Batch;
 //ObjectLazyLoader = require("../../../src/base/mapper/ObjectLazyLoader").ObjectLazyLoader;
 //Model = require("../../../src/base/model/Model").Model;
 
-logError = ExoWeb.trace.logError;
-log = ExoWeb.trace.log;
 $format = window.$format;
 ExoWeb.FunctionChain = functionChain.FunctionChain;
 //fetchTypes = internals.fetchTypes;
 
 var responseHandler = require("../../../src/base/mapper/ResponseHandler");
-
-ExoWeb.trace.flags.responseHandler = true;
 
 // References
 ///////////////////////////////////////

@@ -11,7 +11,7 @@ Sys.Application.registerMarkupExtension(
 	"#",
 	function MetaMarkupExtension(component, targetProperty, templateContext, properties) {
 		if (properties.required) {
-			ExoWeb.trace.logWarning(["#", "markupExt"], "Meta markup extension does not support the \"required\" property.");
+			logWarning("Meta markup extension does not support the \"required\" property.");
 		}
 
 		var options, element;

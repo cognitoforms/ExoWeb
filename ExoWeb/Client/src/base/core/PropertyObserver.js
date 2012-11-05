@@ -60,7 +60,7 @@ PropertyObserver.mixin({
 	},
 	start: function PropertyObserver$start(source, handler) {
 		if (this._source) {
-			ExoWeb.trace.throwAndLog(["observer"], "Cannot start an observer that is already started.");
+			throw new Error("Cannot start an observer that is already started.");
 		}
 
 		var _this = this;

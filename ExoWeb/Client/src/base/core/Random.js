@@ -27,12 +27,13 @@ function randomInteger(min, max) {
 		throw new Error("Minimum argument must be less than maximum argument.");
 	}
 
-	return Math.floor(Math.random() * (max - min + 1)) + min;
+	var rand = Math.random();
+	return rand === 1 ? max : Math.floor(rand * (max - min + 1)) + min;
 }
 
 exports.randomInteger = randomInteger;
 
-function randomText(len) {
+function randomText(len, includeDigits) {
 	if (arguments.length === 0) {
 		throw new Error("Length argument is required.");
 	}
@@ -42,7 +43,19 @@ function randomText(len) {
 
 	var result = "";
 	for (var i = 0; i < len; i++) {
-		result += String.fromCharCode(randomInteger(97, 122));
+		var min = 0;
+		var max = includeDigits ? 35 : 25;
+		var rand = randomInteger(min, max);
+		var charCode;
+		if (rand <= 25) {
+			// Alpha: add 97 for 'a'
+			charCode = rand + 97;
+		}
+		else {
+			// Num: start at 0 and add 48 for 0
+			charCode = (rand - 26) + 48;
+		}
+		result += String.fromCharCode(charCode);
 	}
 	return result;
 }

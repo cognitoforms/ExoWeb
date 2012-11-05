@@ -1,12 +1,11 @@
 function ConditionTypeSet(name) {
 	if (allConditionTypeSets[name]) {
-		ExoWeb.trace.throwAndLog("conditions", "A set with the name \"{0}\" has already been created.", [name]);
+		throw new Error("A set with the name \"" + name + "\" has already been created.");
 	}
 
 	Object.defineProperty(this, "name", { value: name });
 	Object.defineProperty(this, "types", { value: [] });
 	Object.defineProperty(this, "active", { value: false, writable: true });
-
 
 	allConditionTypeSets[name] = this;
 }

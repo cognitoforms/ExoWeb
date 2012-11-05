@@ -93,7 +93,7 @@ CompareRule.mixin({
 			message = Resource.get(isDate ? "compare-on-or-before" : "compare-less-than-or-equal");
 		}
 		else {
-			ExoWeb.trace.throwAndLog(["rule"], "Invalid comparison operator for compare rule.");
+			throw new Error("Invalid comparison operator for compare rule.");
 		}
 		message = message
 			.replace('{property}', this.property.get_label())

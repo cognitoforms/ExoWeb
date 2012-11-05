@@ -8,8 +8,6 @@ function Batch(label) {
 	this._rootLabel = label;
 	this._subscribers = [];
 
-	//ExoWeb.trace.log("batch", "[{0}] {1} - created.", [this._index, this._rootLabel]);
-
 	allBatches.push(this);
 }
 
@@ -30,7 +28,6 @@ Batch.current = function Batch_$current() {
 Batch.suspendCurrent = function Batch_$suspendCurrent(message) {
 	if (currentBatch !== null) {
 		var batch = currentBatch;
-		//ExoWeb.trace.log("batch", "[{0}] {1} - suspending {2}.", [currentBatch._index, currentBatch._rootLabel, message || ""]);
 		currentBatch = null;
 		return batch;
 	}
@@ -72,8 +69,6 @@ Batch.current = function Batch_$current() {
 
 Batch.mixin({
 	_begin: function Batch$_begin(label) {
-		//ExoWeb.trace.log("batch", "[{0}] {1} - beginning label {2}.", [this._index, this._rootLabel, label]);
-
 		this._labels.push(label);
 
 		return this;
@@ -81,18 +76,13 @@ Batch.mixin({
 	_end: function Batch$_end() {
 		// Cannot end a batch that has already been ended.
 		if (this.isEnded()) {
-			ExoWeb.trace.logWarning("batch", "[{0}] {1} - already ended.", [this._index, this._rootLabel]);
 			return this;
 		}
 
 		// Remove the last label from the list.
 		var label = this._labels.pop();
 
-		//ExoWeb.trace.log("batch", "[{0}] {1} - ending label {2}.", [this._index, this._rootLabel, label]);
-
 		if (this.isEnded()) {
-			//ExoWeb.trace.log("batch", "[{0}] {1} - complete.", [this._index, this._rootLabel]);
-
 			// If we are ending the current batch, then null out the current batch 
 			// variable so that new batches can be created with a new root label.
 			if (currentBatch === this) {
@@ -114,8 +104,6 @@ Batch.mixin({
 		// given batch.  From this point forward this batch defers
 		// its behavior to the given batch.
 
-		//ExoWeb.trace.log("batch", "transferring from [{2}] {3} to [{0}] {1}.", [this._index, this._rootLabel, otherBatch._index, otherBatch._rootLabel]);
-
 		// Transfer labels from one batch to another.
 		otherBatch._labels.addRange(this._labels);
 		this._labels.clear();
@@ -135,7 +123,6 @@ Batch.mixin({
 			return currentBatch;
 		}
 
-		//ExoWeb.trace.log("batch", "[{0}] {1} - resuming.", [this._index, this._rootLabel]);
 		currentBatch = this;
 
 		return this;
@@ -144,8 +131,6 @@ Batch.mixin({
 		return this._labels.length === 0;
 	},
 	whenDone: function Batch$whenDone(fn, thisPtr) {
-		//ExoWeb.trace.log("batch", "[{0}] {1} - subscribing to batch done.", [this._index, this._rootLabel]);
-
 		this._subscribers.push({ fn: fn, thisPtr: thisPtr });
 
 		return this;

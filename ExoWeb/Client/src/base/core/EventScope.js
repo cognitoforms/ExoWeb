@@ -93,6 +93,7 @@ function EventScope$perform(callback, thisPtr) {
 }
 
 exports.EventScopeCtor = EventScope; // IGNORE
+
 exports.reset = function () { currentEventScope = null; }; // IGNORE
 
 // Export public functions

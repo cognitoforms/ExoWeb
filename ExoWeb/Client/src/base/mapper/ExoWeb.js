@@ -99,7 +99,7 @@ var flushPendingOptions = function flushPendingOptions() {
 	}
 	else if (window.context) {
 		if (!(window.context instanceof Context)) {
-			ExoWeb.trace.throwAndLog("context", "The window object has a context property that is not a valid context.");
+			throw new Error("The window object has a context property that is not a valid context.");
 		}
 
 		if (pendingOptions.init) {

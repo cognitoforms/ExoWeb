@@ -18,11 +18,11 @@ describe("ServerSync", function() {
 	it("throws an error if the model argument is not provided", function() {
 		expect(function() {
 			var server = new ExoWeb.Mapper.ServerSync();
-		}).toThrow("[server, error]: A model must be specified when constructing a ServerSync object.");
+		}).toThrow("Argument 'model' cannot be null or undefined.");
 
 		expect(function() {
 			var server = new ExoWeb.Mapper.ServerSync("junk");
-		}).toThrow("[server, error]: A model must be specified when constructing a ServerSync object.");
+		}).toThrow("Argument 'model' must be of type model: junk.");
 	});
 });
 

@@ -1,3 +1,5 @@
+/// <reference path="../core/Errors.js" />
+
 var pendingTypeExtensions = {};
 var pendingSubtypeExtensions = {};
 
@@ -39,18 +41,16 @@ function extendOne(typeName, callback, thisPtr) {
 }
 
 window.$extend = function(typeInfo, callback, thisPtr) {
-	if (!typeInfo) {
-		ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extend, argument must be of type String or String[].");
-	}
+	if (typeInfo == null) throw new ArgumentNullError("typeInfo");
 
 	// If typeInfo is an arry of type names, then use a signal to wait until all types are loaded.
 	if (Object.prototype.toString.call(typeInfo) === "[object Array]") {
 		var signal = new ExoWeb.Signal("extend");
 
 		var types = [];
-		Array.forEach(typeInfo, function(item, index) {
+		typeInfo.forEach(function(item, index) {
 			if (item.constructor !== String) {
-				ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extend, item in array must be of type String.");
+				throw new ArgumentTypeError("typeInfo", "string", item);
 			}
 
 			extendOne(item, signal.pending(function(type) {
@@ -64,19 +64,17 @@ window.$extend = function(typeInfo, callback, thisPtr) {
 		});
 	}
 	// Avoid the overhead of signal and just call extendOne directly.
-	else {
-		if (typeInfo.constructor !== String) {
-			ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extend, argument must be of type String or String[].");
-		}
-
+	else if (typeInfo.constructor === String) {
 		extendOne(typeInfo, callback, thisPtr);
+	}
+	else {
+		throw new ArgumentTypeError("typeInfo", "string|array", typeInfo);
 	}
 };
 
 window.$extendSubtypes = function(typeName, callback, thisPtr) {
-	if (!typeName || typeName.constructor !== String) {
-		ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extendSubtypes, argument must be of type String.");
-	}
+	if (typeName == null) throw new ArgumentNullError("typeName");
+	if (typeName.constructor !== String) throw new ArgumentTypeError("typeName", "string", typeName);
 
 	var jstype = ExoWeb.Model.Model.getJsType(typeName, true);
 
@@ -100,9 +98,8 @@ window.$extendSubtypes = function(typeName, callback, thisPtr) {
 };
 
 window.$extendProperties = function (typeName, includeBuiltIn, callback, thisPtr) {
-	if (!typeName || typeName.constructor !== String) {
-		ExoWeb.trace.throwAndLog("extend", "Invalid value passed into $extendProperties, argument must be of type String.");
-	}
+	if (typeName == null) throw new ArgumentNullError("typeName");
+	if (typeName.constructor !== String) throw new ArgumentTypeError("typeName", "string", typeName);
 
 	if (includeBuiltIn && includeBuiltIn instanceof Function) {
 		thisPtr = callback;

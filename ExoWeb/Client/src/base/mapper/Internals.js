@@ -44,7 +44,7 @@ function conditionFromJson(model, forInstances, conditionCode, conditionsJson) {
 	var conditionType = ExoWeb.Model.ConditionType.get(conditionCode);
 
 	if (!conditionType) {
-		ExoWeb.trace.logWarning(["server", "conditions"], "A condition type with code \"{0}\" could not be found.", [conditionCode]);
+		logWarning("A condition type with code \"" + conditionCode + "\" could not be found.");
 		return;
 	}
 
@@ -160,10 +160,8 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 
 				var prop = props[propName];
 
-	//					ExoWeb.trace.log("propInit", "{0}({1}).{2} = {3}", [typeName, id, propName, propData]);
-
 				if (!prop) {
-					ExoWeb.trace.throwAndLog(["objectInit"], "Cannot load object {0}({2}) because it has an unexpected property '{1}'", [typeName, propName, id]);
+					throw new Error($format("Cannot load object {0}|{2} because it has an unexpected property '{1}'", typeName, propName, id));
 				}
 
 				if(prop.get_origin() !== "server")
@@ -280,8 +278,6 @@ function typesFromJson(model, json) {
 }
 
 function typeFromJson(model, typeName, json) {
-//			ExoWeb.trace.log("typeInit", "{1}   <.>", arguments);
-
 	// get model type. it may have already been created for lazy loading
 	var mtype = getType(model, typeName, json.baseType);
 
@@ -291,7 +287,7 @@ function typeFromJson(model, typeName, json) {
 	}
 
 	if (mtype.get_originForNewProperties() === "client") {
-		ExoWeb.trace.throwAndLog("typeInit", "type \"{0}\" has already been loaded", mtype._fullName);
+		throw new Error("Type \"" + mtype._fullName + "\" has already been loaded");
 	}
 
 	// define properties
@@ -516,7 +512,7 @@ function getType(model, finalType, propType) {
 
 function getObject(model, propType, id, finalType, forLoading) {
 	if (id === STATIC_ID) {
-		ExoWeb.trace.throwAndLog(["objectInit", "lazyLoad"], "getObject() can only be called for instances (id='{0}')", [id]);
+		throw new Error("Function 'getObject' can only be called for instances (id='" + id + "')");
 	}
 
 	// get model type
@@ -544,7 +540,7 @@ function onTypeLoaded(model, typeName) {
 	var mtype = model.type(typeName);
 	mtype.eachBaseType(function(mtype) {
 		if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-			ExoWeb.trace.throwAndLog("typeLoad", "Base type " + mtype._fullName + " is not loaded.");
+			throw new Error("Base type " + mtype._fullName + " is not loaded.");
 		}
 	});
 	TypeLazyLoader.unregister(mtype);
@@ -662,11 +658,7 @@ function fetchTypesImpl(model, typeNames, callback, thisPtr) {
 		// Handle an error response.  Loading should
 		// *NOT* continue as if the type is available.
 		else {
-			ExoWeb.trace.throwAndLog("typeInit",
-				"Failed to load {0} (HTTP: {1}, Timeout: {2})",
-				typeNames.join(","),
-				types._statusCode,
-				types._timedOut);
+			throw new Error($format("Failed to load {0} (HTTP: {1}, Timeout: {2})", typeNames.join(","), types._statusCode, types._timedOut));
 		}
 	}
 
@@ -763,7 +755,7 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 
 					var fetchStaticPathTypes = function fetchStaticPathTypes() {
 						fetchPathTypes(model, (mtype || model.type(typeName)).get_jstype(), path, signal.pending(), function () {
-							ExoWeb.trace.throwAndLog("typeInit", "Invalid query path \"" + path + "\" - " + err);
+							throw new Error("Invalid query path \"" + path + "\" - " + err);
 						});
 					};
 
@@ -835,17 +827,13 @@ function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
 		callback.call(thisPtr || this, jstype);
 	}
 	else if (jstype && forceLoad) {
-//				ExoWeb.trace.log("server", "Forcing lazy loading of type \"{0}\".", [name]);
 		ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
 	}
 	else if (!jstype && forceLoad) {
-//				ExoWeb.trace.log("server", "Force creating type \"{0}\".", [name]);
 		ensureJsType(model, name, callback, thisPtr);
 	}
 	else {
-//				ExoWeb.trace.log("server", "Waiting for existance of type \"{0}\".", [name]);
 		$extend(name, function() {
-//					ExoWeb.trace.log("server", "Type \"{0}\" was loaded, now continuing.", [name]);
 			callback.apply(this, arguments);
 		}, thisPtr);
 	}
@@ -877,7 +865,6 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 
 		// If the instance doesn't exist then ensure that a ghosted instance is created.
 		if (!obj) {
-			ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
 		}
 
@@ -885,7 +872,6 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		callback.call(thisPtr || this, obj);
 
 		// After the callback has been invoked, force loading to occur.
-		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 		ExoWeb.Model.LazyLoader.load(obj, property);
 	}
 	else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
@@ -893,18 +879,14 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 
 		// If the instance doesn't exist then ensure that a ghosted instance is created.
 		if (!obj) {
-			ExoWeb.trace.log("server", "Forcing creation of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
 		}
 
 		// Force loading to occur, passing through the callback.
-		ExoWeb.trace.log("server", "Forcing lazy loading of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 		ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
 	}
 	else {
 		// The caller does not want to force loading, so wait for the instance to come into existance and invoke the callback when it does.
-
-		ExoWeb.trace.log("server", "Waiting for existance of object \"{0}|{1}\".", [type.meta.get_fullName(), id]);
 
 		function invokeCallback() {
 			if (filter(obj) !== true)

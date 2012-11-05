@@ -40,10 +40,7 @@ function getDataForContainer(container, subcontainer, index) {
 			}
 
 			if (index !== undefined && index !== null && index.constructor === Number) {
-				if (index >= containerContexts.length) {
-//							ExoWeb.trace.log("ui", "invalid index");
-				}
-				else {
+				if (index < containerContexts.length) {
 					var indexedContext = containerContexts[index];
 					var indexedData = containerData[index];
 					data = (indexedContext) ? indexedContext.dataItem : indexedData;

@@ -15,7 +15,7 @@ var contentControlsRendering = 0;
 
 registerActivity("Content rendering", function() {
 	if (contentControlsRendering < 0) {
-		ExoWeb.trace.logWarning("ui", "Number of content controls rendering should never dip below zero.");
+		logWarning("Number of content controls rendering should never dip below zero.");
 	}
 
 	return contentControlsRendering > 0;
@@ -70,7 +70,7 @@ Content.prototype = {
 			newValue = value.toLowerCase() == "true" ? true : (value.toLowerCase() == "false" ? false : undefined);
 		}
 		else {
-			ExoWeb.trace.throwAndLog(["ui", "content"], "Invalid value for property \"disabled\": {0}.", [value]);
+			throw new Error("Invalid value for property \"disabled\": " + value);
 		}
 
 		var oldValue = this._disabled;
@@ -164,7 +164,7 @@ Content.prototype = {
 		var tmplEl = findTemplate(this._element.tagName.toLowerCase(), this._data, tmplNames ? tmplNames.trim().split(/\s+/) : []);
 
 		if (!tmplEl) {
-			ExoWeb.trace.throwAndLog(["ui", "templates"], "This content region does not match any available templates. Tag={0}, Data={1}, Template={2}", [this._element.tagName.toLowerCase(), this._data, tmplNames || ""]);
+			throw new Error($format("This content region does not match any available templates. Tag={0}, Data={1}, Template={2}", this._element.tagName.toLowerCase(), this._data, tmplNames || ""));
 		}
 
 		return tmplEl;
@@ -364,12 +364,10 @@ Content.prototype = {
 
 		if ($(this._element).is(".sys-template")) {
 			if ($(this._element).children().length > 0) {
-				ExoWeb.trace.logWarning(["ui", "content"],
-					"Content control is marked with the \"sys-template\" class, which means that its children will be ignored and discarded.");
+				logWarning("Content control is marked with the \"sys-template\" class, which means that its children will be ignored and discarded.");
 			}
 			else {
-				ExoWeb.trace.logWarning(["ui", "content"],
-					"No need to mark a content control with the \"sys-template\" class.");
+				logWarning("No need to mark a content control with the \"sys-template\" class.");
 			}
 		}
 		this.update();

@@ -16,6 +16,7 @@ isNatural = typeChecking.isNatural;
 var describe = jasmine.describe;
 var it = jasmine.it;
 var expect = jasmine.expect;
+var beforeEach = jasmine.beforeEach;
 
 var randomInteger = random.randomInteger;
 var randomText = random.randomText;
@@ -44,6 +45,8 @@ describe("randomInteger", function() {
 		for (rand = 0.01; rand < 1; rand += 0.2, exp++) {
 			expect(randomInteger(5)).toBe(exp);
 		}
+		rand = 1;
+		expect(randomInteger(5)).toBe(5);
 	});
 
 	it("returns a random integer from the argument to zero if one negative argument is given", function() {
@@ -77,9 +80,11 @@ describe("randomInteger", function() {
 });
 
 describe("randomText", function() {
-	it("returns a random string of characters of the given length", function() {
-		var chars = "abc", i = 0;
+	beforeEach(function() {
 		rand = 0;
+	});
+
+	it("returns a random string of characters of the given length", function() {
 		var i = 0;
 		onRandom = function() {
 			rand = i++ / 26;
@@ -93,6 +98,39 @@ describe("randomText", function() {
 		expect(function() { randomText(-5); }).toThrow("Length argument must be a natural number.");
 		expect(function() { randomText(3.2); }).toThrow("Length argument must be a natural number.");
 		expect(function() { randomText(0); }).toThrow("Length argument must be a natural number.");
+	});
+
+	it("returns a random string of characters of the given length", function() {
+		var i = 0;
+		var divisor = 25;
+		var increasing = true;
+		onRandom = function() {
+			var num;
+			if (increasing) {
+				num = i++;
+			}
+			else {
+				num = i--;
+			}
+			rand = num / divisor;
+
+			// Only count up for 3 steps, then start counting down from the top
+			if (increasing && i === 3) {
+				i = divisor;
+				increasing = false;
+			}
+		};
+
+		expect(randomText(4)).toBe("abcz");
+
+		// Use 35 as the divisor since numbers are being included
+		divisor = 35;
+
+		// Reset the random number mocking
+		i = 0;
+		increasing = true;
+
+		expect(randomText(4, true)).toBe("abc9");
 	});
 });
 

@@ -14,6 +14,7 @@ namespace ExoWeb
 	internal class ServiceResponse
 	{
 		static string typeCacheHash;
+
 		static Dictionary<string, string> typeJson;
 
 		public string[] Types { get; internal set; }
@@ -30,12 +31,14 @@ namespace ExoWeb
 
 		public Dictionary<string, ServiceRequest.Query> Model { get; set; }
 
+		internal HashSet<ModelInstance> inScopeInstances = new HashSet<ModelInstance>();
+
 		public ModelTypeInfo GetModelTypeInfo(ModelType type)
 		{
 			// Create the set of type instance information if not initialized
 			if (Instances == null)
-				Instances = new Dictionary<string,ModelTypeInfo>();
-			
+				Instances = new Dictionary<string, ModelTypeInfo>();
+
 			// Get or initialize the model type instance information store
 			ModelTypeInfo typeInfo;
 			if (!Instances.TryGetValue(type.Name, out typeInfo))

@@ -1,3 +1,5 @@
+/// <reference path="Errors.js" />
+
 // determine whether Object.defineProperty is supported and add legacy support is necessary/possible
 var definePropertySupported = false;
 var defineProperty;
@@ -7,23 +9,20 @@ function defineLegacyProperty() {
 
 		// assume getter will only need to calculate once following the constructor
 		if ("get" in desc) {
-			if (desc.init) {
-				// assume objects with prototypes are instances and go ahead and initialize the property using the getter
-				if (obj.prototype) {
-					obj[prop] = desc.get.call(obj, obj);
-				}
+			if (!desc.init) throw new Error("Getters are not supported by the current browser.  Use definePropertySupported to check for full support.");
 
-				// otherwise, configure the prototype to initialize the property when the constructor is called
-				else if (obj.constructor) {
-					var initProperties = obj.constructor.__initProperties;
-					if (!initProperties) {
-						obj.constructor.__initProperties = initProperties = {};
-					}
-					initProperties[prop] = desc.get;
-				}
+			// assume objects with prototypes are instances and go ahead and initialize the property using the getter
+			if (obj.prototype) {
+				obj[prop] = desc.get.call(obj, obj);
 			}
-			else {
-				ExoWeb.trace.throwAndLog("utilities", "Getters are not supported by the current browser.  Use definePropertySupported to check for full support.");
+
+			// otherwise, configure the prototype to initialize the property when the constructor is called
+			else if (obj.constructor) {
+				var initProperties = obj.constructor.__initProperties;
+				if (!initProperties) {
+					obj.constructor.__initProperties = initProperties = {};
+				}
+				initProperties[prop] = desc.get;
 			}
 		}
 
@@ -33,9 +32,7 @@ function defineLegacyProperty() {
 		}
 
 		// throw an exception if the property has a setter, which is definitely not supported
-		if ("set" in desc) {
-			ExoWeb.trace.throwAndLog("utilities", "Setters are not supported by the current browser.  Use definePropertySupported to check for full support.");
-		}
+		if ("set" in desc) throw new Error("Setters are not supported by the current browser.  Use definePropertySupported to check for full support.");
 	}
 }
 
@@ -136,18 +133,21 @@ function evalPath(obj, path, nullValue, undefinedValue) {
 exports.evalPath = evalPath;
 
 function getLastTarget(target, propertyPath) {
-	var i, path = propertyPath, finalTarget = target;
+	var i, pathArray, finalTarget = target;
 
-	if (path.constructor == String) {
-		path = path.split(".");
+	if (propertyPath == null) throw new ArgumentNullError("propertyPath");
+
+	if (propertyPath.constructor == String) {
+		pathArray = propertyPath.split(".");
 	}
-	else if (!(path instanceof Array)) {
-		throw ExoWeb.trace.logError(["$lastTarget", "core"], "invalid parameter propertyPath");
+	else {
+		if (!(propertyPath instanceof Array)) throw ArgumentTypeError("propertyPath", "string|array", propertyPath);
+		pathArray = propertyPath;
 	}
 
-	for (i = 0; i < path.length - 1; i++) {
+	for (i = 0; i < pathArray.length - 1; i++) {
 		if (finalTarget) {
-			finalTarget = getValue(finalTarget, path[i]);
+			finalTarget = getValue(finalTarget, pathArray[i]);
 		}
 	}
 
@@ -184,7 +184,7 @@ function getValue(target, property) {
 			}
 		}
 		else if (/\./.test(property)) {
-			ExoWeb.trace.logWarning("", "Possible incorrect usage of \"getValue()\", the path \"{0}\" does not exist on the target and appears to represent a multi-hop path.", [property]);
+			logWarning("Possible incorrect usage of \"getValue()\", the path \"" + property + "\" does not exist on the target and appears to represent a multi-hop path.");
 		}
 	}
 
@@ -216,7 +216,7 @@ function getCtor(type) {
 
 			// warn (and implicitly return undefined) if the result is not a javascript function
 			if (ctor !== undefined && ctor !== null && !isType(ctor, Function)) {
-				ExoWeb.trace.logWarning("", "The given type \"{0}\" is not a function.", [type]);
+				logWarning("The given type \"" + type + "\" is not a function.");
 			}
 			else {
 				return ctor;

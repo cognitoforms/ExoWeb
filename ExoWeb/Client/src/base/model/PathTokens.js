@@ -77,7 +77,7 @@ PathTokens.normalizePaths = function PathTokens$normalizePaths(paths) {
 			}
 
 			if (stack.length > 0) {
-				ExoWeb.trace.throwAndLog("model", "Unclosed '{' in path: {0}", [p]);
+				throw new Error("Unclosed '{' in path: " + p);
 			}
 
 			if (start === 0) {

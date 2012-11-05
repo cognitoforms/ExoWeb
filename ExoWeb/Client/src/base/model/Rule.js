@@ -29,7 +29,7 @@ function Rule(rootType, options) {
 			rootType = rootType.meta;
 		}
 		else {
-			ExoWeb.trace.throwAndLog("rules", "A value root model type must be specified when constructing rules.");
+			throw new Error("A value root model type must be specified when constructing rules.");
 		}
 	}
 
@@ -81,7 +81,8 @@ Rule.mixin({
 
 		// ensure the rule has not already been registered
 		if (!this._options) {
-			ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+			return this;
 		}
 
 		// configure the rule to run on init new
@@ -94,7 +95,8 @@ Rule.mixin({
 
 		// ensure the rule has not already been registered
 		if (!this._options) {
-			ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+			return this;
 		}
 
 		// configure the rule to run on init existingh
@@ -107,7 +109,8 @@ Rule.mixin({
 
 		// ensure the rule has not already been registered
 		if (!this._options) {
-			ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+			return this;
 		}
 
 		// configure the rule to run on both init new and init existing
@@ -121,7 +124,8 @@ Rule.mixin({
 
 		// ensure the rule has not already been registered
 		if (!this._options) {
-			ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+			return this;
 		}
 
 		// allow change of predicates to be specified as a parameter array without []'s
@@ -143,14 +147,15 @@ Rule.mixin({
 	// properties:	an array of properties (string name or Property instance) that the rule is responsible to calculating the value of
 	returns: function (properties) {
 		if (!this._options) {
-			ExoWeb.trace.logError("rules", "Rules cannot be configured once they have been registered: {0}", [this.name]);
+			//throw new Error("Rules cannot be configured once they have been registered: " + this.name);
+			return this;
 		}
 		// allow return properties to be specified as a parameter array without []'s
 		if (properties && properties.constructor === String) {
 			properties = Array.prototype.slice.call(arguments);
 		}
 		if (!properties) {
-			ExoWeb.trace.throwAndLog("rules", "Rule must specify at least 1 property for returns.");
+			throw new Error("Rule must specify at least 1 property for returns.");
 		}
 
 		// add to the set of existing return value properties
@@ -290,8 +295,8 @@ Rule.mixin({
 								// Defer change notification until the scope of work has completed
 								EventScope$onExit(function () {
 									rule.returnValues.forEach(function (returnValue) { 
-										Observer.raisePropertyChanged(sender, returnValue.get_name());
-									});
+									Observer.raisePropertyChanged(sender, returnValue.get_name());
+								});
 								}, this);
 							}
 						},

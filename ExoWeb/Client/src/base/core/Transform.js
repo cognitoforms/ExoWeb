@@ -1,12 +1,8 @@
+/// <reference path="Errors.js" />
+
 function Transform(array, forLive) {
-	if (array === null || array === undefined) {
-		ExoWeb.trace.logError("transform", "Transform input is required.");
-		throw new Error("Transform input is required.");
-	}
-	if (!(array instanceof Array)) {
-		ExoWeb.trace.logError("transform", "Transform input must be an array.");
-		throw new Error("Transform input must be an array.");
-	}
+	if (array == null) throw new ArgumentNullError("array", "transform input is required");
+	if (!(array instanceof Array)) throw new ArgumentTypeError("array", "array", array);
 
 	this._array = array;
 	this.rootInput = array;
@@ -158,7 +154,6 @@ function copyTransform(steps, array, live) {
 function makeTransform(array, priorTransform, method, arg, thisPtr) {
 	// Make sure that the same transform is not made live more than once since this can cause collisions.
 	if (priorTransform._liveComplete === true) {
-		ExoWeb.trace.logError("transform", "Cannot call live on the same transform multiple times.");
 		throw new Error("Cannot call live on the same transform multiple times.");
 	}
 

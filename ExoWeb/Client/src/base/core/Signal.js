@@ -60,7 +60,6 @@ Signal.mixin({
 		}
 
 		this._pending++;
-		//ExoWeb.trace.log("signal", "(++{_pending}) {_debugLabel}", this);
 		return this._genCallback(callback, thisPtr, executeImmediately);
 	},
 	orPending: function Signal$orPending(callback, thisPtr, executeImmediately) {
@@ -73,14 +72,19 @@ Signal.mixin({
 		var signal = this, called = false;
 		return function Signal$_genCallback$result() {
 			signal._doCallback("pending", thisPtr || this, function Signal$_genCallback$fn() {
-				if (called) {
-					ExoWeb.trace.throwAndLog("signal", "({0}) signal callback was called more than once.", [signal._debugLabel]);
-				}
+
+				// Throw an error if the signal callback has already been called
+				if (called) throw new Error("(" + signal._debugLabel + ") signal callback was called more than once.");
+
+				// Record the fact that the callback has already been called in case it is called again
 				called = true;
-				if (callback) {
-					callback.apply(this, arguments);
-				}
+
+				// Invoke the callback if it exists
+				if (callback) callback.apply(this, arguments);
+
+				// Signal that the callback is complete
 				signal.oneDone();
+
 			}, arguments, executeImmediately);
 		};
 	},
@@ -97,8 +101,6 @@ Signal.mixin({
 		}
 	},
 	oneDone: function Signal$oneDone() {
-		//ExoWeb.trace.log("signal", "(--{0}) {1}", [this._pending - 1, this._debugLabel]);
-
 		--this._pending;
 
 		if (this._pending === 0) {

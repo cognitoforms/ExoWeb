@@ -57,7 +57,6 @@ var functions = require("../../../src/base/core/Function");
 var arrays = require("../../../src/base/core/Array");
 var binding = require("../../../src/base/view/Binding");
 var evalWrapper = require("../../../src/base/core/EvalWrapper");
-var trace = require("../../../src/base/core/Trace");
 var transform = require("../../../src/base/core/Transform");
 var typeChecking = require("../../../src/base/core/typeChecking");
 var utilities = require("../../../src/base/core/Utilities");

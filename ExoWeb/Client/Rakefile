@@ -11,20 +11,38 @@ def read file, indent=0, exports=nil
 	result = ""
 	File.open(file, "r") do |f|
 		last_line = nil
+		removed = false
 		while (line = f.gets)
 			# ignore export statements
-			if (line =~ /^\s*exports\.(.*\s*=\s*.*;)\s*\/\/\s*IGNORE$/) == 0 then next end
+			if (line =~ /^\s*exports\.(.*\s*=\s*.*;)\s*\/\/\s*IGNORE$/) == 0 then
+				removed = true
+				next
+			end
+			# ignore reference file comments
+			if (line =~ /^\s*\/\/\/\s*\<reference\s/) == 0 then
+				removed = true
+				next
+			end
+			# ignore require statements
+			if (line =~ /(var [A-Za-z_$][A-Za-z_$0-9]* = )?require\(/) == 0 then
+				removed = true
+				next
+			end
+			# ignore a second empty line for removed lines that were sandwiched between empty lines
+			if removed and (line =~ /^\s*$/) == 0 then
+				removed = true
+				next
+			end
 			# translate export statements
 			if (line =~ /^\s*exports\.(.*\s*=\s*.*;)$/) == 0
 				line = line.sub(/^\s*exports\.(.*\s*=\s*.*;)$/, exports + ".\\1")
 			end
-			# ignore require statements
-			if (line =~ /(var [A-Za-z_$][A-Za-z_$0-9]* = )?require\(/) == 0 then next end
 			# indent all non-empty lines
 			if indent > 0 and (line =~ /\A\s*\Z/) == nil and (line =~ /\A\/\/\t+/) == nil
 				result += ("\t" * indent)
 			end
 			result += line
+			removed = false
 		end
 	end
 	return result
@@ -34,12 +52,13 @@ end
 @src_files = {
 	"base/core" => %w{
 		Config
+		Errors
+		Warnings
 		TypeChecking
 		Random
 		Function
 		Array
 		String
-		Trace
 		Cache
 		Activity
 		Batch

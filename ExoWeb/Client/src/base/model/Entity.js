@@ -24,7 +24,7 @@ Entity.mixin({
 			var prop = this.meta.type.property(name);
 
 			if (!prop) {
-				ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
+				throw new Error("Could not find property \"" + name + "\" on type \"" + this.meta.type.get_fullName() + "\".");
 			}
 
 			// Initialization is not force.  If the propery already has a value it will be ignored.
@@ -35,7 +35,7 @@ Entity.mixin({
 		forEachProperty(getProperties.apply(this, arguments), function (name, value) {
 			var prop = this.meta.type.property(name);
 			if (!prop) {
-				ExoWeb.trace.throwAndLog("propInit", "Could not find property \"{0}\" on type \"{1}\".", [name, this.meta.type.get_fullName()]);
+				throw new Error("Could not find property \"" + name + "\" on type \"" + this.meta.type.get_fullName() + "\".");
 			}
 
 			Property$_setter.call(prop, this, value, false);

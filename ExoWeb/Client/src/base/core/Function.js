@@ -1,3 +1,5 @@
+/// <reference path="Errors.js" />
+
 var overridableNonEnumeratedMethods;
 
 for (var m in {}) {
@@ -276,6 +278,7 @@ function bind(obj) {
 
 	return bound;
 }
+
 exports.bind = bind; // IGNORE
 
 // Function.prototype.bind polyfill
@@ -347,10 +350,9 @@ function mergeFunctions(fn1, fn2, options) {
 			var idx = options.callbackIndex || 0;
 			var callback = arguments[idx];
 
-			if (!callback || !(callback instanceof Function))
-				ExoWeb.trace.throwAndLog("functions",
-					"Unable to merge async functions: the argument at index {0}{1} is not a function.",
-					[idx, options.callbackIndex ? "" : " (default)"]);
+			// Ensure that there is a callback function
+			if (callback == null) throw new ArgumentNullError("callback", "'mergeFunctions' was called in async mode");
+			if (typeof(callback) !== "function") throw new ArgumentTypeError("callback", "function", callback);
 
 			var signal = new Signal("mergeFunctions");
 
@@ -383,6 +385,7 @@ function mergeFunctions(fn1, fn2, options) {
 		};
 	}
 }
+
 exports.mergeFunctions = mergeFunctions; // IGNORE
 
 function equals(obj) {
@@ -390,6 +393,7 @@ function equals(obj) {
 		return obj === other;
 	};
 }
+
 exports.equals = equals; // IGNORE
 
 function not(fn) {
@@ -397,6 +401,7 @@ function not(fn) {
 		return !fn.apply(this, arguments);
 	};
 }
+
 exports.not = not; // IGNORE
 
 function before(original, fn) {
@@ -405,6 +410,7 @@ function before(original, fn) {
 		original.apply(this, arguments);
 	};
 }
+
 exports.before = before; // IGNORE
 
 function after(original, fn) {
@@ -413,9 +419,19 @@ function after(original, fn) {
 		fn.apply(this, arguments);
 	};
 }
+
 exports.after = after; // IGNORE
 
 function callArgument(arg) {
 	arg.call();
 };
+
 exports.callArgument = callArgument; // IGNORE
+
+var funcRegex = /function\s*([\w_\$]*)/i;
+function parseFunctionName(f) {
+	var result = funcRegex.exec(f);
+	return result ? (result[1] || "{anonymous}") : "{anonymous}";
+}
+
+exports.parseFunctionName = parseFunctionName; // IGNORE

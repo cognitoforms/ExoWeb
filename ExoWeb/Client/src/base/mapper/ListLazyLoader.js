@@ -31,11 +31,11 @@ function listLoad(list, propName, callback, thisPtr) {
 	var propType = list._ownerProperty.get_jstype().meta;
 
 	if (!ExoWeb.config.allowListLazyLoading) {
-		throw new ExoWeb.trace.logError(["listInit", "lazyLoad"], "List lazy loading has been disabled: {0}({1}).{2}", ownerType, ownerId, propName);
+		throw new Error($format("List lazy loading has been disabled: {0}|{1}.{2}", ownerType, ownerId, propName));
 	}
 
 	// load the objects in the list
-	ExoWeb.trace.logWarning(["listInit", "lazyLoad"], "Lazy load: {0}({1}).{2}", ownerType, ownerId, propName);
+	logWarning($format("Lazy load: {0}|{1}.{2}", ownerType, ownerId, propName));
 
 	var objectJson, conditionsJson;
 
@@ -61,7 +61,7 @@ function listLoad(list, propName, callback, thisPtr) {
 				errorMessage = "unknown error";
 			}
 
-			throw ExoWeb.trace.logError(["listInit", "lazyLoad"], "Failed to load {0}({1}).{2}: {3}", ownerType, ownerId, propName, errorMessage);
+			throw new Error($format("Failed to load {0}|{1}.{2}: {3}", ownerType, ownerId, propName, errorMessage));
 		})
 	);
 
@@ -76,8 +76,6 @@ function listLoad(list, propName, callback, thisPtr) {
 		if (!objectJson) {
 			return;
 		}
-
-//					ExoWeb.trace.log("list", "{0}({1}).{2}", [ownerType, ownerId, propName]);
 
 		// The actual type name and id as found in the resulting json.
 		var jsonId = ownerId;
@@ -114,7 +112,7 @@ function listLoad(list, propName, callback, thisPtr) {
 		}
 
 		if (!searchJson(ExoWeb.Model.Model.getJsType(ownerType).meta, ownerId)) {
-			ExoWeb.trace.throwAndLog(["list", "lazyLoad"], "Data could not be found for {0}:{1}.", [ownerType, ownerId]);
+			throw new Error($format("Data could not be found for {0}:{1}.", ownerType, ownerId));
 		}
 
 		var listJson = prop.get_isStatic() ?
@@ -122,9 +120,7 @@ function listLoad(list, propName, callback, thisPtr) {
 			objectJson[jsonType][jsonId][propIndex];
 
 		if (!(listJson instanceof Array)) {
-			ExoWeb.trace.throwAndLog(["list", "lazyLoad"],
-				"Attempting to load list {0} of instance {1}:{2}, but the response JSON is not an array: {3}.",
-				[propName, ownerType, ownerId, listJson]);
+			throw new Error($format("Attempting to load list {0} of instance {1}:{2}, but the response JSON is not an array: {3}.", propName, ownerType, ownerId, listJson));
 		}
 
 		// populate the list with objects
@@ -148,7 +144,7 @@ function listLoad(list, propName, callback, thisPtr) {
 
 		ListLazyLoader.unregister(list, this);
 
-		var batch = ExoWeb.Batch.start($format("{0}({1}).{2}", [ownerType, ownerId, propName]));
+		var batch = ExoWeb.Batch.start($format("{0}|{1}.{2}", [ownerType, ownerId, propName]));
 
 		var done = function() {
 			// Collection change driven by user action or other behavior would result in the "change" event
@@ -186,11 +182,11 @@ ListLazyLoader.mixin({
 		if (modifiableLists.indexOf(sender) < 0) {
 			// Check that at least one change involves adding or removing a non-new instance.
 			if (args.get_changes().mapToArray(function(c) { return c.newItems || []; }).concat(args.get_changes().mapToArray(function(c) { return c.oldItems || []; })).some(function(i) { return !i.meta.isNew; })) {
-				throw new ExoWeb.trace.logError(["list", "lazyLoad"], "{0} list {1}.{2} was modified but it has not been loaded.",
+				throw new Error($format("{0} list {1}.{2} was modified but it has not been loaded.",
 					this._isStatic ? "Static" : "Non-static",
 					this._isStatic ? this._containingType.get_fullName() : "this<" + this._containingType.get_fullName() + ">",
 					this._name
-				);
+				));
 			}
 		}
 	}

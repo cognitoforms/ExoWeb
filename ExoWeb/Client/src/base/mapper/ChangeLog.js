@@ -1,3 +1,5 @@
+/// <reference path="../core/Errors.js" />
+
 function ChangeLog() {
 	this._activeSet = null;
 	this._sets = [];
@@ -87,9 +89,8 @@ ChangeLog.mixin({
 		// Starts a new change set, which means that new changes will
 		// be added to the new set from this point forward.
 
-		if (!source || source.constructor !== String) {
-			throw ExoWeb.trace.logError("changeLog", "ChangeLog.start requires a string source argument.");
-		}
+		if (source == null) throw new ArgumentNullError("source");
+		if (source.constructor !== String) throw new ArgumentTypeError("source", "string", source);
 
 		var set = new ChangeSet(source);
 		var idx = this._sets.push(set) - 1;
@@ -143,7 +144,7 @@ ChangeLog.mixin({
 	},
 	undo: function () {
 		if (!this._activeSet) {
-			ExoWeb.trace.throwAndLog("server", "The change log is not currently active.");
+			throw new Error("The change log is not currently active.");
 		}
 
 		var currentSet = this._activeSet,
@@ -169,4 +170,5 @@ ChangeLog.mixin({
 		return change;
 	}
 });
+
 exports.ChangeLog = ChangeLog; // IGNORE

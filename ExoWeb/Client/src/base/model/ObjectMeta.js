@@ -82,7 +82,7 @@ ObjectMeta.mixin({
 
 			// throw an exception if the condition type is not a permission
 			if (!(conditionType instanceof ConditionType.Permission)) {
-				ExoWeb.trace.throwAndLog(["conditions"], "Condition type \"{0}\" should be a Permission.", [code]);
+				throw new Error("Condition type \"" + code + "\" should be a Permission.");
 			}
 
 			// return false if a condition of the current type exists and is a deny permission or does not exist and is a grant permission

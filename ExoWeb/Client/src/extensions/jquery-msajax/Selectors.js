@@ -11,7 +11,7 @@ jQuery.expr[":"].rule = function (obj, index, meta, stack) {
 	var ruleType = ExoWeb.Model.Rule[ruleName];
 
 	if (!ruleType) {
-		ExoWeb.trace.throwAndLog(["ui", "jquery"], "Unknown rule in selector: " + ruleName);
+		throw new Error("Unknown rule in selector: " + ruleName);
 	}
 
 	return $(obj).rules(ruleType).length > 0;

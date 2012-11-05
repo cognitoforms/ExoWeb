@@ -7,4 +7,5 @@ if (typeof String.prototype.trim !== 'function') {
 function isNullOrEmpty(str) {
 	return str === null || str === undefined || str === "";
 }
+
 exports.isNullOrEmpty = isNullOrEmpty; // IGNORE

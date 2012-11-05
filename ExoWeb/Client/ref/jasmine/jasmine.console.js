@@ -15,9 +15,6 @@ Reporter.prototype.isFirstEncounter = function(suite) {
 
 Reporter.prototype.reportRunnerStarting = function(runner) {
 	var showPassed, showSkipped;
-
-	console.log("Running tests...\r\n");
-
 	this.startedAt = new Date();
 };
 
@@ -29,7 +26,7 @@ Reporter.prototype.reportRunnerResults = function(runner) {
 	if (this.suppressDateAndTime !== true)
 		message += " in " + ((new Date().getTime() - this.startedAt.getTime()) / 1000) + "s";
 
-	console.info(message);
+	console.info(message + "\r\n");
 	
 	if (this.suppressDateAndTime !== true)
 		console.info("Finished at " + new Date().toString() + "\r\n");

@@ -93,7 +93,7 @@ ListLengthRule.prototype = {
 			obj.meta.conditionIf(this.err, !isValid);
 		}
 		else {
-			ExoWeb.trace.logWarning("rule", "List Length rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+			logWarning("List Length rule on type \"" + this.prop.get_containingType().get_fullName() + "\" has not been initialized.");
 		}
 	}
 };

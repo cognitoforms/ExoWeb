@@ -1194,11 +1194,13 @@ Sys.registerComponent = function Sys$registerComponent(type, options) {
 	fn._component = options;
 	if (window.jQuery) {
 		var jTarget = isControlOrBehavior ? jQuery.fn : jQuery;
-		fn = jTarget[name];
-		defaults = fn && fn.defaults;
-		jTarget[name] = fn = Sys._getCreate(type, isControlOrBehavior, options, true);
-		fn.defaults = defaults || null;
-		fn._component = options;
+		if (!jTarget.hasOwnProperty(name)) {
+			fn = jTarget[name];
+			defaults = fn && fn.defaults;
+			jTarget[name] = fn = Sys._getCreate(type, isControlOrBehavior, options, true);
+			fn.defaults = defaults || null;
+			fn._component = options;
+		}
 	}
 }
 
@@ -4521,6 +4523,39 @@ Sys.UI.DomEvent.prototype = {
 }
 Sys.UI.DomEvent.registerClass('Sys.UI.DomEvent');
 
+var simulatingEvent = false;
+$simulateMutationEvent = Sys.UI.DomEvent.simulate = function Sys$UI$DomEvent$simulateMutationEvent(element, eventName, bubbles, cancelable) {
+	// Don't bubble the event by default
+	if (arguments.length < 3) {
+		bubbles = false;
+	}
+
+	// Allow calceling the event by default
+	if (arguments.length < 4) {
+		cancelable = true;
+	}
+	
+	try {
+		simulatingEvent = true;
+		if (element.fireEvent) {
+			element.fireEvent("on" + eventName);
+		}
+		else if (element.dispatchEvent) {
+			var evt = document.createEvent("MutationEvents");
+			evt.initEvent(eventName, bubbles, cancelable);
+			element.dispatchEvent(evt);
+		}
+	}
+	finally {
+		simulatingEvent = false;
+	}
+}
+
+function simulateError(e) {
+	setTimeout(function () {
+		throw e;
+	}, 1);
+}
 
 $addHandler = Sys.UI.DomEvent.addHandler = function Sys$UI$DomEvent$addHandler(elements, eventName, handler, autoRemove) {
 	/// <summary locid="M:J#Sys.UI.DomEvent.addHandler" />
@@ -4541,7 +4576,17 @@ $addHandler = Sys.UI.DomEvent.addHandler = function Sys$UI$DomEvent$addHandler(e
 		var browserHandler;
 		if (element.addEventListener) {
 			browserHandler = function(e) {
-				return handler.call(element, new Sys.UI.DomEvent(e));
+				if (simulatingEvent && Sys.Browser.name === "Firefox") {
+					try {
+						return handler.call(element, new Sys.UI.DomEvent(e));
+					}
+					catch (e) {
+						simulateError(e);
+					}
+				}
+				else {
+					return handler.call(element, new Sys.UI.DomEvent(e));
+				}
 			}
 			element.addEventListener(eventName, browserHandler, false);
 		}

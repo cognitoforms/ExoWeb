@@ -20,10 +20,6 @@ var functor = require("../../../src/base/core/Functor");
 global.Functor = functor.Functor;
 var arrays = require("../../../src/base/core/Array");
 
-var trace = require("../../../src/base/core/Trace");
-logError = ExoWeb.trace.logError;
-log = ExoWeb.trace.log;
-
 var signal = require("../../../src/base/core/Signal");
 global.Signal = signal.Signal;
 

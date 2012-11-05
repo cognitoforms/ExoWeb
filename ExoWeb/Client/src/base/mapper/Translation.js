@@ -83,7 +83,7 @@ function fromExoModel(val, translator, create, supplementalObjectsArray) {
 					return o instanceof type && o.meta.id === id;
 				});
 				if (matches.length > 1) {
-					throw ExoWeb.trace.logError("translator", "Expected a single item, but found " + matches.length + ".");
+					throw new Error("Expected a single item, but found " + matches.length + ".");
 				}
 				obj = matches[0];
 			}
@@ -91,7 +91,6 @@ function fromExoModel(val, translator, create, supplementalObjectsArray) {
 			if (!obj && create) {
 				obj = new type(id);
 				ObjectLazyLoader.register(obj);
-				ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [type.meta.get_fullName(), id]);
 			}
 
 			return obj;

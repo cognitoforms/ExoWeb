@@ -15,7 +15,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		path = new PathTokens(path.join("."));
 	}
 	else if (!isType(path, PathTokens)) {
-		throw new Error("Unknown path \"" + path + "\" of type " + ExoWeb.parseFunctionName(path.constructor) + ".");
+		throw new Error("Unknown path \"" + path + "\" of type " + parseFunctionName(path.constructor) + ".");
 	}
 
 	scopeChain = scopeChain || [window];
@@ -168,7 +168,7 @@ LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, 
 			performedLoading = performedLoading || performedLoadingOne;
 			results[i] = result;
 			if (root !== rootOne) {
-				ExoWeb.trace.logWarning("lazyLoad", "Found different roots when evaluating all paths.");
+				logWarning("Found different roots when evaluating all paths.");
 			}
 			root = rootOne;
 		}));
@@ -245,7 +245,7 @@ LazyLoader.load = function LazyLoader$load(obj, propName, callback, thisPtr) {
 		}
 
 		if (!loader) {
-			ExoWeb.trace.throwAndLog(["lazyLoad"], "Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", [obj, propName]);
+			throw new Error($format("Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", obj, propName));
 		}
 
 		loader.load(obj, propName, callback, thisPtr);

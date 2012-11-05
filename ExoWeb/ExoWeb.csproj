@@ -73,7 +73,9 @@
     <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
     <Content Include="Client\specs\base\core\FunctorSpecs.js" />
+    <Content Include="Client\src\base\core\Errors.js" />
     <Content Include="Client\src\base\core\Observer.js" />
+    <Content Include="Client\src\base\core\Warnings.js" />
     <Content Include="Client\src\base\model\ConditionTarget.js" />
     <Content Include="Client\src\base\model\Resource.js" />
     <Content Include="Client\src\base\model\RuleInvocationType.js" />
@@ -224,7 +226,6 @@
     <Content Include="Client\src\base\core\Signal.js" />
     <Content Include="Client\src\base\core\String.js" />
     <Content Include="Client\src\base\core\TimeSpan.js" />
-    <Content Include="Client\src\base\core\Trace.js" />
     <Content Include="Client\src\base\core\Transform.js" />
     <Content Include="Client\src\base\core\Translator.js" />
     <Content Include="Client\src\base\core\TypeChecking.js" />

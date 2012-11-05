@@ -99,7 +99,7 @@ Model.mixin({
 				target = target[token];
 
 				if (target === undefined) {
-					ExoWeb.trace.throwAndLog("model", "Parent namespace \"{0}\" could not be found.", parentNamespace);
+					throw new Error("Parent namespace \"" + parentNamespace + "\" could not be found.");
 				}
 			});
 		}
@@ -135,6 +135,7 @@ function ensureType(type, forceLoad, callback) {
 		$extend(type._fullName, callback);
 	}
 };
+
 exports.ensureType = ensureType; // IGNORE
 
 Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
@@ -211,7 +212,7 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 					return;
 				}
 				else {
-					ExoWeb.trace.throwAndLog(["model"], instanceParseError);
+					throw new Error(instanceParseError ? instanceParseError : ("Error getting type \"" + globalTypeName + "\"."));
 				}
 			}
 
@@ -244,24 +245,24 @@ Model.getJsType = function Model$getJsType(name, allowUndefined) {
 	/// </summary>
 	/// <returns type="Object" />
 
-    var obj = Model.types;
+	var obj = Model.types;
 	var steps = name.split(".");
 	for (var i = 0; i < steps.length; i++) {
-	    var step = steps[i];
-	    if (Model.intrinsicJsTypes.indexOf(step) > -1) {
-	        obj = window[step];
-	    }
-	    else {
-	        obj = obj[step];
-	    }
-	    if (obj === undefined) {
-	        if (allowUndefined) {
-	            return;
-	        }
-	        else {
-	            throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
-	        }
-	    }
+		var step = steps[i];
+		if (Model.intrinsicJsTypes.indexOf(step) > -1) {
+			obj = window[step];
+		}
+		else {
+			obj = obj[step];
+		}
+		if (obj === undefined) {
+			if (allowUndefined) {
+				return;
+			}
+			else {
+				throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+			}
+		}
 	}
 	return obj;
 };

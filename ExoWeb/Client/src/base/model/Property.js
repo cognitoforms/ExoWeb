@@ -1,3 +1,37 @@
+/// <reference path="../core/Errors.js" />
+/// <reference path="Entity.js" />
+
+function PropertySetError(property, obj, value, reason) {
+	/// <summary locid="M:J#PropertySetError.#ctor">
+	/// An error type that is raised when an attempt is made to set a property value.
+	/// </summary>
+	/// <param name="property" type="Property">The property that is being set.</param>
+	/// <param name="obj" type="Entity">The object that the property is being set for.</param>
+	/// <param name="value">The value that is being set.</param>
+	/// <param name="reason" type="String">The reason that the set is not allowed.</param>
+
+	if (arguments.length !== 4) throw new ArgumentsLengthError(4, arguments.length);
+	if (property == null) throw new ArgumentNullError("property");
+	if (!(property instanceof Property)) throw new ArgumentTypeError("property", "Property", property);
+	if (obj == null) throw new ArgumentNullError("obj");
+	if (!(obj instanceof Entity)) throw new ArgumentTypeError("obj", "Entity", obj);
+	if (reason == null) throw new ArgumentNullError("reason");
+	if (reason.constructor !== String) throw new ArgumentTypeError("reason", "string", reason);
+
+	this.name = "PropertySetError";
+	this.property = property;
+	this.obj = obj;
+	this.value = value;
+	this.reason = reason;
+	this.message = "Cannot set " + property.get_name() + "=" + (val === undefined ? "<undefined>" : val) + " for instance " + obj.meta.type.get_fullName() + "|" + obj.meta.id + ": " + reason + ".";
+}
+
+PropertySetError.prototype = new Error();
+PropertySetError.prototype.constructor = PropertySetError;
+
+exports.PropertySetError = PropertySetError;
+window.PropertySetError = PropertySetError;
+
 //////////////////////////////////////////////////////////////////////////////////////
 /// <remarks>
 /// If the interface for this class is changed it should also be changed in
@@ -29,10 +63,7 @@ function Property(containingType, name, jstype, label, format, isList, isStatic,
 	}
 
 	if (this._origin === "client" && this._isPersisted) {
-		ExoWeb.trace.logWarning("model",
-			"Client-origin properties should not be marked as persisted: Type = {0}, Name = {1}",
-			containingType.get_fullName(),
-			name);
+		logWarning($format("Client-origin properties should not be marked as persisted: Type = {0}, Name = {1}", containingType.get_fullName(), name));
 	}
 }
 
@@ -133,19 +164,20 @@ function Property$_getter(obj) {
 		return obj[this._fieldName];
 	}
 }
+
 exports.Property$_getter = Property$_getter; // IGNORE
 
 function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 	// Ensure the entity is loaded before setting property values
 	if (!LazyLoader.isLoaded(obj)) {
-		throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set property {0}={1} for ghosted instance {2}({3}).", this._name, val === undefined ? "<undefined>" : val, obj.meta.type.get_fullName(), obj.meta.id);
+		throw new PropertySetError(this, obj, val, "object is ghosted");
 	}
 
 	// Ensure that the property has an initial (possibly default) value
 	Property$_ensureInited.call(this, obj);
 
 	if (!this.canSetValue(obj, val)) {
-		throw new ExoWeb.trace.logError(["model", "entity"], "Cannot set {0}={1} for instance {2}({3}). A value of type {4} was expected.", this._name, val === undefined ? "<undefined>" : val, obj.meta.type.get_fullName(), obj.meta.id, this._jstype && this._jstype.meta ? this._jstype.meta.get_fullName() : parseFunctionName(this._jstype));
+		throw new PropertySetError(this, obj, val, "a value of type " + (this._jstype && this._jstype.meta ? this._jstype.meta.get_fullName() : parseFunctionName(this._jstype)) + " was expected");
 	}
 
 	var old = obj[this._fieldName];
@@ -187,6 +219,7 @@ function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 		Observer.raisePropertyChanged(obj, this._name);
 	}
 }
+
 exports.Property$_setter = Property$_setter; // IGNORE
 
 Property.mixin({
@@ -209,9 +242,8 @@ Property.mixin({
 	},
 
 	rule: function (type) {
-		if (!type || !(type instanceof Function)) {
-			ExoWeb.trace.throwAndLog("rule", "{0} is not a valid rule type.", [type ? type : (type === undefined ? "undefined" : "null")]);
-		}
+		if (type == null) throw new ArgumentNullError("type");
+		if (typeof(type) !== "function") throw new ArgumentTypeError("type", "function", type);
 
 		return first(this._rules, function (rule) {
 			if (rule instanceof type) {
@@ -333,7 +365,7 @@ Property.mixin({
 		// NOTE: only allow values of the correct data type to be set in the model
 
 		if (val === undefined) {
-			ExoWeb.trace.logWarning("model", "You should not set property values to undefined, use null instead: property = {0}.", this._name);
+			logWarning("You should not set property values to undefined, use null instead: property = ." + this._name + ".");
 			return true;
 		}
 
@@ -373,9 +405,9 @@ Property.mixin({
 		var target = (this._isStatic ? this._containingType.get_jstype() : obj);
 
 		if (target === undefined || target === null) {
-			ExoWeb.trace.throwAndLog(["model"],
+			throw new Error($format(
 				"Cannot {0} value for {1}static property \"{2}\" on type \"{3}\": target is null or undefined.",
-				[(arguments.length > 1 ? "set" : "get"), (this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()]);
+				(arguments.length > 1 ? "set" : "get"), (this._isStatic ? "" : "non-"), this.get_path(), this._containingType.get_fullName()));
 		}
 
 		if (arguments.length > 1) {

@@ -20,6 +20,10 @@ global.logError = function(category, message, args) {
 
 var dependencies;
 
+exports.announce = function (name) {
+	console.log("\r\nSetting up specs for " + name + "\r\n");
+};
+
 exports.require = function() {
 	if (!dependencies) {
 		dependencies = require("./SpecDependencies");

@@ -53,9 +53,7 @@ Behavior.prototype = {
 					var name = Sys.Application._mapToPrototype(prop.substring(5), this.get_classObject());
 
 					if (!name) {
-						ExoWeb.trace.throwAndLog("ui",
-							"Property '{0}' could not be found on type '{1}'.",
-							[prop.substring(5), this._class]);
+						throw new Error($format("Property '{0}' could not be found on type '{1}'.", prop.substring(5), this._class));
 					}
 
 					this._properties[name] = this[prop];
@@ -73,9 +71,7 @@ Behavior.prototype = {
 					var name = Sys.Application._mapToPrototype(prop.substring(9), this.get_classObject());
 
 					if (!name) {
-						ExoWeb.trace.throwAndLog("ui",
-							"Event '{0}' could not be found on type '{1}'.",
-							[prop.substring(9), this._class]);
+						throw new Error($format("Event '{0}' could not be found on type '{1}'.", prop.substring(9), this._class));
 					}
 
 					this._events[name] = this[prop];

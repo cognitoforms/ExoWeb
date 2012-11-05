@@ -125,7 +125,7 @@ Toggle.mixin({
 	},
 	init_render: function Toggle$init_render() {
 		if (!this._template && !$(this._element).is(".sys-template")) {
-			ExoWeb.trace.throwAndLog(["ui", "toggle"], "When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
+			throw new Error("When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
 		}
 
 		this._template = new Sys.UI.Template(this._element);
@@ -273,7 +273,7 @@ Toggle.mixin({
 	},
 	set_action: function Toggle$set_action(value) {
 		if (!Array.contains(Toggle_allowedActions, value)) {
-			ExoWeb.trace.throwAndLog("ui", "Invalid toggle action \"{0}\".  Possible values are \"{1}\".", [value, Toggle_allowedActions.join(", ")]);
+			throw new Error($format("Invalid toggle action \"{0}\".  Possible values are \"{1}\".", value, Toggle_allowedActions.join(", ")));
 		}
 
 		this._action = value;
@@ -374,7 +374,7 @@ Toggle.mixin({
 
 			if (this._strictMode === true) {
 				if (this._on.constructor !== Boolean)
-					ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:on should be a value of type Boolean.");
+					throw new Error("With strict mode enabled, toggle:on should be a value of type Boolean.");
 
 				return this._on;
 			}
@@ -390,7 +390,7 @@ Toggle.mixin({
 			var result = this._when(this._on);
 			if (this._strictMode === true) {
 				if (result === null || result === undefined || result.constructor !== Boolean)
-					ExoWeb.trace.throwAndLog("ui", "With strict mode enabled, toggle:when function should return a value of type Boolean.");
+					throw new Error("With strict mode enabled, toggle:when function should return a value of type Boolean.");
 				return result;
 			}
 			else {

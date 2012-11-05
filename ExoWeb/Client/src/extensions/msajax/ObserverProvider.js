@@ -15,7 +15,7 @@ setObserverProvider({
 
 	removeCollectionChanged: Sys.Observer.removeCollectionChanged,
 
-	addPropertyChanged: function Sys$Observer$addSpecificPropertyChanged(target, property, handler) {
+	addPropertyChanged: function Sys$Observer$addPropertyChanged(target, property, handler) {
 		if (!target.__propertyChangeHandlers) {
 			target.__propertyChangeHandlers = {};
 			Sys.Observer.addPropertyChanged(target, raiseSpecificPropertyChanged);
@@ -30,7 +30,7 @@ setObserverProvider({
 		func.add(handler);
 	},
 
-	removePropertyChanged: function Sys$Observer$removeSpecificPropertyChanged(target, property, handler) {
+	removePropertyChanged: function Sys$Observer$removePropertyChanged(target, property, handler) {
 		var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
 
 		if (func) {

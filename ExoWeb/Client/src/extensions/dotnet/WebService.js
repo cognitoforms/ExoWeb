@@ -186,22 +186,13 @@ ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(types, onSucces
 });
 
 var loggingError = false;
-ExoWeb.setErrorHandler(function WebService$errorHandlerFn(message, e) {
+ExoWeb.setLogErrorProvider(function WebService$logErrorProviderFn(errorData) {
 	if (loggingError === false) {
 		try {
 			loggingError = true;
-			Sys.Net.WebServiceProxy.invoke(
-				getPath(),
-				"LogError",
-				false,
-				{
-					message: message,
-					type: e ? parseFunctionName(e.constructor) : "Error",
-					stackTrace: ExoWeb.trace.getCallStack().join("\n"),
-					url: window.location.href,
-					refererUrl: document.referrer,
-					config: webServiceConfig
-				}, null, null, null, 1000000, false, null);
+			Sys.Net.WebServiceProxy.invoke(getPath(), "LogError", false, errorData, null, function onFailure () {
+				// Do nothing.  Don't log errors that occur when trying to log an error.
+			}, null, 1000000, false, null);
 		}
 		finally {
 			loggingError = false;

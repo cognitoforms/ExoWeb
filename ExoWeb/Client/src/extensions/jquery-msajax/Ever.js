@@ -383,7 +383,7 @@ jQuery.fn.ever = function jQuery$ever(opts) {
 		if (window.ExoWeb) {
 			for (var opt in options) {
 				if (options.hasOwnProperty(opt) && !/^(selector|source|added|deleted|bound|unbound)$/.test(opt)) {
-					ExoWeb.trace.logWarning("ever", "Unexpected option \"" + opt + "\"");
+					logWarning("Unexpected option \"" + opt + "\"");
 				}
 			}
 		}
@@ -415,19 +415,14 @@ jQuery.fn.ever = function jQuery$ever(opts) {
 			}
 		}
 		else if (!options.selector) {
-			if (window.ExoWeb) {
-				ExoWeb.trace.throwAndLog("ever", "Ever requires a selector");
-			}
-			else {
-				throw new Error("Ever requires a selector");
-			}
+			throw new Error("Ever requires a selector");
 		}
 		if (window.ExoWeb && options.source) {
 			if (!(options.added || options.deleted)) {
-				ExoWeb.trace.logWarning("ever", "The source option only applies to added and deleted handlers");
+				logWarning("The source option only applies to added and deleted handlers");
 			}
 			if (options.source !== "template" && options.source !== "updatePanel") {
-				ExoWeb.trace.logWarning("ever", "Unexpected source \"" + options.source + "\"");
+				logWarning("Unexpected source \"" + options.source + "\"");
 			}
 		}
 	}

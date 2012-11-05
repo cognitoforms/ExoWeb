@@ -78,7 +78,7 @@ AllowedValuesRule.mixin({
 	},
 	values: function AllowedValuesRule$values(obj, exitEarly) {
 		if (!this.source) {
-			ExoWeb.trace.logWarning("rule", "AllowedValues rule on type \"{0}\" has not been initialized.", [this.prop.get_containingType().get_fullName()]);
+			logWarning("AllowedValues rule on type \"" + this.prop.get_containingType().get_fullName() + "\" has not been initialized.");
 			return;
 		}
 

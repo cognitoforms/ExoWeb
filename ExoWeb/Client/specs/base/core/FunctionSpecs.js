@@ -1,7 +1,12 @@
+/// <reference path="../../SpecDependencies.js" />
+/// <reference path="../../SpecHelpers.js" />
+
 // Test setup
 ///////////////////////////////////////
 
 var specs = require("../../SpecHelpers");
+
+specs.announce("Function");
 
 //specs.debug();
 specs.ensureWindow();

@@ -1,7 +1,8 @@
+/// <reference path="../core/Errors.js" />
+
 function ChangeSet(source, initialChanges) {
-	if (!source || source.constructor !== String) {
-		ExoWeb.trace.throwAndLog("changeLog", "Creating a change set requires a string source argument.");
-	}
+	if (source == null) throw new ArgumentNullError("source");
+	if (source.constructor !== String) throw new ArgumentTypeError("source", "string", source);
 
 	this._source = source;
 	this._changes = (initialChanges && initialChanges instanceof Array) ?
@@ -112,4 +113,5 @@ ChangeSet.mixin({
 		return null;
 	}
 });
+
 exports.ChangeSet = ChangeSet; // IGNORE

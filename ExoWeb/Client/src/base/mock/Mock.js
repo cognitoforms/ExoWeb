@@ -157,14 +157,7 @@ Mock.mixin({
 				var result = { changes: [] };
 
 				if (_this.roundtripHandler && _this.roundtripHandler instanceof Function) {
-					ExoWeb.trace.log("server", "begin: mock roundtripping changes to server");
-
 					result.changes = _this.roundtripHandler(changes);
-
-					ExoWeb.trace.log("server", "end: mock roundtripping changes to server");
-				}
-				else {
-					ExoWeb.trace.log("server", "no roundtrip mocking");
 				}
 
 				return mockCallback(success, [result], _this.roundtripProviderDelay, $format(">> roundtrip", arguments));
@@ -174,14 +167,7 @@ Mock.mixin({
 				var result = { changes: [] };
 
 				if (_this.saveHandler && _this.saveHandler instanceof Function) {
-					ExoWeb.trace.log("server", "begin: mock saving changes to server");
-
 					result.changes = _this.saveHandler(changes);
-
-					ExoWeb.trace.log("server", "end: mock saving changes to server");
-				}
-				else {
-					ExoWeb.trace.log("server", "no save mocking");
 				}
 
 				return mockCallback(callback, [result], _this.saveProviderDelay, $format(">> save", arguments));
@@ -231,7 +217,7 @@ Mock.mixin({
 		}
 
 		if (!source) {
-			ExoWeb.trace.throwAndLog(["mocks"], "Object not found: {0}({1})", [type, id]);
+			throw new Error("Object not found: " + type + "|" + id);
 		}
 
 		if (!result[type]) {
@@ -333,19 +319,13 @@ function prepPaths(path) {
 }
 
 function mockCallback(callback, args, delay, log) {
-	ExoWeb.trace.log("mocks", log);
-
 	if (delay) {
 		window.setTimeout(function() {
-			ExoWeb.trace.log("mocks", "   [done +{1}ms] {0}", [log, delay]);
-
 			callback.apply(this, args);
 		}, delay);
 
 		return;
 	}
-
-	ExoWeb.trace.log("mocks", log + " (END MOCK)");
 
 	callback.apply(this, args);
 }

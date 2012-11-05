@@ -1,12 +1,14 @@
 /// <reference path="../core/Array.js" />
+/// <reference path="../core/Errors.js" />
 /// <reference path="../core/Function.js" />
 /// <reference path="../core/Signal.js" />
 /// <reference path="../core/EventScope.js" />
 /// <reference path="Internals.js" />
 
 function ServerSync(model) {
-	if (!model || typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
-		throw ExoWeb.trace.logError("server", "A model must be specified when constructing a ServerSync object.");
+	if (model == null) throw new ArgumentNullError("model");
+	if (typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
+		throw new ArgumentTypeError("model", "model", model);
 	}
 
 	this._changeLog = new ChangeLog();
@@ -25,7 +27,7 @@ function ServerSync(model) {
 	function isDeleted(obj, isChange) {
 		if (Array.contains(this._objectsDeleted, obj)) {
 			if (isChange) {
-				ExoWeb.trace.logWarning("server", "Object {0}({1}) was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id);
+				logWarning($format("Object {0}|{1} was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id));
 			}
 			return true;
 		}
@@ -60,7 +62,7 @@ function ServerSync(model) {
 		applyingChanges--;
 
 		if (applyingChanges < 0)
-			ExoWeb.trace.throwAndLog("Error in transaction log processing: unmatched begin and end applying changes.");
+			throw new Error("Error in transaction log processing: unmatched begin and end applying changes.");
 	};
 
 	var isCapturingChanges;
@@ -101,7 +103,6 @@ function ServerSync(model) {
 		// if an existing object is registered then register for lazy loading
 		if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges === true && !applyingChanges) {
 			ObjectLazyLoader.register(obj);
-			//ExoWeb.trace.log(["entity", "server"], "{0}({1})  (ghost)", [obj.meta.type.get_fullName(), obj.meta.id]);
 		}
 	});
 
@@ -199,7 +200,7 @@ ServerSync.mixin({
 	///////////////////////////////////////////////////////////////////////
 	enableSave: function ServerSync$enableSave(obj) {
 		if (!(obj instanceof ExoWeb.Model.Entity)) {
-			ExoWeb.trace.throwAndLog("server", "Can only enableSave on entity objects.");
+			throw new Error("Can only enableSave on entity objects.");
 		}
 
 		if (Array.contains(this._objectsExcludedFromSave, obj)) {
@@ -222,7 +223,7 @@ ServerSync.mixin({
 	},
 	disableSave: function ServerSync$disableSave(obj) {
 		if (!(obj instanceof ExoWeb.Model.Entity)) {
-			ExoWeb.trace.throwAndLog("server", "Can only disableSave on entity objects.");
+			throw new Error("Can only disableSave on entity objects.");
 		}
 
 		if (!Array.contains(this._objectsExcludedFromSave, obj)) {
@@ -246,7 +247,7 @@ ServerSync.mixin({
 	},
 	notifyDeleted: function ServerSync$notifyDeleted(obj) {
 		if (!(obj instanceof ExoWeb.Model.Entity)) {
-			throw ExoWeb.trace.logError("server", "Notified of deleted object that is not an entity.");
+			throw new Error("Notified of deleted object that is not an entity.");
 		}
 
 		if (!Array.contains(this._objectsDeleted, obj)) {
@@ -263,11 +264,8 @@ ServerSync.mixin({
 		var obj;
 		var errorFmt = "Unable to test whether object can be saved:  {0}.";
 
-		if (arguments.length === 0) {
-			ExoWeb.trace.throwAndLog("server", errorFmt, ["argument not given"]);
-		}
-		else if (objOrMeta === undefined || objOrMeta === null) {
-			ExoWeb.trace.throwAndLog("server", errorFmt, ["argument is null or undefined"]);
+		if (objOrMeta == null) {
+			throw new ArgumentNullError("objOrMeta");
 		}
 		else if (objOrMeta instanceof ExoWeb.Model.ObjectMeta) {
 			obj = objOrMeta._obj;
@@ -276,7 +274,7 @@ ServerSync.mixin({
 			obj = objOrMeta;
 		}
 		else {
-			ExoWeb.trace.throwAndLog("server", errorFmt, ["argument is not of correct type"]);
+			throw new ArgumentTypeError("objOrMeta", "ObjectMeta|Entity", objOrMeta);
 		}
 
 		return !Array.contains(this._objectsExcludedFromSave, obj) && !Array.contains(this._objectsDeleted, obj);
@@ -586,8 +584,6 @@ ServerSync.mixin({
 		pendingRequests--;
 	},
 	startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
-		//ExoWeb.trace.log("server", "auto-roundtrip enabled - interval of {0} milliseconds", [interval]);
-
 		if (!interval || typeof(interval) !== "number" || interval <= 0) {
 			throw new Error("An interval must be specified for auto-save.");
 		}
@@ -596,9 +592,7 @@ ServerSync.mixin({
 		this.stopAutoRoundtrip();
 
 		function doRoundtrip() {
-			//ExoWeb.trace.log("server", "auto-roundtrip starting ({0})", [new Date()]);
 			this.roundtrip(function () {
-				//ExoWeb.trace.log("server", "auto-roundtrip complete ({0})", [new Date()]);
 				this._roundtripTimeout = window.setTimeout(doRoundtrip.bind(this), interval);
 			});
 		}
@@ -709,10 +703,7 @@ ServerSync.mixin({
 			return;
 
 		function doAutoSave() {
-			//ExoWeb.trace.log("server", "auto-save starting ({0})", [new Date()]);
 			this.save(this._saveRoot, function ServerSync$doAutoSave$callback() {
-				//ExoWeb.trace.log("server", "auto-save complete ({0})", [new Date()]);
-
 				// wait for the next change before next auto save
 				this._saveTimeout = null;
 			});
@@ -942,10 +933,9 @@ ServerSync.mixin({
 
 					// Ensure that the object exists.
 					if (!obj) {
-						ExoWeb.trace.throwAndLog("server",
+						throw new Error($format(
 							"Unable to change id for object of type \"{0}\" from \"{1}\" to \"{2}\" since the object could not be found.",
-							[jstype.meta.get_fullName(), idChange.oldId, idChange.newId]
-						);
+							jstype.meta.get_fullName(), idChange.oldId, idChange.newId));
 					}
 
 					// Change the id and make non-new.
@@ -994,10 +984,7 @@ ServerSync.mixin({
 				}
 				// Otherwise, log an error.
 				else {
-					ExoWeb.trace.logWarning("server",
-						"Cannot apply id change on type \"{0}\" since old id \"{1}\" was not found.",
-						idChange.type,
-						idChange.oldId);
+					logWarning($format("Cannot apply id change on type \"{0}\" since old id \"{1}\" was not found.", idChange.type, idChange.oldId));
 				}
 			}, after), this);
 		}, this);
@@ -1459,7 +1446,7 @@ ServerSync.mixin({
 	},
 	get_Changes: function ServerSync$get_Changes(includeAllChanges/*, ignoreWarning*/) {
 		if (arguments.length < 2 || arguments[1] !== true) {
-			ExoWeb.trace.logWarning("server", "Method get_Changes is not intended for long-term use - it will be removed in the near future.");
+			logWarning("Method get_Changes is not intended for long-term use - it will be removed in the near future.");
 		}
 		return this.changes(includeAllChanges, null);
 	},

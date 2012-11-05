@@ -13,7 +13,6 @@ ContextQuery.mixin({
 	///////////////////////////////////////////////////////////////////////////////
 		function ContextQuery$setup(callback, thisPtr) {
 			// start a batch to represent all of the pending work
-			ExoWeb.trace.log("context", "Starting context query batch.");
 			this.batch = ExoWeb.Batch.start("context query");
 
 			// store init changes as early as possible
@@ -30,12 +29,8 @@ ContextQuery.mixin({
 			// Loading is considered complete at the same point model.ready() fires. 
 			ExoWeb.Model.LazyLoader.register(this.context, {
 				load: function context$load(obj, propName, callback, thisPtr) {
-					//ExoWeb.trace.log(["context", "lazyLoad"], "caller is waiting for createContext.ready(), propName={1}", arguments);
-
 					// objects are already loading so just queue up the calls
 					allSignals.waitForAll(function context$load$callback() {
-						//ExoWeb.trace.log(["context", "lazyLoad"], "raising createContext.ready()");
-
 						ExoWeb.Model.LazyLoader.unregister(obj, this);
 
 						if (callback && callback instanceof Function) {
@@ -54,13 +49,12 @@ ContextQuery.mixin({
 			if (this.options.model) {
 				// Start capturing changes prior to processing any model query
 				this.context.server.beginCapturingChanges();
-				ExoWeb.trace.log("context", "Running init step for model queries.");
 				ExoWeb.eachProp(this.options.model, function (varName, query) {
 					// Assert that the necessary properties are provided
 					if (!query.hasOwnProperty("from") || (!query.hasOwnProperty("id") && !query.hasOwnProperty("ids")))
-						ExoWeb.trace.throwAndLog("types", "The model query \"{0}\" requires a from and id or ids clause.", [varName]);
+						throw new Error("The model query \"" + varName + "\" requires a from and id or ids clause.");
 					if (query.hasOwnProperty("id") && query.hasOwnProperty("ids"))
-						ExoWeb.trace.throwAndLog("types", "The model query \"{0}\" specifies both id or ids.", [varName]);
+						throw new Error("The model query \"" + varName + "\" must specify either id or ids, not both.");
 
 					// common initial setup of state for all model queries
 					this.state[varName] = { signal: new ExoWeb.Signal("createContext." + varName), isArray: false };
@@ -180,8 +174,6 @@ ContextQuery.mixin({
 	// page loads by embedded data, changes, etc.
 	///////////////////////////////////////////////////////////////////////////////
 		function ContextQuery$processEmbedded(callback, thisPtr) {
-			ExoWeb.trace.log("context", "Processing embedded data in query.");
-
 			if (this.options.instances || this.options.conditions || (this.options.types && !(this.options.types instanceof Array))) {
 				var handler = new ResponseHandler(this.context.model.meta, this.context.server, {
 					instances: this.options.instances,
@@ -232,8 +224,6 @@ ContextQuery.mixin({
 			if (this.options.model && ExoWeb.config.individualQueryLoading !== true) {
 				var pendingQueries = [];
 				var batchQuerySignal;
-
-				ExoWeb.trace.log("context", "Looking for potential loading requests in query.");
 
 				ExoWeb.eachProp(this.options.model, function (varName, query) {
 					if (!query.load && query.ids.length > 0) {
@@ -305,8 +295,7 @@ ContextQuery.mixin({
 							}, this);
 						},
 						function context$objects$callback(error) {
-							ExoWeb.trace.logError("objectInit", "Failed to load batch query (HTTP: {_statusCode}, Timeout: {_timedOut})", error);
-							batchQuerySignal.oneDone();
+							throw new Error($format("Failed to load batch query (HTTP: {0}, Timeout: {1})", error._statusCode, error._timedOut));
 						}, this);
 				}
 			}
@@ -374,12 +363,8 @@ ContextQuery.mixin({
 										this.state[varName].conditionsJson = result.conditions;
 									}, this, true),
 									this.state[varName].signal.orPending(function context$objects$callback(error) {
-										ExoWeb.trace.logError("objectInit",
-											"Failed to load {0}({1}) (HTTP: {3}, Timeout: {4})",
-											query.from,
-											query.ids,
-											error._statusCode,
-											error._timedOut);
+										throw new Error($format("Failed to load {0}|{1} (HTTP: {3}, Timeout: {4})",
+											query.from, query.ids, error._statusCode, error._timedOut));
 									}, this, true), this);
 							}
 						}, this);
@@ -411,12 +396,8 @@ ContextQuery.mixin({
 									}), this);
 								}, this, true),
 								allSignals.orPending(function context$objects$callback(error) {
-									ExoWeb.trace.logError("objectInit",
-										"Failed to load {0}({1}) (HTTP: {2}, Timeout: {3})",
-										query.from,
-										query.ids,
-										error._statusCode,
-										error._timedOut);
+									throw new Error($format("Failed to load {0}|{1} (HTTP: {2}, Timeout: {3})",
+										query.from, query.ids, error._statusCode, error._timedOut));
 								}, this, true)
 							);
 						}
@@ -459,7 +440,7 @@ ContextQuery.mixin({
 								var mtype = this.context.model.meta.type(query.from);
 
 								if (!mtype) {
-									ExoWeb.trace.throwAndLog("context", $format("Could not get type {0} required to process query results.", [query.from]));
+									throw new Error($format("Could not get type {0} required to process query results.", query.from));
 								}
 
 								// establish roots for each id
@@ -479,8 +460,8 @@ ContextQuery.mixin({
 									);
 
 									// If it doesn't exist, raise an error.
-									if (obj === undefined) {
-										ExoWeb.trace.throwAndLog("context", "Could not get {0} with id = {1}{2}.", [query.from, clientId, (id !== clientId ? "(" + id + ")" : "")]);
+									if (obj == null) {
+										throw new Error("Could not get " + query.from + " with id = " + clientId + (id !== clientId ? "(" + id + ")" : "") + ".");
 									}
 
 									// Otherwise, include it in the model.
@@ -543,7 +524,6 @@ ContextQuery.mixin({
 	///////////////////////////////////////////////////////////////////////////////
 		function ContextQuery$postQueries(callback, thisPtr) {
 			if (this.options.model) {
-				ExoWeb.trace.log("context", "Running post query step for model queries.");
 				ExoWeb.eachProp(this.options.model, function (varName, query) {
 					if (this.state[varName].scopeQuery) {
 						ServerSync$addScopeQuery.call(this.context.server, this.state[varName].scopeQuery);
