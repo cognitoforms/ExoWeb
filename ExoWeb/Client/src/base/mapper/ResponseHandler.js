@@ -34,32 +34,29 @@ ResponseHandler.mixin({
 			/// <summary>
 			/// Load types from JSON
 			/// </summary>
-
-		    if (this._options.types) {
-
-		        //force load types before clean up code below
-		        // load type(s)
-		        //var typesToUse = {};
-		        //typesToUse[typeName] = this._options.types[typeName];
-		        typesFromJson(this._model, this._options.types);
-
-				/*for (var typeName in this._options.types) {
+			if (this._options.types) {
+				for (var typeName in this._options.types) {
 					var signal = new Signal("embeddedType(" + typeName + ")");
-
 					var mtype = this._model.type(typeName);
 
-					// ensure base classes are loaded too
-					mtype.eachBaseType(function (mtype) {
-						if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-							ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
-						}
-					});
-				}*/
+					if (!mtype || !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+						var typesToUse = {};
+						typesToUse[typeName] = this._options.types[typeName];
+						typesFromJson(this._model, typesToUse);
 
-				for (var typeName in this._options.types) {
-				    var mtype = this._model.type(typeName);
-				    TypeLazyLoader.unregister(mtype);
-				    raiseExtensions(mtype);
+						mtype = this._model.type(typeName);
+
+						mtype.eachBaseType(function(mtype) {
+							if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+								ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
+							}
+						});
+
+						signal.waitForAll(function() {
+							TypeLazyLoader.unregister(mtype);
+							raiseExtensions(mtype);
+						});
+					}
 				}
 			}
 
