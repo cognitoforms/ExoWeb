@@ -36,9 +36,9 @@ ResponseHandler.mixin({
 			/// </summary>
 			if (this._options.types) {
 				for (var typeName in this._options.types) {
-					var signal = new Signal("embeddedType(" + typeName + ")");
 					var mtype = this._model.type(typeName);
 
+					// If this type has not already been loaded, laod from JSON
 					if (!mtype || !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
 						var typesToUse = {};
 						typesToUse[typeName] = this._options.types[typeName];
@@ -46,15 +46,11 @@ ResponseHandler.mixin({
 
 						mtype = this._model.type(typeName);
 
+						// Ensure all base types are loaded
 						mtype.eachBaseType(function(mtype) {
 							if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-								ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending());
+								throw new Error("Type [" + mtype + "], being extended by [" + typeName + "] is not loaded.  Please include this type in the embedded payload.");
 							}
-						});
-
-						signal.waitForAll(function() {
-							TypeLazyLoader.unregister(mtype);
-							raiseExtensions(mtype);
 						});
 					}
 				}
