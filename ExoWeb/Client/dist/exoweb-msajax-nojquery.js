@@ -8864,12 +8864,11 @@ window.ExoWeb.DotNet = {};
 
 							mtype = this._model.type(typeName);
 
-							// Ensure all base types are loaded
-							mtype.eachBaseType(function(mtype) {
-								if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-									throw new Error("Type [" + mtype + "], being extended by [" + typeName + "] is not loaded.  Please include this type in the embedded payload.");
-								}
-							});
+							// Remove lazy-loader
+							TypeLazyLoader.unregister(mtype);
+
+							// Raise $.extends for the type
+							raiseExtensions(mtype);
 						}
 					}
 				}
