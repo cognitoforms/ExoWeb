@@ -529,6 +529,12 @@ Property.mixin({
 		new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
 		return this;
 	},
+	optionValues: function (source, error) {
+	    var options = preparePropertyRuleOptions(this, { source: source }, error);
+	    options.ignoreValidation = true;
+	    new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
+	    return this;
+	},
 	compare: function (operator, source, error) {
 		var options = preparePropertyRuleOptions(this, { compareOperator: operator, compareSource: source }, error);
 		new ExoWeb.Model.Rule.compare(this._containingType, options);

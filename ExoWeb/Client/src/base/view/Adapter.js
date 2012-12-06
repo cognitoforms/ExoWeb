@@ -720,8 +720,10 @@ function allowedValuesChanged(optionsSourceArray, sender, args) {
 	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
 	var allowedValues = allowedValuesRule.values(this._propertyChain.lastTarget(this._target), !!this._allowedValuesMayBeNull);
 
-	// Clear out invalid selections
-	clearInvalidOptions.call(this, allowedValues);
+    // Clear out invalid selections
+	if (!allowedValuesRule.ignoreValidation) {
+	    clearInvalidOptions.call(this, allowedValues);
+	}
 
 	// Load allowed value items that were added
 	if (args.changes) {
@@ -787,7 +789,9 @@ Adapter.mixin({
 				if (!allowedValues) {
 					this._allowedValuesExistHandler = checkAllowedValuesExist.bind(this);
 					allowedValuesRule.source.addChanged(this._allowedValuesExistHandler, targetObj);
-					clearInvalidOptions.call(this);
+					if (!allowedValuesRule.ignoreValidation) {
+					    clearInvalidOptions.call(this);
+					}
 					this._options = null;
 					return;
 				}
@@ -800,7 +804,9 @@ Adapter.mixin({
 					return;
 				}
 
-				clearInvalidOptions.call(this, allowedValues);
+				if (!allowedValuesRule.ignoreValidation) {
+				    clearInvalidOptions.call(this, allowedValues);
+				}
 
 				// Create an observable copy of the allowed values that we can keep up to date in our own time
 				var observableAllowedValues = allowedValues.slice();

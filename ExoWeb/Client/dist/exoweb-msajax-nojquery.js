@@ -5220,6 +5220,12 @@ window.ExoWeb.DotNet = {};
 			new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
 			return this;
 		},
+		optionValues: function (source, error) {
+		    var options = preparePropertyRuleOptions(this, { source: source }, error);
+		    options.ignoreValidation = true;
+		    new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
+		    return this;
+		},
 		compare: function (operator, source, error) {
 			var options = preparePropertyRuleOptions(this, { compareOperator: operator, compareSource: source }, error);
 			new ExoWeb.Model.Rule.compare(this._containingType, options);
@@ -7040,6 +7046,10 @@ window.ExoWeb.DotNet = {};
 			Object.defineProperty(this, "sourcePath", { value: options.source });
 		}
 
+		if (options.ignoreValidation) {
+		    Object.defineProperty(this, "ignoreValidation", { value: options.ignoreValidation });
+		}
+
 		// call the base type constructor
 		ValidatedPropertyRule.apply(this, [rootType, options]);
 
@@ -7064,6 +7074,12 @@ window.ExoWeb.DotNet = {};
 			ValidatedPropertyRule.prototype.onRegister.call(this);
 		},
 		isValid: function AllowedValuesRule$isValid(obj, prop, value) {
+
+		    //gives the ability to create a drop down of available options
+	        //but does not need validatin (combo box)
+		    if (this.ignoreValidation) {
+		        return true;
+		    }
 
 			// return true if no value is currently selected
 			if (value === undefined || value === null) {
@@ -16217,8 +16233,10 @@ window.ExoWeb.DotNet = {};
 		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
 		var allowedValues = allowedValuesRule.values(this._propertyChain.lastTarget(this._target), !!this._allowedValuesMayBeNull);
 
-		// Clear out invalid selections
-		clearInvalidOptions.call(this, allowedValues);
+	    // Clear out invalid selections
+		if (!allowedValuesRule.ignoreValidation) {
+		    clearInvalidOptions.call(this, allowedValues);
+		}
 
 		// Load allowed value items that were added
 		if (args.changes) {
@@ -16284,7 +16302,9 @@ window.ExoWeb.DotNet = {};
 					if (!allowedValues) {
 						this._allowedValuesExistHandler = checkAllowedValuesExist.bind(this);
 						allowedValuesRule.source.addChanged(this._allowedValuesExistHandler, targetObj);
-						clearInvalidOptions.call(this);
+						if (!allowedValuesRule.ignoreValidation) {
+						    clearInvalidOptions.call(this);
+						}
 						this._options = null;
 						return;
 					}
@@ -16297,7 +16317,9 @@ window.ExoWeb.DotNet = {};
 						return;
 					}
 
-					clearInvalidOptions.call(this, allowedValues);
+					if (!allowedValuesRule.ignoreValidation) {
+					    clearInvalidOptions.call(this, allowedValues);
+					}
 
 					// Create an observable copy of the allowed values that we can keep up to date in our own time
 					var observableAllowedValues = allowedValues.slice();

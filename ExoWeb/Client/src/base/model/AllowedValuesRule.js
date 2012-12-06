@@ -30,6 +30,10 @@ function AllowedValuesRule(rootType, options) {
 		Object.defineProperty(this, "sourcePath", { value: options.source });
 	}
 
+	if (options.ignoreValidation) {
+	    Object.defineProperty(this, "ignoreValidation", { value: options.ignoreValidation });
+	}
+
 	// call the base type constructor
 	ValidatedPropertyRule.apply(this, [rootType, options]);
 
@@ -54,6 +58,12 @@ AllowedValuesRule.mixin({
 		ValidatedPropertyRule.prototype.onRegister.call(this);
 	},
 	isValid: function AllowedValuesRule$isValid(obj, prop, value) {
+
+	    //gives the ability to create a drop down of available options
+        //but does not need validatin (combo box)
+	    if (this.ignoreValidation) {
+	        return true;
+	    }
 
 		// return true if no value is currently selected
 		if (value === undefined || value === null) {
