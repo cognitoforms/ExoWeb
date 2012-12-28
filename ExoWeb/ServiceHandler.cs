@@ -10,6 +10,7 @@ using System.Reflection;
 using ExoRule;
 using System.Diagnostics;
 using ExoRule.Validation;
+using ExoWeb.Serialization;
 
 namespace ExoWeb
 {
@@ -41,14 +42,8 @@ namespace ExoWeb
 		{
 			IsExecuting = true;
 
-			string json = null;
-
 			try
 			{
-				// Read the request JSON
-				using (StreamReader reader = new StreamReader(context.Request.InputStream))
-					json = reader.ReadToEnd();
-
 				// Perform the requested operation
 				switch (context.Request.PathInfo)
 				{
@@ -61,7 +56,7 @@ namespace ExoWeb
 
 						// Output the type metadata
 						context.Response.ContentType = "application/json";
-						context.Response.Write(ExoWeb.FromJson<ServiceRequest>("{types:[" + context.Request.QueryString["type"] + "]}").Invoke(null).ToJson());
+						JsonUtility.Serialize(context.Response.OutputStream, new ServiceRequest(context.Request.QueryString["type"].Replace("\"", "")).Invoke(null));
 
 						break;
 
@@ -69,18 +64,22 @@ namespace ExoWeb
 
 						// Raise the error event
 						context.Response.ContentType = "application/json";
-						ExoWeb.OnError(ExoWeb.FromJson<ServiceError>(json));
+						ExoWeb.OnError(JsonUtility.Deserialize<ServiceError>(context.Request.InputStream));
 
 						break;
 
 					default:
 
 						// Deserialize the request
-						ServiceRequest request = ExoWeb.FromJson<ServiceRequest>(json);
+						ServiceRequest request = JsonUtility.Deserialize<ServiceRequest>(context.Request.InputStream);
 
 						// Invoke the request and output the response
 						context.Response.ContentType = "application/json";
-						context.Response.Write(request.Invoke(null).ToJson());
+						using (var test = new StringWriter())
+						{
+							JsonUtility.Serialize(test, request.Invoke(null));
+							context.Response.Write(test.ToString());
+						}
 
 						break;
 				}
@@ -97,7 +96,7 @@ namespace ExoWeb
 
 				if (error.AdditionalInfo == null)
 					error.AdditionalInfo = new Dictionary<string, object>();
-				error.AdditionalInfo.Add("Client.RequestJson", json);
+				//error.AdditionalInfo.Add("Client.RequestJson", json);
 
 				// Raise the error event
 				ExoWeb.OnError(error);
@@ -116,7 +115,7 @@ namespace ExoWeb
 					context.Response.TrySkipIisCustomErrors = true; 
 				}
 
-				context.Response.Write(ExoWeb.ToJson(typeof(ServiceError), error));
+				context.Response.Write(ExoWeb.ToJson(error));
 			}
 		}
 

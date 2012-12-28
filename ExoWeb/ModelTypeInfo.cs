@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using ExoModel;
 using ExoRule;
+using ExoWeb.Serialization;
 
 namespace ExoWeb
 {
@@ -42,20 +43,20 @@ namespace ExoWeb
 
 		#region IJsonSerializable
 
-		void IJsonSerializable.Serialize(Json json)
+		void IJsonSerializable.Serialize(JsonWriter writer)
 		{
 			// Serialize static property values
 			if (StaticProperties.Count > 0)
-				json.Set("static", StaticProperties.ToDictionary(
+				writer.Set("static", StaticProperties.ToDictionary(
 					property => property.Name, 
 					property => JsonConverter.GetPropertyValue(property, property.DeclaringType)));
 
 			// Serialize instances
 			foreach (var instance in Instances)
-				json.Set(instance.Key, instance.Value);
+				writer.Set(instance.Key, instance.Value);
 		}
 
-		object IJsonSerializable.Deserialize(Json json)
+		object IJsonSerializable.Deserialize(JsonReader reader)
 		{
 			throw new NotSupportedException();
 		}

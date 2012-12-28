@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using ExoModel;
 using ExoRule;
+using ExoWeb.Serialization;
 
 namespace ExoWeb
 {
@@ -11,11 +12,13 @@ namespace ExoWeb
 	/// Represents a response to a service request.  Depending on the type of request, different values will be 
 	/// initialize on the instance.
 	/// </summary>
-	internal class ServiceResponse
+	internal class ServiceResponse : IJsonSerializable
 	{
 		static string typeCacheHash;
 
 		static Dictionary<string, string> typeJson;
+
+		static Dictionary<string, string> cachedInstances = new Dictionary<string, string>();
 
 		public string[] Types { get; internal set; }
 
@@ -49,46 +52,6 @@ namespace ExoWeb
 		}
 
 		/// <summary>
-		/// Efficiently serializes the request to json leveraging caching for model type requests.
-		/// </summary>
-		/// <returns></returns>
-		internal string ToJson()
-		{
-			var builder = new StringBuilder();
-
-			builder.Append("{");
-
-			if (Types != null && Types.Any())
-			{
-				builder.Append("\"types\":{");
-				foreach (var type in Types)
-					builder.Append(builder.Length > 10 ? ",\"" : "\"").Append(type).Append("\":").Append(GetTypeJson(type));
-				builder.Append("}");
-			}
-
-			if (Instances != null && Instances.Any())
-				builder.Append(builder.Length > 1 ? "," : "").Append("\"instances\":").Append(ExoWeb.ToJson(Instances.GetType(), Instances));
-
-			if (Conditions != null && Conditions.Any())
-				builder.Append(builder.Length > 1 ? "," : "").Append("\"conditions\":").Append(ExoWeb.ToJson(Conditions.GetType(), Conditions));
-
-			if (Events != null && Events.Any())
-				builder.Append(builder.Length > 1 ? "," : "").Append("\"events\":").Append(ExoWeb.ToJson(Events.GetType(), Events));
-
-			if (Model != null && Model.Any())
-				builder.Append(builder.Length > 1 ? "," : "").Append("\"model\":").Append(ExoWeb.ToJson(Model.GetType(), Model));
-
-			if (ServerInfo != null)
-				builder.Append(builder.Length > 1 ? "," : "").Append("\"serverInfo\":").Append(ExoWeb.ToJson(ServerInfo.GetType(), ServerInfo));
-
-			if (Changes != null && Changes.Any())
-				builder.Append(builder.Length > 1 ? "," : "").Append("\"changes\":").Append(ExoWeb.ToJson(typeof(IEnumerable<ModelEvent>), Changes.Where(modelEvent => !(modelEvent is ModelValueChangeEvent) || ExoWeb.IncludeInClientModel(((ModelValueChangeEvent)modelEvent).Property))));
-
-			builder.Append("}");
-			return builder.ToString();
-		}
-
-		/// <summary>
 		/// Gets the type json for the specified <see cref="ModelType"/>.
 		/// </summary>
 		/// <param name="type"></param>
@@ -108,8 +71,92 @@ namespace ExoWeb
 				return json;
 
 			// Create and cache the type json if it does not yet exist
-			typeJson[type] = json = ExoWeb.ToJson(typeof(ModelType), ModelContext.Current.GetModelType(type));
+			typeJson[type] = json = JsonUtility.Serialize(ModelContext.Current.GetModelType(type));
 			return json;
+		}
+
+		void IJsonSerializable.Serialize(JsonWriter writer)
+		{
+			// Types
+			if (Types != null && Types.Any())
+			{
+				writer.WritePropertyName("types");
+				writer.WriteStartObject();
+				foreach (var type in Types)
+				{
+					writer.WritePropertyName(type);
+					writer.WriteRawValue(GetTypeJson(type));
+				}
+				writer.WriteEndObject();
+			}
+
+			if (Instances != null && Instances.Any())
+			{
+				writer.WritePropertyName("instances");
+				writer.WriteStartObject();
+
+				foreach (var typeItem in Instances)
+				{
+					writer.WritePropertyName(typeItem.Key);
+					writer.WriteStartObject();
+
+					// Serialize static property values
+					if (typeItem.Value.StaticProperties.Count > 0)
+					{
+						writer.WritePropertyName("static");
+						writer.Serialize(
+							typeItem.Value.StaticProperties.ToDictionary(
+							property => property.Name,
+							property => JsonConverter.GetPropertyValue(property, property.DeclaringType)));
+					}
+
+					// Serialize instances
+					foreach (var instanceItem in typeItem.Value.Instances)
+					{
+						writer.WritePropertyName(instanceItem.Key);
+						writer.Serialize(instanceItem.Value);
+					}
+
+					writer.WriteEndObject();
+				}
+
+				writer.WriteEndObject();
+			}
+
+			if (Conditions != null && Conditions.Any())
+			{
+				writer.WritePropertyName("conditions");
+				writer.Serialize(Conditions);
+			}
+
+			if (Events != null && Events.Any())
+			{
+				writer.WritePropertyName("events");
+				writer.Serialize(Events);
+			}
+
+			if (Model != null && Model.Any())
+			{
+				writer.WritePropertyName("model");
+				writer.Serialize(Model);
+			}
+
+			if (ServerInfo != null)
+			{
+				writer.WritePropertyName("serverInfo");
+				writer.Serialize(ServerInfo);
+			}
+
+			if (Changes != null && Changes.Any())
+			{
+				writer.WritePropertyName("changes");
+				writer.Serialize(Changes.Where(modelEvent => !(modelEvent is ModelValueChangeEvent) || ExoWeb.IncludeInClientModel(((ModelValueChangeEvent)modelEvent).Property)));
+			}
+		}
+
+		object IJsonSerializable.Deserialize(JsonReader reader)
+		{
+			throw new NotImplementedException();
 		}
 	}
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using ExoModel;
 using System.Collections;
+using ExoWeb.Serialization;
 
 namespace ExoWeb
 {

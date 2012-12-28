@@ -7,6 +7,7 @@ using ExoRule;
 using System.Reflection;
 using System.Collections;
 using System.Text.RegularExpressions;
+using ExoWeb.Serialization;
 
 namespace ExoWeb
 {
@@ -17,13 +18,13 @@ namespace ExoWeb
 		ServiceRequest()
 		{ }
 
-		internal ServiceRequest(Query[] queries)
+		internal ServiceRequest(params Query[] queries)
 		{
 			Queries = queries;
 			Config = new Dictionary<string, object>();
 		}
 
-		internal ServiceRequest(string[] types)
+		internal ServiceRequest(params string[] types)
 		{
 			Types = types;
 			Config = new Dictionary<string, object>();
@@ -292,6 +293,10 @@ namespace ExoWeb
 		/// <param name="path"></param>
 		static void ProcessInstance(ModelInstance instance, ModelStepList steps, bool includeInResponse, bool inScope, bool forLoad, ServiceResponse response)
 		{
+			// Avoid processing cached instances not included in the response
+			if (instance.IsCached && !includeInResponse)
+				return;
+
 			ModelInstanceInfo instanceInfo = null;
 
 			// Track the instance if the query represents a load request
@@ -305,7 +310,7 @@ namespace ExoWeb
 					typeInfo.Instances[instance.Id] = instanceInfo = new ModelInstanceInfo(instance);
 
 				// Track in scope instances to limit conditions
-				if (inScope)
+				if (inScope && !instance.IsCached)
 					response.inScopeInstances.Add(instance);
 			}
 
@@ -364,18 +369,28 @@ namespace ExoWeb
 
 			#region IJsonSerializable
 
-			public void Serialize(Json json)
+			public void Serialize(JsonWriter writer)
 			{
 				throw new NotImplementedException();
 			}
 
-			public object Deserialize(Json json)
+			public object Deserialize(JsonReader reader)
 			{
-				// Events
-				Source = json.Get<ChangeSource>("source");
-
-				// Changes
-				Changes = json.Get<List<ModelEvent>>("changes");
+				string property;
+				while (reader.ReadProperty(out property))
+				{
+					switch (property)
+					{
+						case "source":
+							Source = reader.ReadValue<ChangeSource>();
+							break;
+						case "changes":
+							Changes = reader.ReadValue<List<ModelEvent>>();
+							break;
+						default:
+							throw new ArgumentException("The specified property could not be deserialized.", property);
+					}
+				}
 
 				return this;
 			}
@@ -417,63 +432,120 @@ namespace ExoWeb
 
 			#region IJsonSerializable
 
-			void IJsonSerializable.Serialize(Json json)
+			void IJsonSerializable.Serialize(JsonWriter writer)
 			{
 				throw new NotSupportedException();
 			}
 
-			object IJsonSerializable.Deserialize(Json json)
+			object IJsonSerializable.Deserialize(JsonReader reader)
 			{
-				// Get the event target
-				var instance = json.Get<ModelInstance>("instance");
+				ModelInstance instance = null;
+				string eventName = null;
+				string property;
+				Type eventType = null;
+				DomainEvent domainEvent = null;
+				ModelMethod method = null;
+				object[] methodArgs = null;
 
-				// Get the property paths to include
-				Include = json.Get<string[]>("include");
-
-				// Get the type of event
-				string eventName = json.Get<string>("type");
-
-				// First see if it is a custom domain event
-				if (instance != null || eventName == "Save")
+				while (reader.ReadProperty(out property))
 				{
-					Type eventType = eventName == "Save" ? typeof(SaveEvent) : instance.Type.GetEventType(eventName);
-
-					// Strongly-type event
-					if (eventType != null)
+					switch (property)
 					{
-						// Create a generic event instance
-						DomainEvent domainEvent = (DomainEvent)typeof(DomainEvent<>)
-							.MakeGenericType(eventType)
-							.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { eventType }, null)
-							.Invoke(new object[] { json.Get(eventType, "event") });
+						// Get the event target
+						case "instance":
+							instance = reader.ReadValue<ModelInstance>();
+							break;
 
-						// Set the event target and inclusion paths
-						domainEvent.Instance = instance;
-						domainEvent.Include = Include;
+						// Get the property paths to include
+						case "include":
+							Include = reader.ReadValue<string[]>();
+							break;
 
-						// Return the new event
-						return domainEvent;
+						// Get the type of event
+						case "type":
+							eventName = reader.ReadValue<string>();
+							break;
+
+						// Get the event data
+						case "event":
+							if (eventName != null && instance != null)
+								eventType = instance.Type.GetEventType(eventName);
+
+							// Deserialize the strongly-typed event
+							if (eventType != null)
+							{
+								// Create a generic event instance
+								domainEvent = (DomainEvent)typeof(DomainEvent<>)
+									.MakeGenericType(eventType)
+									.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new Type[] { eventType }, null)
+									.Invoke(new object[] { reader.ReadValue(eventType) });
+
+								// Set the event target and inclusion paths
+								domainEvent.Instance = instance;
+								domainEvent.Include = Include;
+							}
+
+							// Otherwise, see if it is a model method invocation	
+							else
+							{
+								var separator = eventName.LastIndexOf(".");
+								if (separator > 0)
+								{
+									var type = ModelContext.Current.GetModelType(eventName.Substring(0, separator));
+									var methodName = eventName.Substring(separator + 1);
+									while (type != null && method == null)
+									{
+										method = type.Methods[methodName];
+										type = type.BaseType;
+									}
+
+									if (method != null && reader.TokenType == Newtonsoft.Json.JsonToken.StartObject && reader.Read())
+									{
+										methodArgs = new object[method.Parameters.Count];
+
+										string parameter;
+										while (reader.ReadProperty(out parameter))
+										{
+											// Get the parameter with the specified name
+											var p = method.Parameters.FirstOrDefault(pm => pm.Name == parameter);
+											if (p == null)
+												throw new ArgumentException("The parameter '" + property + "' is not valid for method '" + method.DeclaringType.Name + "." + method.Name + "'.");
+
+											// Value type
+											if (p.ReferenceType == null)
+												methodArgs[p.Index] = reader.ReadValue(p.ParameterType);
+
+											// List type
+											else if (p.IsList)
+												methodArgs[p.Index] = reader.ReadValue<ModelInstance[]>();
+
+											// Reference type
+											else
+												methodArgs[p.Index] = reader.ReadValue<ModelInstance>();
+										}
+										reader.Read();
+									}
+								}
+							}
+							break;
+
+						default:
+							throw new ArgumentException("The specified property could not be deserialized.", property);
 					}
 				}
 
-				// Then see if it is a model method invocation
-				var separator = eventName.LastIndexOf(".");
-				if (separator > 0)
-				{
-					var type = ModelContext.Current.GetModelType(eventName.Substring(0, separator));
-					var methodName = eventName.Substring(separator + 1);
-					ModelMethod method = null;
-					while (type != null && method == null)
-					{
-						method = type.Methods[methodName];
-						type = type.BaseType;
-					}
+				// Custom domain event
+				if (domainEvent != null)
+					return domainEvent;
 
-					if (method != null)
-						return new ModelMethodEvent(instance, method, json.Get<Json>("event"), Include);
-				}
+				// Method invocation
+				if (method != null)
+					return new ModelMethodEvent(instance, method, methodArgs, Include);
 
-				// Indicate that the event name could not be resolved
+				if (eventName == "Save")
+					return new DomainEvent<SaveEvent>(new SaveEvent()) { Instance = instance, Include = Include };
+
+				// Indicate that the event could not be resolved
 				throw new ArgumentException(eventName + " is not a valid event for " + instance.Type.Name);
 			}
 
@@ -525,37 +597,35 @@ namespace ExoWeb
 		class ModelMethodEvent : DomainEvent
 		{
 			ModelMethod method;
-			Json json;
+			object[] args;
 
-			internal ModelMethodEvent(ModelInstance instance, ModelMethod method, Json json, string[] include)
+			internal ModelMethodEvent(ModelInstance instance, ModelMethod method, object[] args, string[] include)
 			{
 				this.Instance = instance;
 				this.method = method;
-				this.json = json;
 				this.Include = include;
+				this.args = args;
 			}
 
 			internal override object Raise(ModelTransaction transaction)
 			{
-				object[] args = method.Parameters.Select(p =>
+				// Resolve reference arguments
+				foreach (var p in method.Parameters)
 				{
-					if (p.ReferenceType == null)
-						return json.Get(p.ParameterType, p.Name);
-					else if (p.IsList)
+					if (p.ReferenceType != null && args[p.Index] != null)
 					{
-						ModelInstance[] modelInstances = json.Get<ModelInstance[]>(p.Name);
-						return modelInstances.Select(gi => transaction.GetInstance(gi.Type, gi.Id)).ToList(p.ReferenceType, p.ParameterType);
+						if (p.IsList)
+							args[p.Index] = ((ModelInstance[])args[p.Index]).Select(gi => transaction.GetInstance(gi.Type, gi.Id)).ToList(p.ReferenceType, p.ParameterType);
+						else
+						{
+							ModelInstance mi = (ModelInstance)args[p.Index];
+							mi = transaction.GetInstance(mi.Type, mi.Id);
+							args[p.Index] = mi == null ? null : mi.Instance;
+						}
 					}
-					else
-					{
-						ModelInstance gi = json.Get<ModelInstance>(p.Name);
-						if (gi != null)
-							gi = transaction.GetInstance(gi.Type, gi.Id);
-						return gi == null ? null : gi.Instance;
-					}
-				})
-				.ToArray();
-
+				}
+				
+				// Invoke the method
 				return method.Invoke(Instance, args);
 			}
 		}
@@ -747,40 +817,57 @@ namespace ExoWeb
 
 			#region IJsonSerializable
 
-			void IJsonSerializable.Serialize(Json json)
+			void IJsonSerializable.Serialize(JsonWriter writer)
 			{
 				if (IsList)
-					json.Set("ids", Roots.Select(r => r.Id));
+					writer.Set("ids", Roots.Select(r => r.Id));
 				else
-					json.Set("id", Roots[0].Id);
-				json.Set("from", From.Name);
+					writer.Set("id", Roots[0].Id);
+				writer.Set("from", From.Name);
 
 				if (Include != null)
-					json.Set("include", Include);
+					writer.Set("include", Include);
 
-				json.Set("inScope", InScope);
+				writer.Set("inScope", InScope);
 			}
 
-			object IJsonSerializable.Deserialize(Json json)
+			object IJsonSerializable.Deserialize(JsonReader reader)
 			{
-				string typeName = json.Get<string>("from");
-				if (typeName != null)
-					From = ModelContext.Current.GetModelType(typeName);
+				// Set defaults
+				InScope = true;
+				ForLoad = true;
 
-				if (json.IsNull("id"))
+				string property;
+				while (reader.ReadProperty(out property))
 				{
-					IsList = true;
-					Ids = json.Get<string[]>("ids");
+					switch (property)
+					{
+						case "from":
+							string typeName = reader.ReadValue<string>();
+							if (typeName != null)
+								From = ModelContext.Current.GetModelType(typeName);
+							break;
+						case "ids":
+							IsList = true;
+							Ids = reader.ReadValue<string[]>();
+							break;
+						case "id":
+							IsList = false;
+							Ids = new string[] { reader.ReadValue<string>() };
+							break;
+						case "include":
+							Include = reader.ReadValue<string[]>();
+							break;
+						case "inScope":
+							InScope = reader.ReadValue<bool>();
+							break;
+						case "forLoad":
+							ForLoad = reader.ReadValue<bool>();
+							break;
+						default:
+							throw new ArgumentException("The specified property could not be deserialized.", property);
+					}
 				}
-				else
-				{
-					IsList = false;
-					Ids = new string[] { json.Get<string>("id") };
-				}
-
-				Include = json.Get<string[]>("include");
-				InScope = json.IsNull("inScope") || json.Get<bool>("inScope");
-				ForLoad = json.IsNull("forLoad") || json.Get<bool>("forLoad");
 
 				return this;
 			}
@@ -792,29 +879,37 @@ namespace ExoWeb
 
 		#region IJsonSerializable
 
-		void IJsonSerializable.Serialize(Json json)
+		void IJsonSerializable.Serialize(JsonWriter writer)
 		{
 			throw new NotSupportedException();
 		}
 
-		object IJsonSerializable.Deserialize(Json json)
+		object IJsonSerializable.Deserialize(JsonReader reader)
 		{
-			// Types
-			Types = json.Get<string[]>("types");
-
-			// Queries
-			Queries = json.Get<Query[]>("queries");
-
-			// Events
-			Events = json.Get<DomainEvent[]>("events");
-
-			// Changes
-			Changes = json.Get<ChangeSet[]>("changes");
-
-			// Config
-			Config = json.Get<Dictionary<string, object>>("config");
-			if (Config == null)
-				Config = new Dictionary<string, object>(0);
+			string property;
+			while (reader.ReadProperty(out property))
+			{
+				switch (property)
+				{
+					case "types":
+						Types = reader.ReadValue<string[]>();
+						break;
+					case "queries":
+						Queries = reader.ReadValue<Query[]>();
+						break;
+					case "events":
+						Events = reader.ReadValue<DomainEvent[]>();
+						break;
+					case "changes":
+						Changes = reader.ReadValue<ChangeSet[]>();
+						break;
+					case "config":
+						Config = reader.ReadValue<Dictionary<string, object>>() ?? new Dictionary<string, object>(0);
+						break;
+					default:
+						throw new ArgumentException("The specified property could not be deserialized.", property);
+				}
+			}
 
 			return this;
 		}

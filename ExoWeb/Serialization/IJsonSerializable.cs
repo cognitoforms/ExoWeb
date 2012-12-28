@@ -5,12 +5,12 @@ using System.Text;
 using System.Web.Script.Serialization;
 using System.Reflection;
 
-namespace ExoWeb
+namespace ExoWeb.Serialization
 {
 	public interface IJsonSerializable
 	{
-		void Serialize(Json json);
+		void Serialize(JsonWriter writer);
 
-		object Deserialize(Json json); 
+		object Deserialize(JsonReader reader);
 	}
 }

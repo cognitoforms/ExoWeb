@@ -7,6 +7,7 @@ using ExoRule;
 using ExoRule.Validation;
 using System.Collections;
 using ExoWeb.Templates.JavaScript;
+using ExoWeb.Serialization;
 
 namespace ExoWeb.Templates
 {

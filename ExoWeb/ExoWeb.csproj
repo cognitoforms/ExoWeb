@@ -84,13 +84,14 @@
     <Compile Include="EnsureConditionsEventArgs.cs" />
     <Compile Include="ExoWeb.cs" />
     <Compile Include="JavaScriptExpressionTranslator.cs" />
-    <Compile Include="JsonSerializer.cs" />
     <Compile Include="ModelInstanceInfo.cs" />
     <Compile Include="ModelTypeInfo.cs" />
-    <Compile Include="IJsonSerializable.cs" />
-    <Compile Include="Json.cs" />
-    <Compile Include="JsonConverter.cs" />
     <Compile Include="Diagnostics\PerformanceCounters.cs" />
+    <Compile Include="Serialization\IJsonSerializable.cs" />
+    <Compile Include="Serialization\JsonConverter.cs" />
+    <Compile Include="Serialization\JsonReader.cs" />
+    <Compile Include="Serialization\JsonUtility.cs" />
+    <Compile Include="Serialization\JsonWriter.cs" />
     <Compile Include="ServerInformation.cs" />
     <Compile Include="ServiceError.cs" />
     <Compile Include="ServiceRequestEventArgs.cs" />
@@ -159,6 +160,10 @@
     <ProjectReference Include="..\..\ExoRule\ExoRule\ExoRule.csproj">
       <Project>{B67D2642-A41A-42B2-8454-78ABA257008F}</Project>
       <Name>ExoRule</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Newtonsoft.Json\Src\Newtonsoft.Json\Newtonsoft.Json.Net35.csproj">
+      <Project>{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}</Project>
+      <Name>Newtonsoft.Json.Net35</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

@@ -11,13 +11,13 @@ using System.Diagnostics;
 using System.Xml;
 using System.ComponentModel;
 
-namespace ExoWeb
+namespace ExoWeb.Serialization
 {
 	/// <summary>
 	/// Supports conversion to JSON of types implementing <see cref="IJsonConverter"/> or having
 	/// <see cref="DataContractAttribute"/> used for enabling WCF serialization.
 	/// </summary>
-	public class JsonConverter : JavaScriptConverter
+	public class JsonConverter : Newtonsoft.Json.JsonConverter
 	{
 		#region Fields
 
@@ -48,17 +48,20 @@ namespace ExoWeb
 			{ typeof(Guid?),		    "String"  }
 		};
 
-		Type type;
-		Action<object, Json> serialize;
-		Func<Json, object> deserialize;
+
+		Action<object, JsonWriter> serialize;
+		Func<JsonReader, object> deserialize;
+
+		internal Type Type { get; set; }
+		internal IEnumerable<Newtonsoft.Json.JsonConverter> Converters { get; set; }
 
 		#endregion
 
 		#region Constructors
 
-		public JsonConverter(Type type, Action<object, Json> serialize, Func<Json, object> deserialize)
+		public JsonConverter(Type type, Action<object, JsonWriter> serialize, Func<JsonReader, object> deserialize)
 		{
-			this.type = type;
+			this.Type = type;
 			this.serialize = serialize;
 			this.deserialize = deserialize;
 		}
@@ -66,6 +69,63 @@ namespace ExoWeb
 		#endregion
 
 		#region Methods
+
+		public override bool CanConvert(Type objectType)
+		{
+			// Immediately return true if the specified type matches the target type of the converter
+			if (objectType == Type)
+				return true;
+
+			// Immediately return false if the specified type is not a subclass of the target type of the converter
+			if (!objectType.IsSubclassOf(Type))
+				return false;
+			
+			// Ensure that a more suitable converter is not available before indicating that this converter will work
+			for (var subType = objectType; subType != Type; subType = subType.BaseType)
+			{
+				foreach (var converter in Converters.OfType<JsonConverter>())
+				{
+					if (converter != this && converter.Type == subType)
+						return false;
+				}
+			}
+			return true;
+		}
+
+		public override bool CanRead
+		{
+			get
+			{
+				return deserialize != null;
+			}
+		}
+
+		public override bool CanWrite
+		{
+			get
+			{
+				return serialize != null;
+			}
+		}
+
+		public override object ReadJson(Newtonsoft.Json.JsonReader reader, Type objectType, object value, Newtonsoft.Json.JsonSerializer serializer)
+		{
+			if (reader.TokenType == Newtonsoft.Json.JsonToken.StartObject && reader.Read())
+			{
+				value = deserialize((JsonReader)reader);
+				if (reader.TokenType != Newtonsoft.Json.JsonToken.EndObject)
+					throw new FormatException("End object '}' expected");
+			}
+			return value;
+		}
+
+
+		public override void WriteJson(Newtonsoft.Json.JsonWriter writer, object value, Newtonsoft.Json.JsonSerializer serializer)
+		{
+			writer.WriteStartObject();
+			serialize(value, (JsonWriter)writer);
+			writer.WriteEndObject();
+		}
 
 		public static IEnumerable<JsonConverter> Infer(IEnumerable<Type> types)
 		{
@@ -82,73 +142,6 @@ namespace ExoWeb
 							(json) => ((IJsonSerializable)constructor.Invoke(null)).Deserialize(json));
 					}
 				}
-
-				// Classes with DataContract attributes
-				else if (type.GetCustomAttributes(typeof(DataContractAttribute), true).Any())
-				{
-					// Get the names and the property info instances of properties to be serialized for the current type
-					var properties =
-					(
-						from member in GetMembers(type)
-						let dataMember = (DataMemberAttribute)member.GetCustomAttributes(typeof(DataMemberAttribute), false).FirstOrDefault()
-						where dataMember != null
-						select new { Name = dataMember.Name ?? member.Name, MemberInfo = member }
-					)
-
-					// Force the enumeration to run immediately to ensure the closure tracks a precalculated value
-					.ToArray();
-
-					// Cache the current type to make the closure works (.NET compiler bug?)
-					var currentType = type;
-
-					// Serialize and deserialize properties based on their DataMember attributes
-					yield return new JsonConverter(type,
-						(instance, json) =>
-						{
-							foreach (var property in properties)
-								json.Set(property.Name, property.MemberInfo is FieldInfo ? 
-									((FieldInfo)property.MemberInfo).GetValue(instance) : 
-									((PropertyInfo)property.MemberInfo).GetValue(instance, null));
-						},
-						(json) =>
-						{
-							object instance = FormatterServices.GetUninitializedObject(currentType);
-							foreach (var property in properties)
-							{
-								// Get the property value from the json
-								object value = json.Get(property.MemberInfo is FieldInfo ? 
-									((FieldInfo)property.MemberInfo).FieldType : 
-									((PropertyInfo)property.MemberInfo).PropertyType, property.Name);
-
-								// Set the property value if it is not null
-								if (value != null)
-								{
-									if (property.MemberInfo is FieldInfo)
-										((FieldInfo)property.MemberInfo).SetValue(instance, value);
-									else
-										((PropertyInfo)property.MemberInfo).SetValue(instance, value, null);
-								}
-							}
-							return instance;
-						});
-				}
-			}
-		}
-
-		static IEnumerable<MemberInfo> GetMembers(Type type)
-		{
-			HashSet<string> members = new HashSet<string>();
-			while (type != null)
-			{
-				foreach (var member in type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
-				{
-					if ((member is FieldInfo || member is PropertyInfo) && !members.Contains(member.Name) && member.GetCustomAttributes(typeof(DataMemberAttribute), false).Any())
-					{
-						members.Add(member.Name);
-						yield return member;
-					}
-				}
-				type = type.BaseType;
 			}
 		}
 
@@ -205,7 +198,7 @@ namespace ExoWeb
 				return jsonType;
 
 			// For unknown values types, return the object type
-			if (ExoWeb.IsSerializable(type))
+			if (JsonUtility.IsSerializable(type))
 				return "Object";
 
 			return null;
@@ -225,47 +218,18 @@ namespace ExoWeb
 		}
 
 		#endregion
-
-		#region JavaScriptConverter
-
-		public override object Deserialize(IDictionary<string, object> dictionary, Type type, JavaScriptSerializer serializer)
-		{
-			if (deserialize == null)
-				throw new NotSupportedException("Deserialization of " + type.FullName + " is not supported.");
-
-			return deserialize(new Json((JsonSerializer)serializer, type, dictionary));
-		}
-
-		public override IDictionary<string, object> Serialize(object value, JavaScriptSerializer serializer)
-		{
-			if (serialize == null)
-				throw new NotSupportedException("Serialization of " + type.FullName + " is not supported.");
-
-			IDictionary<string, object> values = new Dictionary<string, object>();
-			serialize(value, new Json((JsonSerializer)serializer, values));
-			return values;
-		}
-
-		public override IEnumerable<Type> SupportedTypes
-		{
-			get
-			{
-				yield return type;
-			}
-		}
-
-		#endregion
 	}
 
 		/// <summary>
-	/// Supports conversion to JSON of types implementing <see cref="IJsonConverter"/> or having
-	/// <see cref="DataContractAttribute"/> used for enabling WCF serialization.
+	/// Supports conversion to JSON of types.
 	/// </summary>
 	public class JsonConverter<TType> : JsonConverter
 		where TType : class
 	{
-		public JsonConverter(Action<TType, Json> serialize, Func<Json, TType> deserialize)
-			: base(typeof(TType), (instance, json) => serialize((TType)instance, json), (json) => (TType)deserialize(json))
+		public JsonConverter(Action<TType, JsonWriter> serialize, Func<JsonReader, TType> deserialize)
+			: base(typeof(TType), 
+				serialize != null ? (instance, json) => serialize((TType)instance, json) : (Action<object, JsonWriter>)null,
+				deserialize != null ? (json) => (TType)deserialize(json) : (Func<JsonReader, object>)null)
 		{ }
 	}
 }

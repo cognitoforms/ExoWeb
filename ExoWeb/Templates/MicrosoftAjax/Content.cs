@@ -5,6 +5,7 @@ using System.Text;
 using ExoModel;
 using System.Collections;
 using ExoWeb.Templates.JavaScript;
+using ExoWeb.Serialization;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {

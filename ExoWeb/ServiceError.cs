@@ -5,6 +5,7 @@ using System.Text;
 using ExoModel;
 using System.Web;
 using System.Runtime.Serialization;
+using ExoWeb.Serialization;
 
 namespace ExoWeb
 {
@@ -30,24 +31,46 @@ namespace ExoWeb
 
 		#region IJsonSerializable
 
-		void IJsonSerializable.Serialize(Json json)
+		void IJsonSerializable.Serialize(JsonWriter writer)
 		{
-			json.Set("type", Type);
-			json.Set("message", Message);
-			json.Set("stackTrace", StackTrace);
-			json.Set("url", Url);
-			json.Set("refererUrl", RefererUrl);
-			json.Set("additionalInfo", AdditionalInfo);
+			writer.Set("type", Type);
+			writer.Set("message", Message);
+			writer.Set("stackTrace", StackTrace);
+			writer.Set("url", Url);
+			writer.Set("refererUrl", RefererUrl);
+			writer.Set("additionalInfo", AdditionalInfo);
 		}
 
-		object IJsonSerializable.Deserialize(Json json)
+		object IJsonSerializable.Deserialize(JsonReader reader)
 		{
-			Type = json.Get<string>("type");
-			Message = json.Get<string>("message");
-			StackTrace = json.Get<string>("stackTrace");
-			Url = json.Get<string>("url");
-			RefererUrl = json.Get<string>("refererUrl");
-			AdditionalInfo = json.Get<Dictionary<string, object>>("additionalInfo");
+			string property;
+			while (reader.ReadProperty(out property))
+			{
+				switch (property)
+				{
+					case "type":
+						Type = reader.ReadValue<string>();
+						break;
+					case "message":
+						Message = reader.ReadValue<string>();
+						break;
+					case "stackTrace":
+						StackTrace = reader.ReadValue<string>();
+						break;
+					case "url":
+						Url = reader.ReadValue<string>();
+						break;
+					case "refererUrl":
+						RefererUrl = reader.ReadValue<string>();
+						break;
+					case "additionalInfo":
+						AdditionalInfo = reader.ReadValue<Dictionary<string, object>>();
+						break;
+					default:
+						throw new ArgumentException("The specified property could not be deserialized.", property);
+				}
+			}
+
 			return this;
 		}
 
