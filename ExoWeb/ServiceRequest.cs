@@ -245,7 +245,7 @@ namespace ExoWeb
 							if (transaction != null)
 								domainEvent.Instance = transaction.GetInstance(domainEvent.Instance.Type, domainEvent.Instance.Id);
 							else
-								domainEvent.Instance.Type.Create(domainEvent.Instance.Id);
+								domainEvent.Instance = domainEvent.Instance.Type.Create(domainEvent.Instance.Id);
 						}
 
 						var result = domainEvent.Raise(transaction);
