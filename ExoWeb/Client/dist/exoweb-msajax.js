@@ -14135,8 +14135,9 @@ window.ExoWeb.DotNet = {};
 					callback.call(tmpl.get(0));
 				} 
 				else {
-					tmpl.load(path, function (responseText, textStatus, jqXHR) {
-						if (jqXHR.isResolved()) {
+					tmpl.load(path, function(responseText, textStatus, jqXHR) {
+						// Ensure that jqXHR is loaded.  'state' check for jquery 1.7+, 'isResolved' check for jQuery 1.5 - 1.6
+						if ((jqXHR.state && jqXHR.state() === "resolved") || (jqXHR.isResolved && jqXHR.isResolved())) {
 							// Cache the template
 							ExoWeb.cache(path, responseText);
 
