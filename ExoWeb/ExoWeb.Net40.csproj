@@ -1,0 +1,340 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{4B14422C-751C-42AE-832A-B474A4AD0D95}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ExoWeb</RootNamespace>
+    <AssemblyName>ExoWeb</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>3.5</OldToolsVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE;SkipPostSharp</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Jurassic, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Dependencies\Jurassic.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.ServiceModel.Web">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Web.Extensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Client\docs.htm" />
+    <Content Include="Client\dist\jqueryui.exoweb-dialog.js" />
+    <Content Include="Client\ref\jquery\jquery-1.5.1.js" />
+    <Content Include="Client\ref\jquery\jquery-1.7.2.js" />
+    <Content Include="Client\ref\jquery\jquery.observable.js" />
+    <Content Include="Client\ref\jquery\jquery.views.js" />
+    <Content Include="Client\ref\jquery\jsrender.js" />
+    <Content Include="Client\ref\syntaxhighlighter\shBrushJScript.js" />
+    <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
+    <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
+    <Content Include="Client\specs\base\core\FunctorSpecs.js" />
+    <Content Include="Client\src\base\core\Errors.js" />
+    <Content Include="Client\src\base\core\Observer.js" />
+    <Content Include="Client\src\base\core\Warnings.js" />
+    <Content Include="Client\src\base\model\ConditionTarget.js" />
+    <Content Include="Client\src\base\model\Resource.js" />
+    <Content Include="Client\src\base\model\RuleInvocationType.js" />
+    <Content Include="Client\src\base\model\Utilities.js" />
+    <Content Include="Client\src\base\model\ValidatedPropertyRule.js" />
+    <Compile Include="EnsureConditionsEventArgs.cs" />
+    <Compile Include="ExoWeb.cs" />
+    <Compile Include="JavaScriptExpressionTranslator.cs" />
+    <Compile Include="ModelInstanceInfo.cs" />
+    <Compile Include="ModelTypeInfo.cs" />
+    <Compile Include="Diagnostics\PerformanceCounters.cs" />
+    <Compile Include="Serialization\IJsonSerializable.cs" />
+    <Compile Include="Serialization\JsonConverter.cs" />
+    <Compile Include="Serialization\JsonReader.cs" />
+    <Compile Include="Serialization\JsonUtility.cs" />
+    <Compile Include="Serialization\JsonWriter.cs" />
+    <Compile Include="ServerInformation.cs" />
+    <Compile Include="ServiceError.cs" />
+    <Compile Include="ServiceRequestEventArgs.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SerializeEventArgs.cs" />
+    <Compile Include="ServiceErrorEventArgs.cs" />
+    <Compile Include="ServiceHandler.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ServiceRequest.cs" />
+    <Compile Include="ServiceResponse.cs" />
+    <Compile Include="Templates\BindingResult.cs" />
+    <Compile Include="Templates\Context.cs" />
+    <Compile Include="Templates\HtmlHelpers.cs" />
+    <Compile Include="Templates\IBindable.cs" />
+    <Compile Include="Templates\ITemplate.cs" />
+    <Compile Include="Templates\JavaScript\AdapterWrapper.cs" />
+    <Compile Include="Templates\JavaScript\ConditionWrapper.cs" />
+    <Compile Include="Templates\JavaScript\PageContextWrapper.cs" />
+    <Compile Include="Templates\JavaScript\TemplateContextWrapper.cs" />
+    <Compile Include="Templates\JavaScript\DictionaryWrapper.cs" />
+    <Compile Include="Templates\JavaScript\Evaluator.cs" />
+    <Compile Include="Templates\JavaScript\IScriptEngineFactory.cs" />
+    <Compile Include="Templates\JavaScript\JavaScriptHelpers.cs" />
+    <Compile Include="Templates\JavaScript\Marshaler.cs" />
+    <Compile Include="Templates\JavaScript\OptionAdapterWrapper.cs" />
+    <Compile Include="Templates\JavaScript\ScriptEngineFactory.cs" />
+    <Compile Include="Templates\JavaScript\ScriptFunction.cs" />
+    <Compile Include="Templates\JavaScript\ScriptFunctionEvaluationException.cs" />
+    <Compile Include="Templates\JavaScript\ScriptFunctionSyntaxException.cs" />
+    <Compile Include="Templates\JavaScript\Transform.cs" />
+    <Compile Include="Templates\JavaScript\TypeWrapper.cs" />
+    <Compile Include="Templates\JavaScript\Wrapper.cs" />
+    <Compile Include="Templates\Adapter.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Attribute.cs" />
+    <Compile Include="Templates\MicrosoftAjax\AttributeBinding.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Binding.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Block.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Control.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Content.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Behavior.cs" />
+    <Compile Include="Templates\MicrosoftAjax\AttributeHelper.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Html.cs" />
+    <Compile Include="Templates\JavaScript\InvalidPropertyException.cs" />
+    <Compile Include="Templates\JavaScript\Meta.cs" />
+    <Compile Include="Templates\JavaScript\EntityWrapper.cs" />
+    <Compile Include="Templates\OptionAdapter.cs" />
+    <Compile Include="Templates\MicrosoftAjax\AjaxPage.cs" />
+    <Compile Include="Templates\MicrosoftAjax\ToggleGroup.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Toggle.cs" />
+    <Compile Include="Templates\MicrosoftAjax\DataView.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Element.cs" />
+    <Compile Include="Templates\Page.cs" />
+    <Compile Include="Templates\CreateAdapterEventArgs.cs" />
+    <Compile Include="Templates\Render.cs" />
+    <Compile Include="Templates\MicrosoftAjax\Template.cs" />
+    <Compile Include="Templates\RenderEventArgs.cs" />
+    <Compile Include="UnitTests\Accessors.cs" />
+    <Compile Include="ViewScope.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\ExoModel\ExoModel\ExoModel.csproj">
+      <Project>{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}</Project>
+      <Name>ExoModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ExoRule\ExoRule\ExoRule.csproj">
+      <Project>{B67D2642-A41A-42B2-8454-78ABA257008F}</Project>
+      <Name>ExoRule</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Newtonsoft.Json\Src\Newtonsoft.Json\Newtonsoft.Json.Net40.csproj">
+      <Project>{a9ae40ff-1a21-414a-9fe7-3be13644cc6d}</Project>
+      <Name>Newtonsoft.Json.Net40</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Client\AutoExec.exe" />
+    <Content Include="Client\dist\exoweb-templates.htm" />
+    <Content Include="Client\dist\exoweb-mock.js" />
+    <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
+    <Content Include="Client\dist\exoweb-msajax.js" />
+    <Content Include="Client\dist\exoweb.templates.htm" />
+    <Content Include="Client\dist\jquery.exoweb-msajax.js" />
+    <Content Include="Client\dist\json2.js" />
+    <Content Include="Client\ref\aspnetajax\MicrosoftAjax.debug.js" />
+    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxComponentModel.debug.js" />
+    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxCore.debug.js" />
+    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxOpenData.debug.js" />
+    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxTemplates.debug.js" />
+    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxWebForms.debug.js" />
+    <Content Include="Client\ref\jshint\jshint.js" />
+    <Content Include="Client\ref\jsmin\jsmin.exe" />
+    <Content Include="Client\ref\qunit\qunit.ext.js" />
+    <Content Include="Client\ref\qunit\qunit.js" />
+    <Content Include="Client\runjshint.js" />
+    <Content Include="Client\specs\base\core\EventScopeSpecs.js" />
+    <Content Include="Client\specs\base\core\ArraySpecs.js" />
+    <Content Include="Client\specs\base\core\DateSpecs.js" />
+    <Content Include="Client\specs\base\core\FunctionChainSpecs.js" />
+    <Content Include="Client\specs\base\core\BatchSpecs.js" />
+    <Content Include="Client\specs\base\core\FunctionSpecs.js" />
+    <Content Include="Client\specs\base\core\RandomSpecs.js" />
+    <Content Include="Client\specs\base\core\SignalSpecs.js" />
+    <Content Include="Client\specs\base\core\StringSpecs.js" />
+    <Content Include="Client\specs\base\core\TransformSpecs.js" />
+    <Content Include="Client\specs\base\core\TranslatorSpecs.js" />
+    <Content Include="Client\specs\base\core\TypeCheckingSpecs.js" />
+    <Content Include="Client\specs\base\core\UtilitiesSpecs.js" />
+    <Content Include="Client\specs\base\mapper\ChangeSetSpecs.js" />
+    <Content Include="Client\specs\base\mapper\ChangeLogSpecs.js" />
+    <Content Include="Client\specs\base\mapper\ObjectLazyLoaderSpecs.js" />
+    <Content Include="Client\specs\base\mapper\ServerSyncSpecs.js" />
+    <Content Include="Client\specs\base\mapper\ResponseHandlerSpecs.js" />
+    <Content Include="Client\specs\base\model\PropertyChainSpecs.js" />
+    <Content Include="Client\specs\base\model\TypeSpecs.js" />
+    <Content Include="Client\specs\base\model\ModelSpecs.js" />
+    <Content Include="Client\specs\base\model\LazyLoaderSpecs.js" />
+    <Content Include="Client\specs\base\model\PathTokensSpecs.js" />
+    <Content Include="Client\specs\base\view\BindingSpecs.js" />
+    <Content Include="Client\ref\jasmine\jasmine.console.js" />
+    <Content Include="Client\ref\jasmine\jasmine.js" />
+    <Content Include="Client\specs\SpecDependencies.js" />
+    <Content Include="Client\specs\SpecHelpers.js" />
+    <Content Include="Client\src\base\core\Activity.js" />
+    <Content Include="Client\src\base\core\Array.js" />
+    <Content Include="Client\src\base\core\Batch.js" />
+    <Content Include="Client\src\base\core\Cache.js" />
+    <Content Include="Client\src\base\core\Config.js" />
+    <Content Include="Client\src\base\core\Date.js" />
+    <Content Include="Client\src\base\core\EvalWrapper.js" />
+    <Content Include="Client\src\base\core\EventScope.js" />
+    <Content Include="Client\src\base\core\Function.js" />
+    <Content Include="Client\src\base\core\FunctionChain.js" />
+    <Content Include="Client\src\base\core\Functor.js" />
+    <Content Include="Client\src\base\core\Object.js" />
+    <Content Include="Client\src\base\core\PropertyObserver.js" />
+    <Content Include="Client\src\base\core\Random.js" />
+    <Content Include="Client\src\base\core\Signal.js" />
+    <Content Include="Client\src\base\core\String.js" />
+    <Content Include="Client\src\base\core\TimeSpan.js" />
+    <Content Include="Client\src\base\core\Transform.js" />
+    <Content Include="Client\src\base\core\Translator.js" />
+    <Content Include="Client\src\base\core\TypeChecking.js" />
+    <Content Include="Client\src\base\core\Utilities.js" />
+    <Content Include="Client\src\base\mapper\ChangeLog.js" />
+    <Content Include="Client\src\base\mapper\ChangeSet.js" />
+    <Content Include="Client\src\base\mapper\Context.js" />
+    <Content Include="Client\src\base\mapper\ContextQuery.js" />
+    <Content Include="Client\src\base\mapper\EventProvider.js" />
+    <Content Include="Client\src\base\mapper\ExoModelEventListener.js" />
+    <Content Include="Client\src\base\mapper\ExoWeb.js" />
+    <Content Include="Client\src\base\mapper\Extend.js" />
+    <Content Include="Client\src\base\mapper\Internals.js" />
+    <Content Include="Client\src\base\mapper\ListLazyLoader.js" />
+    <Content Include="Client\src\base\mapper\ListProvider.js" />
+    <Content Include="Client\src\base\mapper\ObjectLazyLoader.js" />
+    <Content Include="Client\src\base\mapper\ObjectProvider.js" />
+    <Content Include="Client\src\base\mapper\QueryProvider.js" />
+    <Content Include="Client\src\base\mapper\ResponseHandler.js" />
+    <Content Include="Client\src\base\mapper\RoundtripProvider.js" />
+    <Content Include="Client\src\base\mapper\SaveProvider.js" />
+    <Content Include="Client\src\base\mapper\ServerSync.js" />
+    <Content Include="Client\src\base\mapper\Translation.js" />
+    <Content Include="Client\src\base\mapper\TypeLazyLoader.js" />
+    <Content Include="Client\src\base\mapper\TypeProvider.js" />
+    <Content Include="Client\src\base\mock\Mock.js" />
+    <Content Include="Client\src\base\model\AllowedValuesRule.js" />
+    <Content Include="Client\src\base\model\CalculatedPropertyRule.js" />
+    <Content Include="Client\src\base\model\CompareRule.js" />
+    <Content Include="Client\src\base\model\Condition.js" />
+    <Content Include="Client\src\base\model\ConditionType.js" />
+    <Content Include="Client\src\base\model\ConditionTypeSet.js" />
+    <Content Include="Client\src\base\model\StringFormatRule.js" />
+    <Content Include="Client\src\base\model\Entity.js" />
+    <Content Include="Client\src\base\model\ConditionRule.js" />
+    <Content Include="Client\src\base\model\Format.js" />
+    <Content Include="Client\src\base\model\FormatError.js" />
+    <Content Include="Client\src\base\model\FormatProvider.js" />
+    <Content Include="Client\src\base\model\LazyLoader.js" />
+    <Content Include="Client\src\base\model\ListLengthRule.js" />
+    <Content Include="Client\src\base\model\Model.js" />
+    <Content Include="Client\src\base\model\ObjectMeta.js" />
+    <Content Include="Client\src\base\model\PathTokens.js" />
+    <Content Include="Client\src\base\model\Property.js" />
+    <Content Include="Client\src\base\model\PropertyChain.js" />
+    <Content Include="Client\src\base\model\RangeRule.js" />
+    <Content Include="Client\src\base\model\RequiredIfRule.js" />
+    <Content Include="Client\src\base\model\RequiredRule.js" />
+    <Content Include="Client\src\base\model\Rule.js" />
+    <Content Include="Client\src\base\model\RuleInput.js" />
+    <Content Include="Client\src\base\model\StringLengthRule.js" />
+    <Content Include="Client\src\base\model\Type.js" />
+    <Content Include="Client\src\base\ui\Behavior.js" />
+    <Content Include="Client\src\base\ui\Content.js" />
+    <Content Include="Client\src\base\ui\DataView.js" />
+    <Content Include="Client\src\base\ui\Html.js" />
+    <Content Include="Client\src\base\ui\Template.js" />
+    <Content Include="Client\src\base\ui\Toggle.js" />
+    <Content Include="Client\src\base\ui\ToggleGroup.js" />
+    <Content Include="Client\src\base\ui\Utilities.js" />
+    <Content Include="Client\src\base\view\Adapter.js" />
+    <Content Include="Client\src\base\view\AdapterMarkupExtension.js" />
+    <Content Include="Client\src\base\view\ConditionMarkupExtension.js" />
+    <Content Include="Client\src\base\view\Binding.js" />
+    <Content Include="Client\src\base\view\OptionGroupAdapter.js" />
+    <Content Include="Client\src\base\view\LazyMarkupExtension.js" />
+    <Content Include="Client\src\base\view\MetaMarkupExtension.js" />
+    <Content Include="Client\src\base\view\MsAjax.js" />
+    <Content Include="Client\src\base\view\OptionAdapter.js" />
+    <Content Include="Client\src\extensions\dotnet\WebService.js" />
+    <Content Include="Client\src\extensions\jquery-msajax\Helpers.js" />
+    <Content Include="Client\src\extensions\jquery-msajax\Ever.js" />
+    <Content Include="Client\src\extensions\jquery-msajax\Selectors.js" />
+    <Content Include="Client\src\extensions\jquery-msajax\Validation.js" />
+    <Content Include="Client\src\extensions\msajax\FormatProvider.js" />
+    <Content Include="Client\src\extensions\msajax\ObserverProvider.js" />
+    <Content Include="Dependencies\Jurassic.dll" />
+    <Content Include="Dependencies\Jurassic.pdb" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Client\AutoRake.bat" />
+    <None Include="Client\PreRake.bat" />
+    <None Include="Client\Rakefile" />
+    <None Include="Client\RakeScripts.bat" />
+    <None Include="Client\ref\aspnetajax\LICENSE" />
+    <None Include="Client\ref\jsmin\jsmin" />
+    <None Include="Client\ref\jsmin\jsmin.c" />
+    <None Include="Client\ref\syntaxhighlighter\MIT-LICENSE" />
+    <None Include="NuGet\ExoWeb.Scripts.nuspec" />
+    <None Include="NuGet\ExoWeb.nuspec" />
+    <None Include="NuGet\Views\Web.config.transform" />
+    <None Include="NuGet\Web.config.transform">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Client\ref\syntaxhighlighter\scripts\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
