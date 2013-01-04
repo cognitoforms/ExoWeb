@@ -1213,7 +1213,13 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function single(arr, callback, thisPtr) {
-		var items = filter(arr, callback, thisPtr);
+		var items;
+		if (callback !== undefined) {
+			items = filter(arr, callback, thisPtr);
+		}
+		else {
+			items = arr;
+		}
 
 		if (items.length > 1)
 			throw new Error("Expected a single item, but found " + items.length + ".");

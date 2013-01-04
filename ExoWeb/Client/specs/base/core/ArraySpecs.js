@@ -184,6 +184,11 @@ describe("filter", function () {
 });
 
 describe("single", function () {
+	it("returns the single item in the array if no filter function is specified", function () {
+		var arr = [5];
+		expect(single(arr)).toBe(5);
+	});
+
 	it("returns a single item from the array that matches the given filter function", function () {
 		var arr = [5, 2, 3, -4, 0];
 		expect(single(arr, function(i) { return i < 0; })).toBe(-4);
@@ -196,10 +201,17 @@ describe("single", function () {
 		}).toThrow("Expected a single item, but found 2.");
 	});
 
-	it("throws an error if no items match the given filter function", function () {
+	it("throws an error if there are no items and no filter function is specified", function () {
 		var arr = [5, 2, 3, -4, 0];
+		expect(function () {
+			single(arr, function (i) { return i < -4; });
+		}).toThrow("Expected a single item, but did not find a match.");
+	});
+
+	it("throws an error if no items match the given filter function", function () {
+		var arr = [];
 		expect(function() {
-			single(arr, function(i) { return i < -4; });
+			single(arr);
 		}).toThrow("Expected a single item, but did not find a match.");
 	});
 });
