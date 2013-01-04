@@ -39,6 +39,7 @@ var Batch = global.Batch = require("../../../src/base/core/Batch").Batch;
 //var context = require("../../../src/base/mapper/Context");
 
 //ObjectLazyLoader = require("../../../src/base/mapper/ObjectLazyLoader").ObjectLazyLoader;
+//ObjectLazyLoader = require("../../../src/base/mapper/ObjectLazyLoader").ObjectLazyLoader;
 //Model = require("../../../src/base/model/Model").Model;
 
 $format = window.$format;
@@ -178,7 +179,7 @@ describe("ResponseHandler", function () {
 			registerRules: jasmine.jasmine.createSpy()
 		};
 
-		ExoWeb.Model = { LazyLoader: { load: function() { } } };
+		ExoWeb.Model = { LazyLoader: { isLoaded: function () { return false; }, load: function() { } } };
 		var lazyLoadSpy = jasmine.spyOn(ExoWeb.Model.LazyLoader, "load").andCallThrough();
 
 		global.TypeLazyLoader = { unregister: function() { } };

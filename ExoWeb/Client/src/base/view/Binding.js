@@ -122,8 +122,16 @@ Binding.mixin({
 	// and general bookkeeping.
 	//////////////////////////////////////////////////////////////////////////
 
-	_require: function(source, callback) {
-		ExoWeb.Model.LazyLoader.evalAll(source, this._options.required, function() {
+	_require: function (value, callback) {
+		var valueRevision = this._valueRevision = ExoWeb.randomText(8, true);
+
+		ExoWeb.Model.LazyLoader.evalAll(value, this._options.required, function () {
+
+			// Make sure that the data being evaluated is not stale.
+			if (!this._value || this._value !== value || this._valueRevision !== valueRevision) {
+				return;
+			}
+
 			callback.call(this);
 		}, null, null, this);
 	},
@@ -140,9 +148,10 @@ Binding.mixin({
 			delete this._collectionChangedHandler;
 		}
 
+		this._value = value;
+
 		// if the value is an array and we will transform the value or require paths, then watch for collection change events
 		if (value && value instanceof Array && this._options.required) {
-			this._value = value;
 			this._collectionChangedHandler = this._collectionChanged.bind(this);
 			Observer.makeObservable(value);
 			Observer.addCollectionChanged(value, this._collectionChangedHandler);
@@ -272,7 +281,7 @@ Binding.mixin({
 			}
 			this._isTargetElement = this._options = this._pendingValue = this._source =
 				this._sourcePath = this._sourcePathResult = this._target = this._targetPath =
-				this._templateContext = this._transformFn = this._value = null;
+				this._templateContext = this._transformFn = this._value = this._valueRevision = null;
 		}
 		Binding.callBaseMethod(this, "dispose");
 	}

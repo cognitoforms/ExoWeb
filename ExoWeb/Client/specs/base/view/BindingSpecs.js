@@ -62,6 +62,9 @@ var typeChecking = require("../../../src/base/core/typeChecking");
 var utilities = require("../../../src/base/core/Utilities");
 var batch = require("../../../src/base/core/Batch");
 var formatProvider = require("../../../src/base/model/FormatProvider");
+var random = require("../../../src/base/core/Random");
+
+ExoWeb.randomText = random.randomText;
 
 global.Transform = transform.Transform;
 
@@ -71,6 +74,8 @@ var getValue = global.getValue = utilities.getValue;
 var evalPath = global.evalPath = utilities.evalPath;
 var isObject = global.isObject = typeChecking.isObject;
 var isArray = global.isArray = typeChecking.isArray;
+var isNatural = global.isNatural = typeChecking.isNatural;
+var isInteger = global.isInteger = typeChecking.isInteger;
 var isNullOrUndefined = global.isNullOrUndefined = typeChecking.isNullOrUndefined;
 var forEach = global.forEach = arrays.forEach;
 var Batch = global.Batch = batch.Batch;

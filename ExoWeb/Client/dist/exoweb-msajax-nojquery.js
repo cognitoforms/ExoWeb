@@ -14135,9 +14135,8 @@ window.ExoWeb.DotNet = {};
 					callback.call(tmpl.get(0));
 				} 
 				else {
-					tmpl.load(path, function(responseText, textStatus, jqXHR) {
-						// Ensure that jqXHR is loaded.  'state' check for jquery 1.7+, 'isResolved' check for jQuery 1.5 - 1.6
-						if ((jqXHR.state && jqXHR.state() === "resolved") || (jqXHR.isResolved && jqXHR.isResolved())) {
+					tmpl.load(path, function (responseText, textStatus, jqXHR) {
+						if (jqXHR.isResolved()) {
 							// Cache the template
 							ExoWeb.cache(path, responseText);
 
@@ -15276,8 +15275,16 @@ window.ExoWeb.DotNet = {};
 		// and general bookkeeping.
 		//////////////////////////////////////////////////////////////////////////
 
-		_require: function(source, callback) {
-			ExoWeb.Model.LazyLoader.evalAll(source, this._options.required, function() {
+		_require: function (value, callback) {
+			var valueRevision = this._valueRevision = ExoWeb.randomText(8, true);
+
+			ExoWeb.Model.LazyLoader.evalAll(value, this._options.required, function () {
+
+				// Make sure that the data being evaluated is not stale.
+				if (!this._value || this._value !== value || this._valueRevision !== valueRevision) {
+					return;
+				}
+
 				callback.call(this);
 			}, null, null, this);
 		},
@@ -15294,9 +15301,10 @@ window.ExoWeb.DotNet = {};
 				delete this._collectionChangedHandler;
 			}
 
+			this._value = value;
+
 			// if the value is an array and we will transform the value or require paths, then watch for collection change events
 			if (value && value instanceof Array && this._options.required) {
-				this._value = value;
 				this._collectionChangedHandler = this._collectionChanged.bind(this);
 				Observer.makeObservable(value);
 				Observer.addCollectionChanged(value, this._collectionChangedHandler);
@@ -15426,7 +15434,7 @@ window.ExoWeb.DotNet = {};
 				}
 				this._isTargetElement = this._options = this._pendingValue = this._source =
 					this._sourcePath = this._sourcePathResult = this._target = this._targetPath =
-					this._templateContext = this._transformFn = this._value = null;
+					this._templateContext = this._transformFn = this._value = this._valueRevision = null;
 			}
 			Binding.callBaseMethod(this, "dispose");
 		}
