@@ -17565,52 +17565,57 @@ window.ExoWeb.DotNet = {};
 
 		// Number
 		if (type === Number) {
-			var isCurrencyFormat = format.match(/[$c]+/i);
-			var isPercentageFormat = format.match(/[%p]+/i);
-			var isIntegerFormat = format.match(/[dnfg]0/i);
+		    var isCurrencyFormat = format.match(/[$c]+/i);
+		    var isPercentageFormat = format.match(/[%p]+/i);
+		    var isIntegerFormat = format.match(/[dnfg]0/i);
+		    var currencyDecimalDigits = Sys.CultureInfo.CurrentCulture.numberFormat.CurrencyDecimalDigits;
 
-			return new Format({
-			    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
-				specifier: format,
-				convert: function (val) {
-					// Default to browser formatting for general format
-					if (format.toLowerCase() === "g")
-						return val.toString(); 
+		    return new Format({
+		        description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
+		        specifier: format,
+		        convert: function (val) {
+		            // Default to browser formatting for general format
+		            if (format.toLowerCase() === "g")
+		                return val.toString();
 
-					// Otherwise, use the localized format
-					return val.localeFormat(format);
-				},
-				convertBack: function (str) {
-					// Handle use of () to denote negative numbers
-					var sign = 1;
-					if (str.match(/^\(.*\)$/)) {
-						str = str.substring(1, str.length - 1);
-						sign = -1;
-					}
-					var result;
+		            // Otherwise, use the localized format
+		            return val.localeFormat(format);
+		        },
+		        convertBack: function (str) {
+		            // Handle use of () to denote negative numbers
+		            var sign = 1;
+		            if (str.match(/^\(.*\)$/)) {
+		                str = str.substring(1, str.length - 1);
+		                sign = -1;
+		            }
+		            var result;
 
-					// Remove currency symbols before parsing
-					if (isCurrencyFormat)
-						result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
+		            // Remove currency symbols before parsing
+		            if (isCurrencyFormat) {
+		                result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
 
-					// Remove percentage symbols before parsing and divide by 100
-					else if (isPercentageFormat)
-						result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
+                        // Ensure that currency values do not have more than the allowed number of digits to the right of the decimal   
+		                if (result * Math.pow(10, currencyDecimalDigits) != Math.round(result * Math.pow(10, currencyDecimalDigits)))
+		                    result = NaN;
+		            }
+		                // Remove percentage symbols before parsing and divide by 100
+		            else if (isPercentageFormat)
+		                result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
 
-					// Ensure integers are actual whole numbers
-					else if (isIntegerFormat && !isInteger(Number.parseLocale(str)))
-						result = NaN;
+		                // Ensure integers are actual whole numbers
+		            else if (isIntegerFormat && !isInteger(Number.parseLocale(str)))
+		                result = NaN;
 
-					// Just parse a simple number
-					else
-						result = Number.parseLocale(str) * sign;
+		                // Just parse a simple number
+		            else
+		                result = Number.parseLocale(str) * sign;
 
-					if (isNaN(result))
-						throw new Error("Invalid format");
+		            if (isNaN(result))
+		                throw new Error("Invalid format");
 
-					return result;
-				}
-			});
+		            return result;
+		        }
+		    });
 		}
 
 		// Boolean

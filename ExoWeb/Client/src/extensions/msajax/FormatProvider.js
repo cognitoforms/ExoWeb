@@ -28,6 +28,7 @@ setFormatProvider(function FormatProvider(type, format) {
 		var isCurrencyFormat = format.match(/[$c]+/i);
 		var isPercentageFormat = format.match(/[%p]+/i);
 		var isIntegerFormat = format.match(/[dnfg]0/i);
+		var currencyDecimalDigits = Sys.CultureInfo.CurrentCulture.numberFormat.CurrencyDecimalDigits;
 
 		return new Format({
 		    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
@@ -50,20 +51,24 @@ setFormatProvider(function FormatProvider(type, format) {
 				var result;
 
 				// Remove currency symbols before parsing
-				if (isCurrencyFormat)
-					result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
+				if (isCurrencyFormat) {
+				    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
 
-				// Remove percentage symbols before parsing and divide by 100
+				    // Ensure that currency values do not have more than the allowed number of digits to the right of the decimal   
+				    if (result * Math.pow(10, currencyDecimalDigits) != Math.round(result * Math.pow(10, currencyDecimalDigits)))
+				        result = NaN;
+				}
+				    // Remove percentage symbols before parsing and divide by 100
 				else if (isPercentageFormat)
-					result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
+				    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
 
-				// Ensure integers are actual whole numbers
+				    // Ensure integers are actual whole numbers
 				else if (isIntegerFormat && !isInteger(Number.parseLocale(str)))
-					result = NaN;
+				    result = NaN;
 
-				// Just parse a simple number
+				    // Just parse a simple number
 				else
-					result = Number.parseLocale(str) * sign;
+				    result = Number.parseLocale(str) * sign;
 
 				if (isNaN(result))
 					throw new Error("Invalid format");
