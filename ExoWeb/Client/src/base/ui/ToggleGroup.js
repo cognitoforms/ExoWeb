@@ -5,10 +5,10 @@ function ToggleGroup(element) {
 ToggleGroup.mixin({
 	_execute: function ToggleGroup$_execute() {
 		if (this._visible.length === 0 && this._children.length > 0) {
-			$(this._element).hide();
+			jQuery(this._element).hide();
 		}
 		else {
-			$(this._element).show();
+			jQuery(this._element).show();
 		}
 	},
 	_toggleAdded: function ToggleGroup$_toggleAdded(idx, elem) {
@@ -63,7 +63,7 @@ ToggleGroup.mixin({
 		this._onHandler = this._toggleOn.bind(this);
 		this._offHandler = this._toggleOff.bind(this);
 
-		$(":toggle", this._element).ever(this._toggleAdded.bind(this), this._toggleRemoved.bind(this));
+		jQuery(":toggle", this._element).ever(this._toggleAdded.bind(this), this._toggleRemoved.bind(this));
 
 		this._execute();
 	}

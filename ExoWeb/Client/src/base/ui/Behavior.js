@@ -84,7 +84,7 @@ Behavior.prototype = {
 	_create: function Behavior$create() {
 		// if the element is not within the document body it 
 		// probably means that it is being removed - TODO: verify
-		if (!$.contains(document.body, this._element)) {
+		if (!jQuery.contains(document.body, this._element)) {
 			return;
 		}
 

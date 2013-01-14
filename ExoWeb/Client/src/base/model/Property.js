@@ -557,7 +557,7 @@ Property.mixin({
 		return this.conditionIf(options, error);
 	},
 	warningIf: function (options, warning) {
-		return this.conditionIf($.extend(options, { category: ConditionType.Warning }), warning);
+		return this.conditionIf(jQuery.extend(options, { category: ConditionType.Warning }), warning);
 	},
 	requiredIf: function (source, operator, value, error) {
 		if (source.constructor === String) {

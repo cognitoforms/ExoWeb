@@ -42,10 +42,10 @@ Html.prototype = {
 		var element = this.get_element();
 		var loadingClass = this.get_loadingClass();
 
-		$(element).addClass(loadingClass);
+		jQuery(element).addClass(loadingClass);
 
-		$(element).load(path, function(responseText, status, response) {
-			$(element).removeClass(loadingClass);
+		jQuery(element).load(path, function(responseText, status, response) {
+			jQuery(element).removeClass(loadingClass);
 
 			if (status != "success" && status != "notmodified") {
 				throw new Error("Failed to load html: status = " + status);

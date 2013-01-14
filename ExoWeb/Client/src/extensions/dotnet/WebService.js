@@ -36,7 +36,7 @@ function sendRequest(options) {
 	// Include config data in request
 	options.data.config = webServiceConfig;
 
-	$.ajax({
+	jQuery.ajax({
 		url: getPath() + "/" + options.path,
 		type: options.type,
 		data: JSON.stringify(options.data),

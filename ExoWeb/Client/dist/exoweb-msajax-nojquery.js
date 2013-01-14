@@ -5254,7 +5254,7 @@ window.ExoWeb.DotNet = {};
 			return this.conditionIf(options, error);
 		},
 		warningIf: function (options, warning) {
-			return this.conditionIf($.extend(options, { category: ConditionType.Warning }), warning);
+			return this.conditionIf(jQuery.extend(options, { category: ConditionType.Warning }), warning);
 		},
 		requiredIf: function (source, operator, value, error) {
 			if (source.constructor === String) {
@@ -8889,7 +8889,7 @@ window.ExoWeb.DotNet = {};
 							// Remove lazy-loader
 							TypeLazyLoader.unregister(mtype);
 
-							// Raise $.extends for the type
+							// Raise jQuery.extends for the type
 							raiseExtensions(mtype);
 						}
 					}
@@ -11026,7 +11026,7 @@ window.ExoWeb.DotNet = {};
 		},
 		set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
 			//join the new server info with the information that you are adding.
-			this._serverInfo = this._serverInfo ? $.extend(this._serverInfo, newInfo) : newInfo;
+			this._serverInfo = this._serverInfo ? jQuery.extend(this._serverInfo, newInfo) : newInfo;
 		}
 	});
 
@@ -13042,7 +13042,7 @@ window.ExoWeb.DotNet = {};
 					contextReady(window.context);
 				}
 
-				$(function modelReadyHandler$documentReady() {
+				jQuery(function modelReadyHandler$documentReady() {
 					// Activate the document if this is the first context to load
 					if (!activated) {
 						activated = true;
@@ -13069,11 +13069,11 @@ window.ExoWeb.DotNet = {};
 			pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
 			pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
 			pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
-			pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, newOptions.model) : newOptions.model;
+			pendingOptions.model = pendingOptions.model ? jQuery.extend(pendingOptions.model, newOptions.model) : newOptions.model;
 			pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
-			pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
-			pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
-			pendingOptions.serverInfo = pendingOptions.serverInfo ? $.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
+			pendingOptions.conditions = pendingOptions.conditions ? jQuery.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
+			pendingOptions.instances = pendingOptions.instances ? jQuery.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
+			pendingOptions.serverInfo = pendingOptions.serverInfo ? jQuery.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
 		}
 		else {
 			pendingOptions = newOptions;
@@ -13296,7 +13296,7 @@ window.ExoWeb.DotNet = {};
 		// Show/Hide
 		//////////////////////////////////////////////////////////
 		link_show: function Toggle$link_show() {
-			if ((this._action === "show" && $(this._element).is(".toggle-on")) || (this._action === "hide" && $(this._element).is(".toggle-off"))) {
+			if ((this._action === "show" && jQuery(this._element).is(".toggle-on")) || (this._action === "hide" && jQuery(this._element).is(".toggle-off"))) {
 				this.set_state("on");
 			}
 			else {
@@ -13304,7 +13304,7 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		do_show: function Toggle$do_show() {
-			$(this._element).show();
+			jQuery(this._element).show();
 			this.set_state("on");
 
 			// visibility has changed so raise event
@@ -13315,7 +13315,7 @@ window.ExoWeb.DotNet = {};
 			this._visible = true;
 		},
 		do_hide: function Toggle$do_hide() {
-			$(this._element).hide();
+			jQuery(this._element).hide();
 			this.set_state("off");
 
 			// visibility has changed so raise event
@@ -13356,8 +13356,8 @@ window.ExoWeb.DotNet = {};
 		// Enable/Disable
 		//////////////////////////////////////////////////////////
 		link_disable: function Toggle$link_disable() {
-			if ((this._action === "disable" && $(this._element).is(".toggle-on")) || (this._action === "enable" && $(this._element).is(".toggle-off"))) {
-				$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
+			if ((this._action === "disable" && jQuery(this._element).is(".toggle-on")) || (this._action === "enable" && jQuery(this._element).is(".toggle-off"))) {
+				jQuery("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 				this.set_state("off");
 			}
 			else {
@@ -13365,11 +13365,11 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		do_enable: function Toggle$do_enable() {
-			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
+			jQuery("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
 			this.set_state("on");
 		},
 		do_disable: function Toggle$do_disable() {
-			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
+			jQuery("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 			this.set_state("off");
 		},
 
@@ -13378,7 +13378,7 @@ window.ExoWeb.DotNet = {};
 		link_render: function Toggle$link_render() {
 			this._context = null;
 
-			if ((this._action === "render" && $(this._element).is(".toggle-on")) || (this._action === "dispose" && $(this._element).is(".toggle-off"))) {
+			if ((this._action === "render" && jQuery(this._element).is(".toggle-on")) || (this._action === "dispose" && jQuery(this._element).is(".toggle-off"))) {
 				var pctx = this.get_templateContext();
 
 				if (!this._ctxIdx && this._element.childNodes.length > 0)
@@ -13407,14 +13407,14 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		init_render: function Toggle$init_render() {
-			if (!this._template && !$(this._element).is(".sys-template")) {
+			if (!this._template && !jQuery(this._element).is(".sys-template")) {
 				throw new Error("When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
 			}
 
 			this._template = new Sys.UI.Template(this._element);
 			this._template._ensureCompiled();
-			$(this._element).empty();
-			$(this._element).removeClass("sys-template");
+			jQuery(this._element).empty();
+			jQuery(this._element).removeClass("sys-template");
 		},
 		do_render: function Toggle$do_render() {
 			var pctx = this.get_templateContext();
@@ -13423,8 +13423,8 @@ window.ExoWeb.DotNet = {};
 			Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
 			this.set_state("on");
-			$(this._element).empty();
-			$(this._element).show();
+			jQuery(this._element).empty();
+			jQuery(this._element).show();
 
 			var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
 			context.initializeComponents();
@@ -13439,8 +13439,8 @@ window.ExoWeb.DotNet = {};
 			if (this._context) {
 				this._context.dispose();
 			}
-			$(this._element).empty();
-			$(this._element).hide();
+			jQuery(this._element).empty();
+			jQuery(this._element).hide();
 
 			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 		},
@@ -13460,7 +13460,7 @@ window.ExoWeb.DotNet = {};
 		// addClass / removeClass
 		//////////////////////////////////////////////////////////
 		do_addClass: function Toggle$do_addClass() {
-			var $el = $(this._element);
+			var $el = jQuery(this._element);
 		
 			if(!$el.is("." + this._class)) {
 				$el.addClass(this._class);
@@ -13469,7 +13469,7 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		do_removeClass: function Toggle$do_removeClass() {
-			var $el = $(this._element);
+			var $el = jQuery(this._element);
 		
 			if($el.is("." + this._class)) {
 				$el.removeClass(this._class);
@@ -13744,9 +13744,9 @@ window.ExoWeb.DotNet = {};
 		_stateClass: function(state)
 		{
 			if(state == "on")
-				$(this._element).addClass("toggle-on").removeClass("toggle-off");
+				jQuery(this._element).addClass("toggle-on").removeClass("toggle-off");
 			else
-				$(this._element).removeClass("toggle-on").addClass("toggle-off");
+				jQuery(this._element).removeClass("toggle-on").addClass("toggle-off");
 		}
 	});
 
@@ -13765,10 +13765,10 @@ window.ExoWeb.DotNet = {};
 	ToggleGroup.mixin({
 		_execute: function ToggleGroup$_execute() {
 			if (this._visible.length === 0 && this._children.length > 0) {
-				$(this._element).hide();
+				jQuery(this._element).hide();
 			}
 			else {
-				$(this._element).show();
+				jQuery(this._element).show();
 			}
 		},
 		_toggleAdded: function ToggleGroup$_toggleAdded(idx, elem) {
@@ -13823,7 +13823,7 @@ window.ExoWeb.DotNet = {};
 			this._onHandler = this._toggleOn.bind(this);
 			this._offHandler = this._toggleOff.bind(this);
 
-			$(":toggle", this._element).ever(this._toggleAdded.bind(this), this._toggleRemoved.bind(this));
+			jQuery(":toggle", this._element).ever(this._toggleAdded.bind(this), this._toggleRemoved.bind(this));
 
 			this._execute();
 		}
@@ -14059,7 +14059,7 @@ window.ExoWeb.DotNet = {};
 
 			// add a class that can be used to search for templates 
 			// and make sure that the template element is hidden
-			$(this._element).addClass("exoweb-template").hide();
+			jQuery(this._element).addClass("exoweb-template").hide();
 
 			if (this._element.control.constructor !== String) {
 				var el = this._element;
@@ -14123,14 +14123,14 @@ window.ExoWeb.DotNet = {};
 			Sys.Application.activateElement(this);
 		}));
 
-		$(function ($) {
-			var tmpl = $("<div id='" + id + "'/>")
+		jQuery(function ($) {
+			var tmpl = jQuery("<div id='" + id + "'/>")
 					.hide()
 					.appendTo("body");
 
 			//if the template is stored locally look for the path as a div on the page rather than the cache
 			if (options && options.isLocal === true) {
-				var localTemplate = $('#' + path);
+				var localTemplate = jQuery('#' + path);
 				callback.call(localTemplate.get(0));
 			}
 			else {
@@ -14400,7 +14400,7 @@ window.ExoWeb.DotNet = {};
 			// content is not necessarily in order because of waiting on external templates.
 			var container = this._element;
 
-			$(container).empty();
+			jQuery(container).empty();
 
 			var parentContext = this.get_templateContext();
 			this._context = null;
@@ -14411,10 +14411,10 @@ window.ExoWeb.DotNet = {};
 				var template = new Sys.UI.Template(tmplEl);
 
 				// get custom classes from template
-				var classes = $(tmplEl).attr("class");
+				var classes = jQuery(tmplEl).attr("class");
 				if (classes) {
-					classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
-					$(container).addClass(classes);
+					classes = jQuery.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
+					jQuery(container).addClass(classes);
 				}
 
 				// Get the list of template names applicable to the control's children
@@ -14533,8 +14533,8 @@ window.ExoWeb.DotNet = {};
 			/// <summary locid="M:J#ExoWeb.UI.Content.initialize" />
 			Content.callBaseMethod(this, "initialize");
 
-			if ($(this._element).is(".sys-template")) {
-				if ($(this._element).children().length > 0) {
+			if (jQuery(this._element).is(".sys-template")) {
+				if (jQuery(this._element).children().length > 0) {
 					logWarning("Content control is marked with the \"sys-template\" class, which means that its children will be ignored and discarded.");
 				}
 				else {
@@ -14627,10 +14627,10 @@ window.ExoWeb.DotNet = {};
 			var element = this.get_element();
 			var loadingClass = this.get_loadingClass();
 
-			$(element).addClass(loadingClass);
+			jQuery(element).addClass(loadingClass);
 
-			$(element).load(path, function(responseText, status, response) {
-				$(element).removeClass(loadingClass);
+			jQuery(element).load(path, function(responseText, status, response) {
+				jQuery(element).removeClass(loadingClass);
 
 				if (status != "success" && status != "notmodified") {
 					throw new Error("Failed to load html: status = " + status);
@@ -14733,7 +14733,7 @@ window.ExoWeb.DotNet = {};
 		_create: function Behavior$create() {
 			// if the element is not within the document body it 
 			// probably means that it is being removed - TODO: verify
-			if (!$.contains(document.body, this._element)) {
+			if (!jQuery.contains(document.body, this._element)) {
 				return;
 			}
 
@@ -16547,8 +16547,8 @@ window.ExoWeb.DotNet = {};
 			// remember the last target that was recieved when an event fires and radio button
 			// target change events fire on click (which does not account for de-selection).  
 			// Otherwise, the source value is only set the first time the radio button is selected.
-			if (Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]:checked")) {
-				$("input[type=radio][name='" + target.name + "']").each(function () {
+			if (Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked")) {
+				jQuery("input[type=radio][name='" + target.name + "']").each(function () {
 					if (this != target && this.__msajaxbindings !== undefined) {
 						var bindings = this.__msajaxbindings;
 						for (var i = 0; i < bindings.length; i++)
@@ -16569,8 +16569,8 @@ window.ExoWeb.DotNet = {};
 			if (this._disposed) return;
 
 			// Remove checked attribute from other radio buttons in the group that are currently checked.
-			if (!link && Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]:checked") && !this._lastSource) {
-				$(target).removeAttr("checked");
+			if (!link && Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked") && !this._lastSource) {
+				jQuery(target).removeAttr("checked");
 			}
 		};
 
@@ -16698,7 +16698,7 @@ window.ExoWeb.DotNet = {};
 		// Include config data in request
 		options.data.config = webServiceConfig;
 
-		$.ajax({
+		jQuery.ajax({
 			url: getPath() + "/" + options.path,
 			type: options.type,
 			data: JSON.stringify(options.data),

@@ -1,22 +1,22 @@
 ﻿function dialog(element, data, options) {
 
     //The template should be stored in the data hashtable of the anchor
-    var $dialogEl = $(element).data("dialog");
+    var $dialogEl = jQuery(element).data("dialog");
     var dataview;
 
     //If this is the first time we've opened the dialog, then the we need to find the template which will be the div below with a css class of dialog
     if (!$dialogEl) {
-        $dialogEl = $(element).next(".dialog");
+        $dialogEl = jQuery(element).next(".dialog");
 
         //Store off template to anchor
-        $(element).data("dialog", $dialogEl);
+        jQuery(element).data("dialog", $dialogEl);
 
         // setup the dataview eventing
         dataview = $dialogEl.get(0).control;
 
         //Set default properties
         var defaults = {
-            open: function (event, ui) { $(".ui-dialog-titlebar-close").hide(); },
+            open: function (event, ui) { jQuery(".ui-dialog-titlebar-close").hide(); },
             modal: true,
             position: "center",
             width: $dialogEl.attr("width") ? parseInt($dialogEl.attr("width")) : 'auto',
@@ -25,7 +25,7 @@
             resizable: false,
             buttons: {
                 "OK": function () {
-                    $(this).dialog("close");
+                    jQuery(this).dialog("close");
                     dataview.set_data(null);
                 }
             }
@@ -41,7 +41,7 @@
 
 
     // Override default options with ones passed in
-    var mergedOptions = $.extend(true, $dialogEl.dialog('option'), options);
+    var mergedOptions = jQuery.extend(true, $dialogEl.dialog('option'), options);
 
 	//Buttons are merging but if buttons are passed in then we need to override the default
     if (options.buttons)

@@ -229,7 +229,7 @@ Content.prototype = {
 		// content is not necessarily in order because of waiting on external templates.
 		var container = this._element;
 
-		$(container).empty();
+		jQuery(container).empty();
 
 		var parentContext = this.get_templateContext();
 		this._context = null;
@@ -240,10 +240,10 @@ Content.prototype = {
 			var template = new Sys.UI.Template(tmplEl);
 
 			// get custom classes from template
-			var classes = $(tmplEl).attr("class");
+			var classes = jQuery(tmplEl).attr("class");
 			if (classes) {
-				classes = $.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
-				$(container).addClass(classes);
+				classes = jQuery.trim(classes.replace("exoweb-template", "").replace("sys-template", ""));
+				jQuery(container).addClass(classes);
 			}
 
 			// Get the list of template names applicable to the control's children
@@ -362,8 +362,8 @@ Content.prototype = {
 		/// <summary locid="M:J#ExoWeb.UI.Content.initialize" />
 		Content.callBaseMethod(this, "initialize");
 
-		if ($(this._element).is(".sys-template")) {
-			if ($(this._element).children().length > 0) {
+		if (jQuery(this._element).is(".sys-template")) {
+			if (jQuery(this._element).children().length > 0) {
 				logWarning("Content control is marked with the \"sys-template\" class, which means that its children will be ignored and discarded.");
 			}
 			else {

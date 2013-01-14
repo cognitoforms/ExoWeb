@@ -13,7 +13,7 @@ Toggle.mixin({
 	// Show/Hide
 	//////////////////////////////////////////////////////////
 	link_show: function Toggle$link_show() {
-		if ((this._action === "show" && $(this._element).is(".toggle-on")) || (this._action === "hide" && $(this._element).is(".toggle-off"))) {
+		if ((this._action === "show" && jQuery(this._element).is(".toggle-on")) || (this._action === "hide" && jQuery(this._element).is(".toggle-off"))) {
 			this.set_state("on");
 		}
 		else {
@@ -21,7 +21,7 @@ Toggle.mixin({
 		}
 	},
 	do_show: function Toggle$do_show() {
-		$(this._element).show();
+		jQuery(this._element).show();
 		this.set_state("on");
 
 		// visibility has changed so raise event
@@ -32,7 +32,7 @@ Toggle.mixin({
 		this._visible = true;
 	},
 	do_hide: function Toggle$do_hide() {
-		$(this._element).hide();
+		jQuery(this._element).hide();
 		this.set_state("off");
 
 		// visibility has changed so raise event
@@ -73,8 +73,8 @@ Toggle.mixin({
 	// Enable/Disable
 	//////////////////////////////////////////////////////////
 	link_disable: function Toggle$link_disable() {
-		if ((this._action === "disable" && $(this._element).is(".toggle-on")) || (this._action === "enable" && $(this._element).is(".toggle-off"))) {
-			$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
+		if ((this._action === "disable" && jQuery(this._element).is(".toggle-on")) || (this._action === "enable" && jQuery(this._element).is(".toggle-off"))) {
+			jQuery("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 			this.set_state("off");
 		}
 		else {
@@ -82,11 +82,11 @@ Toggle.mixin({
 		}
 	},
 	do_enable: function Toggle$do_enable() {
-		$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
+		jQuery("select,input,textarea,a,button,optgroup,option", this._element).andSelf().removeAttr("disabled");
 		this.set_state("on");
 	},
 	do_disable: function Toggle$do_disable() {
-		$("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
+		jQuery("select,input,textarea,a,button,optgroup,option", this._element).andSelf().attr("disabled", "disabled");
 		this.set_state("off");
 	},
 
@@ -95,7 +95,7 @@ Toggle.mixin({
 	link_render: function Toggle$link_render() {
 		this._context = null;
 
-		if ((this._action === "render" && $(this._element).is(".toggle-on")) || (this._action === "dispose" && $(this._element).is(".toggle-off"))) {
+		if ((this._action === "render" && jQuery(this._element).is(".toggle-on")) || (this._action === "dispose" && jQuery(this._element).is(".toggle-off"))) {
 			var pctx = this.get_templateContext();
 
 			if (!this._ctxIdx && this._element.childNodes.length > 0)
@@ -124,14 +124,14 @@ Toggle.mixin({
 		}
 	},
 	init_render: function Toggle$init_render() {
-		if (!this._template && !$(this._element).is(".sys-template")) {
+		if (!this._template && !jQuery(this._element).is(".sys-template")) {
 			throw new Error("When using toggle in render/dispose mode, the element should be marked with the \"sys-template\" class.");
 		}
 
 		this._template = new Sys.UI.Template(this._element);
 		this._template._ensureCompiled();
-		$(this._element).empty();
-		$(this._element).removeClass("sys-template");
+		jQuery(this._element).empty();
+		jQuery(this._element).removeClass("sys-template");
 	},
 	do_render: function Toggle$do_render() {
 		var pctx = this.get_templateContext();
@@ -140,8 +140,8 @@ Toggle.mixin({
 		Sys.Observer.raiseEvent(this, "rendering", renderArgs);
 
 		this.set_state("on");
-		$(this._element).empty();
-		$(this._element).show();
+		jQuery(this._element).empty();
+		jQuery(this._element).show();
 
 		var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
 		context.initializeComponents();
@@ -156,8 +156,8 @@ Toggle.mixin({
 		if (this._context) {
 			this._context.dispose();
 		}
-		$(this._element).empty();
-		$(this._element).hide();
+		jQuery(this._element).empty();
+		jQuery(this._element).hide();
 
 		Sys.Observer.raiseEvent(this, "rendered", renderArgs);
 	},
@@ -177,7 +177,7 @@ Toggle.mixin({
 	// addClass / removeClass
 	//////////////////////////////////////////////////////////
 	do_addClass: function Toggle$do_addClass() {
-		var $el = $(this._element);
+		var $el = jQuery(this._element);
 		
 		if(!$el.is("." + this._class)) {
 			$el.addClass(this._class);
@@ -186,7 +186,7 @@ Toggle.mixin({
 		}
 	},
 	do_removeClass: function Toggle$do_removeClass() {
-		var $el = $(this._element);
+		var $el = jQuery(this._element);
 		
 		if($el.is("." + this._class)) {
 			$el.removeClass(this._class);
@@ -461,9 +461,9 @@ Toggle.mixin({
 	_stateClass: function(state)
 	{
 		if(state == "on")
-			$(this._element).addClass("toggle-on").removeClass("toggle-off");
+			jQuery(this._element).addClass("toggle-on").removeClass("toggle-off");
 		else
-			$(this._element).removeClass("toggle-on").addClass("toggle-off");
+			jQuery(this._element).removeClass("toggle-on").addClass("toggle-off");
 	}
 });
 

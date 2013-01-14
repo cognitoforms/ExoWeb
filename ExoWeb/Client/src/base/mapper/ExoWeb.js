@@ -24,7 +24,7 @@ var modelReadyHandler = function modelReadyHandler(contextReady, extendContext, 
 				contextReady(window.context);
 			}
 
-			$(function modelReadyHandler$documentReady() {
+			jQuery(function modelReadyHandler$documentReady() {
 				// Activate the document if this is the first context to load
 				if (!activated) {
 					activated = true;
@@ -51,11 +51,11 @@ var updatePendingOptionsWith = function updatePendingOptionsWith(newOptions) {
 		pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
 		pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
 		pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
-		pendingOptions.model = pendingOptions.model ? $.extend(pendingOptions.model, newOptions.model) : newOptions.model;
+		pendingOptions.model = pendingOptions.model ? jQuery.extend(pendingOptions.model, newOptions.model) : newOptions.model;
 		pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
-		pendingOptions.conditions = pendingOptions.conditions ? $.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
-		pendingOptions.instances = pendingOptions.instances ? $.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
-		pendingOptions.serverInfo = pendingOptions.serverInfo ? $.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
+		pendingOptions.conditions = pendingOptions.conditions ? jQuery.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
+		pendingOptions.instances = pendingOptions.instances ? jQuery.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
+		pendingOptions.serverInfo = pendingOptions.serverInfo ? jQuery.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
 	}
 	else {
 		pendingOptions = newOptions;

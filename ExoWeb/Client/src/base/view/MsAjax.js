@@ -12,8 +12,8 @@
 		// remember the last target that was recieved when an event fires and radio button
 		// target change events fire on click (which does not account for de-selection).  
 		// Otherwise, the source value is only set the first time the radio button is selected.
-		if (Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]:checked")) {
-			$("input[type=radio][name='" + target.name + "']").each(function () {
+		if (Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked")) {
+			jQuery("input[type=radio][name='" + target.name + "']").each(function () {
 				if (this != target && this.__msajaxbindings !== undefined) {
 					var bindings = this.__msajaxbindings;
 					for (var i = 0; i < bindings.length; i++)
@@ -34,8 +34,8 @@
 		if (this._disposed) return;
 
 		// Remove checked attribute from other radio buttons in the group that are currently checked.
-		if (!link && Sys.UI.DomElement.isDomElement(target) && $(target).is("input[type=radio]:checked") && !this._lastSource) {
-			$(target).removeAttr("checked");
+		if (!link && Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked") && !this._lastSource) {
+			jQuery(target).removeAttr("checked");
 		}
 	};
 

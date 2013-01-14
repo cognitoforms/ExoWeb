@@ -14,7 +14,7 @@ jQuery.expr[":"].rule = function (obj, index, meta, stack) {
 		throw new Error("Unknown rule in selector: " + ruleName);
 	}
 
-	return $(obj).rules(ruleType).length > 0;
+	return jQuery(obj).rules(ruleType).length > 0;
 };
 
 jQuery.expr[":"].bound = function (obj, index, meta, stack) {
@@ -24,7 +24,7 @@ jQuery.expr[":"].bound = function (obj, index, meta, stack) {
 		exoWebAndModel = true;
 	}
 
-	return $(obj).liveBindings().length > 0;
+	return jQuery(obj).liveBindings().length > 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////

@@ -195,30 +195,30 @@
 		});
 	}
 
-	$("input:bound, select:bound, textarea:bound").ever(function () {
-		$(this).validated(function (sender, issues) {
+	jQuery("input:bound, select:bound, textarea:bound").ever(function () {
+		jQuery(this).validated(function (sender, issues) {
 
 			// locate validation area
-			var $area = $(this).closest(".field");
+			var $area = jQuery(this).closest(".field");
 			var $validation = $area.find(".validation");
 
 			if ($validation.size() == 0) {
-				$validation = $(this).next();
+				$validation = jQuery(this).next();
 
 				if (!$validation.is('.validation')) {
 					// container not found so inject it
-					$validation = $(this).after("<div class='validation'></div>").next();
+					$validation = jQuery(this).after("<div class='validation'></div>").next();
 				}
 			}
 
 			var states = ["some", "none"];
 
 			if (issues.length == 0) {
-				setState($(this), "validated", "none", states);
+				setState(jQuery(this), "validated", "none", states);
 				setState($validation, "validation", "none", states);
 				setState($area, "validated", "none", states);
 			} else {
-				setState($(this), "validated", "some", states);
+				setState(jQuery(this), "validated", "some", states);
 				setState($validation, "validation", "some", states);
 				setState($area, "validated", "some", states);
 

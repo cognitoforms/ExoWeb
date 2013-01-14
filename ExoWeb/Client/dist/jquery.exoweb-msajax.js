@@ -53,8 +53,8 @@
 
 	jQuery.fn.validated = function (f) {
 		this.each(function () {
-			$(this).bind('validated', f);
-			ensureInited($(this));
+			jQuery(this).bind('validated', f);
+			ensureInited(jQuery(this));
 		});
 
 		return this;
@@ -64,7 +64,7 @@
 	jQuery.fn.rules = function (ruleType) {
 		if (!window.Sys || !window.ExoWeb || !ExoWeb.Model) return [];
 
-		return $(this).liveBindings()
+		return jQuery(this).liveBindings()
 			.map(function(binding) {
 				return ExoWeb.View.getBindingInfo(binding);
 			}).filter(function(info) {
@@ -77,7 +77,7 @@
 	jQuery.fn.errors = function () {
 		if (!window.Sys || !window.ExoWeb || !ExoWeb.Model) return [];
 
-		return $(this).liveBindings().mapToArray(function (binding) {
+		return jQuery(this).liveBindings().mapToArray(function (binding) {
 
 			var source = binding.get_source();
 			if (source instanceof ExoWeb.View.Adapter) {
@@ -116,7 +116,7 @@
 			throw new Error("Unknown rule in selector: " + ruleName);
 		}
 
-		return $(obj).rules(ruleType).length > 0;
+		return jQuery(obj).rules(ruleType).length > 0;
 	};
 
 	jQuery.expr[":"].bound = function (obj, index, meta, stack) {
@@ -126,7 +126,7 @@
 			exoWebAndModel = true;
 		}
 
-		return $(obj).liveBindings().length > 0;
+		return jQuery(obj).liveBindings().length > 0;
 	};
 
 	//////////////////////////////////////////////////////////////////////////////////////

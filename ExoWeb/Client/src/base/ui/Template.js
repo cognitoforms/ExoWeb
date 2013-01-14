@@ -220,7 +220,7 @@ Template.prototype = {
 
 		// add a class that can be used to search for templates 
 		// and make sure that the template element is hidden
-		$(this._element).addClass("exoweb-template").hide();
+		jQuery(this._element).addClass("exoweb-template").hide();
 
 		if (this._element.control.constructor !== String) {
 			var el = this._element;
@@ -284,14 +284,14 @@ Template.load = function Template$load(path, options) {
 		Sys.Application.activateElement(this);
 	}));
 
-	$(function ($) {
-		var tmpl = $("<div id='" + id + "'/>")
+	jQuery(function ($) {
+		var tmpl = jQuery("<div id='" + id + "'/>")
 				.hide()
 				.appendTo("body");
 
 		//if the template is stored locally look for the path as a div on the page rather than the cache
 		if (options && options.isLocal === true) {
-			var localTemplate = $('#' + path);
+			var localTemplate = jQuery('#' + path);
 			callback.call(localTemplate.get(0));
 		}
 		else {

@@ -1505,7 +1505,7 @@ ServerSync.mixin({
 	},
 	set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
 		//join the new server info with the information that you are adding.
-		this._serverInfo = this._serverInfo ? $.extend(this._serverInfo, newInfo) : newInfo;
+		this._serverInfo = this._serverInfo ? jQuery.extend(this._serverInfo, newInfo) : newInfo;
 	}
 });
 
