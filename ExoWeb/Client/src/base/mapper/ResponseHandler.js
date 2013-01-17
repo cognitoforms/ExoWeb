@@ -49,7 +49,7 @@ ResponseHandler.mixin({
 						// Remove lazy-loader
 						TypeLazyLoader.unregister(mtype);
 
-						// Raise jQuery.extends for the type
+						// Raise $extends handlers for the type
 						raiseExtensions(mtype);
 					}
 				}
