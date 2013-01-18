@@ -352,7 +352,7 @@ Adapter.mixin({
 	},
 	get_helptext: function Adapter$get_helptext() {
 		// help text may also be included in the model?
-		return this._helptext || "";
+		return this._helptext || this._propertyChain.get_helptext() || "";
 	},
 	get_rawValue: function Adapter$get_rawValue() {
 		this._ensureObservable();

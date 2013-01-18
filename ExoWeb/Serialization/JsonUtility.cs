@@ -340,6 +340,11 @@ namespace ExoWeb.Serialization
 						if (!string.IsNullOrEmpty(label))
 							json.Set("label", label);
 
+						// Help Text
+						string helptext = property.HelpText;
+						if (!string.IsNullOrEmpty(helptext))
+							json.Set("helptext", helptext);
+
 						// Rules
 						var rules = Rule
 							.GetRegisteredRules(property.DeclaringType)

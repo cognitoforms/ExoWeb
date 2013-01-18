@@ -310,6 +310,7 @@ function typeFromJson(model, typeName, json) {
 			name: propName,
 			type: propType,
 			label: propJson.label,
+			helptext: propJson.helptext,
 			format: format,
 			isList: propJson.isList === true,
 			isStatic: propJson.isStatic === true,

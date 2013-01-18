@@ -39,12 +39,13 @@ window.PropertySetError = PropertySetError;
 /// that can be treated as a single property.
 /// </remarks>
 ///////////////////////////////////////////////////////////////////////////////
-function Property(containingType, name, jstype, label, format, isList, isStatic, isPersisted, isCalculated, index) {
+function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index) {
 	this._containingType = containingType;
 	this._name = name;
 	this._fieldName = "_" + name;
 	this._jstype = jstype;
 	this._label = label || makeHumanReadable(name);
+	this._helptext = helptext;
 	this._format = format;
 	this._isList = isList === true;
 	this._isStatic = isStatic === true;
@@ -352,6 +353,10 @@ Property.mixin({
 	get_label: function Property$get_label() {
 		return this._label;
 	},
+	
+	get_helptext: function Property$get_helptext() {
+		return this._helptext;
+	},
 
 	get_name: function Property$get_name() {
 		return this._name;
@@ -506,6 +511,11 @@ Property.mixin({
 
 	label: function (label) {
 		this._label = label;
+		return this;
+	},
+	
+	helptext: function(helptext) {
+		this._helptext = helptext;
 		return this;
 	},
 

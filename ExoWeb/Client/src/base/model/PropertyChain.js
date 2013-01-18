@@ -426,6 +426,9 @@ PropertyChain.mixin({
 	get_label: function PropertyChain$get_label() {
 		return this.lastProperty().get_label();
 	},
+	get_helptext: function PropertyChain$get_helptext() {
+		return this.lastProperty().get_helptext();
+	},
 	get_name: function PropertyChain$get_name() {
 		return this.lastProperty().get_name();
 	},

@@ -4419,7 +4419,7 @@ window.ExoWeb.DotNet = {};
 				format = getFormat(def.type, format);
 			}
 
-			var prop = new Property(this, def.name, def.type, def.label, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index);
+			var prop = new Property(this, def.name, def.type, def.label, def.helptext, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index);
 
 			this._properties[def.name] = prop;
 			(def.isStatic ? this._staticProperties : this._instanceProperties)[def.name] = prop;
@@ -4740,12 +4740,13 @@ window.ExoWeb.DotNet = {};
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, jstype, label, format, isList, isStatic, isPersisted, isCalculated, index) {
+	function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index) {
 		this._containingType = containingType;
 		this._name = name;
 		this._fieldName = "_" + name;
 		this._jstype = jstype;
 		this._label = label || makeHumanReadable(name);
+		this._helptext = helptext;
 		this._format = format;
 		this._isList = isList === true;
 		this._isStatic = isStatic === true;
@@ -5049,6 +5050,10 @@ window.ExoWeb.DotNet = {};
 		get_label: function Property$get_label() {
 			return this._label;
 		},
+	
+		get_helptext: function Property$get_helptext() {
+			return this._helptext;
+		},
 
 		get_name: function Property$get_name() {
 			return this._name;
@@ -5203,6 +5208,11 @@ window.ExoWeb.DotNet = {};
 
 		label: function (label) {
 			this._label = label;
+			return this;
+		},
+	
+		helptext: function(helptext) {
+			this._helptext = helptext;
 			return this;
 		},
 
@@ -5829,6 +5839,9 @@ window.ExoWeb.DotNet = {};
 		},
 		get_label: function PropertyChain$get_label() {
 			return this.lastProperty().get_label();
+		},
+		get_helptext: function PropertyChain$get_helptext() {
+			return this.lastProperty().get_helptext();
 		},
 		get_name: function PropertyChain$get_name() {
 			return this.lastProperty().get_name();
@@ -11363,6 +11376,7 @@ window.ExoWeb.DotNet = {};
 				name: propName,
 				type: propType,
 				label: propJson.label,
+				helptext: propJson.helptext,
 				format: format,
 				isList: propJson.isList === true,
 				isStatic: propJson.isStatic === true,
@@ -15885,7 +15899,7 @@ window.ExoWeb.DotNet = {};
 		},
 		get_helptext: function Adapter$get_helptext() {
 			// help text may also be included in the model?
-			return this._helptext || "";
+			return this._helptext || this._propertyChain.get_helptext() || "";
 		},
 		get_rawValue: function Adapter$get_rawValue() {
 			this._ensureObservable();
