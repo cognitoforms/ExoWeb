@@ -205,11 +205,15 @@ Rule.mixin({
 		// indicate that the rule should now be considered registered and cannot be reconfigured
 		delete this._options;
 
+		var canExecute = function(rule, obj, args) {
+			// ensure the rule target is a valid rule root type
+			return obj instanceof rule.rootType.get_jstype();
+		};
+
 		// create a function to safely execute the rule
 		var execute = function (rule, obj, args) {
-
-			// ensure the rule target is a valid rule root type
-			if (!(obj instanceof rule.rootType.get_jstype())) { return; }
+			// Ensure that the rule can be executed.
+			if (!canExecute(rule, obj, args)) return;
 
 			EventScope$perform(function() {
 				rule.execute.call(rule, obj, args);
@@ -241,7 +245,7 @@ Rule.mixin({
 				this.predicates.forEach(function (predicate) {
 					predicate.addChanged(
 						function (sender, args) {
-							if (!sender.meta.pendingInvocation(rule)) {
+							if (canExecute(rule, sender, args) && !sender.meta.pendingInvocation(rule)) {
 								sender.meta.pendingInvocation(rule, true);
 								EventScope$onExit(function() {
 									sender.meta.pendingInvocation(rule, false);
@@ -264,7 +268,7 @@ Rule.mixin({
 					returnValue.addGet(function (sender, args) {
 
 						// run the rule to initialize the property if it is pending initialization
-						if (sender.meta.pendingInit(returnValue)) {
+						if (canExecute(rule, sender, args) && sender.meta.pendingInit(returnValue)) {
 							sender.meta.pendingInit(returnValue, false);
 							execute(rule, sender, args);
 						}
@@ -278,7 +282,7 @@ Rule.mixin({
 
 							// immediately execute the rule if there are explicit event subscriptions for the property
 							if (rule.returnValues.some(function (returnValue) { return hasPropertyChangedSubscribers(returnValue, sender); })) {
-								if (!sender.meta.pendingInvocation(rule)) {
+								if (canExecute(rule, sender, args) && !sender.meta.pendingInvocation(rule)) {
 									sender.meta.pendingInvocation(rule, true);
 									EventScope$onExit(function() {
 										sender.meta.pendingInvocation(rule, false);
