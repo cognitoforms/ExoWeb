@@ -14797,40 +14797,48 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function getDataForContainer(container, subcontainer, index) {
-		if (!container) {
-			return;
-		}
-
 		var data = null;
 
-		if (container.control instanceof Sys.UI.DataView || container.control instanceof ExoWeb.UI.Content) {
-			var containerContexts = container.control.get_contexts();
-			var containerData = container.control.get_data();
+		if (container) {
+			if (container.control instanceof Sys.UI.DataView || container.control instanceof ExoWeb.UI.Content) {
+				var containerContexts = container.control.get_contexts();
+				var containerData = container.control.get_data();
 
-			// ensure an array for conformity
-			if (!(containerData instanceof Array)) {
-				containerData = [containerData];
-			}
-
-			if (containerContexts) {
-				// if there is only one context in the array then the index must be zero
-				if (containerContexts.length == 1) {
-					index = 0;
+				// ensure an array for conformity
+				if (!(containerData instanceof Array)) {
+					containerData = [containerData];
 				}
 
-				if (index !== undefined && index !== null && index.constructor === Number) {
-					if (index < containerContexts.length) {
-						var indexedContext = containerContexts[index];
-						var indexedData = containerData[index];
-						data = (indexedContext) ? indexedContext.dataItem : indexedData;
+				if (containerContexts) {
+					// if there is only one context in the array then the index must be zero
+					if (containerContexts.length == 1) {
+						index = 0;
 					}
-				}
-				else {
-					// try to find the right context based on the element's position in the dom
-					for (var i = 0, l = containerContexts.length; i < l; i++) {
-						var childContext = containerContexts[i];
-						if (childContext && childContext.containerElement === container && Sys._indexOf(childContext.nodes, subcontainer) > -1) {
-							data = childContext.dataItem;
+
+					if (index !== undefined && index !== null && index.constructor === Number) {
+						if (index < containerContexts.length) {
+							var indexedContext = containerContexts[index];
+							var indexedData = containerData[index];
+							data = (indexedContext) ? indexedContext.dataItem : indexedData;
+						}
+					}
+					else {
+						// try to find the right context based on the element's position in the dom
+						for (var i = 0, l = containerContexts.length; i < l; i++) {
+							var childContext = containerContexts[i];
+							if (!childContext) {
+								var contextsFromDom = map(container.children, function(e) { return Sys.UI.Template.findContext(e.firstChild); }).distinct();
+								var matchingContext = contextsFromDom.single(function(tc) { return Sys._indexOf(tc.nodes, subcontainer) >= 0; });
+								if (matchingContext) {
+									data = matchingContext.dataItem;
+									break;
+								}
+							}
+							else if (childContext.containerElement === container && Sys._indexOf(childContext.nodes, subcontainer) > -1) {
+								data = childContext.dataItem;
+								break;
+							}
+
 						}
 					}
 				}
