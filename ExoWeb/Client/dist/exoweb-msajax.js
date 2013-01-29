@@ -5,7 +5,7 @@ window.ExoWeb.UI = {};
 window.ExoWeb.View = {};
 window.ExoWeb.DotNet = {};
 
-(function() {
+(function(jQuery) {
 
 	// #region ExoWeb.Config
 	//////////////////////////////////////////////////
@@ -17764,4 +17764,4 @@ window.ExoWeb.DotNet = {};
 		setValue: Sys.Observer.setValue
 	});
 	// #endregion
-})();
+})(window.ExoJQuery || jQuery);
