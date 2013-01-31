@@ -249,7 +249,7 @@ task :build_msajax_nojquery do
 	File.open(File.join(@dist_dir, "exoweb-msajax-nojquery.js"), "w") do |f|
 		f.write("window.ExoWeb = {};\n")
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("window.ExoWeb." + ns + " = {};\n") }
-		f.write("\n(function() {\n")
+		f.write("\n(function(jQuery) {\n")
 		
 		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet", "extensions/msajax"].each do |name|
 			src_dir = @src_dir
@@ -259,7 +259,7 @@ task :build_msajax_nojquery do
 			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1, @exports[name]))
 		end
 
-		f.write("})();\n");
+		f.write("})(window.ExoJQuery || jQuery);\n");
 	end
 	puts("completed build_msajax_nojquery task")
 	jshint("exoweb-msajax-nojquery")
