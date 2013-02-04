@@ -1,7 +1,7 @@
 ﻿// Name:        MicrosoftAjax.debug.js
 // Assembly:    System.Web.Ajax
-// Version:     3.0.31106.0
-// FileVersion: 3.0.31106.0
+// Version:     3.0.31106.1
+// FileVersion: 3.0.31106.1
 
 
 (function(window, Sys) {
@@ -131,7 +131,7 @@ if (!Sys || !Sys.loader) {
 		}
 	}
 	window.Sys = Sys = append(Sys, {
-		version: [3, 0, 31106, 0],
+		version: [3, 0, 31106, 1],
 		__class: true,
 		debug: true,
 		scripts: {},
