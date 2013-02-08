@@ -71,6 +71,8 @@ namespace ExoWeb
 					default:
 
 						// Deserialize the request
+						context.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+						context.Response.Cache.SetNoStore();
 						ServiceRequest request = JsonUtility.Deserialize<ServiceRequest>(context.Request.InputStream);
 
 						// Invoke the request and output the response
