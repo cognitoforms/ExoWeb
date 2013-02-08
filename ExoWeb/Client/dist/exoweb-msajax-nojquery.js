@@ -17091,5 +17091,16 @@ window.ExoWeb.DotNet = {};
 
 		setValue: Sys.Observer.setValue
 	});
+
+	ExoWeb.updateArray = function updateArray(array, items) {
+		if (array.beginUpdate && array.endUpdate) {
+			array.beginUpdate();
+		}
+		update(array, items);
+		if (array.beginUpdate && array.endUpdate) {
+			array.endUpdate();
+		}
+	};
+
 	// #endregion
 })();

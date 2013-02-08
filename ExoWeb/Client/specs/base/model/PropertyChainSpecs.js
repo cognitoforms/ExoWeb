@@ -11,6 +11,7 @@ specs.ensureWindow();
 
 specs.requireMsAjax();
 specs.requireJQueryExtend();
+specs.ensureNamespace("ExoWeb");
 specs.require("model.PropertyChain");
 specs.require("msajax.ObserverProvider");
 
