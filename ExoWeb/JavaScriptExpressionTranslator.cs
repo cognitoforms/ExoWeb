@@ -305,8 +305,6 @@ namespace ExoWeb
 		static Regex numberRegex = new Regex("SByte|Byte|UInt16|Int16|UInt32|Int32|UInt64|Int64|Single|Double|Decimal", RegexOptions.Compiled);
 		static Regex expressionRegex = new Regex(@"\{(?<index>\d+)\}", RegexOptions.Compiled);
 
-		static bool isFirst = true;
-
 		IList<Func<MemberInfo, MemberTranslation>> translators = new List<Func<MemberInfo, MemberTranslation>>();
 		Dictionary<MemberInfo, MemberTranslation> translations = new Dictionary<MemberInfo, MemberTranslation>();
 
