@@ -5,7 +5,7 @@ window.ExoWeb.UI = {};
 window.ExoWeb.View = {};
 window.ExoWeb.DotNet = {};
 
-(function() {
+(function(jQuery) {
 
 	// #region ExoWeb.Config
 	//////////////////////////////////////////////////
@@ -148,7 +148,7 @@ window.ExoWeb.DotNet = {};
 		///		"message": The error message.
 		///		"type": The type of error.  By default this is simply "Error".  A custom event
 		///			handler may choose to attempt to infer the error type from the message.
-		///		"url": The URL where the error occured.  By default this is the current URL.
+		///		"url": The URL where the error occurred.  By default this is the current URL.
 		///		"refererUrl": By default this is the `document.referrer` property.
 		///		"additionalInfo": By default this is an object with `url` and `lineNumber`
 		///			properties, which correspond to the arguments of that name which were
@@ -17103,4 +17103,4 @@ window.ExoWeb.DotNet = {};
 	};
 
 	// #endregion
-})();
+})(window.ExoJQuery || jQuery);
