@@ -31,10 +31,31 @@ namespace ExoWeb.Serialization
 		/// <returns></returns>
 		public bool ReadProperty(out string property)
 		{
+			return ReadProperty(out property, null);
+		}
+
+		/// <summary>
+		/// Returns true if a property is being read, including the property name
+		/// as an out parameter, otherwise false.
+		/// </summary>
+		/// <param name="property"></param>
+		/// <param name="readPropertyAsType">The property type to facilitate reading</param>
+		/// <returns></returns>
+		internal bool ReadProperty(out string property, Type readPropertyAsType)
+		{
 			if (TokenType == JsonToken.PropertyName)
 			{
 				property = (string)Value;
-				return Read();
+				bool wasRead = false;
+
+				//Work around for the Read method not automatically deserializing all types properly
+				//Issue reported to Json.NET at http://json.codeplex.com/workitem/23910
+				if (readPropertyAsType == typeof(decimal))
+					wasRead = ReadAsDecimal() != null;
+				else
+					wasRead = Read();
+
+				return wasRead;
 			}
 			else
 			{

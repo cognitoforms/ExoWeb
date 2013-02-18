@@ -105,23 +105,47 @@ namespace ExoWeb.Serialization
 				string p;
 				ModelInstance instance = null;
 				ModelValueProperty property = null;
+
+				Type oldValueType = null;
 				object oldValue = null;
+				Type newValueType = null;
 				object newValue = null;
-				while (reader.ReadProperty(out p))
+
+				Type readPropertyAsType = null;
+
+				while (reader.ReadProperty(out p, readPropertyAsType))
 				{
 					switch (p)
 					{
+						//Property sequence matters
 						case "instance":
 							instance = reader.ReadValue<ModelInstance>();
 							break;
 						case "property":
 							property = (ModelValueProperty)instance.Type.Properties[reader.ReadValue<string>()];
+
+							if (property.PropertyType != typeof(object))
+								readPropertyAsType = property.PropertyType;
+							break;
+						case "oldValueType": //Only present when property type is object
+							readPropertyAsType = oldValueType = Type.GetType(reader.ReadValue<string>());
 							break;
 						case "oldValue":
-							oldValue = reader.ReadValue(property.PropertyType);
+							oldValue = reader.ReadValue(oldValueType ?? property.PropertyType);
+
+							//Reset when dealing with object property
+							if (property.PropertyType == typeof(object))
+								readPropertyAsType = null;
+							break;
+						case "newValueType": //Only present when property type is object
+							readPropertyAsType = newValueType = Type.GetType(reader.ReadValue<string>());
 							break;
 						case "newValue":
-							newValue = reader.ReadValue(property.PropertyType);
+							newValue = reader.ReadValue(newValueType ?? property.PropertyType);
+
+							//Reset when dealing with object property
+							if (property.PropertyType == typeof(object))
+								readPropertyAsType = null;
 							break;
 						default:
 							throw new ArgumentException("The specified property could not be deserialized.", p);
@@ -440,10 +464,19 @@ namespace ExoWeb.Serialization
 					new JsonConverter<ModelValueChangeEvent>(
 						(modelEvent, json) =>
 						{
+							//Property sequence matters
 							json.Set("type", "ValueChange");
 							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
 							json.Set("property", modelEvent.Property.Name);
+							
+							if(modelEvent.Property.PropertyType == typeof(object) && modelEvent.OldValue != null)
+								json.Set("oldValueType", modelEvent.OldValue.GetType().FullName);
+
 							json.Set("oldValue", modelEvent.OldValue);
+
+							if (modelEvent.Property.PropertyType == typeof(object) && modelEvent.NewValue != null)
+								json.Set("newValueType", modelEvent.NewValue.GetType().FullName);
+							
 							json.Set("newValue", modelEvent.NewValue);
 						},
 						deserializeValueChangeEvent),
