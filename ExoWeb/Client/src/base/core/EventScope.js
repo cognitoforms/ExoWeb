@@ -79,10 +79,9 @@ function EventScope$onExit(callback, thisPtr) {
 }
 
 function EventScope$perform(callback, thisPtr) {
+	// Create an event scope
+	var scope = new EventScope();
 	try {
-		// Create an event scope
-		var scope = new EventScope();
-
 		// Invoke the callback
 		EventScope$invoke(callback, thisPtr);
 	}

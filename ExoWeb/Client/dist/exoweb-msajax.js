@@ -2002,10 +2002,9 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function EventScope$perform(callback, thisPtr) {
+		// Create an event scope
+		var scope = new EventScope();
 		try {
-			// Create an event scope
-			var scope = new EventScope();
-
 			// Invoke the callback
 			EventScope$invoke(callback, thisPtr);
 		}
@@ -8180,7 +8179,7 @@ window.ExoWeb.DotNet = {};
 
 			// If an array is encountered and this call originated from "evalAll" then delegate to "evalAll", otherwise 
 			// this will most likely be an error condition unless the remainder of the path are properties of Array.
-			if (continueFn === LazyLoader.evalAll && target instanceof Array) {
+			if (continueFn !== LazyLoader.eval && target instanceof Array) {
 				continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading, root, processed);
 				return;
 			}
@@ -15658,13 +15657,19 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val) {
-			var signal = new ExoWeb.Signal("Adapter.displayValue");
-			this._doForFormatPaths(val, function (path) {
-				ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
-			});
-			signal.waitForAll(function () {
-				Observer.raisePropertyChanged(this, "displayValue");
-				Observer.raisePropertyChanged(this, "systemValue");
+			EventScope$onExit(function() {
+				var signal = new ExoWeb.Signal("Adapter.displayValue");
+				this._doForFormatPaths(val, function(path) {
+					EventScope$perform(function() {
+						ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending(), signal.orPending(), null, null, function() {
+							EventScope$perform(ExoWeb.Model.LazyLoader.evalAll.bind(this, arguments));
+						}, false, val, []);
+					}, this);
+				});
+				signal.waitForAll(function() {
+					Observer.raisePropertyChanged(this, "displayValue");
+					Observer.raisePropertyChanged(this, "systemValue");
+				}, this);
 			}, this);
 		},
 		_doForFormatPaths: function Adapter$_doForFormatPaths(val, callback, thisPtr) {
@@ -15672,9 +15677,7 @@ window.ExoWeb.DotNet = {};
 				return;
 			}
 
-			if (fmt) {
-				Array.forEach(this._format.getPaths(), callback, thisPtr || this);
-			}
+			this._format.getPaths().forEach(callback, thisPtr || this);
 		},
 		_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val) {
 			this._doForFormatPaths(val, function (path) {

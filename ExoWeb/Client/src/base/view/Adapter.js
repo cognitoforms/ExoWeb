@@ -103,13 +103,19 @@ Adapter.mixin({
 		}
 	},
 	_loadForFormatAndRaiseChange: function Adapter$_loadForFormatAndRaiseChange(val) {
-		var signal = new ExoWeb.Signal("Adapter.displayValue");
-		this._doForFormatPaths(val, function (path) {
-			ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
-		});
-		signal.waitForAll(function () {
-			Observer.raisePropertyChanged(this, "displayValue");
-			Observer.raisePropertyChanged(this, "systemValue");
+		EventScope$onExit(function() {
+			var signal = new ExoWeb.Signal("Adapter.displayValue");
+			this._doForFormatPaths(val, function(path) {
+				EventScope$perform(function() {
+					ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending(), signal.orPending(), null, null, function() {
+						EventScope$perform(ExoWeb.Model.LazyLoader.evalAll.bind(this, arguments));
+					}, false, val, []);
+				}, this);
+			});
+			signal.waitForAll(function() {
+				Observer.raisePropertyChanged(this, "displayValue");
+				Observer.raisePropertyChanged(this, "systemValue");
+			}, this);
 		}, this);
 	},
 	_doForFormatPaths: function Adapter$_doForFormatPaths(val, callback, thisPtr) {
@@ -117,9 +123,7 @@ Adapter.mixin({
 			return;
 		}
 
-		if (fmt) {
-			Array.forEach(this._format.getPaths(), callback, thisPtr || this);
-		}
+		this._format.getPaths().forEach(callback, thisPtr || this);
 	},
 	_unsubscribeFromFormatChanges: function Adapter$_unsubscribeFromFormatChanges(val) {
 		this._doForFormatPaths(val, function (path) {

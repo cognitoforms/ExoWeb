@@ -58,7 +58,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 
 		// If an array is encountered and this call originated from "evalAll" then delegate to "evalAll", otherwise 
 		// this will most likely be an error condition unless the remainder of the path are properties of Array.
-		if (continueFn === LazyLoader.evalAll && target instanceof Array) {
+		if (continueFn !== LazyLoader.eval && target instanceof Array) {
 			continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading, root, processed);
 			return;
 		}
