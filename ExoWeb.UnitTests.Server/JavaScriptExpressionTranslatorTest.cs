@@ -215,6 +215,7 @@ namespace ExoWeb.UnitTests.Server
 			// Boolean String.StartsWith(String)
 			TestExpression(movie, @"Name.StartsWith(""Robin"")", true, "Name");
 			TestExpression(movie, @"Name.StartsWith(""Hood"")", false, "Name");
+			//TestExpression(movie, @"startswith(Name, ""Robin"") eq true", true, "Name"); // odata
 
 			// Number String.Compare(String, Number, String, Number, Number)
 			TestExpression(movie, @"String.Compare(Name, 6, ""Hood"", 0, 4)", 0, "Name");
@@ -435,7 +436,10 @@ namespace ExoWeb.UnitTests.Server
 			Assert.AreEqual(expectedPath, exp.Path.Path);
 
 			// Ensure the expression yields the correct value
-			Assert.AreEqual(expectedValue, exp.Expression.Compile().DynamicInvoke(instance));
+			if (exp.Expression.Parameters.Count == 0)
+				Assert.AreEqual(expectedValue, exp.Expression.Compile().DynamicInvoke());
+			else
+				Assert.AreEqual(expectedValue, exp.Expression.Compile().DynamicInvoke(instance));
 
 			// Convert the expression to javascript
 			var translation = translator.Translate(exp.Expression);
