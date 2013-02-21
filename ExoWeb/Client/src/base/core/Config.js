@@ -13,6 +13,9 @@ var config = {
 	// Uniquely identifies this application if more than one app is hosted under the same domain name.
 	appInstanceId: "?",
 
+	// Automatic DOM activation when document.ready fires
+	autoActivation: true,
+
 	// Controls different whether lazy loading are allowed. If set to false, an error is raised when lazy loading occurs.
 	allowTypeLazyLoading: true,
 	allowObjectLazyLoading: true,

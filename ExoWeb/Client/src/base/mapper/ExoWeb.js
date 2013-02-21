@@ -26,7 +26,7 @@ var modelReadyHandler = function modelReadyHandler(contextReady, extendContext, 
 
 			jQuery(function modelReadyHandler$documentReady() {
 				// Activate the document if this is the first context to load
-				if (!activated) {
+				if (!activated && ExoWeb.config.autoActivation) {
 					activated = true;
 					Sys.Application.activateElement(document.documentElement);
 				}

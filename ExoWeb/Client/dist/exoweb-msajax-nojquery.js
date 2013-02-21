@@ -25,6 +25,9 @@ window.ExoWeb.DotNet = {};
 		// Uniquely identifies this application if more than one app is hosted under the same domain name.
 		appInstanceId: "?",
 
+		// Automatic DOM activation when document.ready fires
+		autoActivation: true,
+
 		// Controls different whether lazy loading are allowed. If set to false, an error is raised when lazy loading occurs.
 		allowTypeLazyLoading: true,
 		allowObjectLazyLoading: true,
@@ -13061,7 +13064,7 @@ window.ExoWeb.DotNet = {};
 
 				jQuery(function modelReadyHandler$documentReady() {
 					// Activate the document if this is the first context to load
-					if (!activated) {
+					if (!activated && ExoWeb.config.autoActivation) {
 						activated = true;
 						Sys.Application.activateElement(document.documentElement);
 					}
