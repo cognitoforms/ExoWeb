@@ -200,9 +200,9 @@ namespace ExoWeb.Templates.JavaScript
 			if (isReference)
 			{
 				if (value is IEnumerable)
-					return ((IEnumerable)value).Cast<object>().Select(o => ModelContext.Current.GetModelInstance(o));
+					return ((IEnumerable)value).Cast<object>().Select(o => ModelInstance.GetModelInstance(o));
 				else
-					return ModelContext.Current.GetModelInstance(value);
+					return ModelInstance.GetModelInstance(value);
 			}
 
 			return value;

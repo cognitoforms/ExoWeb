@@ -288,18 +288,18 @@ function ensureIntercepting() {
 	}
 
 	if (!interceptingContent && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
-		var _render = ExoWeb.UI.Content.prototype._render;
-		if (!_render) {
-			throw new Error("Could not find Content._render method to override.");
+		var _clearContainer = ExoWeb.UI.Content.prototype._clearContainer;
+		if (!_clearContainer) {
+			throw new Error("Could not find Content._clearContainer method to override.");
 		}
-		ExoWeb.UI.Content.prototype._render = function Content$_render$wrap() {
+		ExoWeb.UI.Content.prototype._clearContainer = function Content$_clearContainer$wrap() {
 			if (this._element) {
 				var children = this._element.children;
 				if (children.length > 0) {
 					processElements(this._element, children, "deleted", "template");
 				}
 			}
-			_render.apply(this, arguments);
+			_clearContainer.apply(this, arguments);
 		};
 		interceptingContent = true;
 	}

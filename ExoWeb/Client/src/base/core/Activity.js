@@ -26,13 +26,13 @@ function isBusy(/* logBusyLabel */) {
 	getBusyItems(function (item) {
 		busy = true;
 
-		if (logBusyLabel) {
-			console.log("Item \"" + item.label + "\" is busy.");
+			if (logBusyLabel) {
+				console.log("Item \"" + item.label + "\" is busy.");
 			return false;
-		}
-		else {
-			return true;
-		}
+			}
+			else {
+				return true;
+			}
 	});
 
 	return busy;
