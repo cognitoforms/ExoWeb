@@ -269,19 +269,21 @@ function objectToArray(obj) {
 exports.objectToArray = objectToArray;
 
 function $format(str, values) {
-	var source = null, arrayMode = false;
+	var source;
 
-	if (!values) return str;
+	if (arguments.length < 2) {
+		return str;
+	}
 
 	if (arguments.length > 2) {
 		// use arguments passed to function as array
 		source = Array.prototype.slice.call(arguments, 1);
 	}
 	else {
-		source = !(values instanceof Array) ? [values] : values
+		source = !(values instanceof Array) ? [values] : values;
 	}
 
-	return str.replace(/\{([0-9]+)\}/ig, function $format$token(match, indexStr) {
+	return str.replace(/\{([0-9]+)\}/ig, function (match, indexStr) {
 		var index = parseInt(indexStr, 10);
 		var result = source[index];
 
