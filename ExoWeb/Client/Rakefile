@@ -163,8 +163,6 @@ end
 	
 	"extensions/dotnet" => %w{WebService},
 
-	"extensions/exoperf" => %w{Instrument},
-
 	"extensions/msajax" => %w{FormatProvider ObserverProvider}
 }
 
@@ -253,7 +251,7 @@ task :build_msajax_nojquery do
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("window.ExoWeb." + ns + " = {};\n") }
 		f.write("\n(function(jQuery) {\n")
 		
-		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet", "extensions/exoperf", "extensions/msajax"].each do |name|
+		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/dotnet", "extensions/msajax"].each do |name|
 			src_dir = @src_dir
 			names = name.split("/")
 			names.each { |step| src_dir = File.join(src_dir, step) }
@@ -274,7 +272,7 @@ task :build_msajax do
 		["Model", "Mapper", "UI", "View", "DotNet"].each { |ns| f.write("window.ExoWeb." + ns + " = {};\n") }
 		f.write("\n(function(jQuery) {\n")
 		
-		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/jquery-msajax", "extensions/dotnet", "extensions/exoperf", "extensions/msajax"].each do |name|
+		["base/core", "base/model", "base/mapper", "base/ui", "base/view", "extensions/jquery-msajax", "extensions/dotnet", "extensions/msajax"].each do |name|
 			src_dir = @src_dir
 			names = name.split("/")
 			names.each { |step| src_dir = File.join(src_dir, step) }

@@ -288,18 +288,18 @@ function ensureIntercepting() {
 	}
 
 	if (!interceptingContent && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
-		var _clearContainer = ExoWeb.UI.Content.prototype._clearContainer;
-		if (!_clearContainer) {
-			throw new Error("Could not find Content._clearContainer method to override.");
+		var _render = ExoWeb.UI.Content.prototype._render;
+		if (!_render) {
+			throw new Error("Could not find Content._render method to override.");
 		}
-		ExoWeb.UI.Content.prototype._clearContainer = function Content$_clearContainer$wrap() {
+		ExoWeb.UI.Content.prototype._render = function Content$_render$wrap() {
 			if (this._element) {
 				var children = this._element.children;
 				if (children.length > 0) {
 					processElements(this._element, children, "deleted", "template");
 				}
 			}
-			_clearContainer.apply(this, arguments);
+			_render.apply(this, arguments);
 		};
 		interceptingContent = true;
 	}
@@ -337,7 +337,7 @@ var addEverHandler = function addEverHandler(context, selector, type, source, ac
 			handler.action.add(action);
 		}
 		else {
-			handler.action = function() {
+			handler.action = function () {
 				existingFn.apply(this, arguments);
 				action.apply(this, arguments);
 			};
@@ -376,7 +376,7 @@ jQuery.fn.ever = function jQuery$ever(opts) {
 			deleted: arguments[1]
 		};
 	}
-	// Use options argument directly
+		// Use options argument directly
 	else {
 		options = opts;
 		// Detect non-supported options

@@ -4,9 +4,9 @@ var activityCallbacks = [];
 
 function registerActivity(label, callback, thisPtr) {
 	if (label == null) throw new ArgumentNullError("label");
-	if (typeof(label) !== "string") throw new ArgumentTypeError("label", "string", label);
+	if (typeof (label) !== "string") throw new ArgumentTypeError("label", "string", label);
 	if (callback == null) throw new ArgumentNullError("callback");
-	if (typeof(callback) !== "function") throw new ArgumentTypeError("callback", "function", callback);
+	if (typeof (callback) !== "function") throw new ArgumentTypeError("callback", "function", callback);
 
 	var item = { label: label, callback: callback };
 
@@ -26,13 +26,13 @@ function isBusy(/* logBusyLabel */) {
 	getBusyItems(function (item) {
 		busy = true;
 
-			if (logBusyLabel) {
-				console.log("Item \"" + item.label + "\" is busy.");
+		if (logBusyLabel) {
+			console.log("Item \"" + item.label + "\" is busy.");
 			return false;
-			}
-			else {
-				return true;
-			}
+		}
+		else {
+			return true;
+		}
 	});
 
 	return busy;
