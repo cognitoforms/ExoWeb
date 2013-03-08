@@ -1417,9 +1417,9 @@ window.ExoWeb.DotNet = {};
 
 	function registerActivity(label, callback, thisPtr) {
 		if (label == null) throw new ArgumentNullError("label");
-		if (typeof(label) !== "string") throw new ArgumentTypeError("label", "string", label);
+		if (typeof (label) !== "string") throw new ArgumentTypeError("label", "string", label);
 		if (callback == null) throw new ArgumentNullError("callback");
-		if (typeof(callback) !== "function") throw new ArgumentTypeError("callback", "function", callback);
+		if (typeof (callback) !== "function") throw new ArgumentTypeError("callback", "function", callback);
 
 		var item = { label: label, callback: callback };
 
@@ -1439,13 +1439,13 @@ window.ExoWeb.DotNet = {};
 		getBusyItems(function (item) {
 			busy = true;
 
-				if (logBusyLabel) {
-					console.log("Item \"" + item.label + "\" is busy.");
+			if (logBusyLabel) {
+				console.log("Item \"" + item.label + "\" is busy.");
 				return false;
-				}
-				else {
-					return true;
-				}
+			}
+			else {
+				return true;
+			}
 		});
 
 		return busy;
@@ -2079,7 +2079,7 @@ window.ExoWeb.DotNet = {};
 		var parser = /(([a-z_$][0-9a-z_$]*)([.]?))|(('([^']|\')*')|("([^"]|\")*"))/gi;
 		var skipWords = ["true", "false", "$index", "null"];
 
-		filter = filter.replace(parser, function(match, ignored, name, more, strLiteral) {
+		filter = filter.replace(parser, function (match, ignored, name, more, strLiteral) {
 			if ((strLiteral !== undefined && strLiteral !== null && strLiteral.length > 0) || skipWords.indexOf(name) >= 0) {
 				return match;
 			}
@@ -2114,7 +2114,7 @@ window.ExoWeb.DotNet = {};
 		var orderings = [];
 		var parser = /\s*([a-z0-9_.]+)(\s+null)?(\s+(asc|desc))?(\s+null)? *(,|$)/gi;
 
-		ordering.replace(parser, function(match, path, nullsFirst, ws, dir, nullsLast) {
+		ordering.replace(parser, function (match, path, nullsFirst, ws, dir, nullsLast) {
 			var isNullsFirst = (nullsFirst !== undefined && nullsFirst !== null && nullsFirst.length > 0);
 			var isNullsLast = (nullsLast !== undefined && nullsLast !== null && nullsLast.length > 0);
 			orderings.push({
@@ -2203,7 +2203,7 @@ window.ExoWeb.DotNet = {};
 
 	function copyTransform(steps, array, live) {
 		var result = $transform(array, live);
-		steps.forEach(function(step) {
+		steps.forEach(function (step) {
 			result = result[step._transform.method].call(result, step._transform.arg, step._transform.thisPtr)
 		});
 		return result;
@@ -2255,7 +2255,7 @@ window.ExoWeb.DotNet = {};
 			var output = transforms.groupBy(this.input(), groups, thisPtr);
 			if (this._livePending) {
 				// make the items array observable if the transform is in live mode
-				output.forEach(function(group) {
+				output.forEach(function (group) {
 					ExoWeb.Observer.makeObservable(group.items);
 				});
 			}
@@ -2299,7 +2299,7 @@ window.ExoWeb.DotNet = {};
 				//Sys.NotifyCollectionChangedAction.add;
 
 				// copy the set of changes since they will be manipulated
-				changes = args.get_changes().map(function(c) {
+				changes = args.get_changes().map(function (c) {
 					return {
 						action: c.action,
 						oldItems: c.oldItems ? c.oldItems.copy() : null,
@@ -2313,12 +2313,12 @@ window.ExoWeb.DotNet = {};
 				stepInput = rootStep.input().copy();
 
 				// re-run the transform on the newly changed input
-				steps.forEach(function(step) {
+				steps.forEach(function (step) {
 					// store a reference to the output of this step
 					stepResult = step.input();
 
 					if (step._transform.method === "where") {
-						changes.purge(function(change) {
+						changes.purge(function (change) {
 							if (change.oldItems) {
 								var oldItems = change.oldItems;
 								// determine which removed items made it through the filter
@@ -2372,13 +2372,13 @@ window.ExoWeb.DotNet = {};
 						});
 					}
 					else if (step._transform.method === "select") {
-						changes.forEach(function(change) {
+						changes.forEach(function (change) {
 							if (change.oldItems) {
 								change.oldItems = stepResult.splice(change.oldStartingIndex, change.oldItems.length);
 							}
 							else if (change.newItems) {
 								var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectFunction(step._transform.arg);
-								change.newItems = change.newItems.map(function(item) {
+								change.newItems = change.newItems.map(function (item) {
 									return mapFn.call(step._transform.thisPtr || item, item);
 								});
 
@@ -2390,14 +2390,14 @@ window.ExoWeb.DotNet = {};
 						});
 					}
 					else if (step._transform.method === "selectMany") {
-						changes.forEach(function(change) {
+						changes.forEach(function (change) {
 							if (change.oldItems) {
 								var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectManyFunction(step._transform.arg);
-								var oldItemsMany = change.oldItems.mapToArray(function(item) {
+								var oldItemsMany = change.oldItems.mapToArray(function (item) {
 									return mapFn.call(step._transform.thisPtr || item, item);
 								});
 								var oldPreceeding = stepInput.slice(0, change.oldStartingIndex);
-								var oldPreceedingMany = oldPreceeding.mapToArray(function(item) {
+								var oldPreceedingMany = oldPreceeding.mapToArray(function (item) {
 									return mapFn.call(step._transform.thisPtr || item, item);
 								});
 								change.oldItems = stepResult.splice(oldPreceedingMany.length, oldItemsMany.length);
@@ -2405,7 +2405,7 @@ window.ExoWeb.DotNet = {};
 							}
 							else if (change.newItems) {
 								var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectManyFunction(step._transform.arg);
-								change.newItems = change.newItems.mapToArray(function(item) {
+								change.newItems = change.newItems.mapToArray(function (item) {
 									return mapFn.call(step._transform.thisPtr || item, item);
 								});
 
@@ -2419,11 +2419,11 @@ window.ExoWeb.DotNet = {};
 					else if (step._transform.method === "groupBy") {
 						var groupFn = step._transform.arg instanceof Function ? step._transform.arg : compileGroupsFunction(step._transform.arg);
 						var copyOfResults = stepResult.copy();
-						changes.forEach(function(change) {
+						changes.forEach(function (change) {
 							if (change.oldItems) {
-								change.oldItems.forEach(function(item) {
+								change.oldItems.forEach(function (item) {
 									var groupKey = groupFn.call(step._transform.thisPtr || item, item);
-									var group = copyOfResults.filter(function(g) { return g.group === groupKey; })[0];
+									var group = copyOfResults.filter(function (g) { return g.group === groupKey; })[0];
 									// begin and end update on items array
 									if (modifiedItemsArrays.indexOf(group.items) < 0) {
 										group.items.beginUpdate();
@@ -2454,9 +2454,9 @@ window.ExoWeb.DotNet = {};
 								});
 							}
 							else if (change.newItems) {
-								change.newItems.forEach(function(item) {
+								change.newItems.forEach(function (item) {
 									var groupKey = groupFn.call(step._transform.thisPtr || item, item),
-										group = copyOfResults.filter(function(g) { return g.group === groupKey; })[0],
+										group = copyOfResults.filter(function (g) { return g.group === groupKey; })[0],
 										sourceIndex,
 										targetIndex,
 										resequenceGroup = false,
@@ -2528,7 +2528,7 @@ window.ExoWeb.DotNet = {};
 
 				// apply changes to the ouput array
 				output.beginUpdate();
-				changes.forEach(function(change) {
+				changes.forEach(function (change) {
 					if (change.oldItems) {
 						output.removeRange(change.oldStartingIndex, change.oldItems.length);
 					}
@@ -2540,14 +2540,14 @@ window.ExoWeb.DotNet = {};
 
 				// release changes to items arrays of groups, changes to the array occur first to allow
 				// for changes to groups' items to be ignored if the group is no longer a part of the output
-				modifiedItemsArrays.forEach(function(items) {
+				modifiedItemsArrays.forEach(function (items) {
 					items.endUpdate();
 				});
 			});
 
 			// mark the transform steps as live complete
 			rootStep._liveComplete = true;
-			steps.forEach(function(step) {
+			steps.forEach(function (step) {
 				step._liveComplete = true;
 			});
 
@@ -17195,18 +17195,18 @@ window.ExoWeb.DotNet = {};
 		}
 
 		if (!interceptingContent && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
-			var _clearContainer = ExoWeb.UI.Content.prototype._clearContainer;
-			if (!_clearContainer) {
-				throw new Error("Could not find Content._clearContainer method to override.");
+			var _render = ExoWeb.UI.Content.prototype._render;
+			if (!_render) {
+				throw new Error("Could not find Content._render method to override.");
 			}
-			ExoWeb.UI.Content.prototype._clearContainer = function Content$_clearContainer$wrap() {
+			ExoWeb.UI.Content.prototype._render = function Content$_render$wrap() {
 				if (this._element) {
 					var children = this._element.children;
 					if (children.length > 0) {
 						processElements(this._element, children, "deleted", "template");
 					}
 				}
-				_clearContainer.apply(this, arguments);
+				_render.apply(this, arguments);
 			};
 			interceptingContent = true;
 		}
@@ -17244,7 +17244,7 @@ window.ExoWeb.DotNet = {};
 				handler.action.add(action);
 			}
 			else {
-				handler.action = function() {
+				handler.action = function () {
 					existingFn.apply(this, arguments);
 					action.apply(this, arguments);
 				};
@@ -17283,7 +17283,7 @@ window.ExoWeb.DotNet = {};
 				deleted: arguments[1]
 			};
 		}
-		// Use options argument directly
+			// Use options argument directly
 		else {
 			options = opts;
 			// Detect non-supported options
@@ -17569,3 +17569,218 @@ window.ExoWeb.DotNet = {};
 	});
 
 	// #endregion
+
+	// #region FormatProvider
+	//////////////////////////////////////////////////
+
+	setFormatProvider(function FormatProvider(type, format) {
+
+		// Date
+		if (type === Date) {
+			// Add support for g and G that are not natively supported by the MSAJAX framework
+			if (format === "g")
+				format = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "t");
+			else if (format === "G")
+				format = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "T");
+
+			return new Format({
+				description: "",
+				specifier: format,
+				convert: function (val) {
+					return val.localeFormat(format);
+				},
+				convertBack: function (str) {
+					var date = Date.parseLocale(str, format);
+					if (date === null)
+						throw new Error("Invalid date format");
+					return date; 
+				}
+			});
+		}
+
+		// Number
+		if (type === Number) {
+			var isCurrencyFormat = format.match(/[$c]+/i);
+			var isPercentageFormat = format.match(/[%p]+/i);
+			var isIntegerFormat = format.match(/[dnfg]0/i);
+			var currencyDecimalDigits = Sys.CultureInfo.CurrentCulture.numberFormat.CurrencyDecimalDigits;
+
+			return new Format({
+			    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
+				specifier: format,
+				convert: function (val) {
+					// Default to browser formatting for general format
+					if (format.toLowerCase() === "g")
+						return val.toString(); 
+
+					// Otherwise, use the localized format
+					return val.localeFormat(format);
+				},
+				convertBack: function (str) {
+					// Handle use of () to denote negative numbers
+					var sign = 1;
+					if (str.match(/^\(.*\)$/)) {
+						str = str.substring(1, str.length - 1);
+						sign = -1;
+					}
+					var result;
+
+					// Remove currency symbols before parsing
+					if (isCurrencyFormat) {
+					    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
+
+					    // Ensure that currency values do not have more than the allowed number of digits to the right of the decimal   
+					    if (result * Math.pow(10, currencyDecimalDigits) != Math.round(result * Math.pow(10, currencyDecimalDigits)))
+					        result = NaN;
+					}
+					    // Remove percentage symbols before parsing and divide by 100
+					else if (isPercentageFormat)
+					    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
+
+					    // Ensure integers are actual whole numbers
+					else if (isIntegerFormat && !isInteger(Number.parseLocale(str)))
+					    result = NaN;
+
+					    // Just parse a simple number
+					else
+					    result = Number.parseLocale(str) * sign;
+
+					if (isNaN(result))
+						throw new Error("Invalid format");
+
+					return result;
+				}
+			});
+		}
+
+		// Boolean
+		if (type === Boolean) {
+			// Format strings used for true, false, and null (or undefined) values
+			var trueFormat, falseFormat, nullFormat;
+
+			if (format && format.toLowerCase() === "g") {
+				trueFormat = "True";
+				falseFormat = "False";
+				nullFormat = ""
+			}
+			else {
+				var formats = format.split(';');
+				trueFormat = formats.length > 0 ? formats[0] : "";
+				falseFormat = formats.length > 1 ? formats[1] : "";
+				nullFormat = formats.length > 2 ? formats[2] : "";
+			}
+
+			return new Format({
+				description: "",
+				specifier: format,
+				convert: function (val) {
+					if (val === true)
+						return trueFormat;
+					else if (val === false)
+						return falseFormat;
+					else
+						return nullFormat;
+				},
+				convertBack: function (str) {
+					if (str.toLowerCase() === trueFormat.toLowerCase())
+						return true;
+					else if (str.toLowerCase() === falseFormat.toLowerCase())
+						return false;
+					else
+						return null;
+				}
+			});
+		}
+
+		// Default
+		return new Format({
+			description: "",
+			specifier: "",
+			convert: function (val) {
+				return val.toString();
+			},
+			convertBack: function (str) {
+				return str;
+			}
+		});
+
+	});
+	// #endregion
+
+	// #region ObserverProvider
+	//////////////////////////////////////////////////
+
+	function raiseSpecificPropertyChanged(target, args) {
+		var func = target.__propertyChangeHandlers[args.get_propertyName()];
+		if (func && func instanceof Function) {
+			func.apply(this, arguments);
+		}
+	}
+
+	setObserverProvider({
+
+		makeObservable: Sys.Observer.makeObservable,
+
+		disposeObservable: Sys.Observer.disposeObservable,
+
+		addCollectionChanged: Sys.Observer.addCollectionChanged,
+
+		removeCollectionChanged: Sys.Observer.removeCollectionChanged,
+
+		addPropertyChanged: function Sys$Observer$addPropertyChanged(target, property, handler) {
+			if (!target.__propertyChangeHandlers) {
+				target.__propertyChangeHandlers = {};
+				Sys.Observer.addPropertyChanged(target, raiseSpecificPropertyChanged);
+			}
+
+			var func = target.__propertyChangeHandlers[property];
+
+			if (!func) {
+				target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
+			}
+
+			func.add(handler);
+		},
+
+		removePropertyChanged: function Sys$Observer$removePropertyChanged(target, property, handler) {
+			var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
+
+			if (func) {
+				func.remove(handler);
+
+				// if the functor is empty then remove the callback as an optimization
+				if (func.isEmpty()) {
+					delete target.__propertyChangeHandlers[property];
+
+					var hasHandlers = false;
+					for (var remainingHandler in target.__propertyChangeHandlers) {
+						if (target.__propertyChangeHandlers.hasOwnProperty(remainingHandler)) {
+							hasHandlers = true;
+						}
+					}
+
+					if (!hasHandlers) {
+						target.__propertyChangeHandlers = null;
+						Sys.Observer.removePropertyChanged(target, raiseSpecificPropertyChanged);
+					}
+				}
+			}
+		},
+
+		raisePropertyChanged: Sys.Observer.raisePropertyChanged,
+
+		setValue: Sys.Observer.setValue
+	});
+
+	ExoWeb.updateArray = function updateArray(array, items) {
+		if (array.beginUpdate && array.endUpdate) {
+			array.beginUpdate();
+		}
+		update(array, items);
+		if (array.beginUpdate && array.endUpdate) {
+			array.endUpdate();
+		}
+	};
+
+	// #endregion
+})(window.ExoJQuery || jQuery);

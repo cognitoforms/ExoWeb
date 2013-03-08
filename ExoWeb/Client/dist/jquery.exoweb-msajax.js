@@ -556,7 +556,7 @@
 				handler.action.add(action);
 			}
 			else {
-				handler.action = function() {
+				handler.action = function () {
 					existingFn.apply(this, arguments);
 					action.apply(this, arguments);
 				};
@@ -595,7 +595,7 @@
 				deleted: arguments[1]
 			};
 		}
-		// Use options argument directly
+			// Use options argument directly
 		else {
 			options = opts;
 			// Detect non-supported options
