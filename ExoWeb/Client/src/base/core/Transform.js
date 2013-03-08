@@ -1,855 +1,501 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
-using ExoModel;
-using Jurassic;
+/// <reference path="Errors.js" />
 
-namespace ExoWeb.Templates.JavaScript
-{
-	class Transform
-	{
-		static Regex transformParser = new Regex(@"^(?<name>[a-zA-Z_][a-zA-Z0-9_]*)(?<value>\(.*)$", RegexOptions.Compiled);
+function Transform(array, forLive) {
+	if (array == null) throw new ArgumentNullError("array", "transform input is required");
+	if (!(array instanceof Array)) throw new ArgumentTypeError("array", "array", array);
 
-		static Regex orderByParser = new Regex(@"\s*(?<path>[A-Za-z0-9_.]+)(?<prenull>\s+null)?(?<direction>\s+(?:asc|desc))?(?<postnull>\s+null)?\s*(?:,|$)", RegexOptions.Compiled);
-
-		private List<Func<Transform, int, Page, IEnumerable, IEnumerable>> Operations { get; set; }
-
-		public int GroupIndex { get; private set; }
-
-		public string Expression { get; private set; }
-
-		public bool IsCompiled { get; private set; }
-
-		Transform(string expression)
-	{
-			Expression = expression;
-		GroupIndex = -1;
-		Operations = new List<Func<Transform, int, Page, IEnumerable, IEnumerable>>();
+	this._array = array;
+	this.rootInput = array;
+	if (forLive === true) {
+		this._livePending = true;
+		this._liveComplete = false;
 	}
-
-	internal static Transform Compile(string expression)
-{
-			Transform transform = new Transform(expression);
-	transform.EnsureCompiled();
-	return transform;
 }
 
-internal void EnsureCompiled()
-{
-	if (!IsCompiled)
-	{
-		var expression = Expression;
+function TransformGroup(group, items) {
+	this.group = group;
+	this.items = items;
+}
 
-		while (expression.Length > 0)
-		{
-			Match match = transformParser.Match(expression);
-			string name = match.Groups["name"].Value;
-			string value = GetBalancedText(match.Groups["value"].Value, '(', ')', out expression);
+var compileFilterFunction = (function Transform$compileFilterFunction(filter) {
+	var parser = /(([a-z_$][0-9a-z_$]*)([.]?))|(('([^']|\')*')|("([^"]|\")*"))/gi;
+	var skipWords = ["true", "false", "$index", "null"];
 
-			value = value.Substring(1, value.Length - 2);
+	filter = filter.replace(parser, function (match, ignored, name, more, strLiteral) {
+		if ((strLiteral !== undefined && strLiteral !== null && strLiteral.length > 0) || skipWords.indexOf(name) >= 0) {
+			return match;
+		}
 
-			if (name == "orderBy")
-				Operations.Add(OrderBy(value));
-			else if (name == "where")
-				Operations.Add(Where(value));
-			else if (name == "groupBy")
-			{
-				// Make a note that grouping begins here
-				if (GroupIndex < 0)
-					GroupIndex = Operations.Count;
-				Operations.Add(GroupBy(value));
+		if (name === "$item") {
+			return more ? "" : name;
+		}
+
+		if (more.length > 0) {
+			return "get('" + name + "')" + more;
+		}
+
+		return "get('" + name + "').value";
+	});
+
+	return new Function("$item", "$index", "with(new ExoWeb.EvalWrapper($item)){ return (" + filter + ");}");
+}).cached();
+
+var compileSelectFunction = (function Transform$compileSelectFunction(selector) {
+	return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + selector + "');");
+}).cached();
+
+var compileSelectManyFunction = (function Transform$compileSelectManyFunction(selector) {
+	return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + selector + "');");
+}).cached();
+
+var compileGroupsFunction = (function Transform$compileGroupsFunction(groups) {
+	return new Function("$item", "$index", "return ExoWeb.evalPath($item, '" + groups + "');");
+}).cached();
+
+var compileOrderingFunction = (function Transform$compileOrderingFunction(ordering) {
+	var orderings = [];
+	var parser = /\s*([a-z0-9_.]+)(\s+null)?(\s+(asc|desc))?(\s+null)? *(,|$)/gi;
+
+	ordering.replace(parser, function (match, path, nullsFirst, ws, dir, nullsLast) {
+		var isNullsFirst = (nullsFirst !== undefined && nullsFirst !== null && nullsFirst.length > 0);
+		var isNullsLast = (nullsLast !== undefined && nullsLast !== null && nullsLast.length > 0);
+		orderings.push({
+			path: path,
+			ab: dir === "desc" ? 1 : -1,
+			nulls: isNullsLast || (!ws && isNullsFirst) ? 1 : -1
+		});
+	});
+
+	function before(a, b) {
+		if (a !== null && a !== undefined && a.constructor === String && b !== null && b !== undefined && b.constructor === String) {
+			a = a.toLowerCase();
+			b = b.toLowerCase();
+		}
+		return a < b;
+	}
+
+	return function compare(aObj, bObj) {
+		for (var i = 0; i < orderings.length; ++i) {
+			var order = orderings[i];
+
+			var a = evalPath(aObj, order.path, null, null);
+			var b = evalPath(bObj, order.path, null, null);
+
+			if (a === null && b !== null) {
+				return order.nulls;
 			}
-			else if (name == "select")
-				Operations.Add(Select(value));
-			else if (name == "selectMany")
-				Operations.Add(SelectMany(value));
-			else if (name != "live")
-				throw new NotSupportedException("Only orderBy, where, groupBy, select, selectMany, and live are supported.");
-
-			if (expression.Length > 0)
-			{
-				if (expression[0] != '.')
-					throw new ApplicationException("Unexpected delimiter character '" + expression[0] + "'.");
-				expression = expression.Substring(1);
+			if (a !== null && b === null) {
+				return -order.nulls;
+			}
+			if (before(a, b)) {
+				return order.ab;
+			}
+			if (before(b, a)) {
+				return -order.ab;
 			}
 		}
 
-		IsCompiled = true;
-	}
-}
+		return 0;
+	};
+}).cached();
 
-internal IEnumerable Execute(Page page, IEnumerable input)
-{
-			EnsureCompiled();
-var opIndex = 0;
-foreach (var op in Operations)
-input = op(this, opIndex++, page, input);
-return input;
-}
+var transforms = {
+	where: function where(input, filter, thisPtr) {
+		var filterFn = filter instanceof Function ? filter : compileFilterFunction(filter);
+		return input.filter(filterFn, thisPtr);
+	},
+	select: function select(input, selector, thisPtr) {
+		var mapFn = selector instanceof Function ? selector : compileSelectFunction(selector);
+		return input.map(mapFn, thisPtr);
+	},
+	selectMany: function select(input, selector, thisPtr) {
+		var mapFn = selector instanceof Function ? selector : compileSelectFunction(selector);
+		return input.mapToArray(mapFn, thisPtr);
+	},
+	groupBy: function groupBy(input, groups, thisPtr) {
+		var groupFn = groups instanceof Function ? groups : compileGroupsFunction(groups);
 
-internal bool TryExecute(Page page, IEnumerable input, out IEnumerable output)
-{
-			output = null;
+		var result = [];
+		var len = input.length;
+		for (var i = 0; i < len; i++) {
+			var item = input[i];
+			var groupKey = groupFn.apply(thisPtr || item, [item, i]);
 
-try
-{
-	output = Execute(page, input).Cast<object>().ToArray();
-	return true;
-}
-catch (ArgumentException e)
-{
-	// Handle an argument exception coming from ModelSource
-	if (e.ParamName == "path")
-		return false;
-	else
-		throw;
-}
-			catch (ScriptFunctionEvaluationException)
-{
-	return false;
-}
-			catch (InvalidPropertyException)
-{
-	return false;
-}
-			catch (InvalidGroupByException)
-{
-	return false;
-}
-}
-
-static ScriptFunction GenerateFunction(string expression)
-{
-			return GenerateFunction(expression, null, null);
-}
-
-static ScriptFunction GenerateFunction(string expression, string prefix, string suffix)
-{
-	// NOTE: the context argument is used to simulate the global 'window.context' object.
-	// The expression is wrapped in a function which takes several additional arguments to reflect the
-	// fact that the client-side implementation is simply a "new Function", which is able to access and
-	// use these arguments in order to dynamically provide arguments to functions (i.e. "where").
-	return new ScriptFunction(Page.ScriptEngineFactory, new string[] { "context", "list", "$index", "$dataItem" }, (prefix ?? "") + expression + (suffix ?? ""));
-}
-
-static object ExecuteFunction(ScriptFunction function, object globalContext, object list, object index, object dataItem, params object[] args)
-{
-	return function.Evaluate((new object[] { globalContext, list, index, dataItem }).Concat(args.Select(arg => Page.ScriptMarshaller.Wrap(arg))), Page.ScriptMarshaller);
-}
-
-internal static string GetBalancedText(string input, char open, char closed, out string remainder)
-{
-	if (open == closed)
-throw new ArgumentException("Open and closed characters cannot be the same.");
-if (input[0] != open)
-	throw new ArgumentException("Input text must begin with the open character.");
-
-remainder = input.Substring(1);
-var text = input.Substring(0, 1);
-var depth = 1;
-while (depth > 0 && remainder.Length > 0)
-{
-	int openIdx = remainder.IndexOf(open);
-	int closedIdx = remainder.IndexOf(closed);
-	if (closedIdx >= 0 && (openIdx < 0 || closedIdx < openIdx))
-	{
-		depth -= 1;
-		text += remainder.Substring(0, closedIdx + 1);
-		remainder = remainder.Substring(closedIdx + 1);
-	}
-	else if (openIdx >= 0 && (closedIdx < 0 || openIdx < closedIdx))
-	{
-		depth += 1;
-		text += remainder.Substring(0, openIdx + 1);
-		remainder = remainder.Substring(openIdx + 1);
-	}
-	else
-		throw new ArgumentException("The input text is not valid.");
-}
-
-if (depth != 0)
-	throw new ArgumentException("The input text is not balanced.");
-
-return text;
-}
-
-/// <summary>
-/// Attempt to get a value for the given path from the given root model instance.
-/// If the result is a model type then a model instance is returned.
-/// </summary>
-/// <param name="instance"></param>
-/// <param name="path"></param>
-/// <returns></returns>
-static object TryEvaluatePath(ModelInstance instance, string path)
-{
-			var modelSource = new ModelSource(instance.Type, path);
-var source = modelSource.GetSource(instance);
-
-if (source == null)
-	return null;
-
-var property = source.Properties[modelSource.SourceProperty];
-var isReference = property is ModelReferenceProperty;
-var value = modelSource.GetValue(instance);
-
-if (value == null)
-	return null;
-
-if (isReference)
-{
-	if (value is IEnumerable)
-	return ((IEnumerable)value).Cast<object>().Select(o => ModelContext.Current.GetModelInstance(o));
-else
-		return ModelContext.Current.GetModelInstance(value);
-}
-
-return value;
-}
-
-/// <summary>
-/// Determines whether the enumerable passed into the operation at
-/// the given index is an enumerable of groupings.
-/// </summary>
-/// <param name="index"></param>
-/// <returns></returns>
-bool IsGrouping(int index)
-{
-	return GroupIndex >= 0 && index > GroupIndex;
-}
-
-		#region Operations
-
-static Func<Transform, int, Page, IEnumerable, IEnumerable> OrderBy(string expression)
-{
-// TODO: optimize for constants
-			var function = GenerateFunction(expression);
-				return (transform, opIndex, page, enumerable) =>
-				{
-					var globalContext = Page.ScriptMarshaller.Wrap(page);
-				var list = Page.ScriptMarshaller.Wrap(enumerable);
-				var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-				var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-
-				var result = (string)ExecuteFunction(function, globalContext, list, index, dataItem);
-
-					if (result.Length == 0)
-						throw new ApplicationException("The orderBy text cannot be zero-length.");
-					if (!orderByParser.IsMatch(result) || orderByParser.Replace(result, "").Length > 0)
-						throw new ApplicationException("The orderBy text \"" + result + "\" is invalid.");
-
-					// Determine whether the given enumerable is a grouping.
-					var isGrouping = transform.IsGrouping(opIndex);
-
-					var comparer = new ModelPathComparer();
-					foreach (Match match in orderByParser.Matches(result))
-				{
-					string path = match.Groups["path"].Value;
-					bool descending = match.Groups["direction"].Value.Trim() == "desc";
-					bool nullsLast = match.Groups["nullsLast"].Value.Trim() == "null";
-
-					// Custom handling of valid grouping options.
-					if (isGrouping)
-					{
-						if (path == "group")
-							comparer.AddCustomStep(o => ((Grouping)o).Group, descending, nullsLast);
-					else if (path.StartsWith("group."))
-						comparer.AddCustomPathStep(o => (ModelInstance)((Grouping)o).Group, path.Substring(6), descending, nullsLast);
-					else if (path == "items.length")
-						comparer.AddCustomStep(o => ((Grouping)o).Items.Count(), descending, nullsLast);
-					else
-							throw new InvalidOperationException("Unexpected path \"" + path + "\" for orderBy on grouping.");
-					}
-					else
-						comparer.AddPathStep(path, descending, nullsLast);
+			var group = null;
+			for (var g = 0; g < result.length; ++g) {
+				if (result[g].group == groupKey) {
+					group = result[g];
+					group.items.push(item);
+					break;
 				}
+			}
 
-				return enumerable.Cast<object>().OrderBy(i => i, comparer);
-			};
-}
-
-static Func<Transform, int, Page, IEnumerable, IEnumerable> Where(string expression)
-{
-// TODO: optimize for constants
-			if (expression.StartsWith("function"))
-{
-// The where filter is an anonymous function, so generate a new function that declares common
-// variables in the parent scope, and also passes the hidden argument to the function itself.
-				var function = GenerateFunction(expression, "(", ")(arguments[4])");
-					return (transform, opIndex, page, enumerable) =>
-					{
-						var globalContext = Page.ScriptMarshaller.Wrap(page);
-					var list = Page.ScriptMarshaller.Wrap(enumerable);
-					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-					return enumerable.Cast<object>().Where(obj =>
-					{
-						return JavaScriptHelpers.IsTruthy(Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem, obj)));
-						});
-				};
-}
-else
-{
-	var function = GenerateFunction(expression);
-		return (transform, opIndex, page, enumerable) =>
-		{
-			// Determine whether the given enumerable is a grouping.
-			var isGrouping = transform.IsGrouping(opIndex);
-
-		var globalContext = Page.ScriptMarshaller.Wrap(page);
-		var list = Page.ScriptMarshaller.Wrap(enumerable);
-		var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-		var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-		var whereText = (string)Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem));
-
-			if (isGrouping)
-			{
-				var evaluator = Evaluator.CompileLogicalExpression<FilterItem<Grouping>, FilterItemPathToken<Grouping>>(whereText, path => new GroupingFilterItemPathToken(path));
-				return enumerable.Cast<Grouping>().Where((obj, i) =>
-				{
-					return evaluator.Evaluate(new FilterItem<Grouping>(obj, i));
-			});
+			if (!group) {
+				result.push(new TransformGroup(groupKey, [item]));
+			}
 		}
-		else
-		{
-			var evaluator = Evaluator.CompileLogicalExpression<FilterItem<ModelInstance>, FilterItemPathToken<ModelInstance>>(whereText, path => new ModelInstanceFilterItemPathToken(path));
-		return enumerable.Cast<ModelInstance>().Where((obj, i) =>
-		{
-			return evaluator.Evaluate(new FilterItem<ModelInstance>(obj, i));
-	});
-}
-};
-}
-}
 
-static Func<Transform, int, Page, IEnumerable, IEnumerable> GroupBy(string expression)
-{
-// TODO: optimize for constants
-			if (expression.StartsWith("function"))
-{
-// The groupBy filter is an anonymous function, so generate a new function that declares common
-// variables in the parent scope, and also passes the hidden argument to the function itself.
-				var function = GenerateFunction(expression, "(", ")(arguments[4])");
-					return (transform, opIndex, page, enumerable) =>
-					{
-						var globalContext = Page.ScriptMarshaller.Wrap(page);
-					var list = Page.ScriptMarshaller.Wrap(enumerable);
-					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-					return enumerable.Cast<object>().GroupBy(obj =>
-					{
-						return Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem, obj));
-						}).Select(g => new Grouping(g.Key, g));
-				};
-}
-else
-{
-	var function = GenerateFunction(expression);
-		return (transform, opIndex, page, enumerable) =>
-		{
-			// Determine whether the given enumerable is a grouping.
-			var isGrouping = transform.IsGrouping(opIndex);
-
-		var globalContext = Page.ScriptMarshaller.Wrap(page);
-		var list = Page.ScriptMarshaller.Wrap(enumerable);
-		var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-		var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-		var groupByText = (string)Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem));
-
-			if (isGrouping)
-			{
-				return enumerable.Cast<Grouping>().GroupBy(obj =>
-				{
-					object result;
-				var path = groupByText;
-				if (!obj.TryGetValue(path, out path, out result))
-				throw new InvalidGroupByException(groupByText);
-				if (!string.IsNullOrEmpty(path))
-					result = TryEvaluatePath((ModelInstance)result, path);
-				return result;
-			}).Select(g => new Grouping(g.Key, g));
-		}
-		else
-		{
-			return enumerable.Cast<ModelInstance>()
-				.GroupBy(obj => TryEvaluatePath(obj, groupByText))
-				.Select(g => new Grouping(g.Key, g));
+		return result;
+	},
+	orderBy: function orderBy(input, ordering, thisPtr) {
+		var sortFn = ordering instanceof Function ? ordering : compileOrderingFunction(ordering);
+		return input.copy().sort(thisPtr ? sortFn.bind(thisPtr) : sortFn);
 	}
 };
-}
-}
 
-static Func<Transform, int, Page, IEnumerable, IEnumerable> Select(string expression)
-{
-// TODO: optimize for constants
-			if (expression.StartsWith("function"))
-{
-// The select filter is an anonymous function, so generate a new function that declares common
-// variables in the parent scope, and also passes the hidden argument to the function itself.
-				var function = GenerateFunction(expression, "(", ")(arguments[4])");
-					return (transform, opIndex, page, enumerable) =>
-					{
-						var globalContext = Page.ScriptMarshaller.Wrap(page);
-					var list = Page.ScriptMarshaller.Wrap(enumerable);
-					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-					return enumerable.Cast<object>().Select(obj =>
-					{
-						return Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem, obj));
-						});
-				};
-}
-else
-{
-	var function = GenerateFunction(expression);
-		return (transform, opIndex, page, enumerable) =>
-		{
-			// Determine whether the given enumerable is a grouping.
-			var isGrouping = transform.IsGrouping(opIndex);
-
-		var globalContext = Page.ScriptMarshaller.Wrap(page);
-		var list = Page.ScriptMarshaller.Wrap(enumerable);
-		var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-		var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-		var selectText = (string)Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem));
-
-			if (isGrouping)
-			{
-				return enumerable.Cast<Grouping>().Select((obj, i) =>
-				{
-					object result;
-				var path = selectText;
-				if (!obj.TryGetValue(path, out path, out result))
-				throw new InvalidGroupByException(selectText);
-				if (!string.IsNullOrEmpty(path))
-					result = TryEvaluatePath((ModelInstance)result, path);
-				return result;
-			});
-		}
-		else
-		{
-			return enumerable.Cast<ModelInstance>().Select((obj, i) => TryEvaluatePath(obj, selectText));
-	}
-};
-}
-}
-
-static Func<Transform, int, Page, IEnumerable, IEnumerable> SelectMany(string expression)
-{
-// TODO: optimize for constants
-			if (expression.StartsWith("function"))
-{
-// The selectMany filter is an anonymous function, so generate a new function that declares common
-// variables in the parent scope, and also passes the hidden argument to the function itself.
-				var function = GenerateFunction(expression, "(", ")(arguments[4])");
-					return (transform, opIndex, page, enumerable) =>
-					{
-						var globalContext = Page.ScriptMarshaller.Wrap(page);
-					var list = Page.ScriptMarshaller.Wrap(enumerable);
-					var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-					var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-					return enumerable.Cast<object>().SelectMany(obj =>
-					{
-						var result = ExecuteFunction(function, globalContext, list, index, dataItem, obj);
-							if (!(result is IEnumerable))
-								throw new InvalidSelectManyExpression(expression);
-							var results = (IEnumerable)result;
-							return results.Cast<object>().Select(o => Page.ScriptMarshaller.Unwrap(o));
-						});
-				};
-}
-else
-{
-	var function = GenerateFunction(expression);
-		return (transform, opIndex, page, enumerable) =>
-		{
-			// Determine whether the given enumerable is a grouping.
-			var isGrouping = transform.IsGrouping(opIndex);
-
-		var globalContext = Page.ScriptMarshaller.Wrap(page);
-		var list = Page.ScriptMarshaller.Wrap(enumerable);
-		var index = Page.ScriptMarshaller.Wrap(page.Context.Index);
-		var dataItem = Page.ScriptMarshaller.Wrap(page.Context.DataItem);
-		var selectManyText = (string)Page.ScriptMarshaller.Unwrap(ExecuteFunction(function, globalContext, list, index, dataItem));
-
-			if (isGrouping)
-			{
-				return enumerable.Cast<Grouping>().SelectMany((obj, i) =>
-				{
-					object result;
-				var path = selectManyText;
-				if (!obj.TryGetValue(path, out path, out result))
-				throw new InvalidGroupByException(selectManyText);
-				if (!string.IsNullOrEmpty(path))
-					result = TryEvaluatePath((ModelInstance)result, path);
-				if (!(result is IEnumerable))
-					throw new InvalidSelectManyExpression(expression);
-				var results = (IEnumerable)result;
-				return results.Cast<object>().Select(o => Page.ScriptMarshaller.Unwrap(o));
-			});
-		}
-		else
-		{
-			return enumerable.Cast<ModelInstance>().SelectMany((obj, i) =>
-			{
-				var result = TryEvaluatePath(obj, selectManyText);
-		if (!(result is IEnumerable))
-			throw new InvalidSelectManyExpression(expression);
-		var results = (IEnumerable)result;
-		return results.Cast<object>().Select(o => Page.ScriptMarshaller.Unwrap(o));
+function copyTransform(steps, array, live) {
+	var result = $transform(array, live);
+	steps.forEach(function (step) {
+		result = result[step._transform.method].call(result, step._transform.arg, step._transform.thisPtr)
 	});
-}
-};
-}
-}
-
-		#endregion
-
-		#region FilterItem<TType>
-
-		internal class FilterItem<TType>
-		{
-			internal FilterItem(TType item, int index)
-{
-				Item = item;
-Index = index;
-}
-
-internal TType Item { get; private set; }
-
-internal int Index { get; private set; }
-}
-
-		#endregion
-
-		#region FilterItemPathToken<TType>
-
-		/// <summary>
-		/// An expression token that refers to a model path, or a grouping path optionally followed by a model path.
-		/// </summary>
-		internal abstract class FilterItemPathToken<TType> : Evaluator.Token<FilterItem<TType>>
-		{
-			internal FilterItemPathToken(string path)
-			{
-				Path = path;
-}
-
-/// <summary>
-/// The path to evaluate.
-/// </summary>
-internal string Path { get; private set; }
-
-protected static object GetValue(ModelInstance instance, int index, string path)
-{
-	if (path == "$index")
-return index;
-else
-					return new ModelSource(instance.Type, path).GetValue(instance);
-}
-}
-
-		#endregion
-
-		#region ModelInstanceFilterItemPathToken
-
-/// <summary>
-/// An expression token that refers to a model path.
-/// </summary>
-internal class ModelInstanceFilterItemPathToken : FilterItemPathToken<ModelInstance>
-{
-	internal ModelInstanceFilterItemPathToken(string path)
-: base(path)
-{
-}
-
-internal override object GetValue(FilterItem<ModelInstance> source)
-{
-	if (Path == "$item")
-		// Return the current item.
-		return source.Item.Instance;
-	else
-		// Remove the $item prefix since it is not necessary and will not be recongnized by ExoModel.
-		return GetValue(source.Item, source.Index, Path.IndexOf("$item.") == 0 ? Path.Substring(6) : Path);
-}
-}
-
-		#endregion
-
-		#region GroupingFilterItemPathToken
-
-/// <summary>
-/// An expression token that refers to grouping path, and optional subsequent model path.
-/// </summary>
-internal class GroupingFilterItemPathToken : FilterItemPathToken<Grouping>
-{
-	internal GroupingFilterItemPathToken(string path)
-: base(path)
-{
-}
-
-internal override object GetValue(FilterItem<Grouping> source)
-{
-	string path = Path;
-	object result = null;
-
-	// Remove the $item prefix since it is not necessary and will not be recongnized by ExoModel.
-	if (path.StartsWith("$item."))
-		path = path.Substring(6);
-
-	if (!source.Item.TryGetValue(path, out path, out result))
-		throw new Exception("Expression \"" + Path + "\" is not valid for a grouping.");
-
-	if (!string.IsNullOrEmpty(path))
-		result = GetValue((ModelInstance)result, source.Index, path);
-
 	return result;
 }
-}
 
-		#endregion
-
-		#region Grouping
-
-/// <summary>
-/// Represents the simple object structure used client-side when grouping using the transform.
-/// </summary>
-internal class Grouping
-{
-	private List<object> items;
-
-	internal Grouping(object key, IEnumerable values)
-{
-		Group = key;
-	items = new List<object>(values.Cast<object>());
-}
-
-internal object Group { get; private set; }
-
-internal IEnumerable<object> Items
-{
-	get
-	{
-		foreach (object item in items)
-			yield return item;
+function makeTransform(array, priorTransform, method, arg, thisPtr) {
+	// Make sure that the same transform is not made live more than once since this can cause collisions.
+	if (priorTransform._liveComplete === true) {
+		throw new Error("Cannot call live on the same transform multiple times.");
 	}
-}
 
-internal bool TryGetValue(string path, out string remainder, out object value)
-{
-				var result = false;
-remainder = null;
-value = null;
+	var result;
 
-if (path == "group")
-{
-	value = Group;
-	result = true;
-}
-else if (path == "items")
-{
-	value = Items;
-	result = true;
-}
-else if (path == "items.length")
-{
-	value = Items.Count();
-	result = true;
-}
-else if (path.StartsWith("group."))
-{
-	value = (ModelInstance)Group;
-	remainder = path.Substring(6);
-	result = true;
-}
-
-return result;
-}
-}
-
-		#endregion
-
-		#region GroupingWrapper
-
-internal class GroupingWrapper : Wrapper<Grouping>
-{
-	internal GroupingWrapper(ScriptEngine engine, Grouping grouping)
-: base(grouping, engine, engine.Object.InstancePrototype)
-{
-}
-
-protected override object GetMissingPropertyValue(string jsPropertyName)
-{
-				object result;
-if (RealObject.TryGetValue(jsPropertyName, out jsPropertyName, out result))
-	return Page.ScriptMarshaller.Wrap(result);
-
-return base.GetMissingPropertyValue(jsPropertyName);
-}
-}
-
-		#endregion
-
-		#region ModelPathComparer
-
-public class ModelPathComparer : IComparer<ModelInstance>, IComparer<object>
-{
-	List<ComparisonPath> paths = new List<ComparisonPath>();
-
-public void AddPathStep(string path, bool descending, bool nullsLast)
-{
-				if (string.IsNullOrEmpty(path))
-					throw new ArgumentException("The path step cannot be null or empty string.");
-
-paths.Add(new ComparisonPath() { Path = path, IsDescending = descending, NullsLast = nullsLast });
-}
-
-public void AddCustomPathStep(Func<object, ModelInstance> accessor, string path, bool descending, bool nullsLast)
-{
-	if (accessor == null)
-throw new ArgumentNullException("accessor", "The custom accessor cannot be null.");
-else if (string.IsNullOrEmpty(path))
-throw new ArgumentException("The path step cannot be null or empty string.");
-
-paths.Add(new ComparisonPath() { Accessor = o => accessor(o), Path = path, IsDescending = descending, NullsLast = nullsLast });
-}
-
-public void AddCustomStep(Func<object, object> accessor, bool descending, bool nullsLast)
-{
-	if (accessor == null)
-throw new ArgumentNullException("accessor", "The custom accessor cannot be null.");
-
-paths.Add(new ComparisonPath() { Accessor = accessor, IsDescending = descending, NullsLast = nullsLast });
-}
-
-/// <summary>
-/// Recursively search for a valid path, checking base types first.
-/// </summary>
-/// <param name="type"></param>
-/// <param name="path"></param>
-/// <returns></returns>
-private ModelPath GetModelPath(ModelType type, string path)
-{
-				ModelType rootType = type;
-ModelPath modelPath;
-if (rootType.TryGetPath(path, out modelPath))
-	return modelPath;
-else
-{
-	rootType = rootType.BaseType;
-	if (rootType == null)
-	throw new InvalidPropertyException(type, path);
-return GetModelPath(type, path);
-}
-}
-
-/// <summary>
-/// 
-/// </summary>
-/// <param name="instance"></param>
-/// <param name="path"></param>
-/// <returns></returns>
-private ModelSource GetPathSource(ModelInstance instance, string path)
-{
-				return new ModelSource(GetModelPath(instance.Type, path));
-}
-
-public int Compare(object x, object y)
-{
-				var result = 0;
-
-foreach (ComparisonPath path in paths)
-{
-					object xValue = x;
-object yValue = y;
-
-if (path.Accessor != null)
-{
-	xValue = path.Accessor(xValue);
-	yValue = path.Accessor(yValue);
-}
-
-if (path.Path != null)
-{
-	xValue = GetPathSource((ModelInstance)xValue, path.Path).GetValue((ModelInstance)xValue);
-	yValue = GetPathSource((ModelInstance)yValue, path.Path).GetValue((ModelInstance)yValue);
-}
-
-if (xValue == null && yValue == null)
-	result = 0;
-else if (xValue == null)
-	result = path.NullsLast ? 1 : -1;
-else if (yValue == null)
-	result = path.NullsLast ? -1 : 1;
-else
-	result = (path.IsDescending ? -1 : 1) * ((IComparable)xValue).CompareTo(yValue);
-
-// Stop iterating over comparison paths once a distinction has been made
-if (result != 0)
-	break;
-}
-
-return result;
-}
-
-int IComparer<object>.Compare(object x, object y)
-{
-				return Compare(x, y);
-}
-
-int IComparer<ModelInstance>.Compare(ModelInstance x, ModelInstance y)
-{
-				return Compare(x, y);
-}
-
-			class ComparisonPath
-{
-	internal string Path { get; set; }
-
-	internal Func<object, object> Accessor { get; set; }
-
-	internal bool IsDescending { get; set; }
-
-	internal bool NullsLast { get; set; }
-}
-}
-
-		#endregion
-}
-
-public class InvalidGroupByException : ApplicationException
-{
-	public string Expression { get; private set; }
-
-	public InvalidGroupByException(string expression)
-{
-		this.Expression = expression;
-}
-
-public override string Message
-{
-	get
-	{
-		return string.Format("Expression \"{0}\" is not valid for a grouping.", Expression);
+	// When creating a live transform, the result cannot be used directly as an array to
+	// discourage using part of the result when the intention is to eventually call "live".
+	// When live mode is not used, then if live is eventually called it will result in a non-optimal
+	// copying of the transform.
+	if (priorTransform._livePending === true) {
+		result = new Transform(array, true);
 	}
-}
-}
-
-public class InvalidSelectManyExpression : ApplicationException
-{
-	public string Expression { get; private set; }
-
-	public InvalidSelectManyExpression(string expression)
-{
-		this.Expression = expression;
-}
-
-public override string Message
-{
-	get
-	{
-		return string.Format("The result of expression \"{0}\" is not an enumerable.", Expression);
+	else {
+		Function.mixin(Transform.prototype, array);
+		result = array;
 	}
+
+	result._prior = priorTransform;
+	result.rootInput = priorTransform.rootInput;
+	result._transform = { method: method, arg: arg, thisPtr: thisPtr };
+	return result;
 }
-}
-}
+
+Transform.mixin({
+	input: function Transform$input() {
+		return this._array || this;
+	},
+	where: function Transform$where(filter, thisPtr) {
+		var output = transforms.where(this.input(), filter, thisPtr);
+		return makeTransform(output, this, "where", filter, thisPtr);
+	},
+	select: function Transform$select(selector, thisPtr) {
+		var output = transforms.select(this.input(), selector, thisPtr);
+		return makeTransform(output, this, "select", selector, thisPtr);
+	},
+	selectMany: function Transform$selectMany(selector, thisPtr) {
+		var output = transforms.selectMany(this.input(), selector, thisPtr);
+		return makeTransform(output, this, "selectMany", selector, thisPtr);
+	},
+	groupBy: function Transform$groupBy(groups, thisPtr) {
+		var output = transforms.groupBy(this.input(), groups, thisPtr);
+		if (this._livePending) {
+			// make the items array observable if the transform is in live mode
+			output.forEach(function (group) {
+				ExoWeb.Observer.makeObservable(group.items);
+			});
+		}
+		return makeTransform(output, this, "groupBy", groups, thisPtr);
+	},
+	orderBy: function Transform$orderBy(ordering, thisPtr) {
+		var output = transforms.orderBy(this.input(), ordering, thisPtr);
+		return makeTransform(output, this, "orderBy", ordering, thisPtr);
+	},
+	live: function Transform$live() {
+		// Watches for changes on the root input into the transform
+		// and raises observable change events on this item as the 
+		// results change.
+
+		var transform, steps = [], rootStep;
+
+		// determine the set of transform steps and the level of nested grouping
+		for (var step = this; step; step = step._prior) {
+			if (step._prior) {
+				steps.splice(0, 0, step);
+			}
+			else {
+				rootStep = step;
+			}
+		}
+
+		// copy and return a live-mode transform if live mode was not used originally
+		if (this._livePending !== true) {
+			return copyTransform(steps, rootStep.input(), true).live();
+		}
+
+		// make a copy of the final transformed data and make it observable
+		var output = this.input().copy();
+		ExoWeb.Observer.makeObservable(output);
+		output.rootInput = this.rootInput;
+
+		// watch for changes to root input and update the transform steps as needed
+		ExoWeb.Observer.addCollectionChanged(rootStep.input(), function Transform$live$collectionChanged(sender, args) {
+			var changes, stepInput, stepResult, modifiedItemsArrays = [];
+
+			//Sys.NotifyCollectionChangedAction.add;
+
+			// copy the set of changes since they will be manipulated
+			changes = args.get_changes().map(function (c) {
+				return {
+					action: c.action,
+					oldItems: c.oldItems ? c.oldItems.copy() : null,
+					oldStartingIndex: c.oldStartingIndex,
+					newItems: c.newItems ? c.newItems.copy() : null,
+					newStartingIndex: c.newStartingIndex
+				};
+			});
+
+			// make a copied version of the input so that it can be manipulated without affecting the result
+			stepInput = rootStep.input().copy();
+
+			// re-run the transform on the newly changed input
+			steps.forEach(function (step) {
+				// store a reference to the output of this step
+				stepResult = step.input();
+
+				if (step._transform.method === "where") {
+					changes.purge(function (change) {
+						if (change.oldItems) {
+							var oldItems = change.oldItems;
+							// determine which removed items made it through the filter
+							change.oldItems = transforms[step._transform.method](change.oldItems, step._transform.arg, step._transform.thisPtr);
+							if (change.oldItems.length === 0) {
+								// none of the removed items make it through the filter, so discard
+								change.oldItems = null;
+								change.oldStartingIndex = null;
+								return true;
+							}
+							else {
+								// find the actual index of the first removed item in the resulting array
+								change.oldStartingIndex = stepResult.indexOf(change.oldItems[0]);
+
+								// remove the filtered items from the result array
+								stepResult.splice(change.oldStartingIndex, change.oldItems.length);
+							}
+						}
+						else if (change.newItems) {
+							var newItems = change.newItems;
+							// determine which added items will make it through the filter
+							change.newItems = transforms[step._transform.method](change.newItems, step._transform.arg, step._transform.thisPtr);
+							if (change.newItems.length === 0) {
+								// none of the new items will make it through the filter, so discard
+								change.newItems = null;
+								change.newStartingIndex = null;
+								return true;
+							}
+							else {
+								// if not added to the beginning or end of the list, determine
+								// the real starting index by finding the index of the previous item
+								if (change.newStartingIndex !== 0 && (change.newStartingIndex + change.newItems.length) !== stepInput.length) {
+									var found = false;
+									for (var idx = change.newStartingIndex - 1; !found && idx >= 0; idx--) {
+										if (stepResult.indexOf(stepInput[idx]) >= 0) {
+											found = true;
+										}
+									}
+									change.newStartingIndex = idx + 1;
+								}
+
+								// splice the filtered items into the result array
+								var spliceArgs = change.newItems.copy();
+								spliceArgs.splice(0, 0, change.newStartingIndex, 0);
+								Array.prototype.splice.apply(stepResult, spliceArgs);
+							}
+						}
+						else {
+							return true;
+						}
+					});
+				}
+				else if (step._transform.method === "select") {
+					changes.forEach(function (change) {
+						if (change.oldItems) {
+							change.oldItems = stepResult.splice(change.oldStartingIndex, change.oldItems.length);
+						}
+						else if (change.newItems) {
+							var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectFunction(step._transform.arg);
+							change.newItems = change.newItems.map(function (item) {
+								return mapFn.call(step._transform.thisPtr || item, item);
+							});
+
+							// splice the filtered items into the result array
+							var spliceArgs = change.newItems.copy();
+							spliceArgs.splice(0, 0, change.newStartingIndex, 0);
+							Array.prototype.splice.apply(stepResult, spliceArgs);
+						}
+					});
+				}
+				else if (step._transform.method === "selectMany") {
+					changes.forEach(function (change) {
+						if (change.oldItems) {
+							var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectManyFunction(step._transform.arg);
+							var oldItemsMany = change.oldItems.mapToArray(function (item) {
+								return mapFn.call(step._transform.thisPtr || item, item);
+							});
+							var oldPreceeding = stepInput.slice(0, change.oldStartingIndex);
+							var oldPreceedingMany = oldPreceeding.mapToArray(function (item) {
+								return mapFn.call(step._transform.thisPtr || item, item);
+							});
+							change.oldItems = stepResult.splice(oldPreceedingMany.length, oldItemsMany.length);
+							change.oldStartingIndex = oldPreceedingMany.length;
+						}
+						else if (change.newItems) {
+							var mapFn = step._transform.arg instanceof Function ? step._transform.arg : compileSelectManyFunction(step._transform.arg);
+							change.newItems = change.newItems.mapToArray(function (item) {
+								return mapFn.call(step._transform.thisPtr || item, item);
+							});
+
+							// splice the filtered items into the result array
+							var spliceArgs = change.newItems.copy();
+							spliceArgs.splice(0, 0, change.newStartingIndex, 0);
+							Array.prototype.splice.apply(stepResult, spliceArgs);
+						}
+					});
+				}
+				else if (step._transform.method === "groupBy") {
+					var groupFn = step._transform.arg instanceof Function ? step._transform.arg : compileGroupsFunction(step._transform.arg);
+					var copyOfResults = stepResult.copy();
+					changes.forEach(function (change) {
+						if (change.oldItems) {
+							change.oldItems.forEach(function (item) {
+								var groupKey = groupFn.call(step._transform.thisPtr || item, item);
+								var group = copyOfResults.filter(function (g) { return g.group === groupKey; })[0];
+								// begin and end update on items array
+								if (modifiedItemsArrays.indexOf(group.items) < 0) {
+									group.items.beginUpdate();
+									modifiedItemsArrays.push(group.items);
+								}
+								// remove the item
+								var idx = group.items.indexOf(item);
+								group.items.remove(item);
+								if (idx === 0) {
+									var groupIndex = copyOfResults.indexOf(group),
+										sourceIndex = stepInput.indexOf(group.items[0]),
+										targetIndex = null;
+									for (i = 0; i < copyOfResults.length; i++) {
+										if (sourceIndex > stepInput.indexOf(copyOfResults[i].items[0])) {
+											targetIndex = i + 1;
+											break;
+										}
+									}
+									if (targetIndex !== null) {
+										copyOfResults.splice(groupIndex, 1);
+										copyOfResults.splice(targetIndex, 0, group);
+									}
+								}
+								if (group.items.length === 0) {
+									// remove the group from the copy of the array
+									copyOfResults.splice(copyOfResults.indexOf(group), 1);
+								}
+							});
+						}
+						else if (change.newItems) {
+							change.newItems.forEach(function (item) {
+								var groupKey = groupFn.call(step._transform.thisPtr || item, item),
+									group = copyOfResults.filter(function (g) { return g.group === groupKey; })[0],
+									sourceIndex,
+									targetIndex,
+									resequenceGroup = false,
+									groupIndex,
+									i;
+
+								if (group) {
+									// begin and end update on items array
+									if (modifiedItemsArrays.indexOf(group.items) < 0) {
+										group.items.beginUpdate();
+										modifiedItemsArrays.push(group.items);
+									}
+									sourceIndex = stepInput.indexOf(item), targetIndex = null;
+									for (i = 0; i < group.items.length; i++) {
+										if (sourceIndex < stepInput.indexOf(group.items[i])) {
+											targetIndex = i;
+											break;
+										}
+									}
+									if (targetIndex !== null) {
+										group.items.insert(targetIndex, item);
+										// group's index may have changed as a result
+										if (targetIndex === 0) {
+											resequenceGroup = true;
+										}
+									}
+									else {
+										group.items.add(item);
+									}
+								}
+								else {
+									group = new TransformGroup(groupKey, [item]);
+									ExoWeb.Observer.makeObservable(group.items);
+									copyOfResults.push(group);
+									resequenceGroup = true;
+								}
+
+								if (resequenceGroup === true) {
+									groupIndex = copyOfResults.indexOf(group);
+									sourceIndex = stepInput.indexOf(group.items[0]);
+									targetIndex = null;
+									for (i = 0; i < groupIndex; i++) {
+										if (sourceIndex < stepInput.indexOf(copyOfResults[i].items[0])) {
+											targetIndex = i;
+											break;
+										}
+									}
+									if (targetIndex !== null) {
+										copyOfResults.splice(groupIndex, 1);
+										copyOfResults.splice(targetIndex, 0, group);
+									}
+								}
+							});
+						}
+					});
+
+					// collect new changes to groups
+					changes = update(stepResult, copyOfResults, true);
+				}
+				else if (step._transform.method === "orderBy") {
+					// sort the input and update the step result to match
+					var sorted = transforms[step._transform.method](stepInput, step._transform.arg, step._transform.thisPtr);
+					changes = update(stepResult, sorted, true);
+				}
+
+				// move the input forward to the result of the current step
+				stepInput = stepResult;
+			});
+
+			// apply changes to the ouput array
+			output.beginUpdate();
+			changes.forEach(function (change) {
+				if (change.oldItems) {
+					output.removeRange(change.oldStartingIndex, change.oldItems.length);
+				}
+				else if (change.newItems) {
+					output.insertRange(change.newStartingIndex, change.newItems);
+				}
+			});
+			output.endUpdate();
+
+			// release changes to items arrays of groups, changes to the array occur first to allow
+			// for changes to groups' items to be ignored if the group is no longer a part of the output
+			modifiedItemsArrays.forEach(function (items) {
+				items.endUpdate();
+			});
+		});
+
+		// mark the transform steps as live complete
+		rootStep._liveComplete = true;
+		steps.forEach(function (step) {
+			step._liveComplete = true;
+		});
+
+		return output;
+	}
+});
+
+exports.Transform = Transform;
+window.$transform = function transform(array, forLive) { return new Transform(array, forLive); };
