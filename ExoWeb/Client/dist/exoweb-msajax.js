@@ -1439,13 +1439,13 @@ window.ExoWeb.DotNet = {};
 		getBusyItems(function (item) {
 			busy = true;
 
-			if (logBusyLabel) {
-				console.log("Item \"" + item.label + "\" is busy.");
+				if (logBusyLabel) {
+					console.log("Item \"" + item.label + "\" is busy.");
 				return false;
-			}
-			else {
-				return true;
-			}
+				}
+				else {
+					return true;
+				}
 		});
 
 		return busy;
@@ -17195,18 +17195,18 @@ window.ExoWeb.DotNet = {};
 		}
 
 		if (!interceptingContent && window.ExoWeb && ExoWeb.UI && ExoWeb.UI.Content) {
-			var _render = ExoWeb.UI.Content.prototype._render;
-			if (!_render) {
-				throw new Error("Could not find Content._render method to override.");
+			var _clearContainer = ExoWeb.UI.Content.prototype._clearContainer;
+			if (!_clearContainer) {
+				throw new Error("Could not find Content._clearContainer method to override.");
 			}
-			ExoWeb.UI.Content.prototype._render = function Content$_render$wrap() {
+			ExoWeb.UI.Content.prototype._clearContainer = function Content$_clearContainer$wrap() {
 				if (this._element) {
 					var children = this._element.children;
 					if (children.length > 0) {
 						processElements(this._element, children, "deleted", "template");
 					}
 				}
-				_render.apply(this, arguments);
+				_clearContainer.apply(this, arguments);
 			};
 			interceptingContent = true;
 		}
@@ -17569,218 +17569,3 @@ window.ExoWeb.DotNet = {};
 	});
 
 	// #endregion
-
-	// #region FormatProvider
-	//////////////////////////////////////////////////
-
-	setFormatProvider(function FormatProvider(type, format) {
-
-		// Date
-		if (type === Date) {
-			// Add support for g and G that are not natively supported by the MSAJAX framework
-			if (format === "g")
-				format = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "t");
-			else if (format === "G")
-				format = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "T");
-
-			return new Format({
-				description: "",
-				specifier: format,
-				convert: function (val) {
-					return val.localeFormat(format);
-				},
-				convertBack: function (str) {
-					var date = Date.parseLocale(str, format);
-					if (date === null)
-						throw new Error("Invalid date format");
-					return date; 
-				}
-			});
-		}
-
-		// Number
-		if (type === Number) {
-			var isCurrencyFormat = format.match(/[$c]+/i);
-			var isPercentageFormat = format.match(/[%p]+/i);
-			var isIntegerFormat = format.match(/[dnfg]0/i);
-			var currencyDecimalDigits = Sys.CultureInfo.CurrentCulture.numberFormat.CurrencyDecimalDigits;
-
-			return new Format({
-			    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
-				specifier: format,
-				convert: function (val) {
-					// Default to browser formatting for general format
-					if (format.toLowerCase() === "g")
-						return val.toString(); 
-
-					// Otherwise, use the localized format
-					return val.localeFormat(format);
-				},
-				convertBack: function (str) {
-					// Handle use of () to denote negative numbers
-					var sign = 1;
-					if (str.match(/^\(.*\)$/)) {
-						str = str.substring(1, str.length - 1);
-						sign = -1;
-					}
-					var result;
-
-					// Remove currency symbols before parsing
-					if (isCurrencyFormat) {
-					    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
-
-					    // Ensure that currency values do not have more than the allowed number of digits to the right of the decimal   
-					    if (result * Math.pow(10, currencyDecimalDigits) != Math.round(result * Math.pow(10, currencyDecimalDigits)))
-					        result = NaN;
-					}
-					    // Remove percentage symbols before parsing and divide by 100
-					else if (isPercentageFormat)
-					    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
-
-					    // Ensure integers are actual whole numbers
-					else if (isIntegerFormat && !isInteger(Number.parseLocale(str)))
-					    result = NaN;
-
-					    // Just parse a simple number
-					else
-					    result = Number.parseLocale(str) * sign;
-
-					if (isNaN(result))
-						throw new Error("Invalid format");
-
-					return result;
-				}
-			});
-		}
-
-		// Boolean
-		if (type === Boolean) {
-			// Format strings used for true, false, and null (or undefined) values
-			var trueFormat, falseFormat, nullFormat;
-
-			if (format && format.toLowerCase() === "g") {
-				trueFormat = "True";
-				falseFormat = "False";
-				nullFormat = ""
-			}
-			else {
-				var formats = format.split(';');
-				trueFormat = formats.length > 0 ? formats[0] : "";
-				falseFormat = formats.length > 1 ? formats[1] : "";
-				nullFormat = formats.length > 2 ? formats[2] : "";
-			}
-
-			return new Format({
-				description: "",
-				specifier: format,
-				convert: function (val) {
-					if (val === true)
-						return trueFormat;
-					else if (val === false)
-						return falseFormat;
-					else
-						return nullFormat;
-				},
-				convertBack: function (str) {
-					if (str.toLowerCase() === trueFormat.toLowerCase())
-						return true;
-					else if (str.toLowerCase() === falseFormat.toLowerCase())
-						return false;
-					else
-						return null;
-				}
-			});
-		}
-
-		// Default
-		return new Format({
-			description: "",
-			specifier: "",
-			convert: function (val) {
-				return val.toString();
-			},
-			convertBack: function (str) {
-				return str;
-			}
-		});
-
-	});
-	// #endregion
-
-	// #region ObserverProvider
-	//////////////////////////////////////////////////
-
-	function raiseSpecificPropertyChanged(target, args) {
-		var func = target.__propertyChangeHandlers[args.get_propertyName()];
-		if (func && func instanceof Function) {
-			func.apply(this, arguments);
-		}
-	}
-
-	setObserverProvider({
-
-		makeObservable: Sys.Observer.makeObservable,
-
-		disposeObservable: Sys.Observer.disposeObservable,
-
-		addCollectionChanged: Sys.Observer.addCollectionChanged,
-
-		removeCollectionChanged: Sys.Observer.removeCollectionChanged,
-
-		addPropertyChanged: function Sys$Observer$addPropertyChanged(target, property, handler) {
-			if (!target.__propertyChangeHandlers) {
-				target.__propertyChangeHandlers = {};
-				Sys.Observer.addPropertyChanged(target, raiseSpecificPropertyChanged);
-			}
-
-			var func = target.__propertyChangeHandlers[property];
-
-			if (!func) {
-				target.__propertyChangeHandlers[property] = func = ExoWeb.Functor();
-			}
-
-			func.add(handler);
-		},
-
-		removePropertyChanged: function Sys$Observer$removePropertyChanged(target, property, handler) {
-			var func = target.__propertyChangeHandlers ? target.__propertyChangeHandlers[property] : null;
-
-			if (func) {
-				func.remove(handler);
-
-				// if the functor is empty then remove the callback as an optimization
-				if (func.isEmpty()) {
-					delete target.__propertyChangeHandlers[property];
-
-					var hasHandlers = false;
-					for (var remainingHandler in target.__propertyChangeHandlers) {
-						if (target.__propertyChangeHandlers.hasOwnProperty(remainingHandler)) {
-							hasHandlers = true;
-						}
-					}
-
-					if (!hasHandlers) {
-						target.__propertyChangeHandlers = null;
-						Sys.Observer.removePropertyChanged(target, raiseSpecificPropertyChanged);
-					}
-				}
-			}
-		},
-
-		raisePropertyChanged: Sys.Observer.raisePropertyChanged,
-
-		setValue: Sys.Observer.setValue
-	});
-
-	ExoWeb.updateArray = function updateArray(array, items) {
-		if (array.beginUpdate && array.endUpdate) {
-			array.beginUpdate();
-		}
-		update(array, items);
-		if (array.beginUpdate && array.endUpdate) {
-			array.endUpdate();
-		}
-	};
-
-	// #endregion
-})(window.ExoJQuery || jQuery);
