@@ -82,6 +82,10 @@ function Type(model, name, baseType, origin) {
 
 	// helpers
 	jstype.meta = this;
+
+	// Add self-reference to decrease the likelihood of errors
+	// due to an absence of the necessary type vs. entity.
+	this.type = this;
 }
 
 // copy shortcut properties from a base meta type (recursively) to a target jstype

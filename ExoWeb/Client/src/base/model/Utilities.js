@@ -7,7 +7,7 @@ var coreGetValue = getValue;
 getValue = function getValueOverride(target, property) {
 
 	// first see if the property is a model property
-	if (target instanceof ExoWeb.Model.Entity) {
+	if (target instanceof ExoWeb.Model.Entity || (target.meta && target.meta instanceof ExoWeb.Model.Type)) {
 		var prop = target.meta.type.property(property);
 		if (prop) {
 			var value = prop.value(target);

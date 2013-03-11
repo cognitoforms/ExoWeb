@@ -4162,6 +4162,10 @@ window.ExoWeb.DotNet = {};
 
 		// helpers
 		jstype.meta = this;
+
+		// Add self-reference to decrease the likelihood of errors
+		// due to an absence of the necessary type vs. entity.
+		this.type = this;
 	}
 
 	// copy shortcut properties from a base meta type (recursively) to a target jstype
@@ -8460,7 +8464,7 @@ window.ExoWeb.DotNet = {};
 	getValue = function getValueOverride(target, property) {
 
 		// first see if the property is a model property
-		if (target instanceof ExoWeb.Model.Entity) {
+		if (target instanceof ExoWeb.Model.Entity || (target.meta && target.meta instanceof ExoWeb.Model.Type)) {
 			var prop = target.meta.type.property(property);
 			if (prop) {
 				var value = prop.value(target);
