@@ -12868,7 +12868,7 @@ window.ExoWeb.DotNet = {};
 					ExoWeb.eachProp(this.options.model, function (varName, query) {
 						if (!query.load && query.ids.length === 0) {
 							// Remove instance paths when an id is not specified
-							var staticPaths = query.include ? query.include.filter(function (p) { return !p.startsWith("this."); }) : null;
+							var staticPaths = query.include ? query.include.filter(function (p) { return !p.startsWith("this.") && !p.startsWith("this{"); }) : null;
 
 							// Only call the server if paths were specified
 							if (staticPaths && staticPaths.length > 0) {
