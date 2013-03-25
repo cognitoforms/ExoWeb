@@ -8,6 +8,7 @@ using ExoModel;
 using ExoRule;
 using System.IO;
 using ExoRule.Validation;
+using System.Globalization;
 
 namespace ExoWeb.Serialization
 {
@@ -86,11 +87,15 @@ namespace ExoWeb.Serialization
 
 		static JsonUtility()
 		{
-			serializer = new JsonSerializer();
+			serializer = new JsonSerializer
+				{
+					DateParseHandling = DateParseHandling.None,
+					Converters =
+						{
+							new UtcDateTimeConverter()
+						}
+				};
 			serializableTypes = new HashSet<Type>();
-
-			serializer.DateParseHandling = DateParseHandling.None;
-			serializer.Converters.Add(new UtcDateTimeConverter());
 
 			// Register converters for types implementing IJsonSerializable or that have DataContract attributes
 			// Include all types in ExoWeb and ExoRule automatically
@@ -105,47 +110,39 @@ namespace ExoWeb.Serialization
 				string p;
 				ModelInstance instance = null;
 				ModelValueProperty property = null;
-
-				Type oldValueType = null;
 				object oldValue = null;
-				Type newValueType = null;
 				object newValue = null;
-
-				Type readPropertyAsType = null;
-
-				while (reader.ReadProperty(out p, readPropertyAsType))
+				while (reader.ReadProperty(out p))
 				{
 					switch (p)
 					{
-						//Property sequence matters
 						case "instance":
 							instance = reader.ReadValue<ModelInstance>();
 							break;
 						case "property":
 							property = (ModelValueProperty)instance.Type.Properties[reader.ReadValue<string>()];
-
-							if (property.PropertyType != typeof(object))
-								readPropertyAsType = property.PropertyType;
-							break;
-						case "oldValueType": //Only present when property type is object
-							readPropertyAsType = oldValueType = Type.GetType(reader.ReadValue<string>());
 							break;
 						case "oldValue":
-							oldValue = reader.ReadValue(oldValueType ?? property.PropertyType);
+							// If there is a converter, ensure that it is being used in case there is a custom TypeDescriptor in play.
+							if (property.Converter != null)
+								oldValue = property.Converter.CanConvertTo(typeof (object))
+									           ? property.Converter.ConvertTo(property.Converter.ConvertFrom(reader.Value), typeof (object))
+									           : (object) property.Converter.ConvertFrom(reader.Value);
+							else
+								oldValue = reader.Value;
 
-							//Reset when dealing with object property
-							if (property.PropertyType == typeof(object))
-								readPropertyAsType = null;
-							break;
-						case "newValueType": //Only present when property type is object
-							readPropertyAsType = newValueType = Type.GetType(reader.ReadValue<string>());
+							reader.Read();
 							break;
 						case "newValue":
-							newValue = reader.ReadValue(newValueType ?? property.PropertyType);
+							// If there is a converter, ensure that it is being used in case there is a custom TypeDescriptor in play.
+							if (property.Converter != null)
+								newValue = property.Converter.CanConvertTo(typeof (object))
+									           ? property.Converter.ConvertTo(property.Converter.ConvertFrom(reader.Value), typeof (object))
+									           : (object) property.Converter.ConvertFrom(reader.Value);
+							else
+								newValue = reader.Value;
 
-							//Reset when dealing with object property
-							if (property.PropertyType == typeof(object))
-								readPropertyAsType = null;
+							reader.Read();
 							break;
 						default:
 							throw new ArgumentException("The specified property could not be deserialized.", p);
@@ -468,15 +465,7 @@ namespace ExoWeb.Serialization
 							json.Set("type", "ValueChange");
 							json.Set("instance", GetEventInstance(modelEvent.Instance, modelEvent.InstanceId));
 							json.Set("property", modelEvent.Property.Name);
-							
-							if(modelEvent.Property.PropertyType == typeof(object) && modelEvent.OldValue != null)
-								json.Set("oldValueType", modelEvent.OldValue.GetType().FullName);
-
 							json.Set("oldValue", modelEvent.OldValue);
-
-							if (modelEvent.Property.PropertyType == typeof(object) && modelEvent.NewValue != null)
-								json.Set("newValueType", modelEvent.NewValue.GetType().FullName);
-							
 							json.Set("newValue", modelEvent.NewValue);
 						},
 						deserializeValueChangeEvent),
