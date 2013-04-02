@@ -24,7 +24,6 @@ namespace ExoWeb.Serialization
 		static Dictionary<Type, string> jsonIntrinsicTypes = new Dictionary<Type, string>() 
 		{ 
 			{ typeof(string),		    "String"  },
-			{ typeof(IList<string>),    "Array"  },
 			{ typeof(char),			    "String"  },
 			{ typeof(Guid),			    "String"  },
 			{ typeof(bool),			    "Boolean" },
@@ -196,6 +195,11 @@ namespace ExoWeb.Serialization
 			string jsonType;
 			if (jsonIntrinsicTypes.TryGetValue(type, out jsonType))
 				return jsonType;
+
+			// Assume all enumerations of intrinsic types are supported and map to Array
+			var enumerableType = type.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+			if (enumerableType != null && jsonIntrinsicTypes.ContainsKey(enumerableType.GetGenericArguments()[0]))
+				return "Array";
 
 			// For unknown values types, return the object type
 			if (JsonUtility.IsSerializable(type))
