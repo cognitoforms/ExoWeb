@@ -123,24 +123,12 @@ namespace ExoWeb.Serialization
 							property = (ModelValueProperty)instance.Type.Properties[reader.ReadValue<string>()];
 							break;
 						case "oldValue":
-							// If there is a converter, ensure that it is being used in case there is a custom TypeDescriptor in play.
-							if (property.Converter != null)
-								oldValue = property.Converter.CanConvertTo(typeof (object))
-									           ? property.Converter.ConvertTo(property.Converter.ConvertFrom(reader.Value), typeof (object))
-									           : (object) property.Converter.ConvertFrom(reader.Value);
-							else
-								oldValue = reader.Value;
+							oldValue = property.CoerceValue(reader.Value);
 
 							reader.Read();
 							break;
 						case "newValue":
-							// If there is a converter, ensure that it is being used in case there is a custom TypeDescriptor in play.
-							if (property.Converter != null)
-								newValue = property.Converter.CanConvertTo(typeof (object))
-									           ? property.Converter.ConvertTo(property.Converter.ConvertFrom(reader.Value), typeof (object))
-									           : (object) property.Converter.ConvertFrom(reader.Value);
-							else
-								newValue = reader.Value;
+							newValue = property.CoerceValue(reader.Value);
 
 							reader.Read();
 							break;
