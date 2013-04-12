@@ -88,12 +88,23 @@ namespace ExoWeb
 			}
 			catch (Exception e)
 			{
+				// look for an ExoModel.ModelException that may display a more
+				// abstracted or informative message in the UI.  Otherwise, use
+				// the inner most exception
+				Exception reported = e;
+				for (Exception x = e; x != null; x = x.InnerException)
+				{
+					reported = x;
+					if (x is ModelException)
+						break;
+				}
+
 				// Create an error to log
 				var error = new ServiceError();
-
-				error.Type = e.GetBaseException().GetType().FullName;
+				
+				error.Type = reported.GetType().FullName;
 				error.StackTrace = GetFullStackTrace(e);
-				error.Message = e.GetBaseException().Message;
+				error.Message = reported.Message;
 				error.Url = context.Request.RawUrl;
 
 				if (error.AdditionalInfo == null)
