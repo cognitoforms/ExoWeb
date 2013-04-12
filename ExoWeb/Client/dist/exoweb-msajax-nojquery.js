@@ -208,10 +208,10 @@ window.ExoWeb.DotNet = {};
 	/*
 	* Handles an error that 
 	*/
-	function handleError(message, url, lineNumber) {
+	function handleError(message, url, lineNumber, customErrorData, raiseEvents, onSuccess, onFailure) {
 
 		// Initialize the default error data based on the error.
-		var errorData = {
+		var errorData = $.extend({
 			message: message,
 			type: "Error",
 			url: window.location.href,
@@ -220,16 +220,18 @@ window.ExoWeb.DotNet = {};
 				url: url,
 				lineNumber: lineNumber
 			}
-		};
+		}, customErrorData);
 
-		// The error was not handled, so raise the error event.
-		errorEventFns.forEach(function(fn) {
-			fn(message, url, lineNumber, errorData);
-		});
+		if (raiseEvents) {
+			// The error was not handled, so raise the error event.
+			errorEventFns.forEach(function (fn) {
+				fn(message, url, lineNumber, errorData);
+			});
+		}
 
 		if (logErrorProvider) {
 			// Log the error.
-			logErrorProvider(errorData);
+			logErrorProvider(errorData, onSuccess, onFailure);
 		}
 
 	}
@@ -238,47 +240,92 @@ window.ExoWeb.DotNet = {};
 	* Explicitly logs an error without throwing.
 	* Raising the 'error' event is optional.
 	*/
-	function logError(message, url, lineNumber) {
+	function logError(message, url, lineNumber, errorData, raiseEvents, onSuccess, onFailure) {
 		/// <summary>
 		/// Logs an error.
+		/// 
+		/// Signature:
+		/// ExoWeb.logError(message or error[, url, lineNumber][, errorData][, raiseEvents][, onSuccess][, onFailure]);
+		/// 
+		/// Examples:
+		/// 
+		/// ExoWeb.logError(e);
+		/// ExoWeb.logError('Message', 4, 'http://...');
+		/// ExoWeb.logError(e, { foo: "bar" }, function () { /* on success */ });
+		/// ExoWeb.logError('Message', 14, 'http://...', true, function () { /* on success */ }, function () { /* on failure */ });
+		/// ExoWeb.logError('Message', 14, 'http://...', { foo: "bar" }, true);
 		/// </summary>
 		/// <param name="message" type="String">The error message.</param>
-		/// <param name="url" type="String">The url where the error occurred.</param>
-		/// <param name="lineNumber" type="Number">The line number where the error occurred.</param>
+		/// <param name="url" type="String" optional="true">The url where the error occurred.</param>
+		/// <param name="lineNumber" type="Number" integer="true" optional="true">The line number where the error occurred.</param>
+		/// <param name="errorData" type="Object" optional="true">Custom data to include with the error.</param>
+		/// <param name="raiseEvents" type="Boolean" optional="true">
+		/// Whether or not to raise the error event when handling the error. When called via internal framework
+		/// methods (e.g. the global error event handler) the events will be raised, but when called externally
+		/// the caller must specify that they want events to be raised to avoid unwanted side-effects.
+		/// </param>
+		/// <param name="onSuccess" type="Function" optional="true">The callback to invoke when logging the error succeeds.</param>
+		/// <param name="onFailure" type="Function" optional="true">The callback to invoke when logging the error fails.</param>
 
 		// Ensure that the message (or error) argument was passed in
 		if (message == null) throw new ArgumentNullError("message");
 
-		// Check for {message, url, lineNumber} mode
-		if (arguments.length === 3) {
+		if (arguments.length > 5) {
+			throw new ArgumentsLengthError(5, arguments.length);
+		}
 
-			// Validate arguments
+		var args = Array.prototype.slice.call(arguments),
+			successCallback = null,
+			failureCallback = null,
+			error = null,
+			raiseErrorEvents = false,
+			customErrorData = null;
+
+		if (args[args.length - 1] instanceof Function) {
+			successCallback = args.pop();
+			if (args[args.length - 1] instanceof Function) {
+				failureCallback = successCallback;
+				successCallback = args.pop();
+			}
+		}
+
+		if (args[args.length - 1] instanceof Boolean) {
+			raiseErrorEvents = args.pop();
+		}
+
+		if (args[args.length - 1] instanceof Object) {
+			customErrorData = args.pop();
+		}
+
+		// Check for {message, url, lineNumber} mode
+		if (args.length === 3) {
+
+			// Validate args
 			if (!(message.constructor === String)) throw new ArgumentTypeError("message", "string", message);
 			if (url.constructor !== String) throw new ArgumentTypeError("url", "string", url);
 			if (lineNumber != null && typeof(lineNumber) !== "number") throw new ArgumentTypeError("lineNumber", "number", lineNumber);
 
 			// Pass along the information
-			handleError(message, url, lineNumber);
+			handleError(message, url, lineNumber, customErrorData, raiseErrorEvents, successCallback, failureCallback);
 
 		}
 
 		// Otherwise, attempt {error} mode
-		else if (arguments.length === 1) {
+		else if (args.length === 1) {
 
 			if (message instanceof Error) {
 
 				// Rewrite arguments
-				var error = message;
-				message = url = lineNumber = null;
+				error = message;
 
 				// Pass along the information from the error
-				handleError(error.message, error.fileName, error.lineNumber);
+				handleError(error.message, error.fileName, error.lineNumber, customErrorData, raiseErrorEvents, successCallback, failureCallback);
 
 			}
 			else {
 
 				// Pass along the message and simulate the other information
-				handleError(message.toString(), "?", "-1");
+				handleError(message.toString(), "?", "-1", customErrorData, raiseErrorEvents, successCallback, failureCallback);
 
 			}
 
@@ -307,7 +354,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// Pass the error along to event subscribers and then log.
-		handleError(message, url, lineNumber);
+		handleError(message, url, lineNumber, null, true);
 
 		// Let default handler run.
 		return false;
@@ -4186,7 +4233,7 @@ window.ExoWeb.DotNet = {};
 		if (id === null || id === undefined) {
 			throw new Error($format("Id cannot be {0} (entity = {1}).", id === null ? "null" : "undefined", type.get_fullName()));
 		}
-		else if (id.constructor !== String) {
+		else if (!ExoWeb.isString(id)) {
 			throw new Error($format("Id must be a string:  encountered id {0} of type \"{1}\" (entity = {2}).",
 				id.toString(), parseFunctionName(id.constructor), type.get_fullName()));
 		}
@@ -16886,15 +16933,32 @@ window.ExoWeb.DotNet = {};
 	});
 
 	var loggingError = false;
-	ExoWeb.setLogErrorProvider(function WebService$logErrorProviderFn(errorData) {
+	ExoWeb.setLogErrorProvider(function WebService$logErrorProviderFn(errorData, onSuccess, onFailure) {
 		if (loggingError === false) {
 			try {
 				loggingError = true;
-				Sys.Net.WebServiceProxy.invoke(getPath(), "LogError", false, errorData, null, function onFailure () {
-					// Do nothing.  Don't log errors that occur when trying to log an error.
-				}, null, 1000000, false, null);
-			}
-			finally {
+				Sys.Net.WebServiceProxy.invoke(
+					getPath(),
+					"LogError",
+					false,
+					errorData,
+					function () {
+						if (onSuccess) {
+							onSuccess.apply(this, arguments);
+						}
+					},
+					function () {
+						// Don't log errors that occur when trying to log an error.
+						if (onFailure) {
+							onFailure.apply(this, arguments);
+						}
+					},
+					null,
+					1000000,
+					false,
+					null
+				);
+			} finally {
 				loggingError = false;
 			}
 		}

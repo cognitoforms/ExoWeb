@@ -106,7 +106,7 @@ var validateId = function Type$validateId(type, id) {
 	if (id === null || id === undefined) {
 		throw new Error($format("Id cannot be {0} (entity = {1}).", id === null ? "null" : "undefined", type.get_fullName()));
 	}
-	else if (id.constructor !== String) {
+	else if (!ExoWeb.isString(id)) {
 		throw new Error($format("Id must be a string:  encountered id {0} of type \"{1}\" (entity = {2}).",
 			id.toString(), parseFunctionName(id.constructor), type.get_fullName()));
 	}
