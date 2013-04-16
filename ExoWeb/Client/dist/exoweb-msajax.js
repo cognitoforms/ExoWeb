@@ -3931,6 +3931,14 @@ window.ExoWeb.DotNet = {};
 		// get the instance type, if specified
 		var type = thisType instanceof Function ? thisType.meta : thisType;
 
+		// determine if a typecast was specified for the path to identify a specific subclass to use as the root type
+		if (tokens.steps[0].property === "this" && tokens.steps[0].cast) {
+
+			//Try and resolve cast to an actual type in the model
+			type = Model.getJsType(tokens.steps[0].cast, false).meta;
+			tokens.steps.dequeue();
+		}
+
 		// create a function to lazily load a property 
 		var loadProperty = function (type, name, callback) {
 			ensureType(type, forceLoadTypes, function () {
