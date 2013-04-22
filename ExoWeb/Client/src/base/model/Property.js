@@ -378,28 +378,35 @@ Property.mixin({
 			return true;
 		}
 
-		if (val.constructor) {
-			// for entities check base types as well
-			if (val.constructor.meta) {
-				for (var valType = val.constructor.meta; valType; valType = valType.baseType) {
-					if (valType._jstype === this._jstype) {
-						return true;
-					}
+		// for entities check base types as well
+		if (val.constructor && val.constructor.meta) {
+			for (var valType = val.constructor.meta; valType; valType = valType.baseType) {
+				if (valType._jstype === this._jstype) {
+					return true;
 				}
+			}
 
-				return false;
-			}
-			else {
-				return val.constructor === this._jstype;
-			}
+			return false;
 		}
+		
+		//Data types
 		else {
-			var valObjectType;
+			var valObjectType = val.constructor;
 
-			switch (typeof (val)) {
-				case "string": valObjectType = String; break;
-				case "number": valObjectType = Number; break;
-				case "boolean": valObjectType = Boolean; break;
+			//"Normalize" data type in case it came from another frame as well as ensure that the types are the same
+			switch (type(val)) {
+			case "string":
+				valObjectType = String;
+				break;
+			case "number":
+				valObjectType = Number;
+				break;
+			case "boolean":
+				valObjectType = Boolean;
+				break;
+			case "date":
+				valObjectType = Date;
+				break;
 			}
 
 			return valObjectType === this._jstype;
