@@ -16021,6 +16021,9 @@ window.ExoWeb.DotNet = {};
 					return "";
 				}
 			}
+			else if (this.isType(String)) {
+				return rawValue;
+			}
 			else {
 				logWarning("Possible incorrect usage of systemValue for a type that is not supported");
 				return rawValue ? rawValue.toString() : "";
@@ -16059,6 +16062,9 @@ window.ExoWeb.DotNet = {};
 				else {
 					this._setValue(null);
 				}
+			}
+			else if (this.isType(String)) {
+				this._setValue(value);
 			}
 			else {
 				throw new Error("Cannot set systemValue property of Adapters for non-entity types.");
