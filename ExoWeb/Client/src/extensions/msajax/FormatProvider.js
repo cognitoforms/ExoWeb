@@ -29,7 +29,7 @@ setFormatProvider(function FormatProvider(type, format) {
 		var isPercentageFormat = format.match(/[%p]+/i);
 		var isIntegerFormat = format.match(/[dnfg]0/i);
 		var currencyDecimalDigits = Sys.CultureInfo.CurrentCulture.numberFormat.CurrencyDecimalDigits;
-
+		
 		return new Format({
 		    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
 			specifier: format,
@@ -54,9 +54,12 @@ setFormatProvider(function FormatProvider(type, format) {
 				if (isCurrencyFormat) {
 				    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
 
-				    // Ensure that currency values do not have more than the allowed number of digits to the right of the decimal   
-				    if (result * Math.pow(10, currencyDecimalDigits) != Math.round(result * Math.pow(10, currencyDecimalDigits)))
-				        result = NaN;
+					// if there is a decimal place, check the precision isnt greater than allowed for currency. 
+					// Floating points in js can be skewed under certain circumstances, we are just checking the decimals instead of multiplying results.
+				    var resultStr = result.toString();
+				    if (resultStr.indexOf('.') > -1 && (resultStr.length - (resultStr.indexOf('.') + 1)) > currencyDecimalDigits) {
+				    	result = NaN;
+				    }
 				}
 				    // Remove percentage symbols before parsing and divide by 100
 				else if (isPercentageFormat)
