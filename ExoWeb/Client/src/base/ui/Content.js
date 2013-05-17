@@ -295,10 +295,10 @@ Content.prototype = {
 				this._isRendered = true;
 				this._context = null;
 
-				if (!this._ctxIdx && this._element.childNodes.length > 0)
+				if (!this._ctxIdx && this._element && this._element.childNodes.length > 0)
 					throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
 
-				if ((this._data !== null && this._data !== undefined) || this._element.childNodes.length > 0) {
+				if ((this._data !== null && this._data !== undefined) || (this._element && this._element.childNodes.length > 0)) {
 					var pctx = this.get_templateContext();
 					var tmplEl = this._findTemplate();
 

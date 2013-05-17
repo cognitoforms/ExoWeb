@@ -272,7 +272,17 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					equals = (onValue == null);
 				else if (whenValue is FunctionInstance)
 				{
-					object result = Page.ScriptMarshaller.Unwrap(((FunctionInstance)whenValue).Call(null, Page.ScriptMarshaller.Wrap(onValue)));
+					object result;
+
+					try
+					{
+						result = Page.ScriptMarshaller.Unwrap(((FunctionInstance)whenValue).Call(null, Page.ScriptMarshaller.Wrap(onValue)));
+					}
+					catch
+					{
+						Abort(page, templateNames, writer);
+						return;
+					}
 
 					if (strictModeValue)
 					{
