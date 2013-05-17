@@ -16831,7 +16831,7 @@ window.ExoWeb.DotNet = {};
 			type: "Post",
 			path: webServiceConfig.aliasRequests && eventType !== "GetType" && eventType !== "LogError" ? eventType : "Request",
 			data: {
-				events: [{type: eventType, instance: instance, event: event, include: paths}],
+				events: [{ type: eventType, include: paths, instance: instance, event: event }],
 				queries: scopeQueries,
 				changes: changes
 			},
