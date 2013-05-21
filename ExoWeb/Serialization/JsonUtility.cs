@@ -286,11 +286,13 @@ namespace ExoWeb.Serialization
 							json.Set("format", modelType.Format);
 
 						// Properties
-						json.Set("properties", modelType.Properties
-							.Where(property => property.DeclaringType == modelType && ExoWeb.IncludeInClientModel(property))
-							.ToDictionary(property => property.Name));
+						if (modelType.Properties.Any())
+							json.Set("properties", modelType.Properties
+								.Where(property => property.DeclaringType == modelType && ExoWeb.IncludeInClientModel(property))
+								.ToDictionary(property => property.Name));
 
 						// Methods
+						if (modelType.Methods.Any())
 						json.Set("methods", modelType.Methods.ToDictionary(method => method.Name));
 
 						// Rules
@@ -308,7 +310,9 @@ namespace ExoWeb.Serialization
 							json.Set("conditionTypes", serverConditionTypes);	
 
 						// Exports
-						json.Set("exports", json.Global<Dictionary<string, string>>("exports"));
+						var exports = json.Global<Dictionary<string, string>>("exports");
+						if (exports.Any())
+							json.Set("exports", json.Global<Dictionary<string, string>>("exports"));
 					}, 
 					json => { throw new NotSupportedException("ModelType cannot be deserialized."); }),
 
