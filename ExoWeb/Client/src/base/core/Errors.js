@@ -168,7 +168,7 @@ exports.addError = addError;
 function handleError(message, url, lineNumber, customErrorData, raiseEvents, onSuccess, onFailure) {
 
 	// Initialize the default error data based on the error.
-	var errorData = $.extend({
+	var errorData = jQuery.extend({
 		message: message,
 		type: "Error",
 		url: window.location.href,
