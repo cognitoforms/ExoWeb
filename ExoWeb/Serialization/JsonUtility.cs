@@ -377,6 +377,19 @@ namespace ExoWeb.Serialization
 								rule.Name);
 						if (rules.Any())
 							json.Set("rules", rules);
+
+						// Default Value
+						if (property is ModelValueProperty)
+						{
+							var defaultValue = ((ModelValueProperty)property).DefaultValue;
+							if (defaultValue != null)
+							{
+								var exp = ExoWeb.ExpressionTranslator.Translate(defaultValue);
+								if (exp.Exceptions.Any())
+									throw exp.Exceptions.Last();
+								json.Set("default", exp.Body);
+							}
+						}
 					}, 
 					json => { throw new NotSupportedException("ModelProperty cannot be deserialized."); }),
 
@@ -568,18 +581,7 @@ namespace ExoWeb.Serialization
 							{
 								var calculation = (ICalculationRule)rule;
 								json.Set("onChangeOf", calculation.Predicates);
-
-								// Translate the calculate expression to javascript
-								var exp = ExoWeb.ExpressionTranslator.Translate(calculation.Calculation);
-								if (exp.Exceptions.Any())
-									throw exp.Exceptions.Last();
-								json.Set("calculate", exp.Body);
-
-								// Record dependency exports globally
-								foreach (var export in exp.Exports)
-								{
-									json.Global<Dictionary<string, string>>("exports")[export.Key] = export.Value;
-								}
+								json.Set("calculate", calculation.Calculation);
 							}
 
 							else if (rule is IConditionRule)
@@ -589,20 +591,7 @@ namespace ExoWeb.Serialization
 								json.Set("properties", condition.Properties);
 								json.Set("onChangeOf", condition.Predicates);
 								json.Set("conditionType", condition.ConditionType);
-
-								// Translate the assert expression to javascript
-								var exp = ExoWeb.ExpressionTranslator.Translate(condition.Condition);
-								if (exp.Exceptions.Any())
-									throw exp.Exceptions.Last();
-								json.Set("assert", exp.Body);
-
-								// Record dependency exports globally
-								foreach (var export in exp.Exports)
-								{
-									var exports = json.Global<Dictionary<string, string>>("exports");
-									if (!exports.ContainsKey(export.Key))
-										exports.Add(export.Key, export.Value);
-								}
+								json.Set("assert", condition.Condition);
 							}
 
 							else
@@ -615,7 +604,15 @@ namespace ExoWeb.Serialization
 						(rule, json) =>
 						{
 							SerializePropertyRule(rule, json);
-							json.Set("source", rule.Source);
+							var sourceExpression = rule.SourceExpression;
+							if (sourceExpression != null)
+							{
+								json.Set("fn", sourceExpression.Expression);
+								if (!String.IsNullOrWhiteSpace(rule.Path))
+									json.Set("onChangeOf", new string[] { rule.Path });
+							}
+							else
+								json.Set("source", rule.Source);
 						},
 						json => { throw new NotSupportedException("AllowedValuesRule cannot be deserialized."); }),
 						

@@ -18,16 +18,19 @@ function AllowedValuesRule(rootType, options) {
 	// ensure the error message is specified
 	options.message = options.message || Resource.get("allowed-values");
 
-	// ensure changes to the allowed values triggers rule execution
-	options.onChangeOf = [options.source];
-
 	// define properties for the rule
 	if (options.source instanceof Property || options.source instanceof PropertyChain) {
 		Object.defineProperty(this, "sourcePath", { value: options.source.get_path() });
 		Object.defineProperty(this, "source", { value: options.source });
+		options.onChangeOf = [options.source];
+	}
+	else if (options.source instanceof Function || options.fn) {
+		Object.defineProperty(this, "sourceFn", { value: options.source || options.fn, writable: true });
+		options.fn = null;
 	}
 	else {
 		Object.defineProperty(this, "sourcePath", { value: options.source });
+		options.onChangeOf = [options.source];
 	}
 
 	if (options.ignoreValidation) {
@@ -50,7 +53,7 @@ AllowedValuesRule.mixin({
 	onRegister: function AllowedValuesRule$onRegister() {
 
 		// get the allowed values source, if only the path was specified
-		if (!this.source) {
+		if (!this.source && !this.sourceFn) {
 			Object.defineProperty(this, "source", { value: Model.property(this.sourcePath, this.rootType) });
 		}
 
@@ -66,7 +69,7 @@ AllowedValuesRule.mixin({
 	    }
 
 		// return true if no value is currently selected
-		if (value === undefined || value === null) {
+		if (!value) {
 			return true;
 		}
 
@@ -86,32 +89,65 @@ AllowedValuesRule.mixin({
 			return Array.contains(allowed, value);
 		}
 	},
+
+	// Subscribes to changes to the allow value predicates, indicating that the allowed values have changed
+	addChanged: function AllowedValuesRule$addChanged(handler, obj, once) {
+		for (var p = 0; p < this.predicates.length; p++) {
+			var predicate = this.predicates[p];
+			if (predicate !== this.property)
+				predicate.addChanged(handler, obj, once);
+		}
+	},
+
+	// Unsubscribes from changes to the allow value predicates
+	removeChanged: function AllowedValuesRule$removeChanged(handler, obj, once) {
+		for (var p = 0; p < this.predicates.length; p++) {
+			var predicate = this.predicates[p];
+			if (predicate !== this.property)
+				predicate.removeChanged(handler, obj, once);
+		}
+	},
+
 	values: function AllowedValuesRule$values(obj, exitEarly) {
-		if (!this.source) {
+		if (!this.source && !this.sourceFn) {
 			logWarning("AllowedValues rule on type \"" + this.prop.get_containingType().get_fullName() + "\" has not been initialized.");
 			return;
 		}
 
-		// For non-static properties, verify that a final target exists and
-		// if not return an appropriate null or undefined value instead.
-		if (!this.source.get_isStatic()) {
-			// Get the value of the last target for the source property (chain).
-			var lastTarget = this.source.lastTarget(obj, exitEarly);
+		// Function-based allowed values
+		if (this.sourceFn) {
 
-			// Use the last target to distinguish between the absence of data and
-			// data that has not been loaded, if a final value cannot be obtained.
-			if (lastTarget === undefined) {
-				// Undefined signifies unloaded data
-				return undefined;
+			// convert string functions into compiled functions on first execution
+			if (this.sourceFn.constructor === String) {
+				this.sourceFn = this.rootType.compileExpression(this.sourceFn);
 			}
-			else if (lastTarget === null) {
-				// Null signifies the absensce of a value
-				return null;
-			}
+
+			return this.sourceFn.call(obj, obj);
 		}
 
-		// Return the value of the source for the given object
-		return this.source.value(obj);
+		// Property path-based allowed values
+		else {
+			// For non-static properties, verify that a final target exists and
+			// if not return an appropriate null or undefined value instead.
+			if (!this.source.get_isStatic()) {
+				// Get the value of the last target for the source property (chain).
+				var lastTarget = this.source.lastTarget(obj, exitEarly);
+
+				// Use the last target to distinguish between the absence of data and
+				// data that has not been loaded, if a final value cannot be obtained.
+				if (lastTarget === undefined) {
+					// Undefined signifies unloaded data
+					return undefined;
+				}
+				else if (lastTarget === null) {
+					// Null signifies the absensce of a value
+					return null;
+				}
+			}
+
+			// Return the value of the source for the given object
+			return this.source.value(obj);
+		}
 	},
 	toString: function AllowedValuesRule$toString() {
 		return $format("{0}.{1} allowed values = {2}", [this.property.get_containingType().get_fullName(), this.property.get_name(), this._sourcePath]);

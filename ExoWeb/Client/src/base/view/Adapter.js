@@ -619,7 +619,7 @@ function disposeOptions() {
 	var lastProperty = this._propertyChain.lastProperty();
 	var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
 	if (this._allowedValuesChangedHandler) {
-		allowedValuesRule.source.removeChanged(this._allowedValuesChangedHandler);
+		allowedValuesRule.removeChanged(this._allowedValuesChangedHandler);
 		this._allowedValuesChangedHandler = null;
 	}
 	if ( this._allowedValuesRuleExistsHandler) {
@@ -627,7 +627,7 @@ function disposeOptions() {
 		this._allowedValuesRuleExistsHandler = null;
 	}
 	if (this._allowedValuesExistHandler) {
-		allowedValuesRule.source.removeChanged(this._allowedValuesExistHandler);
+		allowedValuesRule.removeChanged(this._allowedValuesExistHandler);
 		this._allowedValuesExistHandler = null;
 	}
 	this._options = null;
@@ -673,7 +673,7 @@ function checkAllowedValuesExist() {
 	var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 	if (allowedValues instanceof Array) {
-		allowedValuesRule.source.removeChanged(this._allowedValuesExistHandler);
+		allowedValuesRule.removeChanged(this._allowedValuesExistHandler);
 		delete this._allowedValuesExistHandler;
 		signalOptionsReady.call(this);
 	}
@@ -786,7 +786,7 @@ Adapter.mixin({
 				var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 				// Load allowed values if the path is not inited
-				if (allowedValues === undefined) {
+				if (allowedValues === undefined && (allowedValuesRule.source instanceof Property || allowedValuesRule.source instanceof PropertyChain)) {
 					logWarning("Adapter forced eval of allowed values. Rule: " + allowedValuesRule);
 					ExoWeb.Model.LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
 						allowedValuesRule.source.get_path(),
@@ -798,7 +798,7 @@ Adapter.mixin({
 				// Watch for changes until the allowed values path has a value
 				if (!allowedValues) {
 					this._allowedValuesExistHandler = checkAllowedValuesExist.bind(this);
-					allowedValuesRule.source.addChanged(this._allowedValuesExistHandler, targetObj);
+					allowedValuesRule.addChanged(this._allowedValuesExistHandler, targetObj);
 					if (!allowedValuesRule.ignoreValidation) {
 					    clearInvalidOptions.call(this);
 					}
@@ -824,7 +824,7 @@ Adapter.mixin({
 
 				// Respond to changes to allowed values
 				this._allowedValuesChangedHandler = allowedValuesChanged.bind(this).prependArguments(observableAllowedValues);
-				allowedValuesRule.source.addChanged(this._allowedValuesChangedHandler, targetObj, false, true);
+				allowedValuesRule.addChanged(this._allowedValuesChangedHandler, targetObj, false, true);
 
 				// Create a transform that watches the observable copy and uses the user-supplied _allowedValuesTransform if given
 				if (this._allowedValuesTransform) {

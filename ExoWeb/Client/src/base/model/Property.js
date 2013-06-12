@@ -39,7 +39,7 @@ window.PropertySetError = PropertySetError;
 /// that can be treated as a single property.
 /// </remarks>
 ///////////////////////////////////////////////////////////////////////////////
-function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index) {
+function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index, defaultValue) {
 	this._containingType = containingType;
 	this._name = name;
 	this._fieldName = "_" + name;
@@ -52,12 +52,13 @@ function Property(containingType, name, jstype, label, helptext, format, isList,
 	this._isPersisted = isPersisted === true;
 	this._isCalculated = isCalculated === true;
 	this._index = index;
-	this._rules = [];
-	this._defaultValue = 
+	this._defaultValue =
+		defaultValue !== undefined ? defaultValue :
 		isList ? [] :
 		jstype === Boolean ? false :
 		jstype === Number ? 0 :
 		null;
+	this._rules = [];
 
 	if (containingType.get_originForNewProperties()) {
 		this._origin = containingType.get_originForNewProperties();
@@ -309,6 +310,7 @@ Property.mixin({
 		return this._defaultValue instanceof Array ? this._defaultValue.slice() :
 			this._defaultValue instanceof Date ? new Date(+this._defaultValue) :
 			this._defaultValue instanceof TimeSpan ? new TimeSpan(this._defaultValue.totalMilliseconds) :
+			this._defaultValue instanceof Function ? this._defaultValue() :
 			this._defaultValue;
 	},
 

@@ -217,7 +217,7 @@ namespace ExoWeb.Templates
 						allowedValues = transformed.Cast<object>().ToArray();
 				}
 				else
-					allowedValues = allowedInstances.Cast<object>();
+					allowedValues = allowedInstances;
 			}
 			else if (property is ModelValueProperty && JsonConverter.GetJsonValueType(((ModelValueProperty)property).PropertyType) == "Boolean")
 				allowedValues = (new bool[] { true, false }).Cast<object>();

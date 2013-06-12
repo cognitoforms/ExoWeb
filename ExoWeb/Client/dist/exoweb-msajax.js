@@ -4482,7 +4482,7 @@ window.ExoWeb.DotNet = {};
 				format = getFormat(def.type, format);
 			}
 
-			var prop = new Property(this, def.name, def.type, def.label, def.helptext, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index);
+			var prop = new Property(this, def.name, def.type, def.label, def.helptext, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index, def.defaultValue);
 
 			this._properties[def.name] = prop;
 			(def.isStatic ? this._staticProperties : this._instanceProperties)[def.name] = prop;
@@ -4803,7 +4803,7 @@ window.ExoWeb.DotNet = {};
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index) {
+	function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index, defaultValue) {
 		this._containingType = containingType;
 		this._name = name;
 		this._fieldName = "_" + name;
@@ -4816,12 +4816,13 @@ window.ExoWeb.DotNet = {};
 		this._isPersisted = isPersisted === true;
 		this._isCalculated = isCalculated === true;
 		this._index = index;
-		this._rules = [];
-		this._defaultValue = 
+		this._defaultValue =
+			defaultValue !== undefined ? defaultValue :
 			isList ? [] :
 			jstype === Boolean ? false :
 			jstype === Number ? 0 :
 			null;
+		this._rules = [];
 
 		if (containingType.get_originForNewProperties()) {
 			this._origin = containingType.get_originForNewProperties();
@@ -5069,6 +5070,7 @@ window.ExoWeb.DotNet = {};
 			return this._defaultValue instanceof Array ? this._defaultValue.slice() :
 				this._defaultValue instanceof Date ? new Date(+this._defaultValue) :
 				this._defaultValue instanceof TimeSpan ? new TimeSpan(this._defaultValue.totalMilliseconds) :
+				this._defaultValue instanceof Function ? this._defaultValue() :
 				this._defaultValue;
 		},
 
@@ -7127,16 +7129,19 @@ window.ExoWeb.DotNet = {};
 		// ensure the error message is specified
 		options.message = options.message || Resource.get("allowed-values");
 
-		// ensure changes to the allowed values triggers rule execution
-		options.onChangeOf = [options.source];
-
 		// define properties for the rule
 		if (options.source instanceof Property || options.source instanceof PropertyChain) {
 			Object.defineProperty(this, "sourcePath", { value: options.source.get_path() });
 			Object.defineProperty(this, "source", { value: options.source });
+			options.onChangeOf = [options.source];
+		}
+		else if (options.source instanceof Function || options.fn) {
+			Object.defineProperty(this, "sourceFn", { value: options.source || options.fn, writable: true });
+			options.fn = null;
 		}
 		else {
 			Object.defineProperty(this, "sourcePath", { value: options.source });
+			options.onChangeOf = [options.source];
 		}
 
 		if (options.ignoreValidation) {
@@ -7159,7 +7164,7 @@ window.ExoWeb.DotNet = {};
 		onRegister: function AllowedValuesRule$onRegister() {
 
 			// get the allowed values source, if only the path was specified
-			if (!this.source) {
+			if (!this.source && !this.sourceFn) {
 				Object.defineProperty(this, "source", { value: Model.property(this.sourcePath, this.rootType) });
 			}
 
@@ -7175,7 +7180,7 @@ window.ExoWeb.DotNet = {};
 		    }
 
 			// return true if no value is currently selected
-			if (value === undefined || value === null) {
+			if (!value) {
 				return true;
 			}
 
@@ -7195,32 +7200,65 @@ window.ExoWeb.DotNet = {};
 				return Array.contains(allowed, value);
 			}
 		},
+
+		// Subscribes to changes to the allow value predicates, indicating that the allowed values have changed
+		addChanged: function AllowedValuesRule$addChanged(handler, obj, once) {
+			for (var p = 0; p < this.predicates.length; p++) {
+				var predicate = this.predicates[p];
+				if (predicate !== this.property)
+					predicate.addChanged(handler, obj, once);
+			}
+		},
+
+		// Unsubscribes from changes to the allow value predicates
+		removeChanged: function AllowedValuesRule$removeChanged(handler, obj, once) {
+			for (var p = 0; p < this.predicates.length; p++) {
+				var predicate = this.predicates[p];
+				if (predicate !== this.property)
+					predicate.removeChanged(handler, obj, once);
+			}
+		},
+
 		values: function AllowedValuesRule$values(obj, exitEarly) {
-			if (!this.source) {
+			if (!this.source && !this.sourceFn) {
 				logWarning("AllowedValues rule on type \"" + this.prop.get_containingType().get_fullName() + "\" has not been initialized.");
 				return;
 			}
 
-			// For non-static properties, verify that a final target exists and
-			// if not return an appropriate null or undefined value instead.
-			if (!this.source.get_isStatic()) {
-				// Get the value of the last target for the source property (chain).
-				var lastTarget = this.source.lastTarget(obj, exitEarly);
+			// Function-based allowed values
+			if (this.sourceFn) {
 
-				// Use the last target to distinguish between the absence of data and
-				// data that has not been loaded, if a final value cannot be obtained.
-				if (lastTarget === undefined) {
-					// Undefined signifies unloaded data
-					return undefined;
+				// convert string functions into compiled functions on first execution
+				if (this.sourceFn.constructor === String) {
+					this.sourceFn = this.rootType.compileExpression(this.sourceFn);
 				}
-				else if (lastTarget === null) {
-					// Null signifies the absensce of a value
-					return null;
-				}
+
+				return this.sourceFn.call(obj, obj);
 			}
 
-			// Return the value of the source for the given object
-			return this.source.value(obj);
+			// Property path-based allowed values
+			else {
+				// For non-static properties, verify that a final target exists and
+				// if not return an appropriate null or undefined value instead.
+				if (!this.source.get_isStatic()) {
+					// Get the value of the last target for the source property (chain).
+					var lastTarget = this.source.lastTarget(obj, exitEarly);
+
+					// Use the last target to distinguish between the absence of data and
+					// data that has not been loaded, if a final value cannot be obtained.
+					if (lastTarget === undefined) {
+						// Undefined signifies unloaded data
+						return undefined;
+					}
+					else if (lastTarget === null) {
+						// Null signifies the absensce of a value
+						return null;
+					}
+				}
+
+				// Return the value of the source for the given object
+				return this.source.value(obj);
+			}
 		},
 		toString: function AllowedValuesRule$toString() {
 			return $format("{0}.{1} allowed values = {2}", [this.property.get_containingType().get_fullName(), this.property.get_name(), this._sourcePath]);
@@ -11452,9 +11490,10 @@ window.ExoWeb.DotNet = {};
 				isStatic: propJson.isStatic === true,
 				isPersisted: propJson.isPersisted !== false,
 				isCalculated: propJson.isCalculated === true,
-				index: propJson.index
+				index: propJson.index,
+				defaultValue: propJson.default ? new Function("return " + propJson.default) : undefined
 			});
-
+		
 			// setup static properties for lazy loading
 			if (propJson.isStatic && propJson.isList) {
 				Property$_init.call(prop, null, ListLazyLoader.register(null, prop));
@@ -16244,7 +16283,7 @@ window.ExoWeb.DotNet = {};
 		var lastProperty = this._propertyChain.lastProperty();
 		var allowedValuesRule = lastProperty.rule(ExoWeb.Model.Rule.allowedValues);
 		if (this._allowedValuesChangedHandler) {
-			allowedValuesRule.source.removeChanged(this._allowedValuesChangedHandler);
+			allowedValuesRule.removeChanged(this._allowedValuesChangedHandler);
 			this._allowedValuesChangedHandler = null;
 		}
 		if ( this._allowedValuesRuleExistsHandler) {
@@ -16252,7 +16291,7 @@ window.ExoWeb.DotNet = {};
 			this._allowedValuesRuleExistsHandler = null;
 		}
 		if (this._allowedValuesExistHandler) {
-			allowedValuesRule.source.removeChanged(this._allowedValuesExistHandler);
+			allowedValuesRule.removeChanged(this._allowedValuesExistHandler);
 			this._allowedValuesExistHandler = null;
 		}
 		this._options = null;
@@ -16298,7 +16337,7 @@ window.ExoWeb.DotNet = {};
 		var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 		if (allowedValues instanceof Array) {
-			allowedValuesRule.source.removeChanged(this._allowedValuesExistHandler);
+			allowedValuesRule.removeChanged(this._allowedValuesExistHandler);
 			delete this._allowedValuesExistHandler;
 			signalOptionsReady.call(this);
 		}
@@ -16411,7 +16450,7 @@ window.ExoWeb.DotNet = {};
 					var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
 
 					// Load allowed values if the path is not inited
-					if (allowedValues === undefined) {
+					if (allowedValues === undefined && (allowedValuesRule.source instanceof Property || allowedValuesRule.source instanceof PropertyChain)) {
 						logWarning("Adapter forced eval of allowed values. Rule: " + allowedValuesRule);
 						ExoWeb.Model.LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
 							allowedValuesRule.source.get_path(),
@@ -16423,7 +16462,7 @@ window.ExoWeb.DotNet = {};
 					// Watch for changes until the allowed values path has a value
 					if (!allowedValues) {
 						this._allowedValuesExistHandler = checkAllowedValuesExist.bind(this);
-						allowedValuesRule.source.addChanged(this._allowedValuesExistHandler, targetObj);
+						allowedValuesRule.addChanged(this._allowedValuesExistHandler, targetObj);
 						if (!allowedValuesRule.ignoreValidation) {
 						    clearInvalidOptions.call(this);
 						}
@@ -16449,7 +16488,7 @@ window.ExoWeb.DotNet = {};
 
 					// Respond to changes to allowed values
 					this._allowedValuesChangedHandler = allowedValuesChanged.bind(this).prependArguments(observableAllowedValues);
-					allowedValuesRule.source.addChanged(this._allowedValuesChangedHandler, targetObj, false, true);
+					allowedValuesRule.addChanged(this._allowedValuesChangedHandler, targetObj, false, true);
 
 					// Create a transform that watches the observable copy and uses the user-supplied _allowedValuesTransform if given
 					if (this._allowedValuesTransform) {

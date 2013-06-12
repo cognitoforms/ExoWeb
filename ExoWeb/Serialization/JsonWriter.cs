@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
 using System.IO;
+using System.Linq.Expressions;
 
 namespace ExoWeb.Serialization
 {
@@ -22,6 +23,21 @@ namespace ExoWeb.Serialization
 		{
 			WritePropertyName(name);
 			serializer.Serialize(this, value);
+		}
+
+		// Serializes an expression, translated to JavaScript
+		public void Set(string name, LambdaExpression expression)
+		{
+			// Translate the assert expression to javascript
+			var exp = ExoWeb.ExpressionTranslator.Translate(expression);
+			if (exp.Exceptions.Any())
+				throw exp.Exceptions.Last();
+			WritePropertyName(name);
+			serializer.Serialize(this, exp.Body);
+
+			// Record dependency exports globally
+			foreach (var export in exp.Exports)
+				Global<Dictionary<string, string>>("exports")[export.Key] = export.Value;
 		}
 
 		public void Serialize(object value)

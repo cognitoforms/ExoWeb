@@ -316,9 +316,10 @@ function typeFromJson(model, typeName, json) {
 			isStatic: propJson.isStatic === true,
 			isPersisted: propJson.isPersisted !== false,
 			isCalculated: propJson.isCalculated === true,
-			index: propJson.index
+			index: propJson.index,
+			defaultValue: propJson.default ? new Function("return " + propJson.default) : undefined
 		});
-
+		
 		// setup static properties for lazy loading
 		if (propJson.isStatic && propJson.isList) {
 			Property$_init.call(prop, null, ListLazyLoader.register(null, prop));
