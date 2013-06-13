@@ -608,7 +608,7 @@ namespace ExoWeb.Serialization
 							if (sourceExpression != null)
 							{
 								json.Set("fn", sourceExpression.Expression);
-								if (!String.IsNullOrWhiteSpace(rule.Path))
+								if (!String.IsNullOrEmpty(rule.Path))
 									json.Set("onChangeOf", new string[] { rule.Path });
 							}
 							else
