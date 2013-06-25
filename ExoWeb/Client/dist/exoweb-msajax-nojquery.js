@@ -11491,7 +11491,7 @@ window.ExoWeb.DotNet = {};
 				isPersisted: propJson.isPersisted !== false,
 				isCalculated: propJson.isCalculated === true,
 				index: propJson.index,
-				defaultValue: propJson.default ? new Function("return " + propJson.default) : undefined
+				defaultValue: propJson.defaultValue ? new Function("return " + propJson.defaultValue) : undefined
 			});
 		
 			// setup static properties for lazy loading

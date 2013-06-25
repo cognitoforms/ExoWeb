@@ -387,7 +387,7 @@ namespace ExoWeb.Serialization
 								var exp = ExoWeb.ExpressionTranslator.Translate(defaultValue);
 								if (exp.Exceptions.Any())
 									throw exp.Exceptions.Last();
-								json.Set("default", exp.Body);
+								json.Set("defaultValue", exp.Body);
 							}
 						}
 					}, 
