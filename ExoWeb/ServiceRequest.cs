@@ -724,53 +724,72 @@ namespace ExoWeb
 			/// <param name="path"></param>
 			internal static void PrepareStaticPath(string path, ServiceResponse response)
 			{
-				if (path.IndexOf('.') < 0)
-					throw new ArgumentException("'" + path + "' is not a valid static property path.");
+				string type = null;
+				string property = null;
 
-				// Split the static property reference
-				int propertyIndex = path.LastIndexOf('.');
-				string type = path.Substring(0, propertyIndex);
-				string property = path.Substring(propertyIndex + 1);
+				try
+				{				
+					if (path.IndexOf('.') < 0)
+						throw new ArgumentException("'" + path + "' is not a valid static property path.");
 
-				// Get the model type
-				ModelType modelType = ModelContext.Current.GetModelType(type);
-				if (modelType == null)
-					throw new ArgumentException("'" + type + "' is not a valid model type for the static property path of '" + path + "'.");
+					// Split the static property reference
+					int propertyIndex = path.LastIndexOf('.');
+					type = path.Substring(0, propertyIndex);
+					property = path.Substring(propertyIndex + 1);
 
-				// Get the model property
-				ModelProperty modelProperty = modelType.Properties[property];
-				if (modelProperty == null || !modelProperty.IsStatic)
-					throw new ArgumentException("'" + property + "' is not a valid property for the static property path of '" + path + "'.");
+					// Get the model type
+					ModelType modelType = ModelContext.Current.GetModelType(type);
+					if (modelType == null)
+						throw new ArgumentException("'" + type + "' is not a valid model type for the static property path of '" + path + "'.");
 
-				// Add the property to the set of static properties to serialize
-				response.GetModelTypeInfo(modelType).StaticProperties.Add(modelProperty);
+					// Get the model property
+					ModelProperty modelProperty = modelType.Properties[property];
+					if (modelProperty == null || !modelProperty.IsStatic)
+						throw new ArgumentException("'" + property + "' is not a valid property for the static property path of '" + path + "'.");
 
-				// Register instances for static reference properties to be serialized
-				ModelReferenceProperty reference = modelProperty as ModelReferenceProperty;
-				if (reference != null)
-				{
-					// Get the cached set of instances to be serialized for the property type
-					ModelTypeInfo propertyTypeInfo = response.GetModelTypeInfo(reference.PropertyType);
+					// Add the property to the set of static properties to serialize
+					response.GetModelTypeInfo(modelType).StaticProperties.Add(modelProperty);
 
-					// Static lists
-					if (reference.IsList)
+					// Register instances for static reference properties to be serialized
+					ModelReferenceProperty reference = modelProperty as ModelReferenceProperty;
+					if (reference != null)
 					{
-						foreach (ModelInstance instance in modelType.GetList(reference))
+						// Get the cached set of instances to be serialized for the property type
+						ModelTypeInfo propertyTypeInfo = response.GetModelTypeInfo(reference.PropertyType);
+
+						// Static lists
+						if (reference.IsList)
 						{
+							foreach (ModelInstance instance in modelType.GetList(reference))
+							{
+								ModelTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetModelTypeInfo(instance.Type);
+								if (!typeInfo.Instances.ContainsKey(instance.Id))
+									typeInfo.Instances.Add(instance.Id, new ModelInstanceInfo(instance));
+							}
+						}
+
+						// Static references
+						else
+						{
+							ModelInstance instance = modelType.GetReference(reference);
+
+							if(instance == null)
+								throw new NullReferenceException("'" + type + "' instance is null for the static property path of '" + path + "'.");
+
 							ModelTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetModelTypeInfo(instance.Type);
 							if (!typeInfo.Instances.ContainsKey(instance.Id))
 								typeInfo.Instances.Add(instance.Id, new ModelInstanceInfo(instance));
 						}
 					}
-
-					// Static references
-					else
-					{
-						ModelInstance instance = modelType.GetReference(reference);
-						ModelTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetModelTypeInfo(instance.Type);
-						if (instance != null && !typeInfo.Instances.ContainsKey(instance.Id))
-							typeInfo.Instances.Add(instance.Id, new ModelInstanceInfo(instance));
-					}
+				}
+				catch (Exception ex)
+				{
+					throw new ApplicationException(string.Format("Error preparing static path '{0}'{1}{2}: [{3}]", 
+						path, 
+						type == null ? string.Empty : (" for type '" + type + "'"),
+						property == null ? string.Empty : (" and property '" + property + "'"), 
+						ex.Message), 
+					ex);
 				}
 			}
 
