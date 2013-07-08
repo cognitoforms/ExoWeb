@@ -1391,7 +1391,7 @@
 		var sysAttrExpr = /^sys\:([a-z_]*)$/;
 
 		Sys.Application._linkAttributes = function Sys$Application$_linkAttributes(element, parentContext, attachedName) {
-			var i, attr, dataAttr, sysAttrib, msDataAttrib, isSelect, match, attrName, value, target, targetProp, link, typeIndex;
+			var i, attr, dataAttr, msDataAttrib, isSelect, match, attrName, value, target, targetProp, link, typeIndex, attrLinksElementContent;
 
 			if (element.control && attachedName) {
 				typeIndex = {};
@@ -1429,6 +1429,14 @@
 					isSelect = (/^select$/i.test(element.tagName));
 					msDataAttrib = Sys.Application._splitAttribute(dataAttr.prefix + ":" + dataAttr.name, isSelect, typeIndex);
 					targetProp = msDataAttrib.name;
+
+					// For inner html and text, the child nodes of the element should not be
+					// linked since they are dynamic content that is not defined within the
+					// original template markup source, and could potentially be unsafe.
+					if (targetProp === "innerHTML" || targetProp === "innerText") {
+						attrLinksElementContent = true;
+					}
+
 					value = Sys.Application._getPropertyValue(msDataAttrib, target, targetProp, attr.nodeValue, parentContext, element, null, false, { isLinkPending: !element.control && link });
 					if (value !== undefined) {
 						Sys.Observer.setValue(target, msDataAttrib.name || targetProp, value);
@@ -1439,6 +1447,8 @@
 					i -= 1;
 				}
 			}
+
+			return attrLinksElementContent;
 		};
 
 		// marks the beginning or end of a context, i.e. "/item" or "item _$t202"
@@ -1754,9 +1764,11 @@
 							if (Array.prototype.some.call(node.attributes, function (a) { return a.name.indexOf(":") >= 0; })) {
 								Sys.Application._activateElement(node, currentContext, isBrowser("InternetExplorer") && Sys.Browser.version < 9, childContentTemplates, false);
 							}
-							Sys.Application._linkAttributes(node, currentContext, attachName);
-							// Recursively link child nodes
-							Sys.Application._linkContexts(parentContext, parentControl, parentData, node, currentContext, childContentTemplates, true, generateChildIds);
+							if (!Sys.Application._linkAttributes(node, currentContext, attachName)) {
+								// The element did NOT have an attribute that results in linking the content
+								// of the element (i.e. innerHTML or innerText), so recursively link child nodes.
+								Sys.Application._linkContexts(parentContext, parentControl, parentData, node, currentContext, childContentTemplates, true, generateChildIds);
+							}
 						}
 					}
 				}

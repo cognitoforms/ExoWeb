@@ -122,8 +122,8 @@
 						.replace(/server /g, "").replace(/"server"/g, "\"\"")
 						.replace(/ class\=""/g, "");
 
-					console.log(clientMarkup);
-					console.log(serverMarkup);
+					//console.log(clientMarkup);
+					//console.log(serverMarkup);
 					equals(clientMarkup, serverMarkup);
 				}
 			});
@@ -178,10 +178,10 @@
 							<input type="text" class="server" data-sys-value="{# Name}" value="The Matrix" />
 							<div class="server roles" data-sys-attach="dataview" data-dataview-data="{binding Roles}" data-sys-tmplidx="0">
 								<!--item-->
-								<div data-sys-attach="content" data-content-data="{{ $dataItem }}">
+								<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="0">
 									<div class="server actor-name role-lead">Russell Crowe</div>
-									<div class="server toggle-on" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0">
-										<div class="actor-bio" data-sys-innerhtml="{binding Actor.BioPreview}">Russell Ira Crowe (born 7 April 1964) is a New Zealander Australian actor...</div>
+									<div class="server toggle-on" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="0">
+										<div class="actor-bio" data-sys-innerhtml="{binding Actor.BioPreview}"><span data-canvas-width="200">Russell Ira Crowe (born 7 April 1964) is a New Zealander Australian actor...</span></div>
 									</div>
 									<div class="actor-roles">
 										<h5>Known for:</h5>
@@ -195,9 +195,9 @@
 								<!--/item-->
 
 								<!--item-->
-								<div data-sys-attach="content" data-content-data="{{ $dataItem }}">
+								<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="1">
 									<div class="server actor-name">Cate Blanchett</div>
-									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0"></div>
+									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="1"></div>
 									<div class="actor-roles">
 										<h5>Known for:</h5>
 										<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
@@ -210,9 +210,9 @@
 								<!--/item-->
 
 								<!--item-->
-								<div data-sys-attach="content" data-content-data="{{ $dataItem }}">
+								<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="2">
 									<div class="server actor-name">Matthew Macfadyen</div>
-									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0"></div>
+									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="2"></div>
 									<div class="actor-roles">
 										<h5>Known for:</h5>
 										<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
@@ -231,9 +231,9 @@
 							<input type="text" class="server" data-sys-value="{# Name}" value="Batman &amp; Robin" />
 							<div class="server roles" data-sys-attach="dataview" data-dataview-data="{binding Roles}" data-sys-tmplidx="0">
 								<!--item-->
-								<div data-sys-attach="content" data-content-data="{{ $dataItem }}">
+								<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="0">
 									<div class="server actor-name">Arnold Schwarzenegger</div>
-									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0"></div>
+									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="0"></div>
 									<div class="actor-roles">
 										<h5>Known for:</h5>
 										<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
@@ -246,9 +246,9 @@
 								<!--/item-->
 
 								<!--item-->
-								<div data-sys-attach="content" data-content-data="{{ $dataItem }}">
+								<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="1">
 									<div class="server actor-name role-lead">George Clooney</div>
-									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0"></div>
+									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="1"></div>
 									<div class="actor-roles">
 										<h5>Known for:</h5>
 										<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
@@ -261,9 +261,9 @@
 								<!--/item-->
 
 								<!--item-->
-								<div data-sys-attach="content" data-content-data="{{ $dataItem }}">
+								<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="2">
 									<div class="server actor-name">Chris O'Donnell</div>
-									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0"></div>
+									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="2"></div>
 									<div class="actor-roles">
 										<h5>Known for:</h5>
 										<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
@@ -276,9 +276,9 @@
 								<!--/item-->
 
 								<!--item-->
-								<div data-sys-attach="content" data-content-data="{{ $dataItem }}">
+								<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="3">
 									<div class="server actor-name">Uma Thurman</div>
-									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0"></div>
+									<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="3"></div>
 									<div class="actor-roles">
 										<h5>Known for:</h5>
 										<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
