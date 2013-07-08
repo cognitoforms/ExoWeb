@@ -773,12 +773,12 @@ namespace ExoWeb
 						{
 							ModelInstance instance = modelType.GetReference(reference);
 
-							if(instance == null)
-								throw new NullReferenceException("'" + type + "' instance is null for the static property path of '" + path + "'.");
-
-							ModelTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetModelTypeInfo(instance.Type);
-							if (!typeInfo.Instances.ContainsKey(instance.Id))
-								typeInfo.Instances.Add(instance.Id, new ModelInstanceInfo(instance));
+							if (instance != null)
+							{
+								ModelTypeInfo typeInfo = instance.Type == reference.PropertyType ? propertyTypeInfo : response.GetModelTypeInfo(instance.Type);
+								if (!typeInfo.Instances.ContainsKey(instance.Id))
+									typeInfo.Instances.Add(instance.Id, new ModelInstanceInfo(instance));
+							}
 						}
 					}
 				}
