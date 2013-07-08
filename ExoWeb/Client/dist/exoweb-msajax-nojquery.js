@@ -13528,9 +13528,11 @@ window.ExoWeb.DotNet = {};
 				newContext.initializeComponents();
 				newContext._onInstantiated(null, true);
 				this.set_state("on");
+				jQuery(this._element).show();
 			}
 			else {
 				this.set_state("off");
+				jQuery(this._element).hide();
 			}
 		},
 		init_render: function Toggle$init_render() {
@@ -13544,32 +13546,40 @@ window.ExoWeb.DotNet = {};
 			jQuery(this._element).removeClass("sys-template");
 		},
 		do_render: function Toggle$do_render() {
-			var pctx = this.get_templateContext();
-
-			var renderArgs = new Sys.Data.DataEventArgs(pctx.dataItem);
-			Sys.Observer.raiseEvent(this, "rendering", renderArgs);
-
-			this.set_state("on");
-			jQuery(this._element).empty();
 			jQuery(this._element).show();
 
-			var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
-			context.initializeComponents();
+			if (!this._context) {
+				var pctx = this.get_templateContext();
 
-			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+				var renderArgs = new Sys.Data.DataEventArgs(pctx.dataItem);
+				Sys.Observer.raiseEvent(this, "rendering", renderArgs);
+
+				jQuery(this._element).empty();
+
+				var context = this._context = this._template.instantiateIn(this._element, pctx.dataItem, pctx.dataItem, 0, null, pctx, this._contentTemplate);
+				context.initializeComponents();
+
+				Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+			}
+
+			this.set_state("on");
 		},
 		do_dispose: function Toggle$do_dispose() {
-			var renderArgs = new Sys.Data.DataEventArgs();
-			Sys.Observer.raiseEvent(this, "rendering", renderArgs);
-
-			this.set_state("off");
-			if (this._context) {
-				this._context.dispose();
-			}
-			jQuery(this._element).empty();
 			jQuery(this._element).hide();
 
-			Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+			if (this._context) {
+				var renderArgs = new Sys.Data.DataEventArgs();
+				Sys.Observer.raiseEvent(this, "rendering", renderArgs);
+
+				this._context.dispose();
+				this._context = null;
+
+				jQuery(this._element).empty();
+
+				Sys.Observer.raiseEvent(this, "rendered", renderArgs);
+			}
+
+			this.set_state("off");
 		},
 		add_rendering: function (handler) {
 			this._addHandler("rendering", handler);
