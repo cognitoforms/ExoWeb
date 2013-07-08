@@ -227,7 +227,7 @@ end
 task :run_specs do
 	if system("node --version")
 		get_spec_files(File.join(Dir.pwd, 'specs'), '').each do |file|
-			sh "node specs" + file + " -no-date-time"
+			sh "node specs" + file + " --no-date-time --v:full"
 		end
 	end
 end
