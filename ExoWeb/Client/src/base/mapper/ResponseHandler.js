@@ -39,7 +39,7 @@ ResponseHandler.mixin({
 					var mtype = this._model.type(typeName);
 
 					// If this type has not already been loaded, laod from JSON
-					if (!mtype || !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+					if (!mtype || LazyLoader.isRegistered(mtype)) {
 						var typesToUse = {};
 						typesToUse[typeName] = this._options.types[typeName];
 						typesFromJson(this._model, typesToUse);
@@ -74,13 +74,13 @@ ResponseHandler.mixin({
 
 			if (this._options.changes) {
 				if (this._options.changes) {
-					this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
+					this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.checkpoint, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
 				}
 				else {
 					if (this._options.source) {
 						// no changes, so record empty set
-						this._serverSync._changeLog.start(this._options.source);
-						this._serverSync._changeLog.start("client");
+						this._serverSync._changeLog.addSet(this._options.source, this._options.description + ":response");
+						this._serverSync._changeLog.start({ user: this._serverSync.get_localUser() });
 					}
 					callback.call(thisPtr || this);
 				}
@@ -120,7 +120,10 @@ ResponseHandler.mixin({
 			/// Stop queueing model events
 			/// </summary>
 
-			this._eventScope.exit();
+			this._serverSync.batchChanges(this._options.description + ":result", function () {
+				this._eventScope.exit();
+			}, this);
+
 			callback.call(thisPtr || this);
 		},
 
@@ -131,13 +134,15 @@ ResponseHandler.mixin({
 
 			// Raise init events for existing instances loaded by the response
 			if (this.instancesPendingInit) {
-				this.instancesPendingInit.forEach(function (obj) {
-					for (var t = obj.meta.type; t; t = t.baseType) {
-						var handler = t._getEventHandler("initExisting");
-						if (handler)
-							handler(obj, {});
-					}
-				});
+				context.server.batchChanges("responseHandlerInitExisting", function () {
+					this.instancesPendingInit.forEach(function (obj) {
+						for (var t = obj.meta.type; t; t = t.baseType) {
+							var handler = t._getEventHandler("initExisting");
+							if (handler)
+								handler(obj, {});
+						}
+					});
+				}, this);
 			}
 
 			callback.call(thisPtr || this);
@@ -166,5 +171,9 @@ ResponseHandler.mixin({
 		}
 	)
 });
+
+ResponseHandler.execute = function (model, serverSync, options, callback, thisPtr) {
+	(new ResponseHandler(model, serverSync, options)).execute(callback, thisPtr);
+};
 
 exports.ResponseHandler = ResponseHandler;

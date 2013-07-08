@@ -25,11 +25,11 @@ function Adapter(target, propertyPath, format, options) {
 	this._format = format ? getFormat(this._propertyChain.get_jstype(), format) : this._propertyChain.get_format();
 
 	// Load the object this adapter is bound to and then load allowed values.
-	ExoWeb.Model.LazyLoader.eval(this._target, this._propertyChain.get_path(),
-		this._readySignal.pending(),
+	LazyLoader.eval(this._target, this._propertyChain.get_path(),
+		this._readySignal.pending(null, null, true),
 		this._readySignal.orPending(function(err) {
 			throw new Error($format("Couldn't evaluate path '{0}', {1}", propertyPath, err));
-		})
+		}, null, true)
 	);
 
 	// Add arbitrary options so that they are made available in templates.
@@ -107,8 +107,8 @@ Adapter.mixin({
 			var signal = new ExoWeb.Signal("Adapter.displayValue");
 			this._doForFormatPaths(val, function(path) {
 				EventScope$perform(function() {
-					ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending(), signal.orPending(), null, null, function() {
-						EventScope$perform(ExoWeb.Model.LazyLoader.evalAll.bind(this, arguments));
+					LazyLoader.evalAll(val, path, signal.pending(), signal.orPending(), null, null, function() {
+						EventScope$perform(LazyLoader.evalAll.bind(this, arguments));
 					}, false, val, []);
 				}, this);
 			});
@@ -180,7 +180,7 @@ Adapter.mixin({
 		var rawValue = this.get_rawValue();
 
 		// raise raw value changed event
-		ExoWeb.Model.LazyLoader.eval(rawValue, null, function () {
+		LazyLoader.eval(rawValue, null, function () {
 			Observer.raisePropertyChanged(_this, "rawValue");
 		});
 
@@ -241,20 +241,18 @@ Adapter.mixin({
 	_setValue: function Adapter$_setValue(value) {
 		var prop = this._propertyChain;
 
-		// clear existing format errors
+		// Clear existing format errors before adding a new one.
 		if (this._formatError) {
 			this.get_conditions().remove(this._formatError);
 			this._formatError = undefined;
 		}
 
-		// insert new format errors, if the value is not valid
 		if (value instanceof ExoWeb.Model.FormatError) {
-			this._formatError = value.createCondition(this._propertyChain.lastTarget(this._target), this._propertyChain.lastProperty());
+			// Insert new format errors if the value is not valid.
+			this._formatError = value.createCondition(prop.lastTarget(this._target), prop.lastProperty());
 			this.get_conditions().insert(0, this._formatError);
-		}
-
-		// otherwise, update the property value
-		else {
+		} else {
+			// Otherwise, update the property value.
 			var changed = prop.value(this._target) !== value;
 			this.set_rawValue(value, changed);
 		}
@@ -263,7 +261,7 @@ Adapter.mixin({
 	// Various methods.
 	///////////////////////////////////////////////////////////////////////
 	ready: function Adapter$ready(callback, thisPtr) {
-		this._readySignal.waitForAll(callback, thisPtr);
+		this._readySignal.waitForAll(callback, thisPtr, true);
 	},
 	toString: function Adapter$toString() {
 		var targetType;
@@ -363,7 +361,7 @@ Adapter.mixin({
 		return this._propertyChain.value(this._target);
 	},
 	set_rawValue: function Adapter$set_rawValue(value, changed) {
-		var prop = this._propertyChain;
+		var prop = this._propertyChain, target, targetType;
 
 		if (changed === undefined) {
 			changed = prop.value(this._target) !== value;
@@ -373,7 +371,25 @@ Adapter.mixin({
 			this._ignoreTargetEvents = true;
 
 			try {
-				prop.value(this._target, value);
+				target = this._target;
+				if (target === null) {
+					targetType = "null";
+				} else if (target === undefined) {
+					targetType = "undefined";
+				} else if (target instanceof ExoWeb.Model.Entity) {
+					targetType = target.meta.type.get_fullName();
+				} else if (target instanceof ExoWeb.View.Adapter) {
+					targetType = "Adapter";
+				} else if (target instanceof ExoWeb.View.OptionAdapter) {
+					targetType = "OptionAdapter";
+				} else if (target instanceof ExoWeb.View.OptionGroupAdapter) {
+					targetType = "OptionGroupAdapter";
+				} else {
+					targetType = parseFunctionName(target.constructor);
+				}
+				context.server.batchChanges($format("adapter: {0}.{1}", targetType, this._propertyPath), function () {
+					prop.value(target, value);
+				});
 			}
 			finally {
 				this._ignoreTargetEvents = false;
@@ -414,16 +430,15 @@ Adapter.mixin({
 			else {
 				var entity = Entity.fromIdString(value);
 
-				// set immediately if loaded
-				if (LazyLoader.isLoaded(entity)) {
-					this._setValue(entity);
-				}
-
 				// lazy load if necessary
-				else {
+				if (LazyLoader.isRegistered(entity)) {
 					LazyLoader.load(entity, null, function () {
 						this._setValue(entity);
 					}, this);
+				}
+				// set immediately if loaded
+				else {
+					this._setValue(entity);
 				}
 			}
 		}
@@ -697,7 +712,7 @@ function refreshOptionsFromAllowedValues(optionsSourceArray) {
 function ensureAllowedValuesLoaded(newItems, callback, thisPtr) {
 	var signal = new Signal("ensureAllowedValuesLoaded");
 	newItems.forEach(function(item) {
-		if (!LazyLoader.isLoaded(item)) {
+		if (LazyLoader.isRegistered(item)) {
 			LazyLoader.load(item, null, signal.pending());
 		}
 	});
@@ -712,16 +727,13 @@ function clearInvalidOptions(allowedValues) {
 			purge(rawValue, function (item) {
 				return allowedValues.indexOf(item) < 0;
 			}, this);
+		} else if (allowedValues.indexOf(rawValue) < 0 && this._propertyChain.value(this._target) !== null) {
+			this._propertyChain.value(this._target, null);
 		}
-		else if (allowedValues.indexOf(rawValue) < 0) {
-			this.set_rawValue(null);
-		}
-	}
-	else if (rawValue instanceof Array) {
+	} else if (rawValue instanceof Array) {
 		rawValue.clear();
-	}
-	else {
-		this.set_rawValue(null);
+	} else if (this._propertyChain.value(this._target) !== null) {
+		this._propertyChain.value(this._target, null);
 	}
 }
 
@@ -788,7 +800,7 @@ Adapter.mixin({
 				// Load allowed values if the path is not inited
 				if (allowedValues === undefined && (allowedValuesRule.source instanceof Property || allowedValuesRule.source instanceof PropertyChain)) {
 					logWarning("Adapter forced eval of allowed values. Rule: " + allowedValuesRule);
-					ExoWeb.Model.LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
+					LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
 						allowedValuesRule.source.get_path(),
 						signalOptionsReady.bind(this));
 					this._options = null;
@@ -807,9 +819,9 @@ Adapter.mixin({
 				}
 
 				// Load the allowed values list if it is not already loaded
-				if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
+				if (LazyLoader.isRegistered(allowedValues)) {
 					logWarning("Adapter forced loading of allowed values list. Rule: " + allowedValuesRule);
-					ExoWeb.Model.LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
+					LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
 					this._options = null;
 					return;
 				}

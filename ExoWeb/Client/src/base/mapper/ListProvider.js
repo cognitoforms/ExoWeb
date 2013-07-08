@@ -1,9 +1,14 @@
-var listProviderFn = function listProvider(ownerType, ownerId, paths, changes, onSuccess, onFailure) {
-	throw new Error("List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);");
+/*global exports, context, Batch */
+
+var listProviderFn = function listProvider() {
+	"use strict";
+	throw new Error("List provider has not been implemented. Call ExoWeb.Mapper.setListProvider(fn);");
 };
 
-function listProvider(ownerType, ownerId, listProp, otherProps, changes, onSuccess, onFailure, thisPtr) {
-	var scopeQueries;
+function listProvider(ownerType, owner, listProp, paths, changes, onSuccess, onFailure, thisPtr) {
+	"use strict";
+
+	var scopeQueries, batch, listPath, pathsToLoad, ownerId;
 
 	// ensure correct value of "scopeQueries" argument
 	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -15,7 +20,7 @@ function listProvider(ownerType, ownerId, listProp, otherProps, changes, onSucce
 	}
 	else {
 		// scopeQueries is NOT included in call, so insert default value into args array
-		scopeQueries = context.server._scopeQueries;
+		scopeQueries = context.server._scopeQueries; //ignore jslint
 	}
 
 	if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -23,29 +28,37 @@ function listProvider(ownerType, ownerId, listProp, otherProps, changes, onSucce
 		onFailure = null;
 	}
 
-	var batch = ExoWeb.Batch.suspendCurrent("listProvider");
+	batch = Batch.suspendCurrent("listProvider");
 
-	var listPath = ownerId == "static" ? ownerType + "." + listProp : listProp;
-	var paths = [listPath];
+	ownerId = owner === "static" ? null : owner;
+	listPath = owner === "static" ? ownerType + "." + listProp : listProp;
+	pathsToLoad = [listPath];
 
 	// prepend list prop to beginning of each other prop
-	if (otherProps.length > 0) {
-		Array.forEach(otherProps, function(p) {
-			paths.push(listPath + "." + p);
+	if (paths && paths.length > 0) {
+		Array.forEach(paths, function (p) {
+			pathsToLoad.push(listPath + "." + p);
 		});
 	}
 
-	listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths, changes, scopeQueries,
-		function listProviderSuccess() {
-			ExoWeb.Batch.resume(batch);
-			if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+	listProviderFn(ownerType, ownerId, pathsToLoad, changes, scopeQueries,
+		function () {
+			Batch.resume(batch);
+			if (onSuccess) {
+				onSuccess.apply(thisPtr || null, arguments);
+			}
 		},
-		function listProviderFailure() {
-			ExoWeb.Batch.resume(batch);
-			if (onFailure) onFailure.apply(thisPtr || this, arguments);
+		function () {
+			Batch.resume(batch);
+			if (onFailure) {
+				onFailure.apply(thisPtr || null, arguments);
+			}
 		});
 }
 
-ExoWeb.Mapper.setListProvider = function setListProvider(fn) {
+exports.setListProvider = function setListProvider(fn) {
+	"use strict";
 	listProviderFn = fn;
 };
+
+exports.listProvider = listProvider; // IGNORE

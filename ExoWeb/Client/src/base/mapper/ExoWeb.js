@@ -21,7 +21,9 @@ var modelReadyHandler = function modelReadyHandler(contextReady, extendContext, 
 
 		readySignal.waitForAll(function modelReadyHandler$signalReady() {
 			if (contextReady) {
+				window.context.beginContextReady();
 				contextReady(window.context);
+				window.context.endContextReady();
 			}
 
 			jQuery(function modelReadyHandler$documentReady() {
@@ -33,7 +35,15 @@ var modelReadyHandler = function modelReadyHandler(contextReady, extendContext, 
 
 				// Invoke dom ready notifications
 				if (domReady) {
-					domReady(window.context);
+					if (ExoWeb.config.debug) {
+						domReady(window.context);
+					} else {
+						try {
+							domReady(window.context);
+						} catch (e) {
+							ExoWeb.logError(e, true);
+						}
+					}
 				}
 			});
 		});
@@ -75,7 +85,7 @@ var flushPendingOptions = function flushPendingOptions() {
 		executingOptions = pendingOptions;
 		pendingOptions = null;
 
-		window.context = ensureContext();
+		ensureContext();
 
 		// Perform context initialization when the model is ready
 		if (executingOptions.contextReady || executingOptions.extendContext || executingOptions.domReady || !activated) {

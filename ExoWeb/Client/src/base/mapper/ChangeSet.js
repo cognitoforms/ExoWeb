@@ -1,36 +1,42 @@
 /// <reference path="../core/Errors.js" />
+/// <reference path="../core/Functor.js" />
+/// <reference path="../core/Random.js" />
 
-function ChangeSet(source, initialChanges) {
-	if (source == null) throw new ArgumentNullError("source");
-	if (source.constructor !== String) throw new ArgumentTypeError("source", "string", source);
+/*globals exports, Functor, ArgumentError, ArgumentNullError, ArgumentTypeError, randomText */
 
-	this._source = source;
-	this._changes = (initialChanges && initialChanges instanceof Array) ?
-		[].concat(initialChanges) :
-		[];
+function ChangeSet(source, title, user, initialChanges, code) {
+	"use strict";
+
+	if (source === null || source === undefined) {
+		throw new ArgumentNullError("source");
+	}
+	if (source.constructor !== String) {
+		throw new ArgumentTypeError("source", "string", source);
+	}
+	if (source !== "init" && source !== "server" && source !== "client") {
+		throw new ArgumentError("source", source + " must be in the set ['init', 'server', 'client']");
+	}
+	if (user !== null && user !== undefined && user.constructor !== String) {
+		throw new ArgumentTypeError("user", "string", user);
+	}
+
+	this.code = code || randomText(8);
+	this.source = source;
+	this.title = title || null;
+	this.user = user || null;
+	this.changes = (initialChanges && initialChanges instanceof Array) ? [].concat(initialChanges) : [];
+	this.onChangeAdded = new Functor();
+	this.onChangeUndone = new Functor();
+	this.onTruncated = new Functor();
 }
 
-ChangeSet.mixin(Functor.eventing);
-
 ChangeSet.mixin({
-	add: function(change) {
-		var idx = this._changes.push(change) - 1;
-		this._raiseEvent("changeAdded", [change, idx, this]);
+	add: function (change) {
+		var idx = this.changes.push(change) - 1;
+		this.onChangeAdded(change, idx, this);
 		return idx;
 	},
-	addChangeAdded: function(fn, filter, once) {
-		this._addEvent("changeAdded", fn, filter, once);
-	},
-	addChangeUndone: function(fn, filter, once) {
-		this._addEvent("changeUndone", fn, filter, once);
-	},
-	addTruncated: function(fn, filter, once) {
-		this._addEvent("truncated", fn, filter, once);
-	},
-	changes: function() {
-		return this._changes;
-	},
-	checkpoint: function(title, code) {
+	checkpoint: function (title, code) {
 		// Generate a random code for the checkpoint if one is not given.
 		if (!code) {
 			code = randomText(10);
@@ -42,26 +48,39 @@ ChangeSet.mixin({
 	},
 	count: function (filter, thisPtr) {
 		if (!filter) {
-			return this._changes.length;
+			return this.changes.length;
 		}
 
-		return this._changes.filter(filter, thisPtr).length;
+		return this.changes.filter(filter, thisPtr).length;
 	},
-	lastChange: function() {
-		return this._changes.length > 0 ? this._changes[this._changes.length - 1] : null;
+	lastChange: function () {
+		return this.changes.length > 0 ? this.changes[this.changes.length - 1] : null;
 	},
-	serialize: function(filter, thisPtr) {
-		return {
-			source: (this._source === "init" || this._source === "client") ? this._source : "server",
-			changes: filter ? 
-				this._changes.filter(filter, thisPtr) :
-				Array.prototype.slice.call(this._changes)
+	serialize: function (forServer, filter, thisPtr) {
+		if (arguments.length === 0) {
+			forServer = true;
+		} else if (forServer instanceof Function) {
+			thisPtr = filter;
+			filter = forServer;
+			forServer = true;
+		}
+
+		var result = {
+			source: this.source,
+			changes: filter ? this.changes.filter(filter, thisPtr) : Array.prototype.slice.call(this.changes)
 		};
+
+		if (!forServer) {
+			result.title = this.title;
+			result.code = this.code;
+			if (this.user) {
+				result.user = this.user;
+			}
+		}
+
+		return result;
 	},
-	source: function() {
-		return this._source;
-	},
-	truncate: function(checkpoint, filter, thisPtr) {
+	truncate: function (checkpoint, filter, thisPtr) {
 		// Allow calling as function(filter, thisPtr)
 		if (checkpoint && Object.prototype.toString.call(checkpoint) === "[object Function]") {
 			thisPtr = filter;
@@ -75,12 +94,14 @@ ChangeSet.mixin({
 			var customFilter = filter;
 			filter = function(change) {
 				// Check to see if this is the checkpoint we're looking for.
-				if (change.type === "Checkpoint" && change.code === checkpoint)
+				if (change.type === "Checkpoint" && change.code === checkpoint) {
 					foundCheckpoint = true;
+				}
 
 				// Stop truncating when the checkpoint is found.
-				if (foundCheckpoint === true)
+				if (foundCheckpoint === true) {
 					return false;
+				}
 
 				// Delegate to custom filter if one is given.
 				return customFilter ? customFilter.apply(this, arguments) : true;
@@ -90,23 +111,22 @@ ChangeSet.mixin({
 		// Discard all changes that match the given filter
 		var numRemoved;
 		if (filter) {
-			var removedAt = this._changes.purge(filter, thisPtr);
+			var removedAt = this.changes.purge(filter, thisPtr);
 			numRemoved = removedAt ? removedAt.length : 0;
-		}
-		else {
-			numRemoved = this._changes.length;
-			this._changes.clear();
+		} else {
+			numRemoved = this.changes.length;
+			this.changes.clear();
 		}
 
-		this._raiseEvent("truncated", [numRemoved, this]);
+		this.onTruncated(numRemoved, this);
 		return numRemoved;
 	},
 	undo: function() {
-		if (this._changes.length > 0) {
-			var lastIdx = this._changes.length - 1;
-			var change = this._changes[lastIdx];
-			this._changes.splice(lastIdx, 1);
-			this._raiseEvent("changeUndone", [change, lastIdx, this]);
+		if (this.changes.length > 0) {
+			var lastIdx = this.changes.length - 1;
+			var change = this.changes[lastIdx];
+			this.changes.splice(lastIdx, 1);
+			this.onChangeUndone(change, lastIdx, this);
 			return change;
 		}
 

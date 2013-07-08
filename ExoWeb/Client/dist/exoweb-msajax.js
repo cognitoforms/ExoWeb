@@ -11,6 +11,9 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	var config = {
+		// Avoid patterns that can make debugging more difficult, try/catch for example.
+		debug: false,
+
 		// Indicates that signal should use window.setTimeout when invoking callbacks. This is
 		// done in order to get around problems with browser complaining about long-running script.
 		signalTimeout: false,
@@ -38,10 +41,28 @@ window.ExoWeb.DotNet = {};
 
 	// #endregion
 
+	// #region ExoWeb.Unload
+	//////////////////////////////////////////////////
+
+	// Attach to the unload event and change the page state so that scripts can
+	// toggle their behavior and not do things that will fail during unload. 
+	ExoWeb.windowIsUnloading = false;
+	if (window.addEventListener) {
+		window.addEventListener("unload", function () {
+			ExoWeb.windowIsUnloading = true;
+		}, false);
+	} else if (window.attachEvent) {
+		window.attachEvent("onunload", function () {
+			ExoWeb.windowIsUnloading = true;
+		});
+	}
+
+	// #endregion
+
 	// #region ExoWeb.Errors
 	//////////////////////////////////////////////////
 
-	function ArgumentTypeError (argumentName, expectedType, actualValue) {
+	function ArgumentTypeError(argumentName, expectedType, actualValue) {
 		/// <summary locid="M:J#ArgumentTypeError.#ctor">
 		/// An error type that is raised when an argument to a function
 		/// is of the wrong type.
@@ -69,7 +90,7 @@ window.ExoWeb.DotNet = {};
 	ExoWeb.ArgumentTypeError = ArgumentTypeError;
 	window.ArgumentTypeError = ArgumentTypeError;
 
-	function ArgumentsLengthError (expected, actual) {
+	function ArgumentsLengthError(expected, actual) {
 		/// <summary locid="M:J#ArgumentsLengthError.#ctor">
 		/// An error type that is raised when the wrong number
 		/// of arguments is passed to a function.
@@ -95,7 +116,7 @@ window.ExoWeb.DotNet = {};
 	ExoWeb.ArgumentsLengthError = ArgumentsLengthError;
 	window.ArgumentsLengthError = ArgumentsLengthError;
 
-	function ArgumentNullError (argumentName, reason) {
+	function ArgumentNullError(argumentName, reason) {
 		/// <summary locid="M:J#ArgumentNullError.#ctor">
 		/// An error type that is raised when an argument is
 		/// null or undefined and it must have a value.
@@ -119,6 +140,31 @@ window.ExoWeb.DotNet = {};
 
 	ExoWeb.ArgumentNullError = ArgumentNullError;
 	window.ArgumentNullError = ArgumentNullError;
+
+	function ArgumentError(argumentName, reason) {
+		/// <summary locid="M:J#ArgumentNullError.#ctor">
+		/// An error type that is raised when an argument has an invalid value.
+		/// </summary>
+		/// <param name="argumentName" type="String">The name of the argument that was null.</param>
+		/// <param name="reason" type="String">The reason that the argument cannot be null.</param>
+
+		if (arguments.length !== 2) throw new ArgumentsLengthError(2, arguments.length);
+		if (argumentName == null) throw new ArgumentNullError("argumentName");
+		if (typeof (argumentName) !== "string") throw new ArgumentTypeError("argumentName", "string", argumentName);
+		if (reason == null) throw new ArgumentNullError("reason");
+		if (typeof (reason) !== "string") throw new ArgumentTypeError("reason", "string", reason);
+
+		this.name = "ArgumentError";
+		this.argumentName = argumentName;
+		this.reason = reason;
+		this.message = "Argument '" + argumentName + "' has an invalid value" + (reason ? ": " + reason + "." : ".");
+	}
+
+	ArgumentError.prototype = new Error();
+	ArgumentError.prototype.constructor = ArgumentError;
+
+	ExoWeb.ArgumentError = ArgumentError;
+	window.ArgumentError = ArgumentError;
 
 	var logErrorProvider = null;
 
@@ -191,11 +237,11 @@ window.ExoWeb.DotNet = {};
 		///
 		/// The event handler is passed four arguments in total: the original three arguments
 		/// of the global error handler (message, url, lineNumber), as well as the "errorData"
-		/// object, which will ultimately be passed to the "log error" provider.  The event
+		/// object, which will ultimately be passed to the "log error" provider. The event
 		/// handler may choose to modified any of the errorData object's properties.
 		/// 
 		/// </remarks>
-		/// <param name="fn" type="Function">The error event function.  Signature: f (message, url, lineNumber)</param>
+		/// <param name="fn" type="Function">The error event function. Signature: f (message, url, lineNumber).</param>
 
 		if (fn == null) throw new ArgumentNullError("fn");
 		if (typeof(fn) !== "function") throw new ArgumentTypeError("fn", "function", fn);
@@ -204,6 +250,24 @@ window.ExoWeb.DotNet = {};
 	}
 
 	ExoWeb.addError = addError;
+
+	function removeError(fn) {
+		/// <summary>
+		/// Removes an event handler to the global error event.
+		/// </summary>
+		/// <param name="fn" type="Function">The error event function.</param>
+
+		if (fn == null) throw new ArgumentNullError("fn");
+		if (typeof (fn) !== "function") throw new ArgumentTypeError("fn", "function", fn);
+
+		var idx = errorEventFns.indexOf(fn);
+		if (idx < 0) {
+			throw new ArgumentError("fn", "The given function was not found in the list of error handlers.");
+		}
+		errorEventFns.splice(idx, 1);
+	}
+
+	ExoWeb.removeError = removeError;
 
 	/*
 	* Handles an error that 
@@ -281,19 +345,19 @@ window.ExoWeb.DotNet = {};
 			raiseErrorEvents = false,
 			customErrorData = null;
 
-		if (args[args.length - 1] instanceof Function) {
+		if (isFunction(args[args.length - 1])) {
 			successCallback = args.pop();
-			if (args[args.length - 1] instanceof Function) {
+			if (isFunction(args[args.length - 1])) {
 				failureCallback = successCallback;
 				successCallback = args.pop();
 			}
 		}
 
-		if (args[args.length - 1] instanceof Boolean) {
+		if (isBoolean(args[args.length - 1])) {
 			raiseErrorEvents = args.pop();
 		}
 
-		if (args[args.length - 1] instanceof Object) {
+		if (args.length > 1 && args[args.length - 1] instanceof Object) {
 			customErrorData = args.pop();
 		}
 
@@ -346,6 +410,10 @@ window.ExoWeb.DotNet = {};
 	*/
 	var oldOnError = window.onerror;
 	window.onerror = function (message, url, lineNumber) {
+
+		if (!window.ExoWeb || ExoWeb.windowIsUnloading) {
+			return false;
+		}
 
 		// Call previous handler.
 		if (oldOnError && oldOnError.apply(this, arguments) === true) {
@@ -473,6 +541,16 @@ window.ExoWeb.DotNet = {};
 		return type(obj) === "function";
 	}
 	ExoWeb.isFunction = isFunction;
+
+	function isBoolean(obj) {
+		return type(obj) === "boolean";
+	}
+	ExoWeb.isBoolean = isBoolean;
+
+	function isDate(obj) {
+		return type(obj) === "date";
+	}
+	ExoWeb.isDate = isDate;
 
 	function isObject(obj) {
 		return type(obj) === "object" || (obj && obj instanceof Object);
@@ -1195,7 +1273,7 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function purge(arr, callback, thisPtr) {
-		var result;
+		var result = null;
 
 		for (var i = 0; i < arr.length; i++) {
 			if (callback.call(thisPtr || this, arr[i], i, arr) === true) {
@@ -1205,8 +1283,13 @@ window.ExoWeb.DotNet = {};
 				else
 					arr.splice(i, 1);
 
-				// Lazy create array and add index (accounting for previously removed).
-				if (!result) result = [];
+				// Lazy create result array.
+				if (result === null) {
+					result = [];
+				}
+
+				// Add index (accounting for previously removed
+				// items that are now in the return value).
 				result.push(i + result.length);
 
 				// Decrement to account for removal.
@@ -1674,9 +1757,6 @@ window.ExoWeb.DotNet = {};
 	function Signal(debugLabel) {
 		this._waitForAll = [];
 		this._pending = 0;
-		var _this = this;
-		this._oneDoneFn = function Signal$_oneDoneFn() { Signal.prototype.oneDone.apply(_this, arguments); };
-
 		this._debugLabel = debugLabel;
 	}
 
@@ -1790,6 +1870,10 @@ window.ExoWeb.DotNet = {};
 
 	Signal.allPending = [];
 
+	Signal.begin = function (debugLabel) {
+		return new Signal(debugLabel);
+	};
+
 	ExoWeb.Signal = Signal;
 
 	// #endregion
@@ -1822,6 +1906,7 @@ window.ExoWeb.DotNet = {};
 		f.add = Functor$add;
 		f.remove = Functor$remove;
 		f.isEmpty = Functor$isEmpty;
+		f.clear = Functor$clear;
 
 		return f;
 	}
@@ -1838,15 +1923,23 @@ window.ExoWeb.DotNet = {};
 		}
 
 		this._funcs.push(item);
+
+		return fn;
 	}
 
 	function Functor$remove(old) {
 		for (var i = this._funcs.length - 1; i >= 0; --i) {
 			if (this._funcs[i].fn === old) {
 				this._funcs.splice(i, 1);
-				break;
+				return true;
 			}
 		}
+
+		return false;
+	}
+
+	function Functor$clear() {
+		this._funcs.length = 0;
 	}
 
 	function Functor$isEmpty(args) {
@@ -1870,12 +1963,17 @@ window.ExoWeb.DotNet = {};
 			}
 
 			this["_" + name].add(func, filter, once);
+
+			return func;
 		},
 		_removeEvent: function Functor$_removeEvent(name, func) {
 			var handler = this["_" + name];
 			if (handler) {
 				handler.remove(func);
+				return true;
 			}
+
+			return false;
 		},
 		_raiseEvent: function Functor$_raiseEvent(name, argsArray) {
 			var handler = this["_" + name];
@@ -1908,7 +2006,9 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	function FunctionChain(steps, thisPtr) {
-		if (!(steps instanceof Array)) throw new ArgumentTypeError("steps", "array", steps);
+		if (!(steps instanceof Array)) {
+			throw new ArgumentTypeError("steps", "array", steps);
+		}
 
 		this._steps = steps;
 		this._thisPtr = thisPtr;
@@ -1920,24 +2020,21 @@ window.ExoWeb.DotNet = {};
 		// as the thisPtr for the chain if "thisPtr" argument is not supplied,
 		// while "thisPtr" of invocation is used as the argument to "invoke".
 
-		var steps = null,
+		var steps,
 			thisPtrOuter = null;
 
 		// no args => empty chain
 		if (arguments.length === 0) {
 			steps = [];
-		}
-		// one array arg => array of steps
-		else if (arguments.length === 1 && arguments[0] instanceof Array) {
+		} else if (arguments.length === 1 && arguments[0] instanceof Array) {
+			// One array arg => array of steps
 			steps = arguments[0];
-		}
-		// two args (first array) => array of steps and this pointer
-		else if (arguments.length === 2 && arguments[0] instanceof Array) {
+		} else if (arguments.length === 2 && arguments[0] instanceof Array) {
+			// Two args (first array) => array of steps and this pointer
 			steps = arguments[0];
 			thisPtrOuter = arguments[1];
-		}
-		// otherwise, assume arguments correspond to steps
-		else {
+		} else {
+			// Otherwise, assume arguments correspond to steps
 			steps = Array.prototype.slice.call(arguments);
 		}
 
@@ -1947,18 +2044,34 @@ window.ExoWeb.DotNet = {};
 		};
 	};
 
+	FunctionChain.forEachAsync = function (items, stepFunction, callback) {
+		if (items.length === 0) {
+			if (callback) {
+				callback();
+			}
+			return;
+		}
+
+		var chain = new FunctionChain(items.map(function (item) {
+			return function (cb, thisPtr) {
+				stepFunction.call(thisPtr || this, item, cb, thisPtr || this);
+			};
+		}));
+		chain.invoke(callback);
+	};
+
 	function doStep(idx, callback, thisPtr) {
-		var _callback = callback;
-		var _thisPtr = thisPtr;
+		var outerCallback = callback;
+		var outerThisPtr = thisPtr;
 		var nextStep = idx + 1 < this._steps.length ?
-			doStep.prependArguments(idx + 1, _callback, _thisPtr) :
+			doStep.prependArguments(idx + 1, outerCallback, outerThisPtr).bind(this) :
 			function() {
-				if (_callback && _callback instanceof Function) {
-					_callback.apply(_thisPtr || this, arguments);
+				if (outerCallback && outerCallback instanceof Function) {
+					outerCallback.apply(outerThisPtr || this, arguments);
 				}
 			};
 
-		this._steps[idx].call(this._thisPtr || this, nextStep, this);
+		this._steps[idx].call(this._thisPtr || this, nextStep);
 	}
 
 	FunctionChain.mixin({
@@ -3784,9 +3897,9 @@ window.ExoWeb.DotNet = {};
 			return this._types[name];
 		},
 		types: function (filter) {
-			var result = [];
-			for (var typeName in this._types) {
-				var type = this._types[typeName];
+			var result = [], typeName, type;
+			for (typeName in this._types) {
+				type = this._types[typeName];
 				if (!filter || filter(type)) {
 					result.push(type);
 				}
@@ -3805,19 +3918,18 @@ window.ExoWeb.DotNet = {};
 
 		// queues a rule to be registered
 		registerRule: function Model$registerRule(rule) {
-			if(!this._contextReady) {
+			if (!this._contextReady) {
 				this._ruleQueue.push(rule);
-			}
-			else {
+			} else {
 				rule.register();
 			}
 		},
 
 		// register rules pending registration
 		registerRules: function Model$registerRules() {
-			var rules = this._ruleQueue;
+			var i, rules = this._ruleQueue;
 			this._ruleQueue = [];
-			for (var i = 0; i < rules.length; i++) {
+			for (i = 0; i < rules.length; i += 1) {
 				rules[i].register();
 			}
 		},
@@ -3854,10 +3966,10 @@ window.ExoWeb.DotNet = {};
 			this._raiseEvent("listChanged", [obj, property, changes]);
 		},
 		_ensureNamespace: function Model$_ensureNamespace(name, parentNamespace) {
-			var target = parentNamespace;
+			var result, nsTokens, target = parentNamespace;
 
 			if (target.constructor === String) {
-				var nsTokens = target.split(".");
+				nsTokens = target.split(".");
 				target = window;
 				Array.forEach(nsTokens, function (token) {
 					target = target[token];
@@ -3866,17 +3978,15 @@ window.ExoWeb.DotNet = {};
 						throw new Error("Parent namespace \"" + parentNamespace + "\" could not be found.");
 					}
 				});
-			}
-			else if (target === undefined || target === null) {
+			} else if (target === undefined || target === null) {
 				target = window;
 			}
 
 			// create the namespace object if it doesn't exist, otherwise return the existing namespace
 			if (!(name in target)) {
-				var result = target[name] = {};
+				result = target[name] = {};
 				return result;
-			}
-			else {
+			} else {
 				return target[name];
 			}
 		}
@@ -3898,38 +4008,45 @@ window.ExoWeb.DotNet = {};
 		else {
 			$extend(type._fullName, callback);
 		}
-	};
+
+		return null;
+	}
 
 	Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
 
-		// allow path to be either a string or PathTokens instance
-		var tokens;
+		var type,
+			loadProperty,
+			singlePropertyName,
+			tokens = null,
+			forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false,
+			callback = arguments[3],
+			thisPtr = arguments[4];
+
+		// Allow the path argument to be either a string or PathTokens instance.
 		if (path.constructor === PathTokens) {
 			tokens = path;
 			path = tokens.expression;
 		}
 
-		// get the optional arguments
-		var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-		var callback = arguments[3];
-		var thisPtr = arguments[4];
-
-		// immediately return cached property chains
+		// Return cached property chains as soon as possible (in other words,
+		// do as little as possible prior to returning the cached chain).
 		if (thisType && thisType._chains && thisType._chains[path]) {
 			if (callback) {
 				callback.call(thisPtr || this, thisType._chains[path]);
-				return;
-			}
-			else {
+				return null;
+			} else {
 				return thisType._chains[path];
 			}
 		}
 
-		// get tokens for the specified path
-		var tokens = tokens || new PathTokens(path);
+		// The path argument was a string, so use it to create a PathTokens object.
+		// Delay doing this as an optimization for cached property chains.
+		if (!tokens) {
+			tokens = new PathTokens(path);
+		}
 
 		// get the instance type, if specified
-		var type = thisType instanceof Function ? thisType.meta : thisType;
+		type = thisType instanceof Function ? thisType.meta : thisType;
 
 		// determine if a typecast was specified for the path to identify a specific subclass to use as the root type
 		if (tokens.steps[0].property === "this" && tokens.steps[0].cast) {
@@ -3940,20 +4057,19 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// create a function to lazily load a property 
-		var loadProperty = function (type, name, callback) {
-			ensureType(type, forceLoadTypes, function () {
-				callback.call(thisPtr || this, type.property(name));
+		loadProperty = function (containingType, propertyName, propertyCallback) {
+			ensureType(containingType, forceLoadTypes, function () {
+				propertyCallback.call(thisPtr || this, containingType.property(propertyName));
 			});
-		}
+		};
 
-		// handle single property expressions efficiently, as they are neither static nor chains
+		// Optimize for a single property expression, as it is neither static nor a chain.
 		if (tokens.steps.length === 1) {
-			var name = tokens.steps[0].property;
+			singlePropertyName = tokens.steps[0].property;
 			if (callback) {
-				loadProperty(type, name, callback);
-			}
-			else {
-				return type.property(name);
+				loadProperty(type, singlePropertyName, callback);
+			} else {
+				return type.property(singlePropertyName);
 			}
 		}
 
@@ -3968,6 +4084,9 @@ window.ExoWeb.DotNet = {};
 
 			var globalPropertyName = tokens.steps[tokens.steps.length - 1].property;
 
+			// Copy of the Model.property arguments for async re-entry.
+			var outerArgs = Array.prototype.slice.call(arguments);
+
 			// create a function to see if the path is a global property if instance processing fails
 			var processGlobal = function (instanceParseError) {
 
@@ -3978,10 +4097,9 @@ window.ExoWeb.DotNet = {};
 				if (!type) {
 					if (callback) {
 						// Retry when type is loaded
-						$extend(globalTypeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
-						return;
-					}
-					else {
+						$extend(globalTypeName, Model.property.prepare(Model, outerArgs));
+						return null;
+					} else {
 						throw new Error(instanceParseError ? instanceParseError : ("Error getting type \"" + globalTypeName + "\"."));
 					}
 				}
@@ -3992,16 +4110,14 @@ window.ExoWeb.DotNet = {};
 				// return the static property
 				if (callback) {
 					loadProperty(type, globalPropertyName, callback);
-				}
-				else {
+				} else {
 					return type.property(globalPropertyName);
 				}
-			}
+			};
 
 			if (callback) {
 				PropertyChain.create(type, tokens, forceLoadTypes, thisPtr ? callback.bind(thisPtr) : callback, processGlobal);
-			}
-			else {
+			} else {
 				return PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal(null);
 			}
 		}
@@ -4258,6 +4374,8 @@ window.ExoWeb.DotNet = {};
 					var obj = type.get(id,
 						// When a constructor is called we do not want to silently
 						// return an instance of a sub type, so fetch using exact type.
+						true,
+						// Indicate that an object is currently being constructed.
 						true);
 
 					// If the instance already exists, then initialize properties and return it.
@@ -4278,7 +4396,7 @@ window.ExoWeb.DotNet = {};
 				}
 				else {
 					// Register the newly constructed new instance. It will
-					// be assigned a random client-generated id.
+					// be assigned a sequential client-generated id.
 					type.register(this);
 
 					// Set properties passed into constructor.
@@ -4455,7 +4573,7 @@ window.ExoWeb.DotNet = {};
 		// Gets an array of all objects of this type that have been registered.
 		// The returned array is observable and collection changed events will be raised
 		// when new objects are registered or unregistered.
-		// The array is in no particular order so if you need to sort it, make a copy or use $transform.
+		// The array is in no particular order.
 		known: function Type$known() {
 			var list = this._known;
 			if (!list) {
@@ -4604,7 +4722,7 @@ window.ExoWeb.DotNet = {};
 				var result = getter.call(property, this, skipTypeCheck);
 
 				// ensure the property is initialized
-				if (result === undefined || (property.get_isList() && !LazyLoader.isLoaded(result))) {
+				if (result === undefined || (property.get_isList() && LazyLoader.isRegistered(result))) {
 					throw new Error($format(
 						"Property {0}.{1} is not initialized.  Make sure instances are loaded before accessing property values.  {2}|{3}",
 						property._containingType.get_fullName(),
@@ -4751,6 +4869,34 @@ window.ExoWeb.DotNet = {};
 			});
 
 			return result;
+		},
+		isLoaded: function (prop) {
+			/// <summary locid="M:J#ExoWeb.Model.Type.isLoaded">
+			/// Check whether the Type and optional property are loaded.
+			/// </summary>
+			/// <param name="prop" optional="true" mayBeNull="true" type="Object">The optional property object or property name to check.</param>
+
+			// First see if there is a lazy loader attached to the entity (and optional property).
+			if (LazyLoader.isRegistered(this, null, prop)) {
+				return false;
+			}
+
+			// Immediately return true if a property name was not specified
+			if (prop) {
+				// Coerce property names into property instances
+				if (isString(prop)) {
+					prop = this.property(prop);
+				}
+
+				// Otherwise, get the property value and determine whether there is a
+				// lazy loader attached to the property value, e.g. entity or list.
+				var val = prop.value(this._jstype);
+				if (val !== null && val !== undefined && LazyLoader.isRegistered(val)) {
+					return false;
+				}
+			}
+
+			return true;
 		},
 		toString: function Type$toString() {
 			return this.get_fullName();
@@ -4915,25 +5061,27 @@ window.ExoWeb.DotNet = {};
 
 	function Property$_getter(obj) {
 		// Ensure the entity is loaded before accessing property values
-		if (LazyLoader.isLoaded(obj)) {
-			// Ensure that the property has an initial (possibly default) value
-			Property$_ensureInited.call(this, obj);
-
-			// Raise get events
-			// NOTE: get events may result in a change, so the value cannot be cached
-			var getEvent = this._getEventHandler("get");
-			if (getEvent && !getEvent.isEmpty()) {
-				getEvent(obj, { property: this, value: obj[this._fieldName] });
-			}
-
-			// Return the property value
-			return obj[this._fieldName];
+		if (LazyLoader.isRegistered(obj)) {
+			return;
 		}
+
+		// Ensure that the property has an initial (possibly default) value
+		Property$_ensureInited.call(this, obj);
+
+		// Raise get events
+		// NOTE: get events may result in a change, so the value cannot be cached
+		var getEvent = this._getEventHandler("get");
+		if (getEvent && !getEvent.isEmpty()) {
+			getEvent(obj, { property: this, value: obj[this._fieldName] });
+		}
+
+		// Return the property value
+		return obj[this._fieldName];
 	}
 
 	function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 		// Ensure the entity is loaded before setting property values
-		if (!LazyLoader.isLoaded(obj)) {
+		if (LazyLoader.isRegistered(obj)) {
 			throw new PropertySetError(this, obj, val, "object is ghosted");
 		}
 
@@ -5124,6 +5272,10 @@ window.ExoWeb.DotNet = {};
 			return this._name;
 		},
 
+		get_fieldName: function Property$get_fieldName() {
+			return this._fieldName;
+		},
+
 		get_path: function Property$get_path() {
 			return this._isStatic ? (this._containingType.get_fullName() + "." + this._name) : this._name;
 		},
@@ -5200,7 +5352,7 @@ window.ExoWeb.DotNet = {};
 			}
 			if (this._isList) {
 				var value = target[this._fieldName];
-				if (!LazyLoader.isLoaded(value)) {
+				if (value === undefined || !LazyLoader.isLoaded(value)) {
 					// If the list is not-loaded, then the property is not initialized
 					return false;
 				}
@@ -5553,6 +5705,7 @@ window.ExoWeb.DotNet = {};
 		var type = rootType;
 		var properties = [];
 		var filters = [];
+		var filterTypes = [];
 
 		// initialize optional callback arguments
 		var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
@@ -5603,6 +5756,7 @@ window.ExoWeb.DotNet = {};
 				}
 
 				var jstype = type.get_jstype();
+				filterTypes[properties.length] = jstype;
 				filters[properties.length] = function (target) {
 					return target instanceof jstype;
 				};
@@ -5626,8 +5780,13 @@ window.ExoWeb.DotNet = {};
 				}
 
 				// ensure filter types on the last step are loaded
-				return ensureType(filters[properties.length - 1], forceLoadTypes, function () {
-
+				var filterTypeSignal = new Signal("filterType");
+				var filterType = filterTypes[properties.length - 1];
+				if (filterType) {
+					ensureType(filterType.meta, forceLoadTypes, filterTypeSignal.pending(null, null, true));
+				}
+				var ret;
+				filterTypeSignal.waitForAll(function () {
 					// create and cache the new property chain
 					var chain = new PropertyChain(rootType, properties, filters);
 					if (!rootType._chains) {
@@ -5641,8 +5800,9 @@ window.ExoWeb.DotNet = {};
 					}
 
 					// return the new property chain
-					return chain;
-				});
+					ret = chain;
+				}, null, true);
+				return ret;
 			}
 		};
 
@@ -6089,24 +6249,32 @@ window.ExoWeb.DotNet = {};
 
 		// determines whether the instance and optionally the specified property value is loaded
 		isLoaded: function ObjectMeta$isLoaded(prop) {
+			/// <summary locid="M:J#ExoWeb.Model.ObjectMeta.isLoaded">
+			/// Check whether the instance and optional property are loaded.
+			/// </summary>
+			/// <param name="prop" optional="true" mayBeNull="true" type="Object">The optional property object or property name to check.</param>
 
-			// first see if the current entity is loaded
-			if (!LazyLoader.isLoaded(this._obj))
+			// First see if there is a lazy loader attached to the entity (and optional property).
+			if (LazyLoader.isRegistered(this._obj, null, prop)) {
 				return false;
+			}
 
-			// immediately return true if a property name was not specified
-			if (!prop)
-				return true;
+			// Immediately return true if a property name was not specified
+			if (prop) {
+				// Coerce property names into property instances
+				if (isString(prop)) {
+					prop = this.property(prop, true);
+				}
 
-			// coerce property names into property instances
-			if (isString(prop))
-				prop = this.property(prop);
+				// Otherwise, get the property value and determine whether there is a
+				// lazy loader attached to the property value, e.g. entity or list.
+				var val = prop.value(this._obj);
+				if (val !== null && val !== undefined && LazyLoader.isRegistered(val)) {
+					return false;
+				}
+			}
 
-			// otherwise, get the property value and see if it loaded
-			var val = prop.value(this._obj);
-
-			// determine whether the value is loaded
-			return !(val === undefined || !LazyLoader.isLoaded(val));
+			return true;
 		},
 
 		// get some or all of the condition
@@ -7188,7 +7356,7 @@ window.ExoWeb.DotNet = {};
 			var allowed = this.values(obj);
 
 			// return undefined if the set of allowed values cannot be determined
-			if (allowed === undefined || !LazyLoader.isLoaded(allowed)) {
+			if (!LazyLoader.isLoaded(allowed)) {
 				return;
 			}
 
@@ -8228,11 +8396,13 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.LazyLoader
 	//////////////////////////////////////////////////
 
+	/*global isType, PathTokens, logWarning, parseFunctionName, getValue, Signal */
+
 	function LazyLoader() {
 	}
 
-	LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading, root, processed*/) {
-		var processed, root, performedLoading, continueFn, step, scope, i, value;
+	LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading, root, processed, invokeImmediatelyIfPossible*/) {
+		var processed, root, performedLoading, continueFn, step, i, value, invokeImmediatelyIfPossible;
 
 		if (path === undefined || path === null) {
 			path = "";
@@ -8242,6 +8412,7 @@ window.ExoWeb.DotNet = {};
 			path = new PathTokens(path);
 		}
 		else if (isType(path, Array)) {
+			logWarning("Calling LazyLoader.eval with a path Array is deprecated, please use a string path instead.");
 			path = new PathTokens(path.join("."));
 		}
 		else if (!isType(path, PathTokens)) {
@@ -8251,7 +8422,7 @@ window.ExoWeb.DotNet = {};
 		scopeChain = scopeChain || [window];
 
 		// If additional arguments were specified (internal), then use those.
-		if (arguments.length === 10) {
+		if (arguments.length === 11) {
 			// Allow an invocation to specify continuing loading properties using a given function, by default this is LazyLoader.eval.
 			// This is used by evalAll to ensure that array properties can be force loaded at any point in the path.
 			continueFn = arguments[6] instanceof Function ? arguments[6] : continueFn;
@@ -8261,6 +8432,8 @@ window.ExoWeb.DotNet = {};
 			root = arguments[8];
 			// Allow recursive calling function (eval or evalAll) to specify the processed steps.
 			processed = arguments[9];
+			// Allow recursive calling function (eval or evalAll) to specify whether to invoke the callback immmediately if possible (when no loading is required).
+			invokeImmediatelyIfPossible = arguments[10];
 		}
 		// Initialize to defaults.
 		else {
@@ -8268,6 +8441,7 @@ window.ExoWeb.DotNet = {};
 			performedLoading = false;
 			root = target;
 			processed = [];
+			invokeImmediatelyIfPossible = null;
 		}
 
 		// If the target is null or undefined then attempt to backtrack using the scope chain
@@ -8286,10 +8460,10 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 
-			// If an array is encountered and this call originated from "evalAll" then delegate to "evalAll", otherwise 
+			// If an array is encountered and this call originated from "evalAll" then delegate to "evalAll", otherwise
 			// this will most likely be an error condition unless the remainder of the path are properties of Array.
 			if (continueFn !== LazyLoader.eval && target instanceof Array) {
-				continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading, root, processed);
+				continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading, root, processed, invokeImmediatelyIfPossible);
 				return;
 			}
 
@@ -8297,11 +8471,11 @@ window.ExoWeb.DotNet = {};
 			step = path.steps.dequeue();
 
 			// If the target is not loaded then load it and continue when complete
-			if (!LazyLoader.isLoaded(target, step.property)) {
+			if (LazyLoader.isRegistered(target, null, step.property)) {
 				performedLoading = true;
 				Array.insert(path.steps, 0, step);
-				LazyLoader.load(target, step.property, function() {
-					continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading, root, processed);
+				LazyLoader.load(target, step.property, function () {
+					continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading, root, processed, invokeImmediatelyIfPossible);
 				});
 				return;
 			}
@@ -8315,7 +8489,7 @@ window.ExoWeb.DotNet = {};
 				if (scopeChain.length > 0) {
 					target = root = scopeChain.dequeue();
 					Array.insert(path.steps, 0, step);
-					for (i = processed.length - 1; i >= 0; i--) {
+					for (i = processed.length - 1; i >= 0; i -= 1) {
 						Array.insert(path.steps, 0, processed[i]);
 					}
 					processed.length = 0;
@@ -8332,7 +8506,7 @@ window.ExoWeb.DotNet = {};
 					return;
 				}
 			}
-			// The next target is null (nothing left to evaluate) or there is a cast of the current property and the value is 
+			// The next target is null (nothing left to evaluate) or there is a cast of the current property and the value is
 			// not of the cast type (no need to continue evaluating).
 			else if (value === null || (step.cast && !isType(value, step.cast))) {
 				if (successCallback) {
@@ -8348,7 +8522,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// Load final object
-		if (target !== undefined && target !== null && !LazyLoader.isLoaded(target)) {
+		if (target !== undefined && target !== null && LazyLoader.isRegistered(target)) {
 			performedLoading = true;
 			LazyLoader.load(target, null, successCallback ? successCallback.prepare(thisPtr || this, [target, performedLoading, root]) : undefined);
 		}
@@ -8357,66 +8531,68 @@ window.ExoWeb.DotNet = {};
 		}
 	};
 
-	LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading, root, processed*/) {
-		var root, performedLoading, processed;
+	LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr/*, continueFn, performedLoading, root, processed, invokeImmediatelyIfPossible*/) {
+		var root, performedLoading, processed, invokeImmediatelyIfPossible, signal, results, errors, successCallbacks, errorCallbacks, allSucceeded;
 
-		if (arguments.length === 10) {
+		if (arguments.length === 11) {
 			performedLoading = arguments[7] instanceof Boolean ? arguments[7] : false;
 			root = arguments[8];
 			processed = arguments[9];
+			invokeImmediatelyIfPossible = arguments[10];
 		}
 		else {
 			performedLoading = false;
 			root = target;
 			processed = [];
+			invokeImmediatelyIfPossible = null;
 		}
 
 		// Ensure that the target is an array
 		if (!(target instanceof Array)) {
-			LazyLoader.eval(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed);
+			LazyLoader.eval(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed, invokeImmediatelyIfPossible);
 			return;
 		}
-		// Ensure that the array is loaded, then continue
-		else if (!LazyLoader.isLoaded(target)) {
-			LazyLoader.load(target, null, function() {
-				LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed);
+			// Ensure that the array is loaded, then continue
+		else if (LazyLoader.isRegistered(target)) {
+			LazyLoader.load(target, null, function () {
+				LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed, invokeImmediatelyIfPossible);
 			});
 			return;
 		}
 
-		var signal = new Signal("evalAll - " + path);
-		var results = [];
-		var errors = [];
-		var successCallbacks = [];
-		var errorCallbacks = [];
-		var allSucceeded = true;
+		signal = new Signal("evalAll - " + path);
+		results = [];
+		errors = [];
+		successCallbacks = [];
+		errorCallbacks = [];
+		allSucceeded = true;
 
-		target.forEach(function(subTarget, i) {
+		target.forEach(function (subTarget, i) {
 			results.push(null);
 			errors.push(null);
-			successCallbacks.push(signal.pending(function(result, performedLoadingOne, rootOne) {
+			successCallbacks.push(signal.pending(function (result, performedLoadingOne, rootOne) {
 				performedLoading = performedLoading || performedLoadingOne;
 				results[i] = result;
 				if (root !== rootOne) {
 					logWarning("Found different roots when evaluating all paths.");
 				}
 				root = rootOne;
-			}));
-			errorCallbacks.push(signal.orPending(function(err) {
+			}, null, invokeImmediatelyIfPossible));
+			errorCallbacks.push(signal.orPending(function (err) {
 				allSucceeded = false;
 				errors[i] = err;
-			}));
+			}, null, invokeImmediatelyIfPossible));
 		});
 
-		target.forEach(function(subTarget, i) {
+		target.forEach(function (subTarget, i) {
 			// Make a copy of the original path tokens for arrays so that items' processing don't affect one another.
 			if (path instanceof PathTokens) {
 				path = path.buildExpression();
 			}
-			LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed.slice(0));
+			LazyLoader.eval(subTarget, path, successCallbacks[i], errorCallbacks[i], scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed.slice(0), invokeImmediatelyIfPossible);
 		});
 
-		signal.waitForAll(function() {
+		signal.waitForAll(function () {
 			if (allSucceeded) {
 				// call the success callback if one exists
 				if (successCallback) {
@@ -8427,34 +8603,190 @@ window.ExoWeb.DotNet = {};
 				errorCallback.apply(thisPtr || this, [errors]);
 			}
 			else {
-				errors.forEach(function(e) {
+				errors.forEach(function (e) {
 					throw new Error("Error encountered while attempting to eval paths for all items in the target array: " + e);
 				});
 			}
-		});
+		}, null, invokeImmediatelyIfPossible);
 	};
 
-	LazyLoader.isLoaded = function LazyLoader$isLoaded(obj, propName) {
-		if (obj === undefined || obj === null) {
-			return;
+	LazyLoader.isRegistered = function LazyLoader$isRegistered(obj, targetLoader, targetProperty) {
+		var reg, loader, propertyLoader, targetPropertyName;
+
+		if (obj === null || obj === undefined) {
+			return false;
 		}
 
-		var reg = obj._lazyLoader;
+		reg = obj._lazyLoader;
 
 		if (!reg) {
+			return false;
+		}
+
+		if (targetProperty) {
+			if (isString(targetProperty)) {
+				targetPropertyName = targetProperty;
+			} else if (targetProperty instanceof Property) {
+				targetPropertyName = targetProperty.get_name();
+			} else {
+				throw new Error("Unexpected targetProperty argument value \"" + targetProperty + "\" in LazyLoader.isRegistered().");
+			}
+			// Attempt to retrieve a property-specific loader if it exists.
+			if (reg.byProp && reg.byProp.hasOwnProperty(targetPropertyName)) {
+				propertyLoader = reg.byProp[targetPropertyName];
+				if (propertyLoader !== null && propertyLoader !== undefined) {
+					return true;
+				}
+			}
+		}
+
+		loader = reg.allProps;
+		if (loader !== null && loader !== undefined) {
+			if (targetLoader) {
+				return loader === targetLoader;
+			}
 			return true;
 		}
 
-		var loader;
-		if (propName && reg.byProp) {
-			loader = reg.byProp[propName];
+		return false;
+	};
+
+	LazyLoader.isLoaded = function LazyLoader$isLoaded(obj /*, paths...*/) {
+		var result, paths, singlePath, singleStep, nextStep, propName, filterType, property, value;
+
+		if (obj === undefined) {
+			result = undefined;
+		} else if (obj === null) {
+			result = null;
+		} else {
+			if (arguments.length === 1) {
+				// No paths were specified...
+				paths = null;
+			} else {
+				// Paths were specified in some form. They can be passed in as an array of 1 or
+				// more arguments, or passed in seperately to be processed as "rest" arguments.
+				if (arguments.length === 2) {
+					if (isType(arguments[1], Array)) {
+						// 1) isLoaded(obj, ["arg1", "arg2", ...]);
+						paths = arguments[1];
+					} else {
+						// 2) isLoaded(obj, "arg");
+						paths = [arguments[1]];
+					}
+				} else {
+					// 3) isLoaded(obj, "arg1", "arg2", ...);
+					paths = Array.prototype.slice.call(arguments, 1);
+				}
+			}
+
+			if (!paths || paths.length === 0) {
+				// No paths, so this is only an object-level check for the existence of a loader.
+				result = !LazyLoader.isRegistered(obj);
+			} else if (paths.length === 1) {
+				// Only one path, so walk down the path until a non-loaded step is detected.
+				singlePath = paths[0];
+
+				// Remove unnecessary "this." prefix.
+				if (isType(singlePath, String) && singlePath.startsWith("this.")) {
+					singlePath = singlePath.substring(5);
+				}
+
+				// Attempt to optimize for a single property name or final path step.
+				if (isType(singlePath, String) && singlePath.indexOf(".") < 0) {
+					if (singlePath.length === 0) {
+						throw new Error("Unexpected empty string passed to LazyLoader.isLoaded().");
+					}
+					propName = singlePath;
+				} else if (isType(singlePath, PathTokens)) {
+					if (singlePath.steps.length === 0) {
+						throw new Error("Unexpected empty path tokens passed to LazyLoader.isLoaded().");
+					} else if (singlePath.steps.length === 1) {
+						singleStep = singlePath.steps.dequeue();
+						propName = singleStep.property;
+					}
+				}
+
+				if (propName) {
+					// Optimize for a single property name or path step.
+					if (LazyLoader.isRegistered(obj, null, propName)) {
+						result = false;
+					} else {
+						// Get the value of the single property or final path step.
+						if (obj.meta) {
+							property = obj.meta.property(propName, true);
+							value = property.value(obj);
+						} else {
+							value = getValue(obj, propName);
+						}
+
+						if (!value) {
+							// There is no value, so there can be no lazy loader registered.
+							return true;
+						} else {
+							// If the property value doesn't have a registered lazy loader, then it is considered loaded.
+							return !LazyLoader.isRegistered(value);
+						}
+					}
+				} else {
+					if (isType(singlePath, String)) {
+						if (singlePath.length === 0) {
+							throw new Error("Unexpected empty string passed to LazyLoader.isLoaded().");
+						}
+						singlePath = new PathTokens(singlePath);
+					} else if (!isType(singlePath, PathTokens)) {
+						throw new Error("Unknown path \"" + singlePath + "\" of type " + parseFunctionName(singlePath.constructor) + ".");
+					}
+
+					// Get the value of the next step.
+					nextStep = singlePath.steps.dequeue();
+					if (obj.meta) {
+						property = obj.meta.property(nextStep.property, true);
+						value = property.value(obj);
+					} else {
+						value = getValue(obj, nextStep.property);
+					}
+
+					if (!value) {
+						// There is no value, so there can be no lazy loader registered.
+						return true;
+					} else if (LazyLoader.isRegistered(value)) {
+						// There is a lazy loader, so stop processing and return false.
+						return false;
+					} else {
+						// There is no lazy loader, so continue processing the next step.
+						if (nextStep.cast) {
+							filterType = Model.getJsType(nextStep.cast, true);
+						}
+						if (nextStep.cast && !filterType) {
+							// Stop processing since the filter type doesn't yet exist.
+							result = true;
+						} else if (isArray(value)) {
+							// Make a copy of the original path tokens for arrays so that items' processing don't affect one another.
+							if (singlePath instanceof PathTokens) {
+								singlePath = singlePath.buildExpression();
+							}
+							result = !value.some(function (item) {
+								return (!filterType || item instanceof filterType) && !LazyLoader.isLoaded(item, singlePath);
+							});
+						} else if (filterType && !(value instanceof filterType)) {
+							// Stop processing since the value doesn't pass the filter.
+							result = true;
+						} else {
+							result = LazyLoader.isLoaded(value, singlePath);
+						}
+					}
+				}
+			} else {
+				// Multiple paths, so check each one individually.
+				result = !paths.some(function (path) {
+					// Use some and the inverse of the result in order to exit
+					// immediately as soon as a non-loaded step is found.
+					return !LazyLoader.isLoaded(obj, path);
+				});
+			}
 		}
 
-		if (!loader) {
-			loader = reg.allProps;
-		}
-
-		return !loader || (!!loader.isLoaded && obj._lazyLoader.isLoaded(obj, propName));
+		return result;
 	};
 
 	LazyLoader.load = function LazyLoader$load(obj, propName, callback, thisPtr) {
@@ -8480,19 +8812,6 @@ window.ExoWeb.DotNet = {};
 
 			loader.load(obj, propName, callback, thisPtr);
 		}
-	};
-
-	LazyLoader.isRegistered = function LazyLoader$isRegistered(obj, loader, propName) {
-		var reg = obj._lazyLoader;
-
-		if (!reg) {
-			return false;
-		}
-		if (propName) {
-			return reg.byProp && reg.byProp[propName] === loader;
-		}
-
-		return reg.allProps === loader;
 	};
 
 	LazyLoader.register = function LazyLoader$register(obj, loader, propName) {
@@ -8548,7 +8867,6 @@ window.ExoWeb.DotNet = {};
 		}
 	};
 
-	ExoWeb.Model.LazyLoader = LazyLoader;
 
 	// #endregion
 
@@ -8584,12 +8902,14 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Mapper.ObjectProvider
 	//////////////////////////////////////////////////
 
-	var objectProviderFn = function objectProviderFn(type, ids, paths, inScope, changes, onSuccess, onFailure) {
-		throw new Error("Object provider has not been implemented.  Call ExoWeb.Mapper.setObjectProvider(fn);");
+	/*global exports, context, Batch */
+
+	var objectProviderFn = function objectProviderFn() {
+		throw new Error("Object provider has not been implemented. Call ExoWeb.Mapper.setObjectProvider(fn);");
 	};
 
 	function objectProvider(type, ids, paths, inScope, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries;
+		var scopeQueries, batch;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -8601,7 +8921,7 @@ window.ExoWeb.DotNet = {};
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server._scopeQueries;
+			scopeQueries = context.server._scopeQueries; //ignore jslint
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -8609,35 +8929,44 @@ window.ExoWeb.DotNet = {};
 			onFailure = null;
 		}
 
-		var batch = ExoWeb.Batch.suspendCurrent("objectProvider");
-		objectProviderFn.call(this, type, ids, paths, inScope, changes, scopeQueries,
-			function objectProviderSuccess() {
-				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+		batch = Batch.suspendCurrent("objectProvider");
+
+		objectProviderFn(type, ids, paths, inScope, changes, scopeQueries,
+			function () {
+				Batch.resume(batch);
+				if (onSuccess) {
+					onSuccess.apply(thisPtr || null, arguments);
+				}
 			},
-			function objectProviderFailure() {
-				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(thisPtr || this, arguments);
+			function () {
+				Batch.resume(batch);
+				if (onFailure) {
+					onFailure.apply(thisPtr || null, arguments);
+				}
 			});
 	}
+
 	ExoWeb.Mapper.setObjectProvider = function setObjectProvider(fn) {
 		objectProviderFn = fn;
 	};
+
 
 	// #endregion
 
 	// #region ExoWeb.Mapper.QueryProvider
 	//////////////////////////////////////////////////
 
-	var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
-		throw new Error("Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);");
+	/*global exports, context, Batch */
+
+	var queryProviderFn = function queryProviderFn() {
+		throw new Error("Query provider has not been implemented. Call ExoWeb.Mapper.setQueryProvider(fn);");
 	};
 
 	function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries;
+		var scopeQueries, batch;
 
 		// ensure correct value of "scopeQueries" argument
-		if (!isFunction(onSuccess)) {
+		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
 			// scopeQueries is included in call, so shift arguments
 			scopeQueries = onSuccess;
 			onSuccess = onFailure;
@@ -8646,24 +8975,25 @@ window.ExoWeb.DotNet = {};
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server._scopeQueries;
+			scopeQueries = context.server._scopeQueries; //ignore jslint
 		}
 
-		if (!isFunction(onFailure)) {
+		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 			thisPtr = onFailure;
 			onFailure = null;
 		}
 
-		var batch = ExoWeb.Batch.suspendCurrent("queryProvider");
-		queryProviderFn.call(this, queries, changes, scopeQueries,
-			function queryProviderSuccess() {
-				ExoWeb.Batch.resume(batch);
+		batch = Batch.suspendCurrent("queryProvider");
+
+		queryProviderFn(queries, changes, scopeQueries,
+			function () {
+				Batch.resume(batch);
 				if (onSuccess) {
 					onSuccess.apply(thisPtr || this, arguments);
 				}
 			},
-			function queryProviderFailure() {
-				ExoWeb.Batch.resume(batch);
+			function () {
+				Batch.resume(batch);
 				if (onFailure) {
 					onFailure.apply(thisPtr || this, arguments);
 				}
@@ -8674,29 +9004,33 @@ window.ExoWeb.DotNet = {};
 		queryProviderFn = fn;
 	};
 
+
 	// #endregion
 
 	// #region ExoWeb.Mapper.TypeProvider
 	//////////////////////////////////////////////////
 
-	var typeProviderFn = function typeProviderFn(types, onSuccess, onFailure) {
-		throw new Error("Type provider has not been implemented.  Call ExoWeb.Mapper.setTypeProvider(fn);");
+	/*global exports, Batch, copy, purge, eachProp */
+
+	var typeProviderFn = function typeProviderFn() {
+		throw new Error("Type provider has not been implemented. Call ExoWeb.Mapper.setTypeProvider(fn);");
 	};
 
 	function typeProviderImpl(types, callback, thisPtr) {
-		var batch = ExoWeb.Batch.suspendCurrent("typeProvider");
+		var batch = Batch.suspendCurrent("typeProvider"),
+			typesToLoad = copy(types),
+			cachedTypes = [],
+			typesJson = {};
 
-		var typesToLoad = copy(types);
-		var cachedTypes = [];
-		purge(typesToLoad, function(type) {
-			var cachedType = ExoWeb.cache(type);
+		purge(typesToLoad, function (type) {
+			var cachedType = window.ExoWeb.cache(type);
 
 			if (!cachedType) {
 				return false;
 			}
-			else if (ExoWeb.cacheHash && cachedType.cacheHash !== ExoWeb.cacheHash) {
+			else if (window.ExoWeb.cacheHash && cachedType.cacheHash !== window.ExoWeb.cacheHash) {
 				// the cached type definition is out of date, so remove it and continue
-				ExoWeb.cache(type, null);
+				window.ExoWeb.cache(type, null);
 				return false;
 			}
 
@@ -8704,49 +9038,47 @@ window.ExoWeb.DotNet = {};
 			return true;
 		});
 
-		var typesJson = {};
-
 		// If some (or all) of the types are currently cached, go ahead and call the success function.
 		if (cachedTypes.length > 0) {
-			cachedTypes.forEach(function(type) {
-				typesJson[type] = ExoWeb.cache(type).types[type];
+			cachedTypes.forEach(function (type) {
+				typesJson[type] = window.ExoWeb.cache(type).types[type];
 			});
 		}
 
 		if (typesToLoad.length > 0) {
-			typeProviderFn.call(this, typesToLoad,
-				function typeProviderSuccess(result) {
-					ExoWeb.Batch.resume(batch);
+			typeProviderFn(typesToLoad,
+				function (result) {
+					Batch.resume(batch);
 
 					var resultsJson = result.types;
 
 					// Add the resulting json and cache each type.
-					eachProp(resultsJson, function(type) {
+					eachProp(resultsJson, function (type) {
 
 						// construct a json object, with the cachehash, for cacheing
-						var json = { cacheHash: ExoWeb.cacheHash, types: {} };
+						var json = { cacheHash: window.ExoWeb.cacheHash, types: {} };
 
 						// extract the type definition
 						json.types[type] = typesJson[type] = resultsJson[type];
 
 						// cache the type
-						ExoWeb.cache(type, json);
+						window.ExoWeb.cache(type, json);
 
 					});
 
-					callback.call(thisPtr || this, true, typesJson);
+					callback.call(thisPtr || null, true, typesJson);
 				},
-				function typeProviderFailure() {
-					ExoWeb.Batch.resume(batch);
+				function () {
+					Batch.resume(batch);
 
 					var args = copy(arguments);
 					args.splice(0, 0, false);
-					callback.apply(thisPtr || this, args);
+					callback.apply(thisPtr || null, args);
 				});
 		}
 		else {
-			ExoWeb.Batch.resume(batch);
-			callback.call(thisPtr || this, true, typesJson);
+			Batch.resume(batch);
+			callback.call(thisPtr || null, true, typesJson);
 		}
 	}
 
@@ -8763,17 +9095,20 @@ window.ExoWeb.DotNet = {};
 		typeProviderFn = fn;
 	};
 
+
 	// #endregion
 
 	// #region ExoWeb.Mapper.ListProvider
 	//////////////////////////////////////////////////
 
-	var listProviderFn = function listProvider(ownerType, ownerId, paths, changes, onSuccess, onFailure) {
-		throw new Error("List provider has not been implemented.  Call ExoWeb.Mapper.setListProvider(fn);");
+	/*global exports, context, Batch */
+
+	var listProviderFn = function listProvider() {
+		throw new Error("List provider has not been implemented. Call ExoWeb.Mapper.setListProvider(fn);");
 	};
 
-	function listProvider(ownerType, ownerId, listProp, otherProps, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries;
+	function listProvider(ownerType, owner, listProp, paths, changes, onSuccess, onFailure, thisPtr) {
+		var scopeQueries, batch, listPath, pathsToLoad, ownerId;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -8785,7 +9120,7 @@ window.ExoWeb.DotNet = {};
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server._scopeQueries;
+			scopeQueries = context.server._scopeQueries; //ignore jslint
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -8793,26 +9128,31 @@ window.ExoWeb.DotNet = {};
 			onFailure = null;
 		}
 
-		var batch = ExoWeb.Batch.suspendCurrent("listProvider");
+		batch = Batch.suspendCurrent("listProvider");
 
-		var listPath = ownerId == "static" ? ownerType + "." + listProp : listProp;
-		var paths = [listPath];
+		ownerId = owner === "static" ? null : owner;
+		listPath = owner === "static" ? ownerType + "." + listProp : listProp;
+		pathsToLoad = [listPath];
 
 		// prepend list prop to beginning of each other prop
-		if (otherProps.length > 0) {
-			Array.forEach(otherProps, function(p) {
-				paths.push(listPath + "." + p);
+		if (paths && paths.length > 0) {
+			Array.forEach(paths, function (p) {
+				pathsToLoad.push(listPath + "." + p);
 			});
 		}
 
-		listProviderFn.call(this, ownerType, ownerId == "static" ? null : ownerId, paths, changes, scopeQueries,
-			function listProviderSuccess() {
-				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+		listProviderFn(ownerType, ownerId, pathsToLoad, changes, scopeQueries,
+			function () {
+				Batch.resume(batch);
+				if (onSuccess) {
+					onSuccess.apply(thisPtr || null, arguments);
+				}
 			},
-			function listProviderFailure() {
-				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(thisPtr || this, arguments);
+			function () {
+				Batch.resume(batch);
+				if (onFailure) {
+					onFailure.apply(thisPtr || null, arguments);
+				}
 			});
 	}
 
@@ -8820,18 +9160,21 @@ window.ExoWeb.DotNet = {};
 		listProviderFn = fn;
 	};
 
+
 	// #endregion
 
 	// #region ExoWeb.Mapper.RoundtripProvider
 	//////////////////////////////////////////////////
 
-	var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
-		throw new Error("Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);");
+	/*global exports, context, Batch */
+
+	var roundtripProviderFn = function roundtripProviderFn() {
+		throw new Error("Roundtrip provider has not been implemented. Call ExoWeb.Mapper.setRoundtripProvider(fn);");
 	};
 
-	function roundtripProvider(type, id, paths, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries;
-
+	function roundtripProvider(root, paths, changes, onSuccess, onFailure, thisPtr) {
+		var scopeQueries, batch;
+	
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
 			// scopeQueries is included in call, so shift arguments
@@ -8842,7 +9185,7 @@ window.ExoWeb.DotNet = {};
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server._scopeQueries;
+			scopeQueries = context.server._scopeQueries; //ignore jslint
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -8850,15 +9193,20 @@ window.ExoWeb.DotNet = {};
 			onFailure = null;
 		}
 
-		var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
-		roundtripProviderFn.call(this, type, id, paths, changes, scopeQueries,
-			function roundtripProviderSucess() {
-				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+		batch = Batch.suspendCurrent("roundtripProvider");
+
+		roundtripProviderFn(root, paths, changes, scopeQueries,
+			function () {
+				Batch.resume(batch);
+				if (onSuccess) {
+					onSuccess.apply(thisPtr || this, arguments);
+				}
 			},
-			function roundtripProviderFailure() {
-				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(thisPtr || this, arguments);
+			function () {
+				Batch.resume(batch);
+				if (onFailure) {
+					onFailure.apply(thisPtr || this, arguments);
+				}
 			});
 	}
 
@@ -8866,17 +9214,20 @@ window.ExoWeb.DotNet = {};
 		roundtripProviderFn = fn;
 	};
 
+
 	// #endregion
 
 	// #region ExoWeb.Mapper.SaveProvider
 	//////////////////////////////////////////////////
 
-	var saveProviderFn = function saveProviderFn(root, changes, onSuccess, onFailure) {
-		throw new Error("Save provider has not been implemented.  Call ExoWeb.Mapper.setSaveProvider(fn);");
+	/*global exports, context, Batch */
+
+	var saveProviderFn = function saveProviderFn() {
+		throw new Error("Save provider has not been implemented. Call ExoWeb.Mapper.setSaveProvider(fn);");
 	};
 
 	function saveProvider(root, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries;
+		var scopeQueries, batch;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -8888,7 +9239,7 @@ window.ExoWeb.DotNet = {};
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server._scopeQueries;
+			scopeQueries = context.server._scopeQueries; //ignore jslint
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -8896,15 +9247,19 @@ window.ExoWeb.DotNet = {};
 			onFailure = null;
 		}
 
-		var batch = ExoWeb.Batch.suspendCurrent("saveProvider");
-		saveProviderFn.call(this, root, changes, scopeQueries,
-			function saveProviderSuccess() {
-				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+		batch = Batch.suspendCurrent("saveProvider");
+		saveProviderFn(root, changes, scopeQueries,
+			function () {
+				Batch.resume(batch);
+				if (onSuccess) {
+					onSuccess.apply(thisPtr || this, arguments);
+				}
 			},
-			function saveProviderFailure() {
-				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(thisPtr || this, arguments);
+			function () {
+				Batch.resume(batch);
+				if (onFailure) {
+					onFailure.apply(thisPtr || this, arguments);
+				}
 			});
 	}
 
@@ -8912,17 +9267,20 @@ window.ExoWeb.DotNet = {};
 		saveProviderFn = fn;
 	};
 
+
 	// #endregion
 
 	// #region ExoWeb.Mapper.EventProvider
 	//////////////////////////////////////////////////
 
-	var eventProviderFn = function eventProviderFn(eventType, instance, event, paths, changes, onSuccess, onFailure) {
-		throw new Error("Event provider has not been implemented.  Call ExoWeb.Mapper.setEventProvider(fn);");
+	/*global exports, context, Batch */
+
+	var eventProviderFn = function eventProviderFn() {
+		throw new Error("Event provider has not been implemented. Call ExoWeb.Mapper.setEventProvider(fn);");
 	};
 
-	function eventProvider(eventType, instance, event, paths, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries;
+	function eventProvider(eventType, eventInstance, event, paths, changes, onSuccess, onFailure, thisPtr) {
+		var scopeQueries, batch;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -8934,7 +9292,7 @@ window.ExoWeb.DotNet = {};
 		}
 		else {
 			// scopeQueries is NOT included in call, so insert default value into args array
-			scopeQueries = context.server._scopeQueries;
+			scopeQueries = context.server._scopeQueries; //ignore jslint
 		}
 
 		if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -8942,21 +9300,26 @@ window.ExoWeb.DotNet = {};
 			onFailure = null;
 		}
 
-		var batch = ExoWeb.Batch.suspendCurrent("eventProvider");
-		eventProviderFn.call(this, eventType, instance, event, paths, changes, scopeQueries,
-			function eventProviderSuccess() {
-				ExoWeb.Batch.resume(batch);
-				if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+		batch = Batch.suspendCurrent("eventProvider");
+		eventProviderFn(eventType, eventInstance, event, paths, changes, scopeQueries,
+			function () {
+				Batch.resume(batch);
+				if (onSuccess) {
+					onSuccess.apply(thisPtr || null, arguments);
+				}
 			},
-			function eventProviderFailure() {
-				ExoWeb.Batch.resume(batch);
-				if (onFailure) onFailure.apply(thisPtr || this, arguments);
+			function () {
+				Batch.resume(batch);
+				if (onFailure) {
+					onFailure.apply(thisPtr || null, arguments);
+				}
 			});
 	}
 
 	ExoWeb.Mapper.setEventProvider = function setEventProvider(fn) {
 		eventProviderFn = fn;
 	};
+
 
 	// #endregion
 
@@ -9004,7 +9367,7 @@ window.ExoWeb.DotNet = {};
 						var mtype = this._model.type(typeName);
 
 						// If this type has not already been loaded, laod from JSON
-						if (!mtype || !ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+						if (!mtype || LazyLoader.isRegistered(mtype)) {
 							var typesToUse = {};
 							typesToUse[typeName] = this._options.types[typeName];
 							typesFromJson(this._model, typesToUse);
@@ -9039,13 +9402,13 @@ window.ExoWeb.DotNet = {};
 
 				if (this._options.changes) {
 					if (this._options.changes) {
-						this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
+						this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.checkpoint, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
 					}
 					else {
 						if (this._options.source) {
 							// no changes, so record empty set
-							this._serverSync._changeLog.start(this._options.source);
-							this._serverSync._changeLog.start("client");
+							this._serverSync._changeLog.addSet(this._options.source, this._options.description + ":response");
+							this._serverSync._changeLog.start({ user: this._serverSync.get_localUser() });
 						}
 						callback.call(thisPtr || this);
 					}
@@ -9085,7 +9448,10 @@ window.ExoWeb.DotNet = {};
 				/// Stop queueing model events
 				/// </summary>
 
-				this._eventScope.exit();
+				this._serverSync.batchChanges(this._options.description + ":result", function () {
+					this._eventScope.exit();
+				}, this);
+
 				callback.call(thisPtr || this);
 			},
 
@@ -9096,13 +9462,15 @@ window.ExoWeb.DotNet = {};
 
 				// Raise init events for existing instances loaded by the response
 				if (this.instancesPendingInit) {
-					this.instancesPendingInit.forEach(function (obj) {
-						for (var t = obj.meta.type; t; t = t.baseType) {
-							var handler = t._getEventHandler("initExisting");
-							if (handler)
-								handler(obj, {});
-						}
-					});
+					context.server.batchChanges("responseHandlerInitExisting", function () {
+						this.instancesPendingInit.forEach(function (obj) {
+							for (var t = obj.meta.type; t; t = t.baseType) {
+								var handler = t._getEventHandler("initExisting");
+								if (handler)
+									handler(obj, {});
+							}
+						});
+					}, this);
 				}
 
 				callback.call(thisPtr || this);
@@ -9131,6 +9499,10 @@ window.ExoWeb.DotNet = {};
 			}
 		)
 	});
+
+	ResponseHandler.execute = function (model, serverSync, options, callback, thisPtr) {
+		(new ResponseHandler(model, serverSync, options)).execute(callback, thisPtr);
+	};
 
 	ExoWeb.Mapper.ResponseHandler = ResponseHandler;
 
@@ -9161,7 +9533,9 @@ window.ExoWeb.DotNet = {};
 		// yet in memory client-side, so create a ghosted instance.
 		if (!obj) {
 			obj = new jstype(ids[1]);
-			ObjectLazyLoader.register(obj);
+			if (jstype.meta.get_origin() === "server") {
+				ObjectLazyLoader.register(obj);
+			}
 		}
 
 		return obj;
@@ -9229,7 +9603,9 @@ window.ExoWeb.DotNet = {};
 
 				if (!obj && create) {
 					obj = new type(id);
-					ObjectLazyLoader.register(obj);
+					if (type.meta.get_origin() === "server") {
+						ObjectLazyLoader.register(obj);
+					}
 				}
 
 				return obj;
@@ -9354,37 +9730,39 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Mapper.ChangeSet
 	//////////////////////////////////////////////////
 
-	function ChangeSet(source, initialChanges) {
-		if (source == null) throw new ArgumentNullError("source");
-		if (source.constructor !== String) throw new ArgumentTypeError("source", "string", source);
+	/*globals exports, Functor, ArgumentError, ArgumentNullError, ArgumentTypeError, randomText */
 
-		this._source = source;
-		this._changes = (initialChanges && initialChanges instanceof Array) ?
-			[].concat(initialChanges) :
-			[];
+	function ChangeSet(source, title, user, initialChanges, code) {
+		if (source === null || source === undefined) {
+			throw new ArgumentNullError("source");
+		}
+		if (source.constructor !== String) {
+			throw new ArgumentTypeError("source", "string", source);
+		}
+		if (source !== "init" && source !== "server" && source !== "client") {
+			throw new ArgumentError("source", source + " must be in the set ['init', 'server', 'client']");
+		}
+		if (user !== null && user !== undefined && user.constructor !== String) {
+			throw new ArgumentTypeError("user", "string", user);
+		}
+
+		this.code = code || randomText(8);
+		this.source = source;
+		this.title = title || null;
+		this.user = user || null;
+		this.changes = (initialChanges && initialChanges instanceof Array) ? [].concat(initialChanges) : [];
+		this.onChangeAdded = new Functor();
+		this.onChangeUndone = new Functor();
+		this.onTruncated = new Functor();
 	}
 
-	ChangeSet.mixin(Functor.eventing);
-
 	ChangeSet.mixin({
-		add: function(change) {
-			var idx = this._changes.push(change) - 1;
-			this._raiseEvent("changeAdded", [change, idx, this]);
+		add: function (change) {
+			var idx = this.changes.push(change) - 1;
+			this.onChangeAdded(change, idx, this);
 			return idx;
 		},
-		addChangeAdded: function(fn, filter, once) {
-			this._addEvent("changeAdded", fn, filter, once);
-		},
-		addChangeUndone: function(fn, filter, once) {
-			this._addEvent("changeUndone", fn, filter, once);
-		},
-		addTruncated: function(fn, filter, once) {
-			this._addEvent("truncated", fn, filter, once);
-		},
-		changes: function() {
-			return this._changes;
-		},
-		checkpoint: function(title, code) {
+		checkpoint: function (title, code) {
 			// Generate a random code for the checkpoint if one is not given.
 			if (!code) {
 				code = randomText(10);
@@ -9396,26 +9774,39 @@ window.ExoWeb.DotNet = {};
 		},
 		count: function (filter, thisPtr) {
 			if (!filter) {
-				return this._changes.length;
+				return this.changes.length;
 			}
 
-			return this._changes.filter(filter, thisPtr).length;
+			return this.changes.filter(filter, thisPtr).length;
 		},
-		lastChange: function() {
-			return this._changes.length > 0 ? this._changes[this._changes.length - 1] : null;
+		lastChange: function () {
+			return this.changes.length > 0 ? this.changes[this.changes.length - 1] : null;
 		},
-		serialize: function(filter, thisPtr) {
-			return {
-				source: (this._source === "init" || this._source === "client") ? this._source : "server",
-				changes: filter ? 
-					this._changes.filter(filter, thisPtr) :
-					Array.prototype.slice.call(this._changes)
+		serialize: function (forServer, filter, thisPtr) {
+			if (arguments.length === 0) {
+				forServer = true;
+			} else if (forServer instanceof Function) {
+				thisPtr = filter;
+				filter = forServer;
+				forServer = true;
+			}
+
+			var result = {
+				source: this.source,
+				changes: filter ? this.changes.filter(filter, thisPtr) : Array.prototype.slice.call(this.changes)
 			};
+
+			if (!forServer) {
+				result.title = this.title;
+				result.code = this.code;
+				if (this.user) {
+					result.user = this.user;
+				}
+			}
+
+			return result;
 		},
-		source: function() {
-			return this._source;
-		},
-		truncate: function(checkpoint, filter, thisPtr) {
+		truncate: function (checkpoint, filter, thisPtr) {
 			// Allow calling as function(filter, thisPtr)
 			if (checkpoint && Object.prototype.toString.call(checkpoint) === "[object Function]") {
 				thisPtr = filter;
@@ -9429,12 +9820,14 @@ window.ExoWeb.DotNet = {};
 				var customFilter = filter;
 				filter = function(change) {
 					// Check to see if this is the checkpoint we're looking for.
-					if (change.type === "Checkpoint" && change.code === checkpoint)
+					if (change.type === "Checkpoint" && change.code === checkpoint) {
 						foundCheckpoint = true;
+					}
 
 					// Stop truncating when the checkpoint is found.
-					if (foundCheckpoint === true)
+					if (foundCheckpoint === true) {
 						return false;
+					}
 
 					// Delegate to custom filter if one is given.
 					return customFilter ? customFilter.apply(this, arguments) : true;
@@ -9444,23 +9837,22 @@ window.ExoWeb.DotNet = {};
 			// Discard all changes that match the given filter
 			var numRemoved;
 			if (filter) {
-				var removedAt = this._changes.purge(filter, thisPtr);
+				var removedAt = this.changes.purge(filter, thisPtr);
 				numRemoved = removedAt ? removedAt.length : 0;
-			}
-			else {
-				numRemoved = this._changes.length;
-				this._changes.clear();
+			} else {
+				numRemoved = this.changes.length;
+				this.changes.clear();
 			}
 
-			this._raiseEvent("truncated", [numRemoved, this]);
+			this.onTruncated(numRemoved, this);
 			return numRemoved;
 		},
 		undo: function() {
-			if (this._changes.length > 0) {
-				var lastIdx = this._changes.length - 1;
-				var change = this._changes[lastIdx];
-				this._changes.splice(lastIdx, 1);
-				this._raiseEvent("changeUndone", [change, lastIdx, this]);
+			if (this.changes.length > 0) {
+				var lastIdx = this.changes.length - 1;
+				var change = this.changes[lastIdx];
+				this.changes.splice(lastIdx, 1);
+				this.onChangeUndone(change, lastIdx, this);
 				return change;
 			}
 
@@ -9474,62 +9866,144 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Mapper.ChangeLog
 	//////////////////////////////////////////////////
 
-	function ChangeLog() {
-		this._activeSet = null;
-		this._sets = [];
+	/*globals Functor, ChangeSet */
+
+	function ChangeLog(defaultUser) {
+		this._defaultUser = defaultUser;
+		this.activeSet = null;
+		this.sets = [];
+		this.onChangeAdded = new Functor();
+		this.onChangeSetStarted = new Functor();
+		this.onChangeUndone = new Functor();
+		this.onTruncated = new Functor();
 	}
 
-	ChangeLog.mixin(Functor.eventing);
-
 	ChangeLog.mixin({
-		activeSet: function () {
-			// Returns the active change set.
-
-			return this._activeSet;
-		},
 		add: function (change) {
 			// Adds a new change to the log.
 
-			if (this._activeSet === null) {
+			if (this.activeSet === null) {
 				throw new Error("The change log is not currently active.");
 			}
 
-			var idx = this._activeSet.add(change);
+			var idx = this.activeSet.add(change);
 
-			this._raiseEvent("changeAdded", [change, idx, this._activeSet, this]);
+			this.onChangeAdded(change, idx, this.activeSet, this);
 
 			return idx;
 		},
-		addChangeAdded: function (fn, filter, once) {
-			this._addEvent("changeAdded", fn, filter, once);
+		addSet: function (source, title, user, changes, code) {
+			var changeSet = new ChangeSet(source, title, user, changes, code);
+			this.sets.push(changeSet);
+			return changeSet;
 		},
-		addChangeSetStarted: function (fn, filter, once) {
-			this._addEvent("changeSetStarted", fn, filter, once);
-		},
-		addChangeUndone: function (fn, filter, once) {
-			this._addEvent("changeUndone", fn, filter, once);
-		},
-		addSet: function (source, changes) {
-			this._sets.push(new ChangeSet(source, changes));
-		},
-		addTruncated: function (fn, filter, once) {
-			this._addEvent("truncated", fn, filter, once);
+		batchChanges: function (title, user, action, removeIfEmpty) {
+			/// <summary>
+			/// Ensures that the set of changes that result from invoking
+			/// `action` are placed in a dedicated change set with the given
+			/// `title` (or description) and `user` and no other changes.
+			/// </summary>
+
+			if (!title || title.constructor !== String || title.length === 0) {
+				throw new Error("The first argument to batchChanges must be a non-empty string which specifies a title for the changes.");
+			}
+			if (user !== null && user !== undefined && (user.constructor !== String || user.length === 0)) {
+				throw new Error("The second argument to batchChanges must be a non-empty string which specifies the user who is initiating the changes.");
+			}
+			if (!action || !(action instanceof Function)) {
+				throw new Error("The third argument to batchChanges must be a function which performs the changes.");
+			}
+
+			var newBatchSetIndex,
+				newBatchSet,
+				changeSetStartedHandler,
+				previousActiveSet = this.activeSet;
+
+			// Start a new set for the batch if there isn't a current active set. If there is a current active set it can be
+			// re-used if it has no pre-existing changes and has the same source, title, and user.
+			if (!previousActiveSet || (previousActiveSet.changes.length > 0 || previousActiveSet.source !== "client" || previousActiveSet.title !== title || previousActiveSet.user !== user)) {
+				newBatchSet = new ChangeSet("client", title, user || this._defaultUser);
+				this.sets.push(newBatchSet);
+				this.activeSet = newBatchSet;
+			}
+
+			// Raise an error if a change set is started while the batch is being performed.
+			changeSetStartedHandler = function () {
+				throw new Error("Nested change batches are not currently supported.");
+			};
+
+			// Attach the event
+			this.onChangeSetStarted.add(changeSetStartedHandler);
+
+			try {
+				// Invoke the action callback.
+				action();
+			} finally {
+				// Remove the event
+				if (!this.onChangeSetStarted.remove(changeSetStartedHandler)) {
+					throw new Error("Could not unsubscribe from change set started event.");
+				}
+
+				if (newBatchSet) {
+					newBatchSetIndex = this.sets.indexOf(newBatchSet);
+
+					// Remove the new batch set if the caller specified that it should be removed if empty and there were no changes.
+					if (removeIfEmpty && newBatchSet === this.activeSet && newBatchSet !== previousActiveSet && newBatchSet.changes.length === 0) {
+						this.sets.splice(newBatchSetIndex, 1);
+						this.activeSet = previousActiveSet;
+						return null;
+					}
+
+					this.onChangeSetStarted(newBatchSet, previousActiveSet, newBatchSetIndex, this);
+				}
+
+				// If there was previously an active set, start a new
+				// set in order to collect changes that follow separately.
+				if (previousActiveSet) {
+					// Use the previous title and user for the new set.
+					this.start({ title: previousActiveSet.title, user: previousActiveSet.user });
+				} else if (this.activeSet.changes.length > 0) {
+					// If there wasn't an active set before, then start a new set
+					// without a title only if there are changes in the active
+					// set. This is a last-resort to ensure that following changes
+					// are not included with the changes that were just batched.
+					this.start("unknown");
+				}
+			}
+
+			return newBatchSet;
 		},
 		checkpoint: function (title, code) {
-			if (this._activeSet) {
-				return this._activeSet.checkpoint(title, code);
+			if (!this.activeSet) {
+				return null;
+			}
+
+			return this.activeSet.checkpoint(title, code);
+		},
+		compress: function () {
+			if (arguments.length > 0) {
+				throw new ArgumentsLengthError(0, arguments.length);
+			}
+			for (var i = this.sets.length - 1; i >= 0; i--) {
+				var set = this.sets[i];
+				if (set.changes.length === 0) {
+					if (set === this.activeSet) {
+						this.activeSet = null;
+					}
+					this.sets.splice(i, 1);
+				}
 			}
 		},
 		count: function (filter, thisPtr) {
 			var result = 0;
-			forEach(this._sets, function (set) {
+			forEach(this.sets, function (set) {
 				result += set.count(filter, thisPtr);
 			}, this);
 			return result;
 		},
 		lastChange: function () {
-			for (var i = this._sets.length - 1; i >= 0; i--) {
-				var set = this._sets[i];
+			for (var i = this.sets.length - 1; i >= 0; i--) {
+				var set = this.sets[i];
 				var change = set.lastChange();
 				if (change !== null && change !== undefined) {
 					return change;
@@ -9538,41 +10012,72 @@ window.ExoWeb.DotNet = {};
 
 			return null;
 		},
-		serialize: function (filter, thisPtr) {
+		serialize: function (forServer, filter, thisPtr) {
 			// Serializes the log and it's sets, including
 			// those changes that pass the given filter.
 
-			return this._sets.map(function (set) {
-				return set.serialize(filter, thisPtr);
-			});
-		},
-		set: function (index) {
-			if (index === null || index === undefined || Object.prototype.toString.call(index) !== "[object Number]") {
-				throw Error("The set method expects a numeric index argument.");
+			if (arguments.length === 0) {
+				forServer = true;
+			} else if (forServer instanceof Function) {
+				thisPtr = filter;
+				filter = forServer;
+				forServer = true;
 			}
 
-			var idx = index < 0 ? (this._sets.length + index) : index;
-			return this._sets[idx];
+			return this.sets.map(function (set) {
+				return set.serialize(forServer, filter, thisPtr);
+			});
 		},
-		sets: function () {
-			// Returns the current list of sets.
-
-			return this._sets;
-		},
-		start: function (source) {
+		start: function (titleOrOptions, continueLast) {
 			// Starts a new change set, which means that new changes will
 			// be added to the new set from this point forward.
+			var title, user, code;
 
-			if (source == null) throw new ArgumentNullError("source");
-			if (source.constructor !== String) throw new ArgumentTypeError("source", "string", source);
+			if (titleOrOptions == null) throw new ArgumentNullError("titleOrOptions");
+			if (titleOrOptions.constructor !== String && !(titleOrOptions instanceof Object)) throw new ArgumentTypeError("titleOrOptions", "string|object", titleOrOptions);
 
-			var set = new ChangeSet(source);
-			var idx = this._sets.push(set) - 1;
-			this._activeSet = set;
+			if (continueLast != null && continueLast.constructor !== Boolean) throw new ArgumentTypeError("continueLast", "boolean", continueLast);
 
-			this._raiseEvent("changeSetStarted", [set, idx, this]);
+			if (titleOrOptions.constructor === String) {
+				title = titleOrOptions;
+				user = null;
+				code = null;
+			} else {
+				title = titleOrOptions.title || null;
+				user = titleOrOptions.user || null;
+				code = titleOrOptions.code || null;
+			}
 
+			var previousActiveSet = this.activeSet;
+
+			if (continueLast) {
+				var candidateSet = previousActiveSet;
+				if (!candidateSet && this.sets.length > 0) {
+					candidateSet = this.sets[this.sets.length - 1];
+				}
+				if (candidateSet && candidateSet.source === "client" && candidateSet.user === user && candidateSet.title === title) {
+					if (previousActiveSet) {
+						return null;
+					} else {
+						this.activeSet = candidateSet;
+						this.onChangeSetStarted(candidateSet, previousActiveSet, this.sets.length - 1, this);
+						return candidateSet;
+					}
+				}
+			}
+
+			var set = new ChangeSet("client", title, user || this._defaultUser, null, code);
+			var idx = this.sets.push(set) - 1;
+			this.activeSet = set;
+			this.onChangeSetStarted(set, previousActiveSet, idx, this);
 			return set;
+		},
+		stop: function () {
+			if (!this.activeSet) {
+				throw new Error("The change log is not currently active.");
+			}
+
+			this.activeSet = null;
 		},
 		truncate: function (checkpoint, filter, thisPtr) {
 			// Removes all change sets where all changes match the given
@@ -9589,20 +10094,21 @@ window.ExoWeb.DotNet = {};
 			var numRemoved = 0;
 			var foundCheckpoint = false;
 
-			for (var i = 0; i < this._sets.length; i++) {
+			for (var i = 0; i < this.sets.length; i++) {
 				if (checkpoint) {
-					foundCheckpoint = this._sets[i].changes().some(function (c) {
+					foundCheckpoint = this.sets[i].changes.some(function (c) {
 						return c.type === "Checkpoint" && c.code === checkpoint;
 					});
 				}
 
-				numRemoved += this._sets[i].truncate(checkpoint, filter, thisPtr);
+				numRemoved += this.sets[i].truncate(checkpoint, filter, thisPtr);
 
 				// If all changes have been removed (or all but the given checkpoint) then discard the set
-				if (this._sets[i].changes().length === 0) {
-					this._sets.splice(i--, 1);
-					if (this._sets[i] === this._activeSet) {
-						this._activeSet = null;
+				if (this.sets[i].changes.length === 0) {
+					var currentSet = this.sets[i];
+					this.sets.splice(i--, 1);
+					if (currentSet === this.activeSet) {
+						this.activeSet = null;
 					}
 				}
 
@@ -9610,36 +10116,33 @@ window.ExoWeb.DotNet = {};
 					break;
 			}
 
-			// Start a new change set
-			this.start("client");
-
-			this._raiseEvent("truncated", [numRemoved, this]);
+			this.onTruncated(numRemoved, this);
 			return numRemoved;
 		},
 		undo: function () {
-			if (!this._activeSet) {
+			if (!this.activeSet) {
 				throw new Error("The change log is not currently active.");
 			}
 
-			var currentSet = this._activeSet,
-				currentSetIndex = this._sets.indexOf(currentSet);
+			var currentSet = this.activeSet,
+				currentSetIndex = this.sets.indexOf(currentSet);
 
-			while (currentSet.changes().length === 0) {
+			while (currentSet.changes.length === 0) {
 				// remove the set from the log
-				this._sets.splice(currentSetIndex, 1);
+				this.sets.splice(currentSetIndex, 1);
 
 				if (--currentSetIndex < 0) {
 					return null;
 				}
 
-				currentSet = this._sets[currentSetIndex];
-				this._activeSet = currentSet;
+				currentSet = this.sets[currentSetIndex];
+				this.activeSet = currentSet;
 			}
 
-			var idx = currentSet.changes().length - 1;
+			var idx = currentSet.changes.length - 1;
 			var change = currentSet.undo();
 
-			this._raiseEvent("changeUndone", [change, idx, currentSet, this]);
+			this.onChangeUndone(change, idx, currentSet, this);
 
 			return change;
 		}
@@ -9651,118 +10154,157 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Mapper.ServerSync
 	//////////////////////////////////////////////////
 
+	/*globals window, setTimeout, clearTimeout, context */
+	/*globals Functor, Translator, Observer, ArgumentNullError, ArgumentTypeError */
+	/*globals Model, Entity, LazyLoader, ObjectLazyLoader, ChangeLog, ExoModelEventListener, fromExoModel */
+	/*global saveProvider, roundtripProvider, eventProvider, objectProvider */
+
 	function ServerSync(model) {
-		if (model == null) throw new ArgumentNullError("model");
-		if (typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
+		// Basic argument validation.
+		if (model === null || model === undefined) {
+			throw new ArgumentNullError("model");
+		}
+		if (typeof (model) !== "object" || !(model instanceof Model)) {
 			throw new ArgumentTypeError("model", "model", model);
 		}
 
-		this._changeLog = new ChangeLog();
-		this._pendingServerEvent = false;
-		this._pendingRoundtrip = false;
-		this._pendingSave = false;
-		this._scopeQueries = [];
-		this._objectsExcludedFromSave = [];
-		this._objectsDeleted = [];
-		this._translator = new ExoWeb.Translator();
-		this._serverInfo = null;
-
-		// define properties
-		Object.defineProperty(this, "model", { value: model });
-
-		function isDeleted(obj, isChange) {
-			if (Array.contains(this._objectsDeleted, obj)) {
-				if (isChange) {
-					logWarning($format("Object {0}|{1} was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id));
+		// Create the necessary local variables.
+		var changeLog = new ChangeLog(),
+			translator = new Translator(),
+			objectsDeleted = [],
+			isObjectDeleted = function (deletedObjectsList, obj, isChange) {
+				if (Array.contains(deletedObjectsList, obj)) {
+					if (isChange) {
+						logWarning($format("Object {0}|{1} was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id));
+					}
+					return true;
 				}
-				return true;
+				return false;
+			},
+			filterObjectEvent = function (obj) {
+				return !isObjectDeleted(objectsDeleted, obj, false);
+			},
+			filterPropertyEvent = function (obj) {
+				return !isObjectDeleted(objectsDeleted, obj, true);
+			},
+			listener = new ExoModelEventListener(model, translator, {
+				listChanged: filterPropertyEvent,
+				propertyChanged: filterPropertyEvent,
+				objectRegistered: filterObjectEvent,
+				objectUnregistered: filterObjectEvent
+			}),
+			applyingChanges = 0,
+			isCapturingChanges = false,
+			self = this;
+
+		// When the event listener detects a change then pass it along to the change log.
+		listener.addChangeDetected(function (change) {
+			if (applyingChanges <= 0 && isCapturingChanges === true) {
+				if (change.property) {
+					var instance = fromExoModel(change.instance, translator);
+					var property = instance.meta.property(change.property);
+
+					if (property.get_jstype() === Date && change.newValue && property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
+						var serverOffset = self.get_ServerTimezoneOffset();
+						var localOffset = -(new Date().getTimezoneOffset() / 60);
+						var difference = localOffset - serverOffset;
+						change.newValue = change.newValue.addHours(difference);
+					}
+					else if (change.newValue && change.newValue instanceof TimeSpan) {
+						change.newValue = change.newValue.toObject();
+					}
+				}
+
+				changeLog.add(change);
+
+				self._raiseEvent("changesDetected", [self, { reason: "listener.addChangeDetected", changes: [change] }]);
+
+				// Restart auto-save interval if necessary.
+				if (self._saveInterval && self.canSave(change) && isPropertyChangePersisted(change)) {
+					self._queueAutoSave();
+				}
 			}
-			return false;
-		}
-
-		// don't record changes to types that didn't originate from the server
-		function filterObjectEvent(obj) {
-			return !isDeleted.apply(this, [obj, false]) && obj.meta.type.get_origin() === "server";
-		}
-
-		// don't record changes to types or properties that didn't originate from the server
-		function filterPropertyEvent(obj, property) {
-			return !isDeleted.apply(this, [obj, true]) && property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
-		}
-
-		this._listener = new ExoModelEventListener(this.model, this._translator, {
-			listChanged: filterPropertyEvent.bind(this),
-			propertyChanged: filterPropertyEvent.bind(this),
-			objectRegistered: filterObjectEvent.bind(this),
-			objectUnregistered: filterObjectEvent.bind(this)
 		});
 
-		var applyingChanges = 0;
-		this.isApplyingChanges = function ServerSync$isApplyingChanges() {
+		// Applying changes (e.g. via a server response change set).
+		this.isApplyingChanges = function () {
 			return applyingChanges > 0;
 		};
-		this.beginApplyingChanges = function ServerSync$beginApplyingChanges() {
-			applyingChanges++;
+		this.beginApplyingChanges = function () {
+			applyingChanges += 1;
 		};
-		this.endApplyingChanges = function ServerSync$endApplyingChanges() {
-			applyingChanges--;
+		this.endApplyingChanges = function () {
+			applyingChanges -= 1;
 
-			if (applyingChanges < 0)
+			if (applyingChanges < 0) {
 				throw new Error("Error in transaction log processing: unmatched begin and end applying changes.");
-		};
-
-		var isCapturingChanges;
-		this.isCapturingChanges = function ServerSync$isCapturingChanges() {
-			return isCapturingChanges === true;
-		};
-		this.beginCapturingChanges = function ServerSync$beginCapturingChanges() {
-			if (!isCapturingChanges) {
-				isCapturingChanges = true;
-				this._changeLog.start("client");
 			}
 		};
 
-		this.ignoreChanges = function(before, callback, after, thisPtr) {
-			return function() {
+		// Capturing changes (i.e. after context initialization has completed).
+		this.isCapturingChanges = function () {
+			return isCapturingChanges === true;
+		};
+		this.beginCapturingChanges = function () {
+			if (!isCapturingChanges) {
+				isCapturingChanges = true;
+				changeLog.start({ user: this._localUser });
+			}
+		};
+		this.ignoreChanges = function (before, callback, after, thisPtr) {
+			return function () {
 				var beforeCalled = false;
 
 				try {
-					applyingChanges++;
+					applyingChanges += 1;
 
-					if (before && before instanceof Function)
+					if (before && before instanceof Function) {
 						before();
-				
+					}
+
 					beforeCalled = true;
 
 					callback.apply(thisPtr || this, arguments);
-				}
-				finally {
-					applyingChanges--;
-				
-					if (beforeCalled === true && after && after instanceof Function)
+				} finally {
+					applyingChanges -= 1;
+
+					if (beforeCalled === true && after && after instanceof Function) {
 						after();
+					}
 				}
 			};
 		};
 
-		model.addObjectRegistered(function(obj) {
-			// if an existing object is registered then register for lazy loading
-			if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges === true && !applyingChanges) {
+		this.isObjectDeleted = function (obj, isChange) {
+			return isObjectDeleted(objectsDeleted, obj, isChange);
+		};
+
+		// If an existing object is registered then register it for lazy loading.
+		model.addObjectRegistered(function (obj) {
+			if (!obj.meta.isNew && obj.meta.type.get_origin() === "server" && isCapturingChanges === true && !applyingChanges) {
 				ObjectLazyLoader.register(obj);
 			}
 		});
 
-		// Assign back reference
+		// Link model and server objects.
+		Object.defineProperty(this, "model", { value: model });
 		Object.defineProperty(model, "server", { value: this });
 
-		this._listener.addChangeDetected(this._captureChange.bind(this));
+		// Assign backing fields as needed
+		this._changeLog = changeLog;
+		this._scopeQueries = [];
+		this._objectsExcludedFromSave = [];
+		this._objectsDeleted = objectsDeleted;
+		this._translator = translator;
+		this._serverInfo = null;
+		this._localUser = null;
 
 		Observer.makeObservable(this);
 	}
 
 	function isPropertyChangePersisted(change) {
 		if (change.property) {
-			var jstype = ExoWeb.Model.Model.getJsType(change.instance.type, true);
+			var jstype = Model.getJsType(change.instance.type, true);
 			if (jstype) {
 				var prop = jstype.meta.property(change.property);
 				// Can't save non-persisted properties
@@ -9824,12 +10366,12 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function ServerSync$storeInitChanges(changes) {
-		var activeSet = this._changeLog.activeSet();
+		var activeSet = this._changeLog.activeSet;
 
-		this._changeLog.addSet("init", changes);
+		this._changeLog.addSet("init", null, null, changes);
 
 		if (activeSet) {
-			this._changeLog.start(activeSet.source());
+			this._changeLog.start({ title: activeSet.title, user: activeSet.user });
 		}
 	}
 
@@ -9845,7 +10387,7 @@ window.ExoWeb.DotNet = {};
 		// Enable/disable save & related functions
 		///////////////////////////////////////////////////////////////////////
 		enableSave: function ServerSync$enableSave(obj) {
-			if (!(obj instanceof ExoWeb.Model.Entity)) {
+			if (!(obj instanceof Entity)) {
 				throw new Error("Can only enableSave on entity objects.");
 			}
 
@@ -9856,7 +10398,8 @@ window.ExoWeb.DotNet = {};
 					oldPendingChanges = this.changes(false, this._saveRoot, true);
 				}
 				Array.remove(this._objectsExcludedFromSave, obj);
-				Observer.raisePropertyChanged(this, "HasPendingChanges");
+
+				this._raiseEvent("changesDetected", [this, { reason: "enableSave" }]);
 
 				// Determine if ther are now pending changes
 				if (oldPendingChanges && oldPendingChanges.length === 0 && this._saveInterval && !this._saveTimeout) {
@@ -9868,7 +10411,7 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		disableSave: function ServerSync$disableSave(obj) {
-			if (!(obj instanceof ExoWeb.Model.Entity)) {
+			if (!(obj instanceof Entity)) {
 				throw new Error("Can only disableSave on entity objects.");
 			}
 
@@ -9879,7 +10422,8 @@ window.ExoWeb.DotNet = {};
 					oldPendingChanges = this.changes(false, this._saveRoot, true);
 				}
 				this._objectsExcludedFromSave.push(obj);
-				Observer.raisePropertyChanged(this, "HasPendingChanges");
+
+				this._raiseEvent("changesDetected", [this, { reason: "disableSave" }]);
 
 				// Determine if ther are no longer pending changes
 				if (oldPendingChanges && oldPendingChanges.length > 0 && this._saveInterval && this._saveTimeout) {
@@ -9892,7 +10436,7 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		notifyDeleted: function ServerSync$notifyDeleted(obj) {
-			if (!(obj instanceof ExoWeb.Model.Entity)) {
+			if (!(obj instanceof Entity)) {
 				throw new Error("Notified of deleted object that is not an entity.");
 			}
 
@@ -9900,10 +10444,41 @@ window.ExoWeb.DotNet = {};
 				this._objectsDeleted.push(obj);
 				return true;
 			}
+
+			return false;
 		},
 		canSend: function (change) {
-			if (change.type === "Checkpoint") return false;
 
+			// Checkpoint is a client-only event type.
+			if (change.type === "Checkpoint") {
+				return false;
+			}
+
+			if (change.instance) {
+				var type = Model.getJsType(change.instance.type, true);
+				if (type && LazyLoader.isLoaded(type.meta)) {
+					if (type.meta.get_origin() !== "server") {
+						// Don't send change events for types that didn't originate from the server.
+						return false;
+					}
+
+					if (change.property) {
+						var property = type.meta.property(change.property);
+						// Don't send property change events for properties that didn't originate from the server, or static properties.
+						if (property.get_origin() !== "server" || property.get_isStatic()) {
+							return false;
+						}
+					}
+
+					// Don't send changes for deleted objects.
+					var obj = fromExoModel(change.instance, this._translator, false, this._objectsDeleted);
+					if (obj && this.isObjectDeleted(obj, false)) {
+						return false;
+					}
+				}
+			}
+
+			// Event is ok to send.
 			return true;
 		},
 		canSaveObject: function ServerSync$canSaveObject(objOrMeta) {
@@ -9916,7 +10491,7 @@ window.ExoWeb.DotNet = {};
 			else if (objOrMeta instanceof ExoWeb.Model.ObjectMeta) {
 				obj = objOrMeta._obj;
 			}
-			else if (objOrMeta instanceof ExoWeb.Model.Entity) {
+			else if (objOrMeta instanceof Entity) {
 				obj = objOrMeta;
 			}
 			else {
@@ -10001,8 +10576,8 @@ window.ExoWeb.DotNet = {};
 			return !instanceObj || this.canSaveObject(instanceObj);
 		},
 
-		_handleResult: function ServerSync$_handleResult(result, source, checkpoint, callbackOrOptions) {
-			var callback, beforeApply, afterApply;
+		_handleResult: function ServerSync$_handleResult(result, description, checkpoint, callbackOrOptions) {
+			var callback, beforeApply = null, afterApply = null;
 
 			if (callbackOrOptions instanceof Function) {
 				callback = callbackOrOptions;
@@ -10013,33 +10588,22 @@ window.ExoWeb.DotNet = {};
 				afterApply = callbackOrOptions.afterApply;
 			}
 
-			var handler = new ResponseHandler(this.model, this, {
+			ResponseHandler.execute(this.model, this, {
 				instances: result.instances,
 				conditions: result.conditions,
 				types: result.types && result.types instanceof Array ? null : result.types,
 				changes: result.changes,
-				source: source,
+				source: "server",
+				description: description,
 				checkpoint: checkpoint,
 				serverInfo: result.serverInfo,
 				beforeApply: beforeApply,
 				afterApply: afterApply
-			});
-
-			handler.execute(callback, this);
+			}, callback, this);
 		},
 
 		// General events methods
 		///////////////////////////////////////////////////////////////////////
-		_raiseBeginEvents: function (method, args) {
-			this._raiseEvent(method + "Begin", [this, args]);
-			this._raiseEvent("requestBegin", [this, args]);
-		},
-		_raiseEndEvents: function (method, result, args) {
-			this._raiseEvent(method + result, [this, args]);
-			this._raiseEvent("request" + result, [this, args]);
-			this._raiseEvent(method + "End", [this, args]);
-			this._raiseEvent("requestEnd", [this, args]);
-		},
 		addRequestBegin: function (handler) {
 			this._addEvent("requestBegin", handler);
 		},
@@ -10067,51 +10631,78 @@ window.ExoWeb.DotNet = {};
 
 		// Raise Server Event
 		///////////////////////////////////////////////////////////////////////
-		raiseServerEvent: function ServerSync$raiseServerEvent(name, instance, event, includeAllChanges, success, failed, paths) {
+		raiseServerEvent: function ServerSync$raiseServerEvent(name, target, event, includeAllChanges, success, failed, paths) {
+			/// <summary locid="M:J#ExoWeb.Mapper.ServerSync.save">
+			/// Raise a server event on the given target. The given success or failure callback is invoked
+			/// when the request is complete.
+			/// </summary>
+			/// <param name="name" optional="false" mayBeNull="false" type="String"></param>
+			/// <param name="target" optional="false" mayBeNull="false" type="ExoWeb.Model.Entity"></param>
+			/// <param name="event" optional="true" mayBeNull="null" type="Object"></param>
+			/// <param name="success" optional="true" mayBeNull="true" type="Function"></param>
+			/// <param name="failed" optional="true" mayBeNull="true" type="Function"></param>
+			/// <param name="paths" optional="true" mayBeNull="true" isArray="true" type="String"></param>
+
+			var args, checkpoint, serializedEvent, serializedEventTarget, eventPropName;
+
 			pendingRequests++;
 
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
-			var checkpoint = this._changeLog.checkpoint("server event " + name + " " + (new Date()).format("d"));
+			checkpoint = this._changeLog.checkpoint("raiseServerEvent(" + name + ")-" + +(new Date()));
 
-			Observer.setValue(this, "PendingServerEvent", true);
+			args = {
+				type: "raiseServerEvent",
+				target: target,
+				checkpoint: checkpoint,
+				includeAllChanges: includeAllChanges
+			};
 
-			var args = { type: "raiseServerEvent", eventTarget: instance, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
-			this._raiseBeginEvents("raiseServerEvent", args);
+			args.eventName = name;
+			args.eventObject = event;
 
-			// if no event object is provided then use an empty object
-			if (event === undefined || event === null) {
-				event = {};
+			this._raiseEvent("raiseServerEventBegin", [this, args]);
+
+			serializedEvent = {};
+
+			// If an event object is provided then convert its entity properties into their serialized form.
+			if (event !== undefined && event !== null) {
+				for (eventPropName in event) {
+					var arg = event[eventPropName];
+
+					if (arg instanceof Array) {
+						serializedEvent[eventPropName] = arg.map(function (a) { return toExoModel(a, this._translator); }, this);
+					} else {
+						serializedEvent[eventPropName] = toExoModel(arg, this._translator);
+					}
+				}
 			}
 
-			for (var key in event) {
-				var arg = event[key];
+			serializedEventTarget = toExoModel(target, this._translator);
 
-				if (arg instanceof Array) {
-					event[key] = arg.map(function (a) { return toExoModel(a, this._translator); }, this);
-				}
-				else {
-					event[key] = toExoModel(arg, this._translator);
-				}
-			}
+			args.root = serializedEventTarget;
+			args.eventData = serializedEvent;
+
+			this._raiseEvent("requestBegin", [this, args]);
 
 			eventProvider(
 				name,
-				toExoModel(instance, this._translator),
-				event,
+				serializedEventTarget,
+				serializedEvent,
 				paths,
-			// If includeAllChanges is true, then use all changes including those 
-			// that should not be saved, otherwise only use changes that can be saved.
-				serializeChanges.call(this, includeAllChanges, instance),
+				serializeChanges.call(this, includeAllChanges, target),
 				this._onRaiseServerEventSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
 		_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, checkpoint, callback) {
-			Observer.setValue(this, "PendingServerEvent", false);
-
 			args.responseObject = result;
+			args.requestSucceeded = true;
 
-			this._handleResult(result, args.eventName, checkpoint, function () {
+			this._raiseEvent("requestEnd", [this, args]);
+
+			this._handleResult(result, "raiseServerEvent(" + args.eventName + ")", checkpoint, function () {
+				this._raiseEvent("requestSuccess", [this, args]);
+
 				var event = result.events[0];
 				if (event instanceof Array) {
 					for (var i = 0; i < event.length; ++i) {
@@ -10125,25 +10716,32 @@ window.ExoWeb.DotNet = {};
 				restoreDates(event);
 
 				result.event = event;
-				args.eventResponse = event;
 
-				this._raiseEndEvents("raiseServerEvent", "Success", args);
+				args.eventResult = event;
 
-				if (callback && callback instanceof Function)
-					callback.call(this, result);
+				this._raiseEvent("raiseServerEventEnd", [this, args]);
+				this._raiseEvent("raiseServerEventSuccess", [this, args]);
+
+				if (callback && callback instanceof Function) {
+					callback(result);
+				}
 
 				pendingRequests--;
 			});
 		},
 		_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(error, args, callback) {
-			Observer.setValue(this, "PendingServerEvent", false);
+			args.responseObject = error;
+			args.requestSucceeded = false;
 
-			args.error = error;
+			this._raiseEvent("requestEnd", [this, args]);
+			this._raiseEvent("requestFailed", [this, args]);
 
-			this._raiseEndEvents("raiseServerEvent", "Failed", args);
+			this._raiseEvent("raiseServerEventEnd", [this, args]);
+			this._raiseEvent("raiseServerEventFailed", [this, args]);
 
-			if (callback && callback instanceof Function)
-				callback.call(this, error);
+			if (callback && callback instanceof Function) {
+				callback(error);
+			}
 
 			pendingRequests--;
 		},
@@ -10174,62 +10772,97 @@ window.ExoWeb.DotNet = {};
 
 		// Roundtrip
 		///////////////////////////////////////////////////////////////////////
-		roundtrip: function ServerSync$roundtrip(root, paths, success, failed) {
+		roundtrip: function ServerSync$roundtrip(target, paths, success, failed) {
+			/// <summary locid="M:J#ExoWeb.Mapper.ServerSync.save">
+			/// Roundtrips the current changes to the server. The given success or failure callback is
+			/// invoked when the request is complete.
+			/// </summary>
+			/// <param name="target" optional="false" mayBeNull="false" type="ExoWeb.Model.Entity"></param>
+			/// <param name="paths" optional="false" mayBeNull="true" isArray="true" type="String"></param>
+			/// <param name="success" optional="false" mayBeNull="true" type="Function"></param>
+			/// <param name="failed" optional="false" mayBeNull="true" type="Function"></param>
+
+			var args, checkpoint, serializedTarget, includeAllChanges;
+
 			pendingRequests++;
 
-			if (root && root instanceof Function) {
-				success = root;
+			if (target && target instanceof Function) {
+				success = target;
 				failed = paths;
-				root = null;
+				target = null;
 				paths = null;
 			}
 
-			var checkpoint = this._changeLog.checkpoint("roundtrip " + (new Date()).format("d"));
+			checkpoint = this._changeLog.checkpoint("roundtrip-" + +(new Date()));
 
-			Observer.setValue(this, "PendingRoundtrip", true);
+			if (target) {
+				includeAllChanges = true;
+			} else {
+				includeAllChanges = false;
+			}
 
-			var args = { type: "roundtrip", checkpoint: checkpoint };
-			this._raiseBeginEvents("roundtrip", args);
+			args = {
+				type: "roundtrip",
+				target: target || null,
+				checkpoint: checkpoint,
+				includeAllChanges: includeAllChanges
+			};
 
-			var mtype = root ? root.meta.type || root.meta : null;
-			var id = root ? root.meta.id || STATIC_ID : null;
+			this._raiseEvent("roundtripBegin", [this, args]);
+
+			if (target) {
+				serializedTarget = toExoModel(target, this._translator);
+			} else {
+				serializedTarget = null;
+			}
+
+			args.root = serializedTarget;
+
+			this._raiseEvent("requestBegin", [this, args]);
 
 			roundtripProvider(
-				mtype ? mtype.get_fullName() : null,
-				id,
+				serializedTarget,
 				paths,
-				serializeChanges.call(this, !!root, root),
+				serializeChanges.call(this, includeAllChanges, target),
 				this._onRoundtripSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onRoundtripFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
 		_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, args, checkpoint, callback) {
-			Observer.setValue(this, "PendingRoundtrip", false);
-
 			args.responseObject = result;
+			args.requestSucceeded = true;
+
+			this._raiseEvent("requestEnd", [this, args]);
 
 			this._handleResult(result, "roundtrip", checkpoint, function () {
-				this._raiseEndEvents("roundtrip", "Success", args);
+				this._raiseEvent("requestSuccess", [this, args]);
+				this._raiseEvent("roundtripEnd", [this, args]);
+				this._raiseEvent("roundtripSuccess", [this, args]);
 
-				if (callback && callback instanceof Function)
-					callback.call(this, result);
+				if (callback && callback instanceof Function) {
+					callback(result);
+				}
 
 				pendingRequests--;
 			});
 		},
 		_onRoundtripFailed: function ServerSync$_onRoundtripFailed(error, args, callback) {
-			Observer.setValue(this, "PendingRoundtrip", false);
+			args.responseObject = error;
+			args.requestSucceeded = false;
 
-			args.error = error;
+			this._raiseEvent("requestEnd", [this, args]);
+			this._raiseEvent("requestFailed", [this, args]);
 
-			this._raiseEndEvents("roundtrip", "Failed", args);
+			this._raiseEvent("roundtripEnd", [this, args]);
+			this._raiseEvent("roundtripFailed", [this, args]);
 
-			if (callback && callback instanceof Function)
-				callback.call(this, error);
+			if (callback && callback instanceof Function) {
+				callback(error);
+			}
 
 			pendingRequests--;
 		},
-		startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
+		startAutoRoundtrip: function (interval) {
 			if (!interval || typeof(interval) !== "number" || interval <= 0) {
 				throw new Error("An interval must be specified for auto-save.");
 			}
@@ -10245,7 +10878,7 @@ window.ExoWeb.DotNet = {};
 
 			this._roundtripTimeout = window.setTimeout(doRoundtrip.bind(this), interval);
 		},
-		stopAutoRoundtrip: function ServerSync$stopAutoRoundtrip() {
+		stopAutoRoundtrip: function () {
 			if (this._roundtripTimeout) {
 				window.clearTimeout(this._roundtripTimeout);
 			}
@@ -10277,47 +10910,75 @@ window.ExoWeb.DotNet = {};
 
 		// Save
 		///////////////////////////////////////////////////////////////////////
-		save: function ServerSync$save(root, success, failed) {
+		save: function (target, success, failed) {
+			/// <summary locid="M:J#ExoWeb.Mapper.ServerSync.save">
+			/// Saves changes to the given target and related entities. The given success or failure
+			/// callback is invoked when the request is complete.
+			/// </summary>
+			/// <param name="target" optional="false" mayBeNull="false" type="ExoWeb.Model.Entity"></param>
+			/// <param name="success" optional="false" mayBeNull="true" type="Function"></param>
+			/// <param name="failed" optional="false" mayBeNull="true" type="Function"></param>
+
+			var args, checkpoint, serializedTarget;
+
 			pendingRequests++;
 
 			// Checkpoint the log to ensure that we only truncate changes that were saved.
-			var checkpoint = this._changeLog.checkpoint("save " + (new Date()).format("d"));
+			checkpoint = this._changeLog.checkpoint("save-" + +(new Date()));
 
-			Observer.setValue(this, "PendingSave", true);
+			args = {
+				type: "save",
+				target: target,
+				checkpoint: checkpoint,
+				includeAllChanges: false
+			};
 
-			var args = { type: "save", root: root, checkpoint: checkpoint };
-			this._raiseBeginEvents("save", args);
+			this._raiseEvent("saveBegin", [this, args]);
+
+			serializedTarget = toExoModel(target, this._translator);
+
+			args.root = serializedTarget;
+
+			this._raiseEvent("requestBegin", [this, args]);
 
 			saveProvider(
-				toExoModel(root, this._translator),
-				serializeChanges.call(this, false, root),
+				serializedTarget,
+				serializeChanges.call(this, false, target),
 				this._onSaveSuccess.bind(this).appendArguments(args, checkpoint, success),
 				this._onSaveFailed.bind(this).appendArguments(args, failed || success)
 			);
 		},
 		_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, checkpoint, callback) {
-			Observer.setValue(this, "PendingSave", false);
-
 			args.responseObject = result;
+			args.requestSucceeded = true;
+
+			this._raiseEvent("requestEnd", [this, args]);
 
 			this._handleResult(result, "save", checkpoint, function () {
-				this._raiseEndEvents("save", "Success", args);
+				this._raiseEvent("requestSuccess", [this, args]);
+				this._raiseEvent("saveEnd", [this, args]);
+				this._raiseEvent("saveSuccess", [this, args]);
 
-				if (callback && callback instanceof Function)
-					callback.call(this, result);
+				if (callback && callback instanceof Function) {
+					callback(result);
+				}
 
 				pendingRequests--;
 			});
 		},
 		_onSaveFailed: function (error, args, callback) {
-			Observer.setValue(this, "PendingSave", false);
+			args.responseObject = error;
+			args.requestSucceeded = false;
 
-			args.error = error;
+			this._raiseEvent("requestEnd", [this, args]);
+			this._raiseEvent("requestFailed", [this, args]);
 
-			this._raiseEndEvents("save", "Failed", args);
+			this._raiseEvent("saveEnd", [this, args]);
+			this._raiseEvent("saveFailed", [this, args]);
 
-			if (callback && callback instanceof Function)
-				callback.call(this, error);
+			if (callback && callback instanceof Function) {
+				callback(error);
+			}
 
 			pendingRequests--;
 		},
@@ -10382,9 +11043,202 @@ window.ExoWeb.DotNet = {};
 			this._removeEvent("saveFailed", handler);
 		},
 
+		// EnsureLoaded
+		///////////////////////////////////////////////////////////////////////
+		ensureLoaded: function (target, paths, includePathsFromQueries, success, failed) {
+			/// <summary locid="M:J#ExoWeb.Mapper.ServerSync.ensureLoaded">
+			/// Loads the given entity (and optionally a set of relative paths) if necessary. The given success or failure
+			/// callback is invoked when the request is complete if loading was required. If no loading was required, the
+			/// success callback is invoked after a short period of time. This artifical asynchronicity is introduced
+			/// primarily to limit call stack size, and in the case of loading a consistent asynchronous experience is
+			/// acceptable and perhaps even expected to some extent.
+			/// </summary>
+			/// <param name="target" optional="false" mayBeNull="false" type="ExoWeb.Model.Entity|ExoWeb.Model.Type"></param>
+			/// <param name="paths" optional="false" mayBeNull="true" isArray="true" type="String"></param>
+			/// <param name="includePathsFromQueries" mayBeNull="true" type="Boolean" optional="false"></param>
+			/// <param name="success" optional="false" mayBeNull="true" type="Function"></param>
+			/// <param name="failed" optional="false" mayBeNull="true" type="Function"></param>
+
+			var args, checkpoint, serializedTarget, queryPaths, pathsToLoad, staticPath, staticProperty;
+
+			pendingRequests++;
+
+			if (target === null || target === undefined) {
+				throw new Error("Method ensureLoaded requires a target argument.");
+			}
+
+			if (target instanceof Entity) {
+				if (includePathsFromQueries) {
+					// Get the paths from the original query(ies) that apply to the target object (based on type).
+					queryPaths = ObjectLazyLoader.getRelativePaths(target);
+					if (paths) {
+						pathsToLoad = paths.concat(queryPaths);
+					} else {
+						pathsToLoad = queryPaths;
+					}
+				} else {
+					pathsToLoad = paths || [];
+				}
+			} else {
+				// For static loading a single array or object will be loaded with no additional paths.
+				pathsToLoad = [];
+
+				// Use the meta type if a type constructor was used as the target.
+				if (target instanceof Function && target.meta && target.meta && target.meta instanceof Type) {
+					target = target.meta;
+				}
+
+				if (!(target instanceof Type)) {
+					throw new Error($format("Method ensureLoaded expects target of type Entity or Type, but found type \"{0}\".", parseFunctionName(target.constructor)));
+				}
+
+				if (paths === null || paths === undefined) {
+					throw new Error("Method ensureLoaded requires a paths argument for static property loading.");
+				}
+
+				if (Object.prototype.toString.call(paths) === "[object String]") {
+					staticPath = paths;
+				} else if (Object.prototype.toString.call(paths) === "[object Array]") {
+					if (paths.length === 1) {
+						staticPath = paths[0];
+					} else {
+						throw new Error($format("Multiple paths cannot be specified when ensuring that static property information is loaded: \"{0}.[{1}]\".", target.get_fullName(), paths.join(",")));
+					}
+				} else {
+					throw new Error($format("Argument \"paths\" was expected to be a string or array of strings, but found type \"{0}\" instead.", parseFunctionName(target.constructor)));
+				}
+
+				// Static property path can only be a single property name, not a multi-step path.
+				if (staticPath.indexOf(".") >= 0) {
+					throw new Error($format("Multiple path steps cannot be specified when ensuring that static property information is loaded: \"{0}.{1}\".", target.get_fullName(), staticPath));
+				}
+
+				// Get the meta property for the given single path.
+				staticProperty = target.property(staticPath);
+
+				// Prepend the target type name to the static path for later use in logging and errors, etc.
+				staticPath = target.get_fullName() + "." + staticPath;
+
+				// Get the static path value and verify that there is a value in order to ensure loading.
+				target = staticProperty.value(target);
+				if (target === null || target === undefined) {
+					throw new Error($format("Unable to ensure that static path \"{0}\" is loaded because it evaluates to a null or undefined value.", staticPath));
+				}
+			}
+
+			// Checkpoint the log to ensure that we only truncate changes that were saved.
+			checkpoint = this._changeLog.checkpoint("ensureLoaded" + +(new Date()));
+
+			args = {
+				type: "ensureLoaded",
+				target: target instanceof Entity ? target : null,
+				checkpoint: checkpoint,
+				includeAllChanges: true
+			};
+
+			this._raiseEvent("ensureLoadedBegin", [this, args]);
+
+			// Check if the object or any of the paths require loading. Apply the array of paths to the
+			// isLoaded call, since the paths will be obtained as "rest" parameters.
+			if (!LazyLoader.isLoaded.apply(null, [target].concat(pathsToLoad))) {
+				serializedTarget = target instanceof Entity ? toExoModel(target, this._translator) : null;
+
+				args.root = serializedTarget;
+
+				this._raiseEvent("requestBegin", [this, args]);
+
+				// TODO: reference to server will be a singleton, not context
+				objectProvider(
+					target instanceof Entity ? target.meta.type.get_fullName() : target.get_fullName(),
+					target instanceof Entity ? [target.meta.id] : [],
+					pathsToLoad,
+					false, // in scope?
+					serializeChanges.call(this, true),
+					this._onEnsureLoadedSuccess.bind(this).appendArguments(args, checkpoint, success),
+					this._onEnsureLoadedFailed.bind(this).appendArguments(args, failed || success));
+			} else {
+				var self = this;
+				window.setTimeout(function () {
+					args.requiredLoading = false;
+
+					self._raiseEvent("ensureLoadedEnd", [self, args]);
+					self._raiseEvent("ensureLoadedSuccess", [self, args]);
+
+					if (success && success instanceof Function) {
+						success();
+					}
+
+					pendingRequests--;
+				}, 1);
+			}
+		},
+		_onEnsureLoadedSuccess: function (result, args, checkpoint, callback) {
+			args.responseObject = result;
+			args.requestSucceeded = true;
+
+			this._raiseEvent("requestEnd", [this, args]);
+
+			this._handleResult(result, "ensureLoaded", checkpoint, function () {
+				this._raiseEvent("requestSuccess", [this, args]);
+
+				args.requiredLoading = true;
+
+				this._raiseEvent("ensureLoadedEnd", [this, args]);
+				this._raiseEvent("ensureLoadedSuccess", [this, args]);
+
+				if (callback && callback instanceof Function) {
+					callback(result);
+				}
+
+				pendingRequests--;
+			});
+		},
+		_onEnsureLoadedFailed: function (error, args, callback) {
+			args.responseObject = error;
+			args.requestSucceeded = false;
+
+			this._raiseEvent("requestEnd", [this, args]);
+			this._raiseEvent("requestFailed", [this, args]);
+
+			args.requiredLoading = true;
+
+			this._raiseEvent("ensureLoadedEnd", [this, args]);
+			this._raiseEvent("ensureLoadedFailed", [this, args]);
+
+			if (callback && callback instanceof Function) {
+				callback(error);
+			}
+
+			pendingRequests--;
+		},
+		addEnsureLoadedBegin: function (handler) {
+			this._addEvent("ensureLoadedBegin", handler);
+		},
+		removeEnsureLoadedBegin: function (handler) {
+			this._removeEvent("ensureLoadedBegin", handler);
+		},
+		addEnsureLoadedEnd: function (handler) {
+			this._addEvent("ensureLoadedEnd", handler);
+		},
+		removeEnsureLoadedEnd: function (handler) {
+			this._removeEvent("ensureLoadedEnd", handler);
+		},
+		addEnsureLoadedSuccess: function (handler) {
+			this._addEvent("ensureLoadedSuccess", handler);
+		},
+		removeEnsureLoadedSuccess: function (handler) {
+			this._removeEvent("ensureLoadedSuccess", handler);
+		},
+		addEnsureLoadedFailed: function (handler) {
+			this._addEvent("ensureLoadedFailed", handler);
+		},
+		removeEnsureLoadedFailed: function (handler) {
+			this._removeEvent("ensureLoadedFailed", handler);
+		},
+
 		// Apply Changes
 		///////////////////////////////////////////////////////////////////////
-		applyChanges: function (checkpoint, changes, source, filter, beforeApply, afterApply, callback, thisPtr) {
+		applyChanges: function (checkpoint, changes, source, user, setId, filter, beforeApply, afterApply, callback, thisPtr) {
 			if (!changes || !(changes instanceof Array)) {
 				if (callback) {
 					callback.call(thisPtr || this);
@@ -10392,7 +11246,9 @@ window.ExoWeb.DotNet = {};
 				return;
 			}
 
-			var newChanges = 0;
+			if (source == null) throw new ArgumentNullError("source");
+
+			var newChanges = [];
 
 			var signal = new Signal("applyChanges");
 			var waitForAllRegistered = false;
@@ -10402,12 +11258,11 @@ window.ExoWeb.DotNet = {};
 
 				this.beginApplyingChanges();
 
-				if ((source !== undefined && source !== null && (!this._changeLog.activeSet() || this._changeLog.activeSet().source() !== source)) || this.isCapturingChanges()) {
-					this._changeLog.start(source || "unknown");
+				if (this._changeLog.activeSet) {
+					this._changeLog.stop();
 				}
 
-				var currentChanges = this._changeLog.count(this.canSave, this);
-				var totalChanges = changes.length;
+				var changeSet = this._changeLog.addSet(source, null, user, null, setId);
 
 				// Determine that the target of a change is a new instance
 				var instanceIsNew = function (change) {
@@ -10447,11 +11302,12 @@ window.ExoWeb.DotNet = {};
 
 					// Truncate changes that we believe were actually saved based on the response
 					this._changeLog.truncate(checkpoint, shouldDiscardChange.bind(this));
+					this._changeLog.start({ user: this._localUser });
 
 					// Update affected scope queries
 					idChanges.forEach(function (idChange) {
 						var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
-						if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+						if (jstype && LazyLoader.isLoaded(jstype.meta)) {
 							var serverOldId = idChange.oldId;
 							var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 								this._translator.reverse(idChange.type, serverOldId) :
@@ -10467,7 +11323,7 @@ window.ExoWeb.DotNet = {};
 
 				var numPendingSaveChanges = numSaveChanges;
 
-				changes.forEach(function (change, changeIndex) {
+				changes.forEach(function (change) {
 					if (change.type === "InitNew") {
 						this.applyInitChange(change, beforeApply, afterApply, signal.pending());
 					}
@@ -10493,8 +11349,8 @@ window.ExoWeb.DotNet = {};
 						if (noObjectsWereSaved || !hasPendingSaveChanges || !shouldDiscardChange.call(this, change)) {
 							// Apply additional filter
 							if (!filter || filter(change) === true) {
-								newChanges++;
-								this._changeLog.add(change);
+								newChanges.push(change);
+								changeSet.add(change);
 							}
 						}
 					}
@@ -10502,7 +11358,7 @@ window.ExoWeb.DotNet = {};
 
 				// start a new set to capture future changes
 				if (this.isCapturingChanges()) {
-					this._changeLog.start("client");
+					this._changeLog.start({ user: this._localUser });
 				}
 
 				waitForAllRegistered = true;
@@ -10522,8 +11378,8 @@ window.ExoWeb.DotNet = {};
 			}
 
 			// raise "HasPendingChanges" change event, only new changes were recorded
-			if (newChanges > 0) {
-				Observer.raisePropertyChanged(this, "HasPendingChanges");
+			if (newChanges.length > 0) {
+				this._raiseEvent("changesDetected", [this, { reason: "applyChanges", changes: newChanges }]);
 			}
 		},
 		applySaveChange: function (change, before, after, callback, thisPtr) {
@@ -10606,8 +11462,8 @@ window.ExoWeb.DotNet = {};
 							}
 						}
 
-						this._changeLog._sets.forEach(function (set) {
-							set._changes.forEach(function (change) {
+						this._changeLog.sets.forEach(function (set) {
+							set.changes.forEach(function (change) {
 								// Only process changes to model instances
 								if (!change.instance) return;
 
@@ -10851,15 +11707,31 @@ window.ExoWeb.DotNet = {};
 
 					// don't end update until the items have been loaded
 					listSignal.waitForAll(this.ignoreChanges(before, function () {
-						if (hasExited) {
-							this.beginApplyingChanges();
+						try {
+							var listUpdateEnded = false;
+							if (hasExited) {
+								this.beginApplyingChanges();
+							}
+							try {
+								ListLazyLoader.allowModification(list, function () {
+									// Update variable first to indicate that endUpdate was at least attempted.
+									// If the call to endUpdate generates an error we would not want to attempt
+									// again and potentially generate a different error because of side-effects.
+									listUpdateEnded = true;
+
+									list.endUpdate();
+								});
+							} finally {
+								if (!listUpdateEnded) {
+									list.endUpdate();
+								}
+							}
+						} finally {
+							if (hasExited) {
+								this.endApplyingChanges();
+							}
 						}
-						ListLazyLoader.allowModification(list, function () {
-							list.endUpdate();
-						});
-						if (hasExited) {
-							this.endApplyingChanges();
-						}
+
 						// Callback once all instances have been added
 						if (!callBeforeExiting && callback) {
 							callback.call(thisPtr || this);
@@ -10887,7 +11759,7 @@ window.ExoWeb.DotNet = {};
 		rollback: function ServerSync$rollback(checkpoint, callback, thisPtr) {
 			var signal = new Signal("rollback");
 			var waitForAllRegistered = false;
-		
+
 			try {
 				var batch = ExoWeb.Batch.start("rollback changes");
 
@@ -10918,7 +11790,7 @@ window.ExoWeb.DotNet = {};
 					if (callback) {
 						callback.call(thisPtr || this);
 					}
-					Observer.raisePropertyChanged(this, "HasPendingChanges");
+					this._raiseEvent("changesDetected", [this, { reason: "rollback" }]);
 				}, this, true);
 			}
 			finally {
@@ -11051,31 +11923,11 @@ window.ExoWeb.DotNet = {};
 
 		// Various
 		///////////////////////////////////////////////////////////////////////
-		_captureChange: function ServerSync$_captureChange(change) {
-			if (!this.isApplyingChanges() && this.isCapturingChanges()) {
-				if (change.property) {
-					var instance = fromExoModel(change.instance, this._translator);
-					var property = instance.meta.property(change.property);
-
-					if (property.get_jstype() === Date && change.newValue && property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
-						var serverOffset = this.get_ServerTimezoneOffset();
-						var localOffset = -(new Date().getTimezoneOffset() / 60);
-						var difference = localOffset - serverOffset;
-						change.newValue = change.newValue.addHours(difference);
-					}
-					else if (change.newValue && change.newValue instanceof TimeSpan) {
-						change.newValue = change.newValue.toObject();
-					}
-				}
-
-				this._changeLog.add(change);
-
-				Observer.raisePropertyChanged(this, "HasPendingChanges");
-
-				if (this._saveInterval && this.canSave(change) && isPropertyChangePersisted(change)) {
-					this._queueAutoSave();
-				}
-			}
+		addChangesDetected: function (handler) {
+			this._addEvent("changesDetected", handler);
+		},
+		batchChanges: function (description, callback, thisPtr) {
+			this._changeLog.batchChanges(description, this._localUser, thisPtr ? callback.bind(thisPtr) : callback);
 		},
 		changes: function ServerSync$changes(includeAllChanges, simulateInitRoot, excludeNonPersisted) {
 			var list = [];
@@ -11090,55 +11942,6 @@ window.ExoWeb.DotNet = {};
 			});
 			return list;
 		},
-		get_Changes: function ServerSync$get_Changes(includeAllChanges/*, ignoreWarning*/) {
-			if (arguments.length < 2 || arguments[1] !== true) {
-				logWarning("Method get_Changes is not intended for long-term use - it will be removed in the near future.");
-			}
-			return this.changes(includeAllChanges, null);
-		},
-		get_HasPendingChanges: function ServerSync$get_HasPendingChanges() {
-			return this._changeLog.sets().some(function (set) {
-				return set.changes().some(function (change) {
-					return this.canSave(change);
-				}, this);
-			}, this);
-		},
-		get_PendingAction: function ServerSync$get_PendingAction() {
-			return this._pendingServerEvent || this._pendingRoundtrip || this._pendingSave;
-		},
-		get_PendingServerEvent: function ServerSync$get_PendingServerEvent() {
-			return this._pendingServerEvent;
-		},
-		set_PendingServerEvent: function ServerSync$set_PendingServerEvent(value) {
-			var oldValue = this._pendingServerEvent;
-			this._pendingServerEvent = value;
-
-			if (oldValue !== value) {
-				Observer.raisePropertyChanged(this, "PendingAction");
-			}
-		},
-		get_PendingRoundtrip: function ServerSync$get_PendingRoundtrip() {
-			return this._pendingRoundtrip;
-		},
-		set_PendingRoundtrip: function ServerSync$set_PendingRoundtrip(value) {
-			var oldValue = this._pendingRoundtrip;
-			this._pendingRoundtrip = value;
-
-			if (oldValue !== value) {
-				Observer.raisePropertyChanged(this, "PendingAction");
-			}
-		},
-		get_PendingSave: function ServerSync$get_PendingSave() {
-			return this._pendingSave;
-		},
-		set_PendingSave: function ServerSync$set_PendingSave(value) {
-			var oldValue = this._pendingSave;
-			this._pendingSave = value;
-
-			if (oldValue !== value) {
-				Observer.raisePropertyChanged(this, "PendingAction");
-			}
-		},
 		get_ServerTimezoneOffset: function ServerSync$get_ServerTimezoneOffset() {
 			//if we have not set the server timezone offset yet, retrieve it from the server
 			var timezoneOffset = 0;
@@ -11152,28 +11955,27 @@ window.ExoWeb.DotNet = {};
 		set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
 			//join the new server info with the information that you are adding.
 			this._serverInfo = this._serverInfo ? jQuery.extend(this._serverInfo, newInfo) : newInfo;
+		},
+		get_localUser: function ServerSync$get_localUser(user) {
+			return this._localUser;
+		},
+		set_localUser: function ServerSync$set_localUser(user) {
+			this._localUser = user;
 		}
 	});
 
-	ExoWeb.Mapper.ServerSync = ServerSync;
-
 	Property.prototype.triggersRoundtrip = function (paths) {
-		this.addChanged(function (sender, args) {
+		this.addChanged(function (sender) {
 			if (!context.server.isApplyingChanges()) {
 				EventScope$onExit(function() {
-					sender.meta.type.model.server.roundtrip(sender, paths);
+					setTimeout(function () {
+						sender.meta.type.model.server.roundtrip(sender, paths);
+					}, 100);
 				});
 			}
 		});
 	};
 
-	ServerSync.Save = function ServerSync$Save(root, success, failed) {
-		root.meta.type.model.server.save(root, success, failed);
-	};
-
-	ServerSync.GetServerTimeZone = function ServerSync$GetServerTimeZone(root) {
-		return root.meta.type.model.server.get_ServerTimezoneOffset(root);
-	};
 
 	// #endregion
 
@@ -11193,8 +11995,8 @@ window.ExoWeb.DotNet = {};
 				callback.apply(thisPtr || this, jstypes);
 			});
 		}
-		else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-			ExoWeb.Model.LazyLoader.load(mtype, null, function(jstype) {
+		else if (LazyLoader.isRegistered(mtype)) {
+			LazyLoader.load(mtype, null, function(jstype) {
 				callback.apply(thisPtr || this, [jstype]);
 			});
 		}
@@ -11297,8 +12099,8 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// Load object's type if needed
-		if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-			ExoWeb.Model.LazyLoader.load(mtype, null, function() {
+		if (LazyLoader.isRegistered(mtype)) {
+			LazyLoader.load(mtype, null, function() {
 				objectFromJson(model, typeName, id, json, callback, thisPtr);
 			});
 			return;
@@ -11314,21 +12116,39 @@ window.ExoWeb.DotNet = {};
 
 		var loadedObj;
 
-		///initialize the object if it was ghosted
-		if (id === STATIC_ID || (obj && obj.wasGhosted) || !LazyLoader.isLoaded(obj)) {
-			if (obj) {
+		var initObj = false;
+		if (id === STATIC_ID) {
+			initObj = true;
+		} else if (obj) {
+			if (LazyLoader.isRegistered(obj)) {
+				initObj = true;
+				// track the newly loaded instance to pass to the caller when complete
+				loadedObj = obj;
+				// unregister the instance from loading
+				ObjectLazyLoader.unregister(obj);
+			}
+			if (obj.wasGhosted) {
+				initObj = true;
+				// track the newly loaded instance to pass to the caller when complete
+				loadedObj = obj;
 				delete obj.wasGhosted;
 			}
+		}
 
+		// Continue if the object needs to be initialized (ghosted or lazy loaded),
+		// or there is no object (load static lists), or the object is not new (load
+		// non-loaded list properties for an object that was previously loaded).
+		if (initObj || !obj || !obj.meta.isNew) {
 			var loadedProperties = [];
 
 			// Load object's properties
-			for (var t = mtype; t !== null; t = t.baseType) {
+			for (var t = mtype; t !== null; t = obj ? t.baseType : null) {
 				var props = obj ? t.get_instanceProperties() : t.get_staticProperties();
 
 				for (var propName in props) {
-					if (loadedProperties.contains(propName))
+					if (loadedProperties.indexOf(propName) >= 0) {
 						continue;
+					}
 
 					loadedProperties.push(propName);
 
@@ -11338,31 +12158,35 @@ window.ExoWeb.DotNet = {};
 						throw new Error($format("Cannot load object {0}|{2} because it has an unexpected property '{1}'", typeName, propName, id));
 					}
 
-					if(prop.get_origin() !== "server")
+					if (prop.get_origin() !== "server") {
 						continue;
+					}
+
+					if (!initObj && !prop.get_isList()) {
+						// If the root object is already initialized, then skip over non-list properties.
+						continue;
+					}
 
 					var propData;
 
 					// instance fields have indexes, static fields use names
-					if(obj) {
+					if (obj) {
 						propData = json[prop.get_index()];
-					}
-					else {
+					} else {
 						propData = json[propName];
 
 						// not all static fields may be present
-						if(propData === undefined)
+						if (propData === undefined) {
 							continue;
+						}
 					}
 
-					if (propData === null) {
-						Property$_init.call(prop, obj, null);
-					}
-					else {
+					if (propData !== null) {
 						var propType = prop.get_jstype();
 
-						 if (prop.get_isList()) {
-						 	var list = prop.get_isStatic() ? prop.value() : obj[prop._fieldName];
+						// Always process list properties since they can be loaded after the parent object.
+						if (prop.get_isList()) {
+							var list = prop.get_isStatic() ? prop.value() : obj[prop._fieldName];
 
 							if (propData == "?") {
 								// don't overwrite list if its already a ghost
@@ -11370,41 +12194,59 @@ window.ExoWeb.DotNet = {};
 									list = ListLazyLoader.register(obj, prop);
 									Property$_init.call(prop, obj, list, false);
 								}
-							}
-							else {
-								if (!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
+							} else {
+								if (!list || LazyLoader.isRegistered(list)) {
 
-									var doInit = undefined;
+									var doingObjectInit = undefined;
+									//var newItems = [];
 
 									// json has list members
 									if (list) {
 										ListLazyLoader.unregister(list);
-										doInit = false;
-									}
-									else {
+										doingObjectInit = false;
+									} else {
 										list = [];
-										doInit = true;
+										doingObjectInit = true;
 									}
 
 									for (var i = 0; i < propData.length; i++) {
 										var ref = propData[i];
-										list.push(getObject(model, propType, (ref && ref.id || ref), (ref && ref.type || propType)));
+										var c = getObject(model, propType, (ref && ref.id || ref), (ref && ref.type || propType));
+										if (list.contains(c)) {
+											logWarning($format("Initializing list {0}|{1}.{2} already contains object {3}.", typeName, id, prop._name, Entity.toIdString(c)));
+										}
+										//newItems.push(c);
+										list.push(c);
 									}
 
-									if (doInit) {
+									if (doingObjectInit) {
 										Property$_init.call(prop, obj, list);
+									} else {
+										// Collection change driven by user action or other behavior would result in the "change" event
+										// being raised for the list property.  Since we don't want to record this as a true observable
+										// change, raise the event manually so that rules will still run as needed.
+										//if (obj) {
+										prop._raiseEvent("changed", [obj, { property: prop, newValue: list, oldValue: undefined, collectionChanged: true }]);
+										//}
+
+										// Example of explicitly raising the collection change event if needed.
+										// NOTE: This is probably not necessary because it is difficult to get a reference to a
+										// non-loaded list and so nothing would be watching for changes prior to loading completion.
+										// The _initializing flag would be necessary to signal to the property's collection change
+										// handler that it should not raise the various events in response to the collection change.
+										//list._initializing = true;
+										//Sys.Observer.raiseCollectionChanged(list, [new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.add, newItems, 0)]);
+										//delete list._initializing;
 									}
 								}
 							}
-						}
-						else {
+						} else if (initObj) {
 							var ctor = prop.get_jstype(true);
 
 							// assume if ctor is not found its a model type not an intrinsic
 							if (!ctor || ctor.meta) {
 								Property$_init.call(prop, obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
-							}
-							else {
+							} else {
 								// Coerce strings into dates
 								if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
 
@@ -11420,23 +12262,16 @@ window.ExoWeb.DotNet = {};
 										var localOffset = -(new Date().getTimezoneOffset() / 60);
 										propData = propData.addHours(serverOffset - localOffset);
 									}
-								}
-								else if (ctor === TimeSpan) {
+								} else if (ctor === TimeSpan) {
 									propData = new TimeSpan(propData.TotalMilliseconds);
 								}
 								Property$_init.call(prop, obj, propData);
 							}
 						}
+					} else if (initObj) {
+						Property$_init.call(prop, obj, null);
 					}
 				}
-			}
-
-			if (obj) {
-				// track the newly loaded instance to pass to the caller
-				loadedObj = obj;
-
-				// unregister the instance from loading
-				ObjectLazyLoader.unregister(obj);
 			}
 		}
 
@@ -11715,7 +12550,7 @@ window.ExoWeb.DotNet = {};
 	function onTypeLoaded(model, typeName) {
 		var mtype = model.type(typeName);
 		mtype.eachBaseType(function(mtype) {
-			if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+			if (!LazyLoader.isLoaded(mtype)) {
 				throw new Error("Base type " + mtype._fullName + " is not loaded.");
 			}
 		});
@@ -11889,7 +12724,7 @@ window.ExoWeb.DotNet = {};
 			}
 
 			// if property's type isn't load it, then fetch it
-			if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+			if (!LazyLoader.isLoaded(mtype)) {
 				fetchTypes(model, [mtype.get_fullName()], function(jstypes) {
 					fetchPathTypes(model, jstypes[0], path, success, fail);
 				});
@@ -11941,9 +12776,9 @@ window.ExoWeb.DotNet = {};
 								fetchStaticPathTypes(jstypes[0]);
 							}));
 						}
-						else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+						else if (LazyLoader.isRegistered(mtype)) {
 							// lazy load type and continue walking the path
-							ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending(fetchStaticPathTypes));
+							LazyLoader.load(mtype, null, signal.pending(fetchStaticPathTypes));
 						}
 						else {
 							fetchStaticPathTypes();
@@ -11962,8 +12797,8 @@ window.ExoWeb.DotNet = {};
 				rootTypeLoaded(jstypes[0]);
 			}));
 		}
-		else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
-			ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
+		else if (LazyLoader.isRegistered(rootType)) {
+			LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
 		}
 		else {
 			rootTypeLoaded(rootType.get_jstype());
@@ -11999,11 +12834,11 @@ window.ExoWeb.DotNet = {};
 	function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
 		var jstype = ExoWeb.Model.Model.getJsType(name, true);
 
-		if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+		if (jstype && LazyLoader.isLoaded(jstype.meta)) {
 			callback.call(thisPtr || this, jstype);
 		}
 		else if (jstype && forceLoad) {
-			ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
+			LazyLoader.load(jstype.meta, property, callback, thisPtr);
 		}
 		else if (!jstype && forceLoad) {
 			ensureJsType(model, name, callback, thisPtr);
@@ -12032,7 +12867,7 @@ window.ExoWeb.DotNet = {};
 			true
 		);
 
-		if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
+		if (obj && LazyLoader.isLoaded(obj)) {
 			// If the object exists and is loaded, then invoke the callback immediately.
 			callback.call(thisPtr || this, obj);
 		}
@@ -12048,7 +12883,7 @@ window.ExoWeb.DotNet = {};
 			callback.call(thisPtr || this, obj);
 
 			// After the callback has been invoked, force loading to occur.
-			ExoWeb.Model.LazyLoader.load(obj, property);
+			LazyLoader.load(obj, property);
 		}
 		else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
 			// The caller wants the instance force loaded and will wait for it to complete.
@@ -12059,7 +12894,7 @@ window.ExoWeb.DotNet = {};
 			}
 
 			// Force loading to occur, passing through the callback.
-			ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
+			LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
 		}
 		else {
 			// The caller does not want to force loading, so wait for the instance to come into existance and invoke the callback when it does.
@@ -12124,11 +12959,11 @@ window.ExoWeb.DotNet = {};
 		var instance = new TypeLazyLoader();
 
 		TypeLazyLoader.register = function(obj) {
-			ExoWeb.Model.LazyLoader.register(obj, instance);
+			LazyLoader.register(obj, instance);
 		};
 
 		TypeLazyLoader.unregister = function(obj) {
-			ExoWeb.Model.LazyLoader.unregister(obj, instance);
+			LazyLoader.unregister(obj, instance);
 		};
 	})();
 
@@ -12152,7 +12987,7 @@ window.ExoWeb.DotNet = {};
 
 	function objLoad(obj, propName, callback, thisPtr) {
 		if (!ExoWeb.config.allowObjectLazyLoading) {
-			throw new Error($format("Object lazy loading has been disabled: {0}|{1}", mtype.get_fullName(), id));
+			throw new Error($format("Object lazy loading has been disabled: {0}|{1}", obj.meta.type.get_fullName(), obj.meta.id));
 		}
 
 		pendingObjects++;
@@ -12171,7 +13006,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// fetch object json
-		logWarning($format("Lazy load: {0}|{1}", mtype.get_fullName(), id));
+		logWarning($format("Lazy load object: {0}|{1}", mtype.get_fullName(), id));
 
 		// TODO: reference to server will be a singleton, not context
 		objectProvider(mtype.get_fullName(), [id], paths, false,
@@ -12207,7 +13042,7 @@ window.ExoWeb.DotNet = {};
 			});
 
 		// does the object's type need to be loaded too?
-		if (!LazyLoader.isLoaded(mtype)) {
+		if (LazyLoader.isRegistered(mtype)) {
 			LazyLoader.load(mtype, null, signal.pending());
 		}
 	}
@@ -12262,8 +13097,12 @@ window.ExoWeb.DotNet = {};
 			return relPaths.distinct();
 		};
 
+		ObjectLazyLoader.isRegistered = function (obj) {
+			return LazyLoader.isRegistered(obj, instance);
+		};
+
 		ObjectLazyLoader.register = function(obj) {
-			if (!LazyLoader.isRegistered(obj, instance)) {
+			if (!ObjectLazyLoader.isRegistered(obj)) {
 				if (obj.meta.type.get_origin() !== "server") {
 					throw new Error($format("Cannot lazy load instance of non-server-origin type: {0}|{1}", obj.meta.type.get_fullName(), obj.meta.id));
 				}
@@ -12319,7 +13158,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// load the objects in the list
-		logWarning($format("Lazy load: {0}|{1}.{2}", ownerType, ownerId, propName));
+		logWarning($format("Lazy load list: {0}|{1}.{2}", ownerType, ownerId, propName));
 
 		var objectJson, conditionsJson;
 
@@ -12352,8 +13191,8 @@ window.ExoWeb.DotNet = {};
 		// ensure that the property type is loaded as well.
 		// if the list has objects that are subtypes, those will be loaded later
 		// when the instances are being loaded
-		if (!ExoWeb.Model.LazyLoader.isLoaded(propType)) {
-			ExoWeb.Model.LazyLoader.load(propType, null, signal.pending());
+		if (LazyLoader.isRegistered(propType)) {
+			LazyLoader.load(propType, null, signal.pending());
 		}
 
 		signal.waitForAll(function() {
@@ -12407,22 +13246,40 @@ window.ExoWeb.DotNet = {};
 				throw new Error($format("Attempting to load list {0} of instance {1}:{2}, but the response JSON is not an array: {3}.", propName, ownerType, ownerId, listJson));
 			}
 
+			var populateList = false;
+			//var newItems = [];
+
+			if (LazyLoader.isRegistered(list)) {
+				// If the lazy loader is no longer registered,
+				// then don't populate the list.
+				populateList = true;
+				ListLazyLoader.unregister(list, this);
+			}
+
 			// populate the list with objects
 			for (var i = 0; i < listJson.length; i++) {
 				var ref = listJson[i];
 				var item = getObject(model, propType, (ref && ref.id || ref), (ref && ref.type || propType));
-				list.push(item);
+
+				//newItems.push(item);
+
+				if (populateList) {
+					if (list.contains(item)) {
+						logWarning($format("Lazy loading list {0}|{1}.{2} already contains object {3}.", ownerType, ownerId, propName, Entity.toIdString(item)));
+					}
+					list.push(item);
+				}
 
 				// if the list item is already loaded ensure its data is not in the response
 				// so that it won't be reloaded
-				if (ExoWeb.Model.LazyLoader.isLoaded(item)) {
+				if (LazyLoader.isLoaded(item)) {
 					delete objectJson[jsonType][ref.id];
 				}
 			}
 
 			// remove list from json and process the json.  there may be
 			// instance data returned for the objects in the list
-			if (ExoWeb.Model.LazyLoader.isLoaded(owner)) {
+			if (LazyLoader.isLoaded(owner)) {
 				delete objectJson[jsonType][jsonId];
 			}
 
@@ -12435,7 +13292,18 @@ window.ExoWeb.DotNet = {};
 				//	being raised for the list property.  Since we don't want to record this as a true observable
 				//	change, raise the event manually so that rules will still run as needed.
 				// This occurs before batch end so that it functions like normal object loading.
-				prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, collectionChanged: true}]);
+				//if (ownerId !== STATIC_ID) {
+				prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, collectionChanged: true }]);
+				//}
+
+				// Example of explicitly raising the collection change event if needed.
+				// NOTE: This is probably not necessary because it is difficult to get a reference to a
+				// non-loaded list and so nothing would be watching for changes prior to loading completion.
+				// The _initializing flag would be necessary to signal to the property's collection change
+				// handler that it should not raise the various events in response to the collection change.
+				//list._initializing = true;
+				//Sys.Observer.raiseCollectionChanged(list, [new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.add, newItems, 0)]);
+				//delete list._initializing;
 
 				ExoWeb.Batch.end(batch);
 				callback.call(thisPtr || this, list);
@@ -12486,14 +13354,14 @@ window.ExoWeb.DotNet = {};
 			list._ownerId = prop.get_isStatic() ? STATIC_ID : obj.meta.id;
 			list._ownerProperty = prop;
 
-			ExoWeb.Model.LazyLoader.register(list, instance);
+			LazyLoader.register(list, instance);
 
 			return list;
 		};
 
 		ListLazyLoader.unregister = function(list) {
 			Observer.removeCollectionChanged(list, list._collectionChangeHandler);
-			ExoWeb.Model.LazyLoader.unregister(list, instance);
+			LazyLoader.unregister(list, instance);
 
 			delete list._ownerId;
 			delete list._ownerProperty;
@@ -12520,6 +13388,8 @@ window.ExoWeb.DotNet = {};
 	});
 
 	function Context() {
+		window.context = this;
+
 		this.model = { meta: new ExoWeb.Model.Model() };
 		this.server = new ServerSync(this.model.meta);
 	}
@@ -12541,17 +13411,19 @@ window.ExoWeb.DotNet = {};
 					this._raiseEvent("ready");
 				}, this);
 			}
-		}
+		},
+		beginContextReady: ExoWeb.Functor(),
+		endContextReady: ExoWeb.Functor()
 	});
 
 	function ensureContext() {
 		if (!window.context) {
 			window.context = new Context();
 		}
-		else if (!(window.context instanceof Context)) {
+
+		if (!(window.context instanceof Context)) {
 			throw new Error("The window object has a context property that is not a valid context.");
 		}
-		return window.context;
 	}
 
 	Context.ready = function Context$ready(context) {
@@ -12614,11 +13486,11 @@ window.ExoWeb.DotNet = {};
 
 				// Setup lazy loading on the context object to control lazy evaluation.
 				// Loading is considered complete at the same point model.ready() fires. 
-				ExoWeb.Model.LazyLoader.register(this.context, {
+				LazyLoader.register(this.context, {
 					load: function context$load(obj, propName, callback, thisPtr) {
 						// objects are already loading so just queue up the calls
 						allSignals.waitForAll(function context$load$callback() {
-							ExoWeb.Model.LazyLoader.unregister(obj, this);
+							LazyLoader.unregister(obj, this);
 
 							if (callback && callback instanceof Function) {
 								callback.call(thisPtr || this);
@@ -12719,7 +13591,7 @@ window.ExoWeb.DotNet = {};
 					eachProp(this.options.instances, function(t) {
 						// Add the type of the instances.
 						var mtype = model.type(t);
-						if (!mtype || !LazyLoader.isLoaded(mtype)) {
+						if (!mtype || LazyLoader.isRegistered(mtype)) {
 							typesToLoad.push(t);
 						}
 					}, this);
@@ -12733,7 +13605,7 @@ window.ExoWeb.DotNet = {};
 						}).filter(function(t) {
 							// Exclude types that are already loaded
 							var mtype = model.type(t);
-							return !model || !LazyLoader.isLoaded(mtype);
+							return !mtype || LazyLoader.isRegistered(mtype);
 						}).forEach(function(t) {
 							if (!typesToLoad.contains(t)) {
 								typesToLoad.push(t);
@@ -13166,7 +14038,9 @@ window.ExoWeb.DotNet = {};
 
 			readySignal.waitForAll(function modelReadyHandler$signalReady() {
 				if (contextReady) {
+					window.context.beginContextReady();
 					contextReady(window.context);
+					window.context.endContextReady();
 				}
 
 				jQuery(function modelReadyHandler$documentReady() {
@@ -13178,7 +14052,15 @@ window.ExoWeb.DotNet = {};
 
 					// Invoke dom ready notifications
 					if (domReady) {
-						domReady(window.context);
+						if (ExoWeb.config.debug) {
+							domReady(window.context);
+						} else {
+							try {
+								domReady(window.context);
+							} catch (e) {
+								ExoWeb.logError(e, true);
+							}
+						}
 					}
 				});
 			});
@@ -13220,7 +14102,7 @@ window.ExoWeb.DotNet = {};
 			executingOptions = pendingOptions;
 			pendingOptions = null;
 
-			window.context = ensureContext();
+			ensureContext();
 
 			// Perform context initialization when the model is ready
 			if (executingOptions.contextReady || executingOptions.extendContext || executingOptions.domReady || !activated) {
@@ -13308,7 +14190,7 @@ window.ExoWeb.DotNet = {};
 	function extendOne(typeName, callback, thisPtr) {
 		var jstype = ExoWeb.Model.Model.getJsType(typeName, true);
 
-		if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+		if (jstype && LazyLoader.isLoaded(jstype.meta)) {
 			callback.call(thisPtr || this, jstype);
 		}
 		else {
@@ -13363,7 +14245,7 @@ window.ExoWeb.DotNet = {};
 		if (jstype) {
 			// Call for existing, loaded subtypes
 			Array.forEach(jstype.meta.derivedTypes || [], function(mtype) {
-				if (mtype && ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+				if (mtype && LazyLoader.isLoaded(mtype)) {
 					callback.call(thisPtr || this, mtype.get_jstype());
 					Array.forEach(mtype.derivedTypes || [], arguments.callee.spliceArguments(1, 2));
 				}
@@ -14594,50 +15476,65 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 
+		_link: function () {
+			if (!this._ctxIdx && this._element && this._element.childNodes.length > 0)
+				throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
+
+			if ((this._data !== null && this._data !== undefined) || (this._element && this._element.childNodes.length > 0)) {
+				var pctx = this.get_templateContext();
+				var tmplEl = this._findTemplate();
+
+				var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
+				newContext.data = this._data;
+				newContext.components = [];
+				newContext.nodes = [];
+				newContext.dataItem = this._data;
+				newContext.index = 0;
+				newContext.parentContext = pctx;
+				newContext.containerElement = this._element;
+				newContext.template = new Sys.UI.Template(tmplEl);
+				newContext.template._ensureCompiled();
+
+				this._context = newContext;
+
+				// Get the list of template names applicable to the control's children
+				var contentTemplate = this._getResultingTemplateNames(tmplEl);
+
+				var element = this._element;
+				Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
+
+				for (var i = 0; i < element.childNodes.length; i++) {
+					newContext.nodes.push(element.childNodes[i]);
+				}
+
+				newContext._onInstantiated(null, true);
+				this._initializeResults();
+			}
+		},
+
 		link: function Content$link() {
 			/// <summary locid="M:J#ExoWeb.UI.Content.link" />
 			if (!this._linkInProgress) {
 				this._linkInProgress = true;
+				contentControlsRendering++;
 				externalTemplatesSignal.waitForAll(function () {
-					delete this._linkInProgress;
-					this._isRendered = true;
-					this._context = null;
-
-					if (!this._ctxIdx && this._element && this._element.childNodes.length > 0)
-						throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
-
-					if ((this._data !== null && this._data !== undefined) || (this._element && this._element.childNodes.length > 0)) {
-						var pctx = this.get_templateContext();
-						var tmplEl = this._findTemplate();
-
-						var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
-						newContext.data = this._data;
-						newContext.components = [];
-						newContext.nodes = [];
-						newContext.dataItem = this._data;
-						newContext.index = 0;
-						newContext.parentContext = pctx;
-						newContext.containerElement = this._element;
-						newContext.template = new Sys.UI.Template(tmplEl);
-						newContext.template._ensureCompiled();
-
-						this._context = newContext;
-
-						// Get the list of template names applicable to the control's children
-						var contentTemplate = this._getResultingTemplateNames(tmplEl);
-
-						var element = this._element;
-						Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
-
-						for (var i = 0; i < element.childNodes.length; i++) {
-							newContext.nodes.push(element.childNodes[i]);
-						}
-
-						newContext._onInstantiated(null, true);
-						this._initializeResults();
+					// Control has disposed.
+					if (this._element === undefined || this._element === null) {
+						ExoWeb.UI.Content.callBaseMethod(this, 'link');
+						contentControlsRendering--;
+						return;
 					}
 
-					ExoWeb.UI.Content.callBaseMethod(this, 'link');
+					try {
+						delete this._linkInProgress;
+						this._isRendered = true;
+						this._context = null;
+						this._link();
+						ExoWeb.UI.Content.callBaseMethod(this, 'link');
+					}
+					finally {
+						contentControlsRendering--;
+					}
 				}, this);
 			}
 		},
@@ -15326,15 +16223,19 @@ window.ExoWeb.DotNet = {};
 
 		this._isTargetElement = Sys.UI.DomElement.isDomElement(target);
 
+		this._updateImmediately = true;
+
 		if (this._sourcePath) {
 			// Start the initial fetch of the source value.
 			this._evalSuccessHandler = this._evalSuccess.bind(this);
 			this._evalFailureHandler = this._evalFailure.bind(this);
-			ExoWeb.Model.LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
+			LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
 		}
 		else {
 			this._evalSuccess(this._source);
 		}
+
+		this._updateImmediately = false;
 	}
 
 	function ensureArray(value) {
@@ -15428,17 +16329,24 @@ window.ExoWeb.DotNet = {};
 		//////////////////////////////////////////////////////////////////////////
 
 		_require: function (value, callback) {
-			var valueRevision = this._valueRevision = ExoWeb.randomText(8, true);
+			var valueRevision = this._valueRevision = ExoWeb.randomText(8, true),
+				updateImmediately = true;
 
-			ExoWeb.Model.LazyLoader.evalAll(value, this._options.required, function () {
+			LazyLoader.evalAll(value, this._options.required, function () {
 
 				// Make sure that the data being evaluated is not stale.
 				if (!this._value || this._value !== value || this._valueRevision !== valueRevision) {
 					return;
 				}
 
-				callback.call(this);
-			}, null, null, this);
+				if (updateImmediately) {
+					callback.call(this);
+				} else {
+					window.setTimeout(callback.bind(this), 1);
+				}
+			}, null, null, this, LazyLoader.evalAll, false, value, [], true);
+
+			updateImmediately = false;
 		},
 
 		_update: function (value, oldItems, newItems) {
@@ -15548,7 +16456,14 @@ window.ExoWeb.DotNet = {};
 
 			this._sourcePathResult = result;
 
-			this._update(result, null, ensureArray(result));
+			if (this._updateImmediately) {
+				this._update(result, null, ensureArray(result));
+			} else {
+				var self = this;
+				window.setTimeout(function () {
+					self._update(result, null, ensureArray(result));
+				}, 1);
+			}
 		},
 
 		_evalFailure: function(err) {
@@ -15699,11 +16614,11 @@ window.ExoWeb.DotNet = {};
 		this._format = format ? getFormat(this._propertyChain.get_jstype(), format) : this._propertyChain.get_format();
 
 		// Load the object this adapter is bound to and then load allowed values.
-		ExoWeb.Model.LazyLoader.eval(this._target, this._propertyChain.get_path(),
-			this._readySignal.pending(),
+		LazyLoader.eval(this._target, this._propertyChain.get_path(),
+			this._readySignal.pending(null, null, true),
 			this._readySignal.orPending(function(err) {
 				throw new Error($format("Couldn't evaluate path '{0}', {1}", propertyPath, err));
-			})
+			}, null, true)
 		);
 
 		// Add arbitrary options so that they are made available in templates.
@@ -15781,8 +16696,8 @@ window.ExoWeb.DotNet = {};
 				var signal = new ExoWeb.Signal("Adapter.displayValue");
 				this._doForFormatPaths(val, function(path) {
 					EventScope$perform(function() {
-						ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending(), signal.orPending(), null, null, function() {
-							EventScope$perform(ExoWeb.Model.LazyLoader.evalAll.bind(this, arguments));
+						LazyLoader.evalAll(val, path, signal.pending(), signal.orPending(), null, null, function() {
+							EventScope$perform(LazyLoader.evalAll.bind(this, arguments));
 						}, false, val, []);
 					}, this);
 				});
@@ -15854,7 +16769,7 @@ window.ExoWeb.DotNet = {};
 			var rawValue = this.get_rawValue();
 
 			// raise raw value changed event
-			ExoWeb.Model.LazyLoader.eval(rawValue, null, function () {
+			LazyLoader.eval(rawValue, null, function () {
 				Observer.raisePropertyChanged(_this, "rawValue");
 			});
 
@@ -15915,20 +16830,18 @@ window.ExoWeb.DotNet = {};
 		_setValue: function Adapter$_setValue(value) {
 			var prop = this._propertyChain;
 
-			// clear existing format errors
+			// Clear existing format errors before adding a new one.
 			if (this._formatError) {
 				this.get_conditions().remove(this._formatError);
 				this._formatError = undefined;
 			}
 
-			// insert new format errors, if the value is not valid
 			if (value instanceof ExoWeb.Model.FormatError) {
-				this._formatError = value.createCondition(this._propertyChain.lastTarget(this._target), this._propertyChain.lastProperty());
+				// Insert new format errors if the value is not valid.
+				this._formatError = value.createCondition(prop.lastTarget(this._target), prop.lastProperty());
 				this.get_conditions().insert(0, this._formatError);
-			}
-
-			// otherwise, update the property value
-			else {
+			} else {
+				// Otherwise, update the property value.
 				var changed = prop.value(this._target) !== value;
 				this.set_rawValue(value, changed);
 			}
@@ -15937,7 +16850,7 @@ window.ExoWeb.DotNet = {};
 		// Various methods.
 		///////////////////////////////////////////////////////////////////////
 		ready: function Adapter$ready(callback, thisPtr) {
-			this._readySignal.waitForAll(callback, thisPtr);
+			this._readySignal.waitForAll(callback, thisPtr, true);
 		},
 		toString: function Adapter$toString() {
 			var targetType;
@@ -16037,7 +16950,7 @@ window.ExoWeb.DotNet = {};
 			return this._propertyChain.value(this._target);
 		},
 		set_rawValue: function Adapter$set_rawValue(value, changed) {
-			var prop = this._propertyChain;
+			var prop = this._propertyChain, target, targetType;
 
 			if (changed === undefined) {
 				changed = prop.value(this._target) !== value;
@@ -16047,7 +16960,25 @@ window.ExoWeb.DotNet = {};
 				this._ignoreTargetEvents = true;
 
 				try {
-					prop.value(this._target, value);
+					target = this._target;
+					if (target === null) {
+						targetType = "null";
+					} else if (target === undefined) {
+						targetType = "undefined";
+					} else if (target instanceof ExoWeb.Model.Entity) {
+						targetType = target.meta.type.get_fullName();
+					} else if (target instanceof ExoWeb.View.Adapter) {
+						targetType = "Adapter";
+					} else if (target instanceof ExoWeb.View.OptionAdapter) {
+						targetType = "OptionAdapter";
+					} else if (target instanceof ExoWeb.View.OptionGroupAdapter) {
+						targetType = "OptionGroupAdapter";
+					} else {
+						targetType = parseFunctionName(target.constructor);
+					}
+					context.server.batchChanges($format("adapter: {0}.{1}", targetType, this._propertyPath), function () {
+						prop.value(target, value);
+					});
 				}
 				finally {
 					this._ignoreTargetEvents = false;
@@ -16088,16 +17019,15 @@ window.ExoWeb.DotNet = {};
 				else {
 					var entity = Entity.fromIdString(value);
 
-					// set immediately if loaded
-					if (LazyLoader.isLoaded(entity)) {
-						this._setValue(entity);
-					}
-
 					// lazy load if necessary
-					else {
+					if (LazyLoader.isRegistered(entity)) {
 						LazyLoader.load(entity, null, function () {
 							this._setValue(entity);
 						}, this);
+					}
+					// set immediately if loaded
+					else {
+						this._setValue(entity);
 					}
 				}
 			}
@@ -16371,7 +17301,7 @@ window.ExoWeb.DotNet = {};
 	function ensureAllowedValuesLoaded(newItems, callback, thisPtr) {
 		var signal = new Signal("ensureAllowedValuesLoaded");
 		newItems.forEach(function(item) {
-			if (!LazyLoader.isLoaded(item)) {
+			if (LazyLoader.isRegistered(item)) {
 				LazyLoader.load(item, null, signal.pending());
 			}
 		});
@@ -16386,16 +17316,13 @@ window.ExoWeb.DotNet = {};
 				purge(rawValue, function (item) {
 					return allowedValues.indexOf(item) < 0;
 				}, this);
+			} else if (allowedValues.indexOf(rawValue) < 0 && this._propertyChain.value(this._target) !== null) {
+				this._propertyChain.value(this._target, null);
 			}
-			else if (allowedValues.indexOf(rawValue) < 0) {
-				this.set_rawValue(null);
-			}
-		}
-		else if (rawValue instanceof Array) {
+		} else if (rawValue instanceof Array) {
 			rawValue.clear();
-		}
-		else {
-			this.set_rawValue(null);
+		} else if (this._propertyChain.value(this._target) !== null) {
+			this._propertyChain.value(this._target, null);
 		}
 	}
 
@@ -16462,7 +17389,7 @@ window.ExoWeb.DotNet = {};
 					// Load allowed values if the path is not inited
 					if (allowedValues === undefined && (allowedValuesRule.source instanceof Property || allowedValuesRule.source instanceof PropertyChain)) {
 						logWarning("Adapter forced eval of allowed values. Rule: " + allowedValuesRule);
-						ExoWeb.Model.LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
+						LazyLoader.eval(allowedValuesRule.source.get_isStatic() ? null : targetObj,
 							allowedValuesRule.source.get_path(),
 							signalOptionsReady.bind(this));
 						this._options = null;
@@ -16481,9 +17408,9 @@ window.ExoWeb.DotNet = {};
 					}
 
 					// Load the allowed values list if it is not already loaded
-					if (!ExoWeb.Model.LazyLoader.isLoaded(allowedValues)) {
+					if (LazyLoader.isRegistered(allowedValues)) {
 						logWarning("Adapter forced loading of allowed values list. Rule: " + allowedValuesRule);
-						ExoWeb.Model.LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
+						LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
 						this._options = null;
 						return;
 					}
@@ -16550,7 +17477,7 @@ window.ExoWeb.DotNet = {};
 
 			var signal = new ExoWeb.Signal("OptionAdapter.displayValue");
 			this._parent._doForFormatPaths(val, function (path) {
-				ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
+				LazyLoader.evalAll(val, path, signal.pending());
 			}, this);
 			signal.waitForAll(function () {
 				Observer.raisePropertyChanged(this, "displayValue");
@@ -16688,48 +17615,101 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.View.MsAjax
 	//////////////////////////////////////////////////
 
+	/*globals Sys, jQuery */
+
 	(function () {
-		var targetChangedImpl = Sys.Binding.prototype._targetChanged;
-		Sys.Binding.prototype._targetChanged = function (force) {
-			var target = this._target;
-
-			// invoke the method implementation
-			targetChangedImpl.apply(this, [force]);
-		
-			if (this._disposed) return;
-
+		function updateLastTargetAndSourceForOtherRadios(target) {
 			// Set _lastTarget=false on other radio buttons in the group, since they only 
 			// remember the last target that was recieved when an event fires and radio button
 			// target change events fire on click (which does not account for de-selection).  
 			// Otherwise, the source value is only set the first time the radio button is selected.
 			if (Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked")) {
 				jQuery("input[type=radio][name='" + target.name + "']").each(function () {
-					if (this != target && this.__msajaxbindings !== undefined) {
+					if (this !== target && this.__msajaxbindings !== undefined) {
 						var bindings = this.__msajaxbindings;
 						for (var i = 0; i < bindings.length; i++)
 							bindings[i]._lastTarget = bindings[i]._lastSource = false;
 					}
 				});
 			};
-		};
+		}
 
-		var sourceChangedImpl = Sys.Binding.prototype._sourceChanged;
-		Sys.Binding.prototype._sourceChanged = function (force) {
-			var target = this._target,
-				link = force === false;
+		var targetChangedImpl = Sys.Binding.prototype._targetChanged;
+		Sys.Binding.prototype._targetChanged = function (force) {
+			// Batch changes that may occur due to the target element changing.
+			var source = this.get_source(),
+				sourceType,
+				batchChanges = true;
 
-			// invoke the method implementation
-			sourceChangedImpl.apply(this, [force]);
+			if (source === null) {
+				sourceType = "null";
+			}
+			else if (source === undefined) {
+				sourceType = "undefined";
+			}
+			else if (source instanceof ExoWeb.Model.Entity) {
+				sourceType = source.meta.type.get_fullName();
+			}
+			else if (source instanceof ExoWeb.View.Adapter) {
+				sourceType = "Adapter";
 
-			if (this._disposed) return;
+				// Adapters handle their own batching.
+				batchChanges = false;
+			}
+			else if (source instanceof ExoWeb.View.OptionAdapter) {
+				sourceType = "OptionAdapter";
 
-			// Remove checked attribute from other radio buttons in the group that are currently checked.
-			if (!link && Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked") && !this._lastSource) {
-				jQuery(target).removeAttr("checked");
+				// If the option adapter is not a list, then it will set the
+				// adapter's rawValue, which will handle batching itself.
+				if (!source.get_parent().get_isList()) {
+					batchChanges = false;
+				}
+			}
+			else if (source instanceof ExoWeb.View.OptionGroupAdapter) {
+				sourceType = "OptionGroupAdapter";
+			}
+			else {
+				sourceType = parseFunctionName(source.constructor);
+			}
+
+			if (batchChanges) {
+				context.server._changeLog.batchChanges(
+					$format("binding: {0}.{1}", sourceType, this.get_path()),
+					context.server._localUser,
+					targetChangedImpl.bind(this, arguments),
+					true
+				);
+			} else {
+				targetChangedImpl.apply(this, arguments);
+			}
+
+			// If the binding is not disposing, then fix backing
+			// fields for other radio buttons in the same group.
+			if (!this._disposed) {
+				updateLastTargetAndSourceForOtherRadios(this._target);
 			}
 		};
 
-		Sys.UI.DataView.prototype._loadData = function _loadData(value) {
+		function removeCheckedAttributeToMatchSourceValue(target, sourceValue) {
+			// Remove checked attribute from a radio button if the source value has been set to false.
+			if (Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked") && !sourceValue) {
+				jQuery(target).removeAttr("checked");
+			}
+		}
+
+		var sourceChangedImpl = Sys.Binding.prototype._sourceChanged;
+		Sys.Binding.prototype._sourceChanged = function (force) {
+			var link = force === false;
+
+			// Invoke the standard method implementation.
+			sourceChangedImpl.apply(this, [force]);
+
+			if (!this._disposed && !link) {
+				removeCheckedAttributeToMatchSourceValue(this._target, this._lastSource);
+			}
+		};
+
+		Sys.UI.DataView.prototype._loadData = function (value) {
 			this._swapData(this._data, value);
 			var oldValue = this._data;
 			this._data = value;
@@ -17547,12 +18527,12 @@ window.ExoWeb.DotNet = {};
 		});
 	}
 
-	ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setEventProvider(function (eventType, eventInstance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests && eventType !== "GetType" && eventType !== "LogError" ? eventType : "Request",
 			data: {
-				events: [{ type: eventType, include: paths, instance: instance, event: event }],
+				events: [{ type: eventType, include: paths, instance: eventInstance, event: event }],
 				queries: scopeQueries,
 				changes: changes
 			},
@@ -17561,13 +18541,13 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setRoundtripProvider(function (type, id, paths, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setRoundtripProvider(function (root, paths, changes, scopeQueries, onSuccess, onFailure) {
 		var queries = [];
 
-		if (type) {
+		if (root) {
 			queries.push({
-				from: type,
-				ids: [id],
+				from: root.type,
+				ids: [root.id],
 				include: paths,
 				inScope: true,
 				forLoad: true
@@ -17588,7 +18568,7 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setObjectProvider(function (type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "LoadObject" : "Request",
@@ -17607,7 +18587,7 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setQueryProvider(function WebService$queryProviderFn(queries, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setQueryProvider(function (queries, changes, scopeQueries, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "Query" : "Request",
@@ -17620,7 +18600,7 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setSaveProvider(function WebService$saveProviderFn(root, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setSaveProvider(function (root, changes, scopeQueries, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "Save" : "Request",
@@ -17634,7 +18614,7 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setListProvider(function (ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "LoadList" : "Request",
@@ -17653,7 +18633,7 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(types, onSuccess, onFailure) {
+	ExoWeb.Mapper.setTypeProvider(function (types, onSuccess, onFailure) {
 		if (types.length === 1) {
 			var data = { type: types[0], config: webServiceConfig};
 
@@ -17675,7 +18655,7 @@ window.ExoWeb.DotNet = {};
 	});
 
 	var loggingError = false;
-	ExoWeb.setLogErrorProvider(function WebService$logErrorProviderFn(errorData, onSuccess, onFailure) {
+	ExoWeb.setLogErrorProvider(function (errorData, onSuccess, onFailure) {
 		if (loggingError === false) {
 			try {
 				loggingError = true;

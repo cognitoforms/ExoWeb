@@ -151,27 +151,29 @@ function Property$_ensureInited(obj) {
 
 function Property$_getter(obj) {
 	// Ensure the entity is loaded before accessing property values
-	if (LazyLoader.isLoaded(obj)) {
-		// Ensure that the property has an initial (possibly default) value
-		Property$_ensureInited.call(this, obj);
-
-		// Raise get events
-		// NOTE: get events may result in a change, so the value cannot be cached
-		var getEvent = this._getEventHandler("get");
-		if (getEvent && !getEvent.isEmpty()) {
-			getEvent(obj, { property: this, value: obj[this._fieldName] });
-		}
-
-		// Return the property value
-		return obj[this._fieldName];
+	if (LazyLoader.isRegistered(obj)) {
+		return;
 	}
+
+	// Ensure that the property has an initial (possibly default) value
+	Property$_ensureInited.call(this, obj);
+
+	// Raise get events
+	// NOTE: get events may result in a change, so the value cannot be cached
+	var getEvent = this._getEventHandler("get");
+	if (getEvent && !getEvent.isEmpty()) {
+		getEvent(obj, { property: this, value: obj[this._fieldName] });
+	}
+
+	// Return the property value
+	return obj[this._fieldName];
 }
 
 exports.Property$_getter = Property$_getter; // IGNORE
 
 function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 	// Ensure the entity is loaded before setting property values
-	if (!LazyLoader.isLoaded(obj)) {
+	if (LazyLoader.isRegistered(obj)) {
 		throw new PropertySetError(this, obj, val, "object is ghosted");
 	}
 
@@ -364,6 +366,10 @@ Property.mixin({
 		return this._name;
 	},
 
+	get_fieldName: function Property$get_fieldName() {
+		return this._fieldName;
+	},
+
 	get_path: function Property$get_path() {
 		return this._isStatic ? (this._containingType.get_fullName() + "." + this._name) : this._name;
 	},
@@ -440,7 +446,7 @@ Property.mixin({
 		}
 		if (this._isList) {
 			var value = target[this._fieldName];
-			if (!LazyLoader.isLoaded(value)) {
+			if (value === undefined || !LazyLoader.isLoaded(value)) {
 				// If the list is not-loaded, then the property is not initialized
 				return false;
 			}

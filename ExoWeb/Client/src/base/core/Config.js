@@ -1,4 +1,7 @@
 var config = {
+	// Avoid patterns that can make debugging more difficult, try/catch for example.
+	debug: false,
+
 	// Indicates that signal should use window.setTimeout when invoking callbacks. This is
 	// done in order to get around problems with browser complaining about long-running script.
 	signalTimeout: false,

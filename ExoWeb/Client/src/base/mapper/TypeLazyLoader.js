@@ -21,10 +21,10 @@ TypeLazyLoader.mixin({
 	var instance = new TypeLazyLoader();
 
 	TypeLazyLoader.register = function(obj) {
-		ExoWeb.Model.LazyLoader.register(obj, instance);
+		LazyLoader.register(obj, instance);
 	};
 
 	TypeLazyLoader.unregister = function(obj) {
-		ExoWeb.Model.LazyLoader.unregister(obj, instance);
+		LazyLoader.unregister(obj, instance);
 	};
 })();

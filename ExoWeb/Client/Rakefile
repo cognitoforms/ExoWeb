@@ -18,6 +18,11 @@ def read file, indent=0, exports=nil
 				removed = true
 				next
 			end
+			# ignore strict mode statements
+			if (line =~ /(^|\n)[ \t]*('use strict'|"use strict");?\s*$/) == 0 then
+				removed = true
+				next
+			end
 			# ignore reference file comments
 			if (line =~ /^\s*\/\/\/\s*\<reference\s/) == 0 then
 				removed = true
@@ -34,8 +39,8 @@ def read file, indent=0, exports=nil
 				next
 			end
 			# translate export statements
-			if (line =~ /^\s*exports\.(.*\s*=\s*.*;)$/) == 0
-				line = line.sub(/^\s*exports\.(.*\s*=\s*.*;)$/, exports + ".\\1")
+			if (line =~ /^\s*exports\.([^=]*\s*=)/) == 0
+				line = line.sub(/^\s*exports\.([^=]*\s*=)/, exports + ".\\1")
 			end
 			# indent all non-empty lines
 			if indent > 0 and (line =~ /\A\s*\Z/) == nil and (line =~ /\A\/\/\t+/) == nil
@@ -52,6 +57,7 @@ end
 @src_files = {
 	"base/core" => %w{
 		Config
+		Unload
 		Errors
 		Warnings
 		TypeChecking
@@ -159,8 +165,6 @@ end
 		Helpers
 		Ever},
 
-	"base/mock" => %w{Mock},
-	
 	"extensions/dotnet" => %w{WebService},
 
 	"extensions/msajax" => %w{FormatProvider ObserverProvider}
@@ -287,27 +291,7 @@ task :build_msajax do
 	minify("exoweb-msajax")
 end
 
-task :build_mock do
-	File.open(File.join(@dist_dir, "exoweb-mock.js"), "w") do |f|
-		f.write("window.ExoWeb = {};\n")
-		f.write("\n(function() {\n")
-		
-		["base/mock"].each do |name|
-			src_dir = @src_dir
-			names = name.split("/")
-			names.each { |step| src_dir = File.join(src_dir, step) }
-			
-			f.write(build_content([names[names.length - 1]], src_dir, @src_files[name], 1, @exports[name]))
-		end
-		
-		f.write("})();\n");
-	end
-	puts("completed build_mock task")
-	jshint("exoweb-mock")
-	minify("exoweb-mock")
-end
-
-task :build => [:build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin, :build_mock] do
+task :build => [:build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plugin] do
 	puts("completed default task")
 end
 

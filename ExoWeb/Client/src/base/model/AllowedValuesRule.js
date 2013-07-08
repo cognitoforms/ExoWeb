@@ -77,7 +77,7 @@ AllowedValuesRule.mixin({
 		var allowed = this.values(obj);
 
 		// return undefined if the set of allowed values cannot be determined
-		if (allowed === undefined || !LazyLoader.isLoaded(allowed)) {
+		if (!LazyLoader.isLoaded(allowed)) {
 			return;
 		}
 

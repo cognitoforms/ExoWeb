@@ -96,24 +96,32 @@ ObjectMeta.mixin({
 
 	// determines whether the instance and optionally the specified property value is loaded
 	isLoaded: function ObjectMeta$isLoaded(prop) {
+		/// <summary locid="M:J#ExoWeb.Model.ObjectMeta.isLoaded">
+		/// Check whether the instance and optional property are loaded.
+		/// </summary>
+		/// <param name="prop" optional="true" mayBeNull="true" type="Object">The optional property object or property name to check.</param>
 
-		// first see if the current entity is loaded
-		if (!LazyLoader.isLoaded(this._obj))
+		// First see if there is a lazy loader attached to the entity (and optional property).
+		if (LazyLoader.isRegistered(this._obj, null, prop)) {
 			return false;
+		}
 
-		// immediately return true if a property name was not specified
-		if (!prop)
-			return true;
+		// Immediately return true if a property name was not specified
+		if (prop) {
+			// Coerce property names into property instances
+			if (isString(prop)) {
+				prop = this.property(prop, true);
+			}
 
-		// coerce property names into property instances
-		if (isString(prop))
-			prop = this.property(prop);
+			// Otherwise, get the property value and determine whether there is a
+			// lazy loader attached to the property value, e.g. entity or list.
+			var val = prop.value(this._obj);
+			if (val !== null && val !== undefined && LazyLoader.isRegistered(val)) {
+				return false;
+			}
+		}
 
-		// otherwise, get the property value and see if it loaded
-		var val = prop.value(this._obj);
-
-		// determine whether the value is loaded
-		return !(val === undefined || !LazyLoader.isLoaded(val));
+		return true;
 	},
 
 	// get some or all of the condition

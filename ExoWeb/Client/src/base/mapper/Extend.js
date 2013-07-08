@@ -26,7 +26,7 @@ function raiseExtensions(mtype) {
 function extendOne(typeName, callback, thisPtr) {
 	var jstype = ExoWeb.Model.Model.getJsType(typeName, true);
 
-	if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+	if (jstype && LazyLoader.isLoaded(jstype.meta)) {
 		callback.call(thisPtr || this, jstype);
 	}
 	else {
@@ -81,7 +81,7 @@ window.$extendSubtypes = function(typeName, callback, thisPtr) {
 	if (jstype) {
 		// Call for existing, loaded subtypes
 		Array.forEach(jstype.meta.derivedTypes || [], function(mtype) {
-			if (mtype && ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+			if (mtype && LazyLoader.isLoaded(mtype)) {
 				callback.call(thisPtr || this, mtype.get_jstype());
 				Array.forEach(mtype.derivedTypes || [], arguments.callee.spliceArguments(1, 2));
 			}

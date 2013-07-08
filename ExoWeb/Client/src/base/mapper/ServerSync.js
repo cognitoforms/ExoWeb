@@ -1,122 +1,177 @@
 /// <reference path="../core/Array.js" />
 /// <reference path="../core/Errors.js" />
 /// <reference path="../core/Function.js" />
+/// <reference path="../core/Functor.js" />
 /// <reference path="../core/Signal.js" />
 /// <reference path="../core/EventScope.js" />
+/// <reference path="../core/Observer.js" />
+/// <reference path="../core/Translator.js" />
+/// <reference path="../model/Model.js" />
+/// <reference path="../model/Entity.js" />
+/// <reference path="../model/ObjectMeta.js" />
+/// <reference path="../model/LazyLoader.js" />
+/// <reference path="SaveProvider.js" />
+/// <reference path="RoundtripProvider.js" />
+/// <reference path="EventProvider.js" />
+/// <reference path="ExoModelEventListener.js" />
+/// <reference path="ObjectLazyLoader.js" />
+/// <reference path="ChangeSet.js" />
+/// <reference path="ChangeLog.js" />
 /// <reference path="Internals.js" />
 
+/*globals window, setTimeout, clearTimeout, context */
+/*globals Functor, Translator, Observer, ArgumentNullError, ArgumentTypeError */
+/*globals Model, Entity, LazyLoader, ObjectLazyLoader, ChangeLog, ExoModelEventListener, fromExoModel */
+/*global saveProvider, roundtripProvider, eventProvider, objectProvider */
+
 function ServerSync(model) {
-	if (model == null) throw new ArgumentNullError("model");
-	if (typeof(model) !== "object" || !(model instanceof ExoWeb.Model.Model)) {
+	"use strict";
+
+	// Basic argument validation.
+	if (model === null || model === undefined) {
+		throw new ArgumentNullError("model");
+	}
+	if (typeof (model) !== "object" || !(model instanceof Model)) {
 		throw new ArgumentTypeError("model", "model", model);
 	}
 
-	this._changeLog = new ChangeLog();
-	this._pendingServerEvent = false;
-	this._pendingRoundtrip = false;
-	this._pendingSave = false;
-	this._scopeQueries = [];
-	this._objectsExcludedFromSave = [];
-	this._objectsDeleted = [];
-	this._translator = new ExoWeb.Translator();
-	this._serverInfo = null;
-
-	// define properties
-	Object.defineProperty(this, "model", { value: model });
-
-	function isDeleted(obj, isChange) {
-		if (Array.contains(this._objectsDeleted, obj)) {
-			if (isChange) {
-				logWarning($format("Object {0}|{1} was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id));
+	// Create the necessary local variables.
+	var changeLog = new ChangeLog(),
+		translator = new Translator(),
+		objectsDeleted = [],
+		isObjectDeleted = function (deletedObjectsList, obj, isChange) {
+			if (Array.contains(deletedObjectsList, obj)) {
+				if (isChange) {
+					logWarning($format("Object {0}|{1} was changed but has been deleted.", obj.meta.type.get_fullName(), obj.meta.id));
+				}
+				return true;
 			}
-			return true;
+			return false;
+		},
+		filterObjectEvent = function (obj) {
+			return !isObjectDeleted(objectsDeleted, obj, false);
+		},
+		filterPropertyEvent = function (obj) {
+			return !isObjectDeleted(objectsDeleted, obj, true);
+		},
+		listener = new ExoModelEventListener(model, translator, {
+			listChanged: filterPropertyEvent,
+			propertyChanged: filterPropertyEvent,
+			objectRegistered: filterObjectEvent,
+			objectUnregistered: filterObjectEvent
+		}),
+		applyingChanges = 0,
+		isCapturingChanges = false,
+		self = this;
+
+	// When the event listener detects a change then pass it along to the change log.
+	listener.addChangeDetected(function (change) {
+		if (applyingChanges <= 0 && isCapturingChanges === true) {
+			if (change.property) {
+				var instance = fromExoModel(change.instance, translator);
+				var property = instance.meta.property(change.property);
+
+				if (property.get_jstype() === Date && change.newValue && property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
+					var serverOffset = self.get_ServerTimezoneOffset();
+					var localOffset = -(new Date().getTimezoneOffset() / 60);
+					var difference = localOffset - serverOffset;
+					change.newValue = change.newValue.addHours(difference);
+				}
+				else if (change.newValue && change.newValue instanceof TimeSpan) {
+					change.newValue = change.newValue.toObject();
+				}
+			}
+
+			changeLog.add(change);
+
+			self._raiseEvent("changesDetected", [self, { reason: "listener.addChangeDetected", changes: [change] }]);
+
+			// Restart auto-save interval if necessary.
+			if (self._saveInterval && self.canSave(change) && isPropertyChangePersisted(change)) {
+				self._queueAutoSave();
+			}
 		}
-		return false;
-	}
-
-	// don't record changes to types that didn't originate from the server
-	function filterObjectEvent(obj) {
-		return !isDeleted.apply(this, [obj, false]) && obj.meta.type.get_origin() === "server";
-	}
-
-	// don't record changes to types or properties that didn't originate from the server
-	function filterPropertyEvent(obj, property) {
-		return !isDeleted.apply(this, [obj, true]) && property.get_containingType().get_origin() === "server" && property.get_origin() === "server" && !property.get_isStatic();
-	}
-
-	this._listener = new ExoModelEventListener(this.model, this._translator, {
-		listChanged: filterPropertyEvent.bind(this),
-		propertyChanged: filterPropertyEvent.bind(this),
-		objectRegistered: filterObjectEvent.bind(this),
-		objectUnregistered: filterObjectEvent.bind(this)
 	});
 
-	var applyingChanges = 0;
-	this.isApplyingChanges = function ServerSync$isApplyingChanges() {
+	// Applying changes (e.g. via a server response change set).
+	this.isApplyingChanges = function () {
 		return applyingChanges > 0;
 	};
-	this.beginApplyingChanges = function ServerSync$beginApplyingChanges() {
-		applyingChanges++;
+	this.beginApplyingChanges = function () {
+		applyingChanges += 1;
 	};
-	this.endApplyingChanges = function ServerSync$endApplyingChanges() {
-		applyingChanges--;
+	this.endApplyingChanges = function () {
+		applyingChanges -= 1;
 
-		if (applyingChanges < 0)
+		if (applyingChanges < 0) {
 			throw new Error("Error in transaction log processing: unmatched begin and end applying changes.");
-	};
-
-	var isCapturingChanges;
-	this.isCapturingChanges = function ServerSync$isCapturingChanges() {
-		return isCapturingChanges === true;
-	};
-	this.beginCapturingChanges = function ServerSync$beginCapturingChanges() {
-		if (!isCapturingChanges) {
-			isCapturingChanges = true;
-			this._changeLog.start("client");
 		}
 	};
 
-	this.ignoreChanges = function(before, callback, after, thisPtr) {
-		return function() {
+	// Capturing changes (i.e. after context initialization has completed).
+	this.isCapturingChanges = function () {
+		return isCapturingChanges === true;
+	};
+	this.beginCapturingChanges = function () {
+		if (!isCapturingChanges) {
+			isCapturingChanges = true;
+			changeLog.start({ user: this._localUser });
+		}
+	};
+	this.ignoreChanges = function (before, callback, after, thisPtr) {
+		return function () {
 			var beforeCalled = false;
 
 			try {
-				applyingChanges++;
+				applyingChanges += 1;
 
-				if (before && before instanceof Function)
+				if (before && before instanceof Function) {
 					before();
-				
+				}
+
 				beforeCalled = true;
 
 				callback.apply(thisPtr || this, arguments);
-			}
-			finally {
-				applyingChanges--;
-				
-				if (beforeCalled === true && after && after instanceof Function)
+			} finally {
+				applyingChanges -= 1;
+
+				if (beforeCalled === true && after && after instanceof Function) {
 					after();
+				}
 			}
 		};
 	};
 
-	model.addObjectRegistered(function(obj) {
-		// if an existing object is registered then register for lazy loading
-		if (!obj.meta.isNew && obj.meta.type.get_origin() == "server" && isCapturingChanges === true && !applyingChanges) {
+	this.isObjectDeleted = function (obj, isChange) {
+		return isObjectDeleted(objectsDeleted, obj, isChange);
+	};
+
+	// If an existing object is registered then register it for lazy loading.
+	model.addObjectRegistered(function (obj) {
+		if (!obj.meta.isNew && obj.meta.type.get_origin() === "server" && isCapturingChanges === true && !applyingChanges) {
 			ObjectLazyLoader.register(obj);
 		}
 	});
 
-	// Assign back reference
+	// Link model and server objects.
+	Object.defineProperty(this, "model", { value: model });
 	Object.defineProperty(model, "server", { value: this });
 
-	this._listener.addChangeDetected(this._captureChange.bind(this));
+	// Assign backing fields as needed
+	this._changeLog = changeLog;
+	this._scopeQueries = [];
+	this._objectsExcludedFromSave = [];
+	this._objectsDeleted = objectsDeleted;
+	this._translator = translator;
+	this._serverInfo = null;
+	this._localUser = null;
 
 	Observer.makeObservable(this);
 }
 
 function isPropertyChangePersisted(change) {
 	if (change.property) {
-		var jstype = ExoWeb.Model.Model.getJsType(change.instance.type, true);
+		var jstype = Model.getJsType(change.instance.type, true);
 		if (jstype) {
 			var prop = jstype.meta.property(change.property);
 			// Can't save non-persisted properties
@@ -178,12 +233,12 @@ function ServerSync$addScopeQuery(query) {
 }
 
 function ServerSync$storeInitChanges(changes) {
-	var activeSet = this._changeLog.activeSet();
+	var activeSet = this._changeLog.activeSet;
 
-	this._changeLog.addSet("init", changes);
+	this._changeLog.addSet("init", null, null, changes);
 
 	if (activeSet) {
-		this._changeLog.start(activeSet.source());
+		this._changeLog.start({ title: activeSet.title, user: activeSet.user });
 	}
 }
 
@@ -199,7 +254,7 @@ ServerSync.mixin({
 	// Enable/disable save & related functions
 	///////////////////////////////////////////////////////////////////////
 	enableSave: function ServerSync$enableSave(obj) {
-		if (!(obj instanceof ExoWeb.Model.Entity)) {
+		if (!(obj instanceof Entity)) {
 			throw new Error("Can only enableSave on entity objects.");
 		}
 
@@ -210,7 +265,8 @@ ServerSync.mixin({
 				oldPendingChanges = this.changes(false, this._saveRoot, true);
 			}
 			Array.remove(this._objectsExcludedFromSave, obj);
-			Observer.raisePropertyChanged(this, "HasPendingChanges");
+
+			this._raiseEvent("changesDetected", [this, { reason: "enableSave" }]);
 
 			// Determine if ther are now pending changes
 			if (oldPendingChanges && oldPendingChanges.length === 0 && this._saveInterval && !this._saveTimeout) {
@@ -222,7 +278,7 @@ ServerSync.mixin({
 		}
 	},
 	disableSave: function ServerSync$disableSave(obj) {
-		if (!(obj instanceof ExoWeb.Model.Entity)) {
+		if (!(obj instanceof Entity)) {
 			throw new Error("Can only disableSave on entity objects.");
 		}
 
@@ -233,7 +289,8 @@ ServerSync.mixin({
 				oldPendingChanges = this.changes(false, this._saveRoot, true);
 			}
 			this._objectsExcludedFromSave.push(obj);
-			Observer.raisePropertyChanged(this, "HasPendingChanges");
+
+			this._raiseEvent("changesDetected", [this, { reason: "disableSave" }]);
 
 			// Determine if ther are no longer pending changes
 			if (oldPendingChanges && oldPendingChanges.length > 0 && this._saveInterval && this._saveTimeout) {
@@ -246,7 +303,7 @@ ServerSync.mixin({
 		}
 	},
 	notifyDeleted: function ServerSync$notifyDeleted(obj) {
-		if (!(obj instanceof ExoWeb.Model.Entity)) {
+		if (!(obj instanceof Entity)) {
 			throw new Error("Notified of deleted object that is not an entity.");
 		}
 
@@ -254,10 +311,41 @@ ServerSync.mixin({
 			this._objectsDeleted.push(obj);
 			return true;
 		}
+
+		return false;
 	},
 	canSend: function (change) {
-		if (change.type === "Checkpoint") return false;
 
+		// Checkpoint is a client-only event type.
+		if (change.type === "Checkpoint") {
+			return false;
+		}
+
+		if (change.instance) {
+			var type = Model.getJsType(change.instance.type, true);
+			if (type && LazyLoader.isLoaded(type.meta)) {
+				if (type.meta.get_origin() !== "server") {
+					// Don't send change events for types that didn't originate from the server.
+					return false;
+				}
+
+				if (change.property) {
+					var property = type.meta.property(change.property);
+					// Don't send property change events for properties that didn't originate from the server, or static properties.
+					if (property.get_origin() !== "server" || property.get_isStatic()) {
+						return false;
+					}
+				}
+
+				// Don't send changes for deleted objects.
+				var obj = fromExoModel(change.instance, this._translator, false, this._objectsDeleted);
+				if (obj && this.isObjectDeleted(obj, false)) {
+					return false;
+				}
+			}
+		}
+
+		// Event is ok to send.
 		return true;
 	},
 	canSaveObject: function ServerSync$canSaveObject(objOrMeta) {
@@ -270,7 +358,7 @@ ServerSync.mixin({
 		else if (objOrMeta instanceof ExoWeb.Model.ObjectMeta) {
 			obj = objOrMeta._obj;
 		}
-		else if (objOrMeta instanceof ExoWeb.Model.Entity) {
+		else if (objOrMeta instanceof Entity) {
 			obj = objOrMeta;
 		}
 		else {
@@ -355,8 +443,8 @@ ServerSync.mixin({
 		return !instanceObj || this.canSaveObject(instanceObj);
 	},
 
-	_handleResult: function ServerSync$_handleResult(result, source, checkpoint, callbackOrOptions) {
-		var callback, beforeApply, afterApply;
+	_handleResult: function ServerSync$_handleResult(result, description, checkpoint, callbackOrOptions) {
+		var callback, beforeApply = null, afterApply = null;
 
 		if (callbackOrOptions instanceof Function) {
 			callback = callbackOrOptions;
@@ -367,33 +455,22 @@ ServerSync.mixin({
 			afterApply = callbackOrOptions.afterApply;
 		}
 
-		var handler = new ResponseHandler(this.model, this, {
+		ResponseHandler.execute(this.model, this, {
 			instances: result.instances,
 			conditions: result.conditions,
 			types: result.types && result.types instanceof Array ? null : result.types,
 			changes: result.changes,
-			source: source,
+			source: "server",
+			description: description,
 			checkpoint: checkpoint,
 			serverInfo: result.serverInfo,
 			beforeApply: beforeApply,
 			afterApply: afterApply
-		});
-
-		handler.execute(callback, this);
+		}, callback, this);
 	},
 
 	// General events methods
 	///////////////////////////////////////////////////////////////////////
-	_raiseBeginEvents: function (method, args) {
-		this._raiseEvent(method + "Begin", [this, args]);
-		this._raiseEvent("requestBegin", [this, args]);
-	},
-	_raiseEndEvents: function (method, result, args) {
-		this._raiseEvent(method + result, [this, args]);
-		this._raiseEvent("request" + result, [this, args]);
-		this._raiseEvent(method + "End", [this, args]);
-		this._raiseEvent("requestEnd", [this, args]);
-	},
 	addRequestBegin: function (handler) {
 		this._addEvent("requestBegin", handler);
 	},
@@ -421,51 +498,78 @@ ServerSync.mixin({
 
 	// Raise Server Event
 	///////////////////////////////////////////////////////////////////////
-	raiseServerEvent: function ServerSync$raiseServerEvent(name, instance, event, includeAllChanges, success, failed, paths) {
+	raiseServerEvent: function ServerSync$raiseServerEvent(name, target, event, includeAllChanges, success, failed, paths) {
+		/// <summary locid="M:J#ExoWeb.Mapper.ServerSync.save">
+		/// Raise a server event on the given target. The given success or failure callback is invoked
+		/// when the request is complete.
+		/// </summary>
+		/// <param name="name" optional="false" mayBeNull="false" type="String"></param>
+		/// <param name="target" optional="false" mayBeNull="false" type="ExoWeb.Model.Entity"></param>
+		/// <param name="event" optional="true" mayBeNull="null" type="Object"></param>
+		/// <param name="success" optional="true" mayBeNull="true" type="Function"></param>
+		/// <param name="failed" optional="true" mayBeNull="true" type="Function"></param>
+		/// <param name="paths" optional="true" mayBeNull="true" isArray="true" type="String"></param>
+
+		var args, checkpoint, serializedEvent, serializedEventTarget, eventPropName;
+
 		pendingRequests++;
 
 		// Checkpoint the log to ensure that we only truncate changes that were saved.
-		var checkpoint = this._changeLog.checkpoint("server event " + name + " " + (new Date()).format("d"));
+		checkpoint = this._changeLog.checkpoint("raiseServerEvent(" + name + ")-" + +(new Date()));
 
-		Observer.setValue(this, "PendingServerEvent", true);
+		args = {
+			type: "raiseServerEvent",
+			target: target,
+			checkpoint: checkpoint,
+			includeAllChanges: includeAllChanges
+		};
 
-		var args = { type: "raiseServerEvent", eventTarget: instance, eventName: name, eventRaised: event, checkpoint: checkpoint, includeAllChanges: includeAllChanges };
-		this._raiseBeginEvents("raiseServerEvent", args);
+		args.eventName = name;
+		args.eventObject = event;
 
-		// if no event object is provided then use an empty object
-		if (event === undefined || event === null) {
-			event = {};
+		this._raiseEvent("raiseServerEventBegin", [this, args]);
+
+		serializedEvent = {};
+
+		// If an event object is provided then convert its entity properties into their serialized form.
+		if (event !== undefined && event !== null) {
+			for (eventPropName in event) {
+				var arg = event[eventPropName];
+
+				if (arg instanceof Array) {
+					serializedEvent[eventPropName] = arg.map(function (a) { return toExoModel(a, this._translator); }, this);
+				} else {
+					serializedEvent[eventPropName] = toExoModel(arg, this._translator);
+				}
+			}
 		}
 
-		for (var key in event) {
-			var arg = event[key];
+		serializedEventTarget = toExoModel(target, this._translator);
 
-			if (arg instanceof Array) {
-				event[key] = arg.map(function (a) { return toExoModel(a, this._translator); }, this);
-			}
-			else {
-				event[key] = toExoModel(arg, this._translator);
-			}
-		}
+		args.root = serializedEventTarget;
+		args.eventData = serializedEvent;
+
+		this._raiseEvent("requestBegin", [this, args]);
 
 		eventProvider(
 			name,
-			toExoModel(instance, this._translator),
-			event,
+			serializedEventTarget,
+			serializedEvent,
 			paths,
-		// If includeAllChanges is true, then use all changes including those 
-		// that should not be saved, otherwise only use changes that can be saved.
-			serializeChanges.call(this, includeAllChanges, instance),
+			serializeChanges.call(this, includeAllChanges, target),
 			this._onRaiseServerEventSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onRaiseServerEventFailed.bind(this).appendArguments(args, failed || success)
 		);
 	},
 	_onRaiseServerEventSuccess: function ServerSync$_onRaiseServerEventSuccess(result, args, checkpoint, callback) {
-		Observer.setValue(this, "PendingServerEvent", false);
-
 		args.responseObject = result;
+		args.requestSucceeded = true;
 
-		this._handleResult(result, args.eventName, checkpoint, function () {
+		this._raiseEvent("requestEnd", [this, args]);
+
+		this._handleResult(result, "raiseServerEvent(" + args.eventName + ")", checkpoint, function () {
+			this._raiseEvent("requestSuccess", [this, args]);
+
 			var event = result.events[0];
 			if (event instanceof Array) {
 				for (var i = 0; i < event.length; ++i) {
@@ -479,25 +583,32 @@ ServerSync.mixin({
 			restoreDates(event);
 
 			result.event = event;
-			args.eventResponse = event;
 
-			this._raiseEndEvents("raiseServerEvent", "Success", args);
+			args.eventResult = event;
 
-			if (callback && callback instanceof Function)
-				callback.call(this, result);
+			this._raiseEvent("raiseServerEventEnd", [this, args]);
+			this._raiseEvent("raiseServerEventSuccess", [this, args]);
+
+			if (callback && callback instanceof Function) {
+				callback(result);
+			}
 
 			pendingRequests--;
 		});
 	},
 	_onRaiseServerEventFailed: function ServerSync$_onRaiseServerEventFailed(error, args, callback) {
-		Observer.setValue(this, "PendingServerEvent", false);
+		args.responseObject = error;
+		args.requestSucceeded = false;
 
-		args.error = error;
+		this._raiseEvent("requestEnd", [this, args]);
+		this._raiseEvent("requestFailed", [this, args]);
 
-		this._raiseEndEvents("raiseServerEvent", "Failed", args);
+		this._raiseEvent("raiseServerEventEnd", [this, args]);
+		this._raiseEvent("raiseServerEventFailed", [this, args]);
 
-		if (callback && callback instanceof Function)
-			callback.call(this, error);
+		if (callback && callback instanceof Function) {
+			callback(error);
+		}
 
 		pendingRequests--;
 	},
@@ -528,62 +639,97 @@ ServerSync.mixin({
 
 	// Roundtrip
 	///////////////////////////////////////////////////////////////////////
-	roundtrip: function ServerSync$roundtrip(root, paths, success, failed) {
+	roundtrip: function ServerSync$roundtrip(target, paths, success, failed) {
+		/// <summary locid="M:J#ExoWeb.Mapper.ServerSync.save">
+		/// Roundtrips the current changes to the server. The given success or failure callback is
+		/// invoked when the request is complete.
+		/// </summary>
+		/// <param name="target" optional="false" mayBeNull="false" type="ExoWeb.Model.Entity"></param>
+		/// <param name="paths" optional="false" mayBeNull="true" isArray="true" type="String"></param>
+		/// <param name="success" optional="false" mayBeNull="true" type="Function"></param>
+		/// <param name="failed" optional="false" mayBeNull="true" type="Function"></param>
+
+		var args, checkpoint, serializedTarget, includeAllChanges;
+
 		pendingRequests++;
 
-		if (root && root instanceof Function) {
-			success = root;
+		if (target && target instanceof Function) {
+			success = target;
 			failed = paths;
-			root = null;
+			target = null;
 			paths = null;
 		}
 
-		var checkpoint = this._changeLog.checkpoint("roundtrip " + (new Date()).format("d"));
+		checkpoint = this._changeLog.checkpoint("roundtrip-" + +(new Date()));
 
-		Observer.setValue(this, "PendingRoundtrip", true);
+		if (target) {
+			includeAllChanges = true;
+		} else {
+			includeAllChanges = false;
+		}
 
-		var args = { type: "roundtrip", checkpoint: checkpoint };
-		this._raiseBeginEvents("roundtrip", args);
+		args = {
+			type: "roundtrip",
+			target: target || null,
+			checkpoint: checkpoint,
+			includeAllChanges: includeAllChanges
+		};
 
-		var mtype = root ? root.meta.type || root.meta : null;
-		var id = root ? root.meta.id || STATIC_ID : null;
+		this._raiseEvent("roundtripBegin", [this, args]);
+
+		if (target) {
+			serializedTarget = toExoModel(target, this._translator);
+		} else {
+			serializedTarget = null;
+		}
+
+		args.root = serializedTarget;
+
+		this._raiseEvent("requestBegin", [this, args]);
 
 		roundtripProvider(
-			mtype ? mtype.get_fullName() : null,
-			id,
+			serializedTarget,
 			paths,
-			serializeChanges.call(this, !!root, root),
+			serializeChanges.call(this, includeAllChanges, target),
 			this._onRoundtripSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onRoundtripFailed.bind(this).appendArguments(args, failed || success)
 		);
 	},
 	_onRoundtripSuccess: function ServerSync$_onRoundtripSuccess(result, args, checkpoint, callback) {
-		Observer.setValue(this, "PendingRoundtrip", false);
-
 		args.responseObject = result;
+		args.requestSucceeded = true;
+
+		this._raiseEvent("requestEnd", [this, args]);
 
 		this._handleResult(result, "roundtrip", checkpoint, function () {
-			this._raiseEndEvents("roundtrip", "Success", args);
+			this._raiseEvent("requestSuccess", [this, args]);
+			this._raiseEvent("roundtripEnd", [this, args]);
+			this._raiseEvent("roundtripSuccess", [this, args]);
 
-			if (callback && callback instanceof Function)
-				callback.call(this, result);
+			if (callback && callback instanceof Function) {
+				callback(result);
+			}
 
 			pendingRequests--;
 		});
 	},
 	_onRoundtripFailed: function ServerSync$_onRoundtripFailed(error, args, callback) {
-		Observer.setValue(this, "PendingRoundtrip", false);
+		args.responseObject = error;
+		args.requestSucceeded = false;
 
-		args.error = error;
+		this._raiseEvent("requestEnd", [this, args]);
+		this._raiseEvent("requestFailed", [this, args]);
 
-		this._raiseEndEvents("roundtrip", "Failed", args);
+		this._raiseEvent("roundtripEnd", [this, args]);
+		this._raiseEvent("roundtripFailed", [this, args]);
 
-		if (callback && callback instanceof Function)
-			callback.call(this, error);
+		if (callback && callback instanceof Function) {
+			callback(error);
+		}
 
 		pendingRequests--;
 	},
-	startAutoRoundtrip: function ServerSync$startAutoRoundtrip(interval) {
+	startAutoRoundtrip: function (interval) {
 		if (!interval || typeof(interval) !== "number" || interval <= 0) {
 			throw new Error("An interval must be specified for auto-save.");
 		}
@@ -599,7 +745,7 @@ ServerSync.mixin({
 
 		this._roundtripTimeout = window.setTimeout(doRoundtrip.bind(this), interval);
 	},
-	stopAutoRoundtrip: function ServerSync$stopAutoRoundtrip() {
+	stopAutoRoundtrip: function () {
 		if (this._roundtripTimeout) {
 			window.clearTimeout(this._roundtripTimeout);
 		}
@@ -631,47 +777,75 @@ ServerSync.mixin({
 
 	// Save
 	///////////////////////////////////////////////////////////////////////
-	save: function ServerSync$save(root, success, failed) {
+	save: function (target, success, failed) {
+		/// <summary locid="M:J#ExoWeb.Mapper.ServerSync.save">
+		/// Saves changes to the given target and related entities. The given success or failure
+		/// callback is invoked when the request is complete.
+		/// </summary>
+		/// <param name="target" optional="false" mayBeNull="false" type="ExoWeb.Model.Entity"></param>
+		/// <param name="success" optional="false" mayBeNull="true" type="Function"></param>
+		/// <param name="failed" optional="false" mayBeNull="true" type="Function"></param>
+
+		var args, checkpoint, serializedTarget;
+
 		pendingRequests++;
 
 		// Checkpoint the log to ensure that we only truncate changes that were saved.
-		var checkpoint = this._changeLog.checkpoint("save " + (new Date()).format("d"));
+		checkpoint = this._changeLog.checkpoint("save-" + +(new Date()));
 
-		Observer.setValue(this, "PendingSave", true);
+		args = {
+			type: "save",
+			target: target,
+			checkpoint: checkpoint,
+			includeAllChanges: false
+		};
 
-		var args = { type: "save", root: root, checkpoint: checkpoint };
-		this._raiseBeginEvents("save", args);
+		this._raiseEvent("saveBegin", [this, args]);
+
+		serializedTarget = toExoModel(target, this._translator);
+
+		args.root = serializedTarget;
+
+		this._raiseEvent("requestBegin", [this, args]);
 
 		saveProvider(
-			toExoModel(root, this._translator),
-			serializeChanges.call(this, false, root),
+			serializedTarget,
+			serializeChanges.call(this, false, target),
 			this._onSaveSuccess.bind(this).appendArguments(args, checkpoint, success),
 			this._onSaveFailed.bind(this).appendArguments(args, failed || success)
 		);
 	},
 	_onSaveSuccess: function ServerSync$_onSaveSuccess(result, args, checkpoint, callback) {
-		Observer.setValue(this, "PendingSave", false);
-
 		args.responseObject = result;
+		args.requestSucceeded = true;
+
+		this._raiseEvent("requestEnd", [this, args]);
 
 		this._handleResult(result, "save", checkpoint, function () {
-			this._raiseEndEvents("save", "Success", args);
+			this._raiseEvent("requestSuccess", [this, args]);
+			this._raiseEvent("saveEnd", [this, args]);
+			this._raiseEvent("saveSuccess", [this, args]);
 
-			if (callback && callback instanceof Function)
-				callback.call(this, result);
+			if (callback && callback instanceof Function) {
+				callback(result);
+			}
 
 			pendingRequests--;
 		});
 	},
 	_onSaveFailed: function (error, args, callback) {
-		Observer.setValue(this, "PendingSave", false);
+		args.responseObject = error;
+		args.requestSucceeded = false;
 
-		args.error = error;
+		this._raiseEvent("requestEnd", [this, args]);
+		this._raiseEvent("requestFailed", [this, args]);
 
-		this._raiseEndEvents("save", "Failed", args);
+		this._raiseEvent("saveEnd", [this, args]);
+		this._raiseEvent("saveFailed", [this, args]);
 
-		if (callback && callback instanceof Function)
-			callback.call(this, error);
+		if (callback && callback instanceof Function) {
+			callback(error);
+		}
 
 		pendingRequests--;
 	},
@@ -736,9 +910,202 @@ ServerSync.mixin({
 		this._removeEvent("saveFailed", handler);
 	},
 
+	// EnsureLoaded
+	///////////////////////////////////////////////////////////////////////
+	ensureLoaded: function (target, paths, includePathsFromQueries, success, failed) {
+		/// <summary locid="M:J#ExoWeb.Mapper.ServerSync.ensureLoaded">
+		/// Loads the given entity (and optionally a set of relative paths) if necessary. The given success or failure
+		/// callback is invoked when the request is complete if loading was required. If no loading was required, the
+		/// success callback is invoked after a short period of time. This artifical asynchronicity is introduced
+		/// primarily to limit call stack size, and in the case of loading a consistent asynchronous experience is
+		/// acceptable and perhaps even expected to some extent.
+		/// </summary>
+		/// <param name="target" optional="false" mayBeNull="false" type="ExoWeb.Model.Entity|ExoWeb.Model.Type"></param>
+		/// <param name="paths" optional="false" mayBeNull="true" isArray="true" type="String"></param>
+		/// <param name="includePathsFromQueries" mayBeNull="true" type="Boolean" optional="false"></param>
+		/// <param name="success" optional="false" mayBeNull="true" type="Function"></param>
+		/// <param name="failed" optional="false" mayBeNull="true" type="Function"></param>
+
+		var args, checkpoint, serializedTarget, queryPaths, pathsToLoad, staticPath, staticProperty;
+
+		pendingRequests++;
+
+		if (target === null || target === undefined) {
+			throw new Error("Method ensureLoaded requires a target argument.");
+		}
+
+		if (target instanceof Entity) {
+			if (includePathsFromQueries) {
+				// Get the paths from the original query(ies) that apply to the target object (based on type).
+				queryPaths = ObjectLazyLoader.getRelativePaths(target);
+				if (paths) {
+					pathsToLoad = paths.concat(queryPaths);
+				} else {
+					pathsToLoad = queryPaths;
+				}
+			} else {
+				pathsToLoad = paths || [];
+			}
+		} else {
+			// For static loading a single array or object will be loaded with no additional paths.
+			pathsToLoad = [];
+
+			// Use the meta type if a type constructor was used as the target.
+			if (target instanceof Function && target.meta && target.meta && target.meta instanceof Type) {
+				target = target.meta;
+			}
+
+			if (!(target instanceof Type)) {
+				throw new Error($format("Method ensureLoaded expects target of type Entity or Type, but found type \"{0}\".", parseFunctionName(target.constructor)));
+			}
+
+			if (paths === null || paths === undefined) {
+				throw new Error("Method ensureLoaded requires a paths argument for static property loading.");
+			}
+
+			if (Object.prototype.toString.call(paths) === "[object String]") {
+				staticPath = paths;
+			} else if (Object.prototype.toString.call(paths) === "[object Array]") {
+				if (paths.length === 1) {
+					staticPath = paths[0];
+				} else {
+					throw new Error($format("Multiple paths cannot be specified when ensuring that static property information is loaded: \"{0}.[{1}]\".", target.get_fullName(), paths.join(",")));
+				}
+			} else {
+				throw new Error($format("Argument \"paths\" was expected to be a string or array of strings, but found type \"{0}\" instead.", parseFunctionName(target.constructor)));
+			}
+
+			// Static property path can only be a single property name, not a multi-step path.
+			if (staticPath.indexOf(".") >= 0) {
+				throw new Error($format("Multiple path steps cannot be specified when ensuring that static property information is loaded: \"{0}.{1}\".", target.get_fullName(), staticPath));
+			}
+
+			// Get the meta property for the given single path.
+			staticProperty = target.property(staticPath);
+
+			// Prepend the target type name to the static path for later use in logging and errors, etc.
+			staticPath = target.get_fullName() + "." + staticPath;
+
+			// Get the static path value and verify that there is a value in order to ensure loading.
+			target = staticProperty.value(target);
+			if (target === null || target === undefined) {
+				throw new Error($format("Unable to ensure that static path \"{0}\" is loaded because it evaluates to a null or undefined value.", staticPath));
+			}
+		}
+
+		// Checkpoint the log to ensure that we only truncate changes that were saved.
+		checkpoint = this._changeLog.checkpoint("ensureLoaded" + +(new Date()));
+
+		args = {
+			type: "ensureLoaded",
+			target: target instanceof Entity ? target : null,
+			checkpoint: checkpoint,
+			includeAllChanges: true
+		};
+
+		this._raiseEvent("ensureLoadedBegin", [this, args]);
+
+		// Check if the object or any of the paths require loading. Apply the array of paths to the
+		// isLoaded call, since the paths will be obtained as "rest" parameters.
+		if (!LazyLoader.isLoaded.apply(null, [target].concat(pathsToLoad))) {
+			serializedTarget = target instanceof Entity ? toExoModel(target, this._translator) : null;
+
+			args.root = serializedTarget;
+
+			this._raiseEvent("requestBegin", [this, args]);
+
+			// TODO: reference to server will be a singleton, not context
+			objectProvider(
+				target instanceof Entity ? target.meta.type.get_fullName() : target.get_fullName(),
+				target instanceof Entity ? [target.meta.id] : [],
+				pathsToLoad,
+				false, // in scope?
+				serializeChanges.call(this, true),
+				this._onEnsureLoadedSuccess.bind(this).appendArguments(args, checkpoint, success),
+				this._onEnsureLoadedFailed.bind(this).appendArguments(args, failed || success));
+		} else {
+			var self = this;
+			window.setTimeout(function () {
+				args.requiredLoading = false;
+
+				self._raiseEvent("ensureLoadedEnd", [self, args]);
+				self._raiseEvent("ensureLoadedSuccess", [self, args]);
+
+				if (success && success instanceof Function) {
+					success();
+				}
+
+				pendingRequests--;
+			}, 1);
+		}
+	},
+	_onEnsureLoadedSuccess: function (result, args, checkpoint, callback) {
+		args.responseObject = result;
+		args.requestSucceeded = true;
+
+		this._raiseEvent("requestEnd", [this, args]);
+
+		this._handleResult(result, "ensureLoaded", checkpoint, function () {
+			this._raiseEvent("requestSuccess", [this, args]);
+
+			args.requiredLoading = true;
+
+			this._raiseEvent("ensureLoadedEnd", [this, args]);
+			this._raiseEvent("ensureLoadedSuccess", [this, args]);
+
+			if (callback && callback instanceof Function) {
+				callback(result);
+			}
+
+			pendingRequests--;
+		});
+	},
+	_onEnsureLoadedFailed: function (error, args, callback) {
+		args.responseObject = error;
+		args.requestSucceeded = false;
+
+		this._raiseEvent("requestEnd", [this, args]);
+		this._raiseEvent("requestFailed", [this, args]);
+
+		args.requiredLoading = true;
+
+		this._raiseEvent("ensureLoadedEnd", [this, args]);
+		this._raiseEvent("ensureLoadedFailed", [this, args]);
+
+		if (callback && callback instanceof Function) {
+			callback(error);
+		}
+
+		pendingRequests--;
+	},
+	addEnsureLoadedBegin: function (handler) {
+		this._addEvent("ensureLoadedBegin", handler);
+	},
+	removeEnsureLoadedBegin: function (handler) {
+		this._removeEvent("ensureLoadedBegin", handler);
+	},
+	addEnsureLoadedEnd: function (handler) {
+		this._addEvent("ensureLoadedEnd", handler);
+	},
+	removeEnsureLoadedEnd: function (handler) {
+		this._removeEvent("ensureLoadedEnd", handler);
+	},
+	addEnsureLoadedSuccess: function (handler) {
+		this._addEvent("ensureLoadedSuccess", handler);
+	},
+	removeEnsureLoadedSuccess: function (handler) {
+		this._removeEvent("ensureLoadedSuccess", handler);
+	},
+	addEnsureLoadedFailed: function (handler) {
+		this._addEvent("ensureLoadedFailed", handler);
+	},
+	removeEnsureLoadedFailed: function (handler) {
+		this._removeEvent("ensureLoadedFailed", handler);
+	},
+
 	// Apply Changes
 	///////////////////////////////////////////////////////////////////////
-	applyChanges: function (checkpoint, changes, source, filter, beforeApply, afterApply, callback, thisPtr) {
+	applyChanges: function (checkpoint, changes, source, user, setId, filter, beforeApply, afterApply, callback, thisPtr) {
 		if (!changes || !(changes instanceof Array)) {
 			if (callback) {
 				callback.call(thisPtr || this);
@@ -746,7 +1113,9 @@ ServerSync.mixin({
 			return;
 		}
 
-		var newChanges = 0;
+		if (source == null) throw new ArgumentNullError("source");
+
+		var newChanges = [];
 
 		var signal = new Signal("applyChanges");
 		var waitForAllRegistered = false;
@@ -756,12 +1125,11 @@ ServerSync.mixin({
 
 			this.beginApplyingChanges();
 
-			if ((source !== undefined && source !== null && (!this._changeLog.activeSet() || this._changeLog.activeSet().source() !== source)) || this.isCapturingChanges()) {
-				this._changeLog.start(source || "unknown");
+			if (this._changeLog.activeSet) {
+				this._changeLog.stop();
 			}
 
-			var currentChanges = this._changeLog.count(this.canSave, this);
-			var totalChanges = changes.length;
+			var changeSet = this._changeLog.addSet(source, null, user, null, setId);
 
 			// Determine that the target of a change is a new instance
 			var instanceIsNew = function (change) {
@@ -801,11 +1169,12 @@ ServerSync.mixin({
 
 				// Truncate changes that we believe were actually saved based on the response
 				this._changeLog.truncate(checkpoint, shouldDiscardChange.bind(this));
+				this._changeLog.start({ user: this._localUser });
 
 				// Update affected scope queries
 				idChanges.forEach(function (idChange) {
 					var jstype = ExoWeb.Model.Model.getJsType(idChange.type, true);
-					if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+					if (jstype && LazyLoader.isLoaded(jstype.meta)) {
 						var serverOldId = idChange.oldId;
 						var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 							this._translator.reverse(idChange.type, serverOldId) :
@@ -821,7 +1190,7 @@ ServerSync.mixin({
 
 			var numPendingSaveChanges = numSaveChanges;
 
-			changes.forEach(function (change, changeIndex) {
+			changes.forEach(function (change) {
 				if (change.type === "InitNew") {
 					this.applyInitChange(change, beforeApply, afterApply, signal.pending());
 				}
@@ -847,8 +1216,8 @@ ServerSync.mixin({
 					if (noObjectsWereSaved || !hasPendingSaveChanges || !shouldDiscardChange.call(this, change)) {
 						// Apply additional filter
 						if (!filter || filter(change) === true) {
-							newChanges++;
-							this._changeLog.add(change);
+							newChanges.push(change);
+							changeSet.add(change);
 						}
 					}
 				}
@@ -856,7 +1225,7 @@ ServerSync.mixin({
 
 			// start a new set to capture future changes
 			if (this.isCapturingChanges()) {
-				this._changeLog.start("client");
+				this._changeLog.start({ user: this._localUser });
 			}
 
 			waitForAllRegistered = true;
@@ -876,8 +1245,8 @@ ServerSync.mixin({
 		}
 
 		// raise "HasPendingChanges" change event, only new changes were recorded
-		if (newChanges > 0) {
-			Observer.raisePropertyChanged(this, "HasPendingChanges");
+		if (newChanges.length > 0) {
+			this._raiseEvent("changesDetected", [this, { reason: "applyChanges", changes: newChanges }]);
 		}
 	},
 	applySaveChange: function (change, before, after, callback, thisPtr) {
@@ -960,8 +1329,8 @@ ServerSync.mixin({
 						}
 					}
 
-					this._changeLog._sets.forEach(function (set) {
-						set._changes.forEach(function (change) {
+					this._changeLog.sets.forEach(function (set) {
+						set.changes.forEach(function (change) {
 							// Only process changes to model instances
 							if (!change.instance) return;
 
@@ -1205,15 +1574,31 @@ ServerSync.mixin({
 
 				// don't end update until the items have been loaded
 				listSignal.waitForAll(this.ignoreChanges(before, function () {
-					if (hasExited) {
-						this.beginApplyingChanges();
+					try {
+						var listUpdateEnded = false;
+						if (hasExited) {
+							this.beginApplyingChanges();
+						}
+						try {
+							ListLazyLoader.allowModification(list, function () {
+								// Update variable first to indicate that endUpdate was at least attempted.
+								// If the call to endUpdate generates an error we would not want to attempt
+								// again and potentially generate a different error because of side-effects.
+								listUpdateEnded = true;
+
+								list.endUpdate();
+							});
+						} finally {
+							if (!listUpdateEnded) {
+								list.endUpdate();
+							}
+						}
+					} finally {
+						if (hasExited) {
+							this.endApplyingChanges();
+						}
 					}
-					ListLazyLoader.allowModification(list, function () {
-						list.endUpdate();
-					});
-					if (hasExited) {
-						this.endApplyingChanges();
-					}
+
 					// Callback once all instances have been added
 					if (!callBeforeExiting && callback) {
 						callback.call(thisPtr || this);
@@ -1241,7 +1626,7 @@ ServerSync.mixin({
 	rollback: function ServerSync$rollback(checkpoint, callback, thisPtr) {
 		var signal = new Signal("rollback");
 		var waitForAllRegistered = false;
-		
+
 		try {
 			var batch = ExoWeb.Batch.start("rollback changes");
 
@@ -1272,7 +1657,7 @@ ServerSync.mixin({
 				if (callback) {
 					callback.call(thisPtr || this);
 				}
-				Observer.raisePropertyChanged(this, "HasPendingChanges");
+				this._raiseEvent("changesDetected", [this, { reason: "rollback" }]);
 			}, this, true);
 		}
 		finally {
@@ -1405,31 +1790,11 @@ ServerSync.mixin({
 
 	// Various
 	///////////////////////////////////////////////////////////////////////
-	_captureChange: function ServerSync$_captureChange(change) {
-		if (!this.isApplyingChanges() && this.isCapturingChanges()) {
-			if (change.property) {
-				var instance = fromExoModel(change.instance, this._translator);
-				var property = instance.meta.property(change.property);
-
-				if (property.get_jstype() === Date && change.newValue && property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
-					var serverOffset = this.get_ServerTimezoneOffset();
-					var localOffset = -(new Date().getTimezoneOffset() / 60);
-					var difference = localOffset - serverOffset;
-					change.newValue = change.newValue.addHours(difference);
-				}
-				else if (change.newValue && change.newValue instanceof TimeSpan) {
-					change.newValue = change.newValue.toObject();
-				}
-			}
-
-			this._changeLog.add(change);
-
-			Observer.raisePropertyChanged(this, "HasPendingChanges");
-
-			if (this._saveInterval && this.canSave(change) && isPropertyChangePersisted(change)) {
-				this._queueAutoSave();
-			}
-		}
+	addChangesDetected: function (handler) {
+		this._addEvent("changesDetected", handler);
+	},
+	batchChanges: function (description, callback, thisPtr) {
+		this._changeLog.batchChanges(description, this._localUser, thisPtr ? callback.bind(thisPtr) : callback);
 	},
 	changes: function ServerSync$changes(includeAllChanges, simulateInitRoot, excludeNonPersisted) {
 		var list = [];
@@ -1444,55 +1809,6 @@ ServerSync.mixin({
 		});
 		return list;
 	},
-	get_Changes: function ServerSync$get_Changes(includeAllChanges/*, ignoreWarning*/) {
-		if (arguments.length < 2 || arguments[1] !== true) {
-			logWarning("Method get_Changes is not intended for long-term use - it will be removed in the near future.");
-		}
-		return this.changes(includeAllChanges, null);
-	},
-	get_HasPendingChanges: function ServerSync$get_HasPendingChanges() {
-		return this._changeLog.sets().some(function (set) {
-			return set.changes().some(function (change) {
-				return this.canSave(change);
-			}, this);
-		}, this);
-	},
-	get_PendingAction: function ServerSync$get_PendingAction() {
-		return this._pendingServerEvent || this._pendingRoundtrip || this._pendingSave;
-	},
-	get_PendingServerEvent: function ServerSync$get_PendingServerEvent() {
-		return this._pendingServerEvent;
-	},
-	set_PendingServerEvent: function ServerSync$set_PendingServerEvent(value) {
-		var oldValue = this._pendingServerEvent;
-		this._pendingServerEvent = value;
-
-		if (oldValue !== value) {
-			Observer.raisePropertyChanged(this, "PendingAction");
-		}
-	},
-	get_PendingRoundtrip: function ServerSync$get_PendingRoundtrip() {
-		return this._pendingRoundtrip;
-	},
-	set_PendingRoundtrip: function ServerSync$set_PendingRoundtrip(value) {
-		var oldValue = this._pendingRoundtrip;
-		this._pendingRoundtrip = value;
-
-		if (oldValue !== value) {
-			Observer.raisePropertyChanged(this, "PendingAction");
-		}
-	},
-	get_PendingSave: function ServerSync$get_PendingSave() {
-		return this._pendingSave;
-	},
-	set_PendingSave: function ServerSync$set_PendingSave(value) {
-		var oldValue = this._pendingSave;
-		this._pendingSave = value;
-
-		if (oldValue !== value) {
-			Observer.raisePropertyChanged(this, "PendingAction");
-		}
-	},
 	get_ServerTimezoneOffset: function ServerSync$get_ServerTimezoneOffset() {
 		//if we have not set the server timezone offset yet, retrieve it from the server
 		var timezoneOffset = 0;
@@ -1506,25 +1822,25 @@ ServerSync.mixin({
 	set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
 		//join the new server info with the information that you are adding.
 		this._serverInfo = this._serverInfo ? jQuery.extend(this._serverInfo, newInfo) : newInfo;
+	},
+	get_localUser: function ServerSync$get_localUser(user) {
+		return this._localUser;
+	},
+	set_localUser: function ServerSync$set_localUser(user) {
+		this._localUser = user;
 	}
 });
 
-ExoWeb.Mapper.ServerSync = ServerSync;
-
 Property.prototype.triggersRoundtrip = function (paths) {
-	this.addChanged(function (sender, args) {
+	this.addChanged(function (sender) {
 		if (!context.server.isApplyingChanges()) {
 			EventScope$onExit(function() {
-				sender.meta.type.model.server.roundtrip(sender, paths);
+				setTimeout(function () {
+					sender.meta.type.model.server.roundtrip(sender, paths);
+				}, 100);
 			});
 		}
 	});
 };
 
-ServerSync.Save = function ServerSync$Save(root, success, failed) {
-	root.meta.type.model.server.save(root, success, failed);
-};
-
-ServerSync.GetServerTimeZone = function ServerSync$GetServerTimeZone(root) {
-	return root.meta.type.model.server.get_ServerTimezoneOffset(root);
-};
+exports.ServerSync = ServerSync; // IGNORE

@@ -1,5 +1,9 @@
-﻿/// <reference path="../../SpecDependencies.js" />
+﻿/// <reference path="../../../src/base/mapper/ChangeSet.js" />
+/// <reference path="../../SpecDependencies.js" />
 /// <reference path="../../SpecHelpers.js" />
+
+/*globals require, jasmine, describe, it, beforeEach, expect */
+/*globals ChangeSet */
 
 // Test setup
 ///////////////////////////////////////
@@ -40,26 +44,26 @@ describe("ChangeSet", function() {
 	});
 
 	it("initially has no changes", function() {
-		expect((new ChangeSet("test")).changes().length).toBe(0);
+		expect((new ChangeSet("client", "test")).changes.length).toBe(0);
 	});
 
 	it("stores an added change and returns it with a call to changes", function() {
-		var set = new ChangeSet("test");
+		var set = new ChangeSet("client", "test");
 
-		expect(set.changes().length).toBe(0);
+		expect(set.changes.length).toBe(0);
 
 		var result = set.add(5);
 
 		expect(result).toBe(0);
-		expect(set.changes().length).toBe(1);
-		expect(set.changes()[0]).toBe(5);
+		expect(set.changes.length).toBe(1);
+		expect(set.changes[0]).toBe(5);
 	});
 
 	it("accepts initial set of changes", function() {
 		var changes = [0, 1, 2];
-		var set = new ChangeSet("test", changes);
-		expect(set.changes()).not.toBe(changes);
-		expect(set.changes().length).toBe(3);
+		var set = new ChangeSet("client", "test", null, changes);
+		expect(set.changes).not.toBe(changes);
+		expect(set.changes.length).toBe(3);
 	});
 });
 
@@ -75,16 +79,16 @@ describe("ChangeSet", function() {
 		});
 	});
 	
-	it("serializes source as server unless it is client or init", function() {
+	it("serializes source verbatim", function() {
 		var set = new ChangeSet("client");
 		set.add(2);
 		set.add(3);
-
+		debugger;
 		expect(set.serialize()).toEqual({
 			source: "client",
 			changes: [2, 3]
 		});
-		
+
 		set = new ChangeSet("init");
 		set.add(2);
 		set.add(3);
@@ -93,25 +97,15 @@ describe("ChangeSet", function() {
 			source: "init",
 			changes: [2, 3]
 		});
-		
-		function rand(num) {
-			var result = "";
-			for (var i = 0; i < num; i++) {
-				result += String.fromCharCode(65 + Math.floor(Math.random()*26));
-			}
-			return result;
-		}
 
-		for (var i = 0; i < 10; i++) {
-			set = new ChangeSet(rand(5));
-			set.add(2);
-			set.add(3);
+		set = new ChangeSet("server");
+		set.add(2);
+		set.add(3);
 
-			expect(set.serialize()).toEqual({
-				source: "server",
-				changes: [2, 3]
-			});
-		}
+		expect(set.serialize()).toEqual({
+			source: "server",
+			changes: [2, 3]
+		});
 	});
 	
 	it("returns the last change added", function() {
@@ -119,14 +113,14 @@ describe("ChangeSet", function() {
 	});
 	
 	it("returns null if undo is called and there are no changes", function() {
-		var set = new ChangeSet("test");
+		var set = new ChangeSet("client", "test");
 		expect(set.undo()).toEqual(null);
 	});
 
 	it("undo removes and returns the last change", function() {
 		var lastChange = this.set.lastChange();
 		var change = this.set.undo();
-		expect(this.set.changes().length).toBe(2);
+		expect(this.set.changes.length).toBe(2);
 		expect(change).toBe(lastChange);
 	});
 });
@@ -136,7 +130,7 @@ describe("ChangeSet.truncate", function() {
 
 	it("discards all changes", function() {
 		this.set.truncate();
-		expect(this.set.changes().length).toBe(0);
+		expect(this.set.changes.length).toBe(0);
 	});
 
 	it("discards all changes that meet the given filter", function() {
@@ -144,8 +138,8 @@ describe("ChangeSet.truncate", function() {
 			return c > 1;
 		});
 
-		expect(this.set.changes().length).toBe(1);
-		expect(this.set.changes()[0]).toBe(1);
+		expect(this.set.changes.length).toBe(1);
+		expect(this.set.changes[0]).toBe(1);
 	});
 
 	it("discards all changes up to the given checkpoint", function() {
@@ -155,9 +149,9 @@ describe("ChangeSet.truncate", function() {
 		this.set.add(4);
 		this.set.truncate(checkpoint);
 
-		expect(this.set.changes().length).toBe(2);
-		expect(this.set.changes()[0].code).toBe(checkpoint);
-		expect(this.set.changes()[1]).toBe(4);
+		expect(this.set.changes.length).toBe(2);
+		expect(this.set.changes[0].code).toBe(checkpoint);
+		expect(this.set.changes[1]).toBe(4);
 	});
 
 	it("uses combination of filter and checkpoint if both are given", function() {
@@ -169,10 +163,10 @@ describe("ChangeSet.truncate", function() {
 			return c > 1;
 		});
 
-		expect(this.set.changes().length).toBe(3);
-		expect(this.set.changes()[0]).toBe(1);
-		expect(this.set.changes()[1].code).toBe(checkpoint);
-		expect(this.set.changes()[2]).toBe(4);
+		expect(this.set.changes.length).toBe(3);
+		expect(this.set.changes[0]).toBe(1);
+		expect(this.set.changes[1].code).toBe(checkpoint);
+		expect(this.set.changes[2]).toBe(4);
 	});
 });
 
@@ -199,7 +193,7 @@ describe("ChangeSet events", function() {
 
 	it("exposes an add event which is raised when a new change is added:  fn(change, index, set)", function() {
 		var onChangeAdded = jasmine.jasmine.createSpy("changeAdded");
-		this.set.addChangeAdded(onChangeAdded);
+		this.set.onChangeAdded.add(onChangeAdded);
 		this.set.add(42);
 
 		expect(onChangeAdded).toHaveBeenCalledWith(42, 3, this.set);
@@ -207,7 +201,7 @@ describe("ChangeSet events", function() {
 
 	it("exposes an undo event which is raised when a change is undone:  fn(change, index, set)", function() {
 		var onChangeUndone = jasmine.jasmine.createSpy("changeUndone");
-		this.set.addChangeUndone(onChangeUndone);
+		this.set.onChangeUndone.add(onChangeUndone);
 		this.set.undo();
 
 		expect(onChangeUndone).toHaveBeenCalledWith(3, 2, this.set);
@@ -215,7 +209,7 @@ describe("ChangeSet events", function() {
 
 	it("exposes a truncated event which is raised when the set is truncated:  fn(numRemoved, set)", function() {
 		var onTruncated = jasmine.jasmine.createSpy("truncated");
-		this.set.addTruncated(onTruncated);
+		this.set.onTruncated.add(onTruncated);
 		this.set.truncate();
 
 		expect(onTruncated).toHaveBeenCalledWith(3, this.set);

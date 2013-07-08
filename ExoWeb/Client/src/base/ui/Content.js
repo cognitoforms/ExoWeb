@@ -286,50 +286,65 @@ Content.prototype = {
 		}
 	},
 
+	_link: function () {
+		if (!this._ctxIdx && this._element && this._element.childNodes.length > 0)
+			throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
+
+		if ((this._data !== null && this._data !== undefined) || (this._element && this._element.childNodes.length > 0)) {
+			var pctx = this.get_templateContext();
+			var tmplEl = this._findTemplate();
+
+			var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
+			newContext.data = this._data;
+			newContext.components = [];
+			newContext.nodes = [];
+			newContext.dataItem = this._data;
+			newContext.index = 0;
+			newContext.parentContext = pctx;
+			newContext.containerElement = this._element;
+			newContext.template = new Sys.UI.Template(tmplEl);
+			newContext.template._ensureCompiled();
+
+			this._context = newContext;
+
+			// Get the list of template names applicable to the control's children
+			var contentTemplate = this._getResultingTemplateNames(tmplEl);
+
+			var element = this._element;
+			Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
+
+			for (var i = 0; i < element.childNodes.length; i++) {
+				newContext.nodes.push(element.childNodes[i]);
+			}
+
+			newContext._onInstantiated(null, true);
+			this._initializeResults();
+		}
+	},
+
 	link: function Content$link() {
 		/// <summary locid="M:J#ExoWeb.UI.Content.link" />
 		if (!this._linkInProgress) {
 			this._linkInProgress = true;
+			contentControlsRendering++;
 			externalTemplatesSignal.waitForAll(function () {
-				delete this._linkInProgress;
-				this._isRendered = true;
-				this._context = null;
-
-				if (!this._ctxIdx && this._element && this._element.childNodes.length > 0)
-					throw new Error("A content control is attached to the node, which expects a template context id, but no id was specified.");
-
-				if ((this._data !== null && this._data !== undefined) || (this._element && this._element.childNodes.length > 0)) {
-					var pctx = this.get_templateContext();
-					var tmplEl = this._findTemplate();
-
-					var newContext = new Sys.UI.TemplateContext(this._ctxIdx);
-					newContext.data = this._data;
-					newContext.components = [];
-					newContext.nodes = [];
-					newContext.dataItem = this._data;
-					newContext.index = 0;
-					newContext.parentContext = pctx;
-					newContext.containerElement = this._element;
-					newContext.template = new Sys.UI.Template(tmplEl);
-					newContext.template._ensureCompiled();
-
-					this._context = newContext;
-
-					// Get the list of template names applicable to the control's children
-					var contentTemplate = this._getResultingTemplateNames(tmplEl);
-
-					var element = this._element;
-					Sys.Application._linkContexts(pctx, this, this._data, element, newContext, contentTemplate.join(" "));
-
-					for (var i = 0; i < element.childNodes.length; i++) {
-						newContext.nodes.push(element.childNodes[i]);
-					}
-
-					newContext._onInstantiated(null, true);
-					this._initializeResults();
+				// Control has disposed.
+				if (this._element === undefined || this._element === null) {
+					ExoWeb.UI.Content.callBaseMethod(this, 'link');
+					contentControlsRendering--;
+					return;
 				}
 
-				ExoWeb.UI.Content.callBaseMethod(this, 'link');
+				try {
+					delete this._linkInProgress;
+					this._isRendered = true;
+					this._context = null;
+					this._link();
+					ExoWeb.UI.Content.callBaseMethod(this, 'link');
+				}
+				finally {
+					contentControlsRendering--;
+				}
 			}, this);
 		}
 	},

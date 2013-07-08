@@ -9,7 +9,7 @@ specs.ensureWindow();
 // Imports
 ///////////////////////////////////////
 
-var eventQueueModule = specs.require("model.Type");
+var typeModule = specs.require("model.Type");
 
 // Test Suites
 ///////////////////////////////////////

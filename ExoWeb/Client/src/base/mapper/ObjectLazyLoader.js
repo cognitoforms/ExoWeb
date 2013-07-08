@@ -13,7 +13,7 @@ registerActivity("ObjectLazyLoader", function() {
 
 function objLoad(obj, propName, callback, thisPtr) {
 	if (!ExoWeb.config.allowObjectLazyLoading) {
-		throw new Error($format("Object lazy loading has been disabled: {0}|{1}", mtype.get_fullName(), id));
+		throw new Error($format("Object lazy loading has been disabled: {0}|{1}", obj.meta.type.get_fullName(), obj.meta.id));
 	}
 
 	pendingObjects++;
@@ -32,7 +32,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 	}
 
 	// fetch object json
-	logWarning($format("Lazy load: {0}|{1}", mtype.get_fullName(), id));
+	logWarning($format("Lazy load object: {0}|{1}", mtype.get_fullName(), id));
 
 	// TODO: reference to server will be a singleton, not context
 	objectProvider(mtype.get_fullName(), [id], paths, false,
@@ -68,7 +68,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 		});
 
 	// does the object's type need to be loaded too?
-	if (!LazyLoader.isLoaded(mtype)) {
+	if (LazyLoader.isRegistered(mtype)) {
 		LazyLoader.load(mtype, null, signal.pending());
 	}
 }
@@ -125,8 +125,12 @@ ObjectLazyLoader.mixin({
 		return relPaths.distinct();
 	};
 
+	ObjectLazyLoader.isRegistered = function (obj) {
+		return LazyLoader.isRegistered(obj, instance);
+	};
+
 	ObjectLazyLoader.register = function(obj) {
-		if (!LazyLoader.isRegistered(obj, instance)) {
+		if (!ObjectLazyLoader.isRegistered(obj)) {
 			if (obj.meta.type.get_origin() !== "server") {
 				throw new Error($format("Cannot lazy load instance of non-server-origin type: {0}|{1}", obj.meta.type.get_fullName(), obj.meta.id));
 			}

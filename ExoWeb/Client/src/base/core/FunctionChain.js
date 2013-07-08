@@ -1,7 +1,9 @@
 /// <reference path="Errors.js" />
 
 function FunctionChain(steps, thisPtr) {
-	if (!(steps instanceof Array)) throw new ArgumentTypeError("steps", "array", steps);
+	if (!(steps instanceof Array)) {
+		throw new ArgumentTypeError("steps", "array", steps);
+	}
 
 	this._steps = steps;
 	this._thisPtr = thisPtr;
@@ -13,24 +15,21 @@ FunctionChain.prepare = function FunctionChain$_invoke() {
 	// as the thisPtr for the chain if "thisPtr" argument is not supplied,
 	// while "thisPtr" of invocation is used as the argument to "invoke".
 
-	var steps = null,
+	var steps,
 		thisPtrOuter = null;
 
 	// no args => empty chain
 	if (arguments.length === 0) {
 		steps = [];
-	}
-	// one array arg => array of steps
-	else if (arguments.length === 1 && arguments[0] instanceof Array) {
+	} else if (arguments.length === 1 && arguments[0] instanceof Array) {
+		// One array arg => array of steps
 		steps = arguments[0];
-	}
-	// two args (first array) => array of steps and this pointer
-	else if (arguments.length === 2 && arguments[0] instanceof Array) {
+	} else if (arguments.length === 2 && arguments[0] instanceof Array) {
+		// Two args (first array) => array of steps and this pointer
 		steps = arguments[0];
 		thisPtrOuter = arguments[1];
-	}
-	// otherwise, assume arguments correspond to steps
-	else {
+	} else {
+		// Otherwise, assume arguments correspond to steps
 		steps = Array.prototype.slice.call(arguments);
 	}
 
@@ -40,18 +39,34 @@ FunctionChain.prepare = function FunctionChain$_invoke() {
 	};
 };
 
+FunctionChain.forEachAsync = function (items, stepFunction, callback) {
+	if (items.length === 0) {
+		if (callback) {
+			callback();
+		}
+		return;
+	}
+
+	var chain = new FunctionChain(items.map(function (item) {
+		return function (cb, thisPtr) {
+			stepFunction.call(thisPtr || this, item, cb, thisPtr || this);
+		};
+	}));
+	chain.invoke(callback);
+};
+
 function doStep(idx, callback, thisPtr) {
-	var _callback = callback;
-	var _thisPtr = thisPtr;
+	var outerCallback = callback;
+	var outerThisPtr = thisPtr;
 	var nextStep = idx + 1 < this._steps.length ?
-		doStep.prependArguments(idx + 1, _callback, _thisPtr) :
+		doStep.prependArguments(idx + 1, outerCallback, outerThisPtr).bind(this) :
 		function() {
-			if (_callback && _callback instanceof Function) {
-				_callback.apply(_thisPtr || this, arguments);
+			if (outerCallback && outerCallback instanceof Function) {
+				outerCallback.apply(outerThisPtr || this, arguments);
 			}
 		};
 
-	this._steps[idx].call(this._thisPtr || this, nextStep, this);
+	this._steps[idx].call(this._thisPtr || this, nextStep);
 }
 
 FunctionChain.mixin({

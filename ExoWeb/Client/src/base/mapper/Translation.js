@@ -22,7 +22,9 @@ Entity.fromIdString = function Entity$fromIdString(id) {
 	// yet in memory client-side, so create a ghosted instance.
 	if (!obj) {
 		obj = new jstype(ids[1]);
-		ObjectLazyLoader.register(obj);
+		if (jstype.meta.get_origin() === "server") {
+			ObjectLazyLoader.register(obj);
+		}
 	}
 
 	return obj;
@@ -90,7 +92,9 @@ function fromExoModel(val, translator, create, supplementalObjectsArray) {
 
 			if (!obj && create) {
 				obj = new type(id);
-				ObjectLazyLoader.register(obj);
+				if (type.meta.get_origin() === "server") {
+					ObjectLazyLoader.register(obj);
+				}
 			}
 
 			return obj;

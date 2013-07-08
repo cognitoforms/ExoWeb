@@ -1,10 +1,15 @@
-var roundtripProviderFn = function roundtripProviderFn(changes, onSuccess, onFailure) {
-	throw new Error("Roundtrip provider has not been implemented.  Call ExoWeb.Mapper.setRoundtripProvider(fn);");
+/*global exports, context, Batch */
+
+var roundtripProviderFn = function roundtripProviderFn() {
+	"use strict";
+	throw new Error("Roundtrip provider has not been implemented. Call ExoWeb.Mapper.setRoundtripProvider(fn);");
 };
 
-function roundtripProvider(type, id, paths, changes, onSuccess, onFailure, thisPtr) {
-	var scopeQueries;
+function roundtripProvider(root, paths, changes, onSuccess, onFailure, thisPtr) {
+	"use strict";
 
+	var scopeQueries, batch;
+	
 	// ensure correct value of "scopeQueries" argument
 	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
 		// scopeQueries is included in call, so shift arguments
@@ -15,7 +20,7 @@ function roundtripProvider(type, id, paths, changes, onSuccess, onFailure, thisP
 	}
 	else {
 		// scopeQueries is NOT included in call, so insert default value into args array
-		scopeQueries = context.server._scopeQueries;
+		scopeQueries = context.server._scopeQueries; //ignore jslint
 	}
 
 	if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
@@ -23,18 +28,26 @@ function roundtripProvider(type, id, paths, changes, onSuccess, onFailure, thisP
 		onFailure = null;
 	}
 
-	var batch = ExoWeb.Batch.suspendCurrent("roundtripProvider");
-	roundtripProviderFn.call(this, type, id, paths, changes, scopeQueries,
-		function roundtripProviderSucess() {
-			ExoWeb.Batch.resume(batch);
-			if (onSuccess) onSuccess.apply(thisPtr || this, arguments);
+	batch = Batch.suspendCurrent("roundtripProvider");
+
+	roundtripProviderFn(root, paths, changes, scopeQueries,
+		function () {
+			Batch.resume(batch);
+			if (onSuccess) {
+				onSuccess.apply(thisPtr || this, arguments);
+			}
 		},
-		function roundtripProviderFailure() {
-			ExoWeb.Batch.resume(batch);
-			if (onFailure) onFailure.apply(thisPtr || this, arguments);
+		function () {
+			Batch.resume(batch);
+			if (onFailure) {
+				onFailure.apply(thisPtr || this, arguments);
+			}
 		});
 }
 
-ExoWeb.Mapper.setRoundtripProvider = function setRoundtripProvider(fn) {
+exports.setRoundtripProvider = function setRoundtripProvider(fn) {
+	"use strict";
 	roundtripProviderFn = fn;
 };
+
+exports.roundtripProvider = roundtripProvider; // IGNORE

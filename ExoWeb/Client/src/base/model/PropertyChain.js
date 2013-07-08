@@ -67,6 +67,7 @@ PropertyChain.create = function PropertyChain$create(rootType, pathTokens/*, for
 	var type = rootType;
 	var properties = [];
 	var filters = [];
+	var filterTypes = [];
 
 	// initialize optional callback arguments
 	var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
@@ -117,6 +118,7 @@ PropertyChain.create = function PropertyChain$create(rootType, pathTokens/*, for
 			}
 
 			var jstype = type.get_jstype();
+			filterTypes[properties.length] = jstype;
 			filters[properties.length] = function (target) {
 				return target instanceof jstype;
 			};
@@ -140,8 +142,13 @@ PropertyChain.create = function PropertyChain$create(rootType, pathTokens/*, for
 			}
 
 			// ensure filter types on the last step are loaded
-			return ensureType(filters[properties.length - 1], forceLoadTypes, function () {
-
+			var filterTypeSignal = new Signal("filterType");
+			var filterType = filterTypes[properties.length - 1];
+			if (filterType) {
+				ensureType(filterType.meta, forceLoadTypes, filterTypeSignal.pending(null, null, true));
+			}
+			var ret;
+			filterTypeSignal.waitForAll(function () {
 				// create and cache the new property chain
 				var chain = new PropertyChain(rootType, properties, filters);
 				if (!rootType._chains) {
@@ -155,8 +162,9 @@ PropertyChain.create = function PropertyChain$create(rootType, pathTokens/*, for
 				}
 
 				// return the new property chain
-				return chain;
-			});
+				ret = chain;
+			}, null, true);
+			return ret;
 		}
 	};
 

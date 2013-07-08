@@ -58,12 +58,12 @@ function sendRequest(options) {
 	});
 }
 
-ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, instance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
+ExoWeb.Mapper.setEventProvider(function (eventType, eventInstance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests && eventType !== "GetType" && eventType !== "LogError" ? eventType : "Request",
 		data: {
-			events: [{ type: eventType, include: paths, instance: instance, event: event }],
+			events: [{ type: eventType, include: paths, instance: eventInstance, event: event }],
 			queries: scopeQueries,
 			changes: changes
 		},
@@ -72,13 +72,13 @@ ExoWeb.Mapper.setEventProvider(function WebService$eventProviderFn(eventType, in
 	});
 });
 
-ExoWeb.Mapper.setRoundtripProvider(function (type, id, paths, changes, scopeQueries, onSuccess, onFailure) {
+ExoWeb.Mapper.setRoundtripProvider(function (root, paths, changes, scopeQueries, onSuccess, onFailure) {
 	var queries = [];
 
-	if (type) {
+	if (root) {
 		queries.push({
-			from: type,
-			ids: [id],
+			from: root.type,
+			ids: [root.id],
 			include: paths,
 			inScope: true,
 			forLoad: true
@@ -99,7 +99,7 @@ ExoWeb.Mapper.setRoundtripProvider(function (type, id, paths, changes, scopeQuer
 	});
 });
 
-ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
+ExoWeb.Mapper.setObjectProvider(function (type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "LoadObject" : "Request",
@@ -118,7 +118,7 @@ ExoWeb.Mapper.setObjectProvider(function WebService$objectProviderFn(type, ids, 
 	});
 });
 
-ExoWeb.Mapper.setQueryProvider(function WebService$queryProviderFn(queries, changes, scopeQueries, onSuccess, onFailure) {
+ExoWeb.Mapper.setQueryProvider(function (queries, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "Query" : "Request",
@@ -131,7 +131,7 @@ ExoWeb.Mapper.setQueryProvider(function WebService$queryProviderFn(queries, chan
 	});
 });
 
-ExoWeb.Mapper.setSaveProvider(function WebService$saveProviderFn(root, changes, scopeQueries, onSuccess, onFailure) {
+ExoWeb.Mapper.setSaveProvider(function (root, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "Save" : "Request",
@@ -145,7 +145,7 @@ ExoWeb.Mapper.setSaveProvider(function WebService$saveProviderFn(root, changes, 
 	});
 });
 
-ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
+ExoWeb.Mapper.setListProvider(function (ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "LoadList" : "Request",
@@ -164,7 +164,7 @@ ExoWeb.Mapper.setListProvider(function WebService$listProviderFn(ownerType, owne
 	});
 });
 
-ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(types, onSuccess, onFailure) {
+ExoWeb.Mapper.setTypeProvider(function (types, onSuccess, onFailure) {
 	if (types.length === 1) {
 		var data = { type: types[0], config: webServiceConfig};
 
@@ -186,7 +186,7 @@ ExoWeb.Mapper.setTypeProvider(function WebService$typeProviderFn(types, onSucces
 });
 
 var loggingError = false;
-ExoWeb.setLogErrorProvider(function WebService$logErrorProviderFn(errorData, onSuccess, onFailure) {
+ExoWeb.setLogErrorProvider(function (errorData, onSuccess, onFailure) {
 	if (loggingError === false) {
 		try {
 			loggingError = true;

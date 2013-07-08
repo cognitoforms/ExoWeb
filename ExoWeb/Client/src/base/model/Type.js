@@ -123,6 +123,8 @@ function generateClass(type) {
 				var obj = type.get(id,
 					// When a constructor is called we do not want to silently
 					// return an instance of a sub type, so fetch using exact type.
+					true,
+					// Indicate that an object is currently being constructed.
 					true);
 
 				// If the instance already exists, then initialize properties and return it.
@@ -143,7 +145,7 @@ function generateClass(type) {
 			}
 			else {
 				// Register the newly constructed new instance. It will
-				// be assigned a random client-generated id.
+				// be assigned a sequential client-generated id.
 				type.register(this);
 
 				// Set properties passed into constructor.
@@ -320,7 +322,7 @@ Type.prototype = {
 	// Gets an array of all objects of this type that have been registered.
 	// The returned array is observable and collection changed events will be raised
 	// when new objects are registered or unregistered.
-	// The array is in no particular order so if you need to sort it, make a copy or use $transform.
+	// The array is in no particular order.
 	known: function Type$known() {
 		var list = this._known;
 		if (!list) {
@@ -469,7 +471,7 @@ Type.prototype = {
 			var result = getter.call(property, this, skipTypeCheck);
 
 			// ensure the property is initialized
-			if (result === undefined || (property.get_isList() && !LazyLoader.isLoaded(result))) {
+			if (result === undefined || (property.get_isList() && LazyLoader.isRegistered(result))) {
 				throw new Error($format(
 					"Property {0}.{1} is not initialized.  Make sure instances are loaded before accessing property values.  {2}|{3}",
 					property._containingType.get_fullName(),
@@ -616,6 +618,34 @@ Type.prototype = {
 		});
 
 		return result;
+	},
+	isLoaded: function (prop) {
+		/// <summary locid="M:J#ExoWeb.Model.Type.isLoaded">
+		/// Check whether the Type and optional property are loaded.
+		/// </summary>
+		/// <param name="prop" optional="true" mayBeNull="true" type="Object">The optional property object or property name to check.</param>
+
+		// First see if there is a lazy loader attached to the entity (and optional property).
+		if (LazyLoader.isRegistered(this, null, prop)) {
+			return false;
+		}
+
+		// Immediately return true if a property name was not specified
+		if (prop) {
+			// Coerce property names into property instances
+			if (isString(prop)) {
+				prop = this.property(prop);
+			}
+
+			// Otherwise, get the property value and determine whether there is a
+			// lazy loader attached to the property value, e.g. entity or list.
+			var val = prop.value(this._jstype);
+			if (val !== null && val !== undefined && LazyLoader.isRegistered(val)) {
+				return false;
+			}
+		}
+
+		return true;
 	},
 	toString: function Type$toString() {
 		return this.get_fullName();

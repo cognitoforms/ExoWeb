@@ -6,6 +6,8 @@ ExoWeb.registerActivity("Context: allSignals", function() {
 });
 
 function Context() {
+	window.context = this;
+
 	this.model = { meta: new ExoWeb.Model.Model() };
 	this.server = new ServerSync(this.model.meta);
 }
@@ -27,17 +29,19 @@ Context.mixin({
 				this._raiseEvent("ready");
 			}, this);
 		}
-	}
+	},
+	beginContextReady: ExoWeb.Functor(),
+	endContextReady: ExoWeb.Functor()
 });
 
 function ensureContext() {
 	if (!window.context) {
 		window.context = new Context();
 	}
-	else if (!(window.context instanceof Context)) {
+
+	if (!(window.context instanceof Context)) {
 		throw new Error("The window object has a context property that is not a valid context.");
 	}
-	return window.context;
 }
 
 Context.ready = function Context$ready(context) {

@@ -27,11 +27,11 @@ ContextQuery.mixin({
 
 			// Setup lazy loading on the context object to control lazy evaluation.
 			// Loading is considered complete at the same point model.ready() fires. 
-			ExoWeb.Model.LazyLoader.register(this.context, {
+			LazyLoader.register(this.context, {
 				load: function context$load(obj, propName, callback, thisPtr) {
 					// objects are already loading so just queue up the calls
 					allSignals.waitForAll(function context$load$callback() {
-						ExoWeb.Model.LazyLoader.unregister(obj, this);
+						LazyLoader.unregister(obj, this);
 
 						if (callback && callback instanceof Function) {
 							callback.call(thisPtr || this);
@@ -132,7 +132,7 @@ ContextQuery.mixin({
 				eachProp(this.options.instances, function(t) {
 					// Add the type of the instances.
 					var mtype = model.type(t);
-					if (!mtype || !LazyLoader.isLoaded(mtype)) {
+					if (!mtype || LazyLoader.isRegistered(mtype)) {
 						typesToLoad.push(t);
 					}
 				}, this);
@@ -146,7 +146,7 @@ ContextQuery.mixin({
 					}).filter(function(t) {
 						// Exclude types that are already loaded
 						var mtype = model.type(t);
-						return !model || !LazyLoader.isLoaded(mtype);
+						return !mtype || LazyLoader.isRegistered(mtype);
 					}).forEach(function(t) {
 						if (!typesToLoad.contains(t)) {
 							typesToLoad.push(t);

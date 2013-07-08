@@ -1,45 +1,100 @@
+/*globals Sys, jQuery */
+
 (function () {
-	var targetChangedImpl = Sys.Binding.prototype._targetChanged;
-	Sys.Binding.prototype._targetChanged = function (force) {
-		var target = this._target;
+	"use strict";
 
-		// invoke the method implementation
-		targetChangedImpl.apply(this, [force]);
-		
-		if (this._disposed) return;
-
+	function updateLastTargetAndSourceForOtherRadios(target) {
 		// Set _lastTarget=false on other radio buttons in the group, since they only 
 		// remember the last target that was recieved when an event fires and radio button
 		// target change events fire on click (which does not account for de-selection).  
 		// Otherwise, the source value is only set the first time the radio button is selected.
 		if (Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked")) {
 			jQuery("input[type=radio][name='" + target.name + "']").each(function () {
-				if (this != target && this.__msajaxbindings !== undefined) {
+				if (this !== target && this.__msajaxbindings !== undefined) {
 					var bindings = this.__msajaxbindings;
 					for (var i = 0; i < bindings.length; i++)
 						bindings[i]._lastTarget = bindings[i]._lastSource = false;
 				}
 			});
 		};
-	};
+	}
 
-	var sourceChangedImpl = Sys.Binding.prototype._sourceChanged;
-	Sys.Binding.prototype._sourceChanged = function (force) {
-		var target = this._target,
-			link = force === false;
+	var targetChangedImpl = Sys.Binding.prototype._targetChanged;
+	Sys.Binding.prototype._targetChanged = function (force) {
+		// Batch changes that may occur due to the target element changing.
+		var source = this.get_source(),
+			sourceType,
+			batchChanges = true;
 
-		// invoke the method implementation
-		sourceChangedImpl.apply(this, [force]);
+		if (source === null) {
+			sourceType = "null";
+		}
+		else if (source === undefined) {
+			sourceType = "undefined";
+		}
+		else if (source instanceof ExoWeb.Model.Entity) {
+			sourceType = source.meta.type.get_fullName();
+		}
+		else if (source instanceof ExoWeb.View.Adapter) {
+			sourceType = "Adapter";
 
-		if (this._disposed) return;
+			// Adapters handle their own batching.
+			batchChanges = false;
+		}
+		else if (source instanceof ExoWeb.View.OptionAdapter) {
+			sourceType = "OptionAdapter";
 
-		// Remove checked attribute from other radio buttons in the group that are currently checked.
-		if (!link && Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked") && !this._lastSource) {
-			jQuery(target).removeAttr("checked");
+			// If the option adapter is not a list, then it will set the
+			// adapter's rawValue, which will handle batching itself.
+			if (!source.get_parent().get_isList()) {
+				batchChanges = false;
+			}
+		}
+		else if (source instanceof ExoWeb.View.OptionGroupAdapter) {
+			sourceType = "OptionGroupAdapter";
+		}
+		else {
+			sourceType = parseFunctionName(source.constructor);
+		}
+
+		if (batchChanges) {
+			context.server._changeLog.batchChanges(
+				$format("binding: {0}.{1}", sourceType, this.get_path()),
+				context.server._localUser,
+				targetChangedImpl.bind(this, arguments),
+				true
+			);
+		} else {
+			targetChangedImpl.apply(this, arguments);
+		}
+
+		// If the binding is not disposing, then fix backing
+		// fields for other radio buttons in the same group.
+		if (!this._disposed) {
+			updateLastTargetAndSourceForOtherRadios(this._target);
 		}
 	};
 
-	Sys.UI.DataView.prototype._loadData = function _loadData(value) {
+	function removeCheckedAttributeToMatchSourceValue(target, sourceValue) {
+		// Remove checked attribute from a radio button if the source value has been set to false.
+		if (Sys.UI.DomElement.isDomElement(target) && jQuery(target).is("input[type=radio]:checked") && !sourceValue) {
+			jQuery(target).removeAttr("checked");
+		}
+	}
+
+	var sourceChangedImpl = Sys.Binding.prototype._sourceChanged;
+	Sys.Binding.prototype._sourceChanged = function (force) {
+		var link = force === false;
+
+		// Invoke the standard method implementation.
+		sourceChangedImpl.apply(this, [force]);
+
+		if (!this._disposed && !link) {
+			removeCheckedAttributeToMatchSourceValue(this._target, this._lastSource);
+		}
+	};
+
+	Sys.UI.DataView.prototype._loadData = function (value) {
 		this._swapData(this._data, value);
 		var oldValue = this._data;
 		this._data = value;

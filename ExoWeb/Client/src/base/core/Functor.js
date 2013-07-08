@@ -23,6 +23,7 @@ function Functor() {
 	f.add = Functor$add;
 	f.remove = Functor$remove;
 	f.isEmpty = Functor$isEmpty;
+	f.clear = Functor$clear;
 
 	return f;
 }
@@ -39,15 +40,23 @@ function Functor$add(fn, filter, once) {
 	}
 
 	this._funcs.push(item);
+
+	return fn;
 }
 
 function Functor$remove(old) {
 	for (var i = this._funcs.length - 1; i >= 0; --i) {
 		if (this._funcs[i].fn === old) {
 			this._funcs.splice(i, 1);
-			break;
+			return true;
 		}
 	}
+
+	return false;
+}
+
+function Functor$clear() {
+	this._funcs.length = 0;
 }
 
 function Functor$isEmpty(args) {
@@ -71,12 +80,17 @@ Functor.eventing = {
 		}
 
 		this["_" + name].add(func, filter, once);
+
+		return func;
 	},
 	_removeEvent: function Functor$_removeEvent(name, func) {
 		var handler = this["_" + name];
 		if (handler) {
 			handler.remove(func);
+			return true;
 		}
+
+		return false;
 	},
 	_raiseEvent: function Functor$_raiseEvent(name, argsArray) {
 		var handler = this["_" + name];

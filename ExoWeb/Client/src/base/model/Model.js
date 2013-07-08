@@ -20,9 +20,9 @@ Model.mixin({
 		return this._types[name];
 	},
 	types: function (filter) {
-		var result = [];
-		for (var typeName in this._types) {
-			var type = this._types[typeName];
+		var result = [], typeName, type;
+		for (typeName in this._types) {
+			type = this._types[typeName];
 			if (!filter || filter(type)) {
 				result.push(type);
 			}
@@ -41,19 +41,18 @@ Model.mixin({
 
 	// queues a rule to be registered
 	registerRule: function Model$registerRule(rule) {
-		if(!this._contextReady) {
+		if (!this._contextReady) {
 			this._ruleQueue.push(rule);
-		}
-		else {
+		} else {
 			rule.register();
 		}
 	},
 
 	// register rules pending registration
 	registerRules: function Model$registerRules() {
-		var rules = this._ruleQueue;
+		var i, rules = this._ruleQueue;
 		this._ruleQueue = [];
-		for (var i = 0; i < rules.length; i++) {
+		for (i = 0; i < rules.length; i += 1) {
 			rules[i].register();
 		}
 	},
@@ -90,10 +89,10 @@ Model.mixin({
 		this._raiseEvent("listChanged", [obj, property, changes]);
 	},
 	_ensureNamespace: function Model$_ensureNamespace(name, parentNamespace) {
-		var target = parentNamespace;
+		var result, nsTokens, target = parentNamespace;
 
 		if (target.constructor === String) {
-			var nsTokens = target.split(".");
+			nsTokens = target.split(".");
 			target = window;
 			Array.forEach(nsTokens, function (token) {
 				target = target[token];
@@ -102,17 +101,15 @@ Model.mixin({
 					throw new Error("Parent namespace \"" + parentNamespace + "\" could not be found.");
 				}
 			});
-		}
-		else if (target === undefined || target === null) {
+		} else if (target === undefined || target === null) {
 			target = window;
 		}
 
 		// create the namespace object if it doesn't exist, otherwise return the existing namespace
 		if (!(name in target)) {
-			var result = target[name] = {};
+			result = target[name] = {};
 			return result;
-		}
-		else {
+		} else {
 			return target[name];
 		}
 	}
@@ -134,40 +131,47 @@ function ensureType(type, forceLoad, callback) {
 	else {
 		$extend(type._fullName, callback);
 	}
-};
+
+	return null;
+}
 
 exports.ensureType = ensureType; // IGNORE
 
 Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
 
-	// allow path to be either a string or PathTokens instance
-	var tokens;
+	var type,
+		loadProperty,
+		singlePropertyName,
+		tokens = null,
+		forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false,
+		callback = arguments[3],
+		thisPtr = arguments[4];
+
+	// Allow the path argument to be either a string or PathTokens instance.
 	if (path.constructor === PathTokens) {
 		tokens = path;
 		path = tokens.expression;
 	}
 
-	// get the optional arguments
-	var forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false;
-	var callback = arguments[3];
-	var thisPtr = arguments[4];
-
-	// immediately return cached property chains
+	// Return cached property chains as soon as possible (in other words,
+	// do as little as possible prior to returning the cached chain).
 	if (thisType && thisType._chains && thisType._chains[path]) {
 		if (callback) {
 			callback.call(thisPtr || this, thisType._chains[path]);
-			return;
-		}
-		else {
+			return null;
+		} else {
 			return thisType._chains[path];
 		}
 	}
 
-	// get tokens for the specified path
-	var tokens = tokens || new PathTokens(path);
+	// The path argument was a string, so use it to create a PathTokens object.
+	// Delay doing this as an optimization for cached property chains.
+	if (!tokens) {
+		tokens = new PathTokens(path);
+	}
 
 	// get the instance type, if specified
-	var type = thisType instanceof Function ? thisType.meta : thisType;
+	type = thisType instanceof Function ? thisType.meta : thisType;
 
 	// determine if a typecast was specified for the path to identify a specific subclass to use as the root type
 	if (tokens.steps[0].property === "this" && tokens.steps[0].cast) {
@@ -178,20 +182,19 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 	}
 
 	// create a function to lazily load a property 
-	var loadProperty = function (type, name, callback) {
-		ensureType(type, forceLoadTypes, function () {
-			callback.call(thisPtr || this, type.property(name));
+	loadProperty = function (containingType, propertyName, propertyCallback) {
+		ensureType(containingType, forceLoadTypes, function () {
+			propertyCallback.call(thisPtr || this, containingType.property(propertyName));
 		});
-	}
+	};
 
-	// handle single property expressions efficiently, as they are neither static nor chains
+	// Optimize for a single property expression, as it is neither static nor a chain.
 	if (tokens.steps.length === 1) {
-		var name = tokens.steps[0].property;
+		singlePropertyName = tokens.steps[0].property;
 		if (callback) {
-			loadProperty(type, name, callback);
-		}
-		else {
-			return type.property(name);
+			loadProperty(type, singlePropertyName, callback);
+		} else {
+			return type.property(singlePropertyName);
 		}
 	}
 
@@ -206,6 +209,9 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 
 		var globalPropertyName = tokens.steps[tokens.steps.length - 1].property;
 
+		// Copy of the Model.property arguments for async re-entry.
+		var outerArgs = Array.prototype.slice.call(arguments);
+
 		// create a function to see if the path is a global property if instance processing fails
 		var processGlobal = function (instanceParseError) {
 
@@ -216,10 +222,9 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 			if (!type) {
 				if (callback) {
 					// Retry when type is loaded
-					$extend(globalTypeName, Model.property.prepare(this, Array.prototype.slice.call(arguments)));
-					return;
-				}
-				else {
+					$extend(globalTypeName, Model.property.prepare(Model, outerArgs));
+					return null;
+				} else {
 					throw new Error(instanceParseError ? instanceParseError : ("Error getting type \"" + globalTypeName + "\"."));
 				}
 			}
@@ -230,16 +235,14 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 			// return the static property
 			if (callback) {
 				loadProperty(type, globalPropertyName, callback);
-			}
-			else {
+			} else {
 				return type.property(globalPropertyName);
 			}
-		}
+		};
 
 		if (callback) {
 			PropertyChain.create(type, tokens, forceLoadTypes, thisPtr ? callback.bind(thisPtr) : callback, processGlobal);
-		}
-		else {
+		} else {
 			return PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal(null);
 		}
 	}

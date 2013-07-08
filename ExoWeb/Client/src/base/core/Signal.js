@@ -3,9 +3,6 @@ var pendingSignalTimeouts = null;
 function Signal(debugLabel) {
 	this._waitForAll = [];
 	this._pending = 0;
-	var _this = this;
-	this._oneDoneFn = function Signal$_oneDoneFn() { Signal.prototype.oneDone.apply(_this, arguments); };
-
 	this._debugLabel = debugLabel;
 }
 
@@ -118,5 +115,9 @@ Signal.mixin({
 });
 
 Signal.allPending = [];
+
+Signal.begin = function (debugLabel) {
+	return new Signal(debugLabel);
+};
 
 exports.Signal = Signal;

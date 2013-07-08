@@ -7,26 +7,24 @@ jasmine.jasmine.debug = true;
 
 window = global;
 global.registerActivity = function() {};
+LazyLoader = {
+	eval: function (target, path, successCallback, errorCallback, scopeChain, thisPtr) {
+		if (thisPtr) {
+			successCallback.call(thisPtr, null);
+		} else {
+			successCallback(null);
+		}
+	},
+	evalAll: function (target, path, successCallback, errorCallback, scopeChain, thisPtr) {
+		if (thisPtr) {
+			successCallback.call(thisPtr);
+		} else {
+			successCallback();
+		}
+	}
+};
 ExoWeb = {
 	Model: {
-		LazyLoader: {
-			eval: function(target, path, successCallback, errorCallback, scopeChain, thisPtr) {
-				if (thisPtr) {
-					successCallback.call(thisPtr, null);
-				}
-				else {
-					successCallback(null);
-				}
-			},
-			evalAll: function(target, path, successCallback, errorCallback, scopeChain, thisPtr) {
-				if (thisPtr) {
-					successCallback.call(thisPtr);
-				}
-				else {
-					successCallback();
-				}
-			}
-		}
 	},
 	Observer: {
 		addPathChanged: function () { },
@@ -123,7 +121,7 @@ function onBeforeEach() {
 
 	self.evalResult = null;
 
-	ExoWeb.Model.LazyLoader.eval = function(source, path, callback) {
+	LazyLoader.eval = function(source, path, callback) {
 		callback(self.evalResult, false, source);
 	};
 
@@ -274,7 +272,7 @@ describe("Required option", function() {
 	describe("Binding", function() {
 
 		it("loads the required path rooted at the result value", function() {
-			var evalAllSpy = jasmine.spyOn(ExoWeb.Model.LazyLoader, "evalAll").andCallThrough();
+			var evalAllSpy = jasmine.spyOn(LazyLoader, "evalAll").andCallThrough();
 			var setTargetSpy = jasmine.spyOn(Binding.prototype, "_setTarget").andCallThrough();
 
 			var value = [{ val: 2 }, { val: 3 }, { val: 4 }];
@@ -283,7 +281,7 @@ describe("Required option", function() {
 
 			var binding = new Binding({ index: 0, dataItem: source }, source, "value", { get_element: function() { } }, "value", { required: "val" });
 
-			expect(evalAllSpy).toHaveBeenCalledWith(value, "val", any(Function), null, null, binding);
+			expect(evalAllSpy).toHaveBeenCalledWith(value, "val", any(Function), null, null, binding, LazyLoader.evalAll, false, value, [], true);
 			expect(setTargetSpy).toHaveBeenCalledWith(value);
 		});
 

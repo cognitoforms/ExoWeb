@@ -1,4 +1,4 @@
-function ArgumentTypeError (argumentName, expectedType, actualValue) {
+function ArgumentTypeError(argumentName, expectedType, actualValue) {
 	/// <summary locid="M:J#ArgumentTypeError.#ctor">
 	/// An error type that is raised when an argument to a function
 	/// is of the wrong type.
@@ -26,7 +26,7 @@ ArgumentTypeError.prototype.constructor = ArgumentTypeError;
 exports.ArgumentTypeError = ArgumentTypeError;
 window.ArgumentTypeError = ArgumentTypeError;
 
-function ArgumentsLengthError (expected, actual) {
+function ArgumentsLengthError(expected, actual) {
 	/// <summary locid="M:J#ArgumentsLengthError.#ctor">
 	/// An error type that is raised when the wrong number
 	/// of arguments is passed to a function.
@@ -52,7 +52,7 @@ ArgumentsLengthError.prototype.constructor = ArgumentsLengthError;
 exports.ArgumentsLengthError = ArgumentsLengthError;
 window.ArgumentsLengthError = ArgumentsLengthError;
 
-function ArgumentNullError (argumentName, reason) {
+function ArgumentNullError(argumentName, reason) {
 	/// <summary locid="M:J#ArgumentNullError.#ctor">
 	/// An error type that is raised when an argument is
 	/// null or undefined and it must have a value.
@@ -76,6 +76,31 @@ ArgumentNullError.prototype.constructor = ArgumentNullError;
 
 exports.ArgumentNullError = ArgumentNullError;
 window.ArgumentNullError = ArgumentNullError;
+
+function ArgumentError(argumentName, reason) {
+	/// <summary locid="M:J#ArgumentNullError.#ctor">
+	/// An error type that is raised when an argument has an invalid value.
+	/// </summary>
+	/// <param name="argumentName" type="String">The name of the argument that was null.</param>
+	/// <param name="reason" type="String">The reason that the argument cannot be null.</param>
+
+	if (arguments.length !== 2) throw new ArgumentsLengthError(2, arguments.length);
+	if (argumentName == null) throw new ArgumentNullError("argumentName");
+	if (typeof (argumentName) !== "string") throw new ArgumentTypeError("argumentName", "string", argumentName);
+	if (reason == null) throw new ArgumentNullError("reason");
+	if (typeof (reason) !== "string") throw new ArgumentTypeError("reason", "string", reason);
+
+	this.name = "ArgumentError";
+	this.argumentName = argumentName;
+	this.reason = reason;
+	this.message = "Argument '" + argumentName + "' has an invalid value" + (reason ? ": " + reason + "." : ".");
+}
+
+ArgumentError.prototype = new Error();
+ArgumentError.prototype.constructor = ArgumentError;
+
+exports.ArgumentError = ArgumentError;
+window.ArgumentError = ArgumentError;
 
 var logErrorProvider = null;
 
@@ -148,11 +173,11 @@ function addError (fn) {
 	///
 	/// The event handler is passed four arguments in total: the original three arguments
 	/// of the global error handler (message, url, lineNumber), as well as the "errorData"
-	/// object, which will ultimately be passed to the "log error" provider.  The event
+	/// object, which will ultimately be passed to the "log error" provider. The event
 	/// handler may choose to modified any of the errorData object's properties.
 	/// 
 	/// </remarks>
-	/// <param name="fn" type="Function">The error event function.  Signature: f (message, url, lineNumber)</param>
+	/// <param name="fn" type="Function">The error event function. Signature: f (message, url, lineNumber).</param>
 
 	if (fn == null) throw new ArgumentNullError("fn");
 	if (typeof(fn) !== "function") throw new ArgumentTypeError("fn", "function", fn);
@@ -161,6 +186,24 @@ function addError (fn) {
 }
 
 exports.addError = addError;
+
+function removeError(fn) {
+	/// <summary>
+	/// Removes an event handler to the global error event.
+	/// </summary>
+	/// <param name="fn" type="Function">The error event function.</param>
+
+	if (fn == null) throw new ArgumentNullError("fn");
+	if (typeof (fn) !== "function") throw new ArgumentTypeError("fn", "function", fn);
+
+	var idx = errorEventFns.indexOf(fn);
+	if (idx < 0) {
+		throw new ArgumentError("fn", "The given function was not found in the list of error handlers.");
+	}
+	errorEventFns.splice(idx, 1);
+}
+
+exports.removeError = removeError;
 
 /*
 * Handles an error that 
@@ -238,19 +281,19 @@ function logError(message, url, lineNumber, errorData, raiseEvents, onSuccess, o
 		raiseErrorEvents = false,
 		customErrorData = null;
 
-	if (args[args.length - 1] instanceof Function) {
+	if (isFunction(args[args.length - 1])) {
 		successCallback = args.pop();
-		if (args[args.length - 1] instanceof Function) {
+		if (isFunction(args[args.length - 1])) {
 			failureCallback = successCallback;
 			successCallback = args.pop();
 		}
 	}
 
-	if (args[args.length - 1] instanceof Boolean) {
+	if (isBoolean(args[args.length - 1])) {
 		raiseErrorEvents = args.pop();
 	}
 
-	if (args[args.length - 1] instanceof Object) {
+	if (args.length > 1 && args[args.length - 1] instanceof Object) {
 		customErrorData = args.pop();
 	}
 
@@ -303,6 +346,10 @@ exports.logError = logError;
 */
 var oldOnError = window.onerror;
 window.onerror = function (message, url, lineNumber) {
+
+	if (!window.ExoWeb || ExoWeb.windowIsUnloading) {
+		return false;
+	}
 
 	// Call previous handler.
 	if (oldOnError && oldOnError.apply(this, arguments) === true) {

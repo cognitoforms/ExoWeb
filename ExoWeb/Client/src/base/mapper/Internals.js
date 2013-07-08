@@ -19,8 +19,8 @@ function ensureJsType(model, typeName, callback, thisPtr) {
 			callback.apply(thisPtr || this, jstypes);
 		});
 	}
-	else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-		ExoWeb.Model.LazyLoader.load(mtype, null, function(jstype) {
+	else if (LazyLoader.isRegistered(mtype)) {
+		LazyLoader.load(mtype, null, function(jstype) {
 			callback.apply(thisPtr || this, [jstype]);
 		});
 	}
@@ -123,8 +123,8 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 	}
 
 	// Load object's type if needed
-	if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
-		ExoWeb.Model.LazyLoader.load(mtype, null, function() {
+	if (LazyLoader.isRegistered(mtype)) {
+		LazyLoader.load(mtype, null, function() {
 			objectFromJson(model, typeName, id, json, callback, thisPtr);
 		});
 		return;
@@ -140,21 +140,39 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 
 	var loadedObj;
 
-	///initialize the object if it was ghosted
-	if (id === STATIC_ID || (obj && obj.wasGhosted) || !LazyLoader.isLoaded(obj)) {
-		if (obj) {
+	var initObj = false;
+	if (id === STATIC_ID) {
+		initObj = true;
+	} else if (obj) {
+		if (LazyLoader.isRegistered(obj)) {
+			initObj = true;
+			// track the newly loaded instance to pass to the caller when complete
+			loadedObj = obj;
+			// unregister the instance from loading
+			ObjectLazyLoader.unregister(obj);
+		}
+		if (obj.wasGhosted) {
+			initObj = true;
+			// track the newly loaded instance to pass to the caller when complete
+			loadedObj = obj;
 			delete obj.wasGhosted;
 		}
+	}
 
+	// Continue if the object needs to be initialized (ghosted or lazy loaded),
+	// or there is no object (load static lists), or the object is not new (load
+	// non-loaded list properties for an object that was previously loaded).
+	if (initObj || !obj || !obj.meta.isNew) {
 		var loadedProperties = [];
 
 		// Load object's properties
-		for (var t = mtype; t !== null; t = t.baseType) {
+		for (var t = mtype; t !== null; t = obj ? t.baseType : null) {
 			var props = obj ? t.get_instanceProperties() : t.get_staticProperties();
 
 			for (var propName in props) {
-				if (loadedProperties.contains(propName))
+				if (loadedProperties.indexOf(propName) >= 0) {
 					continue;
+				}
 
 				loadedProperties.push(propName);
 
@@ -164,31 +182,35 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 					throw new Error($format("Cannot load object {0}|{2} because it has an unexpected property '{1}'", typeName, propName, id));
 				}
 
-				if(prop.get_origin() !== "server")
+				if (prop.get_origin() !== "server") {
 					continue;
+				}
+
+				if (!initObj && !prop.get_isList()) {
+					// If the root object is already initialized, then skip over non-list properties.
+					continue;
+				}
 
 				var propData;
 
 				// instance fields have indexes, static fields use names
-				if(obj) {
+				if (obj) {
 					propData = json[prop.get_index()];
-				}
-				else {
+				} else {
 					propData = json[propName];
 
 					// not all static fields may be present
-					if(propData === undefined)
+					if (propData === undefined) {
 						continue;
+					}
 				}
 
-				if (propData === null) {
-					Property$_init.call(prop, obj, null);
-				}
-				else {
+				if (propData !== null) {
 					var propType = prop.get_jstype();
 
-					 if (prop.get_isList()) {
-					 	var list = prop.get_isStatic() ? prop.value() : obj[prop._fieldName];
+					// Always process list properties since they can be loaded after the parent object.
+					if (prop.get_isList()) {
+						var list = prop.get_isStatic() ? prop.value() : obj[prop._fieldName];
 
 						if (propData == "?") {
 							// don't overwrite list if its already a ghost
@@ -196,41 +218,59 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 								list = ListLazyLoader.register(obj, prop);
 								Property$_init.call(prop, obj, list, false);
 							}
-						}
-						else {
-							if (!list || !ExoWeb.Model.LazyLoader.isLoaded(list)) {
+						} else {
+							if (!list || LazyLoader.isRegistered(list)) {
 
-								var doInit = undefined;
+								var doingObjectInit = undefined;
+								//var newItems = [];
 
 								// json has list members
 								if (list) {
 									ListLazyLoader.unregister(list);
-									doInit = false;
-								}
-								else {
+									doingObjectInit = false;
+								} else {
 									list = [];
-									doInit = true;
+									doingObjectInit = true;
 								}
 
 								for (var i = 0; i < propData.length; i++) {
 									var ref = propData[i];
-									list.push(getObject(model, propType, (ref && ref.id || ref), (ref && ref.type || propType)));
+									var c = getObject(model, propType, (ref && ref.id || ref), (ref && ref.type || propType));
+									if (list.contains(c)) {
+										logWarning($format("Initializing list {0}|{1}.{2} already contains object {3}.", typeName, id, prop._name, Entity.toIdString(c)));
+									}
+									//newItems.push(c);
+									list.push(c);
 								}
 
-								if (doInit) {
+								if (doingObjectInit) {
 									Property$_init.call(prop, obj, list);
+								} else {
+									// Collection change driven by user action or other behavior would result in the "change" event
+									// being raised for the list property.  Since we don't want to record this as a true observable
+									// change, raise the event manually so that rules will still run as needed.
+									//if (obj) {
+									prop._raiseEvent("changed", [obj, { property: prop, newValue: list, oldValue: undefined, collectionChanged: true }]);
+									//}
+
+									// Example of explicitly raising the collection change event if needed.
+									// NOTE: This is probably not necessary because it is difficult to get a reference to a
+									// non-loaded list and so nothing would be watching for changes prior to loading completion.
+									// The _initializing flag would be necessary to signal to the property's collection change
+									// handler that it should not raise the various events in response to the collection change.
+									//list._initializing = true;
+									//Sys.Observer.raiseCollectionChanged(list, [new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.add, newItems, 0)]);
+									//delete list._initializing;
 								}
 							}
 						}
-					}
-					else {
+					} else if (initObj) {
 						var ctor = prop.get_jstype(true);
 
 						// assume if ctor is not found its a model type not an intrinsic
 						if (!ctor || ctor.meta) {
 							Property$_init.call(prop, obj, getObject(model, propType, (propData && propData.id || propData), (propData && propData.type || propType)));
-						}
-						else {
+						} else {
 							// Coerce strings into dates
 							if (ctor == Date && propData && propData.constructor == String && propData.length > 0) {
 
@@ -246,23 +286,16 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 									var localOffset = -(new Date().getTimezoneOffset() / 60);
 									propData = propData.addHours(serverOffset - localOffset);
 								}
-							}
-							else if (ctor === TimeSpan) {
+							} else if (ctor === TimeSpan) {
 								propData = new TimeSpan(propData.TotalMilliseconds);
 							}
 							Property$_init.call(prop, obj, propData);
 						}
 					}
+				} else if (initObj) {
+					Property$_init.call(prop, obj, null);
 				}
 			}
-		}
-
-		if (obj) {
-			// track the newly loaded instance to pass to the caller
-			loadedObj = obj;
-
-			// unregister the instance from loading
-			ObjectLazyLoader.unregister(obj);
 		}
 	}
 
@@ -541,7 +574,7 @@ function getObject(model, propType, id, finalType, forLoading) {
 function onTypeLoaded(model, typeName) {
 	var mtype = model.type(typeName);
 	mtype.eachBaseType(function(mtype) {
-		if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+		if (!LazyLoader.isLoaded(mtype)) {
 			throw new Error("Base type " + mtype._fullName + " is not loaded.");
 		}
 	});
@@ -715,7 +748,7 @@ function fetchPathTypes(model, jstype, path, success, fail) {
 		}
 
 		// if property's type isn't load it, then fetch it
-		if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+		if (!LazyLoader.isLoaded(mtype)) {
 			fetchTypes(model, [mtype.get_fullName()], function(jstypes) {
 				fetchPathTypes(model, jstypes[0], path, success, fail);
 			});
@@ -767,9 +800,9 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 							fetchStaticPathTypes(jstypes[0]);
 						}));
 					}
-					else if (!ExoWeb.Model.LazyLoader.isLoaded(mtype)) {
+					else if (LazyLoader.isRegistered(mtype)) {
 						// lazy load type and continue walking the path
-						ExoWeb.Model.LazyLoader.load(mtype, null, signal.pending(fetchStaticPathTypes));
+						LazyLoader.load(mtype, null, signal.pending(fetchStaticPathTypes));
 					}
 					else {
 						fetchStaticPathTypes();
@@ -788,8 +821,8 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 			rootTypeLoaded(jstypes[0]);
 		}));
 	}
-	else if (!ExoWeb.Model.LazyLoader.isLoaded(rootType)) {
-		ExoWeb.Model.LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
+	else if (LazyLoader.isRegistered(rootType)) {
+		LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
 	}
 	else {
 		rootTypeLoaded(rootType.get_jstype());
@@ -825,11 +858,11 @@ function restoreDates(value) {
 function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
 	var jstype = ExoWeb.Model.Model.getJsType(name, true);
 
-	if (jstype && ExoWeb.Model.LazyLoader.isLoaded(jstype.meta)) {
+	if (jstype && LazyLoader.isLoaded(jstype.meta)) {
 		callback.call(thisPtr || this, jstype);
 	}
 	else if (jstype && forceLoad) {
-		ExoWeb.Model.LazyLoader.load(jstype.meta, property, callback, thisPtr);
+		LazyLoader.load(jstype.meta, property, callback, thisPtr);
 	}
 	else if (!jstype && forceLoad) {
 		ensureJsType(model, name, callback, thisPtr);
@@ -858,7 +891,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		true
 	);
 
-	if (obj && ExoWeb.Model.LazyLoader.isLoaded(obj)) {
+	if (obj && LazyLoader.isLoaded(obj)) {
 		// If the object exists and is loaded, then invoke the callback immediately.
 		callback.call(thisPtr || this, obj);
 	}
@@ -874,7 +907,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		callback.call(thisPtr || this, obj);
 
 		// After the callback has been invoked, force loading to occur.
-		ExoWeb.Model.LazyLoader.load(obj, property);
+		LazyLoader.load(obj, property);
 	}
 	else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
 		// The caller wants the instance force loaded and will wait for it to complete.
@@ -885,7 +918,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		}
 
 		// Force loading to occur, passing through the callback.
-		ExoWeb.Model.LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
+		LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
 	}
 	else {
 		// The caller does not want to force loading, so wait for the instance to come into existance and invoke the callback when it does.

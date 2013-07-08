@@ -62,6 +62,16 @@ function isFunction(obj) {
 }
 exports.isFunction = isFunction;
 
+function isBoolean(obj) {
+	return type(obj) === "boolean";
+}
+exports.isBoolean = isBoolean;
+
+function isDate(obj) {
+	return type(obj) === "date";
+}
+exports.isDate = isDate;
+
 function isObject(obj) {
 	return type(obj) === "object" || (obj && obj instanceof Object);
 }

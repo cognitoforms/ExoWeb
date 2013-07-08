@@ -153,7 +153,7 @@ describe("ResponseHandler", function () {
 
 				callback.call(thisPtr || this);
 			},
-			applyChanges: function (checkpoint, changesArg, source, serverSync, beforeApply, afterApply, callback, thisPtr) {
+			applyChanges: function (checkpoint, changesArg, source, user, setId, serverSync, beforeApply, afterApply, callback, thisPtr) {
 				expect(typeSpy).toHaveBeenCalled();
 				expect(source).toBe("init");
 				arrayEquals(changesArg, changes);
@@ -179,12 +179,17 @@ describe("ResponseHandler", function () {
 			registerRules: jasmine.jasmine.createSpy()
 		};
 
-		ExoWeb.Model = { LazyLoader: { isLoaded: function () { return false; }, load: function() { } } };
-		var lazyLoadSpy = jasmine.spyOn(ExoWeb.Model.LazyLoader, "load").andCallThrough();
+		LazyLoader = { isLoaded: function () { return false; }, isRegistered: function () { return true; }, load: function() { } };
+		var lazyLoadSpy = jasmine.spyOn(LazyLoader, "load").andCallThrough();
 
 		global.TypeLazyLoader = { unregister: function() { } };
 
-		var serverSyncObj = { applyChanges: changeSpy };
+		var serverSyncObj = {
+			applyChanges: changeSpy,
+			batchChanges: function (description, callback, thisPtr) {
+				callback.call(thisPtr);
+			}
+		};
 
 		typesFromJson = typeSpy;
 		objectsFromJson = objSpy;

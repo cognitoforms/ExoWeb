@@ -8,3 +8,5 @@
 bin/
 obj/
 .DS_STORE
+node_modules/
+ExoWeb/Client/Gruntfile.TfsCheckout.js

@@ -214,7 +214,7 @@ function peek(arr) {
 }
 
 function purge(arr, callback, thisPtr) {
-	var result;
+	var result = null;
 
 	for (var i = 0; i < arr.length; i++) {
 		if (callback.call(thisPtr || this, arr[i], i, arr) === true) {
@@ -224,8 +224,13 @@ function purge(arr, callback, thisPtr) {
 			else
 				arr.splice(i, 1);
 
-			// Lazy create array and add index (accounting for previously removed).
-			if (!result) result = [];
+			// Lazy create result array.
+			if (result === null) {
+				result = [];
+			}
+
+			// Add index (accounting for previously removed
+			// items that are now in the return value).
 			result.push(i + result.length);
 
 			// Decrement to account for removal.

@@ -1,12 +1,17 @@
-var queryProviderFn = function queryProviderFn(queries, changes, onSuccess, onFailure) {
-	throw new Error("Query provider has not been implemented.  Call ExoWeb.Mapper.setQueryProvider(fn);");
+/*global exports, context, Batch */
+
+var queryProviderFn = function queryProviderFn() {
+	"use strict";
+	throw new Error("Query provider has not been implemented. Call ExoWeb.Mapper.setQueryProvider(fn);");
 };
 
 function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
-	var scopeQueries;
+	"use strict";
+
+	var scopeQueries, batch;
 
 	// ensure correct value of "scopeQueries" argument
-	if (!isFunction(onSuccess)) {
+	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
 		// scopeQueries is included in call, so shift arguments
 		scopeQueries = onSuccess;
 		onSuccess = onFailure;
@@ -15,30 +20,34 @@ function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
 	}
 	else {
 		// scopeQueries is NOT included in call, so insert default value into args array
-		scopeQueries = context.server._scopeQueries;
+		scopeQueries = context.server._scopeQueries; //ignore jslint
 	}
 
-	if (!isFunction(onFailure)) {
+	if (onFailure !== undefined && onFailure !== null && !(onFailure instanceof Function)) {
 		thisPtr = onFailure;
 		onFailure = null;
 	}
 
-	var batch = ExoWeb.Batch.suspendCurrent("queryProvider");
-	queryProviderFn.call(this, queries, changes, scopeQueries,
-		function queryProviderSuccess() {
-			ExoWeb.Batch.resume(batch);
+	batch = Batch.suspendCurrent("queryProvider");
+
+	queryProviderFn(queries, changes, scopeQueries,
+		function () {
+			Batch.resume(batch);
 			if (onSuccess) {
 				onSuccess.apply(thisPtr || this, arguments);
 			}
 		},
-		function queryProviderFailure() {
-			ExoWeb.Batch.resume(batch);
+		function () {
+			Batch.resume(batch);
 			if (onFailure) {
 				onFailure.apply(thisPtr || this, arguments);
 			}
 		});
 }
 
-ExoWeb.Mapper.setQueryProvider = function setQueryProvider(fn) {
+exports.setQueryProvider = function setQueryProvider(fn) {
+	"use strict";
 	queryProviderFn = fn;
 };
+
+exports.queryProvider = queryProvider; // IGNORE

@@ -18,7 +18,7 @@ OptionAdapter.prototype = {
 
 		var signal = new ExoWeb.Signal("OptionAdapter.displayValue");
 		this._parent._doForFormatPaths(val, function (path) {
-			ExoWeb.Model.LazyLoader.evalAll(val, path, signal.pending());
+			LazyLoader.evalAll(val, path, signal.pending());
 		}, this);
 		signal.waitForAll(function () {
 			Observer.raisePropertyChanged(this, "displayValue");

@@ -21,15 +21,19 @@ function Binding(templateContext, source, sourcePath, target, targetPath, option
 
 	this._isTargetElement = Sys.UI.DomElement.isDomElement(target);
 
+	this._updateImmediately = true;
+
 	if (this._sourcePath) {
 		// Start the initial fetch of the source value.
 		this._evalSuccessHandler = this._evalSuccess.bind(this);
 		this._evalFailureHandler = this._evalFailure.bind(this);
-		ExoWeb.Model.LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
+		LazyLoader.eval(this._source, this._sourcePath, this._evalSuccessHandler, this._evalFailureHandler, scopeChain);
 	}
 	else {
 		this._evalSuccess(this._source);
 	}
+
+	this._updateImmediately = false;
 }
 
 function ensureArray(value) {
@@ -123,17 +127,24 @@ Binding.mixin({
 	//////////////////////////////////////////////////////////////////////////
 
 	_require: function (value, callback) {
-		var valueRevision = this._valueRevision = ExoWeb.randomText(8, true);
+		var valueRevision = this._valueRevision = ExoWeb.randomText(8, true),
+			updateImmediately = true;
 
-		ExoWeb.Model.LazyLoader.evalAll(value, this._options.required, function () {
+		LazyLoader.evalAll(value, this._options.required, function () {
 
 			// Make sure that the data being evaluated is not stale.
 			if (!this._value || this._value !== value || this._valueRevision !== valueRevision) {
 				return;
 			}
 
-			callback.call(this);
-		}, null, null, this);
+			if (updateImmediately) {
+				callback.call(this);
+			} else {
+				window.setTimeout(callback.bind(this), 1);
+			}
+		}, null, null, this, LazyLoader.evalAll, false, value, [], true);
+
+		updateImmediately = false;
 	},
 
 	_update: function (value, oldItems, newItems) {
@@ -243,7 +254,14 @@ Binding.mixin({
 
 		this._sourcePathResult = result;
 
-		this._update(result, null, ensureArray(result));
+		if (this._updateImmediately) {
+			this._update(result, null, ensureArray(result));
+		} else {
+			var self = this;
+			window.setTimeout(function () {
+				self._update(result, null, ensureArray(result));
+			}, 1);
+		}
 	},
 
 	_evalFailure: function(err) {

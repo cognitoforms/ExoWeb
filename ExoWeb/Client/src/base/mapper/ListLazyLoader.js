@@ -35,7 +35,7 @@ function listLoad(list, propName, callback, thisPtr) {
 	}
 
 	// load the objects in the list
-	logWarning($format("Lazy load: {0}|{1}.{2}", ownerType, ownerId, propName));
+	logWarning($format("Lazy load list: {0}|{1}.{2}", ownerType, ownerId, propName));
 
 	var objectJson, conditionsJson;
 
@@ -68,8 +68,8 @@ function listLoad(list, propName, callback, thisPtr) {
 	// ensure that the property type is loaded as well.
 	// if the list has objects that are subtypes, those will be loaded later
 	// when the instances are being loaded
-	if (!ExoWeb.Model.LazyLoader.isLoaded(propType)) {
-		ExoWeb.Model.LazyLoader.load(propType, null, signal.pending());
+	if (LazyLoader.isRegistered(propType)) {
+		LazyLoader.load(propType, null, signal.pending());
 	}
 
 	signal.waitForAll(function() {
@@ -123,22 +123,40 @@ function listLoad(list, propName, callback, thisPtr) {
 			throw new Error($format("Attempting to load list {0} of instance {1}:{2}, but the response JSON is not an array: {3}.", propName, ownerType, ownerId, listJson));
 		}
 
+		var populateList = false;
+		//var newItems = [];
+
+		if (LazyLoader.isRegistered(list)) {
+			// If the lazy loader is no longer registered,
+			// then don't populate the list.
+			populateList = true;
+			ListLazyLoader.unregister(list, this);
+		}
+
 		// populate the list with objects
 		for (var i = 0; i < listJson.length; i++) {
 			var ref = listJson[i];
 			var item = getObject(model, propType, (ref && ref.id || ref), (ref && ref.type || propType));
-			list.push(item);
+
+			//newItems.push(item);
+
+			if (populateList) {
+				if (list.contains(item)) {
+					logWarning($format("Lazy loading list {0}|{1}.{2} already contains object {3}.", ownerType, ownerId, propName, Entity.toIdString(item)));
+				}
+				list.push(item);
+			}
 
 			// if the list item is already loaded ensure its data is not in the response
 			// so that it won't be reloaded
-			if (ExoWeb.Model.LazyLoader.isLoaded(item)) {
+			if (LazyLoader.isLoaded(item)) {
 				delete objectJson[jsonType][ref.id];
 			}
 		}
 
 		// remove list from json and process the json.  there may be
 		// instance data returned for the objects in the list
-		if (ExoWeb.Model.LazyLoader.isLoaded(owner)) {
+		if (LazyLoader.isLoaded(owner)) {
 			delete objectJson[jsonType][jsonId];
 		}
 
@@ -151,7 +169,18 @@ function listLoad(list, propName, callback, thisPtr) {
 			//	being raised for the list property.  Since we don't want to record this as a true observable
 			//	change, raise the event manually so that rules will still run as needed.
 			// This occurs before batch end so that it functions like normal object loading.
-			prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, collectionChanged: true}]);
+			//if (ownerId !== STATIC_ID) {
+			prop._raiseEvent("changed", [owner, { property: prop, newValue: list, oldValue: undefined, collectionChanged: true }]);
+			//}
+
+			// Example of explicitly raising the collection change event if needed.
+			// NOTE: This is probably not necessary because it is difficult to get a reference to a
+			// non-loaded list and so nothing would be watching for changes prior to loading completion.
+			// The _initializing flag would be necessary to signal to the property's collection change
+			// handler that it should not raise the various events in response to the collection change.
+			//list._initializing = true;
+			//Sys.Observer.raiseCollectionChanged(list, [new Sys.CollectionChange(Sys.NotifyCollectionChangedAction.add, newItems, 0)]);
+			//delete list._initializing;
 
 			ExoWeb.Batch.end(batch);
 			callback.call(thisPtr || this, list);
@@ -202,14 +231,14 @@ ListLazyLoader.mixin({
 		list._ownerId = prop.get_isStatic() ? STATIC_ID : obj.meta.id;
 		list._ownerProperty = prop;
 
-		ExoWeb.Model.LazyLoader.register(list, instance);
+		LazyLoader.register(list, instance);
 
 		return list;
 	};
 
 	ListLazyLoader.unregister = function(list) {
 		Observer.removeCollectionChanged(list, list._collectionChangeHandler);
-		ExoWeb.Model.LazyLoader.unregister(list, instance);
+		LazyLoader.unregister(list, instance);
 
 		delete list._ownerId;
 		delete list._ownerProperty;

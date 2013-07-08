@@ -78,10 +78,10 @@ exports.init = function () {
 	"model.Model".dependsOn("core.Functor", "core.Function", "model.PathTokens");
 	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity", "model.ObjectMeta");
 	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type", "core.Observer", "core.TimeSpan");
-	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Object", "model.Property", "core.Observer");
+	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Signal", "core.Object", "model.Property", "core.Observer");
 	"model.PathTokens".dependsOn("core.Function", "model.Property", "model.PropertyChain", "core.Observer");
 	"mapper.Internals".dependsOn("core.Warnings");
-	"mapper.ServerSync".dependsOn("core.Utilities", "core.Functor", "core.Function");
+	"mapper.ServerSync".dependsOn("core.Errors", "core.Utilities", "core.Functor", "core.Function");
 	"mapper.ObjectLazyLoader".dependsOn("core.Utilities", "core.Activity", "core.Function", "model.LazyLoader", "core.Array");
 	"mapper.ChangeSet".dependsOn("core.Function", "core.Functor", "core.Random");
 	"mapper.ChangeLog".dependsOn("core.Function", "core.Functor", "mapper.ChangeSet");
@@ -97,7 +97,7 @@ exports.init = function () {
 function getModulePath(basePath, name) {
 	var pair = name.split(".");
 	var root = extensions.indexOf(pair[0]) < 0 ? "base" : "extensions";
-	return basePath + root + "/" + pair.join("/");
+	return basePath + root + "/" + pair.join("/") + ".js";
 }
 
 var currentlyRequiring = [];

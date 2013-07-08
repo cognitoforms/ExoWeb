@@ -1,4 +1,4 @@
-var jasmine = require("../ref/jasmine/jasmine");
+var jasmine = require("../ref/jasmine/jasmine.js");
 global.jasmine = jasmine;
 
 global.describe = jasmine.describe;
@@ -6,8 +6,9 @@ global.it = jasmine.it;
 global.expect = jasmine.expect;
 global.beforeEach = jasmine.beforeEach;
 global.afterEach = jasmine.afterEach;
+global.any = jasmine.any;
 
-var jasmineConsole = require("../ref/jasmine/jasmine.console");
+var jasmineConsole = require("../ref/jasmine/jasmine.console.js");
 global.jasmineConsole = jasmineConsole;
 
 global.log = function(category, message, args) {
@@ -26,7 +27,7 @@ exports.announce = function (name) {
 
 exports.require = function() {
 	if (!dependencies) {
-		dependencies = require("./SpecDependencies");
+		dependencies = require("./SpecDependencies.js");
 		dependencies.setHelper(exports);
 		dependencies.init();
 	}
@@ -40,7 +41,7 @@ exports.requireMsAjax = function() {
 	};
 	global.navigator = { userAgent: "" };
 	window.addEventListener = function() {};
-	require("../ref/aspnetajax/MicrosoftAjax.debug");
+	require("../ref/aspnetajax/MicrosoftAjax.debug.js");
 };
 
 function jQueryExtend() {
@@ -142,6 +143,126 @@ exports.ensureNamespace = function(ns) {
 		}
 	});
 	return target;
+};
+
+jasmine.jasmine.Env.prototype.str_ = function (value, hints) {
+	var str;
+	if (value === null) {
+		str = "null";
+	} else if (value === undefined) {
+		str = "undefined";
+	} else if (Object.prototype.toString.call(value) === "[object Object]") {
+		str = JSON.stringify(value);
+	} else if (hints) {
+		if (Object.prototype.toString.call(value) === "[object Date]") {
+			if (hints.dateAndTime) {
+				str = value.localeFormat("MM/dd/yyyy h:mm tt");
+			} else if (hints.dateOnly) {
+				str = value.localeFormat("MM/dd/yyyy");
+			} else if (hints.timeOnly) {
+				str = value.localeFormat("h:mm tt");
+			} else {
+				str = value.toString();
+			}
+		} else {
+			str = value.toString();
+		}
+	} else if (Object.prototype.toString.call(value) === "[object String]") {
+		str = "'" + value.toString() + "'";
+	} else {
+		str = value.toString();
+	}
+	return str;
+};
+
+jasmine.jasmine.Env.prototype.indexOf_ = function (arr, item) {
+	for (var i = 0, len = arr.length; i < len; i++) {
+		if (this.equals_(arr[i], item))
+			return i;
+	}
+	return -1;
+};
+
+jasmine.jasmine.Matchers.prototype.toHaveTheSameLengthAs = function (otherArray) {
+	var myArray = this.actual,
+		actualLength = myArray.length;
+
+	if (!(myArray instanceof Array)) {
+		throw new Error("The source of toHaveTheSameLengthAs must be an array.");
+	}
+
+	if (!(otherArray instanceof Array)) {
+		throw new Error("The input of toHaveTheSameLengthAs must be an array.");
+	}
+
+	this.actual = actualLength;
+	this.message = function () {
+		return "Expected " + otherArray.length + " items but found " + actualLength + " instead.";
+	};
+
+	return actualLength === otherArray.length;
+};
+
+jasmine.jasmine.Matchers.prototype.toContainTheItemsIn = function (otherArray) {
+	if (!(this.actual instanceof Array)) {
+		throw new Error("The source object must be an array.");
+	}
+
+	if (!(otherArray instanceof Array)) {
+		throw new Error("The input object must be an array.");
+	}
+
+	var actualArray = Array.prototype.slice.call(this.actual),
+		expectedArray = Array.prototype.slice.call(otherArray),
+		message = "";
+
+	this.message = function () {
+		return message || ("Expected the array to contain the following items: [" + otherArray.map(this.env.str_).join(", ") + "].");
+	};
+
+	while (expectedArray.length > 0) {
+		var idxInActual = this.env.indexOf_(actualArray, expectedArray[0]);
+		if (idxInActual < 0) {
+			message = "Expected the array to contain " + this.env.str_(expectedArray[0]) + ".";
+			return false;
+		}
+		expectedArray.splice(0, 1);
+		actualArray.splice(idxInActual, 1);
+	}
+
+	return true;
+};
+
+jasmine.jasmine.Matchers.prototype.toHaveTheSameElementsAs = function (otherArray) {
+	if (!(this.actual instanceof Array)) {
+		throw new Error("The source object must be an array.");
+	}
+
+	if (!(otherArray instanceof Array)) {
+		throw new Error("The input object must be an array.");
+	}
+
+	var actualArray = Array.prototype.slice.call(this.actual),
+		expectedArray = Array.prototype.slice.call(otherArray),
+		message = "";
+
+	this.message = function () {
+		return message || ("Expected the array to be [" + otherArray.map(this.env.str_).join(", ") + "].");
+	};
+
+	if (actualArray.length !== expectedArray.length) {
+		message = "Array [" + actualArray.map(this.env.str_).join(", ") + "] does not contain the same number of items as [" + otherArray.map(this.env.str_).join(", ") + "].";
+		return false;
+	}
+
+	for (var i = 0; i < actualArray.length; i++) {
+		if (!this.env.equals_(actualArray[i], expectedArray[i])) {
+			message = "Expected " + this.env.str_(expectedArray[i]) + " at position " + i + " but found " + this.env.str_(actualArray[i]) + " instead.";
+			return false;
+		}
+	}
+
+	return true;
 };
 
 exports.arrayEquals = function(arr1, arr2, unordered) {
