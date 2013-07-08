@@ -24,6 +24,10 @@
     <OldToolsVersion>4.0</OldToolsVersion>
     <TargetFrameworkProfile />
     <UseIISExpress>false</UseIISExpress>
+    <IISExpressSSLPort />
+    <IISExpressAnonymousAuthentication />
+    <IISExpressWindowsAuthentication />
+    <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -159,6 +163,12 @@
   </ProjectExtensions>
   <PropertyGroup>
     <PreBuildEvent>
-    </PreBuildEvent>
+mkdir $(ProjectDir)Common\Scripts\Microsoft
+mkdir $(ProjectDir)Common\Scripts\QUnit
+mkdir $(ProjectDir)Common\Scripts\ExoWeb
+xcopy $(ProjectDir)..\ExoWeb\Client\ref\aspnetajax\*.js $(ProjectDir)Common\Scripts\Microsoft\ /Y
+xcopy $(ProjectDir)..\ExoWeb\Client\ref\qunit\*.js $(ProjectDir)Common\Scripts\QUnit\ /Y
+xcopy $(ProjectDir)..\ExoWeb\Client\dist\*.js $(ProjectDir)Common\Scripts\ExoWeb\ /Y
+</PreBuildEvent>
   </PropertyGroup>
 </Project>
