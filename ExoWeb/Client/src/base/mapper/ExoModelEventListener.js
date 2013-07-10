@@ -22,6 +22,11 @@ ExoModelEventListener.mixin({
 		if (this._filters && this._filters.listChanged && this._filters.listChanged(obj, property, listChanges) !== true)
 			return;
 
+		// Recording static property changes is not supported by the JSON format or the server-side implementation.
+		if (property.get_isStatic()) {
+			return;
+		}
+
 		for (var i = 0; i < listChanges.length; ++i) {
 			var listChange = listChanges[i];
 
@@ -72,6 +77,11 @@ ExoModelEventListener.mixin({
 	onPropertyChanged: function ExoModelEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 		if (this._filters && this._filters.propertyChanged && this._filters.propertyChanged(obj, property, newValue, oldValue) !== true)
 			return;
+
+		// Recording static property changes is not supported by the JSON format or the server-side implementation.
+		if (property.get_isStatic()) {
+			return;
+		}
 
 		if (property.get_isValueType()) {
 			var valueChange = {
