@@ -123,14 +123,22 @@ namespace ExoWeb.Serialization
 							property = (ModelValueProperty)instance.Type.Properties[reader.ReadValue<string>()];
 							break;
 						case "oldValue":
-							oldValue = property.CoerceValue(reader.Value);
-
-							reader.Read();
+							if (reader.TokenType == JsonToken.StartObject)
+								oldValue = reader.ReadValue(property.PropertyType);
+							else
+							{
+								oldValue = property.CoerceValue(reader.Value);
+								reader.Read();
+							}
 							break;
 						case "newValue":
-							newValue = property.CoerceValue(reader.Value);
-
-							reader.Read();
+							if (reader.TokenType == JsonToken.StartObject)
+								newValue = reader.ReadValue(property.PropertyType);
+							else
+							{
+								newValue = property.CoerceValue(reader.Value);
+								reader.Read();
+							}
 							break;
 						default:
 							throw new ArgumentException("The specified property could not be deserialized.", p);
