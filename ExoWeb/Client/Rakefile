@@ -295,6 +295,6 @@ task :build => [:build_msajax, :build_msajax_nojquery, :build_jquery_msajax_plug
 	puts("completed default task")
 end
 
-task :default => [:run_specs, :build] do
+task :default => [:build] do
 	puts("completed default task")
 end
