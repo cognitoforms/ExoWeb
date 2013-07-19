@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using Newtonsoft.Json;
 using System.Reflection;
@@ -8,7 +9,6 @@ using ExoModel;
 using ExoRule;
 using System.IO;
 using ExoRule.Validation;
-using System.Globalization;
 
 namespace ExoWeb.Serialization
 {
@@ -120,7 +120,10 @@ namespace ExoWeb.Serialization
 							instance = reader.ReadValue<ModelInstance>();
 							break;
 						case "property":
-							property = (ModelValueProperty)instance.Type.Properties[reader.ReadValue<string>()];
+							var propertyName = reader.ReadValue<string>();
+							property = (ModelValueProperty)instance.Type.Properties[propertyName];
+							if (property == null)
+								throw new SerializationException("Unable to deserialize ValueChange: property \"" + propertyName + "\" does not exist for type \"" + instance.Type.Name + "\".");
 							break;
 						case "oldValue":
 							if (reader.TokenType == JsonToken.StartObject)
@@ -163,7 +166,10 @@ namespace ExoWeb.Serialization
 							instance = reader.ReadValue<ModelInstance>();
 							break;
 						case "property":
-							property = (ModelReferenceProperty)instance.Type.Properties[reader.ReadValue<string>()];
+							var propertyName = reader.ReadValue<string>();
+							property = (ModelReferenceProperty)instance.Type.Properties[propertyName];
+							if (property == null)
+								throw new SerializationException("Unable to deserialize ReferenceChange: property \"" + propertyName + "\" does not exist for type \"" + instance.Type.Name + "\".");
 							break;
 						case "oldValue":
 							oldValue = reader.ReadValue<ModelInstance>();
@@ -172,7 +178,7 @@ namespace ExoWeb.Serialization
 							newValue = reader.ReadValue<ModelInstance>();
 							break;
 						default:
-							throw new ArgumentException("The specified property could not be deserialized.", p);
+							throw new ArgumentException(@"The specified property could not be deserialized.", p);
 					}
 				}
 				return new ModelReferenceChangeEvent(instance, property, oldValue, newValue);
@@ -194,7 +200,10 @@ namespace ExoWeb.Serialization
 							instance = reader.ReadValue<ModelInstance>();
 							break;
 						case "property":
-							property = (ModelReferenceProperty)instance.Type.Properties[reader.ReadValue<string>()];
+							var propertyName = reader.ReadValue<string>();
+							property = (ModelReferenceProperty)instance.Type.Properties[propertyName];
+							if (property == null)
+								throw new SerializationException("Unable to deserialize ListChange: property \"" + propertyName + "\" does not exist for type \"" + instance.Type.Name + "\".");
 							break;
 						case "added":
 							added = reader.ReadValue<ModelInstance[]>();
@@ -203,7 +212,7 @@ namespace ExoWeb.Serialization
 							removed = reader.ReadValue<ModelInstance[]>();
 							break;
 						default:
-							throw new ArgumentException("The specified property could not be deserialized.", p);
+							throw new ArgumentException(@"The specified property could not be deserialized.", p);
 					}
 				}
 				return new ModelListChangeEvent(instance, property, added, removed);
@@ -222,7 +231,7 @@ namespace ExoWeb.Serialization
 							instance = reader.ReadValue<ModelInstance>();
 							break;
 						default:
-							throw new ArgumentException("The specified property could not be deserialized.", p);
+							throw new ArgumentException(@"The specified property could not be deserialized.", p);
 					}
 				}
 				return new ModelInitEvent.InitNew(instance);
@@ -241,7 +250,7 @@ namespace ExoWeb.Serialization
 							instance = reader.ReadValue<ModelInstance>();
 							break;
 						default:
-							throw new ArgumentException("The specified property could not be deserialized.", p);
+							throw new ArgumentException(@"The specified property could not be deserialized.", p);
 					}
 				}
 				return new ModelInitEvent.InitExisting(instance);
@@ -264,7 +273,7 @@ namespace ExoWeb.Serialization
 							isPendingDelete = reader.ReadValue<bool>();
 							break;
 						default:
-							throw new ArgumentException("The specified property could not be deserialized.", p);
+							throw new ArgumentException(@"The specified property could not be deserialized.", p);
 					}
 				}
 				return new ModelDeleteEvent(instance, isPendingDelete);
@@ -440,7 +449,7 @@ namespace ExoWeb.Serialization
 										reader.ReadValue<bool>();
 										break;
 									default:
-										throw new ArgumentException("The specified property could not be deserialized.", p);
+										throw new ArgumentException(@"The specified property could not be deserialized.", p);
 								}
 							}
 							return (ModelInstance)createModelInstance.Invoke(new object[] { type, id });
