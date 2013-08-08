@@ -1527,6 +1527,7 @@ ServerSync.mixin({
 				ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
 				var prop = srcObj.meta.property(change.property);
+				var isEntityList = prop.get_isEntityListType();
 				var list = prop.value(srcObj);
 
 				list.beginUpdate();
@@ -1542,34 +1543,46 @@ ServerSync.mixin({
 
 					// Add each item to the list after ensuring that the type is loaded
 					change.added.forEach(function (item) {
-						tryGetJsType(this.model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
-							var itemObj = fromExoModel(item, this._translator, true);
+						if (isEntityList) {
+							tryGetJsType(this.model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
+								var itemObj = fromExoModel(item, this._translator, true);
 
-							// Update change to reflect the object's new id
-							ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
+								// Update change to reflect the object's new id
+								ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
-							if (!list.contains(itemObj)) {
-								ListLazyLoader.allowModification(list, function () {
-									list.add(itemObj);
-								});
-							}
-						}, after)), this, true);
+								if (!list.contains(itemObj)) {
+									ListLazyLoader.allowModification(list, function () {
+										list.add(itemObj);
+									});
+								}
+							}, after)), this, true);
+						} else {
+							ListLazyLoader.allowModification(list, function () {
+								list.add(item);
+							});
+						}
 					}, this);
 				}
 
 				// apply removed items
 				change.removed.forEach(function (item) {
-					// no need to load instance only to remove it from a list when it can't possibly exist
-					tryGetJsType(this.model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
-						var itemObj = fromExoModel(item, this._translator, true);
+					if (isEntityList) {
+						// no need to load instance only to remove it from a list when it can't possibly exist
+						tryGetJsType(this.model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
+							var itemObj = fromExoModel(item, this._translator, true);
 
-						// Update change to reflect the object's new id
-						ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
+							// Update change to reflect the object's new id
+							ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
+							ListLazyLoader.allowModification(list, function () {
+								list.remove(itemObj);
+							});
+						}, after), this, true);
+					} else {
 						ListLazyLoader.allowModification(list, function () {
-							list.remove(itemObj);
+							list.remove(item);
 						});
-					}, after), this, true);
+					}
 				}, this);
 
 				// don't end update until the items have been loaded
@@ -1729,6 +1742,7 @@ ServerSync.mixin({
 		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
 			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
 				var prop = srcObj.meta.property(change.property);
+				var isEntityList = prop.get_isEntityListType();
 				var list = prop.value(srcObj);
 				var translator = this._translator;
 
@@ -1738,12 +1752,16 @@ ServerSync.mixin({
 
 				// Rollback added items
 				change.added.forEach(function rollbackListChanges$added(item) {
-					tryGetJsType(this.model, item.type, null, false, function (itemType) {
-						var childObj = fromExoModel(item, translator);
-						if (childObj) {
-							list.remove(childObj);
-						}
-					}, this);
+					if (isEntityList) {
+						tryGetJsType(this.model, item.type, null, false, function (itemType) {
+							var childObj = fromExoModel(item, translator);
+							if (childObj) {
+								list.remove(childObj);
+							}
+						}, this);
+					} else {
+						list.remove(item);
+					}
 				}, this);
 
 				// Rollback removed items
@@ -1754,10 +1772,14 @@ ServerSync.mixin({
 					}
 
 					change.removed.forEach(function rollbackListChanges$added(item) {
-						tryGetJsType(this.model, item.type, null, true, listSignal.pending(function (itemType) {
-							var childObj = fromExoModel(item, translator, true);
-							list.add(childObj);
-						}, this, true), this);
+						if (isEntityList) {
+							tryGetJsType(this.model, item.type, null, true, listSignal.pending(function (itemType) {
+								var childObj = fromExoModel(item, translator, true);
+								list.add(childObj);
+							}, this, true), this);
+						} else {
+							list.add(item);
+						}
 					}, this);
 				}
 
