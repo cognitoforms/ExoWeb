@@ -4933,7 +4933,7 @@ window.ExoWeb.DotNet = {};
 		this.obj = obj;
 		this.value = value;
 		this.reason = reason;
-		this.message = "Cannot set " + property.get_name() + "=" + (val === undefined ? "<undefined>" : val) + " for instance " + obj.meta.type.get_fullName() + "|" + obj.meta.id + ": " + reason + ".";
+		this.message = "Cannot set " + property.get_name() + "=" + (value === undefined ? "<undefined>" : value) + " for instance " + obj.meta.type.get_fullName() + "|" + obj.meta.id + ": " + reason + ".";
 	}
 
 	PropertySetError.prototype = new Error();
