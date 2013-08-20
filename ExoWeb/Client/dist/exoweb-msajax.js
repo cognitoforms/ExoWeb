@@ -11481,10 +11481,17 @@ window.ExoWeb.DotNet = {};
 
 								// For list changes additionally check added and removed objects.
 								if (change.type === "ListChange") {
-									if (change.added.length > 0)
-										change.added.forEach(fixChangeInstanceDueToIdChange, this);
-									if (change.removed.length > 0)
-										change.removed.forEach(fixChangeInstanceDueToIdChange, this);
+									// get the jsType of the object that contains the list
+									var jsType = Model.getJsType(change.instance.type, true);
+
+									if (jsType) {
+										if (jsType.meta.property(change.property).get_isEntityListType()) {
+											if (change.added.length > 0)
+												change.added.forEach(fixChangeInstanceDueToIdChange, this);
+											if (change.removed.length > 0)
+												change.removed.forEach(fixChangeInstanceDueToIdChange, this);
+										}
+									}
 								}
 								// For reference changes additionally check oldValue/newValue
 								else if (change.type === "ReferenceChange") {
