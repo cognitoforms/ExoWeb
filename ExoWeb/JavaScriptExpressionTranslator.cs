@@ -452,6 +452,7 @@ namespace ExoWeb
 
 					// Check for supported IEnumerable<T> methods that take a single Func<T,X> delegate selector
 					else if (parameters.Length == 1 &&
+						parameters[0].ParameterType.IsGenericType &&
 						parameters[0].ParameterType.GetGenericTypeDefinition() == typeof(Func<,>) &&
 						parameters[0].ParameterType.GetGenericArguments()[0].IsAssignableFrom(listType.GetGenericArguments()[0]) &&
 						typeof(IEnumerableSignatures).GetMethods().Any(em =>
@@ -568,6 +569,16 @@ namespace ExoWeb
 		{
 			return supportedTypes.ContainsKey(type) || type.IsEnum ||
 				(type.IsArray && type.GetArrayRank() == 1 && IsSupported(type.GetElementType()));
+		}
+
+		/// <summary>
+		/// Determines if the specified <see cref="Type"/> is supported for default translation to javascript.
+		/// </summary>
+		/// <param name="type"></param>
+		/// <returns></returns>
+		public bool CanTranslate(MemberInfo member)
+		{
+			return GetTranslation(member) != null;
 		}
 
 		/// <summary>

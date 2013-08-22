@@ -400,12 +400,7 @@ namespace ExoWeb.Serialization
 						{
 							var defaultValue = ((ModelValueProperty)property).DefaultValue;
 							if (defaultValue != null)
-							{
-								var exp = ExoWeb.ExpressionTranslator.Translate(defaultValue);
-								if (exp.Exceptions.Any())
-									throw exp.Exceptions.Last();
-								json.Set("defaultValue", exp.Body);
-							}
+								json.Set("defaultValue", ((ModelValueProperty)property).DefaultValue);
 						}
 					}, 
 					json => { throw new NotSupportedException("ModelProperty cannot be deserialized."); }),

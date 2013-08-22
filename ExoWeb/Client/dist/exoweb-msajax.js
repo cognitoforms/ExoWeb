@@ -12338,6 +12338,11 @@ window.ExoWeb.DotNet = {};
 			throw new Error("Type \"" + mtype._fullName + "\" has already been loaded");
 		}
 
+		// store exports
+		if (json.exports) {
+			mtype.set_exports(json.exports);
+		}
+
 		// define properties
 		for (var propName in json.properties) {
 			var propJson = json.properties[propName];
@@ -12365,7 +12370,7 @@ window.ExoWeb.DotNet = {};
 				isPersisted: propJson.isPersisted !== false,
 				isCalculated: propJson.isCalculated === true,
 				index: propJson.index,
-				defaultValue: propJson.defaultValue ? new Function("return " + propJson.defaultValue) : undefined
+				defaultValue: propJson.defaultValue ? mtype.compileExpression(propJson.defaultValue) : undefined
 			});
 		
 			// setup static properties for lazy loading
@@ -12417,11 +12422,6 @@ window.ExoWeb.DotNet = {};
 			for (var i = 0; i < json.rules.length; ++i) {
 				ruleFromJson(mtype, json.rules[i]);
 			}
-		}
-
-		// store exports
-		if (json.exports) {
-			mtype.set_exports(json.exports);
 		}
 	}
 
