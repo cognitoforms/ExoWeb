@@ -712,6 +712,8 @@ namespace ExoWeb
 
 			protected override Expression VisitBinary(BinaryExpression node)
 			{
+				builder.Append("(");
+
 				// Handle concatenation of strings to ensure correct implicit conversion
 				if (node.NodeType == ExpressionType.Add && node.Left.Type == typeof(string) && node.Left.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Left.GetType()))
 				{
@@ -735,6 +737,8 @@ namespace ExoWeb
 				}
 				else
 					Visit(node.Right);
+
+				builder.Append(")");
 
 				return node;
 			}
