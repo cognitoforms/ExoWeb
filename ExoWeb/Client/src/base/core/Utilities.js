@@ -33,7 +33,7 @@ function defineLegacyProperty() {
 
 		// throw an exception if the property has a setter, which is definitely not supported
 		if ("set" in desc) throw new Error("Setters are not supported by the current browser.  Use definePropertySupported to check for full support.");
-	}
+	};
 }
 
 try {
@@ -63,7 +63,7 @@ try {
 					obj.__defineGetter__(prop, function () { return value; });
 				}
 			}
-		}
+		};
 		definePropertySupported = true;
 	}
 
@@ -83,7 +83,7 @@ catch (e) {
 
 	// enable legacy support
 	defineLegacyProperty();
-};
+}
 
 // classes that call define property should
 function initializeLegacyProperties(obj) {
@@ -118,13 +118,6 @@ function evalPath(obj, path, nullValue, undefinedValue) {
 		if (value === undefined) {
 			return arguments.length >= 4 ? undefinedValue : undefined;
 		}
-	}
-
-	if (value === null) {
-		return arguments.length >= 3 ? nullValue : null;
-	}
-	if (value === undefined) {
-		return arguments.length >= 4 ? undefinedValue : undefined;
 	}
 
 	return value;

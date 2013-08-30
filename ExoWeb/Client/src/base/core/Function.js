@@ -424,7 +424,7 @@ exports.after = after; // IGNORE
 
 function callArgument(arg) {
 	arg.call();
-};
+}
 
 exports.callArgument = callArgument; // IGNORE
 

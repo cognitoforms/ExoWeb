@@ -52,24 +52,19 @@ var modelReadyHandler = function modelReadyHandler(contextReady, extendContext, 
 
 // The (combined) set of options that are pending execution
 // Options will stack up until something is encountered that triggers loading to occur
-var pendingOptions = null;
+var pendingOptions = {};
 
 var updatePendingOptionsWith = function updatePendingOptionsWith(newOptions) {
-	if (pendingOptions !== null) {
-		pendingOptions.init = mergeFunctions(pendingOptions.init, newOptions.init);
-		pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, newOptions.extendContext, { async: true, callbackIndex: 1 });
-		pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
-		pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
-		pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
-		pendingOptions.model = pendingOptions.model ? jQuery.extend(pendingOptions.model, newOptions.model) : newOptions.model;
-		pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
-		pendingOptions.conditions = pendingOptions.conditions ? jQuery.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
-		pendingOptions.instances = pendingOptions.instances ? jQuery.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
-		pendingOptions.serverInfo = pendingOptions.serverInfo ? jQuery.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
-	}
-	else {
-		pendingOptions = newOptions;
-	}
+	pendingOptions.init = mergeFunctions(pendingOptions.init, newOptions.init);
+	pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, newOptions.extendContext, { async: true, callbackIndex: 1 });
+	pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
+	pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
+	pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
+	pendingOptions.model = pendingOptions.model ? jQuery.extend(pendingOptions.model, newOptions.model) : newOptions.model;
+	pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
+	pendingOptions.conditions = pendingOptions.conditions ? jQuery.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
+	pendingOptions.instances = pendingOptions.instances ? jQuery.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
+	pendingOptions.serverInfo = pendingOptions.serverInfo ? jQuery.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
 };
 
 var flushPendingOptions = function flushPendingOptions() {
@@ -83,7 +78,7 @@ var flushPendingOptions = function flushPendingOptions() {
 
 	if (includesEmbeddedData) {
 		executingOptions = pendingOptions;
-		pendingOptions = null;
+		pendingOptions = {};
 
 		ensureContext();
 

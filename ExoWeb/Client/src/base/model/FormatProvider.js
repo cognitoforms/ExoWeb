@@ -30,7 +30,7 @@ function getFormat(type, format) {
 
 function setFormatProvider(fn) {
 	formatProvider = fn;
-};
+}
 
 ExoWeb.Model.getFormat = getFormat;
 

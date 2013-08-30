@@ -555,7 +555,7 @@ function conditionsChangedHandler(conditions, sender, args) {
 	else if (args.remove) {
 		conditions.remove(args.conditionTarget.condition);
 	}
-};
+}
 
 Adapter.mixin({
 	get_conditions: function Adapter$get_conditions() {

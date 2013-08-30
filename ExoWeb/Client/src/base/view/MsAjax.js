@@ -16,7 +16,7 @@
 						bindings[i]._lastTarget = bindings[i]._lastSource = false;
 				}
 			});
-		};
+		}
 	}
 
 	var targetChangedImpl = Sys.Binding.prototype._targetChanged;

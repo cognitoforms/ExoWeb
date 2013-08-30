@@ -1043,7 +1043,7 @@ window.ExoWeb.DotNet = {};
 
 	function callArgument(arg) {
 		arg.call();
-	};
+	}
 
 	var funcRegex = /function\s*([\w_\$]*)/i;
 	function parseFunctionName(f) {
@@ -2801,7 +2801,7 @@ window.ExoWeb.DotNet = {};
 
 			// throw an exception if the property has a setter, which is definitely not supported
 			if ("set" in desc) throw new Error("Setters are not supported by the current browser.  Use definePropertySupported to check for full support.");
-		}
+		};
 	}
 
 	try {
@@ -2831,7 +2831,7 @@ window.ExoWeb.DotNet = {};
 						obj.__defineGetter__(prop, function () { return value; });
 					}
 				}
-			}
+			};
 			definePropertySupported = true;
 		}
 
@@ -2851,7 +2851,7 @@ window.ExoWeb.DotNet = {};
 
 		// enable legacy support
 		defineLegacyProperty();
-	};
+	}
 
 	// classes that call define property should
 	function initializeLegacyProperties(obj) {
@@ -2886,13 +2886,6 @@ window.ExoWeb.DotNet = {};
 			if (value === undefined) {
 				return arguments.length >= 4 ? undefinedValue : undefined;
 			}
-		}
-
-		if (value === null) {
-			return arguments.length >= 3 ? nullValue : null;
-		}
-		if (value === undefined) {
-			return arguments.length >= 4 ? undefinedValue : undefined;
 		}
 
 		return value;
@@ -3479,7 +3472,7 @@ window.ExoWeb.DotNet = {};
 			}
 			Observer[method] = definition;
 		}
-	};
+	}
 
 	// expose publicly
 	ExoWeb.Observer = Observer;
@@ -8386,7 +8379,7 @@ window.ExoWeb.DotNet = {};
 
 	function setFormatProvider(fn) {
 		formatProvider = fn;
-	};
+	}
 
 	ExoWeb.Model.getFormat = getFormat;
 
@@ -14108,24 +14101,19 @@ window.ExoWeb.DotNet = {};
 
 	// The (combined) set of options that are pending execution
 	// Options will stack up until something is encountered that triggers loading to occur
-	var pendingOptions = null;
+	var pendingOptions = {};
 
 	var updatePendingOptionsWith = function updatePendingOptionsWith(newOptions) {
-		if (pendingOptions !== null) {
-			pendingOptions.init = mergeFunctions(pendingOptions.init, newOptions.init);
-			pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, newOptions.extendContext, { async: true, callbackIndex: 1 });
-			pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
-			pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
-			pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
-			pendingOptions.model = pendingOptions.model ? jQuery.extend(pendingOptions.model, newOptions.model) : newOptions.model;
-			pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
-			pendingOptions.conditions = pendingOptions.conditions ? jQuery.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
-			pendingOptions.instances = pendingOptions.instances ? jQuery.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
-			pendingOptions.serverInfo = pendingOptions.serverInfo ? jQuery.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
-		}
-		else {
-			pendingOptions = newOptions;
-		}
+		pendingOptions.init = mergeFunctions(pendingOptions.init, newOptions.init);
+		pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, newOptions.extendContext, { async: true, callbackIndex: 1 });
+		pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
+		pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
+		pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
+		pendingOptions.model = pendingOptions.model ? jQuery.extend(pendingOptions.model, newOptions.model) : newOptions.model;
+		pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
+		pendingOptions.conditions = pendingOptions.conditions ? jQuery.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
+		pendingOptions.instances = pendingOptions.instances ? jQuery.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
+		pendingOptions.serverInfo = pendingOptions.serverInfo ? jQuery.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
 	};
 
 	var flushPendingOptions = function flushPendingOptions() {
@@ -14139,7 +14127,7 @@ window.ExoWeb.DotNet = {};
 
 		if (includesEmbeddedData) {
 			executingOptions = pendingOptions;
-			pendingOptions = null;
+			pendingOptions = {};
 
 			ensureContext();
 
@@ -17183,7 +17171,7 @@ window.ExoWeb.DotNet = {};
 		else if (args.remove) {
 			conditions.remove(args.conditionTarget.condition);
 		}
-	};
+	}
 
 	Adapter.mixin({
 		get_conditions: function Adapter$get_conditions() {
@@ -17670,7 +17658,7 @@ window.ExoWeb.DotNet = {};
 							bindings[i]._lastTarget = bindings[i]._lastSource = false;
 					}
 				});
-			};
+			}
 		}
 
 		var targetChangedImpl = Sys.Binding.prototype._targetChanged;

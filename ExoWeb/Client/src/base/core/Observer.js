@@ -171,7 +171,7 @@ function setObserverProvider(provider) {
 		}
 		Observer[method] = definition;
 	}
-};
+}
 
 // expose publicly
 exports.setObserverProvider = setObserverProvider; // IGNORE
