@@ -3063,6 +3063,12 @@ false);
 				}
 			}
 		}
+		function Sys$UI$DataView$get_useOptimalUpdates() {
+			return this._useOptimalUpdates;
+		}
+		function Sys$UI$DataView$set_useOptimalUpdates(value) {
+			this._useOptimalUpdates = value;
+		}
 		function Sys$UI$DataView$_collectionChanged(sender, args) {
 			var oldSelected = this._currentData,
 			changes = args.get_changes(),
@@ -3088,7 +3094,8 @@ false);
 					template._ensureCompiled();
 					var templateUsesDollarIndex = /with\s*\(.*\$index/.test(template._instantiateIn.toString().replace(/(\r\n|\n|\r)/gm, ""));
 
-					if (Sys.UI.DataView.config.useOptimalUpdates !== true || templateUsesDollarIndex) {
+					var useOptimalUpdates = this.get_useOptimalUpdates() != null ? this.get_useOptimalUpdates() : Sys.UI.DataView.config.useOptimalUpdates;
+					if (useOptimalUpdates !== true || templateUsesDollarIndex) {
 						this.refresh();
 					}
 					else {
@@ -3860,6 +3867,8 @@ false);
 			set_templateContext: Sys$UI$DataView$set_templateContext,
 			get_itemTemplate: Sys$UI$DataView$get_itemTemplate,
 			set_itemTemplate: Sys$UI$DataView$set_itemTemplate,
+			get_useOptimalUpdates: Sys$UI$DataView$get_useOptimalUpdates,
+			set_useOptimalUpdates: Sys$UI$DataView$set_useOptimalUpdates,
 			_applySelectedIndex: Sys$UI$DataView$_applySelectedIndex,
 			_addRemoveCssClass: Sys$UI$DataView$_addRemoveCssClass,
 			_collectionChanged: Sys$UI$DataView$_collectionChanged,
