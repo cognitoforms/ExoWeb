@@ -1,4 +1,4 @@
-﻿// Name:        MicrosoftAjaxWebForms.debug.js
+// Name:        MicrosoftAjaxWebForms.debug.js
 // Assembly:    System.Web.Ajax
 // Version:     3.0.31106.0
 // FileVersion: 3.0.31106.0
@@ -1655,6 +1655,10 @@ Sys.WebForms.PageRequestManager = function Sys$WebForms$PageRequestManager() {
                     Array.add(scriptDisposeNodes, deltaNode);
                     break;
                 case "pageRedirect":
+					if (versionNode && parseFloat(versionNode.content) >= 4) {
+		                deltaNode.content = unescape(deltaNode.content);
+		            }
+
                     if (Sys.Browser.agent === Sys.Browser.InternetExplorer) {
                         function cancelBubble(e) {
                             e.cancelBubble = true;
