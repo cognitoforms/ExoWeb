@@ -414,6 +414,16 @@ namespace ExoWeb
 				{
 					var method = m as MethodInfo;
 
+					// See if the method is from ModelInstance
+					if (method.DeclaringType == typeof(ModelInstance))
+					{
+						if (method.Name == "get_Item")
+							return new MethodTranslation(method, "{0}.get({1})");
+						if (method.Name == "GetModelInstance")
+							return new MethodTranslation(method, "{0}");
+						return null;
+					}
+
 					// See if the method represents a linq enumeration expression, such as Sum() or Where()
 					var parameters = method.GetParameters();
 
@@ -594,50 +604,6 @@ namespace ExoWeb
 
 		/// <summary>
 		/// Gets the first translation from the current set of member translators
-		/// for the specified <see cref="FieldInfo"/>.
-		/// </summary>
-		/// <param name="method"></param>
-		/// <returns>The best translation to use, or null if no translation exists.</returns>
-		FieldTranslation GetTranslation(FieldInfo method)
-		{
-			return (FieldTranslation)GetTranslation((FieldInfo)method);
-		}
-
-		/// <summary>
-		/// Gets the first translation from the current set of member translators
-		/// for the specified <see cref="ConstructorInfo"/>.
-		/// </summary>
-		/// <param name="method"></param>
-		/// <returns>The best translation to use, or null if no translation exists.</returns>
-		ConstructorTranslation GetTranslation(ConstructorInfo method)
-		{
-			return (ConstructorTranslation)GetTranslation((ConstructorInfo)method);
-		}
-
-		/// <summary>
-		/// Gets the first translation from the current set of member translators
-		/// for the specified <see cref="PropertyInfo"/>.
-		/// </summary>
-		/// <param name="method"></param>
-		/// <returns>The best translation to use, or null if no translation exists.</returns>
-		PropertyTranslation GetTranslation(PropertyInfo method)
-		{
-			return (PropertyTranslation)GetTranslation((PropertyInfo)method);
-		}
-
-		/// <summary>
-		/// Gets the first translation from the current set of member translators
-		/// for the specified <see cref="MethodInfo"/>.
-		/// </summary>
-		/// <param name="method"></param>
-		/// <returns>The best translation to use, or null if no translation exists.</returns>
-		MethodTranslation GetTranslation(MethodInfo method)
-		{
-			return (MethodTranslation)GetTranslation((MethodInfo)method);
-		}
-
-		/// <summary>
-		/// Gets the first translation from the current set of member translators
 		/// for the specified <see cref="MemberInfo"/>.
 		/// </summary>
 		/// <param name="member"></param>
@@ -776,7 +742,7 @@ namespace ExoWeb
 			/// </summary>
 			/// <param name="expressions"></param>
 			/// <returns></returns>
-			protected override System.Collections.ObjectModel.ReadOnlyCollection<Expression> VisitExpressionList(System.Collections.ObjectModel.ReadOnlyCollection<Expression> expressions)
+			protected override System.Collections.ObjectModel.ReadOnlyCollection<T> VisitExpressionList<T>(System.Collections.ObjectModel.ReadOnlyCollection<T> expressions)
 			{
 				bool isFirst = true;
 				foreach (var exp in expressions)
