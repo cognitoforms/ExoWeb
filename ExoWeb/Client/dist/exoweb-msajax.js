@@ -4244,7 +4244,6 @@ window.ExoWeb.DotNet = {};
 
 	function Type(model, name, baseType, origin) {
 		this._fullName = name;
-		this._exports;
 
 		// if origin is not provided it is assumed to be client
 		this._origin = origin || "client";
