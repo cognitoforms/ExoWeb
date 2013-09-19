@@ -13,7 +13,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	{
 		public Binding If { get; internal set; }
 
-		public List<Block> Blocks { get; internal set; }
+		public ICollection<Block> Blocks { get; internal set; }
 
 		public int NestedTemplateIndex { get; internal set; }
 

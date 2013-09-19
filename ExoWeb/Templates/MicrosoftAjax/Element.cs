@@ -15,7 +15,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	{
 		public string Tag { get; internal set; }
 
-		public List<Attribute> Attributes { get; internal set; }
+		public ICollection<Attribute> Attributes { get; internal set; }
 
 		public bool IsEmpty { get; internal set; }
 
