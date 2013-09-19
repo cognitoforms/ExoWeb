@@ -22,7 +22,10 @@ var config = {
 	// Controls different whether lazy loading are allowed. If set to false, an error is raised when lazy loading occurs.
 	allowTypeLazyLoading: true,
 	allowObjectLazyLoading: true,
-	allowListLazyLoading: true
+	allowListLazyLoading: true,
+
+	// Allows additional scope variables to be introduced for dynamically compiled expressions
+	expressionScope: null
 };
 
 exports.config = config;

@@ -323,6 +323,11 @@ function typeFromJson(model, typeName, json) {
 		throw new Error("Type \"" + mtype._fullName + "\" has already been loaded");
 	}
 
+	// store exports
+	if (json.exports) {
+		mtype.set_exports(json.exports);
+	}
+
 	// define properties
 	for (var propName in json.properties) {
 		var propJson = json.properties[propName];
@@ -350,7 +355,7 @@ function typeFromJson(model, typeName, json) {
 			isPersisted: propJson.isPersisted !== false,
 			isCalculated: propJson.isCalculated === true,
 			index: propJson.index,
-			defaultValue: propJson.defaultValue ? new Function("return " + propJson.defaultValue) : undefined
+			defaultValue: propJson.defaultValue ? mtype.compileExpression(propJson.defaultValue) : undefined
 		});
 		
 		// setup static properties for lazy loading
@@ -404,10 +409,6 @@ function typeFromJson(model, typeName, json) {
 		}
 	}
 
-	// store exports
-	if (json.exports) {
-		mtype.set_exports(json.exports);
-	}
 }
 
 function conditionTypesFromJson(model, mtype, json) {

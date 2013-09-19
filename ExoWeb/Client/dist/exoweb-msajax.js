@@ -34,7 +34,10 @@ window.ExoWeb.DotNet = {};
 		// Controls different whether lazy loading are allowed. If set to false, an error is raised when lazy loading occurs.
 		allowTypeLazyLoading: true,
 		allowObjectLazyLoading: true,
-		allowListLazyLoading: true
+		allowListLazyLoading: true,
+
+		// Allows additional scope variables to be introduced for dynamically compiled expressions
+		expressionScope: null
 	};
 
 	ExoWeb.config = config;
@@ -4819,11 +4822,36 @@ window.ExoWeb.DotNet = {};
 		compileExpression: function Type$compile(expression) {
 
 			// use exports if required
-			if (this._exports) {
+			if (this._exports || ExoWeb.config.expressionScope) {
 				expression = "return function() { return " + expression + "; }";
-				var args = this._exports.names.concat([expression]);
-				var compile = Function.apply(null, args);
-				return compile.apply(null, this._exports.implementations);
+				var args;
+				var values;
+
+				// Include exported functions, if specified
+				if (this._exports) {
+					args = this._exports.names;
+					values = this._exports.implementations;
+				}
+
+				// Include global expression scope variables, is specified
+				if (ExoWeb.config.expressionScope) {
+					if (!ExoWeb.config.expressionScope._names) {
+						var scopeNames = [];
+						var scopeValues = [];
+						for(var key in ExoWeb.config.expressionScope){
+							scopeNames.push(key);
+							scopeValues.push(ExoWeb.config.expressionScope[key]);
+						}
+						ExoWeb.config.expressionScope._names = scopeNames;
+						ExoWeb.config.expressionScope._values = scopeValues;
+					}
+					args = args ? args.concat(ExoWeb.config.expressionScope._names) : ExoWeb.config.expressionScope._names;
+					values = values ? values.concat(ExoWeb.config.expressionScope._values) : ExoWeb.config.expressionScope._values;
+				}
+
+				// Compile the expression using the specified exported functions and global scope variables
+				var compile = Function.apply(null, args.concat([expression]));
+				return compile.apply(null, values);
 			}
 
 			// otherwise, just create the function based on the expression
@@ -12415,6 +12443,7 @@ window.ExoWeb.DotNet = {};
 				ruleFromJson(mtype, json.rules[i]);
 			}
 		}
+
 	}
 
 	function conditionTypesFromJson(model, mtype, json) {
