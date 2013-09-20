@@ -122,6 +122,7 @@ namespace ExoWeb
 			{ "Date.Second as Number", new string[] {@"{0}.getSeconds()", "", @""} },
 			{ "Date.Subtract(Date) as TimeSpan", new string[] {"new TimeSpan({0}.getTime() - {1}.getTime())", "", ""} },
 			{ "Date.Ticks as Number", new string[] {@"Date_ticks({0})", "Date_ticks", @"function (d) { return ((d.getTime() - d.getTimezoneOffset() * 60000) * 10000) + 621356148000000000; }"} },
+			{ "Date.ToString(String) as String", new string[] {@"{0}.localeFormat({1})", "", ""} },
 			{ "Date.Year as Number", new string[] {@"{0}.getFullYear()", "", @""} },
 			{ "static Date.Equals(Date, Date) as Boolean", new string[] {@"({0}.getTime() === {1}.getTime())", "", @""} },
 			{ "static Date.IsLeapYear(Number) as Boolean", new string[] {@"(new Date({0}, 1, 29).getDate() == 29)", "", @""} },
