@@ -719,7 +719,7 @@ namespace ExoWeb.Serialization
 		/// </summary>
 		/// <param name="rule"></param>
 		/// <param name="writer"></param>
-		static void SerializePropertyRule(IPropertyRule rule, JsonWriter writer)
+		public static void SerializePropertyRule(IPropertyRule rule, JsonWriter writer)
 		{
 			// Assume the type does not need to be included if the name can be inferred from context
 			if (String.Format("{0}.{1}.{2}", ((Rule)rule).RootType.Name, rule.Property, rule.Name) != ((Rule)rule).Name)

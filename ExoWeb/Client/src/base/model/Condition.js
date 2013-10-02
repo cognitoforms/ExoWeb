@@ -43,7 +43,7 @@ function Condition(type, message, target, properties, origin) {
 				var instances = [target];
 
 				// iterate over each step along the path
-				for (var s = steps.length - 1; s >= 0; s--) {
+				for (var s = 0; s < steps.length; s++) {
 					var step = steps[s].property;
 					var childInstances = [];
 

@@ -5992,10 +5992,11 @@ window.ExoWeb.DotNet = {};
 			return obj;
 		},
 
-		prepend: function PropertyChain$prepend(props) {
-			for (var p = props.length - 1; p >= 0; p--) {
-				Array.insert(this._properties, 0, props[p]);
-			}
+		prepend: function PropertyChain$prepend(other) {
+			var props = other instanceof PropertyChain ? other.all() : [other];
+
+			this._rootType = other.get_containingType();
+			Array.prototype.splice.apply(this._properties, [0, 0].concat(props));
 		},
 
 		canSetValue: function PropertyChain$canSetValue(obj, value) {
@@ -8258,7 +8259,7 @@ window.ExoWeb.DotNet = {};
 					var instances = [target];
 
 					// iterate over each step along the path
-					for (var s = steps.length - 1; s >= 0; s--) {
+					for (var s = 0; s < steps.length; s++) {
 						var step = steps[s].property;
 						var childInstances = [];
 
@@ -16736,12 +16737,9 @@ window.ExoWeb.DotNet = {};
 			// since the child path could be instance-dependent (i.e. the parents value is a subtype).
 			if (this._target instanceof Adapter) {
 				if (this._propertyChain instanceof Property) {
-					this._propertyChain = new PropertyChain(this._propertyChain.get_jstype().meta, [this._propertyChain], []);
+					this._propertyChain = new PropertyChain(this._propertyChain.get_containingType(), [this._propertyChain], []);
 				}
-
-				var parentProp = this._target.get_propertyChain();
-
-				this._propertyChain.prepend(parentProp instanceof PropertyChain ? parentProp.all() : [parentProp]);
+				this._propertyChain.prepend(this._target.get_propertyChain());
 				this._parentAdapter = this._target;
 				this._target = this._target.get_target();
 			}

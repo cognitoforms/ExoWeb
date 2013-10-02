@@ -92,12 +92,9 @@ Adapter.mixin({
 		// since the child path could be instance-dependent (i.e. the parents value is a subtype).
 		if (this._target instanceof Adapter) {
 			if (this._propertyChain instanceof Property) {
-				this._propertyChain = new PropertyChain(this._propertyChain.get_jstype().meta, [this._propertyChain], []);
+				this._propertyChain = new PropertyChain(this._propertyChain.get_containingType(), [this._propertyChain], []);
 			}
-
-			var parentProp = this._target.get_propertyChain();
-
-			this._propertyChain.prepend(parentProp instanceof PropertyChain ? parentProp.all() : [parentProp]);
+			this._propertyChain.prepend(this._target.get_propertyChain());
 			this._parentAdapter = this._target;
 			this._target = this._target.get_target();
 		}

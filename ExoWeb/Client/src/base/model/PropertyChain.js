@@ -334,10 +334,11 @@ PropertyChain.mixin({
 		return obj;
 	},
 
-	prepend: function PropertyChain$prepend(props) {
-		for (var p = props.length - 1; p >= 0; p--) {
-			Array.insert(this._properties, 0, props[p]);
-		}
+	prepend: function PropertyChain$prepend(other) {
+		var props = other instanceof PropertyChain ? other.all() : [other];
+
+		this._rootType = other.get_containingType();
+		Array.prototype.splice.apply(this._properties, [0, 0].concat(props));
 	},
 
 	canSetValue: function PropertyChain$canSetValue(obj, value) {
