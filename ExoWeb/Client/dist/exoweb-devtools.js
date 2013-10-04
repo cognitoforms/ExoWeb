@@ -53,13 +53,21 @@
 		return result;
 	}
 
-	function writeToConsole(message, level) {
-		if (window.console) {
-			if (level === "warn" && console.warn) {
-				console.warn(message);
-			} else {
-				console.log(message);
+	function writeToConsole(message, level, logFn, warnFn) {
+		if (level === "warn") {
+			if (warnFn) {
+				warnFn(message);
+			} else if (window.console) {
+				if (console.warn) {
+					console.warn(message);
+				} else {
+					console.log("WARNING: " + message);
+				}
 			}
+		} else if (logFn) {
+			logFn(message);
+		} else if (window.console) {
+			console.log(message);
 		}
 	}
 
@@ -133,13 +141,25 @@
 						return a && window.Sys && Sys.UI.DomElement.isDomElement(a) ? elemToString(a) : a;
 					});
 
-					messageText = (options.timestamp === true ? "[" + (ts.localeFormat ? ts.localeFormat("h:mm:ss.fff") : ts) + "] " : "") +    // timestamp
-						expandText("  ", padding) +                                                                    // padding
-						(options.prefix === null || options.prefix === undefined ? "" : options.prefix + ": ") +       // message prefix
-						$format(msg, formatArgs);                                                                      // message text
+					if (options.outputs) {
+						options.outputs.forEach(function (output) {
+							messageText = (output.timestamp === true ? "[" + (ts.localeFormat ? ts.localeFormat("h:mm:ss.fff") : ts) + "] " : "") +	// timestamp
+								expandText("  ", padding) +																						// padding
+								(output.prefix === null || output.prefix === undefined ?														// message prefix
+									(options.prefix === null || options.prefix === undefined ? "" : options.prefix + ": ") : // use global
+									output.prefix + ": ") +																	 // use output-specific
+								$format(msg, formatArgs);																						// message text
 
-					writeToConsole(messageText, options.level || "log");
+							writeToConsole(messageText, output.level || options.level || "log", output.log || options.log, output.warn || options.warn);
+						});
+					} else {
+						messageText = (options.timestamp === true ? "[" + (ts.localeFormat ? ts.localeFormat("h:mm:ss.fff") : ts) + "] " : "") +    // timestamp
+							expandText("  ", padding) +                                                                    // padding
+							(options.prefix === null || options.prefix === undefined ? "" : options.prefix + ": ") +       // message prefix
+							$format(msg, formatArgs);                                                                      // message text
 
+						writeToConsole(messageText, options.level || "log", options.log, options.warn);
+					}
 				}
 			};
 
