@@ -209,16 +209,21 @@ window.$parentContextData = function $parentContextData(target, index, level, da
 	}).data;
 };
 
-function getIsLast(control, index) {
+function getIsLast(template, index) {
 	/// <summary>
-	/// 	Returns whether the data for the given control at the given index is 
+	/// 	Returns whether the data being rendered in the given template at the given index is 
 	/// 	the last object in the list.
+	///
+	///		Example:
+	///
+	///		&lt; span sys:if="{{ $isLast(this, $index) }}" &gt;
+	///
 	/// </summary>
-	/// <param name="control" type="Sys.UI.Control">The control.</param>
-	/// <param name="index" type="Number" integer="true">The index.</param>
+	/// <param name="template" type="Sys.UI.Template">The template that is being rendered.</param>
+	/// <param name="index" type="Number" integer="true">The index of the current data item.</param>
 	/// <returns type="Boolean" />
 
-	var len = control.get_element().control.get_contexts().length;
+	var len = template.get_element().control.get_contexts().length;
 	return index == len - 1;
 }
 
