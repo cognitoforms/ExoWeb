@@ -812,7 +812,9 @@ namespace ExoWeb
 				// Access a property to force the instance to initialize.  Do a seperate pass so batched loading will work.
 				for (int i = 0; i < Roots.Length; i++)
 				{
-					var initProp = Roots[i].Type.Properties.Where(p => p is ModelValueProperty).First() ?? Roots[i].Type.Properties.Where(p => p is ModelReferenceProperty).First();
+					var initProp = Roots[i].Type.Properties.FirstOrDefault(p => p is ModelValueProperty) ?? Roots[i].Type.Properties.FirstOrDefault(p => p is ModelReferenceProperty);
+					if (initProp == null)
+						throw new Exception(string.Format("Type \"{0}\" cannot be forced to initialize because it has no properties.", Roots[i].Type.Name));
 					Roots[i].OnPropertyGet(initProp);
 				}
 			}
