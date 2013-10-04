@@ -4941,37 +4941,6 @@ window.ExoWeb.DotNet = {};
 	// #region ExoWeb.Model.Property
 	//////////////////////////////////////////////////
 
-	function PropertySetError(property, obj, value, reason) {
-		/// <summary locid="M:J#PropertySetError.#ctor">
-		/// An error type that is raised when an attempt is made to set a property value.
-		/// </summary>
-		/// <param name="property" type="Property">The property that is being set.</param>
-		/// <param name="obj" type="Entity">The object that the property is being set for.</param>
-		/// <param name="value">The value that is being set.</param>
-		/// <param name="reason" type="String">The reason that the set is not allowed.</param>
-
-		if (arguments.length !== 4) throw new ArgumentsLengthError(4, arguments.length);
-		if (property == null) throw new ArgumentNullError("property");
-		if (!(property instanceof Property)) throw new ArgumentTypeError("property", "Property", property);
-		if (obj == null) throw new ArgumentNullError("obj");
-		if (!(obj instanceof Entity)) throw new ArgumentTypeError("obj", "Entity", obj);
-		if (reason == null) throw new ArgumentNullError("reason");
-		if (reason.constructor !== String) throw new ArgumentTypeError("reason", "string", reason);
-
-		this.name = "PropertySetError";
-		this.property = property;
-		this.obj = obj;
-		this.value = value;
-		this.reason = reason;
-		this.message = "Cannot set " + property.get_name() + "=" + (value === undefined ? "<undefined>" : value) + " for instance " + obj.meta.type.get_fullName() + "|" + obj.meta.id + ": " + reason + ".";
-	}
-
-	PropertySetError.prototype = new Error();
-	PropertySetError.prototype.constructor = PropertySetError;
-
-	ExoWeb.Model.PropertySetError = PropertySetError;
-	window.PropertySetError = PropertySetError;
-
 	//////////////////////////////////////////////////////////////////////////////////////
 	/// <remarks>
 	/// If the interface for this class is changed it should also be changed in
@@ -5112,14 +5081,14 @@ window.ExoWeb.DotNet = {};
 	function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 		// Ensure the entity is loaded before setting property values
 		if (LazyLoader.isRegistered(obj)) {
-			throw new PropertySetError(this, obj, val, "object is ghosted");
+			throw new Error("Cannot set " + this.get_name() + "=" + (val === undefined ? "<undefined>" : val) + " for instance " + obj.meta.type.get_fullName() + "|" + obj.meta.id + ": object is ghosted.");
 		}
 
 		// Ensure that the property has an initial (possibly default) value
 		Property$_ensureInited.call(this, obj);
 
 		if (!this.canSetValue(obj, val)) {
-			throw new PropertySetError(this, obj, val, "a value of type " + (this._jstype && this._jstype.meta ? this._jstype.meta.get_fullName() : parseFunctionName(this._jstype)) + " was expected");
+			throw new Error("Cannot set " + this.get_name() + "=" + (val === undefined ? "<undefined>" : val) + " for instance " + obj.meta.type.get_fullName() + "|" + obj.meta.id + ": a value of type " + (this._jstype && this._jstype.meta ? this._jstype.meta.get_fullName() : parseFunctionName(this._jstype)) + " was expected.");
 		}
 
 		var old = obj[this._fieldName];
