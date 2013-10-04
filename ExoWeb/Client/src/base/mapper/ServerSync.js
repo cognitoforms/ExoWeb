@@ -1691,7 +1691,35 @@ ServerSync.mixin({
 	rollbackValChange: function ServerSync$rollbackValChange(change, callback, thisPtr) {
 		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
 			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
-				Observer.setValue(srcObj, change.property, change.oldValue);
+
+				// Cache the new value, becuase we access it many times and also it may be modified below
+				// to account for timezone differences, but we don't want to modify the actual change object.
+				var oldValue = change.oldValue;
+
+				// Cache the property since it is not a simple property access.
+				var property = srcObj.meta.property(change.property);
+
+				if (property.get_jstype() === Date && oldValue && oldValue.constructor == String && oldValue.length > 0) {
+
+					// Convert from string (e.g.: "2011-07-28T06:00:00.000Z") to date.
+					dateRegex.lastIndex = 0;
+					oldValue = new Date(oldValue.replace(dateRegex, dateRegexReplace));
+
+					//now that we have the value set for the date.
+					//if the underlying property datatype is actually a date and not a datetime
+					//then we need to add the local timezone offset to make sure that the date is displayed acurately.
+					if (property.get_format() && !hasTimeFormat.test(property.get_format().toString())) {
+						var serverOffset = this.get_ServerTimezoneOffset();
+						var localOffset = -(new Date().getTimezoneOffset() / 60);
+						oldValue = oldValue.addHours(serverOffset - localOffset);
+					}
+				}
+				else if (oldValue && oldValue instanceof TimeSpan) {
+					oldValue = oldValue.toObject();
+				}
+
+				// Set the property value
+				Observer.setValue(srcObj, change.property, oldValue);
 			}, this);
 		}, this);
 
