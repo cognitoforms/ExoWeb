@@ -278,25 +278,35 @@ window.ExoWeb.DotNet = {};
 	function handleError(message, url, lineNumber, customErrorData, raiseEvents, onSuccess, onFailure) {
 
 		// Initialize the default error data based on the error.
-		var errorData = jQuery.extend({
-			message: message,
-			type: "Error",
-			url: window.location.href,
-			refererUrl: document.referrer,
-			additionalInfo: {
-				url: url,
-				lineNumber: lineNumber
-			}
-		}, customErrorData);
+		var cancelled = false,
+			errorData = jQuery.extend({
+				message: message,
+				type: "Error",
+				url: window.location.href,
+				refererUrl: document.referrer,
+				additionalInfo: {
+					url: url,
+					lineNumber: lineNumber
+				}
+			}, customErrorData);
 
 		if (raiseEvents) {
 			// The error was not handled, so raise the error event.
 			errorEventFns.forEach(function (fn) {
-				fn(message, url, lineNumber, errorData);
+				// Skip if the event has been cancelled.
+				if (cancelled) {
+					return;
+				}
+
+				var result = fn(message, url, lineNumber, errorData);
+				if (result === true) {
+					// Cancel the event if the result indicates that the event was handled.
+					cancelled = true;
+				}
 			});
 		}
 
-		if (logErrorProvider) {
+		if (!cancelled && logErrorProvider) {
 			// Log the error.
 			logErrorProvider(errorData, onSuccess, onFailure);
 		}
