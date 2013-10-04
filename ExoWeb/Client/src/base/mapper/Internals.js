@@ -1,5 +1,6 @@
 /// <reference path="../Model/Type.js" />
 /// <reference path="../Model/ObjectMeta.js" />
+/// <reference path="../Mapper/ObjectLazyLoader.js" />
 /// <reference path="../Model/Entity.js" />
 /// <reference path="../Model/Property.js" />
 /// <reference path="../Model/PathToken.js" />
