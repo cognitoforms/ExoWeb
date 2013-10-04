@@ -1396,7 +1396,7 @@
 			if (element.control && attachedName) {
 				typeIndex = {};
 				controlType = element.control.constructor;
-				typeIndex[attachedName] = { type: controlType, isClass: true, isComponent: controlType.inheritsFrom(Sys.Component) };
+				typeIndex[attachedName] = { type: controlType, isClass: true, isComponent: controlType.inheritsFrom && controlType.inheritsFrom(Sys.Component) };
 			}
 
 			for (i = 0; i < element.attributes.length; i++) {
@@ -1696,7 +1696,10 @@
 						attachName = node.getAttribute("data-sys-attach");
 						Sys.Application._linkControlElement(node, currentContext);
 
-						// Provide control with content template names if it requires them
+						// Provide control with content template names if it requires them.
+						// NOTE: The assumption that the control's constructor will be a function is OK
+						// here since we must assume that it is indeed a control for purposes of linking.
+						// Also, attaching controls to label elements would cause other problems anyway.
 						isContentTemplate = node.control.constructor.implementsInterface(Sys.UI.IContentTemplateConsumer);
 						if (isContentTemplate) {
 							if (contentTemplate) {
@@ -1811,17 +1814,20 @@
 
 			// Initialize the root control
 			controlType = Sys.Application._linkControlElement(element, appContext);
+
+			// NOTE: Assumption that the control is an MsAjax control is OK here, since we
+			// are linking the element if it is not a control then it is an error scenario.
 			control = element.control;
 
 			// Detect content-template attribute
 			if (element.hasAttribute("data-sys-content-template")) {
-				isContentTemplate = element.control.constructor.implementsInterface(Sys.UI.IContentTemplateConsumer);
+				isContentTemplate = control.constructor.implementsInterface(Sys.UI.IContentTemplateConsumer);
 				if (!isContentTemplate) {
 					throw Error.invalidOperation("invalidSysContentTemplate");
 				}
 				contentTemplate = element.getAttribute("data-sys-content-template");
 				if (contentTemplate) {
-					element.control.addContentTemplate(contentTemplate);
+					control.addContentTemplate(contentTemplate);
 				}
 			}
 
