@@ -1391,7 +1391,7 @@
 		var sysAttrExpr = /^sys\:([a-z_]*)$/;
 
 		Sys.Application._linkAttributes = function Sys$Application$_linkAttributes(element, parentContext, attachedName) {
-			var i, attr, dataAttr, msDataAttrib, isSelect, match, attrName, value, target, targetProp, link, typeIndex, attrLinksElementContent;
+			var i, attr, dataAttr, msDataAttrib, isSelect, isTextArea, match, attrName, value, target, targetProp, link, typeIndex, attrLinksElementContent;
 
 			if (element.control && attachedName) {
 				typeIndex = {};
@@ -1427,13 +1427,14 @@
 					target = dataAttr.control ? element.control : element;
 
 					isSelect = (/^select$/i.test(element.tagName));
+					isTextArea = (/^textarea$/i.test(element.tagName));
 					msDataAttrib = Sys.Application._splitAttribute(dataAttr.prefix + ":" + dataAttr.name, isSelect, typeIndex);
 					targetProp = msDataAttrib.name;
 
 					// For inner html and text, the child nodes of the element should not be
 					// linked since they are dynamic content that is not defined within the
 					// original template markup source, and could potentially be unsafe.
-					if (targetProp === "innerHTML" || targetProp === "innerText") {
+					if (targetProp === "innerHTML" || targetProp === "innerText" || (isTextArea && targetProp === "value")) {
 						attrLinksElementContent = true;
 					}
 
