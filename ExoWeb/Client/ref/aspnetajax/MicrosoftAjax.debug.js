@@ -1822,6 +1822,12 @@ else if (agent.indexOf(' AppleWebKit/') > -1) {
 else if (agent.indexOf('Opera/') > -1) {
 	browser.agent = browser.Opera;
 }
+else if (agent.indexOf('Trident') > -1) {
+	browser.agent = browser.InternetExplorer;
+	browser.version = parseFloat(agent.match(/rv\:(\d+\.\d+)/)[1]);
+	browser.documentMode = document.documentMode;
+	browser.hasDebuggerStatement = true;
+}
 
 
 Sys.EventArgs = function Sys$EventArgs() {
