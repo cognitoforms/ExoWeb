@@ -639,7 +639,8 @@ namespace ExoWeb.Serialization
 							}
 							else
 								json.Set("source", rule.Source);
-							json.Set("ignoreValidation", rule.IgnoreValidation);
+							if (rule.IgnoreValidation)
+								json.Set("ignoreValidation", rule.IgnoreValidation);
 						},
 						json => { throw new NotSupportedException("AllowedValuesRule cannot be deserialized."); }),
 						
