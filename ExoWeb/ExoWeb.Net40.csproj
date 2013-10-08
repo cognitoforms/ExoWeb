@@ -62,8 +62,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Client\dist\exoweb-compat.js" />
+    <Content Include="Client\dist\exoweb-devtools.js" />
     <Content Include="Client\docs.htm" />
     <Content Include="Client\dist\jqueryui.exoweb-dialog.js" />
+    <Content Include="Client\Gruntfile.js" />
+    <Content Include="Client\Gruntfile.TfsCheckout.js" />
     <Content Include="Client\ref\jquery\jquery-1.5.1.js" />
     <Content Include="Client\ref\jquery\jquery-1.7.2.js" />
     <Content Include="Client\ref\jquery\jquery.observable.js" />
@@ -72,9 +76,11 @@
     <Content Include="Client\ref\syntaxhighlighter\shBrushJScript.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
+    <Content Include="Client\ScriptBuilder.js" />
     <Content Include="Client\specs\base\core\FunctorSpecs.js" />
     <Content Include="Client\src\base\core\Errors.js" />
     <Content Include="Client\src\base\core\Observer.js" />
+    <Content Include="Client\src\base\core\Unload.js" />
     <Content Include="Client\src\base\core\Warnings.js" />
     <Content Include="Client\src\base\model\ConditionTarget.js" />
     <Content Include="Client\src\base\model\Resource.js" />
@@ -161,9 +167,9 @@
       <Project>{B67D2642-A41A-42B2-8454-78ABA257008F}</Project>
       <Name>ExoRule</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\Newtonsoft.Json\Src\Newtonsoft.Json\Newtonsoft.Json.Net40.csproj">
-      <Project>{a9ae40ff-1a21-414a-9fe7-3be13644cc6d}</Project>
-      <Name>Newtonsoft.Json.Net40</Name>
+    <ProjectReference Include="..\..\Newtonsoft.Json\Src\Newtonsoft.Json\Newtonsoft.Json.Net35.csproj">
+      <Project>{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}</Project>
+      <Name>Newtonsoft.Json.Net35</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -311,7 +317,9 @@
     <Content Include="Dependencies\Jurassic.pdb" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Client\.jshintrc" />
     <None Include="Client\AutoRake.bat" />
+    <None Include="Client\package.json" />
     <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
     <None Include="Client\RakeScripts.bat" />
