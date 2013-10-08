@@ -43,6 +43,20 @@ namespace ExoWeb.Serialization
 		}
 
 		/// <summary>
+		/// Register a custom converter. The converter specifies the type of object
+		/// that is supports, as well as serialize and deserialize implementations.
+		/// Once registered, ExoWeb becomes able to serialize and/or deserialize objects
+		/// of the supported type. Also, the converter is automatically aware of other
+		/// converters that have been registered for derived types and defers to them.
+		/// </summary>
+		/// <param name="converter"></param>
+		public static void RegisterConverter(Newtonsoft.Json.JsonConverter converter, Type type)
+		{
+			serializer.Converters.Add(converter);
+			serializableTypes.Add(type);
+		}
+
+		/// <summary>
 		/// Indicates whether the specified type can be serialized.
 		/// </summary>
 		/// <param name="type"></param>

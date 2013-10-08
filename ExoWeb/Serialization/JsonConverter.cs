@@ -221,6 +221,15 @@ namespace ExoWeb.Serialization
 			return jsonType;
 		}
 
+		/// <summary>
+		/// Add additional type mappings to the list of intrinsic type mappings
+		/// </summary>
+		/// <param name="serverType"></param>
+		/// <param name="clientType"></param>
+		public static void AddInstrinsicType(Type serverType, string clientType)
+		{
+			jsonIntrinsicTypes[serverType] = clientType;
+		}
 		#endregion
 	}
 
