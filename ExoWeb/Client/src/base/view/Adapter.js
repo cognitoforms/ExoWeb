@@ -495,8 +495,16 @@ Adapter.mixin({
 			throw new Error("Cannot set displayValue property of Adapters for entity types.");
 		}
 		else {
+			var initialValue = value;
 			value = this._format ? this._format.convertBack(value) : value;
 			this._setValue(value);
+			if (ExoWeb.config.autoReformat) {
+				var newValue = this.get_displayValue();
+				if (initialValue != newValue) {
+					var adapter = this;
+					window.setTimeout(function () { Observer.raisePropertyChanged(adapter, "displayValue"); }, 1);
+				}
+			}
 		}
 	},
 

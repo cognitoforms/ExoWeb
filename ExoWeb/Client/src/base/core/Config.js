@@ -25,7 +25,9 @@ var config = {
 	allowListLazyLoading: true,
 
 	// Allows additional scope variables to be introduced for dynamically compiled expressions
-	expressionScope: null
+	expressionScope: null,
+
+	autoReformat: true
 };
 
 exports.config = config;
