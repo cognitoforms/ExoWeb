@@ -160,6 +160,7 @@
     <Compile Include="Templates\RenderEventArgs.cs" />
     <Compile Include="UnitTests\Accessors.cs" />
     <Compile Include="ViewScope.cs" />
+    <Content Include="Dependencies\Newtonsoft.Json.dll" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ExoModel\ExoModel\ExoModel.csproj">
