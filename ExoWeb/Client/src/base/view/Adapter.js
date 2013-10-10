@@ -498,7 +498,7 @@ Adapter.mixin({
 			var initialValue = value;
 			value = this._format ? this._format.convertBack(value) : value;
 			this._setValue(value);
-			if (ExoWeb.config.autoReformat) {
+			if (ExoWeb.config.autoReformat && !(value instanceof ExoWeb.Model.FormatError)) {
 				var newValue = this.get_displayValue();
 				if (initialValue != newValue) {
 					var adapter = this;
@@ -534,7 +534,7 @@ Adapter.mixin({
 					lastTarget.meta.removeConditionsChanged(this._conditionsChangedHandler);
 				}
 			}
-			this._allowedValues = this._allowedValuesMayBeNull = this._aspects = this._badValue =
+			this._allowedValues = this._allowedValuesMayBeNull = this._aspects =
 				this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =
 				this._observable = this._options = this._allowedValuesTransform = this._parentAdapter = this._propertyChain =
 				this._propertyPath = this._readySignal = this._target = null;
