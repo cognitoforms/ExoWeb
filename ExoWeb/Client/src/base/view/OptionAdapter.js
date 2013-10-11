@@ -58,6 +58,23 @@ OptionAdapter.prototype = {
 		var format = this._parent._format;
 		return format ? format.convert(this._obj) : this._obj;
 	},
+	set_displayValue: function OptionAdapter$set_displayValue(value) {
+		if (this._parent.get_isEntity()) {
+			throw new Error("Cannot set displayValue property of OptionAdapters for entity types.");
+		}
+		else {
+			var selected = this.get_selected();
+			// Remove old value from the list if selected
+			if (selected) this.set_selected(false);
+
+			// Set the internal option value after optional applying a conversion
+			value = this._format ? this._format.convertBack(value) : value;
+			this._obj = value;
+
+			// Add new value to the list if previously selected
+			if (selected) this.set_selected(true);
+		}
+	},
 	get_systemValue: function OptionAdapter$get_systemValue() {
 		if (this._obj === null || this._obj === undefined) {
 			return "";
