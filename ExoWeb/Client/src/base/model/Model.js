@@ -258,24 +258,24 @@ Model.getJsType = function Model$getJsType(name, allowUndefined) {
 
 	var obj = Model.types;
 	var steps = name.split(".");
-	for (var i = 0; i < steps.length; i++) {
-		var step = steps[i];
-		if (Model.intrinsicJsTypes.indexOf(step) > -1) {
-			obj = window[step];
-		}
-		else {
-			obj = obj[step];
-		}
-		if (obj === undefined) {
-			if (allowUndefined) {
-				return;
-			}
-			else {
-				throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
-			}
-		}
+	if (steps.length === 1 && Model.intrinsicJsTypes.indexOf(name) > -1) {
+		return window[name];
 	}
-	return obj;
+	else {
+		for (var i = 0; i < steps.length; i++) {
+			var step = steps[i];
+			obj = obj[step];
+			if (obj === undefined) {
+				if (allowUndefined) {
+					return;
+				}
+				else {
+					throw new Error($format("The type \"{0}\" could not be found.  Failed on step \"{1}\".", [name, step]));
+				}
+			}
+		}
+		return obj;
+	}
 };
 
 exports.Model = Model;
