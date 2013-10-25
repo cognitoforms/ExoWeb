@@ -769,7 +769,7 @@ namespace ExoWeb
 				else if (c.Type == typeof(string) || c.Type == typeof(char) || c.Type.IsEnum)
 					builder.Append("\"").Append(c.Value).Append("\"");
 				else if (c.Type == typeof(DateTime))
-					builder.Append("new Date(").Append((long)((DateTime)c.Value).Subtract(new DateTime(1970, 1, 1)).TotalMilliseconds).Append(")");
+					builder.Append("new Date(").Append((long)(((DateTime)c.Value).ToUniversalTime()).Subtract(new DateTime(1970, 1, 1)).TotalMilliseconds).Append(")");
 				else if (c.Type == typeof(bool))
 					builder.Append(((bool)c.Value).ToString().ToLower());
 				else
