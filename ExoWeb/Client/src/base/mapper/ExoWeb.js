@@ -82,11 +82,6 @@ var flushPendingOptions = function flushPendingOptions() {
 
 		ensureContext();
 
-		// Perform context initialization when the model is ready
-		if (executingOptions.contextReady || executingOptions.extendContext || executingOptions.domReady || !activated) {
-			window.context.addReady(modelReadyHandler(executingOptions.contextReady, executingOptions.extendContext, executingOptions.domReady));
-		}
-
 		// Perform initialization immediately
 		if (executingOptions.init) {
 			executingOptions.init(window.context);
@@ -101,6 +96,11 @@ var flushPendingOptions = function flushPendingOptions() {
 			instances: executingOptions.instances,
 			serverInfo: executingOptions.serverInfo
 		});
+
+		// Perform context initialization when the model is ready
+		if (executingOptions.contextReady || executingOptions.extendContext || executingOptions.domReady || !activated) {
+			window.context.addReady(modelReadyHandler(executingOptions.contextReady, executingOptions.extendContext, executingOptions.domReady));
+		}
 	}
 	else if (window.context) {
 		if (!(window.context instanceof Context)) {
