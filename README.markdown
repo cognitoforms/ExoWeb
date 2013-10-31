@@ -28,8 +28,9 @@ Characteristics of the server-side model can enable some validation automaticall
 
 The ExoWeb client model maintains a set of events that have occurred, whether on the client or the server. These events are replayed on the server as needed, which allows for the client and server models to be kept in sync. Also, operations can easily be moved to the client to improve performance but can remain on the server when this is not appropriate or practical.
 
-Blog Posts
-----------
+#### More Information
+
+Check out the [wiki](../../wiki) and the following the blog posts:
 
 [A Brief Introduction to ExoWeb](http://endlessobsession.com/blog/a-brief-introduction-to-exoweb)
 
