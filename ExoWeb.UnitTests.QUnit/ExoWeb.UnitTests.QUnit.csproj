@@ -93,11 +93,6 @@
     <Content Include="Common\Scripts\mock-driver.js" />
     <Content Include="Common\Scripts\JQuery\jquery-1.3.2.js" />
     <Content Include="Common\Styles\qunit.css" />
-    <Content Include="Core\Batch.htm" />
-    <Content Include="Core\Copy.htm" />
-    <Content Include="Core\Observers.htm" />
-    <Content Include="Core\Transform.htm" />
-    <Content Include="Core\TransformInterface.js" />
     <Content Include="JQuery\Validation.htm" />
     <Content Include="Mapper\ChangeSet.js" />
     <Content Include="Mapper\Conditions.htm" />
@@ -111,13 +106,11 @@
     <Content Include="Model\Inheritance.htm" />
     <Content Include="Model\Property.htm" />
     <Content Include="Model\Types.htm" />
-    <Content Include="UI\DataViewPartialRefresh.htm" />
     <Content Include="UI\ServerRenderTemplateSelection.htm" />
     <Content Include="UI\ServerRenderAbort.htm" />
     <Content Include="UI\ServerRenderToggle.htm" />
     <Content Include="UI\TemplateSelection.htm" />
     <Content Include="UI\ParentContextData.htm" />
-    <Content Include="UI\ServerRender.htm" />
     <Content Include="View\Adapter.htm" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>

@@ -1,0 +1,303 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+	<head>
+		<title>ExoWeb Tests</title>
+
+		<link href="ref/qunit/qunit-1.12.0.css" type="text/css" rel="stylesheet" />
+
+		<style type="text/css">
+			.sys-template {display:none;}
+			.server {border-left:1px solid Blue; padding-left:5px;}
+			div.roles {clear:both;}
+			img.role-photo {float:left; margin:5px 5px 5px 0;}
+			div.actor-bio, div.actor-roles {padding:0 15px; margin:5px 0;}
+			div.actor-bio {font-style:italic; font-size:small; border-left:1px solid #555;}
+			div.actor-roles h5 {padding:0; margin:0;}
+			div.actor-name.role-lead {font-weight:bold;}
+		</style>
+
+		<script src="ref/jquery/jquery-1.5.1.js" type="text/javascript"></script>
+		<script src="ref/qunit/qunit-1.12.0.js" type="text/javascript"></script>
+		<script src="ref/aspnetajax/MicrosoftAjax.debug.js" type="text/javascript"></script>
+		<script src="ref/aspnetajax/MicrosoftAjaxTemplates.debug.js" type="text/javascript"></script>
+		<script src="dist/exoweb-msajax.js" type="text/javascript"></script>
+		<script src="tests/mock-driver.js" type="text/javascript"></script>
+		<script src="tests/types.js" type="text/javascript"></script>
+		<script src="tests/instances.js" type="text/javascript"></script>
+
+		<script src="tests/base/core/BatchTests.js" type="text/javascript"></script>
+		<script src="tests/base/core/ObjectTests.js" type="text/javascript"></script>
+		<script src="tests/base/core/ObserverTests.js" type="text/javascript"></script>
+		<script src="tests/base/core/TransformTests.js" type="text/javascript"></script>
+		<script src="tests/base/ui/DataViewTests.js" type="text/javascript"></script>
+		<script src="tests/base/ui/LinkingTests.js" type="text/javascript"></script>
+	</head>
+	<body xmlns:sys="javascript:Sys" sys:activate="*"
+	      xmlns:dataview="javascript:Sys.UI.DataView"
+	      xmlns:content="javascript:ExoWeb.UI.Content"
+	      xmlns:template="javascript:ExoWeb.UI.Template"
+	      xmlns:toggle="javascript:ExoWeb.UI.Toggle">
+
+		<script type="text/javascript">
+			ExoWeb.config.debug = true;
+
+			$exoweb({
+				model: {
+					movie: { from: "Movie", id: "robin_hood" },
+					movies: { from: "Movie", ids: ["robin_hood", "batman_and_robin"] }
+				}
+			});
+		</script>
+
+		<!-- Links to run tests by module -->
+		<p id="qunit-links">
+			<a href="tests.html">Home</a>
+			&nbsp;&nbsp;&nbsp;&nbsp;
+			<strong>Modules: </strong>
+			<a href="tests.html?module=Batch">Batch</a>, 
+			<a href="tests.html?module=Object">Object</a>, 
+			<a href="tests.html?module=Observer">Observer</a>, 
+			<a href="tests.html?module=Transform">Transform</a>, 
+			<a href="tests.html?module=DataView">DataView</a>, 
+			<a href="tests.html?module=Linking">Linking</a>
+		</p>
+
+		<!-- QUnit Display -->
+		<h1 id="qunit-header">Test Results:</h1>
+		<h2 id="qunit-banner"></h2>
+		<h2 id="qunit-userAgent"></h2>
+		<ol id="qunit-tests"></ol>
+
+		<!-- Markup for UI Tests -->
+		<div id="exoweb-markup">
+			<div class="sys-template account" sys:attach="dataview" dataview:data="{~ context.model.movie, source=window }" dataview:useOptimalUpdates="{{ true }}">
+				<h3>{binding Name}</h3>
+				<img alt="Poster" sys:src="{binding PosterUrl}" height="100" />
+				<div>
+					<table class="genres">
+						<tbody>
+							<tr>
+								<th>Rendered Index</th>
+								<th>Name</th>
+							</tr>
+						</tbody>
+						<tbody class="sys-template" sys:attach="dataview" dataview:data="{binding Genres}" dataview:useOptimalUpdates="{{ true }}">
+							<tr>
+								<td>{{ RENDER_INDEX_DATAVIEW++ }}</td>
+								<td>{binding Name}</td>
+							</tr>
+						</tbody>
+						<tbody>
+							<tr>
+								<th>Rendered Index</th>
+								<th>Name</th>
+							</tr>
+						</tbody>
+						<tbody class="sys-template" sys:attach="dataview" dataview:data="{binding Genres}" dataview:useOptimalUpdates="{{ true }}">
+							<tr sys:attach="content" content:template="genres-render-index" content:data="{{ $dataItem }}"></tr>
+						</tbody>
+						<tbody>
+							<tr>
+								<th>Positional Index</th>
+								<th>Name</th>
+							</tr>
+						</tbody>
+						<tbody class="sys-template" sys:attach="dataview" dataview:data="{binding Genres}" dataview:useOptimalUpdates="{{ true }}">
+							<tr>
+								<td>{{ $index + 1 }}</td>
+								<td>{binding Name}</td>
+							</tr>
+						</tbody>
+						<tbody>
+							<tr>
+								<th>Positional Index</th>
+								<th>Name</th>
+							</tr>
+						</tbody>
+						<tbody class="sys-template" sys:attach="dataview" dataview:data="{binding Genres}" dataview:useOptimalUpdates="{{ true }}">
+							<tr sys:attach="content" content:template="genres-positional-index" content:data="{{ $dataItem }}"></tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<table>
+				<tbody>
+					<tr class="sys-template" sys:attach="template" template:name="genres-render-index">
+						<td>{{ RENDER_INDEX_CONTENT++ }}</td>
+						<td>{binding Name}</td>
+					</tr>
+				</tbody>
+				<tbody>
+					<tr class="sys-template" sys:attach="template" template:name="genres-positional-index">
+						<td>{{ $index + 1 }}</td>
+						<td>{binding Name}</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<div id="_t0" class="sys-template">
+				<img class="photo" sys:src="{binding PosterUrl}" height="50" />
+				<input type="text" sys:value="{# Name}" />
+				<div class="sys-template roles" sys:attach="dataview" dataview:data="{binding Roles}">
+					<div sys:attach="content" content:data="{{ $dataItem }}"></div>
+				</div>
+			</div>
+			<table id="content">
+				<tbody>
+					<tr>
+						<td valign="top" width="300">
+							<div id="client" class="sys-template" sys:attach="dataview" dataview:data="{~ context.model.movies, source=window }">
+								<img class="photo" sys:src="{binding PosterUrl}" height="50" />
+								<input type="text" sys:value="{# Name}" />
+								<div class="sys-template roles" sys:attach="dataview" dataview:data="{binding Roles}">
+									<div sys:attach="content" content:data="{{ $dataItem }}"></div>
+								</div>
+							</div>
+						</td>
+						<td valign="top" width="300">
+							<div id="server" class="sys-ignore" data-sys-attach="dataview" data-dataview-data="{~ context.model.movies, source=window }" data-sys-tmplidx="0">
+								<!--item-->
+								<img class="server photo" data-sys-src="{binding PosterUrl}" height="50" src="tests/resources/RobinHood.jpg">
+								<input type="text" class="server" data-sys-value="{# Name}" value="The Matrix" />
+								<div class="server roles" data-sys-attach="dataview" data-dataview-data="{binding Roles}" data-sys-tmplidx="0">
+									<!--item-->
+									<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="0">
+										<div class="server actor-name role-lead">Russell Crowe</div>
+										<div class="server toggle-on" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="0">
+											<div class="actor-bio" data-sys-innerhtml="{binding Actor.BioPreview}"><span data-canvas-width="200">Russell Ira Crowe (born 7 April 1964) is a New Zealander Australian actor...</span></div>
+										</div>
+										<div class="actor-roles">
+											<h5>Known for:</h5>
+											<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
+												<!--item-->
+												<span>Robin Hood</span>
+												<!--/item-->
+											</div>
+										</div>
+									</div>
+									<!--/item-->
+
+									<!--item-->
+									<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="1">
+										<div class="server actor-name">Cate Blanchett</div>
+										<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="1"></div>
+										<div class="actor-roles">
+											<h5>Known for:</h5>
+											<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
+												<!--item-->
+												<span>Robin Hood</span>
+												<!--/item-->
+											</div>
+										</div>
+									</div>
+									<!--/item-->
+
+									<!--item-->
+									<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="2">
+										<div class="server actor-name">Matthew Macfadyen</div>
+										<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="2"></div>
+										<div class="actor-roles">
+											<h5>Known for:</h5>
+											<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
+												<!--item-->
+												<span>Robin Hood</span>
+												<!--/item-->
+											</div>
+										</div>
+									</div>
+									<!--/item-->
+								</div>
+								<!--/item-->
+
+								<!--item-->
+								<img class="server photo" data-sys-src="{binding PosterUrl}" height="50" src="tests/resources/BatmanAndRobin.jpg">
+								<input type="text" class="server" data-sys-value="{# Name}" value="Batman &amp; Robin" />
+								<div class="server roles" data-sys-attach="dataview" data-dataview-data="{binding Roles}" data-sys-tmplidx="0">
+									<!--item-->
+									<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="0">
+										<div class="server actor-name">Arnold Schwarzenegger</div>
+										<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="0"></div>
+										<div class="actor-roles">
+											<h5>Known for:</h5>
+											<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
+												<!--item-->
+												<span>Batman & Robin</span>
+												<!--/item-->
+											</div>
+										</div>
+									</div>
+									<!--/item-->
+
+									<!--item-->
+									<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="1">
+										<div class="server actor-name role-lead">George Clooney</div>
+										<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="1"></div>
+										<div class="actor-roles">
+											<h5>Known for:</h5>
+											<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
+												<!--item-->
+												<span>Batman & Robin</span>
+												<!--/item-->
+											</div>
+										</div>
+									</div>
+									<!--/item-->
+
+									<!--item-->
+									<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="2">
+										<div class="server actor-name">Chris O'Donnell</div>
+										<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="2"></div>
+										<div class="actor-roles">
+											<h5>Known for:</h5>
+											<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
+												<!--item-->
+												<span>Batman & Robin</span>
+												<!--/item-->
+											</div>
+										</div>
+									</div>
+									<!--/item-->
+
+									<!--item-->
+									<div data-sys-attach="content" data-content-data="{{ $dataItem }}" data-sys-tcindex="3">
+										<div class="server actor-name">Uma Thurman</div>
+										<div class="toggle-off" data-sys-attach="toggle" data-toggle-on="{binding Actor.BioPreview}" data-toggle-action="render" data-sys-tmplidx="0" data-sys-tcindex="3"></div>
+										<div class="actor-roles">
+											<h5>Known for:</h5>
+											<div data-sys-attach="dataview" data-dataview-data="{binding Actor.Roles}" data-sys-tmplidx="2">
+												<!--item-->
+												<span>Batman & Robin</span>
+												<!--/item-->
+											</div>
+										</div>
+									</div>
+									<!--/item-->
+								</div>
+								<!--/item-->
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<div class="sys-template" sys:attach="template" template:datatype="Role">
+				<div class="actor-name" sys:class-role-lead="{{ $dataItem.get_Lead() }}">{{ $dataItem.get_Actor().get_Person().get_FirstName() + " " + $dataItem.get_Actor().get_Person().get_LastName() }}</div>
+				<div class="sys-template" sys:attach="toggle" toggle:on="{binding Actor.BioPreview}" toggle:action="render">
+					<div class="actor-bio">{binding Actor.BioPreview}</div>
+				</div>
+				<div sys:if="{{ false }}">
+					<div class="sys-template" sys:attach="dataview" dataview:data="{binding Actor.Roles}">
+						<span sys:codebefore="{{ throw 'This should never render because of sys:if!' }}"></span>
+					</div>
+				</div>
+				<div class="actor-roles">
+					<h5>Known for:</h5>
+					<div class="sys-template" sys:attach="dataview" dataview:data="{binding Actor.Roles}">
+						<span>{{ $dataItem.get_Movie().get_Name() }}</span><span sys:if="{{ !$isLast($context.containerElement.control, $index) }}">, </span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
