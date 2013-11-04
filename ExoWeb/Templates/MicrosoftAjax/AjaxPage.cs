@@ -14,7 +14,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	{
 		internal AjaxPage()
 		{
-			IsIE = HttpContext.Current != null && HttpContext.Current.Request.Browser.IsBrowser("IE");
+			IsIE = HttpContext.Current != null &&
+			       (HttpContext.Current.Request.Browser.IsBrowser("IE") ||
+			        (!string.IsNullOrEmpty(HttpContext.Current.Request.UserAgent) && HttpContext.Current.Request.UserAgent.Contains("Trident")));
 		}
 
 		int nextControlId;
