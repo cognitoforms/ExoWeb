@@ -65,7 +65,7 @@ ChangeLog.mixin({
 
 		// Raise an error if a change set is started while the batch is being performed.
 		changeSetStartedHandler = function () {
-			throw new Error("Nested change batches are not currently supported.");
+			throw new Error("Nested change batches are not currently supported. Batch already in progress: " + title);
 		};
 
 		// Attach the event

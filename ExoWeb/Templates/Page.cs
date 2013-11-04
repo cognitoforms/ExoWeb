@@ -209,9 +209,13 @@ namespace ExoWeb.Templates
 				ModelPath modelPath;
 				if (result.Source.Type.TryGetPath(path, out modelPath))
 				{
+					bool pathWalked = false;
+
 					// Walk the path, honoring only first steps
 					for (var step = FirstApplicableStep(result.Source, modelPath.FirstSteps); step != null; step = FirstApplicableStep(result.Source, step.NextSteps))
 					{
+						pathWalked = true;
+
 						if (step.NextSteps.Any())
 						{
 							// Exit immediately if an intermediary step is a list
@@ -225,6 +229,9 @@ namespace ExoWeb.Templates
 						else
 							result.Property = step.Property;
 					}
+
+					if (!pathWalked)
+						return result;
 
 					// Indicate that the result is now considered valid since the path could be walked
 					result.IsValid = true;
