@@ -110,7 +110,12 @@ ObjectMeta.mixin({
 		if (prop) {
 			// Coerce property names into property instances
 			if (isString(prop)) {
+				var name = prop;
 				prop = this.property(prop, true);
+				
+				if (!prop) {
+					throw new Error("Could not find property \"" + name + "\" on type \"" + this.type.get_fullName() + "\".");
+				}
 			}
 
 			// Otherwise, get the property value and determine whether there is a

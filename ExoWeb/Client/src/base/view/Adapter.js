@@ -494,6 +494,9 @@ Adapter.mixin({
 		if (this.get_isEntity()) {
 			throw new Error("Cannot set displayValue property of Adapters for entity types.");
 		}
+		else if (this.get_isList()) {
+			throw new Error("Cannot set displayValue property of Adapters for list types.");
+		}
 		else {
 			var initialValue = value;
 			value = this._format ? this._format.convertBack(value) : value;

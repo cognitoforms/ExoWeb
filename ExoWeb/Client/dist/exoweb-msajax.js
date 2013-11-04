@@ -6265,7 +6265,12 @@ window.ExoWeb.DotNet = {};
 			if (prop) {
 				// Coerce property names into property instances
 				if (isString(prop)) {
+					var name = prop;
 					prop = this.property(prop, true);
+				
+					if (!prop) {
+						throw new Error("Could not find property \"" + name + "\" on type \"" + this.type.get_fullName() + "\".");
+					}
 				}
 
 				// Otherwise, get the property value and determine whether there is a
@@ -17152,6 +17157,9 @@ window.ExoWeb.DotNet = {};
 		set_displayValue: function Adapter$set_displayValue(value) {
 			if (this.get_isEntity()) {
 				throw new Error("Cannot set displayValue property of Adapters for entity types.");
+			}
+			else if (this.get_isList()) {
+				throw new Error("Cannot set displayValue property of Adapters for list types.");
 			}
 			else {
 				var initialValue = value;
