@@ -481,7 +481,7 @@ namespace ExoWeb
 							case "sum": return new MethodTranslation(method, "{0}.map({1}, this).reduce(function (p,c) { return p + c; }, 0)");
 							case "average": return new MethodTranslation(method, "{0}.map({1}, this).reduce(function (p,c,i,a) { return p + c/a.length; }, 0)");
 							case "select": return new MethodTranslation(method, "{0}.map({1}, this)");
-							case "first": return new MethodTranslation(method, "{0}.filter({1}, this)[0]");
+							case "first": return new MethodTranslation(method, "({0}.filter({1}, this)[0] || null)");
 							case "firstordefault": return new MethodTranslation(method, "({0}.filter({1}, this)[0] || null)");
 							case "last": return new MethodTranslation(method, "Array_last({0}.filter({1}, this))").AddExport("Array_last", "function (a) { if (a.length > 0) return a[a.length - 1]; }");
 							case "lastordefault": return new MethodTranslation(method, "(Array_last({0}.filter({1}, this)) || null)").AddExport("Array_last", "function (a) { if (a.length > 0) return a[a.length - 1]; }");
