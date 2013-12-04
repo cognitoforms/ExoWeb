@@ -10269,6 +10269,11 @@ window.ExoWeb.DotNet = {};
 			}
 		};
 		this.ignoreChanges = function (before, callback, after, thisPtr) {
+			if (arguments.length === 1) {
+				callback = arguments[0];
+				before = null;
+			}
+
 			return function () {
 				var beforeCalled = false;
 
