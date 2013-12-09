@@ -27,6 +27,9 @@ var config = {
 	// Allows additional scope variables to be introduced for dynamically compiled expressions
 	expressionScope: null,
 
+	// Specifies the default defaultIfError value for CalculatedPropertyRule instances
+	calculationErrorDefault: undefined,
+
 	autoReformat: true
 };
 

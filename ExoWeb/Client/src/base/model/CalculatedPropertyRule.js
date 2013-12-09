@@ -5,6 +5,7 @@ function CalculatedPropertyRule(rootType, options) {
 	///		The options for the rule, including:
 	///			property:		the property being calculated (either a Property instance or string property name)
 	///			calculate:		a function that returns the value to assign to the property, or undefined if the value cannot be calculated
+	///			defaultIfError: the value to return if an error occurs, or undefined to cause an exception to be thrown
 	///			name:			the optional unique name of the rule
 	///		    onInit:			true to indicate the rule should run when an instance of the root type is initialized, otherwise false
 	///		    onInitNew:		true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
@@ -22,6 +23,9 @@ function CalculatedPropertyRule(rootType, options) {
 
 	// store the calculation function
 	Object.defineProperty(this, "calculate", { value: options.calculate || options.fn, writable: true });
+
+	// store the calculation function
+	Object.defineProperty(this, "defaultIfError", { value: options.hasOwnProperty("defaultIfError") ? options.defaultIfError : ExoWeb.config.calculationErrorDefault });
 
 	// indicate that the rule is responsible for returning the value of the calculated property
 	options.returns = [prop];
@@ -45,7 +49,17 @@ CalculatedPropertyRule.mixin({
 		}
 
 		// calculate the new property value
-		var newValue = this.calculate.apply(obj);
+		var newValue;
+		if (this.defaultIfError === undefined)
+			newValue = this.calculate.apply(obj);
+		else {
+			try {
+				newValue = this.calculate.apply(obj);
+			}
+			catch (e) {
+				newValue = this.defaultIfError;
+			}
+		}
 
 		// exit immediately if the calculated result was undefined
 		if (newValue === undefined) return;
