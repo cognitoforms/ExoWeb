@@ -979,6 +979,8 @@ namespace ExoWeb
 						return " > ";
 					case ExpressionType.GreaterThanOrEqual:
 						return " >= ";
+					case ExpressionType.Coalesce:
+						return " || ";
 				}
 				throw new NotImplementedException("Operator not implemented");
 			}
