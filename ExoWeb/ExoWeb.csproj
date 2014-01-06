@@ -82,6 +82,7 @@
     <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
     <Content Include="Client\ScriptBuilder.js" />
+    <Content Include="Client\server.js" />
     <Content Include="Client\specs\base\core\FunctorSpecs.js" />
     <Content Include="Client\src\base\core\Errors.js" />
     <Content Include="Client\src\base\core\Observer.js" />

@@ -1,6 +1,7 @@
 /*global module, require */
 
 var fs = require("fs"),
+	path = require("path"),
 	scriptBuilder = require("./ScriptBuilder.js");
 
 module.exports = function (grunt) {
@@ -65,6 +66,14 @@ module.exports = function (grunt) {
 				}
 			}
 		},
+		express: {
+			myserver: {
+				options: {
+					port: 9093,
+					server: path.resolve(__dirname, 'server.js')
+				}
+			}
+		},
 		watch: {
 			autobuild: {
 				files: ["src/**/*.js", "Gruntfile.js", "ScriptBuilder.js"],
@@ -115,8 +124,14 @@ module.exports = function (grunt) {
 	// Load plugin for building combined files.
 	grunt.loadNpmTasks("grunt-contrib-concat");
 
+	// Load plugin for express in order to static serve the unit test page for testing.
+	grunt.loadNpmTasks("grunt-express");
+
 	// JavaScript lint task.
 	grunt.registerTask("lint", ["jshint:src"]);
+
+	// Serve tests.html
+	grunt.registerTask("runserver", ["express:myserver", "express-keepalive"]);
 
 	// JavaScript concat/build task.
 	grunt.registerTask("build", ["concat:msajax", "concat:msajax_nojquery", "concat:jquery_msajax_plugin"]);
