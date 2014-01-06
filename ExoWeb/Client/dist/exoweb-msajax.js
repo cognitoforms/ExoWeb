@@ -12795,6 +12795,7 @@ window.ExoWeb.DotNet = {};
 
 			if (!prop) {
 				fail("Could not find property \"" + step.property + "\" on type \"" + jstype.meta.get_fullName() + "\".");
+				return;
 			}
 
 			// don't need to fetch type information for value types
