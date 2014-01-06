@@ -190,7 +190,7 @@ namespace ExoWeb.Serialization
 		/// </summary>
 		/// <param name="type"></param>
 		/// <returns></returns>
-		internal static string GetJsonValueType(Type type)
+		public static string GetJsonValueType(Type type)
 		{
 			string jsonType;
 			if (jsonIntrinsicTypes.TryGetValue(type, out jsonType))
