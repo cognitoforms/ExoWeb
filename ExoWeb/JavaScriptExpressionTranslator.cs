@@ -107,8 +107,8 @@ namespace ExoWeb
 			{ "Date.AddSeconds(Number) as Date", new string[] {@"new Date({0}.getTime() + {1}*1000)", "", @""} },
 			{ "Date.AddTicks(Number) as Date", new string[] {@"new Date({0}.getTime() + {1}/10000)", "", @""} },
 			{ "Date.AddYears(Number) as Date", new string[] {@"Date_addYears({0}, {1})", "Date_addYears", @"function (d, y) { var r = new Date(d.getTime()); r.setFullYear(r.getFullYear() + y); return r; }"} },
-			{ "Date.CompareTo(Date) as Number", new string[] {@"Date.compareTo({0}, {1})", "", @""} },
-			{ "Date.CompareTo(Object) as Number", new string[] {@"Date.compareTo({0}, {1})", "", @""} },
+			{ "Date.CompareTo(Date) as Number", new string[] {@"{0}.getTime()=={1}.getTime() ? 0 : ({0}.getTime()>{1}.getTime() ? 1 : -1)", "", @""} },
+			{ "Date.CompareTo(Object) as Number", new string[] {@"{0}.getTime()=={1}.getTime() ? 0 : ({0}.getTime()>{1}.getTime() ? 1 : -1)", "", @""} },
 			{ "Date.Date as Date", new string[] {@"Date_date({0})", "Date_date", @"function Date_date(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }"} },
 			{ "Date.Day as Number", new string[] {@"{0}.getDate()", "", @""} },
 			{ "Date.DayOfWeek as DayOfWeek", new string[] {@"[""Sunday"", ""Monday"", ""Tuesday"", ""Wednesday"", ""Thursday"", ""Friday"", ""Saturday""][{0}.getDay()]", "", @""} },
@@ -143,6 +143,7 @@ namespace ExoWeb
 			{ "static Math.Ceiling(Number) as Number", new string[] {@"Math.ceil({0})", "", @""} },
 			{ "static Math.Cos(Number) as Number", new string[] {@"Math.cos({0})", "", @""} },
 			{ "static Math.Cosh(Number) as Number", new string[] {@"Math_cosh({0})", "Math_cosh", @"function(n) { return (Math.exp(n) + Math.exp(-(n)))/2; }"} },
+			{ "static Math.E as Number", new string[] {@"Math.E", "", @""} },
 			{ "static Math.Exp(Number) as Number", new string[] {@"Math.exp({0})", "", @""} },
 			{ "static Math.Floor(Number) as Number", new string[] {@"Math.floor({0})", "", @""} },
 			{ "static Math.Log(Number) as Number", new string[] {@"Math.log({0})", "", @""} },
@@ -150,6 +151,7 @@ namespace ExoWeb
 			{ "static Math.Log10(Number) as Number", new string[] {@"Math.log({0})/Math.log(10)", "", @""} },
 			{ "static Math.Max(Number, Number) as Number", new string[] {@"Math.max({0}, {1})", "", @""} },
 			{ "static Math.Min(Number, Number) as Number", new string[] {@"Math.min({0}, {1})", "", @""} },
+			{ "static Math.PI as Number", new string[] {@"Math.PI", "", @""} },
 			{ "static Math.Pow(Number, Number) as Number", new string[] {@"Math.pow({0}, {1})", "", @""} },
 			{ "static Math.Round(Number) as Number", new string[] {@"Math.round({0})", "", @""} },
 			{ "static Math.Round(Number, Number) as Number", new string[] {@"Math.round({0}*Math.pow(10, {1}))/Math.pow(10, {1})", "", @""} },
@@ -510,7 +512,7 @@ namespace ExoWeb
 			{
 				var field = member as FieldInfo;
 				if (IsSupported(field.FieldType))
-					return GetTypeName(field.DeclaringType) + "." + field.Name + " as " + GetTypeName(field.FieldType);
+					return (field.IsStatic ? "static " : "") + GetTypeName(field.DeclaringType) + "." + field.Name + " as " + GetTypeName(field.FieldType);
 			}
 
 			// Property
