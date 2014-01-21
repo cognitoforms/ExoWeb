@@ -684,6 +684,10 @@ namespace ExoWeb
 			{
 				builder.Append("(");
 
+				// Create TimeSpan if subtracting two DateTime instances
+				if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
+					builder.Append("new TimeSpan(");
+
 				// Handle concatenation of strings to ensure correct implicit conversion
 				if (node.NodeType == ExpressionType.Add && node.Left.Type == typeof(string) && node.Left.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Left.GetType()))
 				{
@@ -707,6 +711,10 @@ namespace ExoWeb
 				}
 				else
 					Visit(node.Right);
+
+				// Create TimeSpan if subtracting two DateTime instances
+				if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
+					builder.Append(")");
 
 				builder.Append(")");
 
