@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb", "ExoWeb\ExoWeb.csproj", "{4B14422C-751C-42AE-832A-B474A4AD0D95}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoModel", "..\ExoModel\ExoModel\ExoModel.csproj", "{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}"
@@ -24,11 +26,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoModel.UnitTest", "..\Exo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExoWeb.UnitTests.QUnit", "ExoWeb.UnitTests.QUnit\ExoWeb.UnitTests.QUnit.csproj", "{2CA3FA4E-53DA-4E4C-BBFC-DDC0A010F4BA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{14422A57-DCB3-45E6-8695-A59923288B5B}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(TeamFoundationVersionControl) = preSolution
 		SccNumberOfProjects = 7
 		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
-		SccTeamFoundationServer = http://vc3-cae-tfs-01:8080/tfs/defaultcollection
+		SccTeamFoundationServer = http://tfs.vc3.com:8080/tfs/defaultcollection
 		SccLocalPath0 = .
 		SccProjectUniqueName1 = ..\\ExoModel\\ExoModel\\ExoModel.csproj
 		SccProjectName1 = ../ExoModel/ExoModel
@@ -48,9 +57,6 @@ Global
 		SccProjectUniqueName6 = ExoWeb.UnitTests.QUnit\\ExoWeb.UnitTests.QUnit.csproj
 		SccProjectName6 = ExoWeb.UnitTests.QUnit
 		SccLocalPath6 = ExoWeb.UnitTests.QUnit
-	EndGlobalSection
-	GlobalSection(TestCaseManagementSettings) = postSolution
-		CategoryFile = ExoWeb.vsmdi
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -124,5 +130,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(TestCaseManagementSettings) = postSolution
+		CategoryFile = ExoWeb.vsmdi
 	EndGlobalSection
 EndGlobal

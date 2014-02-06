@@ -2,8 +2,8 @@
 <TestSettings name="Local" id="d8e7fa80-d127-45cb-973d-517ecc77c34e" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
   <Description>These are default test settings for a local test run.</Description>
   <Deployment>
-    <DeploymentItem filename="..\ExoGraph\ExoGraph.UnitTest\JsonModel\types.js" />
-    <DeploymentItem filename="..\ExoGraph\ExoGraph.UnitTest\JsonModel\instances.js" />
+    <DeploymentItem filename="..\ExoModel\ExoModel.UnitTest\Models\Movies\instances.js" />
+    <DeploymentItem filename="..\ExoModel\ExoModel.UnitTest\Models\Movies\types.js" />
   </Deployment>
   <Execution>
     <TestTypeSpecific>
@@ -16,4 +16,5 @@
     <AgentRule name="LocalMachineDefaultRole">
     </AgentRule>
   </Execution>
+  <Properties />
 </TestSettings>

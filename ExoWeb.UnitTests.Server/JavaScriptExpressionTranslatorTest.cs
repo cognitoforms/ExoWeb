@@ -80,6 +80,105 @@ namespace ExoWeb.UnitTests.Server
 		}
 
 		/// <summary>
+		/// Tests the use of intrinsic <see cref="DateTime"/> methods when used in expressions.
+		/// </summary>
+		/// Note: Jurassic does not support DateTime model references so must
+		/// create a instance of DateTime on the client (using Parse method)
+		[TestMethod]
+		public void TestDateTimeExpressions()
+		{
+			// Get the Robin Hood movie
+			var movie = Movie.All.First(m => m.Name == "Robin Hood");
+			var local = TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow);
+			String time = "T11:15:45" + local.Hours.ToString("00") + ":" + local.Minutes.ToString("00");
+
+			// Boolean DateTime.Equals(DateTime, DateTime)
+			TestExpression(movie, @"DateTime.Equals(DateTime.Parse(""10/30/1991""), DateTime.Parse(""10/30/1991""))", true, "");
+			TestExpression(movie, @"DateTime.Equals(DateTime.Parse(""10/30/1991""), DateTime.Parse(""10/31/1991""))", false, "");
+
+			// Boolean DateTime.IsLeapYear(Number)
+			TestExpression(movie, @"DateTime.IsLeapYear(2008)", true, "");
+			TestExpression(movie, @"DateTime.IsLeapYear(2007)", false, "");
+			TestExpression(movie, @"DateTime.IsLeapYear(1900)", false, "");
+
+			// DateTime DateTime.Now - Cannot accurately test
+			
+			// DateTime.Parse(String)
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"")", new DateTime(1991, 10, 30, 0, 0, 0, DateTimeKind.Local), "");
+			TestExpression(movie, @"DateTime.Parse(""October 30, 1991"")", new DateTime(1991, 10, 30, 0, 0, 0, DateTimeKind.Local), "");
+			TestExpression(movie, @"DateTime.Parse(""1991 October 30"")", new DateTime(1991, 10, 30, 0, 0, 0, DateTimeKind.Local), "");
+			TestExpression(movie, @"DateTime.Parse(""1991-11-02"")", new DateTime(1991, 11, 02, 0, 0, 0, DateTimeKind.Local), "");
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""")", new DateTime(1991, 10, 30, 11, 15, 45, DateTimeKind.Local), "");
+
+			// DateTime.Today - Careful if test run at midnight
+			TestExpression(movie, @"DateTime.Today", DateTime.Today, "");
+
+			// DateTime.UTCNow - Cannot accurately test
+
+			// DateTime DateTime.AddDays(Number)
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").AddDays(1)", new DateTime(1991, 10, 31, 0, 0, 0, DateTimeKind.Local), "");
+
+			// DateTime DateTime.AddHours(Number)
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").AddHours(1)", new DateTime(1991, 10, 30, 12, 15, 45, 0, DateTimeKind.Local), "");
+
+			// DateTime DateTime.AddMilliseconds(Number)
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").AddMilliseconds(1)", new DateTime(1991, 10, 30, 11, 15, 45, 1, DateTimeKind.Local), "");
+
+			// DateTime DateTime.AddMinutes(Number)
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").AddMinutes(1)", new DateTime(1991, 10, 30, 11, 16, 45, 0, DateTimeKind.Local), "");
+
+			// DateTime DateTime.AddMonths(Number)
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").AddMonths(1)", new DateTime(1991, 11, 30, 0, 0, 0, DateTimeKind.Local), "");
+
+			// DateTime DateTime.AddSeconds(Number)
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").AddSeconds(1)", new DateTime(1991, 10, 30, 11, 15, 46, DateTimeKind.Local), "");
+
+			// DateTime DateTime.AddTicks(Number)
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").AddTicks(10000)", new DateTime(1991, 10, 30, 11, 15, 45, 1, DateTimeKind.Local), "");
+
+			// DateTime DateTime.AddYears(Number)
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").AddYears(1)", new DateTime(1992, 10, 30, 0, 0, 0, DateTimeKind.Local), "");
+
+			// Number DateTime.CompareTo(DateTime)
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").CompareTo(DateTime.Parse(""10/30/1991""))", 0, "");
+			TestExpression(movie, @"DateTime.Parse(""10/29/1991"").CompareTo(DateTime.Parse(""10/30/1991""))", -1, "");
+			TestExpression(movie, @"DateTime.Parse(""11/02/1991"").CompareTo(DateTime.Parse(""10/30/1991""))", 1, "");
+
+			// DateTime DateTime.Date
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").Date", new DateTime(1991, 10, 30, 0, 0, 0, DateTimeKind.Local), "");
+
+			// Number DateTime.Day
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").Day", 30, "");
+
+			// String DateTime.DayOfWeek
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").DayOfWeek", "Wednesday", "");
+
+			// Number DateTime.DayOfYear
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").DayOfYear", 303, "");
+
+			// Number DateTime.Hour
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").Hour", 11, "");
+
+			// Number DateTime.Millisecond
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").Millisecond", 0, "");
+
+			// Number DateTime.Minute
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").Minute", 15, "");
+
+			// Number DateTime.Month
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").Month", 10, "");
+
+			// Number DateTime.Second
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").Second", 45, "");
+
+			// Number DateTime.Ticks
+			TestExpression(movie, @"DateTime.Parse(""1991-10-30" + time + @""").Ticks", (long)628244181450000000, "");
+
+			// Number DateTime.Year
+			TestExpression(movie, @"DateTime.Parse(""10/30/1991"").Year", 1991, "");
+		}
+
+		/// <summary>
 		/// Tests the use of intrinsic <see cref="Math"/> methods when used in expressions.
 		/// </summary>
 		[TestMethod]
@@ -452,11 +551,22 @@ namespace ExoWeb.UnitTests.Server
 			var result = f(type.GetModelInstance(instance));
 			if (typeof(TResult) == typeof(string))
 				result = String.Concat(result);
+			else if (typeof(TResult) == typeof(DateTime))
+				result = ((Jurassic.Library.DateInstance)f(type.GetModelInstance(instance))).Value;
 			else
 				result = Convert.ChangeType(f(type.GetModelInstance(instance)), typeof(TResult));
 
-			// Verify that the javascript expression evaluated to the correct result
-			Assert.AreEqual(expectedValue, result);
+			if (typeof(TResult) == typeof(DateTime))
+			{
+				// Jurassic automatically converts to UTC but in reality we always convert to LocalTime on the client
+				DateTime resultDate = (DateTime)Convert.ChangeType(expectedValue, typeof(DateTime));
+				Assert.AreEqual(expectedValue, resultDate.ToLocalTime());
+			}
+			else
+			{
+				// Verify that the javascript expression evaluated to the correct result
+				Assert.AreEqual(expectedValue, result);
+			}
 		}
 	}
 }
