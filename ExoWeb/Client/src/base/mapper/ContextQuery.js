@@ -28,7 +28,7 @@ ContextQuery.mixin({
 			// Setup lazy loading on the context object to control lazy evaluation.
 			// Loading is considered complete at the same point model.ready() fires. 
 			LazyLoader.register(this.context, {
-				load: function context$load(obj, propName, callback, thisPtr) {
+				load: function context$load(obj, propName, inScope, callback, thisPtr) {
 					// objects are already loading so just queue up the calls
 					allSignals.waitForAll(function context$load$callback() {
 						LazyLoader.unregister(obj, this);

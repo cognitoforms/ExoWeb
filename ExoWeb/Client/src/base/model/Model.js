@@ -124,7 +124,7 @@ function ensureType(type, forceLoad, callback) {
 
 	// force type loading if requested
 	if (forceLoad) {
-		LazyLoader.load(type, null, callback);
+		LazyLoader.load(type, null, false, callback);
 	}
 
 	// otherwise, only continue processing when and if dependent types are loaded

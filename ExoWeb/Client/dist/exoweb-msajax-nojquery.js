@@ -4009,7 +4009,7 @@ window.ExoWeb.DotNet = {};
 
 		// force type loading if requested
 		if (forceLoad) {
-			LazyLoader.load(type, null, callback);
+			LazyLoader.load(type, null, false, callback);
 		}
 
 		// otherwise, only continue processing when and if dependent types are loaded
@@ -8481,7 +8481,7 @@ window.ExoWeb.DotNet = {};
 			if (LazyLoader.isRegistered(target, null, step.property)) {
 				performedLoading = true;
 				Array.insert(path.steps, 0, step);
-				LazyLoader.load(target, step.property, function () {
+				LazyLoader.load(target, step.property, false, function () {
 					continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading, root, processed, invokeImmediatelyIfPossible);
 				});
 				return;
@@ -8531,7 +8531,7 @@ window.ExoWeb.DotNet = {};
 		// Load final object
 		if (target !== undefined && target !== null && LazyLoader.isRegistered(target)) {
 			performedLoading = true;
-			LazyLoader.load(target, null, successCallback ? successCallback.prepare(thisPtr || this, [target, performedLoading, root]) : undefined);
+			LazyLoader.load(target, null, false, successCallback ? successCallback.prepare(thisPtr || this, [target, performedLoading, root]) : undefined);
 		}
 		else if (successCallback) {
 			successCallback.apply(thisPtr || this, [target, performedLoading, root]);
@@ -8561,7 +8561,7 @@ window.ExoWeb.DotNet = {};
 		}
 			// Ensure that the array is loaded, then continue
 		else if (LazyLoader.isRegistered(target)) {
-			LazyLoader.load(target, null, function () {
+			LazyLoader.load(target, null, false, function () {
 				LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed, invokeImmediatelyIfPossible);
 			});
 			return;
@@ -8796,7 +8796,7 @@ window.ExoWeb.DotNet = {};
 		return result;
 	};
 
-	LazyLoader.load = function LazyLoader$load(obj, propName, callback, thisPtr) {
+	LazyLoader.load = function LazyLoader$load(obj, propName, inScope, callback, thisPtr) {
 		var reg = obj._lazyLoader;
 		if (!reg) {
 			if (callback && callback instanceof Function) {
@@ -8817,7 +8817,7 @@ window.ExoWeb.DotNet = {};
 				throw new Error($format("Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", obj, propName));
 			}
 
-			loader.load(obj, propName, callback, thisPtr);
+			loader.load(obj, propName, inScope, callback, thisPtr);
 		}
 	};
 
@@ -12075,7 +12075,7 @@ window.ExoWeb.DotNet = {};
 			});
 		}
 		else if (LazyLoader.isRegistered(mtype)) {
-			LazyLoader.load(mtype, null, function(jstype) {
+			LazyLoader.load(mtype, null, false, function(jstype) {
 				callback.apply(thisPtr || this, [jstype]);
 			});
 		}
@@ -12179,7 +12179,7 @@ window.ExoWeb.DotNet = {};
 
 		// Load object's type if needed
 		if (LazyLoader.isRegistered(mtype)) {
-			LazyLoader.load(mtype, null, function() {
+			LazyLoader.load(mtype, null, false, function() {
 				objectFromJson(model, typeName, id, json, callback, thisPtr);
 			});
 			return;
@@ -12859,7 +12859,7 @@ window.ExoWeb.DotNet = {};
 						}
 						else if (LazyLoader.isRegistered(mtype)) {
 							// lazy load type and continue walking the path
-							LazyLoader.load(mtype, null, signal.pending(fetchStaticPathTypes));
+							LazyLoader.load(mtype, null, false, signal.pending(fetchStaticPathTypes));
 						}
 						else {
 							fetchStaticPathTypes();
@@ -12879,7 +12879,7 @@ window.ExoWeb.DotNet = {};
 			}));
 		}
 		else if (LazyLoader.isRegistered(rootType)) {
-			LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
+			LazyLoader.load(rootType, null, false, signal.pending(rootTypeLoaded));
 		}
 		else {
 			rootTypeLoaded(rootType.get_jstype());
@@ -12919,7 +12919,7 @@ window.ExoWeb.DotNet = {};
 			callback.call(thisPtr || this, jstype);
 		}
 		else if (jstype && forceLoad) {
-			LazyLoader.load(jstype.meta, property, callback, thisPtr);
+			LazyLoader.load(jstype.meta, property, false, callback, thisPtr);
 		}
 		else if (!jstype && forceLoad) {
 			ensureJsType(model, name, callback, thisPtr);
@@ -12964,7 +12964,7 @@ window.ExoWeb.DotNet = {};
 			callback.call(thisPtr || this, obj);
 
 			// After the callback has been invoked, force loading to occur.
-			LazyLoader.load(obj, property);
+			LazyLoader.load(obj, property, false);
 		}
 		else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
 			// The caller wants the instance force loaded and will wait for it to complete.
@@ -12975,7 +12975,7 @@ window.ExoWeb.DotNet = {};
 			}
 
 			// Force loading to occur, passing through the callback.
-			LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
+			LazyLoader.load(obj, property, false, thisPtr ? callback.bind(thisPtr) : callback);
 		}
 		else {
 			// The caller does not want to force loading, so wait for the instance to come into existance and invoke the callback when it does.
@@ -13020,7 +13020,7 @@ window.ExoWeb.DotNet = {};
 	function TypeLazyLoader() {
 	}
 
-	function typeLoad(mtype, propName, callback, thisPtr) {
+	function typeLoad(mtype, propName, inScope, callback, thisPtr) {
 		if (!ExoWeb.config.allowTypeLazyLoading) {
 			throw new Error("Type lazy loading has been disabled: " + mtype.get_fullName());
 		}
@@ -13033,7 +13033,7 @@ window.ExoWeb.DotNet = {};
 	}
 
 	TypeLazyLoader.mixin({
-		load: typeLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: 0 })
+		load: typeLoad.dontDoubleUp({ callbackArg: 3, thisPtrArg: 4, groupBy: 0 })
 	});
 
 	(function() {
@@ -13066,7 +13066,7 @@ window.ExoWeb.DotNet = {};
 		return pendingObjects > 0;
 	});
 
-	function objLoad(obj, propName, callback, thisPtr) {
+	function objLoad(obj, propName, inScope, callback, thisPtr) {
 		if (!ExoWeb.config.allowObjectLazyLoading) {
 			throw new Error($format("Object lazy loading has been disabled: {0}|{1}", obj.meta.type.get_fullName(), obj.meta.id));
 		}
@@ -13090,7 +13090,7 @@ window.ExoWeb.DotNet = {};
 		logWarning($format("Lazy load object: {0}|{1}", mtype.get_fullName(), id));
 
 		// TODO: reference to server will be a singleton, not context
-		objectProvider(mtype.get_fullName(), [id], paths, false,
+		objectProvider(mtype.get_fullName(), [id], paths, inScope,
 			serializeChanges.call(context.server, true),
 			function(result) {
 				mtype.model.server._handleResult(result, $format("Lazy load: {0}|{1}", mtype.get_fullName(), id), null, function() {
@@ -13124,12 +13124,12 @@ window.ExoWeb.DotNet = {};
 
 		// does the object's type need to be loaded too?
 		if (LazyLoader.isRegistered(mtype)) {
-			LazyLoader.load(mtype, null, signal.pending());
+			LazyLoader.load(mtype, null, false, signal.pending());
 		}
 	}
 
 	ObjectLazyLoader.mixin({
-		load: objLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: 0 })
+		load: objLoad.dontDoubleUp({ callbackArg: 3, thisPtrArg: 4, groupBy: 0 })
 	});
 
 	(function() {
@@ -13205,7 +13205,7 @@ window.ExoWeb.DotNet = {};
 	function ListLazyLoader() {
 	}
 
-	function listLoad(list, propName, callback, thisPtr) {
+	function listLoad(list, propName, inScope, callback, thisPtr) {
 		var signal = new ExoWeb.Signal("list lazy loader");
 
 		var model = list._ownerProperty.get_containingType().model;
@@ -13273,7 +13273,7 @@ window.ExoWeb.DotNet = {};
 		// if the list has objects that are subtypes, those will be loaded later
 		// when the instances are being loaded
 		if (LazyLoader.isRegistered(propType)) {
-			LazyLoader.load(propType, null, signal.pending());
+			LazyLoader.load(propType, null, false, signal.pending());
 		}
 
 		signal.waitForAll(function() {
@@ -13402,7 +13402,7 @@ window.ExoWeb.DotNet = {};
 	}
 
 	ListLazyLoader.mixin({
-		load: listLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: 0 })
+		load: listLoad.dontDoubleUp({ callbackArg: 3, thisPtrArg: 4, groupBy: 0 })
 	});
 
 	(function() {
@@ -13568,7 +13568,7 @@ window.ExoWeb.DotNet = {};
 				// Setup lazy loading on the context object to control lazy evaluation.
 				// Loading is considered complete at the same point model.ready() fires. 
 				LazyLoader.register(this.context, {
-					load: function context$load(obj, propName, callback, thisPtr) {
+					load: function context$load(obj, propName, inScope, callback, thisPtr) {
 						// objects are already loading so just queue up the calls
 						allSignals.waitForAll(function context$load$callback() {
 							LazyLoader.unregister(obj, this);
@@ -17099,7 +17099,8 @@ window.ExoWeb.DotNet = {};
 
 					// lazy load if necessary
 					if (LazyLoader.isRegistered(entity)) {
-						LazyLoader.load(entity, null, function () {
+						// Load the entity (in scope) before setting the value.
+						LazyLoader.load(entity, null, true, function () {
 							this._setValue(entity);
 						}, this);
 					}
@@ -17391,7 +17392,7 @@ window.ExoWeb.DotNet = {};
 		var signal = new Signal("ensureAllowedValuesLoaded");
 		newItems.forEach(function(item) {
 			if (LazyLoader.isRegistered(item)) {
-				LazyLoader.load(item, null, signal.pending());
+				LazyLoader.load(item, null, true, signal.pending());
 			}
 		});
 		signal.waitForAll(callback, thisPtr);
@@ -17499,7 +17500,7 @@ window.ExoWeb.DotNet = {};
 					// Load the allowed values list if it is not already loaded
 					if (LazyLoader.isRegistered(allowedValues)) {
 						logWarning("Adapter forced loading of allowed values list. Rule: " + allowedValuesRule);
-						LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
+						LazyLoader.load(allowedValues, null, true, signalOptionsReady.bind(this), this);
 						this._options = null;
 						return;
 					}

@@ -76,7 +76,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 		if (LazyLoader.isRegistered(target, null, step.property)) {
 			performedLoading = true;
 			Array.insert(path.steps, 0, step);
-			LazyLoader.load(target, step.property, function () {
+			LazyLoader.load(target, step.property, false, function () {
 				continueFn(target, path, successCallback, errorCallback, scopeChain, thisPtr, continueFn, performedLoading, root, processed, invokeImmediatelyIfPossible);
 			});
 			return;
@@ -126,7 +126,7 @@ LazyLoader.eval = function LazyLoader$eval(target, path, successCallback, errorC
 	// Load final object
 	if (target !== undefined && target !== null && LazyLoader.isRegistered(target)) {
 		performedLoading = true;
-		LazyLoader.load(target, null, successCallback ? successCallback.prepare(thisPtr || this, [target, performedLoading, root]) : undefined);
+		LazyLoader.load(target, null, false, successCallback ? successCallback.prepare(thisPtr || this, [target, performedLoading, root]) : undefined);
 	}
 	else if (successCallback) {
 		successCallback.apply(thisPtr || this, [target, performedLoading, root]);
@@ -156,7 +156,7 @@ LazyLoader.evalAll = function LazyLoader$evalAll(target, path, successCallback, 
 	}
 		// Ensure that the array is loaded, then continue
 	else if (LazyLoader.isRegistered(target)) {
-		LazyLoader.load(target, null, function () {
+		LazyLoader.load(target, null, false, function () {
 			LazyLoader.evalAll(target, path, successCallback, errorCallback, scopeChain, thisPtr, LazyLoader.evalAll, performedLoading, root, processed, invokeImmediatelyIfPossible);
 		});
 		return;
@@ -391,7 +391,7 @@ LazyLoader.isLoaded = function LazyLoader$isLoaded(obj /*, paths...*/) {
 	return result;
 };
 
-LazyLoader.load = function LazyLoader$load(obj, propName, callback, thisPtr) {
+LazyLoader.load = function LazyLoader$load(obj, propName, inScope, callback, thisPtr) {
 	var reg = obj._lazyLoader;
 	if (!reg) {
 		if (callback && callback instanceof Function) {
@@ -412,7 +412,7 @@ LazyLoader.load = function LazyLoader$load(obj, propName, callback, thisPtr) {
 			throw new Error($format("Attempting to load object but no appropriate loader is registered. object: {0}, property: {1}", obj, propName));
 		}
 
-		loader.load(obj, propName, callback, thisPtr);
+		loader.load(obj, propName, inScope, callback, thisPtr);
 	}
 };
 

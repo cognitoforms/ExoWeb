@@ -21,7 +21,7 @@ function ensureJsType(model, typeName, callback, thisPtr) {
 		});
 	}
 	else if (LazyLoader.isRegistered(mtype)) {
-		LazyLoader.load(mtype, null, function(jstype) {
+		LazyLoader.load(mtype, null, false, function(jstype) {
 			callback.apply(thisPtr || this, [jstype]);
 		});
 	}
@@ -125,7 +125,7 @@ function objectFromJson(model, typeName, id, json, callback, thisPtr) {
 
 	// Load object's type if needed
 	if (LazyLoader.isRegistered(mtype)) {
-		LazyLoader.load(mtype, null, function() {
+		LazyLoader.load(mtype, null, false, function() {
 			objectFromJson(model, typeName, id, json, callback, thisPtr);
 		});
 		return;
@@ -805,7 +805,7 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 					}
 					else if (LazyLoader.isRegistered(mtype)) {
 						// lazy load type and continue walking the path
-						LazyLoader.load(mtype, null, signal.pending(fetchStaticPathTypes));
+						LazyLoader.load(mtype, null, false, signal.pending(fetchStaticPathTypes));
 					}
 					else {
 						fetchStaticPathTypes();
@@ -825,7 +825,7 @@ function fetchQueryTypes(model, typeName, paths, callback) {
 		}));
 	}
 	else if (LazyLoader.isRegistered(rootType)) {
-		LazyLoader.load(rootType, null, signal.pending(rootTypeLoaded));
+		LazyLoader.load(rootType, null, false, signal.pending(rootTypeLoaded));
 	}
 	else {
 		rootTypeLoaded(rootType.get_jstype());
@@ -865,7 +865,7 @@ function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
 		callback.call(thisPtr || this, jstype);
 	}
 	else if (jstype && forceLoad) {
-		LazyLoader.load(jstype.meta, property, callback, thisPtr);
+		LazyLoader.load(jstype.meta, property, false, callback, thisPtr);
 	}
 	else if (!jstype && forceLoad) {
 		ensureJsType(model, name, callback, thisPtr);
@@ -910,7 +910,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		callback.call(thisPtr || this, obj);
 
 		// After the callback has been invoked, force loading to occur.
-		LazyLoader.load(obj, property);
+		LazyLoader.load(obj, property, false);
 	}
 	else if (lazyLoad == LazyLoadEnum.ForceAndWait) {
 		// The caller wants the instance force loaded and will wait for it to complete.
@@ -921,7 +921,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 		}
 
 		// Force loading to occur, passing through the callback.
-		LazyLoader.load(obj, property, thisPtr ? callback.bind(thisPtr) : callback);
+		LazyLoader.load(obj, property, false, thisPtr ? callback.bind(thisPtr) : callback);
 	}
 	else {
 		// The caller does not want to force loading, so wait for the instance to come into existance and invoke the callback when it does.

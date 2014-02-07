@@ -11,7 +11,7 @@ registerActivity("ObjectLazyLoader", function() {
 	return pendingObjects > 0;
 });
 
-function objLoad(obj, propName, callback, thisPtr) {
+function objLoad(obj, propName, inScope, callback, thisPtr) {
 	if (!ExoWeb.config.allowObjectLazyLoading) {
 		throw new Error($format("Object lazy loading has been disabled: {0}|{1}", obj.meta.type.get_fullName(), obj.meta.id));
 	}
@@ -35,7 +35,7 @@ function objLoad(obj, propName, callback, thisPtr) {
 	logWarning($format("Lazy load object: {0}|{1}", mtype.get_fullName(), id));
 
 	// TODO: reference to server will be a singleton, not context
-	objectProvider(mtype.get_fullName(), [id], paths, false,
+	objectProvider(mtype.get_fullName(), [id], paths, inScope,
 		serializeChanges.call(context.server, true),
 		function(result) {
 			mtype.model.server._handleResult(result, $format("Lazy load: {0}|{1}", mtype.get_fullName(), id), null, function() {
@@ -69,12 +69,12 @@ function objLoad(obj, propName, callback, thisPtr) {
 
 	// does the object's type need to be loaded too?
 	if (LazyLoader.isRegistered(mtype)) {
-		LazyLoader.load(mtype, null, signal.pending());
+		LazyLoader.load(mtype, null, false, signal.pending());
 	}
 }
 
 ObjectLazyLoader.mixin({
-	load: objLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: 0 })
+	load: objLoad.dontDoubleUp({ callbackArg: 3, thisPtrArg: 4, groupBy: 0 })
 });
 
 (function() {

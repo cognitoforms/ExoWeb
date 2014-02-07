@@ -429,7 +429,8 @@ Adapter.mixin({
 
 				// lazy load if necessary
 				if (LazyLoader.isRegistered(entity)) {
-					LazyLoader.load(entity, null, function () {
+					// Load the entity (in scope) before setting the value.
+					LazyLoader.load(entity, null, true, function () {
 						this._setValue(entity);
 					}, this);
 				}
@@ -721,7 +722,7 @@ function ensureAllowedValuesLoaded(newItems, callback, thisPtr) {
 	var signal = new Signal("ensureAllowedValuesLoaded");
 	newItems.forEach(function(item) {
 		if (LazyLoader.isRegistered(item)) {
-			LazyLoader.load(item, null, signal.pending());
+			LazyLoader.load(item, null, true, signal.pending());
 		}
 	});
 	signal.waitForAll(callback, thisPtr);
@@ -829,7 +830,7 @@ Adapter.mixin({
 				// Load the allowed values list if it is not already loaded
 				if (LazyLoader.isRegistered(allowedValues)) {
 					logWarning("Adapter forced loading of allowed values list. Rule: " + allowedValuesRule);
-					LazyLoader.load(allowedValues, null, signalOptionsReady.bind(this), this);
+					LazyLoader.load(allowedValues, null, true, signalOptionsReady.bind(this), this);
 					this._options = null;
 					return;
 				}

@@ -1,7 +1,7 @@
 function ListLazyLoader() {
 }
 
-function listLoad(list, propName, callback, thisPtr) {
+function listLoad(list, propName, inScope, callback, thisPtr) {
 	var signal = new ExoWeb.Signal("list lazy loader");
 
 	var model = list._ownerProperty.get_containingType().model;
@@ -69,7 +69,7 @@ function listLoad(list, propName, callback, thisPtr) {
 	// if the list has objects that are subtypes, those will be loaded later
 	// when the instances are being loaded
 	if (LazyLoader.isRegistered(propType)) {
-		LazyLoader.load(propType, null, signal.pending());
+		LazyLoader.load(propType, null, false, signal.pending());
 	}
 
 	signal.waitForAll(function() {
@@ -198,7 +198,7 @@ function listLoad(list, propName, callback, thisPtr) {
 }
 
 ListLazyLoader.mixin({
-	load: listLoad.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, groupBy: 0 })
+	load: listLoad.dontDoubleUp({ callbackArg: 3, thisPtrArg: 4, groupBy: 0 })
 });
 
 (function() {
