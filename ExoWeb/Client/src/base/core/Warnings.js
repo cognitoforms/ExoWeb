@@ -3,7 +3,9 @@
 var logWarningProvider = function (message) {
 	// if the console is defined then log the message
 	if (typeof (console) !== "undefined") {
-		console.warn(message);
+		if (console.warn) {
+			console.warn(message);
+		}
 	}
 };
 

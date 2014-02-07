@@ -20,7 +20,7 @@
 			end: function () {
 				this.ended = new Date();
 				if (currentNestedActivity !== this) {
-					if (window.console) {
+					if (window.console && console.warn) {
 						console.warn("improper nesting?");
 					}
 				} else {
@@ -60,13 +60,13 @@
 			} else if (window.console) {
 				if (console.warn) {
 					console.warn(message);
-				} else {
+				} else if (console.log) {
 					console.log("WARNING: " + message);
 				}
 			}
 		} else if (logFn) {
 			logFn(message);
-		} else if (window.console) {
+		} else if (window.console && console.log) {
 			console.log(message);
 		}
 	}
@@ -258,7 +258,7 @@
 			var warning = "The method 'ExoWeb.Tools.message' is obsolete. Use 'ExoWeb.Tools.createLogger' instead.";
 			if (console.warn) {
 				console.warn(warning);
-			} else {
+			} else if (console.log) {
 				console.log("WARNING: " + warning);
 			}
 		}
