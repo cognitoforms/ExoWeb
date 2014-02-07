@@ -17391,13 +17391,18 @@ window.ExoWeb.DotNet = {};
 
 	// Perform any required loading of allowed values items
 	function ensureAllowedValuesLoaded(newItems, callback, thisPtr) {
-		var signal = new Signal("ensureAllowedValuesLoaded");
-		newItems.forEach(function(item) {
-			if (LazyLoader.isRegistered(item)) {
-				LazyLoader.load(item, null, true, signal.pending());
-			}
+		// Wait until the "batch" of work is complete before lazy loading options. Otherwise,
+		// the lazy loading could occur during processing of a response which already contains
+		// the data, which could cause performance degredation due to redundant data loading.
+		Batch.whenDone(function () {
+			var signal = new Signal("ensureAllowedValuesLoaded");
+			newItems.forEach(function(item) {
+				if (LazyLoader.isRegistered(item)) {
+					LazyLoader.load(item, null, true, signal.pending());
+				}
+			});
+			signal.waitForAll(callback, thisPtr);
 		});
-		signal.waitForAll(callback, thisPtr);
 	}
 
 	function clearInvalidOptions(allowedValues) {
