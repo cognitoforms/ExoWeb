@@ -12072,8 +12072,8 @@ window.ExoWeb.DotNet = {};
 		var mtype = model.type(typeName);
 
 		if (!mtype) {
-			fetchTypes(model, [typeName], function(jstypes) {
-				callback.apply(thisPtr || this, jstypes);
+			fetchTypes(model, [typeName], function(jstype) {
+				callback.call(thisPtr || this, jstype);
 			});
 		}
 		else if (LazyLoader.isRegistered(mtype)) {
@@ -12173,7 +12173,7 @@ window.ExoWeb.DotNet = {};
 
 		// if this type has never been seen, go and fetch it and resume later
 		if (!mtype) {
-			fetchTypes(model, [typeName], function() {
+			fetchTypes(model, [typeName], function () {
 				objectFromJson(model, typeName, id, json, callback);
 			});
 			return;
@@ -12361,9 +12361,19 @@ window.ExoWeb.DotNet = {};
 		}
 	}
 
-	function typesFromJson(model, json) {
+	function typesFromJson(model, json, onTypeLoadSuccess, onTypeLoadFailure) {
 		for (var typeName in json) {
-			typeFromJson(model, typeName, json[typeName]);
+			var typeJson = json[typeName];
+			if (typeJson === null) {
+				if (onTypeLoadFailure) {
+					onTypeLoadFailure(typeName, null);
+				}
+			} else {
+				typeFromJson(model, typeName, typeJson);
+				if (onTypeLoadSuccess) {
+					onTypeLoadSuccess(typeName, typeJson);
+				}
+			}
 		}
 	}
 
@@ -12652,7 +12662,10 @@ window.ExoWeb.DotNet = {};
 			var baseTypesToFetch = [], loadedTypes = [], baseTypeDependencies = {}, loadableTypes = [];
 
 			if (success) {
-				typesFromJson(model, types);
+				typesFromJson(model, types, null, function (typeName) {
+					// Remove types that failed to load
+					typesPending.remove(typeName);
+				});
 
 				// Update types that have been loaded.  This needs to be persisted since
 				// this function can recurse and arguments are not persisted.
@@ -12760,13 +12773,23 @@ window.ExoWeb.DotNet = {};
 
 		signal.waitForAll(function() {
 			if (callback && callback instanceof Function) {
-				callback.call(thisPtr || this, typeNames.map(function(typeName) { return model.type(typeName).get_jstype(); }));
+				var jstypes = typeNames.map(function (typeName) {
+					var mtype = model.type(typeName);
+					return mtype ? mtype.get_jstype() : null;
+				});
+				callback.apply(thisPtr || this, jstypes);
 			}
 		});
 	}
 
 	function moveTypeResults(originalArgs, invocationArgs, callbackArgs) {
-		callbackArgs[0] = invocationArgs[1].map(function(typeName) { return invocationArgs[0].type(typeName).get_jstype(); });
+		// Replace all elements of the callback args array with the types that were requested
+		var spliceArgs = [0, callbackArgs.length];
+		Array.prototype.push.apply(spliceArgs, invocationArgs[1].map(function(typeName) {
+			var mtype = invocationArgs[0].type(typeName);
+			return mtype ? mtype.get_jstype() : null;
+		}));
+		Array.prototype.splice.apply(callbackArgs, spliceArgs);
 	}
 
 	var fetchTypes = fetchTypesImpl.dontDoubleUp({ callbackArg: 2, thisPtrArg: 3, partitionedArg: 1, partitionedFilter: moveTypeResults });
@@ -12774,11 +12797,15 @@ window.ExoWeb.DotNet = {};
 	// fetches model paths and calls success or fail based on the outcome
 	function fetchPathTypes(model, jstype, path, success, fail) {
 		var step = path.steps.dequeue();
+		var removedSteps = [step];
 		while (step) {
 			// locate property definition in model
 			var prop = jstype.meta.property(step.property);
 
 			if (!prop) {
+				var args = [0, 0];
+				Array.prototype.push.apply(args, removedSteps);
+				Array.prototype.splice.apply(path.steps, args);
 				fail("Could not find property \"" + step.property + "\" on type \"" + jstype.meta.get_fullName() + "\".");
 				return;
 			}
@@ -12796,8 +12823,13 @@ window.ExoWeb.DotNet = {};
 				// if this type has never been seen, go and fetch it and resume later
 				if (!mtype) {
 					Array.insert(path.steps, 0, step);
-					fetchTypes(model, [step.cast], function() {
-						fetchPathTypes(model, jstype, path, success, fail);
+					fetchTypes(model, [step.cast], function () {
+						fetchPathTypes(model, jstype, path, success, function () {
+							var args = [0, 0];
+							Array.prototype.push.apply(args, removedSteps);
+							Array.prototype.splice.apply(path.steps, args);
+							fail.apply(this, arguments);
+						});
 					});
 					return;
 				}
@@ -12808,8 +12840,13 @@ window.ExoWeb.DotNet = {};
 
 			// if property's type isn't load it, then fetch it
 			if (!LazyLoader.isLoaded(mtype)) {
-				fetchTypes(model, [mtype.get_fullName()], function(jstypes) {
-					fetchPathTypes(model, jstypes[0], path, success, fail);
+				fetchTypes(model, [mtype.get_fullName()], function (t) {
+					fetchPathTypes(model, t, path, success, function () {
+						var args = [0, 0];
+						Array.prototype.push.apply(args, removedSteps);
+						Array.prototype.splice.apply(path.steps, args);
+						fail.apply(this, arguments);
+					});
 				});
 
 				// path walking will resume with callback
@@ -12820,6 +12857,7 @@ window.ExoWeb.DotNet = {};
 			jstype = mtype.get_jstype();
 
 			step = path.steps.dequeue();
+			removedSteps.push(step);
 		}
 
 		// Inform the caller that the path has been successfully fetched
@@ -12855,8 +12893,11 @@ window.ExoWeb.DotNet = {};
 
 						if (!mtype) {
 							// first time type has been seen, fetch it
-							fetchTypes(model, [typeName], signal.pending(function (jstypes) {
-								fetchStaticPathTypes(jstypes[0]);
+							fetchTypes(model, [typeName], signal.pending(function (t) {
+								if (!t) {
+									throw new Error(err);
+								}
+								fetchStaticPathTypes(t);
 							}));
 						}
 						else if (LazyLoader.isRegistered(mtype)) {
@@ -12875,9 +12916,8 @@ window.ExoWeb.DotNet = {};
 		// load root type, then load types referenced in paths
 		var rootType = model.type(typeName);
 		if (!rootType) {
-			var _typeName = typeName;
-			fetchTypes(model, [typeName], signal.pending(function(jstypes) {
-				rootTypeLoaded(jstypes[0]);
+			fetchTypes(model, [typeName], signal.pending(function(t) {
+				rootTypeLoaded(t);
 			}));
 		}
 		else if (LazyLoader.isRegistered(rootType)) {
@@ -13027,11 +13067,7 @@ window.ExoWeb.DotNet = {};
 			throw new Error("Type lazy loading has been disabled: " + mtype.get_fullName());
 		}
 
-		fetchTypes(mtype.model, [mtype.get_fullName()], function(jstypes) {
-			if (callback && callback instanceof Function) {
-				callback(jstypes[0]);
-			}
-		}, thisPtr);
+		fetchTypes(mtype.model, [mtype.get_fullName()], callback, thisPtr);
 	}
 
 	TypeLazyLoader.mixin({
