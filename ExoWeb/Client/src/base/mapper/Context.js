@@ -30,6 +30,9 @@ Context.mixin({
 			}, this);
 		}
 	},
+	isPending: function () {
+		return numberOfPendingQueries > 0;
+	},
 	beginContextReady: ExoWeb.Functor(),
 	endContextReady: ExoWeb.Functor()
 });

@@ -13495,6 +13495,9 @@ window.ExoWeb.DotNet = {};
 				}, this);
 			}
 		},
+		isPending: function () {
+			return numberOfPendingQueries > 0;
+		},
 		beginContextReady: ExoWeb.Functor(),
 		endContextReady: ExoWeb.Functor()
 	});
@@ -14111,129 +14114,189 @@ window.ExoWeb.DotNet = {};
 	// Indicates whether or not the DOM has been activated
 	var activated = false;
 
-	var modelReadyHandler = function modelReadyHandler(contextReady, extendContext, domReady) {
-		return function () {
-			var readySignal = new Signal();
+	var serverInfo;
 
-			if (extendContext) {
-				extendContext(window.context, readySignal.pending());
+	var pendingTypeQueries = [];
+
+	// Callback(s) to execute as soon as a context query begins.
+	var initFns = new ExoWeb.Functor();
+
+	// Signal to gate context completion via extendContext options.
+	var globalReadySignal = new Signal();
+
+	var extendContextFn = null;
+
+	var contextReadyFns = new ExoWeb.Functor();
+
+	var domReadyFns = new ExoWeb.Functor();
+
+	function modelReadyHandler() {
+		if (extendContextFn) {
+			extendContextFn(window.context, globalReadySignal.pending());
+			extendContextFn = null;
+		}
+
+		globalReadySignal.waitForAll(function () {
+			if (!contextReadyFns.isEmpty()) {
+				window.context.beginContextReady();
+				contextReadyFns(window.context);
+				window.context.endContextReady();
 			}
 
-			readySignal.waitForAll(function modelReadyHandler$signalReady() {
-				if (contextReady) {
-					window.context.beginContextReady();
-					contextReady(window.context);
-					window.context.endContextReady();
+			jQuery(function () {
+				// Activate the document if this is the first context to load
+				if (!activated && ExoWeb.config.autoActivation) {
+					activated = true;
+					Sys.Application.activateElement(document.documentElement);
 				}
 
-				jQuery(function modelReadyHandler$documentReady() {
-					// Activate the document if this is the first context to load
-					if (!activated && ExoWeb.config.autoActivation) {
-						activated = true;
-						Sys.Application.activateElement(document.documentElement);
-					}
-
-					// Invoke dom ready notifications
-					if (domReady) {
-						if (ExoWeb.config.debug) {
-							domReady(window.context);
-						} else {
-							try {
-								domReady(window.context);
-							} catch (e) {
-								ExoWeb.logError(e, true);
-							}
+				// Invoke dom ready notifications
+				if (!domReadyFns.isEmpty()) {
+					if (ExoWeb.config.debug) {
+						domReadyFns(window.context);
+					} else {
+						try {
+							domReadyFns(window.context);
+						} catch (e) {
+							ExoWeb.logError(e, true);
 						}
 					}
-				});
+				}
 			});
-		};
-	};
+		});
+	}
 
-	// The (combined) set of options that are pending execution
-	// Options will stack up until something is encountered that triggers loading to occur
-	var pendingOptions = {};
+	// Global method for initializing ExoWeb on a page
 
-	var updatePendingOptionsWith = function updatePendingOptionsWith(newOptions) {
-		pendingOptions.init = mergeFunctions(pendingOptions.init, newOptions.init);
-		pendingOptions.extendContext = mergeFunctions(pendingOptions.extendContext, newOptions.extendContext, { async: true, callbackIndex: 1 });
-		pendingOptions.contextReady = mergeFunctions(pendingOptions.contextReady, newOptions.contextReady);
-		pendingOptions.domReady = mergeFunctions(pendingOptions.domReady, newOptions.domReady);
-		pendingOptions.types = pendingOptions.types ? (newOptions.types ? pendingOptions.types.concat(newOptions.types) : pendingOptions.types) : newOptions.types;
-		pendingOptions.model = pendingOptions.model ? jQuery.extend(pendingOptions.model, newOptions.model) : newOptions.model;
-		pendingOptions.changes = pendingOptions.changes ? (newOptions.changes ? pendingOptions.changes.concat(newOptions.changes) : pendingOptions.changes) : newOptions.changes;
-		pendingOptions.conditions = pendingOptions.conditions ? jQuery.extend(pendingOptions.conditions, newOptions.conditions) : newOptions.conditions;
-		pendingOptions.instances = pendingOptions.instances ? jQuery.extend(pendingOptions.instances, newOptions.instances) : newOptions.instances;
-		pendingOptions.serverInfo = pendingOptions.serverInfo ? jQuery.extend(pendingOptions.serverInfo, newOptions.serverInfo) : newOptions.serverInfo;
-	};
+	function $exoweb(options) {
 
-	var flushPendingOptions = function flushPendingOptions() {
-		var includesEmbeddedData, executingOptions, init, contextReady, extendContext, domReady;
+		// Support initialization function argument
+		if (options instanceof Function) {
+			options = { init: options };
+		}
 
-		includesEmbeddedData = pendingOptions.model ||
-			(pendingOptions.types && !(pendingOptions.types instanceof Array)) ||
-			pendingOptions.instances ||
-			pendingOptions.conditions ||
-			pendingOptions.changes;
+		if (options.init) {
+			// Register the init function ONCE.
+			initFns.add(options.init, null, true);
+			delete options.init;
+		}
 
-		if (includesEmbeddedData) {
-			executingOptions = pendingOptions;
-			pendingOptions = {};
+		if (options.extendContext) {
+			// Merge the extendContext function so that the callback argument is invoked after ALL have invoked the callback.
+			extendContextFn = mergeFunctions(extendContextFn, options.extendContext, { async: true, callbackIndex: 1 });
+			delete options.extendContext;
+		}
 
+		if (options.contextReady) {
+			// Register the contextReady function ONCE.
+			contextReadyFns.add(options.contextReady, null, true);
+			delete options.contextReady;
+		}
+
+		if (options.domReady) {
+			// Register the domReady function ONCE.
+			domReadyFns.add(options.domReady, null, true);
+			delete options.domReady;
+		}
+
+		// The server info object will be maintained here and constantly set each time a
+		// context query is created. It shouldn't be publicly set for any other reason.
+		if (options.serverInfo) {
+			// Merge any additional serverInfo options.
+			serverInfo = jQuery.extend(serverInfo, options.serverInfo);
+			delete options.serverInfo;
+		}
+
+		if (options.types && options.types instanceof Array) {
+			// Store type queries for later use, since only embedded data or a model query triggers immediate querying.
+			pendingTypeQueries = pendingTypeQueries.concat(options.types);
+			delete options.types;
+		}
+
+		// A model query or embedded data will trigger a context query immediately.
+		var triggerQuery = false;
+		var queryObject = {};
+
+		if (options.model) {
+			triggerQuery = true;
+			queryObject.model = options.model;
+			delete options.model;
+		}
+
+		if (options.types) {
+			triggerQuery = true;
+			queryObject.types = options.types;
+			delete options.types;
+		}
+
+		if (options.instances) {
+			triggerQuery = true;
+			queryObject.instances = options.instances;
+			delete options.instances;
+		}
+
+		if (options.conditions) {
+			triggerQuery = true;
+			queryObject.conditions = options.conditions;
+			delete options.conditions;
+		}
+
+		if (options.changes) {
+			triggerQuery = true;
+			queryObject.changes = options.changes;
+			delete options.changes;
+		}
+
+		if (triggerQuery) {
+
+			// Ensure that a context is created if it hasn't been already.
 			ensureContext();
 
 			// Perform initialization immediately
-			if (executingOptions.init) {
-				executingOptions.init(window.context);
+			initFns(window.context);
+
+			// Include server info if present.
+			if (serverInfo) {
+				// The server info object will be maintained here and constantly set each time a
+				// context query is created. It shouldn't be publicly set for any other reason.
+				queryObject.serverInfo = serverInfo;
+			}
+
+			// Send pending type queries with the query if types were not embedded.
+			if (pendingTypeQueries.length > 0 && !queryObject.types) {
+				queryObject.types = pendingTypeQueries;
+				pendingTypeQueries = [];
 			}
 
 			// Start the new query
-			Context.query(window.context, {
-				model: executingOptions.model,
-				types: executingOptions.types,
-				changes: executingOptions.changes,
-				conditions: executingOptions.conditions,
-				instances: executingOptions.instances,
-				serverInfo: executingOptions.serverInfo
-			});
+			Context.query(window.context, queryObject);
+
+			if (pendingTypeQueries.length > 0) {
+				// Send a seperate query for type queries if they couldn't be send with the primary query.
+				Context.query(window.context, { types: pendingTypeQueries });
+				pendingTypeQueries = [];
+			}
 
 			// Perform context initialization when the model is ready
-			if (executingOptions.contextReady || executingOptions.extendContext || executingOptions.domReady || !activated) {
-				window.context.addReady(modelReadyHandler(executingOptions.contextReady, executingOptions.extendContext, executingOptions.domReady));
-			}
-		}
-		else if (window.context) {
+			window.context.addReady(modelReadyHandler);
+
+		} else if (window.context) {
+
+			// Ensure that the context variable has not been used for some other purpose.
 			if (!(window.context instanceof Context)) {
 				throw new Error("The window object has a context property that is not a valid context.");
 			}
 
-			if (pendingOptions.init) {
-				// Context has already been created, so perform initialization and remove it so that we don't double-up
-				init = pendingOptions.init;
-				pendingOptions.init = null;
-				init(window.context);
-			}
+			// Context has already been created, so perform initialization immediately
+			initFns(window.context);
 
-			if (pendingOptions.contextReady || pendingOptions.extendContext || pendingOptions.domReady) {
-				contextReady = pendingOptions.contextReady;
-				extendContext = pendingOptions.extendContext;
-				domReady = pendingOptions.domReady;
-				pendingOptions.contextReady = pendingOptions.extendContext = pendingOptions.domReady = null;
-				window.context.addReady(modelReadyHandler(contextReady, extendContext, domReady));
+			// If the context has already completed, then fire the ready handler. It is safe to fire more than once.
+			if (!window.context.isPending()) {
+				allSignals.waitForAll(modelReadyHandler);
 			}
 		}
-	};
 
-	// Global method for initializing ExoWeb on a page
-	var $exoweb = function $exoweb(newOptions) {
-		// Support initialization function argument
-		if (newOptions instanceof Function) {
-			newOptions = { init: newOptions };
-		}
-
-		updatePendingOptionsWith(newOptions);
-		flushPendingOptions();
-	};
+	}
 
 	window.$exoweb = $exoweb;
 
