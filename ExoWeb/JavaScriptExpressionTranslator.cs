@@ -409,7 +409,7 @@ namespace ExoWeb
 					}
 
 					// See if the property represents the Count or Length property of an array or list
-					if ((m.DeclaringType.IsArray && m.Name == "Length") || (m.DeclaringType.GetInterfaces().Any(i => i == typeof(IEnumerable)) && m.Name == "Count"))
+					if (((m.DeclaringType.IsArray || m.DeclaringType == typeof(Array)) && m.Name == "Length") || (m.DeclaringType.GetInterfaces().Any(i => i == typeof(IEnumerable)) && m.Name == "Count"))
 						return new PropertyTranslation((PropertyInfo)m, "{0}.length", null);
 				}
 
@@ -439,6 +439,16 @@ namespace ExoWeb
 							return new MethodTranslation(method, "{0}.filter(function(i) { return i instanceof " + filterType.Name + "; }, this)");
 						else
 							return null;
+					}
+					// ToArray()
+					if (parameters.Length == 1 && method.DeclaringType == typeof(System.Linq.Enumerable) && method.Name == "ToArray")
+					{
+						return new MethodTranslation(method, "{0}");
+					}
+					// Cast<Object>()
+					if (parameters.Length == 1 && method.DeclaringType == typeof(System.Linq.Enumerable) && method.Name == "Cast")
+					{
+						return new MethodTranslation(method, "{0}");
 					}
 
 					var target = method.IsStatic ? (parameters.Length > 0 ? parameters[0].ParameterType : null) : m.DeclaringType;
