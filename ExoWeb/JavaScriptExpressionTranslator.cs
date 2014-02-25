@@ -751,11 +751,13 @@ namespace ExoWeb
 			/// <returns></returns>
 			protected override Expression VisitConditional(ConditionalExpression c)
 			{
+				builder.Append("(");
 				Visit(c.Test);
 				builder.Append(" ? ");
 				Visit(c.IfTrue);
 				builder.Append(" : ");
 				Visit(c.IfFalse);
+				builder.Append(")");
 				return c;
 			}
 
