@@ -3031,23 +3031,31 @@ Date._parseExact = function Date$_parseExact(value, format, cultureInfo) {
 		}
 	}
 	var result = new Date(), defaultYear, convert = dtf.Calendar.convert;
-	if (convert) {
-		defaultYear = convert.fromGregorian(result)[0];
+	// If none are specified, set to todays date to emulate .NET implementation
+	if (year == null && month == null && date == null) {
+		year = result.getFullYear();
+		month = result.getMonth();
+		date = result.getDate();
 	}
 	else {
-		defaultYear = result.getFullYear();
-	}
-	if (year === null) {
-		year = defaultYear;
-	}
-	else if (dtf.eras) {
-		year += dtf.eras[(era || 0) + 3];
-	}
-	if (month === null) {
-		month = 0;
-	}
-	if (date === null) {
-		date = 1;
+		if (convert) {
+			defaultYear = convert.fromGregorian(result)[0];
+		}
+		else {
+			defaultYear = result.getFullYear();
+		}
+		if (year === null) {
+			year = defaultYear;
+		}
+		else if (dtf.eras) {
+			year += dtf.eras[(era || 0) + 3];
+		}
+		if (month === null) {
+			month = 0;
+		}
+		if (date === null) {
+			date = 1;
+		}
 	}
 	if (convert) {
 		result = convert.toGregorian(year, month, date);
