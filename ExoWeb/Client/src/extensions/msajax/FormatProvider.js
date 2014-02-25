@@ -15,7 +15,15 @@ setFormatProvider(function FormatProvider(type, format) {
 				return val.localeFormat(format);
 			},
 			convertBack: function (str) {
-				var date = Date.parseLocale(str, format);
+				var date;
+				// Time value, set default date to 1/1/1970 to easily compare time values
+				if (format === "t") {
+					var timeFormat = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "t");
+					date = Date.parseLocale("1/1/1970 " + str, timeFormat);
+				}
+				else
+					date = Date.parseLocale(str, format);
+
 				if (date === null)
 					throw new Error("Invalid date format");
 				return date; 
