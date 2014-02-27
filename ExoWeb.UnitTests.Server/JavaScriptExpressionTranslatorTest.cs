@@ -43,9 +43,6 @@ namespace ExoWeb.UnitTests.Server
 			// Get the Robin Hood movie
 			var movie = Movie.All.First(m => m.Name == "Robin Hood");
 
-			// Count property
-			TestExpression(movie, "Roles.Count", 3, "Roles");
-
 			// Count method
 			TestExpression(movie, "Roles.Count()", 3, "Roles");
 		}
@@ -189,7 +186,7 @@ namespace ExoWeb.UnitTests.Server
 
 			// Number Math.Abs(Number)
 			TestExpression(movie, "Roles.Where(Lead).Count() * Math.Abs(-9.25)", 9.25, "Roles.Lead");
-			TestExpression(movie, "Roles.Where(Lead).Count() * Math.Abs(0)", 0.0, "Roles.Lead");
+			TestExpression(movie, "Roles.Where(Lead).Count() * Math.Abs(0)", 0, "Roles.Lead");
 			TestExpression(movie, "Roles.Where(Lead).Count() * Math.Abs(9.25)", 9.25, "Roles.Lead");
 
 			// Number Math.Acos(Number)
@@ -249,7 +246,7 @@ namespace ExoWeb.UnitTests.Server
 			TestExpression(movie, "Roles.Where(Lead).Count() * Math.Round(-9.254903, 2)", -9.25, "Roles.Lead");
 
 			// Number Math.Sign(Number)
-			TestExpression(movie, "Roles.Where(Lead).Count() * Math.Sign(-9.25)", -1.0, "Roles.Lead");
+			TestExpression(movie, "Roles.Where(Lead).Count() * Math.Sign(-9.25)", -1, "Roles.Lead");
 
 			// Number Math.Sin(Number)
 			TestExpression(movie, "Roles.Where(Lead).Count() * Math.Sin(-9.25)", -0.17388948538043356, "Roles.Lead");
