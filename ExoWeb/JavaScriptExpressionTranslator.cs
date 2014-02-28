@@ -833,10 +833,10 @@ namespace ExoWeb
 			protected override Expression VisitUnary(UnaryExpression u)
 			{
 				if (u.NodeType == ExpressionType.Not)
-					builder.Append("!(");
+					builder.Append("(!(");
 				var expr = base.VisitUnary(u);
 				if (u.NodeType == ExpressionType.Not)
-					builder.Append(")");
+					builder.Append("))");
 				return expr;
 			}
 
