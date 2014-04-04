@@ -624,6 +624,17 @@ Type.prototype = {
 			this._exports = { names: names, implementations: new Function(script)() };
 		}
 	},
+	// Adds a single export function to the type for use by calls to compileExpression().
+	addExport: function Type$addExport(name, fn) {
+		if (!this._exports) {
+			this._exports = { names: [name], implementations: new Function("return [" + fn + "];")() };
+		}
+		else if (this._exports.names.indexOf(name) === -1) {
+			this._exports.names.push(name);
+			this._exports.implementations.push(new Function("return " + fn)());
+		}
+		
+	},
 	eachBaseType: function Type$eachBaseType(callback, thisPtr) {
 		for (var baseType = this.baseType; !!baseType; baseType = baseType.baseType) {
 			if (callback.call(thisPtr || this, baseType) === false) {
