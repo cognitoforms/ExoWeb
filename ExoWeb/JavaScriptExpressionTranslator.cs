@@ -834,8 +834,10 @@ namespace ExoWeb
 			{
 				if (u.NodeType == ExpressionType.Not)
 					builder.Append("(!(");
+				else if (u.NodeType == ExpressionType.Negate)
+					builder.Append("(-(");
 				var expr = base.VisitUnary(u);
-				if (u.NodeType == ExpressionType.Not)
+				if (u.NodeType == ExpressionType.Not || u.NodeType == ExpressionType.Negate)
 					builder.Append("))");
 				return expr;
 			}
