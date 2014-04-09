@@ -693,6 +693,7 @@ namespace ExoWeb
 			protected override Expression VisitBinary(BinaryExpression node)
 			{
 				builder.Append("(");
+				
 
 				// Create TimeSpan if subtracting two DateTime instances
 				if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
@@ -706,6 +707,14 @@ namespace ExoWeb
 					Visit(node.Left);
 					builder.Append(")");
 				}
+				else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
+				{
+					builder.Append("(");
+					Visit(node.Left);
+					builder.Append(" ? ");
+					Visit(node.Left);
+					builder.Append(".getTime() : null)");
+				}
 				else
 					Visit(node.Left);
 
@@ -718,6 +727,14 @@ namespace ExoWeb
 					builder.Append("str(");
 					Visit(node.Right);
 					builder.Append(")");
+				}
+				else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
+				{
+					builder.Append("(");
+					Visit(node.Right);
+					builder.Append(" ? ");
+					Visit(node.Right);
+					builder.Append(".getTime() : null)");
 				}
 				else
 					Visit(node.Right);
