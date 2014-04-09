@@ -32,7 +32,8 @@ namespace ExoWeb
 			{ typeof(Int16?),	"Number?" },	{ typeof(UInt16?),	"Number?" },	{ typeof(Int32?),	"Number?" }, 
 			{ typeof(UInt32?),	"Number?" },	{ typeof(Int64?),	"Number?" },	{ typeof(UInt64?),	"Number?" }, 
 			{ typeof(Single?),	"Number?" },	{ typeof(Double?),	"Number?" },	{ typeof(Decimal?),	"Number?" }, 
-			{ typeof(DateTime?),"Date?" },		{ typeof(TimeSpan?),"TimeSpan?" },	{ typeof(Guid?),	"Guid?" }
+			{ typeof(DateTime?),"Date?" },		{ typeof(TimeSpan?),"TimeSpan?" },	{ typeof(Guid?),	"Guid?" },
+			{ typeof(DateTime).MakeByRefType(), "Date&" }
         };
 
 		class SupportedMember
@@ -130,6 +131,7 @@ namespace ExoWeb
 			{ "static Date.Now as Date", new string[] {@"new Date()", "", @""} },
 			{ "static Date.Parse(String) as Date", new string[] {@"new Date(Date.parse({0}))", "", @""} },
 			{ "static Date.Today as Date", new string[] {@"new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())", "", @""} },
+			{ "static Date.TryParse(String, Date&) as Boolean", new string[] {@"!isNaN(Date.parse({0}))", "", @""} },
 			{ "static Date.UtcNow as Date", new string[] {@"Date_toUTC(new Date())", "Date_toUTC", @"function Date_toUTC(d) { return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds()); }"} },
 			{ "Guid.CompareTo(Guid) as Number", new string[] {@"Guid.compareTo({0}, {1})", "", @""} },
 			{ "Guid.CompareTo(Object) as Number", new string[] {@"Guid.compareTo({0}, {1})", "", @""} },
