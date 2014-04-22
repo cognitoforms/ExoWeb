@@ -4551,13 +4551,13 @@ $simulateMutationEvent = Sys.UI.DomEvent.simulate = function Sys$UI$DomEvent$sim
 	
 	try {
 		simulatingEvent = true;
-		if (element.fireEvent) {
-			element.fireEvent("on" + eventName);
-		}
-		else if (element.dispatchEvent) {
+		if (element.dispatchEvent) {
 			var evt = document.createEvent("MutationEvents");
 			evt.initEvent(eventName, bubbles, cancelable);
 			element.dispatchEvent(evt);
+		}
+		else if (element.fireEvent) {
+			element.fireEvent("on" + eventName);
 		}
 	}
 	finally {
