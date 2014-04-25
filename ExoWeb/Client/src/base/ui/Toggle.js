@@ -20,27 +20,72 @@ Toggle.mixin({
 			this.set_state("off");
 		}
 	},
+	add_showing: function (handler) {
+		/// <summary locid="E:J#Sys.UI.DataView.showing" />
+		this._addHandler("showing", handler);
+	},
+	remove_showing: function (handler) {
+		this._removeHandler("showing", handler);
+	},
+	add_hiding: function (handler) {
+		/// <summary locid="E:J#Sys.UI.DataView.hiding" />
+		this._addHandler("hiding", handler);
+	},
+	remove_hiding: function (handler) {
+		this._removeHandler("hiding", handler);
+	},
 	do_show: function Toggle$do_show() {
-		jQuery(this._element).show();
-		this.set_state("on");
+		var showingArgs = new ActionEventArgs();
+
+		this._pendingEventArgs = showingArgs;
 
 		// visibility has changed so raise event
 		if (this._visible === undefined || this._visible === false) {
-			Sys.Observer.raiseEvent(this, "shown");
-		}
+			if (this._visible === false) {
+				Sys.Observer.raiseEvent(this, "showing", showingArgs);
+			}
 
-		this._visible = true;
+			showingArgs.waitForAll(function () {
+				this._pendingEventArgs = null;
+				
+				jQuery(this._element).show();
+
+				this.set_state("on");
+
+				// visibility has changed so raise event
+				Sys.Observer.raiseEvent(this, "shown");
+
+				this._visible = true;
+
+				this._pendingActions();
+			}, this, true);
+		}
 	},
 	do_hide: function Toggle$do_hide() {
-		jQuery(this._element).hide();
-		this.set_state("off");
+		var hidingArgs = new ActionEventArgs();
 
-		// visibility has changed so raise event
+		this._pendingEventArgs = hidingArgs;
+
 		if (this._visible === undefined || this._visible === true) {
-			Sys.Observer.raiseEvent(this, "hidden");
-		}
+			if (this._visible === true) {
+				Sys.Observer.raiseEvent(this, "hiding", hidingArgs);
+			}
 
-		this._visible = false;
+			hidingArgs.waitForAll(function () {
+				this._pendingEventArgs = null;
+
+				jQuery(this._element).hide();
+
+				this.set_state("off");
+
+				// visibility has changed so raise event
+				Sys.Observer.raiseEvent(this, "hidden");
+
+				this._visible = false;
+
+				this._pendingActions();
+			}, this, true);
+		}
 	},
 	add_on: function Toggle$add_on(handler) {
 		this._addHandler("on", handler);
@@ -188,8 +233,8 @@ Toggle.mixin({
 	//////////////////////////////////////////////////////////
 	do_addClass: function Toggle$do_addClass() {
 		var $el = jQuery(this._element);
-		
-		if(!$el.is("." + this._class)) {
+
+		if (!$el.is("." + this._class)) {
 			$el.addClass(this._class);
 			this.set_state("on");
 			Sys.Observer.raiseEvent(this, "classAdded");
@@ -197,8 +242,8 @@ Toggle.mixin({
 	},
 	do_removeClass: function Toggle$do_removeClass() {
 		var $el = jQuery(this._element);
-		
-		if($el.is("." + this._class)) {
+
+		if ($el.is("." + this._class)) {
 			$el.removeClass(this._class);
 			this.set_state("off");
 			Sys.Observer.raiseEvent(this, "classRemoved");
@@ -422,7 +467,14 @@ Toggle.mixin({
 	},
 	execute: function Toggle$execute() {
 		if (this.canExecute()) {
-			this[(this.equals() === true ? "do_" : "undo_") + this._action].call(this);
+			var action = this[(this.equals() === true ? "do_" : "undo_") + this._action].bind(this);
+			if (this._pendingEventArgs) {
+				this._pendingActions.add(action, (function () {
+					return !this._pendingEventArgs;
+				}).bind(this), true);
+			} else {
+				action();
+			}
 		}
 	},
 	addContentTemplate: function Toggle$addContentTemplate(tmpl) {
@@ -455,6 +507,8 @@ Toggle.mixin({
 	initialize: function Toggle$initialize() {
 		Toggle.callBaseMethod(this, "initialize");
 
+		this._pendingActions = new ExoWeb.Functor();
+
 		if (this.get_isLinkPending()) {
 			this.link();
 		}
@@ -464,13 +518,12 @@ Toggle.mixin({
 			if (actionInit) {
 				actionInit.call(this);
 			}
-	
+
 			this.execute();
 		}
 	},
-	_stateClass: function(state)
-	{
-		if(state == "on")
+	_stateClass: function (state) {
+		if (state == "on")
 			jQuery(this._element).addClass("toggle-on").removeClass("toggle-off");
 		else
 			jQuery(this._element).removeClass("toggle-on").addClass("toggle-off");
@@ -479,3 +532,19 @@ Toggle.mixin({
 
 ExoWeb.UI.Toggle = Toggle;
 Toggle.registerClass("ExoWeb.UI.Toggle", Sys.UI.Control, Sys.UI.ITemplateContextConsumer, Sys.UI.IContentTemplateConsumer);
+
+function ActionEventArgs() {
+	this._signal = new ExoWeb.Signal();
+	ActionEventArgs.initializeBase(this);
+}
+
+ActionEventArgs.prototype.pending = function (callback, thisPtr, executeImmediately) {
+	return this._signal.pending.apply(this._signal, arguments);
+}
+
+ActionEventArgs.prototype.waitForAll = function (callback, thisPtr, executeImmediately) {
+	this._signal.waitForAll.apply(this._signal, arguments);
+}
+
+ExoWeb.UI.ActionEventArgs = ActionEventArgs;
+ActionEventArgs.registerClass("ExoWeb.UI.ActionEventArgs", Sys.EventArgs);
