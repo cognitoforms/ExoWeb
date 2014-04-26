@@ -7631,11 +7631,11 @@ window.ExoWeb.DotNet = {};
 		if (!options.onChangeOf && options.compareSource) {
 			options.onChangeOf = [options.compareSource];
 		}
-
+		
 		// predicate-based rule
-		var isRequired = options.isRequired || options.fn;
-		if (isRequired instanceof Function) {
-			this.isRequired = isRequired;
+		if (options.isRequired instanceof Function || options.fn) {
+			Object.defineProperty(this, "isRequired", { value: options.isRequired || options.fn, writable: true });
+			options.fn = null;
 			options.message = options.message || Resource.get("required");
 		}
 
@@ -7704,6 +7704,11 @@ window.ExoWeb.DotNet = {};
 		// returns false if the property is valid, true if invalid, or undefined if unknown
 		assert: function RequiredIfRule$assert(obj) {
 			var isReq;
+
+			// convert string functions into compiled functions on first execution
+			if (this.isRequired.constructor === String) {
+				this.isRequired = this.rootType.compileExpression(this.isRequired);
+			}
 
 			if (this.hasOwnProperty("isRequired"))
 				isReq = this.isRequired.call(obj, obj);

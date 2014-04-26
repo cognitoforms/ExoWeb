@@ -20,20 +20,20 @@ function RequiredIfRule(rootType, options) {
 	/// <returns type="RequiredIfRule">The new required if rule.</returns>
 
 	options.name = options.name || "RequiredIf";
-	
+
 	// ensure changes to the compare source triggers rule execution
 	if (!options.onChangeOf && options.compareSource) {
 		options.onChangeOf = [options.compareSource];
 	}
 
 	// predicate-based rule
-	var isRequired = options.isRequired || options.fn;
-	if (isRequired instanceof Function) {
-		this.isRequired = isRequired;
+	if (options.isRequired || options.fn) {
+		Object.defineProperty(this, "isRequired", { value: options.isRequired || options.fn, writable: true });
+		options.fn = null;
 		options.message = options.message || Resource.get("required");
 	}
 
-	// comparison-based rule
+		// comparison-based rule
 	else {
 		Object.defineProperty(this, "comparePath", { value: options.compareSource });
 		Object.defineProperty(this, "compareOperator", {
@@ -42,7 +42,7 @@ function RequiredIfRule(rootType, options) {
 		});
 		Object.defineProperty(this, "compareValue", { value: options.compareValue, writable: true });
 	}
-	
+
 	// call the base type constructor
 	ValidatedPropertyRule.apply(this, [rootType, options]);
 }
@@ -99,13 +99,18 @@ RequiredIfRule.mixin({
 	assert: function RequiredIfRule$assert(obj) {
 		var isReq;
 
+		// convert string functions into compiled functions on first execution
+		if (this.isRequired.constructor === String) {
+			this.isRequired = this.rootType.compileExpression(this.isRequired);
+		}
+
 		if (this.hasOwnProperty("isRequired"))
 			isReq = this.isRequired.call(obj, obj);
 
-		// otherwise, allow "this" to be the current rule to support subclasses that override assert
-		else 
+			// otherwise, allow "this" to be the current rule to support subclasses that override assert
+		else
 			isReq = this.isRequired(obj);
-		
+
 		return isReq && !RequiredRule.hasValue(this.property.value(obj));
 	},
 

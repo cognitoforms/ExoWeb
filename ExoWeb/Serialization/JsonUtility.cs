@@ -687,9 +687,17 @@ namespace ExoWeb.Serialization
 						(rule, json) =>
 						{
 							SerializePropertyRule(rule, json);
-							json.Set("compareOperator", rule.CompareOperator.ToString());
-							json.Set("compareSource", rule.CompareSource);
-							json.Set("compareValue", rule.CompareValue);
+							if (rule.RequiredExpression != null)
+							{
+								json.Set("fn", rule.RequiredExpression.Expression);
+								json.Set("onChangeOf", new string[] { rule.Path });
+							}
+							else
+							{
+								json.Set("compareOperator", rule.CompareOperator.ToString());
+								json.Set("compareSource", rule.CompareSource);
+								json.Set("compareValue", rule.CompareValue);
+							}
 						},
 						json => { throw new NotSupportedException("RequiredIfRule cannot be deserialized."); }),
 
