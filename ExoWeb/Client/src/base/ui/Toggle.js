@@ -35,12 +35,13 @@ Toggle.mixin({
 		this._removeHandler("hiding", handler);
 	},
 	do_show: function Toggle$do_show() {
-		var showingArgs = new ActionEventArgs();
-
-		this._pendingEventArgs = showingArgs;
-
+		
 		// visibility has changed so raise event
 		if (this._visible === undefined || this._visible === false) {
+			var showingArgs = new ActionEventArgs();
+
+			this._pendingEventArgs = showingArgs;
+
 			if (this._visible === false) {
 				Sys.Observer.raiseEvent(this, "showing", showingArgs);
 			}
@@ -62,11 +63,13 @@ Toggle.mixin({
 		}
 	},
 	do_hide: function Toggle$do_hide() {
-		var hidingArgs = new ActionEventArgs();
 
-		this._pendingEventArgs = hidingArgs;
-
+		// visibility has changed so raise event
 		if (this._visible === undefined || this._visible === true) {
+			var hidingArgs = new ActionEventArgs();
+
+			this._pendingEventArgs = hidingArgs;
+
 			if (this._visible === true) {
 				Sys.Observer.raiseEvent(this, "hiding", hidingArgs);
 			}
