@@ -104,10 +104,16 @@ RequiredIfRule.mixin({
 			this.isRequired = this.rootType.compileExpression(this.isRequired);
 		}
 
-		if (this.hasOwnProperty("isRequired"))
-			isReq = this.isRequired.call(obj, obj);
-
-			// otherwise, allow "this" to be the current rule to support subclasses that override assert
+		if (this.hasOwnProperty("isRequired")) {
+			try
+			{
+				isReq = this.isRequired.call(obj);
+			}
+			catch (e){
+				isReq = false;
+			}
+		}
+		// otherwise, allow "this" to be the current rule to support subclasses that override assert
 		else
 			isReq = this.isRequired(obj);
 

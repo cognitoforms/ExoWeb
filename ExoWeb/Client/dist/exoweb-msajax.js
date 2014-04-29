@@ -7710,11 +7710,16 @@ window.ExoWeb.DotNet = {};
 				this.isRequired = this.rootType.compileExpression(this.isRequired);
 			}
 
-			if (this.hasOwnProperty("isRequired"))
-				isReq = this.isRequired.call(obj, obj);
-
+			if (this.hasOwnProperty("isRequired")) {
+				try {
+					isReq = this.isRequired.call(obj);
+				}
+				catch (e) {
+					isReq = false;
+				}
+			}
 			// otherwise, allow "this" to be the current rule to support subclasses that override assert
-			else 
+			else
 				isReq = this.isRequired(obj);
 		
 			return isReq && !RequiredRule.hasValue(this.property.value(obj));
