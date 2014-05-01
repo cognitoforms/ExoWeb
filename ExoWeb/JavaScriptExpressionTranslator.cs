@@ -812,10 +812,12 @@ namespace ExoWeb
 					builder.Append("\"").Append(c.Value).Append("\"");
 				else if (c.Type == typeof(DateTime))
 				{
+					long milliseconds = (long)((DateTime)c.Value).Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+					// Local time, account for time zone and daylight savings
 					if (((DateTime)c.Value).Kind == DateTimeKind.Local)
-						builder.Append("new Date(").Append((long)(((DateTime)c.Value).ToUniversalTime()).Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds).Append(")");
+						builder.Append("new Date(").Append(milliseconds).Append(" + new Date(").Append(milliseconds).Append(").getTimezoneOffset()*60000)");
 					else
-						builder.Append("new Date(").Append((long)((DateTime)c.Value).Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds).Append(")");
+						builder.Append("new Date(").Append(milliseconds).Append(")");
 				}
 				else if (c.Type == typeof(bool))
 					builder.Append(((bool)c.Value).ToString().ToLower());
