@@ -7626,20 +7626,20 @@ window.ExoWeb.DotNet = {};
 		/// <returns type="RequiredIfRule">The new required if rule.</returns>
 
 		options.name = options.name || "RequiredIf";
-	
+
 		// ensure changes to the compare source triggers rule execution
 		if (!options.onChangeOf && options.compareSource) {
 			options.onChangeOf = [options.compareSource];
 		}
-		
+
 		// predicate-based rule
-		if (options.isRequired instanceof Function || options.fn) {
+		if (options.isRequired || options.fn) {
 			Object.defineProperty(this, "isRequired", { value: options.isRequired || options.fn, writable: true });
 			options.fn = null;
 			options.message = options.message || Resource.get("required");
 		}
 
-		// comparison-based rule
+			// comparison-based rule
 		else {
 			Object.defineProperty(this, "comparePath", { value: options.compareSource });
 			Object.defineProperty(this, "compareOperator", {
@@ -7648,7 +7648,7 @@ window.ExoWeb.DotNet = {};
 			});
 			Object.defineProperty(this, "compareValue", { value: options.compareValue, writable: true });
 		}
-	
+
 		// call the base type constructor
 		ValidatedPropertyRule.apply(this, [rootType, options]);
 	}
@@ -7711,17 +7711,18 @@ window.ExoWeb.DotNet = {};
 			}
 
 			if (this.hasOwnProperty("isRequired")) {
-				try {
+				try
+				{
 					isReq = this.isRequired.call(obj);
 				}
-				catch (e) {
+				catch (e){
 					isReq = false;
 				}
 			}
 			// otherwise, allow "this" to be the current rule to support subclasses that override assert
 			else
 				isReq = this.isRequired(obj);
-		
+
 			return isReq && !RequiredRule.hasValue(this.property.value(obj));
 		},
 
