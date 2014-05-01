@@ -219,7 +219,7 @@ PropertyChain.mixin({
 		/// words, steps that correspond to a value or values of the chain at a specific property step).
 		/// For example, if the chain path is "this.PropA.ListPropB", then...
 		///     chain.each(target, callback, null, ListPropB);
-		/// ...will iterate of the values of the list property only.
+		/// ...will iterate the values of the list property only.
 		/// </param>
 
 		if (obj == null) throw new ArgumentNullError("obj");
@@ -232,7 +232,8 @@ PropertyChain.mixin({
 		var props = this._properties.slice(arguments[5] || 0);
 		for (var p = arguments[5] || 0; p < this._properties.length; p++) {
 			var prop = this._properties[p];
-			var canSkipRemainingProps = propFilter && lastProp === propFilter;
+			var isLastProperty = p === this._properties.length - 1;
+			var canSkipRemainingProps = isLastProperty || (propFilter && lastProp === propFilter);
 			var enableCallback = (!propFilter || lastProp === propFilter);
 
 			if (target instanceof Array) {
@@ -245,10 +246,12 @@ PropertyChain.mixin({
 							return false;
 						}
 
-						var targetValue = prop.value(target[i]);
-						// continue along the chain for this list item
-						if (!canSkipRemainingProps && (!targetValue || this.each(obj, callback, thisPtr, propFilter, targetValue, p + 1, prop) === false)){
-							return false;
+						if (!canSkipRemainingProps) {
+							var targetValue = prop.value(target[i]);
+							// continue along the chain for this list item
+							if (!targetValue || this.each(obj, callback, thisPtr, propFilter, targetValue, p + 1, prop) === false) {
+								return false;
+							}
 						}
 					}
 				}
@@ -393,14 +396,43 @@ PropertyChain.mixin({
 	addChanged: function PropertyChain$addChanged(handler, obj, once, toleratePartial) {
 		var filter = mergeFunctions(
 
-		// Ensure that the chain is inited from the root if toleratePartial is false
-			this.isInited.bind(this).spliceArguments(1, 1, !toleratePartial),
-
-		// Only raise for the given root object if specified
+			// Only raise for the given root object if specified
 			obj ? equals(obj) : null,
 
-		// If multiple filters exist, both must pass
-			{andResults: true }
+			toleratePartial
+				// Ensure that the chain can be accessed without error if toleratePartial is true
+				? (function (sender, args) {
+					var allCanBeAccessed = true;
+					this.each(sender, function (target, targetIndex, targetArray, property, propertyIndex, properties) {
+						if (!property.isInited(target)) {
+							var propertyGetWouldCauseError = false;
+							if (LazyLoader.isRegistered(target)) {
+								propertyGetWouldCauseError = true;
+							} else if (property.get_isList()) {
+								var list = target[property._fieldName];
+								if (list && LazyLoader.isRegistered(list)) {
+									propertyGetWouldCauseError = true;
+								}
+							}
+
+							if (propertyGetWouldCauseError) {
+								allCanBeAccessed = false;
+
+								// Exit immediately
+								return false;
+							}
+						}
+					});
+					return allCanBeAccessed;
+				}.bind(this))
+
+				// Ensure that the chain is inited from the root if toleratePartial is false
+				: this.isInited.bind(this).spliceArguments(1, 1, true),
+
+			{
+				// Both filters must pass
+				andResults: true
+			}
 
 		);
 
