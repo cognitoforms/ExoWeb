@@ -809,7 +809,7 @@ namespace ExoWeb
 				if (c.Value == null)
 					builder.Append("null");
 				else if (c.Type == typeof(string) || c.Type == typeof(char) || c.Type.IsEnum)
-					builder.Append("\"").Append(c.Value).Append("\"");
+					builder.Append("\"").Append(System.Web.HttpUtility.JavaScriptStringEncode((string)c.Value)).Append("\"");
 				else if (c.Type == typeof(DateTime))
 				{
 					long milliseconds = (long)((DateTime)c.Value).Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
