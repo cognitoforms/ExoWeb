@@ -7227,6 +7227,7 @@ window.ExoWeb.DotNet = {};
 		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
 		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
 		///			message:			the message to show the user when the validation fails
+		///			requiredValue		the optional required value
 		/// </param>
 		/// <returns type="RequiredRule">The new required rule.</returns>
 
@@ -7235,6 +7236,9 @@ window.ExoWeb.DotNet = {};
 
 		// ensure the error message is specified
 		options.message = options.message || Resource.get("required");
+
+		if (options.requiredValue)
+			Object.defineProperty(this, "requiredValue", { value: options.requiredValue });
 
 		// call the base type constructor
 		ValidatedPropertyRule.apply(this, [rootType, options]);
@@ -7253,7 +7257,12 @@ window.ExoWeb.DotNet = {};
 	RequiredRule.mixin({
 
 		// returns true if the property is valid, otherwise false
-		isValid: function RequiredRule$isValid(obj, prop, val) { return RequiredRule.hasValue(val); },
+		isValid: function RequiredRule$isValid(obj, prop, val) {
+			if (this.requiredValue)
+				return val === this.requiredValue;
+			else
+				return RequiredRule.hasValue(val);
+		},
 
 		// get the string representation of the rule
 		toString: function() {
@@ -7654,6 +7663,7 @@ window.ExoWeb.DotNet = {};
 		///		    onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
 		///		    onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
 		///		    onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+		///			requiredValue:		the optional required value
 		/// </param>
 		/// <returns type="RequiredIfRule">The new required if rule.</returns>
 
@@ -7680,6 +7690,9 @@ window.ExoWeb.DotNet = {};
 			});
 			Object.defineProperty(this, "compareValue", { value: options.compareValue, writable: true });
 		}
+
+		if (options.requiredValue)
+			Object.defineProperty(this, "requiredValue", { value: options.requiredValue });
 
 		// call the base type constructor
 		ValidatedPropertyRule.apply(this, [rootType, options]);
@@ -7754,8 +7767,13 @@ window.ExoWeb.DotNet = {};
 			// otherwise, allow "this" to be the current rule to support subclasses that override assert
 			else
 				isReq = this.isRequired(obj);
+			
+			var val = this.property.value(obj);
 
-			return isReq && !RequiredRule.hasValue(this.property.value(obj));
+			if (this.requiredValue)
+				return isReq && val !== this.requiredValue;
+			else
+				return isReq && !RequiredRule.hasValue(val);
 		},
 
 		// perform addition initialization of the rule when it is registered

@@ -8,6 +8,7 @@ function RequiredRule(rootType, options) {
 	///			conditionType:		the optional condition type to use, which will be automatically created if not specified
 	///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
 	///			message:			the message to show the user when the validation fails
+	///			requiredValue:		the optional required value
 	/// </param>
 	/// <returns type="RequiredRule">The new required rule.</returns>
 
@@ -16,6 +17,9 @@ function RequiredRule(rootType, options) {
 
 	// ensure the error message is specified
 	options.message = options.message || Resource.get("required");
+
+	if (options.requiredValue)
+		Object.defineProperty(this, "requiredValue", { value: options.requiredValue });
 
 	// call the base type constructor
 	ValidatedPropertyRule.apply(this, [rootType, options]);
@@ -34,10 +38,15 @@ RequiredRule.hasValue = function RequiredRule$hasValue(val) {
 RequiredRule.mixin({
 
 	// returns true if the property is valid, otherwise false
-	isValid: function RequiredRule$isValid(obj, prop, val) { return RequiredRule.hasValue(val); },
+	isValid: function RequiredRule$isValid(obj, prop, val) {
+		if (this.requiredValue)
+			return val === this.requiredValue;
+		else
+			return RequiredRule.hasValue(val);
+	},
 
 	// get the string representation of the rule
-	toString: function() {
+	toString: function () {
 		return $format("{0}.{1} is required", [this.property.get_containingType().get_fullName(), this.property.get_name()]);
 	}
 });

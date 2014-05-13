@@ -679,7 +679,12 @@ namespace ExoWeb.Serialization
 
 					// RequiredRule
 					new JsonConverter<RequiredRule>(
-						(rule, json) =>	SerializePropertyRule(rule, json),
+						(rule, json) =>	
+						{
+							SerializePropertyRule(rule, json);
+							if (rule.RequiredValue != null)
+								json.Set("requiredValue", rule.RequiredValue);
+						},
 						json => { throw new NotSupportedException("RequiredRule cannot be deserialized."); }),
 
 					// RequiredIfRule
@@ -698,6 +703,9 @@ namespace ExoWeb.Serialization
 								json.Set("compareSource", rule.CompareSource);
 								json.Set("compareValue", rule.CompareValue);
 							}
+
+							if (rule.RequiredValue != null)
+								json.Set("requiredValue", rule.RequiredValue);
 						},
 						json => { throw new NotSupportedException("RequiredIfRule cannot be deserialized."); }),
 

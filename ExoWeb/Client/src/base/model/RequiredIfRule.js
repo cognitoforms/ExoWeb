@@ -16,6 +16,7 @@ function RequiredIfRule(rootType, options) {
 	///		    onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
 	///		    onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
 	///		    onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
+	///			requiredValue:		the optional required value
 	/// </param>
 	/// <returns type="RequiredIfRule">The new required if rule.</returns>
 
@@ -42,6 +43,9 @@ function RequiredIfRule(rootType, options) {
 		});
 		Object.defineProperty(this, "compareValue", { value: options.compareValue, writable: true });
 	}
+
+	if (options.requiredValue)
+		Object.defineProperty(this, "requiredValue", { value: options.requiredValue });
 
 	// call the base type constructor
 	ValidatedPropertyRule.apply(this, [rootType, options]);
@@ -105,19 +109,23 @@ RequiredIfRule.mixin({
 		}
 
 		if (this.hasOwnProperty("isRequired")) {
-			try
-			{
+			try {
 				isReq = this.isRequired.call(obj);
 			}
-			catch (e){
+			catch (e) {
 				isReq = false;
 			}
 		}
-		// otherwise, allow "this" to be the current rule to support subclasses that override assert
+			// otherwise, allow "this" to be the current rule to support subclasses that override assert
 		else
 			isReq = this.isRequired(obj);
 
-		return isReq && !RequiredRule.hasValue(this.property.value(obj));
+		var val = this.property.value(obj);
+
+		if (this.requiredValue)
+			return isReq && val !== this.requiredValue;
+		else
+			return isReq && !RequiredRule.hasValue(val);
 	},
 
 	// perform addition initialization of the rule when it is registered
