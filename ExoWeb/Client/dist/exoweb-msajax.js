@@ -13189,9 +13189,9 @@ window.ExoWeb.DotNet = {};
 			throw new Error("Type lazy loading has been disabled: " + mtype.get_fullName());
 		}
 
-		fetchTypes(mtype.model, [mtype.get_fullName()], function(jstypes) {
+		fetchTypes(mtype.model, [mtype.get_fullName()], function(jstype) {
 			if (callback && callback instanceof Function) {
-				callback(jstypes[0]);
+				callback(jstype);
 			}
 		}, thisPtr);
 	}
