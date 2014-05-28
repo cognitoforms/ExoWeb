@@ -11515,7 +11515,6 @@ window.ExoWeb.DotNet = {};
 
 				waitForAllRegistered = true;
 				signal.waitForAll(function () {
-					this.endApplyingChanges();
 					ExoWeb.Batch.end(batch);
 					if (callback) {
 						callback.call(thisPtr || this);
@@ -11523,8 +11522,8 @@ window.ExoWeb.DotNet = {};
 				}, this, true);
 			}
 			finally {
+				this.endApplyingChanges();
 				if (!waitForAllRegistered) {
-					this.endApplyingChanges();
 					ExoWeb.Batch.end(batch);
 				}
 			}
