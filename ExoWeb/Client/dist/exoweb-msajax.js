@@ -7227,7 +7227,7 @@ window.ExoWeb.DotNet = {};
 		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
 		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
 		///			message:			the message to show the user when the validation fails
-		///			requiredValue		the optional required value
+		///			requiredValue:		the optional required value
 		/// </param>
 		/// <returns type="RequiredRule">The new required rule.</returns>
 
@@ -7265,7 +7265,7 @@ window.ExoWeb.DotNet = {};
 		},
 
 		// get the string representation of the rule
-		toString: function() {
+		toString: function () {
 			return $format("{0}.{1} is required", [this.property.get_containingType().get_fullName(), this.property.get_name()]);
 		}
 	});
@@ -7756,18 +7756,17 @@ window.ExoWeb.DotNet = {};
 			}
 
 			if (this.hasOwnProperty("isRequired")) {
-				try
-				{
+				try {
 					isReq = this.isRequired.call(obj);
 				}
-				catch (e){
+				catch (e) {
 					isReq = false;
 				}
 			}
-			// otherwise, allow "this" to be the current rule to support subclasses that override assert
+				// otherwise, allow "this" to be the current rule to support subclasses that override assert
 			else
 				isReq = this.isRequired(obj);
-			
+
 			var val = this.property.value(obj);
 
 			if (this.requiredValue)
@@ -7800,7 +7799,6 @@ window.ExoWeb.DotNet = {};
 	// Expose the rule publicly
 	Rule.requiredIf = RequiredIfRule;
 	ExoWeb.Model.RequiredIfRule = RequiredIfRule;
-
 	// #endregion
 
 	// #region ExoWeb.Model.StringLengthRule
