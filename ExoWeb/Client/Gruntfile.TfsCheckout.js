@@ -6,7 +6,7 @@ exports.grunt = function (grunt) {
 
 	function run(command, callback) {
 		var complete = false;
-		//console.log(command);
+		console.log("> " + command);
 		exec(command, function (error, stdout, stderr) {
 			if (complete) {
 				throw new Error("Unexpected message from completed process.");
@@ -16,15 +16,15 @@ exports.grunt = function (grunt) {
 				output = "";
 
 			if (stdout) {
-				//console.log("stdout: " + stdout);
+				console.log("stdout: " + stdout);
 				output += stdout;
 			}
 			if (stderr) {
-				//console.log("stderr: " + stderr);
+				console.log("stderr: " + stderr);
 				output += stderr;
 			}
 			if (error !== null) {
-				//console.log("error: " + error);
+				console.log("error: " + error);
 				success = false;
 			}
 

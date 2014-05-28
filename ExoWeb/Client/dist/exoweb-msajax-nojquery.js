@@ -952,8 +952,8 @@ window.ExoWeb.DotNet = {};
 		var additional = Array.prototype.slice.call(arguments);
 		return function prependArguments$fn() {
 			var args = [];
-			args.addRange(additional);
-			args.addRange(Array.prototype.slice.call(arguments));
+			Array.prototype.push.apply(args, additional);
+			Array.prototype.push.apply(args, Array.prototype.slice.call(arguments));
 			return func.apply(this, args);
 		};
 	};
@@ -963,7 +963,7 @@ window.ExoWeb.DotNet = {};
 		var additional = Array.prototype.slice.call(arguments);
 		return function appendArguments$fn() {
 			var args = Array.prototype.slice.call(arguments);
-			args.addRange(additional);
+			Array.prototype.push.apply(args, additional);
 			return func.apply(this, args);
 		};
 	};
