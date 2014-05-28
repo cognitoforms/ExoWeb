@@ -5,12 +5,23 @@ function Functor() {
 		for (var i = 0; i < funcs.length; ++i) {
 			var item = funcs[i];
 
+			// Don't re-run one-time subscriptions that have already been applied.
+			if (item.applied === true) {
+				continue;
+			}
+
 			// Ensure that there is either no filter or the filter passes.
 			if (!item.filter || item.filter.apply(this, arguments) === true) {
 				// If handler is set to execute once,
 				// remove the handler before calling.
 				if (item.once === true) {
-					funcs.splice(i--, 1);
+					// Mark as applied but leave item in array to avoid potential
+					// problems due to re-entry into event invalidating iteration
+					// index. In some cases re-entry would be a red-flag, but for
+					// "global" events, where the context of the event is derived
+					// from the arguments, the event could easily be re-entered
+					// in a different context with different arguments.
+					item.applied = true;
 				}
 
 				// Call the handler function.
@@ -60,10 +71,7 @@ function Functor$clear() {
 }
 
 function Functor$isEmpty(args) {
-	if (args) {
-		return !this._funcs.some(function (item) { return !item.filter || item.filter.apply(this, args); }, this);
-	}
-	return this._funcs.length === 0;
+	return !this._funcs.some(function (item) { return item.applied !== true && (!args || !item.filter || item.filter.apply(this, args)); }, this);
 }
 
 var functorEventsInProgress = 0;

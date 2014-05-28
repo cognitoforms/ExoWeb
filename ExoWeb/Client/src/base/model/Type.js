@@ -115,7 +115,7 @@ var validateId = function Type$validateId(type, id) {
 };
 
 function generateClass(type) {
-	function construct(idOrProps, props) {
+	function construct(idOrProps, props, suppressModelEvent) {
 		if (!disableConstruction) {
 			if (idOrProps && idOrProps.constructor === String) {
 				var id = idOrProps;
@@ -135,7 +135,7 @@ function generateClass(type) {
 				}
 
 				// Register the newly constructed existing instance.
-				type.register(this, id);
+				type.register(this, id, suppressModelEvent);
 
 				// Initialize properties if provided.
 				if (props) {
@@ -145,7 +145,7 @@ function generateClass(type) {
 			else {
 				// Register the newly constructed new instance. It will
 				// be assigned a sequential client-generated id.
-				type.register(this);
+				type.register(this, null, suppressModelEvent);
 
 				// Set properties passed into constructor.
 				if (idOrProps) {
@@ -231,7 +231,7 @@ Type.prototype = {
 		// Return the new id.
 		return newIdPrefix + nextId;
 	},
-	register: function Type$register(obj, id) {
+	register: function Type$register(obj, id, suppressModelEvent) {
 		// register is called with single argument from default constructor
 		if (arguments.length === 2) {
 			validateId(this, id);
@@ -260,7 +260,9 @@ Type.prototype = {
 			}
 		}
 
-		this.model.notifyObjectRegistered(obj);
+		if (!suppressModelEvent) {
+			this.model.notifyObjectRegistered(obj);
+		}
 	},
 	changeObjectId: function Type$changeObjectId(oldId, newId) {
 		validateId(this, oldId);

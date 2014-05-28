@@ -1389,16 +1389,23 @@ ServerSync.mixin({
 			);
 
 			if (!newObj) {
-				// Create the new object
-				newObj = new jstype();
-
 				// Check for a translation between the old id that was reported and an actual old id.  This is
 				// needed since new objects that are created on the server and then committed will result in an accurate
 				// id change record, but "instance.id" for this change will actually be the persisted id.
 				var serverOldId = this._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
 
-				// Remember the object's client-generated new id and the corresponding server-generated new id
-				this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+				lazyCreateEntity(change.instance.type, serverOldId, this.ignoreChanges(before, function () {
+					// Create the new object (supress events)
+					newObj = new jstype(null, null, true);
+
+					// Remember the object's client-generated new id and the corresponding server-generated new id
+					this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+
+					// Raise event after recording id mapping so that listeners can leverage it
+					this.model.notifyObjectRegistered(newObj);
+
+					return newObj;
+				}, after), this);
 			}
 		}, after), this);
 
@@ -1412,7 +1419,7 @@ ServerSync.mixin({
 		var callBeforeExiting = true;
 
 		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 				// Update change to reflect the object's new id
 				ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
@@ -1430,29 +1437,29 @@ ServerSync.mixin({
 					}
 
 					tryGetJsType(this.model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
-						var refObj = fromExoModel(change.newValue, this._translator, true);
+						tryGetEntity(this.model, this._translator, refType, change.newValue.id, null, LazyLoadEnum.Lazy, this.ignoreChanges(before, function (refObj) {
+							// Update change to reflect the object's new id
+							ServerSync$retroactivelyFixChangeWhereIdChanged(change.newValue, refObj);
 
-						// Update change to reflect the object's new id
-						ServerSync$retroactivelyFixChangeWhereIdChanged(change.newValue, refObj);
+							// Update change to reflect the object's new id
+							if (change.newValue.id === refObj.meta.legacyId) {
+								change.newValue.id = refObj.meta.id;
+							}
 
-						// Update change to reflect the object's new id
-						if (change.newValue.id === refObj.meta.legacyId) {
-							change.newValue.id = refObj.meta.id;
-						}
+							// Manually ensure a property value, if it doesn't have one then it will be marked as pendingInit
+							Property$_ensureInited.call(property, srcObj);
 
-						// Manually ensure a property value, if it doesn't have one then it will be marked as pendingInit
-						Property$_ensureInited.call(property, srcObj);
+							// Mark the property as no longer pending init since its value is being established
+							srcObj.meta.pendingInit(property, false);
 
-						// Mark the property as no longer pending init since its value is being established
-						srcObj.meta.pendingInit(property, false);
+							// Set the property value
+							Observer.setValue(srcObj, change.property, refObj);
 
-						// Set the property value
-						Observer.setValue(srcObj, change.property, refObj);
-
-						// Callback once the type has been loaded
-						if (!callBeforeExiting && callback) {
-							callback.call(thisPtr || this);
-						}
+							// Callback once the type has been loaded
+							if (!callBeforeExiting && callback) {
+								callback.call(thisPtr || this);
+							}
+						}, after), this);
 					}, after), this);
 				}
 				else {
@@ -1486,7 +1493,7 @@ ServerSync.mixin({
 	},
 	applyValChange: function (change, before, after, callback, thisPtr) {
 		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 				// Update change to reflect the object's new id
 				ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
@@ -1567,16 +1574,16 @@ ServerSync.mixin({
 					change.added.forEach(function (item) {
 						if (isEntityList) {
 							tryGetJsType(this.model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
-								var itemObj = fromExoModel(item, this._translator, true);
+								tryGetEntity(this.model, this._translator, itemType, item.id, null, LazyLoadEnum.Lazy, this.ignoreChanges(before, function (itemObj) {
+									// Update change to reflect the object's new id
+									ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
-								// Update change to reflect the object's new id
-								ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
-
-								if (!list.contains(itemObj)) {
-									ListLazyLoader.allowModification(list, function () {
-										list.add(itemObj);
-									});
-								}
+									if (!list.contains(itemObj)) {
+										ListLazyLoader.allowModification(list, function () {
+											list.add(itemObj);
+										});
+									}
+								}, after), this);
 							}, after)), this, true);
 						} else {
 							ListLazyLoader.allowModification(list, function () {
@@ -1591,14 +1598,14 @@ ServerSync.mixin({
 					if (isEntityList) {
 						// no need to load instance only to remove it from a list when it can't possibly exist
 						tryGetJsType(this.model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
-							var itemObj = fromExoModel(item, this._translator, true);
+							tryGetEntity(this.model, this._translator, itemType, item.id, null, LazyLoadEnum.Lazy, this.ignoreChanges(before, function (itemObj) {
+								// Update change to reflect the object's new id
+								ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
-							// Update change to reflect the object's new id
-							ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
-
-							ListLazyLoader.allowModification(list, function () {
-								list.remove(itemObj);
-							});
+								ListLazyLoader.allowModification(list, function () {
+									list.remove(itemObj);
+								});
+							}, after), this);
 						}, after), this, true);
 					} else {
 						ListLazyLoader.allowModification(list, function () {
@@ -1705,7 +1712,7 @@ ServerSync.mixin({
 	},
 	rollbackValChange: function ServerSync$rollbackValChange(change, callback, thisPtr) {
 		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, null, LazyLoadEnum.None, function (srcObj) {
 
 				// Cache the new value, becuase we access it many times and also it may be modified below
 				// to account for timezone differences, but we don't want to modify the actual change object.
@@ -1751,7 +1758,7 @@ ServerSync.mixin({
 		var callBeforeExiting = true;
 
 		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
-			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+			tryGetEntity(this.model, this._translator, srcType, change.instance.id, null, LazyLoadEnum.None, function (srcObj) {
 				if (change.oldValue) {
 					// Don't call immediately since we may need to lazy load the type
 					if (!hasExited) {
@@ -1759,7 +1766,7 @@ ServerSync.mixin({
 					}
 
 					tryGetJsType(this.model, change.oldValue.type, null, true, function (refType) {
-						tryGetEntity(this.model, this._translator, refType, change.oldValue.id, change.property, LazyLoadEnum.None, function (refObj) {
+						tryGetEntity(this.model, this._translator, refType, change.oldValue.id, null, LazyLoadEnum.None, function (refObj) {
 							Observer.setValue(srcObj, change.property, refObj);
 
 							// Callback once the type has been loaded

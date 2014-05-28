@@ -163,7 +163,8 @@
     <Compile Include="Templates\RenderEventArgs.cs" />
     <Compile Include="UnitTests\Accessors.cs" />
     <Compile Include="ViewScope.cs" />
-    <Content Include="Client\tests\base\mapper\Context.js" />
+    <Content Include="Client\tests\base\mapper\ContextTests.js" />
+    <Content Include="Client\tests\base\mapper\ServerSyncTests.js" />
     <Content Include="Dependencies\Newtonsoft.Json.dll" />
   </ItemGroup>
   <ItemGroup>

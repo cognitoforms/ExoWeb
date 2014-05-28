@@ -917,10 +917,47 @@ function tryGetJsType(model, name, property, forceLoad, callback, thisPtr) {
 	}
 }
 
+var pendingEntities = {};
+
+function lazyCreateEntity(type, id, callback, thisPtr) {
+	var pendingForType = pendingEntities[type];
+	if (!pendingForType) {
+		pendingEntities[type] = pendingForType = {};
+	}
+
+	if (!pendingForType[id]) {
+		pendingForType[id] = { callback: callback, thisPtr: thisPtr };
+	}
+}
+
 var LazyLoadEnum = {
+	// If the object doesn't exist, then the callback will be invoked once the object has been loaded for some other reason.
 	None: 0,
+	// If the object doesn't exist, then force creation and loading of the object and invoke the callback immediately.
 	Force: 1,
-	ForceAndWait: 2
+	// If the object doesn't exist, then force creation and loading of the object and invoke the callback when loading is complete.
+	ForceAndWait: 2,
+	// If the object doesn't exist, then create the object and invoke the callback.
+	Lazy: 3
+};
+
+var metaGet = Type.prototype.get;
+
+Type.prototype.get = function (id, exactTypeOnly, suppressLazyInit) {
+	var obj = metaGet.apply(this, arguments);
+
+	if (!obj && !suppressLazyInit) {
+		// If the object doesn't exist and is pending, create it.
+		var pendingForType = pendingEntities[this.get_fullName()];
+		if (pendingForType) {
+			var pendingForId = pendingForType[id];
+			if (pendingForId) {
+				obj = pendingForId.callback.call(pendingForId.thisPtr);
+			}
+		}
+	}
+
+	return obj;
 };
 
 function tryGetEntity(model, translator, type, id, property, lazyLoad, callback, thisPtr) {
@@ -931,11 +968,22 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 
 		// We know that tryGetEntity is only called internally and the source of the entity
 		// information is always seen as server-origin and so should specify an exact type.
-		true
+		true,
+
+		// Dont' lazily create the new object if no lazy behavior is specified, i.e. the caller doesn't want to force the object to exist.
+		lazyLoad !== LazyLoadEnum.Force && lazyLoad !== LazyLoadEnum.ForceAndWait && lazyLoad !== LazyLoadEnum.Lazy
 	);
 
-	if (obj && LazyLoader.isLoaded(obj)) {
+	if (obj && obj.meta.isLoaded(property)) {
 		// If the object exists and is loaded, then invoke the callback immediately.
+		callback.call(thisPtr || this, obj);
+	}
+	else if (lazyLoad == LazyLoadEnum.Lazy) {
+		if (!obj) {
+			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
+		}
+
+		// In lazy mode, simply invoke the callback if the object exists, since the caller doesn't care whether it is loaded.
 		callback.call(thisPtr || this, obj);
 	}
 	else if (lazyLoad == LazyLoadEnum.Force) {
@@ -943,7 +991,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 
 		// If the instance doesn't exist then ensure that a ghosted instance is created.
 		if (!obj) {
-			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
+			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
 		}
 
 		// Invoke the callback immediately.
@@ -957,7 +1005,7 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 
 		// If the instance doesn't exist then ensure that a ghosted instance is created.
 		if (!obj) {
-			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
+			obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
 		}
 
 		// Force loading to occur, passing through the callback.
@@ -971,28 +1019,55 @@ function tryGetEntity(model, translator, type, id, property, lazyLoad, callback,
 				return;
 
 			// only invoke the callback once
-			propertyFilter = function() { return false; };
+			propertyFilter = function () { return false; };
 			callback.call(thisPtr || this, obj);
 		}
 
 		var objSignal = new Signal("wait for object to exist");
 
-		if (!obj) {
-			model.addObjectRegistered(objSignal.pending(null, null, true), function(newObj) {
-				if (newObj.meta.type === type.meta && newObj.meta.id === id) {
+		function ensureListLoaded() {
+			// If there is a property specified that is a list, then don't invoke the callback until it is loaded.
+			if (property) {
+				var propertyObj = type.meta.property(property);
+				// Only entity lists can be lazy loaded in addition to the parent object.
+				if (propertyObj.get_isEntityListType()) {
+					if (!obj.meta.isLoaded(property)) {
+						// List lazy loader will invoke property change event
+						propertyObj.addChanged(objSignal.pending(null, null, true), obj, true);
+					}
+				}
+			}
+		}
+
+		function waitForObjectLoaded() {
+			// Since the object is not loaded, don't invoke the callback until it is loaded.
+			obj.meta.type.addInitExisting(objSignal.pending(function () {
+				ensureListLoaded();
+			}, null, true), obj, true);
+		}
+
+		function waitForObjectExists() {
+			// The object doesn't exist, so don't invoke the callback until something causes it to be created.
+			model.addObjectRegistered(objSignal.pending(null, null, true), function (newObj) {
+				if (newObj.meta.type === type.meta && newObj.meta.id === translateId(translator, type.meta.get_fullName(), id)) {
 					obj = newObj;
+					if (!obj.meta.isLoaded()) {
+						waitForObjectLoaded();
+					}
 					return true;
 				}
 			}, true);
 		}
 
-		objSignal.waitForAll(function () {
-			// if a property was specified and its not inited, then wait for it
-			if (property && type.meta.property(property).isInited(obj) !== true) {
-				type.meta.property(property).addChanged(callback.bind(thisPtr), obj, true);
-				return;
-			}
+		if (!obj) {
+			waitForObjectExists();
+		} else if (!obj.meta.isLoaded()) {
+			waitForObjectLoaded();
+		} else {
+			ensureListLoaded();
+		}
 
+		objSignal.waitForAll(function () {
 			callback.call(thisPtr || this, obj);
 		}, null, true);
 	}

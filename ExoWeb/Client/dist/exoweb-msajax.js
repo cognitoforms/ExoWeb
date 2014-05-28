@@ -1908,12 +1908,23 @@ window.ExoWeb.DotNet = {};
 			for (var i = 0; i < funcs.length; ++i) {
 				var item = funcs[i];
 
+				// Don't re-run one-time subscriptions that have already been applied.
+				if (item.applied === true) {
+					continue;
+				}
+
 				// Ensure that there is either no filter or the filter passes.
 				if (!item.filter || item.filter.apply(this, arguments) === true) {
 					// If handler is set to execute once,
 					// remove the handler before calling.
 					if (item.once === true) {
-						funcs.splice(i--, 1);
+						// Mark as applied but leave item in array to avoid potential
+						// problems due to re-entry into event invalidating iteration
+						// index. In some cases re-entry would be a red-flag, but for
+						// "global" events, where the context of the event is derived
+						// from the arguments, the event could easily be re-entered
+						// in a different context with different arguments.
+						item.applied = true;
 					}
 
 					// Call the handler function.
@@ -1963,10 +1974,7 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function Functor$isEmpty(args) {
-		if (args) {
-			return !this._funcs.some(function (item) { return !item.filter || item.filter.apply(this, args); }, this);
-		}
-		return this._funcs.length === 0;
+		return !this._funcs.some(function (item) { return item.applied !== true && (!args || !item.filter || item.filter.apply(this, args)); }, this);
 	}
 
 	var functorEventsInProgress = 0;
@@ -4379,7 +4387,7 @@ window.ExoWeb.DotNet = {};
 	};
 
 	function generateClass(type) {
-		function construct(idOrProps, props) {
+		function construct(idOrProps, props, suppressModelEvent) {
 			if (!disableConstruction) {
 				if (idOrProps && idOrProps.constructor === String) {
 					var id = idOrProps;
@@ -4399,7 +4407,7 @@ window.ExoWeb.DotNet = {};
 					}
 
 					// Register the newly constructed existing instance.
-					type.register(this, id);
+					type.register(this, id, suppressModelEvent);
 
 					// Initialize properties if provided.
 					if (props) {
@@ -4409,7 +4417,7 @@ window.ExoWeb.DotNet = {};
 				else {
 					// Register the newly constructed new instance. It will
 					// be assigned a sequential client-generated id.
-					type.register(this);
+					type.register(this, null, suppressModelEvent);
 
 					// Set properties passed into constructor.
 					if (idOrProps) {
@@ -4495,7 +4503,7 @@ window.ExoWeb.DotNet = {};
 			// Return the new id.
 			return newIdPrefix + nextId;
 		},
-		register: function Type$register(obj, id) {
+		register: function Type$register(obj, id, suppressModelEvent) {
 			// register is called with single argument from default constructor
 			if (arguments.length === 2) {
 				validateId(this, id);
@@ -4524,7 +4532,9 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 
-			this.model.notifyObjectRegistered(obj);
+			if (!suppressModelEvent) {
+				this.model.notifyObjectRegistered(obj);
+			}
 		},
 		changeObjectId: function Type$changeObjectId(oldId, newId) {
 			validateId(this, oldId);
@@ -11659,16 +11669,23 @@ window.ExoWeb.DotNet = {};
 				);
 
 				if (!newObj) {
-					// Create the new object
-					newObj = new jstype();
-
 					// Check for a translation between the old id that was reported and an actual old id.  This is
 					// needed since new objects that are created on the server and then committed will result in an accurate
 					// id change record, but "instance.id" for this change will actually be the persisted id.
 					var serverOldId = this._translator.forward(change.instance.type, change.instance.id) || change.instance.id;
 
-					// Remember the object's client-generated new id and the corresponding server-generated new id
-					this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+					lazyCreateEntity(change.instance.type, serverOldId, this.ignoreChanges(before, function () {
+						// Create the new object (supress events)
+						newObj = new jstype(null, null, true);
+
+						// Remember the object's client-generated new id and the corresponding server-generated new id
+						this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+
+						// Raise event after recording id mapping so that listeners can leverage it
+						this.model.notifyObjectRegistered(newObj);
+
+						return newObj;
+					}, after), this);
 				}
 			}, after), this);
 
@@ -11682,7 +11699,7 @@ window.ExoWeb.DotNet = {};
 			var callBeforeExiting = true;
 
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 					// Update change to reflect the object's new id
 					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
@@ -11700,29 +11717,29 @@ window.ExoWeb.DotNet = {};
 						}
 
 						tryGetJsType(this.model, change.newValue.type, null, true, this.ignoreChanges(before, function (refType) {
-							var refObj = fromExoModel(change.newValue, this._translator, true);
+							tryGetEntity(this.model, this._translator, refType, change.newValue.id, null, LazyLoadEnum.Lazy, this.ignoreChanges(before, function (refObj) {
+								// Update change to reflect the object's new id
+								ServerSync$retroactivelyFixChangeWhereIdChanged(change.newValue, refObj);
 
-							// Update change to reflect the object's new id
-							ServerSync$retroactivelyFixChangeWhereIdChanged(change.newValue, refObj);
+								// Update change to reflect the object's new id
+								if (change.newValue.id === refObj.meta.legacyId) {
+									change.newValue.id = refObj.meta.id;
+								}
 
-							// Update change to reflect the object's new id
-							if (change.newValue.id === refObj.meta.legacyId) {
-								change.newValue.id = refObj.meta.id;
-							}
+								// Manually ensure a property value, if it doesn't have one then it will be marked as pendingInit
+								Property$_ensureInited.call(property, srcObj);
 
-							// Manually ensure a property value, if it doesn't have one then it will be marked as pendingInit
-							Property$_ensureInited.call(property, srcObj);
+								// Mark the property as no longer pending init since its value is being established
+								srcObj.meta.pendingInit(property, false);
 
-							// Mark the property as no longer pending init since its value is being established
-							srcObj.meta.pendingInit(property, false);
+								// Set the property value
+								Observer.setValue(srcObj, change.property, refObj);
 
-							// Set the property value
-							Observer.setValue(srcObj, change.property, refObj);
-
-							// Callback once the type has been loaded
-							if (!callBeforeExiting && callback) {
-								callback.call(thisPtr || this);
-							}
+								// Callback once the type has been loaded
+								if (!callBeforeExiting && callback) {
+									callback.call(thisPtr || this);
+								}
+							}, after), this);
 						}, after), this);
 					}
 					else {
@@ -11756,7 +11773,7 @@ window.ExoWeb.DotNet = {};
 		},
 		applyValChange: function (change, before, after, callback, thisPtr) {
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (srcObj) {
 					// Update change to reflect the object's new id
 					ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
@@ -11837,16 +11854,16 @@ window.ExoWeb.DotNet = {};
 						change.added.forEach(function (item) {
 							if (isEntityList) {
 								tryGetJsType(this.model, item.type, null, true, listSignal.pending(this.ignoreChanges(before, function (itemType) {
-									var itemObj = fromExoModel(item, this._translator, true);
+									tryGetEntity(this.model, this._translator, itemType, item.id, null, LazyLoadEnum.Lazy, this.ignoreChanges(before, function (itemObj) {
+										// Update change to reflect the object's new id
+										ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
-									// Update change to reflect the object's new id
-									ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
-
-									if (!list.contains(itemObj)) {
-										ListLazyLoader.allowModification(list, function () {
-											list.add(itemObj);
-										});
-									}
+										if (!list.contains(itemObj)) {
+											ListLazyLoader.allowModification(list, function () {
+												list.add(itemObj);
+											});
+										}
+									}, after), this);
 								}, after)), this, true);
 							} else {
 								ListLazyLoader.allowModification(list, function () {
@@ -11861,14 +11878,14 @@ window.ExoWeb.DotNet = {};
 						if (isEntityList) {
 							// no need to load instance only to remove it from a list when it can't possibly exist
 							tryGetJsType(this.model, item.type, null, false, this.ignoreChanges(before, function (itemType) {
-								var itemObj = fromExoModel(item, this._translator, true);
+								tryGetEntity(this.model, this._translator, itemType, item.id, null, LazyLoadEnum.Lazy, this.ignoreChanges(before, function (itemObj) {
+									// Update change to reflect the object's new id
+									ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
 
-								// Update change to reflect the object's new id
-								ServerSync$retroactivelyFixChangeWhereIdChanged(item, itemObj);
-
-								ListLazyLoader.allowModification(list, function () {
-									list.remove(itemObj);
-								});
+									ListLazyLoader.allowModification(list, function () {
+										list.remove(itemObj);
+									});
+								}, after), this);
 							}, after), this, true);
 						} else {
 							ListLazyLoader.allowModification(list, function () {
@@ -11975,7 +11992,7 @@ window.ExoWeb.DotNet = {};
 		},
 		rollbackValChange: function ServerSync$rollbackValChange(change, callback, thisPtr) {
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, null, LazyLoadEnum.None, function (srcObj) {
 
 					// Cache the new value, becuase we access it many times and also it may be modified below
 					// to account for timezone differences, but we don't want to modify the actual change object.
@@ -12021,7 +12038,7 @@ window.ExoWeb.DotNet = {};
 			var callBeforeExiting = true;
 
 			tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
-				tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
+				tryGetEntity(this.model, this._translator, srcType, change.instance.id, null, LazyLoadEnum.None, function (srcObj) {
 					if (change.oldValue) {
 						// Don't call immediately since we may need to lazy load the type
 						if (!hasExited) {
@@ -12029,7 +12046,7 @@ window.ExoWeb.DotNet = {};
 						}
 
 						tryGetJsType(this.model, change.oldValue.type, null, true, function (refType) {
-							tryGetEntity(this.model, this._translator, refType, change.oldValue.id, change.property, LazyLoadEnum.None, function (refObj) {
+							tryGetEntity(this.model, this._translator, refType, change.oldValue.id, null, LazyLoadEnum.None, function (refObj) {
 								Observer.setValue(srcObj, change.property, refObj);
 
 								// Callback once the type has been loaded
@@ -13112,10 +13129,47 @@ window.ExoWeb.DotNet = {};
 		}
 	}
 
+	var pendingEntities = {};
+
+	function lazyCreateEntity(type, id, callback, thisPtr) {
+		var pendingForType = pendingEntities[type];
+		if (!pendingForType) {
+			pendingEntities[type] = pendingForType = {};
+		}
+
+		if (!pendingForType[id]) {
+			pendingForType[id] = { callback: callback, thisPtr: thisPtr };
+		}
+	}
+
 	var LazyLoadEnum = {
+		// If the object doesn't exist, then the callback will be invoked once the object has been loaded for some other reason.
 		None: 0,
+		// If the object doesn't exist, then force creation and loading of the object and invoke the callback immediately.
 		Force: 1,
-		ForceAndWait: 2
+		// If the object doesn't exist, then force creation and loading of the object and invoke the callback when loading is complete.
+		ForceAndWait: 2,
+		// If the object doesn't exist, then create the object and invoke the callback.
+		Lazy: 3
+	};
+
+	var metaGet = Type.prototype.get;
+
+	Type.prototype.get = function (id, exactTypeOnly, suppressLazyInit) {
+		var obj = metaGet.apply(this, arguments);
+
+		if (!obj && !suppressLazyInit) {
+			// If the object doesn't exist and is pending, create it.
+			var pendingForType = pendingEntities[this.get_fullName()];
+			if (pendingForType) {
+				var pendingForId = pendingForType[id];
+				if (pendingForId) {
+					obj = pendingForId.callback.call(pendingForId.thisPtr);
+				}
+			}
+		}
+
+		return obj;
 	};
 
 	function tryGetEntity(model, translator, type, id, property, lazyLoad, callback, thisPtr) {
@@ -13126,11 +13180,22 @@ window.ExoWeb.DotNet = {};
 
 			// We know that tryGetEntity is only called internally and the source of the entity
 			// information is always seen as server-origin and so should specify an exact type.
-			true
+			true,
+
+			// Dont' lazily create the new object if no lazy behavior is specified, i.e. the caller doesn't want to force the object to exist.
+			lazyLoad !== LazyLoadEnum.Force && lazyLoad !== LazyLoadEnum.ForceAndWait && lazyLoad !== LazyLoadEnum.Lazy
 		);
 
-		if (obj && LazyLoader.isLoaded(obj)) {
+		if (obj && obj.meta.isLoaded(property)) {
 			// If the object exists and is loaded, then invoke the callback immediately.
+			callback.call(thisPtr || this, obj);
+		}
+		else if (lazyLoad == LazyLoadEnum.Lazy) {
+			if (!obj) {
+				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
+			}
+
+			// In lazy mode, simply invoke the callback if the object exists, since the caller doesn't care whether it is loaded.
 			callback.call(thisPtr || this, obj);
 		}
 		else if (lazyLoad == LazyLoadEnum.Force) {
@@ -13138,7 +13203,7 @@ window.ExoWeb.DotNet = {};
 
 			// If the instance doesn't exist then ensure that a ghosted instance is created.
 			if (!obj) {
-				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
+				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
 			}
 
 			// Invoke the callback immediately.
@@ -13152,7 +13217,7 @@ window.ExoWeb.DotNet = {};
 
 			// If the instance doesn't exist then ensure that a ghosted instance is created.
 			if (!obj) {
-				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator);
+				obj = fromExoModel({ type: type.meta.get_fullName(), id: id }, translator, true);
 			}
 
 			// Force loading to occur, passing through the callback.
@@ -13166,28 +13231,55 @@ window.ExoWeb.DotNet = {};
 					return;
 
 				// only invoke the callback once
-				propertyFilter = function() { return false; };
+				propertyFilter = function () { return false; };
 				callback.call(thisPtr || this, obj);
 			}
 
 			var objSignal = new Signal("wait for object to exist");
 
-			if (!obj) {
-				model.addObjectRegistered(objSignal.pending(null, null, true), function(newObj) {
-					if (newObj.meta.type === type.meta && newObj.meta.id === id) {
+			function ensureListLoaded() {
+				// If there is a property specified that is a list, then don't invoke the callback until it is loaded.
+				if (property) {
+					var propertyObj = type.meta.property(property);
+					// Only entity lists can be lazy loaded in addition to the parent object.
+					if (propertyObj.get_isEntityListType()) {
+						if (!obj.meta.isLoaded(property)) {
+							// List lazy loader will invoke property change event
+							propertyObj.addChanged(objSignal.pending(null, null, true), obj, true);
+						}
+					}
+				}
+			}
+
+			function waitForObjectLoaded() {
+				// Since the object is not loaded, don't invoke the callback until it is loaded.
+				obj.meta.type.addInitExisting(objSignal.pending(function () {
+					ensureListLoaded();
+				}, null, true), obj, true);
+			}
+
+			function waitForObjectExists() {
+				// The object doesn't exist, so don't invoke the callback until something causes it to be created.
+				model.addObjectRegistered(objSignal.pending(null, null, true), function (newObj) {
+					if (newObj.meta.type === type.meta && newObj.meta.id === translateId(translator, type.meta.get_fullName(), id)) {
 						obj = newObj;
+						if (!obj.meta.isLoaded()) {
+							waitForObjectLoaded();
+						}
 						return true;
 					}
 				}, true);
 			}
 
-			objSignal.waitForAll(function () {
-				// if a property was specified and its not inited, then wait for it
-				if (property && type.meta.property(property).isInited(obj) !== true) {
-					type.meta.property(property).addChanged(callback.bind(thisPtr), obj, true);
-					return;
-				}
+			if (!obj) {
+				waitForObjectExists();
+			} else if (!obj.meta.isLoaded()) {
+				waitForObjectLoaded();
+			} else {
+				ensureListLoaded();
+			}
 
+			objSignal.waitForAll(function () {
 				callback.call(thisPtr || this, obj);
 			}, null, true);
 		}
