@@ -1856,7 +1856,11 @@ ServerSync.mixin({
 		this._addEvent("changesDetected", handler);
 	},
 	batchChanges: function (description, callback, thisPtr) {
-		this._changeLog.batchChanges(description, this._localUser, thisPtr ? callback.bind(thisPtr) : callback);
+		// Remove empty batches if a descriptive title or user is not specified.
+		// If a title or user is specified then it may be desireable to keep it for diagnostic purposes.
+		var removeIfEmpty = !description && !this._localUser;
+
+		this._changeLog.batchChanges(description, this._localUser, thisPtr ? callback.bind(thisPtr) : callback, removeIfEmpty);
 	},
 	changes: function ServerSync$changes(includeAllChanges, simulateInitRoot, excludeNonPersisted) {
 		var list = [];

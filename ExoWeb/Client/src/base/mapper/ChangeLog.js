@@ -53,7 +53,10 @@ ChangeLog.mixin({
 		var newBatchSetIndex,
 			newBatchSet,
 			changeSetStartedHandler,
-			previousActiveSet = this.activeSet;
+			previousActiveSet = this.activeSet,
+			previousActiveSetIdx = previousActiveSet ? this.sets.indexOf(previousActiveSet) : -1,
+			priorSet = previousActiveSet,
+			newActiveSet = null;
 
 		// Start a new set for the batch if there isn't a current active set. If there is a current active set it can be
 		// re-used if it has no pre-existing changes and has the same source, title, and user.
@@ -61,6 +64,23 @@ ChangeLog.mixin({
 			newBatchSet = new ChangeSet("client", title, user || this._defaultUser);
 			this.sets.push(newBatchSet);
 			this.activeSet = newBatchSet;
+		}
+
+		// If a new set is created for the batch, and there was a previous active set, then remove it if it isn't needed.
+		if (newBatchSet && previousActiveSet) {
+			// If there are no changes, no title, and no user, then the set doesn't provide any useful information.
+			if (!previousActiveSet.title && !previousActiveSet.user && previousActiveSet.changes.length === 0) {
+				// Re-use the set rather than create a new one. This is not strictly necessary, but since
+				// there is a precedent for attempting to reuse sets, it makes sense to do so here as well.
+				newActiveSet = previousActiveSet;
+
+				// Remove the set from the log.
+				this.sets.splice(previousActiveSetIdx, 1);
+				// NOTE: no need to alter "activeSet", since it was already changed to be the new batch set.
+
+				// Move the prior set back since the previous active set is removed.
+				priorSet = this.sets[previousActiveSetIdx - 1];
+			}
 		}
 
 		// Raise an error if a change set is started while the batch is being performed.
@@ -84,18 +104,29 @@ ChangeLog.mixin({
 				newBatchSetIndex = this.sets.indexOf(newBatchSet);
 
 				// Remove the new batch set if the caller specified that it should be removed if empty and there were no changes.
-				if (removeIfEmpty && newBatchSet === this.activeSet && newBatchSet !== previousActiveSet && newBatchSet.changes.length === 0) {
+				if (removeIfEmpty && newBatchSet === this.activeSet && newBatchSet.changes.length === 0) {
 					this.sets.splice(newBatchSetIndex, 1);
+
+					// Restore the previous active set to the log if it was removed.
+					if (previousActiveSet && priorSet !== previousActiveSet) {
+						this.sets.splice(previousActiveSetIdx, 0, previousActiveSet);
+					}
+
 					this.activeSet = previousActiveSet;
 					return null;
 				}
 
-				this.onChangeSetStarted(newBatchSet, previousActiveSet, newBatchSetIndex, this);
+				this.onChangeSetStarted(newBatchSet, priorSet, newBatchSetIndex, this);
 			}
 
 			// If there was previously an active set, start a new
 			// set in order to collect changes that follow separately.
-			if (previousActiveSet) {
+			if (newActiveSet) {
+				var idx = this.sets.push(newActiveSet) - 1;
+				var newPriorSet = this.sets[idx - 1];
+				this.activeSet = newActiveSet;
+				this.onChangeSetStarted(newActiveSet, newPriorSet, idx, this);
+			} else if (previousActiveSet) {
 				// Use the previous title and user for the new set.
 				this.start({ title: previousActiveSet.title, user: previousActiveSet.user });
 			} else if (this.activeSet.changes.length > 0) {
