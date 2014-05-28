@@ -42,6 +42,13 @@ Adapter.mixin({
 	_extendProperties: function Adapter$_extendProperties(options) {
 		if (options) {
 			var allowedOverrides = ["label", "helptext"];
+
+			// The "nullOption" value can be specified for booleans since options
+			// are exposed and they are not treated as nullable by default.
+			if (this.isType(Boolean)) {
+				allowedOverrides.push("nullOption");
+			}
+
 			this._extendedProperties = [];
 			for (var optionName in options) {
 				// check for existing getter and setter methods
@@ -352,6 +359,18 @@ Adapter.mixin({
 	get_helptext: function Adapter$get_helptext() {
 		// help text may also be included in the model?
 		return this._helptext || this._propertyChain.get_helptext() || "";
+	},
+	get_nullOption: function Adapter$get_nullOption() {
+		if (this.isType(Boolean)) {
+			if (this.hasOwnProperty("_nullOption")) {
+				return this._nullOption;
+			}
+
+			// Booleans are not nullable by default.
+			return false;
+		}
+
+		return true;
 	},
 	get_rawValue: function Adapter$get_rawValue() {
 		this._ensureObservable();
@@ -791,7 +810,7 @@ Adapter.mixin({
 	get_options: function Adapter$get_options() {
 		if (!this.hasOwnProperty("_options")) {
 			if (this.isType(Boolean)) {
-				this._options = [createOptionAdapter.call(this, true), createOptionAdapter.call(this, false)];
+				this._options = [createOptionAdapter.call(this, false), createOptionAdapter.call(this, true)];
 			}
 			else {
 				var lastProperty = this._propertyChain.lastProperty();

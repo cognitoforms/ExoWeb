@@ -28,7 +28,7 @@
 <span template:name="field" template:kind="@" template:isreference="true" template:islist="false" class="sys-template" sys:attach="template">
 	<select class="sys-template" sys:value="{ binding systemValue }" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}"
 		sys:attach="dataview" dataview:data="{ binding options }">
-		<option sys:if="{{ $index == 0 }}" value=""></option>
+		<option sys:if="{{ $index === 0 }}" value=""></option>
 		<option sys:if="{{ $dataItem.get_selected() }}" selected="selected" sys:value="{ binding systemValue, mode=oneTime }">{ binding displayValue, mode=oneTime }</option>
 		<option sys:if="{{ !$dataItem.get_selected() }}" sys:value="{ binding systemValue, mode=oneTime }">{ binding displayValue, mode=oneTime }</option>
 	</select>
@@ -45,7 +45,7 @@
 		</li>
 	</ul>
 	<select class="sys-template" sys:attach="dataview" dataview:data="{~ options, transform=where('selected === false') }" onchange="selectedOnlySelect(this)">
-		<option sys:if="{{ $index == 0 }}" value="">-- select --</option>
+		<option sys:if="{{ $index === 0 }}" value="">-- select --</option>
 		<option>{binding displayValue}</option>
 	</select>
 	<div class="validation">{ binding firstError.message }</div>
@@ -76,7 +76,18 @@
 	<div class="validation">{ binding firstError.message }</div>
 </span>
 
-<!-- field, boolean (check box) -->
+<!-- boolean, dropdown -->
+<span template:name="field dropdown" template:kind="@" template:datatype="Boolean" class="sys-template" sys:attach="template">
+    <select class="sys-template" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}"
+            sys:value="{binding systemValue}"
+            sys:attach="dataview" dataview:data="{binding options}">
+        <option sys:if="{{ $index === 0  && $dataItem.get_parent().get_nullOption() }}" value="">-- select --</option>
+        <option sys:value="{binding systemValue, mode=oneTime}" sys:selected="{{ $dataItem.get_selected() }}">{binding displayValue}</option>
+    </select>
+    <div class="validation">{ binding firstError.message }</div>
+</span>
+
+<!-- field, boolean, default (check box) -->
 <span template:name="field" template:kind="@" template:datatype="Boolean" class="sys-template" sys:attach="template">
 	<input type='checkbox' sys:checked="{ binding rawValue }" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" />
 	<div class="validation">{ binding firstError.message }</div>

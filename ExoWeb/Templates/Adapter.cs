@@ -22,6 +22,7 @@ namespace ExoWeb.Templates
 			"target", "propertyPath", "propertyChain", "dataType",
 			// "format", -- overriding format property value is allowed
 			// "label", -- overriding label property value is allowed
+			"nullOption", // -- overriding nullOption property value is allowed only for booleans
 			"allowedValuesRule", "allowedValues", "options", "selected",
 			"helptext", "rawValue", "systemValue", "displayValue"
 		};
@@ -49,8 +50,16 @@ namespace ExoWeb.Templates
 
 			// Copy custom properties that are allowed
 			foreach (string key in parameters.Keys)
-				if (!disallowedProperties.Contains(key))
+			{
+				var disallowed = disallowedProperties.Contains(key);
+
+				// Allow overriding nullOption property for booleans.
+				if (disallowed && key == "nullOption" && IsBoolean(Property))
+					disallowed = false;
+
+				if (!disallowed)
 					this.properties.Add(key, parameters[key]);
+			}
 		}
 
 		#region Properties
@@ -84,6 +93,29 @@ namespace ExoWeb.Templates
 			get
 			{
 				return binding.Value;
+			}
+		}
+
+		/// <summary>
+		/// The custom format, if specified
+		/// </summary>
+		public bool NullOption
+		{
+			get
+			{
+				if (IsBoolean(Property))
+				{
+					string nullOptionText;
+					if (properties.TryGetValue("nullOption", out nullOptionText))
+					{
+						bool nullOption;
+						return bool.TryParse(nullOptionText, out nullOption) && nullOption;
+					}
+
+					return false;
+				}
+
+				return true;
 			}
 		}
 
@@ -194,6 +226,11 @@ namespace ExoWeb.Templates
 
 		#region Methods
 
+		internal static bool IsBoolean(ModelProperty property)
+		{
+			return property is ModelValueProperty && JsonConverter.GetJsonValueType(((ModelValueProperty) property).PropertyType) == "Boolean";
+		}
+
 		/// <summary>
 		/// Attempts to retrieve 
 		/// </summary>
@@ -219,8 +256,8 @@ namespace ExoWeb.Templates
 				else
 					allowedValues = allowedInstances;
 			}
-			else if (property is ModelValueProperty && JsonConverter.GetJsonValueType(((ModelValueProperty)property).PropertyType) == "Boolean")
-				allowedValues = (new bool[] { true, false }).Cast<object>();
+			else if (IsBoolean(property))
+				allowedValues = new object[] { false, true };
 
 			return allowedValues != null;
 		}
