@@ -1418,6 +1418,9 @@ ServerSync.mixin({
 
 				// Cache the property since it is not a simple property access.
 				var property = srcObj.meta.property(change.property);
+				if (!property) {
+					throw new Error("Property \"" + change.property + "\" could not be found on type \"" + srcType.meta.get_fullName() + "\".");
+				}
 
 				// Apply change
 				if (change.newValue) {
@@ -1493,6 +1496,9 @@ ServerSync.mixin({
 
 				// Cache the property since it is not a simple property access.
 				var property = srcObj.meta.property(change.property);
+				if (!property) {
+					throw new Error("Property \"" + change.property + "\" could not be found on type \"" + srcType.meta.get_fullName() + "\".");
+				}
 
 				if (property.get_jstype() === Date && newValue && newValue.constructor == String && newValue.length > 0) {
 
@@ -1538,9 +1544,13 @@ ServerSync.mixin({
 				// Update change to reflect the object's new id
 				ServerSync$retroactivelyFixChangeWhereIdChanged(change.instance, srcObj);
 
-				var prop = srcObj.meta.property(change.property);
-				var isEntityList = prop.get_isEntityListType();
-				var list = prop.value(srcObj);
+				var property = srcObj.meta.property(change.property);
+				if (!property) {
+					throw new Error("Property \"" + change.property + "\" could not be found on type \"" + srcType.meta.get_fullName() + "\".");
+				}
+
+				var isEntityList = property.get_isEntityListType();
+				var list = property.value(srcObj);
 
 				list.beginUpdate();
 
@@ -1703,6 +1713,9 @@ ServerSync.mixin({
 
 				// Cache the property since it is not a simple property access.
 				var property = srcObj.meta.property(change.property);
+				if (!property) {
+					throw new Error("Property \"" + change.property + "\" could not be found on type \"" + srcType.meta.get_fullName() + "\".");
+				}
 
 				if (property.get_jstype() === Date && oldValue && oldValue.constructor == String && oldValue.length > 0) {
 
@@ -1781,9 +1794,13 @@ ServerSync.mixin({
 
 		tryGetJsType(this.model, change.instance.type, change.property, false, function (srcType) {
 			tryGetEntity(this.model, this._translator, srcType, change.instance.id, change.property, LazyLoadEnum.None, function (srcObj) {
-				var prop = srcObj.meta.property(change.property);
-				var isEntityList = prop.get_isEntityListType();
-				var list = prop.value(srcObj);
+				var property = srcObj.meta.property(change.property);
+				if (!property) {
+					throw new Error("Property \"" + change.property + "\" could not be found on type \"" + srcType.meta.get_fullName() + "\".");
+				}
+
+				var isEntityList = property.get_isEntityListType();
+				var list = property.value(srcObj);
 				var translator = this._translator;
 
 				list.beginUpdate();
