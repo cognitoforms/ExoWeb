@@ -120,12 +120,10 @@ RequiredIfRule.mixin({
 		else
 			isReq = this.isRequired(obj);
 
-		var val = this.property.value(obj);
-
 		if (this.requiredValue)
-			return isReq && val !== this.requiredValue;
+			return isReq && this.property.value(obj) !== this.requiredValue;
 		else
-			return isReq && !RequiredRule.hasValue(val);
+			return isReq && !RequiredRule.hasValue(this.property.value(obj));
 	},
 
 	// perform addition initialization of the rule when it is registered
