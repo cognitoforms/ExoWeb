@@ -11402,11 +11402,17 @@ window.ExoWeb.DotNet = {};
 
 			var signal = new Signal("applyChanges");
 			var waitForAllRegistered = false;
+			var batchStarted = false;
+			var changesApplying = false;
+			var callbackInvoked = false;
+			var methodExited = false;
 
 			try {
 				var batch = ExoWeb.Batch.start("apply changes");
+				batchStarted = true;
 
 				this.beginApplyingChanges();
+				changesApplying = true;
 
 				if (this._changeLog.activeSet) {
 					this._changeLog.stop();
@@ -11506,30 +11512,49 @@ window.ExoWeb.DotNet = {};
 					}
 				}, this);
 
-				// start a new set to capture future changes
+				// Start a new change set to capture future changes.
 				if (this.isCapturingChanges()) {
 					this._changeLog.start({ user: this._localUser });
 				}
 
 				waitForAllRegistered = true;
 				signal.waitForAll(function () {
+					// The method has not yet exited, which means that teardown is happening
+					// synchronously, so end applying changes before invoking the callback.
+					if (!methodExited) {
+						this.endApplyingChanges();
+					}
+
 					ExoWeb.Batch.end(batch);
+
 					if (callback) {
 						callback.call(thisPtr || this);
 					}
+
+					callbackInvoked = true;
 				}, this, true);
 			}
 			finally {
-				this.endApplyingChanges();
-				if (!waitForAllRegistered) {
+				// The 'teardown' callback was not invoked, either because of an error or because
+				// of delayed execution of the teardown routine, so end applying changes immediately.
+				if (changesApplying && !callbackInvoked) {
+					this.endApplyingChanges();
+				}
+
+				// An error occurred after the batch was started but before the 'teardown' callback
+				// was registered (which would normally end the batch) so end it immediately.
+				if (batchStarted && !waitForAllRegistered) {
 					ExoWeb.Batch.end(batch);
 				}
 			}
 
-			// raise "HasPendingChanges" change event, only new changes were recorded
 			if (newChanges.length > 0) {
 				this._raiseEvent("changesDetected", [this, { reason: "applyChanges", changes: newChanges }]);
 			}
+
+			// Allow potentially asynchronous callbacks to detect that the
+			// method has already exited via a closure on this variable.
+			methodExited = true;
 		},
 		applySaveChange: function (change, before, after, callback, thisPtr) {
 			if (!(change.added || change.deleted)) {
