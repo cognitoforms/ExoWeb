@@ -17910,7 +17910,7 @@ window.ExoWeb.DotNet = {};
 		get_options: function Adapter$get_options() {
 			if (!this.hasOwnProperty("_options")) {
 				if (this.isType(Boolean)) {
-					this._options = [createOptionAdapter.call(this, false), createOptionAdapter.call(this, true)];
+					this._options = [createOptionAdapter.call(this, true), createOptionAdapter.call(this, false)];
 				}
 				else {
 					var lastProperty = this._propertyChain.lastProperty();

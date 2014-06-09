@@ -257,7 +257,7 @@ namespace ExoWeb.Templates
 					allowedValues = allowedInstances;
 			}
 			else if (IsBoolean(property))
-				allowedValues = new object[] { false, true };
+				allowedValues = new object[] { true, false };
 
 			return allowedValues != null;
 		}
