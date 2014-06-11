@@ -1,1 +1,1 @@
-%~dp0\tools\AutoExec.exe rake %~dp0\src\*\*.js
+%~dp0\tools\AutoExec.exe BuildScripts.bat %~dp0\src\*\*.js
