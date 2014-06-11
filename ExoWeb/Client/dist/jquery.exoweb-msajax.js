@@ -14,10 +14,22 @@
 		return condition.type instanceof ExoWeb.Model.ConditionType.Error || condition.type instanceof ExoWeb.Model.ConditionType.Warning;
 	};
 
-	var ensureInited = function ($el) {
+	var onMetaConditionsChanged = function (sender, args) {
+		if (isValidationCondition(args.conditionTarget.condition)) {
+			$(this).trigger("validated", [meta.conditions(property)]);
+		}
+	};
+
+	var onConditionsCollectionChanged = function (sender, args) {
+		$(this).trigger("validated", [sender.filter(isValidationCondition)]);
+	};
+
+	var ensureInited = function (element, trackData) {
 		if (!window.ExoWeb) {
 			return;
 		}
+
+		var $el = jQuery(element);
 
 		if ($el.attr("__validating") === undefined) {
 			// register for model validation events
@@ -30,19 +42,33 @@
 
 				var meta = srcObj.meta || srcObj;
 
+				var validationData = null;
+
 				if (meta instanceof ExoWeb.Model.ObjectMeta) {
 					var property = meta.type.property(propName);
-					meta.addConditionsChanged(function (sender, args) {
-						if (isValidationCondition(args.conditionTarget.condition)) {
-							$el.trigger("validated", [meta.conditions(property)]);
-						}
-					}, property);
+
+					var metaHandler = onMetaConditionsChanged.bind(element);
+
+					if (trackData) {
+						validationData = { instance: { type: meta.type.get_fullName(), id: meta.id }, handler: metaHandler };
+					}
+
+					meta.addConditionsChanged(metaHandler, property);
 				}
 				else if (meta && meta.get_conditions) {
 					var conditions = meta.get_conditions();
-					ExoWeb.Observer.addCollectionChanged(conditions, function (sender, args) {
-						$el.trigger("validated", [conditions.filter(isValidationCondition)]);
-					});
+
+					var collectionHandler = onConditionsCollectionChanged.bind(element);
+
+					if (trackData) {
+						validationData = { collection: conditions, handler: collectionHandler };
+					}
+
+					ExoWeb.Observer.addCollectionChanged(conditions, collectionHandler);
+				}
+
+				if (trackData) {
+					$el.data("validated", validationData);
 				}
 			}
 
@@ -51,10 +77,10 @@
 		}
 	};
 
-	jQuery.fn.validated = function (f) {
+	jQuery.fn.validated = function (f, trackData) {
 		this.each(function () {
 			jQuery(this).bind('validated', f);
-			ensureInited(jQuery(this));
+			ensureInited(this, trackData);
 		});
 
 		return this;
