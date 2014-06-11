@@ -2,7 +2,7 @@
 
 var fs = require("fs"),
 	path = require("path"),
-	scriptBuilder = require("./ScriptBuilder.js");
+	scriptBuilder = require("./tools/javascript/ScriptBuilder.js");
 
 module.exports = function (grunt) {
 	"use strict";
@@ -30,7 +30,7 @@ module.exports = function (grunt) {
 		jshint: {
 			src: {
 				options: {
-					jshintrc: ".jshintrc"
+					jshintrc: "tools/.jshintrc"
 				},
 				files: {
 					src: "src/**/*.js"
@@ -60,8 +60,8 @@ module.exports = function (grunt) {
 				src: scriptBuilder.getNamespaceFiles("jquery_MsAjax"),
 				dest: "dist/jquery.exoweb-msajax.js",
 				options: {
-					banner: "\r\n// jquery plugin for msajax helper\r\n//////////////////////////////////////////////////\r\n(function() {\r\n\r\n",
-					footer: "\r\n})();",
+					banner: "// jquery plugin for msajax helper\r\n//////////////////////////////////////////////////\r\n(function(jQuery) {\r\n\r\n",
+					footer: "\r\n})(window.ExoJQuery || jQuery);\r\n",
 					process: scriptBuilder.processScriptSource
 				}
 			}
@@ -70,13 +70,13 @@ module.exports = function (grunt) {
 			myserver: {
 				options: {
 					port: 9093,
-					server: path.resolve(__dirname, 'server.js')
+					server: path.resolve(__dirname, 'runserver.js')
 				}
 			}
 		},
 		watch: {
 			autobuild: {
-				files: ["src/**/*.js", "Gruntfile.js", "ScriptBuilder.js"],
+				files: ["src/**/*.js", "Gruntfile.js", "tools/javascript/ScriptBuilder.js"],
 				tasks: ["build"]
 			}
 		}

@@ -1,0 +1,1 @@
+%~dp0\tools\AutoExec.exe rake %~dp0\src\*\*.js

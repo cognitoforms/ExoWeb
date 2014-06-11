@@ -1,4 +1,6 @@
-var files = {};
+var fs = require('fs');
+
+var files = JSON.parse(fs.readFileSync('scripts.json', 'utf8'));
 
 exports.buildNamespacesObjects = function () {
 	return Array.prototype.map.call(arguments, function (ns) { return "window.ExoWeb." + ns + " = {};"; }).join("\r\n");
@@ -27,6 +29,7 @@ exports.processScriptSource = function (src, filePath) {
 	result += "\t//////////////////////////////////////////////////" + "\r\n";
 
 	var previousLineRemoved = false;
+	var whitespaceLines = 0;
 	src.split("\r\n").forEach(function (line) {
 		if (/(^|\n)[ \t]*('use strict'|"use strict");?\s*$/.test(line)) {
 			// Skip "use strict" statements.
@@ -48,26 +51,28 @@ exports.processScriptSource = function (src, filePath) {
 				// Do not manipulate whitespace-only lines.
 				result += "\r\n" + line;
 				previousLineRemoved = false;
+				whitespaceLines += 1;
 			}
 		} else if (/^\s*exports\.([^=]*\s*=)/.test(line)) {
 			result += "\r\n\t" + line.replace(/^\s*exports\.([^=]*\s*=)/, modulePrefix + "$1");
+			whitespaceLines = 0;
 			previousLineRemoved = false;
 		} else {
 			result += "\r\n\t" + line;
+			whitespaceLines = 0;
 			previousLineRemoved = false;
 		}
 	});
 
-	// Emulate current logic.
 	result += "\r\n";
-	if (previousLineRemoved) {
+	if (whitespaceLines === 0) {
 		result += "\r\n";
+	} else {
+		while (whitespaceLines > 1) {
+			result = result.substring(0, result.length - 2);
+			whitespaceLines -= 1;
+		}
 	}
-
-	// Use this logic instead when migration is complete.
-	// if (!previousLineRemoved) {
-	// result += "\r\n";
-	// }
 
 	// Add "end region" footer
 	result += "\t// #endregion\r\n";
@@ -91,130 +96,3 @@ exports.getNamespaceFiles = function () {
 	});
 	return result;
 };
-
-// Namespace file definitions
-///////////////////////////////
-files.core = [
-	"Config",
-	"Unload",
-	"Errors",
-	"Warnings",
-	"TypeChecking",
-	"Random",
-	"Function",
-	"Array",
-	"String",
-	"Cache",
-	"Activity",
-	"Batch",
-	"Signal",
-	"Functor",
-	"FunctionChain",
-	"EventScope",
-	"EvalWrapper",
-	"Transform",
-	"Translator",
-	"Utilities",
-	"TimeSpan",
-	"Date",
-	"Object",
-	"Observer",
-	"PropertyObserver"
-];
-
-files.model = [
-	"Resource",
-	"Format",
-	"Model",
-	"Entity",
-	"Type",
-	"Property",
-	"PathTokens",
-	"PropertyChain",
-	"ObjectMeta",
-	"RuleInvocationType",
-	"Rule",
-	"RuleInput",
-	"ConditionRule",
-	"ValidatedPropertyRule",
-	"CalculatedPropertyRule",
-	"RequiredRule",
-	"RangeRule",
-	"AllowedValuesRule",
-	"CompareRule",
-	"RequiredIfRule",
-	"StringLengthRule",
-	"StringFormatRule",
-	"ListLengthRule",
-	"ConditionTypeSet",
-	"ConditionType",
-	"ConditionTarget",
-	"Condition",
-	"FormatError",
-	"FormatProvider",
-	"LazyLoader",
-	"Utilities"
-];
-
-files.mapper = [
-	"ObjectProvider",
-	"QueryProvider",
-	"TypeProvider",
-	"ListProvider",
-	"RoundtripProvider",
-	"SaveProvider",
-	"EventProvider",
-	"ResponseHandler",
-	"Translation",
-	"ExoModelEventListener",
-	"ChangeSet",
-	"ChangeLog",
-	"ServerSync",
-	"Internals",
-	"TypeLazyLoader",
-	"ObjectLazyLoader",
-	"ListLazyLoader",
-	"Context",
-	"ContextQuery",
-	"ExoWeb",
-	"Extend"
-];
-
-files.ui = [
-	"Toggle",
-	"ToggleGroup",
-	"Template",
-	"Content",
-	"DataView",
-	"Html",
-	"Behavior",
-	"Utilities"
-];
-
-files.view = [
-	"AdapterMarkupExtension",
-	"MetaMarkupExtension",
-	"ConditionMarkupExtension",
-	"Binding",
-	"LazyMarkupExtension",
-	"Adapter",
-	"OptionAdapter",
-	"OptionGroupAdapter",
-	"MsAjax"
-];
-
-files.jquery_MsAjax = [
-	"Validation",
-	"Selectors",
-	"Helpers",
-	"Ever"
-];
-
-files.dotNet = [
-	"WebService"
-];
-
-files.msajax = [
-	"FormatProvider",
-	"ObserverProvider"
-];

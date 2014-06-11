@@ -9,8 +9,8 @@
 # indented with the given number of tabs
 def read file, indent=0, exports=nil
 	result = ""
+	whitespace_lines = 0
 	File.open(file, "r") do |f|
-		last_line = nil
 		removed = false
 		while (line = f.gets)
 			# ignore export statements
@@ -47,7 +47,22 @@ def read file, indent=0, exports=nil
 				result += ("\t" * indent)
 			end
 			result += line
+			if (line =~ /^\s*$/) == 0 then
+				whitespace_lines += 1
+			elsif line.end_with?("\n") then
+				whitespace_lines = 1
+			else
+				whitespace_lines = 0
+			end
 			removed = false
+		end
+	end
+	if whitespace_lines === 0 then
+		result += "\n"
+	else
+		while whitespace_lines > 1
+			result = result.sub(/\n\Z/, "")
+			whitespace_lines -= 1
 		end
 	end
 	return result
@@ -197,7 +212,7 @@ end
 def jshint(file_name)
 	if system("node --version")
 		in_path = File.join(@dist_dir, file_name + ".js")
-		sh "node runjshint.js " + in_path
+		sh "node tools/javascript/runjshint.js " + in_path
 	end
 end
 
@@ -238,11 +253,11 @@ end
 
 task :build_jquery_msajax_plugin do
 	File.open(File.join(@dist_dir, "jquery.exoweb-msajax.js"), "w") do |f|
-		f.write("\n// jquery plugin for msajax helper\n" + ("/" * 50) + "\n(function() {\n")
+		f.write("// jquery plugin for msajax helper\n" + ("/" * 50) + "\n(function(jQuery) {\n")
 		src_dir = File.join(File.join(@src_dir, "extensions"), "jquery-msajax")
 		header = "jquery plugin for msajax helper"
 		f.write(build_content([header], src_dir, @src_files["extensions/jquery-msajax"], 1, @exports["extensions/jquery-msajax"]))
-		f.write("\n})();")
+		f.write("\n})(window.ExoJQuery || jQuery);\n")
 	end
 	puts("completed build_jquery_msajax_plugin task")
 	jshint("jquery.exoweb-msajax")

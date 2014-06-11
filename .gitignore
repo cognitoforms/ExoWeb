@@ -10,3 +10,4 @@ obj/
 .DS_STORE
 node_modules/
 ExoWeb/Client/Gruntfile.TfsCheckout.js
+ExoWeb/Client/tools/powershell/TfsSourceControl.ps1

@@ -81,8 +81,8 @@
     <Content Include="Client\ref\syntaxhighlighter\shBrushJScript.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
-    <Content Include="Client\ScriptBuilder.js" />
-    <Content Include="Client\server.js" />
+    <Content Include="Client\tools\javascript\ScriptBuilder.js" />
+    <Content Include="Client\runserver.js" />
     <Content Include="Client\specs\base\core\FunctorSpecs.js" />
     <Content Include="Client\src\base\core\Errors.js" />
     <Content Include="Client\src\base\core\Observer.js" />
@@ -165,6 +165,7 @@
     <Compile Include="ViewScope.cs" />
     <Content Include="Client\tests\base\mapper\ContextTests.js" />
     <Content Include="Client\tests\base\mapper\ServerSyncTests.js" />
+    <Content Include="Client\tools\AutoExec.exe" />
     <Content Include="Dependencies\Newtonsoft.Json.dll" />
   </ItemGroup>
   <ItemGroup>
@@ -178,7 +179,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Client\AutoExec.exe" />
     <Content Include="Client\dist\exoweb-templates.htm" />
     <Content Include="Client\dist\exoweb-mock.js" />
     <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
@@ -194,7 +194,7 @@
     <Content Include="Client\ref\aspnetajax\MicrosoftAjaxWebForms.debug.js" />
     <Content Include="Client\ref\jshint\jshint.js" />
     <Content Include="Client\ref\jsmin\jsmin.exe" />
-    <Content Include="Client\runjshint.js" />
+    <Content Include="Client\tools\javascript\runjshint.js" />
     <Content Include="Client\specs\base\core\EventScopeSpecs.js" />
     <Content Include="Client\specs\base\core\ArraySpecs.js" />
     <Content Include="Client\specs\base\core\DateSpecs.js" />
@@ -352,16 +352,22 @@
     <Content Include="Dependencies\Jurassic.pdb" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Client\.jshintrc" />
-    <None Include="Client\AutoRake.bat" />
+    <None Include="Client\scripts.json" />
+    <None Include="Client\tools\.jshintrc" />
+    <None Include="Client\AutoBuildScripts.bat" />
     <None Include="Client\package.json" />
-    <None Include="Client\PreRake.bat" />
     <None Include="Client\Rakefile" />
-    <None Include="Client\RakeScripts.bat" />
+    <None Include="Client\BuildScripts.bat" />
     <None Include="Client\ref\aspnetajax\LICENSE" />
     <None Include="Client\ref\jsmin\jsmin" />
     <None Include="Client\ref\jsmin\jsmin.c" />
     <None Include="Client\ref\syntaxhighlighter\MIT-LICENSE" />
+    <None Include="Client\tools\powershell\BuildAll.ps1" />
+    <None Include="Client\tools\powershell\Invoke-JavaScriptBuild.ps1" />
+    <None Include="Client\tools\powershell\lib\Common.ps1" />
+    <None Include="Client\tools\powershell\lib\ScriptBuilder.ps1" />
+    <None Include="Client\tools\powershell\lib\SourceControl.ps1" />
+    <None Include="Client\tools\powershell\lib\TfsSourceControl.ps1" />
     <None Include="NuGet\ExoWeb.Scripts.nuspec" />
     <None Include="NuGet\ExoWeb.nuspec" />
     <None Include="NuGet\Views\Web.config.transform" />
@@ -377,7 +383,8 @@
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>
-  <Target Name="AfterBuild">
-  </Target>
   -->
+  <Target Name="AfterBuild" Condition=" '$(Configuration)' == 'Debug' ">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp; '$(ProjectDir)\Client\tools\powershell\BuildAll.ps1' -ErrorAction Stop&quot;" />
+  </Target>
 </Project>

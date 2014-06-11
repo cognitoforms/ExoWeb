@@ -2,7 +2,7 @@ var express = require("express"),
 	app = express();
 
 app.get("/", function (req, res) {
-	res.redirect("/tests.html");
+	res.redirect("tests.html");
 });
 
 app.configure(function () {

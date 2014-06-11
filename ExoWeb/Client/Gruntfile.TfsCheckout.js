@@ -37,7 +37,7 @@ exports.grunt = function (grunt) {
 	}
 
 	function getStatus(item, recursive, callback) {
-		run("tf status \"" + item + "\"" + (recursive ? " /recursive" : ""), function (statusSuccess, statusOutput) {
+		run("tf status \"" + item + "\"" + (recursive ? " /recursive" : "") + " /nodetect", function (statusSuccess, statusOutput) {
 			if (!statusSuccess) {
 				throw new Error("Error: " + statusOutput);
 			}

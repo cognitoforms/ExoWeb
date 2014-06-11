@@ -1071,7 +1071,6 @@ window.ExoWeb.DotNet = {};
 		return result ? (result[1] || "{anonymous}") : "{anonymous}";
 	}
 
-
 	// #endregion
 
 	// #region ExoWeb.Array
@@ -1472,7 +1471,6 @@ window.ExoWeb.DotNet = {};
 	if (!Array.prototype.some)
 		Array.prototype.some = function(fun /*, thisp*/) { return some(this, fun, arguments[1]); };
 
-
 	// #endregion
 
 	// #region ExoWeb.String
@@ -1487,7 +1485,6 @@ window.ExoWeb.DotNet = {};
 	function isNullOrEmpty(str) {
 		return str === null || str === undefined || str === "";
 	}
-
 
 	// #endregion
 
@@ -1621,6 +1618,7 @@ window.ExoWeb.DotNet = {};
 	}
 
 	ExoWeb.getBusyItems = getBusyItems;
+
 	// #endregion
 
 	// #region ExoWeb.Batch
@@ -3164,6 +3162,7 @@ window.ExoWeb.DotNet = {};
 			return new Date(this.getTime() + timeSpan.totalMilliseconds);
 		}
 	});
+
 	// #endregion
 
 	// #region ExoWeb.Date
@@ -3324,6 +3323,7 @@ window.ExoWeb.DotNet = {};
 			}
 		}
 	};
+
 	// #endregion
 
 	// #region ExoWeb.Observer
@@ -3504,6 +3504,7 @@ window.ExoWeb.DotNet = {};
 
 	// expose publicly
 	ExoWeb.Observer = Observer;
+
 	// #endregion
 
 	// #region ExoWeb.PropertyObserver
@@ -3690,6 +3691,7 @@ window.ExoWeb.DotNet = {};
 
 	// publicly export the resource object
 	ExoWeb.Model.Resource = Resource;
+
 	// #endregion
 
 	// #region ExoWeb.Model.Format
@@ -6433,7 +6435,6 @@ window.ExoWeb.DotNet = {};
 		PropertyChanged: 16
 	}
 
-
 	// #endregion
 
 	// #region ExoWeb.Model.Rule
@@ -7011,6 +7012,7 @@ window.ExoWeb.DotNet = {};
 	// expose the rule publicly
 	Rule.condition = ConditionRule;
 	ExoWeb.Model.ConditionRule = ConditionRule;
+
 	// #endregion
 
 	// #region ExoWeb.Model.ValidatedPropertyRule
@@ -7101,6 +7103,7 @@ window.ExoWeb.DotNet = {};
 	// Expose the rule publicly
 	Rule.validated = ValidatedPropertyRule;
 	ExoWeb.Model.ValidatedPropertyRule = ValidatedPropertyRule;
+
 	// #endregion
 
 	// #region ExoWeb.Model.CalculatedPropertyRule
@@ -7283,6 +7286,7 @@ window.ExoWeb.DotNet = {};
 	// Expose the rule publicly
 	Rule.required = RequiredRule;
 	ExoWeb.Model.RequiredRule = RequiredRule;
+
 	// #endregion
 
 	// #region ExoWeb.Model.RangeRule
@@ -7360,6 +7364,7 @@ window.ExoWeb.DotNet = {};
 	// Expose the rule publicly
 	Rule.range = RangeRule;
 	ExoWeb.Model.RangeRule = RangeRule;
+
 	// #endregion
 
 	// #region ExoWeb.Model.AllowedValuesRule
@@ -7807,6 +7812,7 @@ window.ExoWeb.DotNet = {};
 	// Expose the rule publicly
 	Rule.requiredIf = RequiredIfRule;
 	ExoWeb.Model.RequiredIfRule = RequiredIfRule;
+
 	// #endregion
 
 	// #region ExoWeb.Model.StringLengthRule
@@ -8057,6 +8063,7 @@ window.ExoWeb.DotNet = {};
 	// expose the rule publicly
 	Rule.listLength = ListLengthRule;
 	ExoWeb.Model.ListLengthRule = ListLengthRule;
+
 	// #endregion
 
 	// #region ExoWeb.Model.ConditionTypeSet
@@ -8299,6 +8306,7 @@ window.ExoWeb.DotNet = {};
 		// attach the condition target to the target entity
 		target.meta.setCondition(this);
 	}
+
 	// #endregion
 
 	// #region ExoWeb.Model.Condition
@@ -8493,7 +8501,6 @@ window.ExoWeb.DotNet = {};
 	}
 
 	ExoWeb.Model.getFormat = getFormat;
-
 
 	// #endregion
 
@@ -8971,7 +8978,6 @@ window.ExoWeb.DotNet = {};
 		}
 	};
 
-
 	// #endregion
 
 	// #region ExoWeb.Model.Utilities
@@ -9001,6 +9007,7 @@ window.ExoWeb.DotNet = {};
 	}
 
 	ExoWeb.getValue = getValue;
+
 	// #endregion
 
 	// #region ExoWeb.Mapper.ObjectProvider
@@ -9054,7 +9061,6 @@ window.ExoWeb.DotNet = {};
 		objectProviderFn = fn;
 	};
 
-
 	// #endregion
 
 	// #region ExoWeb.Mapper.QueryProvider
@@ -9107,7 +9113,6 @@ window.ExoWeb.DotNet = {};
 	ExoWeb.Mapper.setQueryProvider = function setQueryProvider(fn) {
 		queryProviderFn = fn;
 	};
-
 
 	// #endregion
 
@@ -9199,7 +9204,6 @@ window.ExoWeb.DotNet = {};
 		typeProviderFn = fn;
 	};
 
-
 	// #endregion
 
 	// #region ExoWeb.Mapper.ListProvider
@@ -9264,7 +9268,6 @@ window.ExoWeb.DotNet = {};
 		listProviderFn = fn;
 	};
 
-
 	// #endregion
 
 	// #region ExoWeb.Mapper.RoundtripProvider
@@ -9318,7 +9321,6 @@ window.ExoWeb.DotNet = {};
 		roundtripProviderFn = fn;
 	};
 
-
 	// #endregion
 
 	// #region ExoWeb.Mapper.SaveProvider
@@ -9371,7 +9373,6 @@ window.ExoWeb.DotNet = {};
 		saveProviderFn = fn;
 	};
 
-
 	// #endregion
 
 	// #region ExoWeb.Mapper.EventProvider
@@ -9423,7 +9424,6 @@ window.ExoWeb.DotNet = {};
 	ExoWeb.Mapper.setEventProvider = function setEventProvider(fn) {
 		eventProviderFn = fn;
 	};
-
 
 	// #endregion
 
@@ -9974,7 +9974,6 @@ window.ExoWeb.DotNet = {};
 		}
 	});
 
-
 	// #endregion
 
 	// #region ExoWeb.Mapper.ChangeLog
@@ -10292,7 +10291,6 @@ window.ExoWeb.DotNet = {};
 			return change;
 		}
 	});
-
 
 	// #endregion
 
@@ -12235,7 +12233,6 @@ window.ExoWeb.DotNet = {};
 		});
 	};
 
-
 	// #endregion
 
 	// #region ExoWeb.Mapper.Internals
@@ -13490,7 +13487,6 @@ window.ExoWeb.DotNet = {};
 			LazyLoader.unregister(obj, instance);
 		};
 	})();
-
 
 	// #endregion
 
@@ -18723,6 +18719,7 @@ window.ExoWeb.DotNet = {};
 		});
 
 	});
+
 	// #endregion
 
 	// #region ObserverProvider

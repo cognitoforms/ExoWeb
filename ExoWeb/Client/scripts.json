@@ -1,0 +1,126 @@
+{
+	"core": [
+		"Config",
+		"Unload",
+		"Errors",
+		"Warnings",
+		"TypeChecking",
+		"Random",
+		"Function",
+		"Array",
+		"String",
+		"Cache",
+		"Activity",
+		"Batch",
+		"Signal",
+		"Functor",
+		"FunctionChain",
+		"EventScope",
+		"EvalWrapper",
+		"Transform",
+		"Translator",
+		"Utilities",
+		"TimeSpan",
+		"Date",
+		"Object",
+		"Observer",
+		"PropertyObserver"
+	],
+
+	"model": [
+		"Resource",
+		"Format",
+		"Model",
+		"Entity",
+		"Type",
+		"Property",
+		"PathTokens",
+		"PropertyChain",
+		"ObjectMeta",
+		"RuleInvocationType",
+		"Rule",
+		"RuleInput",
+		"ConditionRule",
+		"ValidatedPropertyRule",
+		"CalculatedPropertyRule",
+		"RequiredRule",
+		"RangeRule",
+		"AllowedValuesRule",
+		"CompareRule",
+		"RequiredIfRule",
+		"StringLengthRule",
+		"StringFormatRule",
+		"ListLengthRule",
+		"ConditionTypeSet",
+		"ConditionType",
+		"ConditionTarget",
+		"Condition",
+		"FormatError",
+		"FormatProvider",
+		"LazyLoader",
+		"Utilities"
+	],
+
+	"mapper": [
+		"ObjectProvider",
+		"QueryProvider",
+		"TypeProvider",
+		"ListProvider",
+		"RoundtripProvider",
+		"SaveProvider",
+		"EventProvider",
+		"ResponseHandler",
+		"Translation",
+		"ExoModelEventListener",
+		"ChangeSet",
+		"ChangeLog",
+		"ServerSync",
+		"Internals",
+		"TypeLazyLoader",
+		"ObjectLazyLoader",
+		"ListLazyLoader",
+		"Context",
+		"ContextQuery",
+		"ExoWeb",
+		"Extend"
+	],
+
+	"ui": [
+		"Toggle",
+		"ToggleGroup",
+		"Template",
+		"Content",
+		"DataView",
+		"Html",
+		"Behavior",
+		"Utilities"
+	],
+
+	"view": [
+		"AdapterMarkupExtension",
+		"MetaMarkupExtension",
+		"ConditionMarkupExtension",
+		"Binding",
+		"LazyMarkupExtension",
+		"Adapter",
+		"OptionAdapter",
+		"OptionGroupAdapter",
+		"MsAjax"
+	],
+
+	"jquery_MsAjax": [
+		"Validation",
+		"Selectors",
+		"Helpers",
+		"Ever"
+	],
+
+	"dotNet": [
+		"WebService"
+	],
+
+	"msajax": [
+		"FormatProvider",
+		"ObserverProvider"
+	]
+}
