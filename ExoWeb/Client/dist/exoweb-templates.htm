@@ -76,17 +76,6 @@
 	<div class="validation">{ binding firstError.message }</div>
 </span>
 
-<!-- boolean, dropdown -->
-<span template:name="field dropdown" template:kind="@" template:datatype="Boolean" class="sys-template" sys:attach="template">
-    <select class="sys-template" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}"
-            sys:value="{binding systemValue}"
-            sys:attach="dataview" dataview:data="{binding options}">
-        <option sys:if="{{ $index === 0  && $dataItem.get_parent().get_nullOption() }}" value="">-- select --</option>
-        <option sys:value="{binding systemValue, mode=oneTime}" sys:selected="{{ $dataItem.get_selected() }}">{binding displayValue}</option>
-    </select>
-    <div class="validation">{ binding firstError.message }</div>
-</span>
-
 <!-- field, boolean, default (check box) -->
 <span template:name="field" template:kind="@" template:datatype="Boolean" class="sys-template" sys:attach="template">
 	<input type='checkbox' sys:checked="{ binding rawValue }" sys:id="{{ $context.parentContext.getInstanceId($dataItem.get_label().replace(/[^a-z0-9]/gi, '')) }}" />

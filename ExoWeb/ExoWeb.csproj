@@ -183,7 +183,6 @@
     <Content Include="Client\dist\exoweb-mock.js" />
     <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
     <Content Include="Client\dist\exoweb-msajax.js" />
-    <Content Include="Client\dist\exoweb.templates.htm" />
     <Content Include="Client\dist\jquery.exoweb-msajax.js" />
     <Content Include="Client\dist\json2.js" />
     <Content Include="Client\ref\aspnetajax\MicrosoftAjax.debug.js" />
