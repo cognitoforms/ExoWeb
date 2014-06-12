@@ -10,12 +10,15 @@ function Format(options) {
 	this._description = options.description;
 	this._nullString = options.nullString || "";
 	this._undefinedString = options.undefinedString || "";
+
+	// function to perform additional post formatting
+	this._formatEval = options.formatEval;
 }
 
 var formatTemplateParser = /\[([a-z_][a-z0-9_.]*)(\:(.+?))?\]/ig;
 var metaPathParser = /^(.*\.|)meta(\..*|)$/;
 
-Format.fromTemplate = function Format$fromTemplate(type, template) {
+Format.fromTemplate = function Format$fromTemplate(type, template, formatEval) {
 
 	return new Format({
 		specifier: template,
@@ -117,12 +120,16 @@ Format.fromTemplate = function Format$fromTemplate(type, template) {
 							token.format = getFormat(value.constructor, token.format);
 						}
 						value = token.format.convert(value);
+						if (this._formatEval)
+							value = this._formatEval(value);
 					}
 					result = result + value;
 				}
 			}
 			return result;
-		}
+		},
+
+		formatEval: formatEval
 	});
 };
 
