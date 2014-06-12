@@ -3709,6 +3709,8 @@ window.ExoWeb.DotNet = {};
 		this._description = options.description;
 		this._nullString = options.nullString || "";
 		this._undefinedString = options.undefinedString || "";
+
+		// function to perform additional post formatting
 		this._formatEval = options.formatEval;
 	}
 
