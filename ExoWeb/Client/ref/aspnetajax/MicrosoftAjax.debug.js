@@ -942,7 +942,7 @@ Number.__class = true;
 RegExp.__typeName = 'RegExp';
 RegExp.__class = true;
 
-if (!window) this.window = this;
+//if (!window) this.window = this;
 
 
 window.Type = Function;
