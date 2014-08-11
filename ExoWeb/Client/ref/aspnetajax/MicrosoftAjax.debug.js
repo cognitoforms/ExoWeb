@@ -5654,29 +5654,33 @@ Sys._Application = function Sys$_Application() {
 	}
 
 	function Sys$_Application$_unloadHandler(event) {
-		this.dispose();
-		window.$find = null;
-		window.Type = null;
-		window._events = null;
+		try {
+			this.dispose();
+			window.$find = null;
+			window.Type = null;
+			window._events = null;
 
-		CleanupPrototype(Function);
-		CleanupPrototype(Object);
-		CleanupPrototype(String);
-		CleanupPrototype(Array);
-		CleanupPrototype(RegExp);
-		CleanupPrototype(Number);
-		CleanupPrototype(Boolean);
-		CleanupPrototype(Date);
-		CleanupPrototype(Error);
+			CleanupPrototype(Function);
+			CleanupPrototype(Object);
+			CleanupPrototype(String);
+			CleanupPrototype(Array);
+			CleanupPrototype(RegExp);
+			CleanupPrototype(Number);
+			CleanupPrototype(Boolean);
+			CleanupPrototype(Date);
+			CleanupPrototype(Error);
 
-		for (var type in Sys.__upperCaseTypes)
-			CleanupPrototype(Sys.__upperCaseTypes[type]);
+			for (var type in Sys.__upperCaseTypes)
+				CleanupPrototype(Sys.__upperCaseTypes[type]);
 
-		window.Sys = null;
-		window.onload = null;
-		window.onunload = null;
-		window.__msajaxdispose = null;
-		window.dispose = null;
+			window.Sys = null;
+			window.onload = null;
+			window.onunload = null;
+			window.__msajaxdispose = null;
+			window.dispose = null;
+		}
+		catch (e)
+		{}
 	}
 Sys._Application.prototype = {
 	_deleteCount: 0,

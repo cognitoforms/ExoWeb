@@ -10668,8 +10668,7 @@ window.ExoWeb.DotNet = {};
 					// Search added and removed for an object that can be saved.
 					Array.forEach(change.added, function (item) {
 						// if the type doesn't exist then obviously the instance doesn't either
-						var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
-						if (!jstype) {
+						if (!item.type || !ExoWeb.Model.Model.getJsType(item.type, true)) {
 							ignore = false;
 						}
 						else {
@@ -10682,8 +10681,7 @@ window.ExoWeb.DotNet = {};
 					}, this);
 					Array.forEach(change.removed, function (item) {
 						// if the type doesn't exist then obviously the instance doesn't either
-						var jstype = ExoWeb.Model.Model.getJsType(item.type, true);
-						if (!jstype) {
+						if (!item.type || !ExoWeb.Model.Model.getJsType(item.type, true)) {
 							ignore = false;
 						}
 						else {
