@@ -43,7 +43,12 @@ function IsLocalWorkspace {
 	)
 
 	$exe = GetTfExePath
+
 	$user = GetCurrentUser -Kind LoggedIn -KeepDomain
+	if (!$user) {
+		$user = GetCurrentUser -Kind Running -KeepDomain
+	}
+
 	$output = RunExe -FilePath $exe -Arguments "workspaces /owner:$user /computer:$env:COMPUTERNAME /format:detailed"
 
 	foreach ($line in ($output -split [System.Environment]::NewLine)) {
