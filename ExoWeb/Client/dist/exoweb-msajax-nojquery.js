@@ -5143,6 +5143,30 @@ window.ExoWeb.DotNet = {};
 
 			obj.meta.pendingInit(this, false);
 
+			this.raiseChanged(obj, val, old, additionalArgs);
+		}
+	}
+
+	Property.mixin({
+
+		defaultValue: function Property$defaultValue(value) {
+			this._defaultValue = value;
+			return this;
+		},
+
+		equals: function Property$equals(prop) {
+			if (prop !== undefined && prop !== null) {
+				if (prop instanceof Property) {
+					return this === prop;
+				}
+				else if (prop instanceof PropertyChain) {
+					var props = prop.all();
+					return props.length === 1 && this.equals(props[0]);
+				}
+			}
+		},
+
+		raiseChanged: function (obj, val, old, additionalArgs) {
 			// NOTE: property change should be broadcast before rules are run so that if 
 			// any rule causes a roundtrip to the server these changes will be available
 			this._containingType.model.notifyAfterPropertySet(obj, this, val, old);
@@ -5165,26 +5189,6 @@ window.ExoWeb.DotNet = {};
 			}
 
 			Observer.raisePropertyChanged(obj, this._name);
-		}
-	}
-
-	Property.mixin({
-
-		defaultValue: function Property$defaultValue(value) {
-			this._defaultValue = value;
-			return this;
-		},
-
-		equals: function Property$equals(prop) {
-			if (prop !== undefined && prop !== null) {
-				if (prop instanceof Property) {
-					return this === prop;
-				}
-				else if (prop instanceof PropertyChain) {
-					var props = prop.all();
-					return props.length === 1 && this.equals(props[0]);
-				}
-			}
 		},
 
 		rule: function (type) {

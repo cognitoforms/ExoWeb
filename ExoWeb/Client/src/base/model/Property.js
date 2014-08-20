@@ -168,28 +168,7 @@ function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 
 		obj.meta.pendingInit(this, false);
 
-		// NOTE: property change should be broadcast before rules are run so that if 
-		// any rule causes a roundtrip to the server these changes will be available
-		this._containingType.model.notifyAfterPropertySet(obj, this, val, old);
-
-		var changedEvent = this._getEventHandler("changed");
-		if (changedEvent && !changedEvent.isEmpty()) {
-			// Create the event argument object
-			var args = { property: this, newValue: val, oldValue: old };
-
-			// Assign custom event argument values
-			if (additionalArgs) {
-				for (var p in additionalArgs) {
-					if (additionalArgs.hasOwnProperty(p)) {
-						args[p] = additionalArgs[p];
-					}
-				}
-			}
-
-			changedEvent(obj, args);
-		}
-
-		Observer.raisePropertyChanged(obj, this._name);
+		this.raiseChanged(obj, val, old, additionalArgs);
 	}
 }
 
@@ -212,6 +191,31 @@ Property.mixin({
 				return props.length === 1 && this.equals(props[0]);
 			}
 		}
+	},
+
+	raiseChanged: function (obj, val, old, additionalArgs) {
+		// NOTE: property change should be broadcast before rules are run so that if 
+		// any rule causes a roundtrip to the server these changes will be available
+		this._containingType.model.notifyAfterPropertySet(obj, this, val, old);
+
+		var changedEvent = this._getEventHandler("changed");
+		if (changedEvent && !changedEvent.isEmpty()) {
+			// Create the event argument object
+			var args = { property: this, newValue: val, oldValue: old };
+
+			// Assign custom event argument values
+			if (additionalArgs) {
+				for (var p in additionalArgs) {
+					if (additionalArgs.hasOwnProperty(p)) {
+						args[p] = additionalArgs[p];
+					}
+				}
+			}
+
+			changedEvent(obj, args);
+		}
+
+		Observer.raisePropertyChanged(obj, this._name);
 	},
 
 	rule: function (type) {
