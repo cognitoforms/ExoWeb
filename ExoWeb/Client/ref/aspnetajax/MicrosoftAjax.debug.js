@@ -5654,6 +5654,10 @@ Sys._Application = function Sys$_Application() {
 	}
 
 	function Sys$_Application$_unloadHandler(event) {
+
+		// Skip disposal logic except for older versions of Internet Explorer
+		if (Sys.Browser.agent !== Sys.Browser.InternetExplorer || Sys.Browser.version > 9) return;
+
 		try {
 			this.dispose();
 			window.$find = null;
