@@ -4658,13 +4658,11 @@ window.ExoWeb.DotNet = {};
 				this._jstype.prototype["get_" + def.name] = this._makeGetter(prop, Property$_getter.bind(prop), true);
 			}
 
-			if (!prop.get_isList()) {
-				if (prop.get_isStatic()) {
-					this._jstype["set_" + def.name] = this._makeSetter(prop);
-				}
-				else {
-					this._jstype.prototype["set_" + def.name] = this._makeSetter(prop);
-				}
+			if (prop.get_isStatic()) {
+				this._jstype["set_" + def.name] = this._makeSetter(prop);
+			}
+			else {
+				this._jstype.prototype["set_" + def.name] = this._makeSetter(prop);
 			}
 
 			this._raiseEvent("propertyAdded", [this, { property: prop}]);
