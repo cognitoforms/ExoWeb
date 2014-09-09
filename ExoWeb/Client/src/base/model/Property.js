@@ -155,20 +155,27 @@ function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 
 	var old = obj[this._fieldName];
 
-	// compare values so that this check is accurate for primitives
-	var oldValue = (old === undefined || old === null) ? old : old.valueOf();
-	var newValue = (val === undefined || val === null) ? val : val.valueOf();
+	// Update lists as batch remove/add operations
+	if (this.get_isList()) {
+		update(old, val);
+	}
+	else {
 
-	// Do nothing if the new value is the same as the old value. Account for NaN numbers, which are
-	// not equivalent (even to themselves). Although isNaN returns true for non-Number values, we won't
-	// get this far for Number properties unless the value is actually of type Number (a number or NaN).
-	if (oldValue !== newValue && !(this._jstype === Number && isNaN(oldValue) && isNaN(newValue))) {
-		// Set the backing field value
-		obj[this._fieldName] = val;
+		// compare values so that this check is accurate for primitives
+		var oldValue = (old === undefined || old === null) ? old : old.valueOf();
+		var newValue = (val === undefined || val === null) ? val : val.valueOf();
 
-		obj.meta.pendingInit(this, false);
+		// Do nothing if the new value is the same as the old value. Account for NaN numbers, which are
+		// not equivalent (even to themselves). Although isNaN returns true for non-Number values, we won't
+		// get this far for Number properties unless the value is actually of type Number (a number or NaN).
+		if (oldValue !== newValue && !(this._jstype === Number && isNaN(oldValue) && isNaN(newValue))) {
+			// Set the backing field value
+			obj[this._fieldName] = val;
 
-		this.raiseChanged(obj, val, old, additionalArgs);
+			obj.meta.pendingInit(this, false);
+
+			this.raiseChanged(obj, val, old, additionalArgs);
+		}
 	}
 }
 
@@ -388,9 +395,26 @@ Property.mixin({
 			case "date":
 				valObjectType = Date;
 				break;
+			case "array":
+				valObjectType = Array;
+				break;
 			}
 
-			return valObjectType === this._jstype;
+			// value property type check
+			return valObjectType === this._jstype ||
+
+				// entity array type check
+				(valObjectType === Array && this.get_isList() && val.every(function (child) {
+				if (child.constructor && child.constructor.meta) {
+					for (var childType = child.constructor.meta; childType; childType = childType.baseType) {
+						if (childType._jstype === this._jstype) {
+							return true;
+						}
+					}
+
+					return false;
+				}
+			}, this));
 		}
 	},
 
