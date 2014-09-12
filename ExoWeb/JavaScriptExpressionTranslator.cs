@@ -427,6 +427,8 @@ namespace ExoWeb
 							return new MethodTranslation(method, "{0}.get({1})");
 						if (method.Name == "GetModelInstance")
 							return new MethodTranslation(method, "{0}");
+						if (method.Name == "ToString" && method.GetParameters().Length == 1)
+							return new MethodTranslation(method, "{0}.toString({1})");
 						return null;
 					}
 
@@ -931,6 +933,18 @@ namespace ExoWeb
 			/// <returns></returns>
 			protected override Expression VisitMethodCall(MethodCallExpression m)
 			{
+				// Determine if ToString is being called on a model reference property
+				var propertyExpression = m.Object as ModelExpression.ModelMemberExpression;
+				//if (propertyExpression != null && m.Method == objectToString && propertyExpression.Property is ModelReferenceProperty)
+				//{
+				//	ModelStep step;
+				//	if (steps.TryGetValue(m.Object, out step))
+				//	{
+				//		var referenceProperty = (ModelReferenceProperty)propertyExpression.Property;
+				//		referenceProperty.PropertyType.AddFormatSteps(step, referenceProperty.Format);
+				//	}
+				//}
+
 				TranslateMember(m.Method, (MethodTranslation t) => t.Expression, () => m.Object == null ? m.Arguments : new Expression[] { m.Object }.Concat(m.Arguments));
 				return m;
 			}
