@@ -1807,6 +1807,7 @@ if (agent.indexOf(' MSIE ') > -1) {
 		browser.documentMode = document.documentMode;
 	}
 	browser.hasDebuggerStatement = true;
+	browser.name = 'InternetExplorer';
 }
 else if (agent.indexOf(' Firefox/') > -1) {
 	browser.agent = browser.Firefox;
@@ -1827,6 +1828,7 @@ else if (agent.indexOf('Trident') > -1) {
 	browser.version = parseFloat(agent.match(/rv\:(\d+\.\d+)/)[1]);
 	browser.documentMode = document.documentMode;
 	browser.hasDebuggerStatement = true;
+	browser.name = 'InternetExplorer';
 }
 
 
