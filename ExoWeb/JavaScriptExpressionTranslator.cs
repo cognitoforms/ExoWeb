@@ -506,6 +506,16 @@ namespace ExoWeb
 							case "orderbydescending": return new MethodTranslation(method, "{0}.map(function (i) { return { key: {1}(i), value: i }; }).sort(function (a, b) { return a.key == b.key ? 0 : a.key < b.key ? 1 : -1; }).map(function (i) { return i.value; })");
 						}
 					}
+
+					// Check for supported enumeration methods that take a single literal argument
+					else if (parameters.Length == 1 && typeof(IEnumerableSignatures).GetMethods()
+						.Any(em => em.GetParameters().Length == 1 && em.Name.Equals(method.Name, StringComparison.OrdinalIgnoreCase)))
+					{
+						switch (method.Name.ToLower())
+						{
+							case "contains": return new MethodTranslation(method, "{0}.indexOf({1}) >= 0");
+						}
+					}
 				}
 
 				return null;
@@ -814,11 +824,12 @@ namespace ExoWeb
 					builder.Append("\"").Append(System.Web.HttpUtility.JavaScriptStringEncode((string)c.Value)).Append("\"");
 				else if (c.Type == typeof(char) || c.Type.IsEnum)
 					builder.Append("\"").Append(c.Value).Append("\"");
-				else if (c.Type == typeof(DateTime))
+				else if (c.Type == typeof(DateTime) || c.Type == typeof(DateTime?))
 				{
-					long milliseconds = (long)((DateTime)c.Value).Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+					var dateValue = (DateTime)c.Value;
+					long milliseconds = (long)dateValue.Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
 					// Local time, account for time zone and daylight savings
-					if (((DateTime)c.Value).Kind == DateTimeKind.Local)
+					if (dateValue.Kind == DateTimeKind.Local)
 						builder.Append("new Date(").Append(milliseconds).Append(" + new Date(").Append(milliseconds).Append(").getTimezoneOffset()*60000)");
 					else
 						builder.Append("new Date(").Append(milliseconds).Append(")");
@@ -1382,6 +1393,7 @@ namespace ExoWeb
 			void Any();
 			void Any(bool predicate);
 			void All(bool predicate);
+			void Contains(object value);
 			void Count();
 			void Count(bool predicate);
 			void Min(object selector);
