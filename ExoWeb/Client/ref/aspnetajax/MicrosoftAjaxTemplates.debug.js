@@ -1426,26 +1426,28 @@
 				if (dataAttr) {
 					target = dataAttr.control ? element.control : element;
 
-					isSelect = (/^select$/i.test(element.tagName));
-					isTextArea = (/^textarea$/i.test(element.tagName));
-					msDataAttrib = Sys.Application._splitAttribute(dataAttr.prefix + ":" + dataAttr.name, isSelect, typeIndex);
-					targetProp = msDataAttrib.name;
+					if (target) {
+						isSelect = (/^select$/i.test(element.tagName));
+						isTextArea = (/^textarea$/i.test(element.tagName));
+						msDataAttrib = Sys.Application._splitAttribute(dataAttr.prefix + ":" + dataAttr.name, isSelect, typeIndex);
+						targetProp = msDataAttrib.name;
 
-					// For inner html and text, the child nodes of the element should not be
-					// linked since they are dynamic content that is not defined within the
-					// original template markup source, and could potentially be unsafe.
-					if (targetProp === "innerHTML" || targetProp === "innerText" || (isTextArea && targetProp === "value")) {
-						attrLinksElementContent = true;
+						// For inner html and text, the child nodes of the element should not be
+						// linked since they are dynamic content that is not defined within the
+						// original template markup source, and could potentially be unsafe.
+						if (targetProp === "innerHTML" || targetProp === "innerText" || (isTextArea && targetProp === "value")) {
+							attrLinksElementContent = true;
+						}
+
+						value = Sys.Application._getPropertyValue(msDataAttrib, target, targetProp, attr.nodeValue, parentContext, element, null, false, { isLinkPending: !element.control && link });
+						if (value !== undefined) {
+							Sys.Observer.setValue(target, msDataAttrib.name || targetProp, value);
+						}
+
+						dataAttr = null;
+						element.removeAttribute(attr.name);
+						i -= 1;
 					}
-
-					value = Sys.Application._getPropertyValue(msDataAttrib, target, targetProp, attr.nodeValue, parentContext, element, null, false, { isLinkPending: !element.control && link });
-					if (value !== undefined) {
-						Sys.Observer.setValue(target, msDataAttrib.name || targetProp, value);
-					}
-
-					dataAttr = null;
-					element.removeAttribute(attr.name);
-					i -= 1;
 				}
 			}
 
