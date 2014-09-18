@@ -1661,15 +1661,36 @@ Sys.WebForms.PageRequestManager = function Sys$WebForms$PageRequestManager() {
 
                     if (Sys.Browser.agent === Sys.Browser.InternetExplorer) {
                         function cancelBubble(e) {
-                            e.cancelBubble = true;
+	                        if (e.stopPropagation) {
+		                        e.stopPropagation();
+	                        } else {
+								e.cancelBubble = true;
+	                        }
                         }
                         var anchor = document.createElement("a");
                         anchor.style.display = 'none';
-                        anchor.attachEvent("onclick", cancelBubble);
+
+                        var useEventListener;
+                        if (anchor.addEventListener) {
+                            useEventListener = true;
+                            anchor.addEventListener("click", cancelBubble, false);
+                        } else if (anchor.attachEvent) {
+                            useEventListener = false;
+                            anchor.attachEvent("onclick", cancelBubble);
+                        } else {
+                            throw new Error("Anchor does not have method 'addEventListener' or 'attachEvent'.");
+                        }
+
                         anchor.href = deltaNode.content;
                         this._form.parentNode.insertBefore(anchor, this._form);
                         anchor.click();
-                        anchor.detachEvent("onclick", cancelBubble);
+
+                        if (useEventListener) {
+                            anchor.removeEventListener("click", cancelBubble, false);
+                        } else {
+                            anchor.detachEvent("onclick", cancelBubble);
+                        }
+
                         this._form.parentNode.removeChild(anchor);
                     }
                     else {
