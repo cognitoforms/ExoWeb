@@ -51,10 +51,10 @@ CalculatedPropertyRule.mixin({
 		// calculate the new property value
 		var newValue;
 		if (this.defaultIfError === undefined)
-			newValue = this.calculate.apply(obj);
+			newValue = this.calculate.apply(obj, [obj]);
 		else {
 			try {
-				newValue = this.calculate.apply(obj);
+				newValue = this.calculate.apply(obj, [obj]);
 			}
 			catch (e) {
 				newValue = this.defaultIfError;
