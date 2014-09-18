@@ -1238,24 +1238,24 @@ window.ExoWeb.DotNet = {};
 	}
 
 	function observableSplice(arr, events, index, removeCount, addItems) {
-		var removedArray, removedItem;
+		var removedItems;
 
 		if (removeCount) {
 			if (removeCount > 1 && arr.removeRange) {
-				removedArray = arr.removeRange(index, removeCount);
+				removedItems = arr.removeRange(index, removeCount);
 			}
 			else if (removeCount === 1 && arr.removeAt) {
-				removedItem = arr.removeAt(index);
+				removedItems = [arr.removeAt(index)];
 			}
 			else {
-				removedArray = arr.splice(index, removeCount);
+				removedItems = arr.splice(index, removeCount);
 			}
 	
 			if (events) {
 				events.push({
 					action: Sys.NotifyCollectionChangedAction.remove,
 					oldStartingIndex: index,
-					oldItems: removedArray || [removedItem],
+					oldItems: removedItems,
 					newStartingIndex: null,
 					newItems: null
 				});
