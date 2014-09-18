@@ -1,0 +1,837 @@
+Loading jQuery...
+Loading Microsoft AJAX...
+Found window property 'Sys'.
+Found window class 'Type'.
+Found window property '$simulateMutationEvent'.
+Found window property '$removeHandler'.
+Found window property '_events'.
+Found window property '$find'.
+Found window class 'XMLHttpRequest'.
+Found jQuery property 'addHandler'.
+Found jQuery property 'addHandlers'.
+Found jQuery property 'clearHandlers'.
+Found jQuery property 'removeHandler'.
+Found jQuery property 'setCommand'.
+Found jQuery property 'activateElements'.
+Found jQuery property 'bind'.
+Found jQuery function property 'dataView'.
+Loading ExoWeb...
+Found window property 'ExoWeb'.
+Found window class 'ArgumentTypeError'.
+Found window class 'ArgumentsLengthError'.
+Found window class 'ArgumentNullError'.
+Found window class 'ArgumentError'.
+Found window property 'onerror'.
+Found window property '$transform'.
+Found window property '$lastTarget'.
+Found window property '$format'.
+Found window class 'TimeSpan'.
+Found window property '$newId'.
+Found window property '$exoweb'.
+Found window property '$extend'.
+Found window property '$extendSubtypes'.
+Found window property '$extendProperties'.
+Found window property '$parentContextData'.
+Found window property '$isLast'.
+Found jQuery function property 'validated'.
+Found jQuery function property 'rules'.
+Found jQuery function property 'errors'.
+Found jQuery function property 'control'.
+Found jQuery function property 'commands'.
+Found jQuery function property 'liveBindings'.
+Found jQuery function property 'ever'.
+Found ExoWeb property 'Model'.
+Found ExoWeb property 'Mapper'.
+Found ExoWeb property 'UI'.
+Found ExoWeb property 'View'.
+Found ExoWeb property 'DotNet'.
+Found ExoWeb property 'config'.
+Found ExoWeb property 'windowIsUnloading'.
+Found ExoWeb class 'ArgumentTypeError'.
+Found ExoWeb class 'ArgumentsLengthError'.
+Found ExoWeb class 'ArgumentNullError'.
+Found ExoWeb class 'ArgumentError'.
+Found ExoWeb property 'setLogErrorProvider'.
+Found ExoWeb property 'addError'.
+Found ExoWeb property 'removeError'.
+Found ExoWeb property 'logError'.
+Found ExoWeb property 'setLogWarningProvider'.
+Found ExoWeb property 'logWarning'.
+Found ExoWeb property 'type'.
+Found ExoWeb property 'isNullOrUndefined'.
+Found ExoWeb property 'isArray'.
+Found ExoWeb property 'isString'.
+Found ExoWeb property 'isNumber'.
+Found ExoWeb property 'isInteger'.
+Found ExoWeb property 'isNatural'.
+Found ExoWeb property 'isWhole'.
+Found ExoWeb property 'isDecimal'.
+Found ExoWeb property 'isFunction'.
+Found ExoWeb property 'isBoolean'.
+Found ExoWeb property 'isDate'.
+Found ExoWeb property 'isObject'.
+Found ExoWeb property 'randomInteger'.
+Found ExoWeb property 'randomText'.
+Found ExoWeb property 'cacheHash'.
+Found ExoWeb property 'cache'.
+Found ExoWeb property 'clearCache'.
+Found ExoWeb property 'registerActivity'.
+Found ExoWeb property 'isBusy'.
+Found ExoWeb property 'getBusyItems'.
+Found ExoWeb class 'Batch'.
+  Found prototype member 'Batch._begin'.
+  Found prototype member 'Batch._end'.
+  Found prototype member 'Batch._transferTo'.
+  Found prototype member 'Batch._resume'.
+  Found prototype member 'Batch.isEnded'.
+  Found prototype member 'Batch.whenDone'.
+Found ExoWeb class 'Signal'.
+  Found prototype member 'Signal.pending'.
+  Found prototype member 'Signal.orPending'.
+  Found prototype member 'Signal._doCallback'.
+  Found prototype member 'Signal._genCallback'.
+  Found prototype member 'Signal.waitForAll'.
+  Found prototype member 'Signal.oneDone'.
+  Found prototype member 'Signal.isActive'.
+Found ExoWeb class 'Functor'.
+Found ExoWeb class 'FunctionChain'.
+  Found prototype member 'FunctionChain.invoke'.
+Found ExoWeb property 'EventScope'.
+Found ExoWeb class 'EvalWrapper'.
+  Found prototype member 'EvalWrapper.get'.
+Found ExoWeb class 'Transform'.
+  Found prototype member 'Transform.input'.
+  Found prototype member 'Transform.where'.
+  Found prototype member 'Transform.select'.
+  Found prototype member 'Transform.selectMany'.
+  Found prototype member 'Transform.groupBy'.
+  Found prototype member 'Transform.orderBy'.
+  Found prototype member 'Transform.live'.
+Found ExoWeb class 'Translator'.
+  Found prototype member 'Translator.lookup'.
+  Found prototype member 'Translator.forward'.
+  Found prototype member 'Translator.reverse'.
+  Found prototype member 'Translator.add'.
+Found ExoWeb property 'evalPath'.
+Found ExoWeb property 'getLastTarget'.
+Found ExoWeb property 'getValue'.
+Found ExoWeb property 'getCtor'.
+Found ExoWeb property 'isType'.
+Found ExoWeb property 'eachProp'.
+Found ExoWeb property 'objectToArray'.
+Found ExoWeb property 'makeHumanReadable'.
+Found ExoWeb property 'Observer'.
+Found ExoWeb class 'PropertyObserver'.
+  Found prototype member 'PropertyObserver._addEvent'.
+  Found prototype member 'PropertyObserver._removeEvent'.
+  Found prototype member 'PropertyObserver._raiseEvent'.
+  Found prototype member 'PropertyObserver._clearEvent'.
+  Found prototype member 'PropertyObserver._getEventHandler'.
+  Found prototype member 'PropertyObserver.value'.
+  Found prototype member 'PropertyObserver.release'.
+  Found prototype member 'PropertyObserver.capture'.
+  Found prototype member 'PropertyObserver.start'.
+  Found prototype member 'PropertyObserver.stop'.
+Found ExoWeb property 'updateArray'.
+Found ExoWeb.Model property 'Resource'.
+Found ExoWeb.Model class 'Format'.
+  Found prototype member 'Format.getPaths'.
+  Found prototype member 'Format.convert'.
+  Found prototype member 'Format.convertBack'.
+  Found prototype member 'Format.toString'.
+Found ExoWeb.Model class 'Model'.
+  Found prototype member 'Model._addEvent'.
+  Found prototype member 'Model._removeEvent'.
+  Found prototype member 'Model._raiseEvent'.
+  Found prototype member 'Model._clearEvent'.
+  Found prototype member 'Model._getEventHandler'.
+  Found prototype member 'Model.dispose'.
+  Found prototype member 'Model.addType'.
+  Found prototype member 'Model.type'.
+  Found prototype member 'Model.types'.
+  Found prototype member 'Model.addBeforeContextReady'.
+  Found prototype member 'Model.registerRule'.
+  Found prototype member 'Model.registerRules'.
+  Found prototype member 'Model.notifyBeforeContextReady'.
+  Found prototype member 'Model.addAfterPropertySet'.
+  Found prototype member 'Model.notifyAfterPropertySet'.
+  Found prototype member 'Model.addObjectRegistered'.
+  Found prototype member 'Model.removeObjectRegistered'.
+  Found prototype member 'Model.notifyObjectRegistered'.
+  Found prototype member 'Model.addObjectUnregistered'.
+  Found prototype member 'Model.notifyObjectUnregistered'.
+  Found prototype member 'Model.addListChanged'.
+  Found prototype member 'Model.notifyListChanged'.
+  Found prototype member 'Model._ensureNamespace'.
+Found ExoWeb.Model class 'Entity'.
+  Found prototype member 'Entity.init'.
+  Found prototype member 'Entity.set'.
+  Found prototype member 'Entity.get'.
+  Found prototype member 'Entity.toString'.
+Found ExoWeb.Model class 'Type'.
+  Found prototype member 'Type.pendingInvocation'.
+  Found prototype member 'Type.addInitNew'.
+  Found prototype member 'Type.pendingInit'.
+  Found prototype member 'Type.addInitExisting'.
+  Found prototype member 'Type.newId'.
+  Found prototype member 'Type.register'.
+  Found prototype member 'Type.changeObjectId'.
+  Found prototype member 'Type.unregister'.
+  Found prototype member 'Type.get'.
+  Found prototype member 'Type.known'.
+  Found prototype member 'Type.addPropertyAdded'.
+  Found prototype member 'Type.addRule'.
+  Found prototype member 'Type.addProperty'.
+  Found prototype member 'Type.addMethod'.
+  Found prototype member 'Type._makeGetter'.
+  Found prototype member 'Type._makeSetter'.
+  Found prototype member 'Type.get_format'.
+  Found prototype member 'Type.set_format'.
+  Found prototype member 'Type.get_fullName'.
+  Found prototype member 'Type.get_jstype'.
+  Found prototype member 'Type.get_properties'.
+  Found prototype member 'Type.get_allproperties'.
+  Found prototype member 'Type.get_baseproperties'.
+  Found prototype member 'Type.get_staticProperties'.
+  Found prototype member 'Type.get_instanceProperties'.
+  Found prototype member 'Type.property'.
+  Found prototype member 'Type.conditionIf'.
+  Found prototype member 'Type.set_originForNewProperties'.
+  Found prototype member 'Type.get_originForNewProperties'.
+  Found prototype member 'Type.set_origin'.
+  Found prototype member 'Type.get_origin'.
+  Found prototype member 'Type.compileExpression'.
+  Found prototype member 'Type.set_exports'.
+  Found prototype member 'Type.addExport'.
+  Found prototype member 'Type.eachBaseType'.
+  Found prototype member 'Type.isSubclassOf'.
+  Found prototype member 'Type.isLoaded'.
+  Found prototype member 'Type.toString'.
+  Found prototype member 'Type._addEvent'.
+  Found prototype member 'Type._removeEvent'.
+  Found prototype member 'Type._raiseEvent'.
+  Found prototype member 'Type._clearEvent'.
+  Found prototype member 'Type._getEventHandler'.
+Found ExoWeb.Model class 'Property'.
+  Found prototype member 'Property.defaultValue'.
+  Found prototype member 'Property.equals'.
+  Found prototype member 'Property.raiseChanged'.
+  Found prototype member 'Property.rule'.
+  Found prototype member 'Property.rules'.
+  Found prototype member 'Property.addRuleRegistered'.
+  Found prototype member 'Property.removeRuleRegistered'.
+  Found prototype member 'Property.toString'.
+  Found prototype member 'Property.get_containingType'.
+  Found prototype member 'Property.isDefinedBy'.
+  Found prototype member 'Property.get_jstype'.
+  Found prototype member 'Property.get_index'.
+  Found prototype member 'Property.get_format'.
+  Found prototype member 'Property.set_format'.
+  Found prototype member 'Property.format'.
+  Found prototype member 'Property.get_defaultValue'.
+  Found prototype member 'Property.get_origin'.
+  Found prototype member 'Property.get_isEntityType'.
+  Found prototype member 'Property.get_isEntityListType'.
+  Found prototype member 'Property.get_isValueType'.
+  Found prototype member 'Property.get_isList'.
+  Found prototype member 'Property.get_isStatic'.
+  Found prototype member 'Property.get_isPersisted'.
+  Found prototype member 'Property.get_isCalculated'.
+  Found prototype member 'Property.get_label'.
+  Found prototype member 'Property.get_helptext'.
+  Found prototype member 'Property.get_name'.
+  Found prototype member 'Property.get_fieldName'.
+  Found prototype member 'Property.get_path'.
+  Found prototype member 'Property.canSetValue'.
+  Found prototype member 'Property.value'.
+  Found prototype member 'Property.isInited'.
+  Found prototype member 'Property.addGet'.
+  Found prototype member 'Property.removeGet'.
+  Found prototype member 'Property.addChanged'.
+  Found prototype member 'Property.removeChanged'.
+  Found prototype member 'Property.firstProperty'.
+  Found prototype member 'Property.lastProperty'.
+  Found prototype member 'Property.properties'.
+  Found prototype member 'Property.lastTarget'.
+  Found prototype member 'Property.ifExists'.
+  Found prototype member 'Property.alias'.
+  Found prototype member 'Property.rootedPath'.
+  Found prototype member 'Property.label'.
+  Found prototype member 'Property.helptext'.
+  Found prototype member 'Property.calculated'.
+  Found prototype member 'Property.required'.
+  Found prototype member 'Property.allowedValues'.
+  Found prototype member 'Property.optionValues'.
+  Found prototype member 'Property.compare'.
+  Found prototype member 'Property.range'.
+  Found prototype member 'Property.conditionIf'.
+  Found prototype member 'Property.errorIf'.
+  Found prototype member 'Property.warningIf'.
+  Found prototype member 'Property.requiredIf'.
+  Found prototype member 'Property.stringLength'.
+  Found prototype member 'Property.stringFormat'.
+  Found prototype member 'Property.listLength'.
+  Found prototype member 'Property._addEvent'.
+  Found prototype member 'Property._removeEvent'.
+  Found prototype member 'Property._raiseEvent'.
+  Found prototype member 'Property._clearEvent'.
+  Found prototype member 'Property._getEventHandler'.
+  Found prototype member 'Property.triggersRoundtrip'.
+Found ExoWeb.Model class 'PathTokens'.
+  Found prototype member 'PathTokens.buildExpression'.
+  Found prototype member 'PathTokens.toString'.
+Found ExoWeb.Model class 'PropertyChain'.
+  Found prototype member 'PropertyChain._addEvent'.
+  Found prototype member 'PropertyChain._removeEvent'.
+  Found prototype member 'PropertyChain._raiseEvent'.
+  Found prototype member 'PropertyChain._clearEvent'.
+  Found prototype member 'PropertyChain._getEventHandler'.
+  Found prototype member 'PropertyChain.equals'.
+  Found prototype member 'PropertyChain.all'.
+  Found prototype member 'PropertyChain.append'.
+  Found prototype member 'PropertyChain.each'.
+  Found prototype member 'PropertyChain.get_path'.
+  Found prototype member 'PropertyChain._getPathFromIndex'.
+  Found prototype member 'PropertyChain.firstProperty'.
+  Found prototype member 'PropertyChain.lastProperty'.
+  Found prototype member 'PropertyChain.properties'.
+  Found prototype member 'PropertyChain.lastTarget'.
+  Found prototype member 'PropertyChain.prepend'.
+  Found prototype member 'PropertyChain.canSetValue'.
+  Found prototype member 'PropertyChain.connects'.
+  Found prototype member 'PropertyChain.rootedPath'.
+  Found prototype member 'PropertyChain.addGet'.
+  Found prototype member 'PropertyChain.removeChanged'.
+  Found prototype member 'PropertyChain.addChanged'.
+  Found prototype member 'PropertyChain.get_containingType'.
+  Found prototype member 'PropertyChain.get_jstype'.
+  Found prototype member 'PropertyChain.get_format'.
+  Found prototype member 'PropertyChain.format'.
+  Found prototype member 'PropertyChain.get_isList'.
+  Found prototype member 'PropertyChain.get_isStatic'.
+  Found prototype member 'PropertyChain.get_label'.
+  Found prototype member 'PropertyChain.get_helptext'.
+  Found prototype member 'PropertyChain.get_name'.
+  Found prototype member 'PropertyChain.get_isValueType'.
+  Found prototype member 'PropertyChain.get_isEntityType'.
+  Found prototype member 'PropertyChain.get_isEntityListType'.
+  Found prototype member 'PropertyChain.rules'.
+  Found prototype member 'PropertyChain.value'.
+  Found prototype member 'PropertyChain.isInited'.
+  Found prototype member 'PropertyChain.toString'.
+Found ExoWeb.Model class 'ObjectMeta'.
+  Found prototype member 'ObjectMeta.get_entity'.
+  Found prototype member 'ObjectMeta.property'.
+  Found prototype member 'ObjectMeta.pendingInvocation'.
+  Found prototype member 'ObjectMeta.pendingInit'.
+  Found prototype member 'ObjectMeta.getCondition'.
+  Found prototype member 'ObjectMeta.setCondition'.
+  Found prototype member 'ObjectMeta.clearCondition'.
+  Found prototype member 'ObjectMeta.isAllowed'.
+  Found prototype member 'ObjectMeta.isLoaded'.
+  Found prototype member 'ObjectMeta.conditions'.
+  Found prototype member 'ObjectMeta.destroy'.
+  Found prototype member 'ObjectMeta.addConditionsChanged'.
+  Found prototype member 'ObjectMeta.removeConditionsChanged'.
+  Found prototype member 'ObjectMeta._addEvent'.
+  Found prototype member 'ObjectMeta._removeEvent'.
+  Found prototype member 'ObjectMeta._raiseEvent'.
+  Found prototype member 'ObjectMeta._clearEvent'.
+  Found prototype member 'ObjectMeta._getEventHandler'.
+Found ExoWeb.Model class 'Rule'.
+  Found prototype member 'Rule.onInitNew'.
+  Found prototype member 'Rule.onInitExisting'.
+  Found prototype member 'Rule.onInit'.
+  Found prototype member 'Rule.onChangeOf'.
+  Found prototype member 'Rule.returns'.
+  Found prototype member 'Rule.register'.
+Found ExoWeb.Model class 'RuleInput'.
+  Found prototype member 'RuleInput.set_dependsOnInit'.
+  Found prototype member 'RuleInput.get_dependsOnInit'.
+  Found prototype member 'RuleInput.set_dependsOnChange'.
+  Found prototype member 'RuleInput.get_dependsOnChange'.
+  Found prototype member 'RuleInput.set_dependsOnGet'.
+  Found prototype member 'RuleInput.get_dependsOnGet'.
+  Found prototype member 'RuleInput.get_isTarget'.
+  Found prototype member 'RuleInput.set_isTarget'.
+Found ExoWeb.Model class 'ConditionRule'.
+  Found prototype member 'ConditionRule.properties'.
+  Found prototype member 'ConditionRule.message'.
+  Found prototype member 'ConditionRule.assert'.
+  Found prototype member 'ConditionRule.execute'.
+  Found prototype member 'ConditionRule.toString'.
+Found ExoWeb.Model class 'ValidatedPropertyRule'.
+  Found prototype member 'ValidatedPropertyRule.assert'.
+  Found prototype member 'ValidatedPropertyRule.onRegister'.
+Found ExoWeb.Model class 'CalculatedPropertyRule'.
+  Found prototype member 'CalculatedPropertyRule.execute'.
+  Found prototype member 'CalculatedPropertyRule.toString'.
+  Found prototype member 'CalculatedPropertyRule.onRegister'.
+Found ExoWeb.Model class 'RequiredRule'.
+  Found prototype member 'RequiredRule.isValid'.
+  Found prototype member 'RequiredRule.toString'.
+Found ExoWeb.Model class 'RangeRule'.
+  Found prototype member 'RangeRule.isValid'.
+  Found prototype member 'RangeRule.toString'.
+Found ExoWeb.Model class 'AllowedValuesRule'.
+  Found prototype member 'AllowedValuesRule.onRegister'.
+  Found prototype member 'AllowedValuesRule.isValid'.
+  Found prototype member 'AllowedValuesRule.addChanged'.
+  Found prototype member 'AllowedValuesRule.removeChanged'.
+  Found prototype member 'AllowedValuesRule.values'.
+  Found prototype member 'AllowedValuesRule.toString'.
+Found ExoWeb.Model class 'CompareRule'.
+  Found prototype member 'CompareRule.isValid'.
+  Found prototype member 'CompareRule.message'.
+  Found prototype member 'CompareRule.onRegister'.
+Found ExoWeb.Model class 'RequiredIfRule'.
+  Found prototype member 'RequiredIfRule.isRequired'.
+  Found prototype member 'RequiredIfRule.message'.
+  Found prototype member 'RequiredIfRule.assert'.
+  Found prototype member 'RequiredIfRule.onRegister'.
+Found ExoWeb.Model class 'StringLengthRule'.
+  Found prototype member 'StringLengthRule.isValid'.
+  Found prototype member 'StringLengthRule.toString'.
+Found ExoWeb.Model class 'StringFormatRule'.
+  Found prototype member 'StringFormatRule.isValid'.
+  Found prototype member 'StringFormatRule.toString'.
+Found ExoWeb.Model class 'ListLengthRule'.
+  Found prototype member 'ListLengthRule.isValid'.
+  Found prototype member 'ListLengthRule.execute'.
+Found ExoWeb.Model class 'ConditionTypeSet'.
+  Found prototype member 'ConditionTypeSet.activate'.
+  Found prototype member 'ConditionTypeSet.deactivate'.
+  Found prototype member 'ConditionTypeSet.addActivated'.
+  Found prototype member 'ConditionTypeSet.removeActivated'.
+  Found prototype member 'ConditionTypeSet.addDeactivated'.
+  Found prototype member 'ConditionTypeSet.removeDeactivated'.
+  Found prototype member 'ConditionTypeSet._addEvent'.
+  Found prototype member 'ConditionTypeSet._removeEvent'.
+  Found prototype member 'ConditionTypeSet._raiseEvent'.
+  Found prototype member 'ConditionTypeSet._clearEvent'.
+  Found prototype member 'ConditionTypeSet._getEventHandler'.
+Found ExoWeb.Model class 'ConditionType'.
+  Found prototype member 'ConditionType.when'.
+  Found prototype member 'ConditionType.extend'.
+Found ExoWeb.Model class 'Condition'.
+  Found prototype member 'Condition.destroy'.
+  Found prototype member 'Condition.toString'.
+Found ExoWeb.Model class 'FormatError'.
+  Found prototype member 'FormatError.createCondition'.
+  Found prototype member 'FormatError.toString'.
+Found ExoWeb.Model property 'getFormat'.
+Found ExoWeb.Mapper property 'setObjectProvider'.
+Found ExoWeb.Mapper property 'setQueryProvider'.
+Found ExoWeb.Mapper property 'setTypeProvider'.
+Found ExoWeb.Mapper property 'setListProvider'.
+Found ExoWeb.Mapper property 'setRoundtripProvider'.
+Found ExoWeb.Mapper property 'setSaveProvider'.
+Found ExoWeb.Mapper property 'setEventProvider'.
+Found ExoWeb.Mapper class 'ResponseHandler'.
+  Found prototype member 'ResponseHandler.execute'.
+Found ExoWeb.Mapper class 'ExoModelEventListener'.
+  Found prototype member 'ExoModelEventListener._addEvent'.
+  Found prototype member 'ExoModelEventListener._removeEvent'.
+  Found prototype member 'ExoModelEventListener._raiseEvent'.
+  Found prototype member 'ExoModelEventListener._clearEvent'.
+  Found prototype member 'ExoModelEventListener._getEventHandler'.
+  Found prototype member 'ExoModelEventListener.addChangeDetected'.
+  Found prototype member 'ExoModelEventListener.onListChanged'.
+  Found prototype member 'ExoModelEventListener.onObjectRegistered'.
+  Found prototype member 'ExoModelEventListener.onObjectUnregistered'.
+  Found prototype member 'ExoModelEventListener.onPropertyChanged'.
+Found ExoWeb.View class 'Binding'.
+  Found prototype member 'Binding._setTarget'.
+  Found prototype member 'Binding._queue'.
+  Found prototype member 'Binding._getValue'.
+  Found prototype member 'Binding._require'.
+  Found prototype member 'Binding._update'.
+  Found prototype member 'Binding._updateWatchedItems'.
+  Found prototype member 'Binding._collectionChanged'.
+  Found prototype member 'Binding._watchedItemPathChanged'.
+  Found prototype member 'Binding._sourcePathChanged'.
+  Found prototype member 'Binding._evalSuccess'.
+  Found prototype member 'Binding._evalFailure'.
+  Found prototype member 'Binding.dispose'.
+  Found prototype member 'Binding.get_events'.
+  Found prototype member 'Binding.get_id'.
+  Found prototype member 'Binding.set_id'.
+  Found prototype member 'Binding.get_isLinkPending'.
+  Found prototype member 'Binding.set_isLinkPending'.
+  Found prototype member 'Binding.get_isInitialized'.
+  Found prototype member 'Binding.get_isUpdating'.
+  Found prototype member 'Binding.add_disposing'.
+  Found prototype member 'Binding.remove_disposing'.
+  Found prototype member 'Binding.add_propertyChanged'.
+  Found prototype member 'Binding.remove_propertyChanged'.
+  Found prototype member 'Binding._addHandler'.
+  Found prototype member 'Binding._removeHandler'.
+  Found prototype member 'Binding.beginUpdate'.
+  Found prototype member 'Binding.endUpdate'.
+  Found prototype member 'Binding.initialize'.
+  Found prototype member 'Binding.raisePropertyChanged'.
+  Found prototype member 'Binding.updated'.
+  Found prototype member 'Binding.link'.
+  Found prototype member 'Binding.get_templateContext'.
+  Found prototype member 'Binding.set_templateContext'.
+Found ExoWeb.View class 'Adapter'.
+  Found prototype member 'Adapter._extendProperties'.
+  Found prototype member 'Adapter._initPropertyChain'.
+  Found prototype member 'Adapter._loadForFormatAndRaiseChange'.
+  Found prototype member 'Adapter._doForFormatPaths'.
+  Found prototype member 'Adapter._unsubscribeFromFormatChanges'.
+  Found prototype member 'Adapter._subscribeToFormatChanges'.
+  Found prototype member 'Adapter._ensureObservable'.
+  Found prototype member 'Adapter._onTargetChanged'.
+  Found prototype member 'Adapter._setValue'.
+  Found prototype member 'Adapter.ready'.
+  Found prototype member 'Adapter.toString'.
+  Found prototype member 'Adapter.isType'.
+  Found prototype member 'Adapter.aspects'.
+  Found prototype member 'Adapter.get_isList'.
+  Found prototype member 'Adapter.get_isEntity'.
+  Found prototype member 'Adapter.get_isEntityList'.
+  Found prototype member 'Adapter.get_isStatic'.
+  Found prototype member 'Adapter.get_target'.
+  Found prototype member 'Adapter.get_propertyPath'.
+  Found prototype member 'Adapter.get_propertyChain'.
+  Found prototype member 'Adapter.get_format'.
+  Found prototype member 'Adapter.get_dataType'.
+  Found prototype member 'Adapter.get_label'.
+  Found prototype member 'Adapter.get_helptext'.
+  Found prototype member 'Adapter.get_nullOption'.
+  Found prototype member 'Adapter.get_rawValue'.
+  Found prototype member 'Adapter.set_rawValue'.
+  Found prototype member 'Adapter.get_systemValue'.
+  Found prototype member 'Adapter.set_systemValue'.
+  Found prototype member 'Adapter.get_displayValue'.
+  Found prototype member 'Adapter.set_displayValue'.
+  Found prototype member 'Adapter.dispose'.
+  Found prototype member 'Adapter.get_conditions'.
+  Found prototype member 'Adapter.get_firstError'.
+  Found prototype member 'Adapter.get_options'.
+  Found prototype member 'Adapter.get_events'.
+  Found prototype member 'Adapter.get_id'.
+  Found prototype member 'Adapter.set_id'.
+  Found prototype member 'Adapter.get_isLinkPending'.
+  Found prototype member 'Adapter.set_isLinkPending'.
+  Found prototype member 'Adapter.get_isInitialized'.
+  Found prototype member 'Adapter.get_isUpdating'.
+  Found prototype member 'Adapter.add_disposing'.
+  Found prototype member 'Adapter.remove_disposing'.
+  Found prototype member 'Adapter.add_propertyChanged'.
+  Found prototype member 'Adapter.remove_propertyChanged'.
+  Found prototype member 'Adapter._addHandler'.
+  Found prototype member 'Adapter._removeHandler'.
+  Found prototype member 'Adapter.beginUpdate'.
+  Found prototype member 'Adapter.endUpdate'.
+  Found prototype member 'Adapter.initialize'.
+  Found prototype member 'Adapter.raisePropertyChanged'.
+  Found prototype member 'Adapter.updated'.
+  Found prototype member 'Adapter.link'.
+  Found prototype member 'Adapter.get_templateContext'.
+  Found prototype member 'Adapter.set_templateContext'.
+Found ExoWeb.View class 'OptionAdapter'.
+  Found prototype member 'OptionAdapter._loadForFormatAndRaiseChange'.
+  Found prototype member 'OptionAdapter._subscribeToFormatChanges'.
+  Found prototype member 'OptionAdapter._ensureObservable'.
+  Found prototype member 'OptionAdapter.get_parent'.
+  Found prototype member 'OptionAdapter.get_rawValue'.
+  Found prototype member 'OptionAdapter.get_displayValue'.
+  Found prototype member 'OptionAdapter.set_displayValue'.
+  Found prototype member 'OptionAdapter.get_systemValue'.
+  Found prototype member 'OptionAdapter.get_selected'.
+  Found prototype member 'OptionAdapter.set_selected'.
+  Found prototype member 'OptionAdapter.get_conditions'.
+Found ExoWeb.View class 'OptionGroupAdapter'.
+  Found prototype member 'OptionGroupAdapter.get_parent'.
+  Found prototype member 'OptionGroupAdapter.get_rawValue'.
+  Found prototype member 'OptionGroupAdapter.get_displayValue'.
+  Found prototype member 'OptionGroupAdapter.get_systemValue'.
+  Found prototype member 'OptionGroupAdapter.get_options'.
+  Found prototype member 'OptionGroupAdapter.get_conditions'.
+Found ExoWeb.View property 'getFinalSrcObject'.
+Found ExoWeb.View property 'getFinalPathStep'.
+Found ExoWeb.View property 'getBindingInfo'.
+Found ExoWeb.UI class 'Toggle'.
+  Found prototype member 'Toggle.link_show'.
+  Found prototype member 'Toggle.add_showing'.
+  Found prototype member 'Toggle.remove_showing'.
+  Found prototype member 'Toggle.add_hiding'.
+  Found prototype member 'Toggle.remove_hiding'.
+  Found prototype member 'Toggle.do_show'.
+  Found prototype member 'Toggle.do_hide'.
+  Found prototype member 'Toggle.add_on'.
+  Found prototype member 'Toggle.remove_on'.
+  Found prototype member 'Toggle.add_off'.
+  Found prototype member 'Toggle.remove_off'.
+  Found prototype member 'Toggle.add_shown'.
+  Found prototype member 'Toggle.remove_shown'.
+  Found prototype member 'Toggle.add_hidden'.
+  Found prototype member 'Toggle.remove_hidden'.
+  Found prototype member 'Toggle.get_visible'.
+  Found prototype member 'Toggle.link_disable'.
+  Found prototype member 'Toggle.do_enable'.
+  Found prototype member 'Toggle.do_disable'.
+  Found prototype member 'Toggle.link_render'.
+  Found prototype member 'Toggle.init_render'.
+  Found prototype member 'Toggle.do_render'.
+  Found prototype member 'Toggle.do_dispose'.
+  Found prototype member 'Toggle.add_rendering'.
+  Found prototype member 'Toggle.remove_rendering'.
+  Found prototype member 'Toggle.add_rendered'.
+  Found prototype member 'Toggle.remove_rendered'.
+  Found prototype member 'Toggle.do_addClass'.
+  Found prototype member 'Toggle.do_removeClass'.
+  Found prototype member 'Toggle.add_classAdded'.
+  Found prototype member 'Toggle.remove_classAdded'.
+  Found prototype member 'Toggle.add_classRemoved'.
+  Found prototype member 'Toggle.remove_classRemoved'.
+  Found prototype member 'Toggle.link_hide'.
+  Found prototype member 'Toggle.init_hide'.
+  Found prototype member 'Toggle.undo_hide'.
+  Found prototype member 'Toggle.undo_show'.
+  Found prototype member 'Toggle.link_enabled'.
+  Found prototype member 'Toggle.init_disable'.
+  Found prototype member 'Toggle.undo_disable'.
+  Found prototype member 'Toggle.undo_enable'.
+  Found prototype member 'Toggle.link_dispose'.
+  Found prototype member 'Toggle.init_dispose'.
+  Found prototype member 'Toggle.undo_render'.
+  Found prototype member 'Toggle.undo_dispose'.
+  Found prototype member 'Toggle.undo_addClass'.
+  Found prototype member 'Toggle.undo_removeClass'.
+  Found prototype member 'Toggle._generatesContext'.
+  Found prototype member 'Toggle._getTemplate'.
+  Found prototype member 'Toggle._setTemplate'.
+  Found prototype member 'Toggle._setTemplateCtxId'.
+  Found prototype member 'Toggle.get_templateContext'.
+  Found prototype member 'Toggle.set_templateContext'.
+  Found prototype member 'Toggle.get_action'.
+  Found prototype member 'Toggle.set_action'.
+  Found prototype member 'Toggle.get_class'.
+  Found prototype member 'Toggle.set_class'.
+  Found prototype member 'Toggle.get_on'.
+  Found prototype member 'Toggle.set_on'.
+  Found prototype member 'Toggle.get_when'.
+  Found prototype member 'Toggle.set_when'.
+  Found prototype member 'Toggle.set_strictMode'.
+  Found prototype member 'Toggle.get_strictMode'.
+  Found prototype member 'Toggle.get_groupName'.
+  Found prototype member 'Toggle.set_groupName'.
+  Found prototype member 'Toggle.get_state'.
+  Found prototype member 'Toggle.set_state'.
+  Found prototype member 'Toggle.equals'.
+  Found prototype member 'Toggle.canExecute'.
+  Found prototype member 'Toggle.execute'.
+  Found prototype member 'Toggle.addContentTemplate'.
+  Found prototype member 'Toggle.dispose'.
+  Found prototype member 'Toggle.link'.
+  Found prototype member 'Toggle.initialize'.
+  Found prototype member 'Toggle._stateClass'.
+  Found prototype member 'Toggle._parent'.
+  Found prototype member 'Toggle._visibilityMode'.
+  Found prototype member 'Toggle.get_element'.
+  Found prototype member 'Toggle.get_id'.
+  Found prototype member 'Toggle.get_parent'.
+  Found prototype member 'Toggle.set_parent'.
+  Found prototype member 'Toggle.get_role'.
+  Found prototype member 'Toggle.get_visibilityMode'.
+  Found prototype member 'Toggle.set_visibilityMode'.
+  Found prototype member 'Toggle.set_visible'.
+  Found prototype member 'Toggle.addCssClass'.
+  Found prototype member 'Toggle.onBubbleEvent'.
+  Found prototype member 'Toggle.raiseBubbleEvent'.
+  Found prototype member 'Toggle._raiseBubbleEvent'.
+  Found prototype member 'Toggle.removeCssClass'.
+  Found prototype member 'Toggle.toggleCssClass'.
+  Found prototype member 'Toggle.get_events'.
+  Found prototype member 'Toggle.set_id'.
+  Found prototype member 'Toggle.get_isLinkPending'.
+  Found prototype member 'Toggle.set_isLinkPending'.
+  Found prototype member 'Toggle.get_isInitialized'.
+  Found prototype member 'Toggle.get_isUpdating'.
+  Found prototype member 'Toggle.add_disposing'.
+  Found prototype member 'Toggle.remove_disposing'.
+  Found prototype member 'Toggle.add_propertyChanged'.
+  Found prototype member 'Toggle.remove_propertyChanged'.
+  Found prototype member 'Toggle._addHandler'.
+  Found prototype member 'Toggle._removeHandler'.
+  Found prototype member 'Toggle.beginUpdate'.
+  Found prototype member 'Toggle.endUpdate'.
+  Found prototype member 'Toggle.raisePropertyChanged'.
+  Found prototype member 'Toggle.updated'.
+Found ExoWeb.UI class 'ActionEventArgs'.
+  Found prototype member 'ActionEventArgs.pending'.
+  Found prototype member 'ActionEventArgs.waitForAll'.
+Found ExoWeb.UI class 'ToggleGroup'.
+  Found prototype member 'ToggleGroup._execute'.
+  Found prototype member 'ToggleGroup._toggleAdded'.
+  Found prototype member 'ToggleGroup._toggleRemoved'.
+  Found prototype member 'ToggleGroup._toggleOn'.
+  Found prototype member 'ToggleGroup._toggleOff'.
+  Found prototype member 'ToggleGroup.get_name'.
+  Found prototype member 'ToggleGroup.set_name'.
+  Found prototype member 'ToggleGroup._add'.
+  Found prototype member 'ToggleGroup._remove'.
+  Found prototype member 'ToggleGroup.initialize'.
+Found ExoWeb.UI class 'Template'.
+  Found prototype member 'Template.get_name'.
+  Found prototype member 'Template.set_name'.
+  Found prototype member 'Template.get_nameArray'.
+  Found prototype member 'Template.get_kind'.
+  Found prototype member 'Template.set_kind'.
+  Found prototype member 'Template.get_dataType'.
+  Found prototype member 'Template.set_dataType'.
+  Found prototype member 'Template.get_dataTypeCtor'.
+  Found prototype member 'Template.get_isReference'.
+  Found prototype member 'Template.set_isReference'.
+  Found prototype member 'Template.get_isList'.
+  Found prototype member 'Template.set_isList'.
+  Found prototype member 'Template.get_aspects'.
+  Found prototype member 'Template.isCorrectKind'.
+  Found prototype member 'Template._namesSatisfiedBy'.
+  Found prototype member 'Template._aspectsSatisfiedBy'.
+  Found prototype member 'Template.matches'.
+  Found prototype member 'Template.toString'.
+  Found prototype member 'Template.dispose'.
+  Found prototype member 'Template.initialize'.
+  Found prototype member 'Template._parent'.
+  Found prototype member 'Template._visibilityMode'.
+  Found prototype member 'Template.get_element'.
+  Found prototype member 'Template.get_id'.
+  Found prototype member 'Template.get_parent'.
+  Found prototype member 'Template.set_parent'.
+  Found prototype member 'Template.get_role'.
+  Found prototype member 'Template.get_visibilityMode'.
+  Found prototype member 'Template.set_visibilityMode'.
+  Found prototype member 'Template.get_visible'.
+  Found prototype member 'Template.set_visible'.
+  Found prototype member 'Template.addCssClass'.
+  Found prototype member 'Template.onBubbleEvent'.
+  Found prototype member 'Template.raiseBubbleEvent'.
+  Found prototype member 'Template._raiseBubbleEvent'.
+  Found prototype member 'Template.removeCssClass'.
+  Found prototype member 'Template.toggleCssClass'.
+  Found prototype member 'Template.get_events'.
+  Found prototype member 'Template.set_id'.
+  Found prototype member 'Template.get_isLinkPending'.
+  Found prototype member 'Template.set_isLinkPending'.
+  Found prototype member 'Template.get_isInitialized'.
+  Found prototype member 'Template.get_isUpdating'.
+  Found prototype member 'Template.add_disposing'.
+  Found prototype member 'Template.remove_disposing'.
+  Found prototype member 'Template.add_propertyChanged'.
+  Found prototype member 'Template.remove_propertyChanged'.
+  Found prototype member 'Template._addHandler'.
+  Found prototype member 'Template._removeHandler'.
+  Found prototype member 'Template.beginUpdate'.
+  Found prototype member 'Template.endUpdate'.
+  Found prototype member 'Template.raisePropertyChanged'.
+  Found prototype member 'Template.updated'.
+  Found prototype member 'Template.link'.
+  Found prototype member 'Template.addContentTemplate'.
+Found ExoWeb.UI class 'Content'.
+  Found prototype member 'Content.get_template'.
+  Found prototype member 'Content.set_template'.
+  Found prototype member 'Content.get_data'.
+  Found prototype member 'Content.set_data'.
+  Found prototype member 'Content.get_disabled'.
+  Found prototype member 'Content.set_disabled'.
+  Found prototype member 'Content.get_contexts'.
+  Found prototype member 'Content.get_templateContext'.
+  Found prototype member 'Content.set_templateContext'.
+  Found prototype member 'Content.get_isRendered'.
+  Found prototype member 'Content.add_rendering'.
+  Found prototype member 'Content.remove_rendering'.
+  Found prototype member 'Content.add_rendered'.
+  Found prototype member 'Content.remove_rendered'.
+  Found prototype member 'Content.add_error'.
+  Found prototype member 'Content.remove_error'.
+  Found prototype member 'Content._collectionChanged'.
+  Found prototype member 'Content._initializeResults'.
+  Found prototype member 'Content._generatesContext'.
+  Found prototype member 'Content._setTemplateCtxId'.
+  Found prototype member 'Content._findTemplate'.
+  Found prototype member 'Content._canRender'.
+  Found prototype member 'Content._getResultingTemplateNames'.
+  Found prototype member 'Content._render'.
+  Found prototype member 'Content._renderStart'.
+  Found prototype member 'Content._link'.
+  Found prototype member 'Content.link'.
+  Found prototype member 'Content.update'.
+  Found prototype member 'Content.dispose'.
+  Found prototype member 'Content.initialize'.
+  Found prototype member 'Content._parent'.
+  Found prototype member 'Content._visibilityMode'.
+  Found prototype member 'Content.get_element'.
+  Found prototype member 'Content.get_id'.
+  Found prototype member 'Content.get_parent'.
+  Found prototype member 'Content.set_parent'.
+  Found prototype member 'Content.get_role'.
+  Found prototype member 'Content.get_visibilityMode'.
+  Found prototype member 'Content.set_visibilityMode'.
+  Found prototype member 'Content.get_visible'.
+  Found prototype member 'Content.set_visible'.
+  Found prototype member 'Content.addCssClass'.
+  Found prototype member 'Content.onBubbleEvent'.
+  Found prototype member 'Content.raiseBubbleEvent'.
+  Found prototype member 'Content._raiseBubbleEvent'.
+  Found prototype member 'Content.removeCssClass'.
+  Found prototype member 'Content.toggleCssClass'.
+  Found prototype member 'Content.get_events'.
+  Found prototype member 'Content.set_id'.
+  Found prototype member 'Content.get_isLinkPending'.
+  Found prototype member 'Content.set_isLinkPending'.
+  Found prototype member 'Content.get_isInitialized'.
+  Found prototype member 'Content.get_isUpdating'.
+  Found prototype member 'Content.add_disposing'.
+  Found prototype member 'Content.remove_disposing'.
+  Found prototype member 'Content.add_propertyChanged'.
+  Found prototype member 'Content.remove_propertyChanged'.
+  Found prototype member 'Content._addHandler'.
+  Found prototype member 'Content._removeHandler'.
+  Found prototype member 'Content.beginUpdate'.
+  Found prototype member 'Content.endUpdate'.
+  Found prototype member 'Content.raisePropertyChanged'.
+  Found prototype member 'Content.updated'.
+  Found prototype member 'Content.addContentTemplate'.
+Found ExoWeb.UI class 'Html'.
+  Found prototype member 'Html.get_source'.
+  Found prototype member 'Html.set_source'.
+  Found prototype member 'Html.get_loadingClass'.
+  Found prototype member 'Html.set_loadingClass'.
+  Found prototype member 'Html.get_url'.
+  Found prototype member 'Html.set_url'.
+  Found prototype member 'Html.get_path'.
+  Found prototype member 'Html.initialize'.
+Found ExoWeb.UI class 'Behavior'.
+  Found prototype member 'Behavior.get_script'.
+  Found prototype member 'Behavior.set_script'.
+  Found prototype member 'Behavior.get_scriptObject'.
+  Found prototype member 'Behavior.get_class'.
+  Found prototype member 'Behavior.set_class'.
+  Found prototype member 'Behavior.get_dontForceLoad'.
+  Found prototype member 'Behavior.set_dontForceLoad'.
+  Found prototype member 'Behavior.get_classObject'.
+  Found prototype member 'Behavior.get_properties'.
+  Found prototype member 'Behavior.get_events'.
+  Found prototype member 'Behavior._create'.
+  Found prototype member 'Behavior.initialize'.
+Found ExoWeb.UI property 'getParentContext'.
+Found ExoWeb.UI property 'getParentContextData'.
+Found ExoWeb.DotNet property 'config'.
+Found ExoWeb.config property 'debug'.
+Found ExoWeb.config property 'signalTimeout'.
+Found ExoWeb.config property 'signalMaxBatchSize'.
+Found ExoWeb.config property 'individualQueryLoading'.
+Found ExoWeb.config property 'appInstanceId'.
+Found ExoWeb.config property 'autoActivation'.
+Found ExoWeb.config property 'allowTypeLazyLoading'.
+Found ExoWeb.config property 'allowObjectLazyLoading'.
+Found ExoWeb.config property 'allowListLazyLoading'.
+Found ExoWeb.config property 'expressionScope'.
+Found ExoWeb.config property 'calculationErrorDefault'.
+Found ExoWeb.config property 'autoReformat'.
+Found ExoWeb.DotNet.config property 'appRoot'.
+Found ExoWeb.DotNet.config property 'aliasRequests'.

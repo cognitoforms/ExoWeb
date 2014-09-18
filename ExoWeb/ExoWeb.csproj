@@ -81,6 +81,8 @@
     <Content Include="Client\ref\syntaxhighlighter\shBrushJScript.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
+    <Content Include="Client\tools\javascript\detectSurface.js" />
+    <Content Include="Client\tools\javascript\fakeDom.js" />
     <Content Include="Client\tools\javascript\ScriptBuilder.js" />
     <Content Include="Client\runserver.js" />
     <Content Include="Client\specs\base\core\FunctorSpecs.js" />
@@ -166,6 +168,8 @@
     <Content Include="Client\tests\base\mapper\ContextTests.js" />
     <Content Include="Client\tests\base\mapper\ServerSyncTests.js" />
     <Content Include="Client\tools\AutoExec.exe" />
+    <Content Include="Client\tools\javascript\track.js" />
+    <Content Include="Client\tools\output\api.txt" />
     <Content Include="Dependencies\Newtonsoft.Json.dll" />
   </ItemGroup>
   <ItemGroup>
@@ -367,6 +371,7 @@
     <None Include="Client\tools\powershell\lib\ScriptBuilder.ps1" />
     <None Include="Client\tools\powershell\lib\SourceControl.ps1" />
     <None Include="Client\tools\powershell\lib\TfsSourceControl.ps1" />
+    <None Include="Client\tools\TestAPI.bat" />
     <None Include="NuGet\ExoWeb.Scripts.nuspec" />
     <None Include="NuGet\ExoWeb.nuspec" />
     <None Include="NuGet\Views\Web.config.transform" />
