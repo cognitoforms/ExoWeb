@@ -11181,7 +11181,7 @@ window.ExoWeb.DotNet = {};
 
 			pendingRequests--;
 		},
-		startAutoSave: function ServerSync$startAutoSave(root, interval) {
+		startAutoSave: function ServerSync$startAutoSave(root, interval, maxAttempts) {
 			if (!root || !(root instanceof Entity)) {
 				throw new Error("A root object must be specified for auto-save.");
 			}
@@ -11190,10 +11190,18 @@ window.ExoWeb.DotNet = {};
 				throw new Error("An interval must be specified for auto-save.");
 			}
 
+			if (maxAttempts && (typeof (maxAttempts) !== "number" || maxAttempts <= 0)) {
+				throw new Error("Max number of auto-save attempts must be a positive number.");
+			}
+
 			// cancel any pending save schedule
 			this.stopAutoSave();
+
 			this._saveInterval = interval;
 			this._saveRoot = root;
+
+			// Attempt to provide a somewhat reasonable default.
+			this._maxAutoSaveAttempts = maxAttempts || 3;
 		},
 		stopAutoSave: function ServerSync$stopAutoSave() {
 			if (this._saveTimeout) {
@@ -11203,19 +11211,41 @@ window.ExoWeb.DotNet = {};
 
 			this._saveInterval = null;
 			this._saveRoot = null;
+			this._maxAutoSaveAttempts = null;
+		},
+		_autoSaveSuccess: function() {
+			this._failedAutoSaveAttempts = 0;
+
+			// Wait for the next change before next auto save
+			this._saveTimeout = null;
+
+			// ...unless there were new pending changes encountered since the last auto-save.
+			if (this.changes(false, this._saveRoot, true).length > 0) {
+				this._queueAutoSave();
+			}
+		},
+		_autoSaveFailure: function() {
+			if (++this._failedAutoSaveAttempts < this._maxAutoSaveAttempts) {
+				this._queueAutoSave();
+			} else {
+				logWarning($format("Auto-save failed {0} consecutive times and will not re-try again until additional changes are detected.", this._failedAutoSaveAttempts));
+			}
+		},
+		_doAutoSave: function() {
+			this.save(this._saveRoot, this._autoSaveSuccess.bind(this), this._autoSaveFailure.bind(this));
 		},
 		_queueAutoSave: function ServerSync$_queueAutoSave() {
-			if (this._saveTimeout)
+			if (this._saveTimeout) {
+				// Already queued...
 				return;
-
-			function doAutoSave() {
-				this.save(this._saveRoot, function ServerSync$doAutoSave$callback() {
-					// wait for the next change before next auto save
-					this._saveTimeout = null;
-				});
 			}
 
-			this._saveTimeout = window.setTimeout(doAutoSave.bind(this), this._saveInterval);
+			if (!this._saveInterval || !this._saveRoot || !this._maxAutoSaveAttempts) {
+				// Auto-save is not configured...
+				return;
+			}
+
+			this._saveTimeout = window.setTimeout(this._doAutoSave.bind(this), this._saveInterval);
 		},
 		addSaveBegin: function (handler) {
 			this._addEvent("saveBegin", handler);
