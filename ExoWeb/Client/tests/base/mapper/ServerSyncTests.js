@@ -38,7 +38,7 @@ asyncTest("Call applyChanges with empty array", function () {
 	var activeSet = context.server._changeLog.activeSet;
 	var numChanges = context.server.changes().length;
 
-	context.server.applyChanges(null, changes, "server", null, null, null, null, null, function () {
+	context.server.applyChanges(null, changes, "server", null, null, null, null, null, null, function () {
 		notEqual(context.server._changeLog.activeSet, activeSet, "There should be a new active set after calling applyChanges.");
 		equal(context.server.changes().length, numChanges, "There should be no additional changes after calling applyChanges.");
 		equal(appliedJson(), "[\r\n]", "There should be no applied changes.");
@@ -57,7 +57,7 @@ asyncTest("Call applyChanges with value change that applies to context", functio
 
 	equal(context.model.movie.get_Year(), 2010, "Initial value of movie year should be 2010.");
 
-	context.server.applyChanges(null, [change], "server", null, null, null, null, null, function () {
+	context.server.applyChanges(null, [change], "server", null, null, null, null, null, null, function () {
 		notEqual(context.server._changeLog.activeSet, activeSet, "There should be a new active set after calling applyChanges.");
 		notEqual(context.server._changeLog.activeSet.changes.length, 1, "There should be a single new change in the active set after calling applyChanges.");
 		equal(context.server.changes().length, numChanges + 1, "There should be one additional change after calling applyChanges.");
@@ -76,7 +76,7 @@ asyncTest("Call applyChanges with value change that does not apply to context", 
 	var activeSet = context.server._changeLog.activeSet;
 	var numChanges = context.server.changes().length;
 
-	context.server.applyChanges(null, [change], "server", null, null, null, null, null, function () {
+	context.server.applyChanges(null, [change], "server", null, null, null, null, null, null, function () {
 		notEqual(context.server._changeLog.activeSet, activeSet, "There should be a new active set after calling applyChanges.");
 		notEqual(context.server._changeLog.activeSet.changes.length, 1, "There should be a single new change in the active set after calling applyChanges.");
 		equal(context.server.changes().length, numChanges + 1, "There should be one additional change after calling applyChanges.");
@@ -93,7 +93,7 @@ asyncTest("Call applyChanges with initialization of object that does not apply t
 	var numMovies = Movie.meta.known().length;
 	var change = { type: "InitNew", instance: { id: ExoWeb.randomText(8, true).toLowerCase(), type: "Movie" } };
 
-	context.server.applyChanges(null, [change], "server", null, null, null, null, null, function () {
+	context.server.applyChanges(null, [change], "server", null, null, null, null, null, null, function () {
 		equal(appliedChanges.distinct().length, 0, "No changes should have been applied.");
 		equal(Movie.meta.known().length, numMovies, "No new movies should have been created.");
 		equal(appliedJson(), "[\r\n]", "The changes should NOT have been applied.");
@@ -125,7 +125,7 @@ asyncTest("Call applyChanges with introduction of object(s) into context", funct
 		{ type: "ReferenceChange", instance: { id: "robin_hood", type: "Movie" }, property: "Director", oldValue: { id: context.model.movie.get_Director().meta.id, type: "Director" }, newValue: { id: directorId, type: "Director", isNew: true } }
 	];
 
-	context.server.applyChanges(null, changes, "server", null, null, null, null, null, function () {
+	context.server.applyChanges(null, changes, "server", null, null, null, null, null, null, function () {
 		equal(appliedChanges.distinct().length, changes.length, "All pending changes should have been applied.");
 		equal(appliedJson(true), "[\r\n" + changes.map(function (c) { return JSON.stringify(c); }).sort().join(",\r\n") + ",\r\n]", "The change should NOT have been applied.");
 		start();

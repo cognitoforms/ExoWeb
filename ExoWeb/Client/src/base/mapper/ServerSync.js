@@ -1108,7 +1108,7 @@ ServerSync.mixin({
 
 	// Apply Changes
 	///////////////////////////////////////////////////////////////////////
-	applyChanges: function (checkpoint, changes, source, user, setId, filter, beforeApply, afterApply, callback, thisPtr) {
+	applyChanges: function (checkpoint, changes, source, user, setId, description, filter, beforeApply, afterApply, callback, thisPtr) {
 		if (!changes || !(changes instanceof Array)) {
 			if (callback) {
 				callback.call(thisPtr || this);
@@ -1134,11 +1134,23 @@ ServerSync.mixin({
 			this.beginApplyingChanges();
 			changesApplying = true;
 
+			var previousActiveSet = null;
+
 			if (this._changeLog.activeSet) {
+				previousActiveSet = this._changeLog.activeSet;
+
+				// Stop the active set
 				this._changeLog.stop();
+
+				if (this._changeLog.compress(true, true).indexOf(previousActiveSet) > 0) {
+					// If the previous active set was removed, then don't use it later on.
+					previousActiveSet = null;
+				}
 			}
 
-			var changeSet = this._changeLog.addSet(source, null, user, null, setId);
+			var changeSet = this._changeLog.addSet(source, description, user, null, setId);
+
+			this._changeLog.onChangeSetStarted(changeSet, previousActiveSet, previousActiveSet ? this._changeLog.sets.indexOf(previousActiveSet) : -1, this._changeLog);
 
 			// Determine that the target of a change is a new instance
 			var instanceIsNew = function (change) {

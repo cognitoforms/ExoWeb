@@ -9539,7 +9539,7 @@ window.ExoWeb.DotNet = {};
 
 				if (this._options.changes) {
 					if (this._options.changes) {
-						this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.checkpoint, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
+						this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.checkpoint, this._options.description ? this._options.description + ":response" : null, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
 					}
 					else {
 						if (this._options.source) {
@@ -9599,15 +9599,16 @@ window.ExoWeb.DotNet = {};
 
 				// Raise init events for existing instances loaded by the response
 				if (this.instancesPendingInit) {
-					context.server.batchChanges("responseHandlerInitExisting", function () {
-						this.instancesPendingInit.forEach(function (obj) {
+					var instances = this.instancesPendingInit;
+					context.server._changeLog.batchChanges(this._options.description ? this._options.description + ":initExisting" : "responseHandlerInitExisting", context.server._localUser, function () {
+						instances.forEach(function (obj) {
 							for (var t = obj.meta.type; t; t = t.baseType) {
 								var handler = t._getEventHandler("initExisting");
 								if (handler)
 									handler(obj, {});
 							}
 						});
-					}, this);
+					}, true);
 				}
 
 				callback.call(thisPtr || this);
@@ -10066,6 +10067,7 @@ window.ExoWeb.DotNet = {};
 				previousActiveSet = this.activeSet,
 				previousActiveSetIdx = previousActiveSet ? this.sets.indexOf(previousActiveSet) : -1,
 				priorSet = previousActiveSet,
+				usePriorSet = true,
 				newActiveSet = null;
 
 			// Start a new set for the batch if there isn't a current active set. If there is a current active set it can be
@@ -10090,6 +10092,10 @@ window.ExoWeb.DotNet = {};
 
 					// Move the prior set back since the previous active set is removed.
 					priorSet = this.sets[previousActiveSetIdx - 1];
+
+					// Don't re-use the prior set since it was not active and the
+					// previous active set was removed (as if it never existed).
+					usePriorSet = false;
 				}
 			}
 
@@ -10126,7 +10132,7 @@ window.ExoWeb.DotNet = {};
 						return null;
 					}
 
-					this.onChangeSetStarted(newBatchSet, priorSet, newBatchSetIndex, this);
+					this.onChangeSetStarted(newBatchSet, usePriorSet ? priorSet : null, newBatchSetIndex, this);
 				}
 
 				// If there was previously an active set, start a new
@@ -10157,19 +10163,33 @@ window.ExoWeb.DotNet = {};
 
 			return this.activeSet.checkpoint(title, code);
 		},
-		compress: function () {
-			if (arguments.length > 0) {
-				throw new ArgumentsLengthError(0, arguments.length);
-			}
+		compress: function (tailOnly, considerAdditionalInfo) {
+			var removed = [];
+
 			for (var i = this.sets.length - 1; i >= 0; i--) {
 				var set = this.sets[i];
-				if (set.changes.length === 0) {
+				if (set.changes.length === 0 && (!considerAdditionalInfo || (!set.title && !set.user))) {
 					if (set === this.activeSet) {
 						this.activeSet = null;
 					}
-					this.sets.splice(i, 1);
+
+					// Remove the item
+					var splicedItems = this.sets.splice(i, 1);
+
+					// Insert at the beginning of the list of removed items
+					var spliceArgs = [0, 0];
+					Array.prototype.push.apply(spliceArgs, splicedItems);
+					Array.prototype.splice.apply(removed, spliceArgs);
+				}
+
+				if (tailOnly) {
+					// Exit early after checking the last
+					// change set if 'tailOnly' is specified.
+					break;
 				}
 			}
+
+			return removed;
 		},
 		count: function (filter, thisPtr) {
 			var result = 0;
@@ -11417,7 +11437,7 @@ window.ExoWeb.DotNet = {};
 
 		// Apply Changes
 		///////////////////////////////////////////////////////////////////////
-		applyChanges: function (checkpoint, changes, source, user, setId, filter, beforeApply, afterApply, callback, thisPtr) {
+		applyChanges: function (checkpoint, changes, source, user, setId, description, filter, beforeApply, afterApply, callback, thisPtr) {
 			if (!changes || !(changes instanceof Array)) {
 				if (callback) {
 					callback.call(thisPtr || this);
@@ -11443,11 +11463,23 @@ window.ExoWeb.DotNet = {};
 				this.beginApplyingChanges();
 				changesApplying = true;
 
+				var previousActiveSet = null;
+
 				if (this._changeLog.activeSet) {
+					previousActiveSet = this._changeLog.activeSet;
+
+					// Stop the active set
 					this._changeLog.stop();
+
+					if (this._changeLog.compress(true, true).indexOf(previousActiveSet) > 0) {
+						// If the previous active set was removed, then don't use it later on.
+						previousActiveSet = null;
+					}
 				}
 
-				var changeSet = this._changeLog.addSet(source, null, user, null, setId);
+				var changeSet = this._changeLog.addSet(source, description, user, null, setId);
+
+				this._changeLog.onChangeSetStarted(changeSet, previousActiveSet, previousActiveSet ? this._changeLog.sets.indexOf(previousActiveSet) : -1, this._changeLog);
 
 				// Determine that the target of a change is a new instance
 				var instanceIsNew = function (change) {

@@ -74,7 +74,7 @@ ResponseHandler.mixin({
 
 			if (this._options.changes) {
 				if (this._options.changes) {
-					this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.checkpoint, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
+					this._serverSync.applyChanges(this._options.checkpoint, this._options.changes, this._options.source, null, this._options.checkpoint, this._options.description ? this._options.description + ":response" : null, null, this._options.beforeApply, this._options.afterApply, callback, thisPtr);
 				}
 				else {
 					if (this._options.source) {
@@ -134,15 +134,16 @@ ResponseHandler.mixin({
 
 			// Raise init events for existing instances loaded by the response
 			if (this.instancesPendingInit) {
-				context.server.batchChanges("responseHandlerInitExisting", function () {
-					this.instancesPendingInit.forEach(function (obj) {
+				var instances = this.instancesPendingInit;
+				context.server._changeLog.batchChanges(this._options.description ? this._options.description + ":initExisting" : "responseHandlerInitExisting", context.server._localUser, function () {
+					instances.forEach(function (obj) {
 						for (var t = obj.meta.type; t; t = t.baseType) {
 							var handler = t._getEventHandler("initExisting");
 							if (handler)
 								handler(obj, {});
 						}
 					});
-				}, this);
+				}, true);
 			}
 
 			callback.call(thisPtr || this);

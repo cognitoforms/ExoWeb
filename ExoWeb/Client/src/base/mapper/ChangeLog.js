@@ -56,6 +56,7 @@ ChangeLog.mixin({
 			previousActiveSet = this.activeSet,
 			previousActiveSetIdx = previousActiveSet ? this.sets.indexOf(previousActiveSet) : -1,
 			priorSet = previousActiveSet,
+			usePriorSet = true,
 			newActiveSet = null;
 
 		// Start a new set for the batch if there isn't a current active set. If there is a current active set it can be
@@ -80,6 +81,10 @@ ChangeLog.mixin({
 
 				// Move the prior set back since the previous active set is removed.
 				priorSet = this.sets[previousActiveSetIdx - 1];
+
+				// Don't re-use the prior set since it was not active and the
+				// previous active set was removed (as if it never existed).
+				usePriorSet = false;
 			}
 		}
 
@@ -116,7 +121,7 @@ ChangeLog.mixin({
 					return null;
 				}
 
-				this.onChangeSetStarted(newBatchSet, priorSet, newBatchSetIndex, this);
+				this.onChangeSetStarted(newBatchSet, usePriorSet ? priorSet : null, newBatchSetIndex, this);
 			}
 
 			// If there was previously an active set, start a new
@@ -147,19 +152,33 @@ ChangeLog.mixin({
 
 		return this.activeSet.checkpoint(title, code);
 	},
-	compress: function () {
-		if (arguments.length > 0) {
-			throw new ArgumentsLengthError(0, arguments.length);
-		}
+	compress: function (tailOnly, considerAdditionalInfo) {
+		var removed = [];
+
 		for (var i = this.sets.length - 1; i >= 0; i--) {
 			var set = this.sets[i];
-			if (set.changes.length === 0) {
+			if (set.changes.length === 0 && (!considerAdditionalInfo || (!set.title && !set.user))) {
 				if (set === this.activeSet) {
 					this.activeSet = null;
 				}
-				this.sets.splice(i, 1);
+
+				// Remove the item
+				var splicedItems = this.sets.splice(i, 1);
+
+				// Insert at the beginning of the list of removed items
+				var spliceArgs = [0, 0];
+				Array.prototype.push.apply(spliceArgs, splicedItems);
+				Array.prototype.splice.apply(removed, spliceArgs);
+			}
+
+			if (tailOnly) {
+				// Exit early after checking the last
+				// change set if 'tailOnly' is specified.
+				break;
 			}
 		}
+
+		return removed;
 	},
 	count: function (filter, thisPtr) {
 		var result = 0;
