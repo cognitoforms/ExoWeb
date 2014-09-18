@@ -16328,7 +16328,12 @@ window.ExoWeb.DotNet = {};
 				this._properties = {};
 				for (var prop in this) {
 					if (prop.startsWith("prop_") && !prop.startsWith("prop_add_")) {
-						var name = Sys.Application._mapToPrototype(prop.substring(5), this.get_classObject());
+						var classObj = this.get_classObject();
+						if (!classObj) {
+							throw new Error($format("Could not evaulate type '{0}'.", this._class));
+						}
+
+						var name = Sys.Application._mapToPrototype(prop.substring(5), classObj);
 
 						if (!name) {
 							throw new Error($format("Property '{0}' could not be found on type '{1}'.", prop.substring(5), this._class));

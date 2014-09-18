@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using ExoModel;
-using ExoRule.Validation;
 using System.Collections;
-using ExoWeb.Templates.JavaScript;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {
@@ -22,8 +17,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// Render the data view to the output for the current page.
 		/// </summary>
 		/// <param name="page"></param>
+		/// <param name="templateNames"></param>
 		/// <param name="writer"></param>
-		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, string[] templateNames, System.IO.TextWriter writer)
 		{
 			bool canRender;
 			AttributeBinding ifBinding;
@@ -32,7 +28,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				Abort(page, templateNames, writer);
 				return;
 			}
-			else if (!canRender)
+
+			if (!canRender)
 				return;
 
 			// Output the original template if data source was not specified
@@ -84,7 +81,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			var ownTemplateNames = contentTemplateBinding != null ?
-				((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+				((string) contentTemplateBinding.Value).Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries) :
 				new string[0];
 
 			RenderStartTag(page, writer, ifBinding, dataBinding, contentTemplateBinding,
@@ -98,32 +95,23 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			if (dataBinding.Value == null)
 				list = new object[0];
 			else if (dataBinding.Value is IEnumerable && !(dataBinding.Value is string))
-				list = (IEnumerable)dataBinding.Value;
+				list = (IEnumerable) dataBinding.Value;
 			else
-				list = new object[] { dataBinding.Value };
-
-			bool isSelect = Tag.Equals("select", StringComparison.CurrentCultureIgnoreCase);
+				list = new[] {dataBinding.Value};
 
 			// Process the template for each list item
 			var index = 0;
 			foreach (var item in list)
 			{
 				// Begin a new template context
-				using (page.BeginContext(item, index++, null))
+				using (var context = page.BeginContext(item, index++, null))
 				{
-					
-					if (isSelect && page.IsIE)
-						writer.Write("<begin id='" + page.Context.Id +"' />");
-					else
-						writer.Write("<!--item:" + page.Context.Id + "-->");
+					RenderContextBeginMarker(context, Tag, writer);
 
 					foreach (var block in Blocks)
-						block.Render(page, templateNames.Concat(ownTemplateNames), writer);
+						block.Render(page, templateNames.Concat(ownTemplateNames).ToArray(), writer);
 
-					if (isSelect && page.IsIE)
-						writer.Write("<end />");
-					else
-						writer.Write("<!--/item-->");
+					RenderContextEndMarker(context, Tag, writer);
 				}
 			}
 
@@ -131,7 +119,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 			// Render script linking logic
 			if (page.Context.IsGlobal)
-				writer.Write(string.Format("<script type=\"text/javascript\">$exoweb({{ domReady: function() {{ Sys.Application.linkElement(document.getElementById(\"{0}\"), document.getElementById(\"{1}\")); }} }});</script>", controlId, templateId));
+				writer.Write("<script type=\"text/javascript\">$exoweb({{ domReady: function() {{ Sys.Application.linkElement(document.getElementById(\"{0}\"), document.getElementById(\"{1}\")); }} }});</script>", controlId, templateId);
 		}
 
 		public override string ToString()

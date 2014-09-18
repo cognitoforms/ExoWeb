@@ -2,7 +2,6 @@
 using System.Linq;
 using Jurassic.Library;
 using ExoWeb.Templates.JavaScript;
-using System.Collections.Generic;
 
 namespace ExoWeb.Templates.MicrosoftAjax
 {
@@ -82,7 +81,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return result;
 		}
 
-		internal override void Abort(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
+		internal override void Abort(AjaxPage page, string[] templateNames, System.IO.TextWriter writer)
 		{
 			// Write out a render/dispose toggle since it will be interpreted as a template
 			// and conditionally render.  Otherwise, the content within the toggle is not affected
@@ -99,7 +98,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				}
 
 				var ownTemplateNames = contentTemplateBinding != null ?
-					((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+					((string) contentTemplateBinding.Value).Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries) :
 					new string[0];
 
 				RenderStartTag(page, writer,
@@ -119,13 +118,13 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 				// continue rendering child blocks in the same data context
 				foreach (var block in Blocks)
-					block.Render(page, templateNames.Concat(ownTemplateNames), writer);
+					block.Render(page, templateNames.Concat(ownTemplateNames).ToArray(), writer);
 
 				RenderEndTag(writer);
 			}
 		}
 
-		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, string[] templateNames, System.IO.TextWriter writer)
 		{
 			bool canRender;
 			AttributeBinding ifBinding;
@@ -134,7 +133,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				Abort(page, templateNames, writer);
 				return;
 			}
-			else if (!canRender)
+
+			if (!canRender)
 				return;
 
 			// Output the original template if toggle on was not specified
@@ -173,7 +173,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				classValue = (string)classBinding.Value;
 			}
 
-			var actionValue = (ToggleAction?)null;
+			ToggleAction? actionValue;
+
 			var actionBinding = (AttributeBinding)null;
 
 			// Get the value of the toggle action (i.e.: show, hide, etc.)
@@ -188,12 +189,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					return;
 				}
 
-				actionValue = (ToggleAction)Enum.Parse(typeof(ToggleAction), (string)actionBinding.Value);
+				actionValue = (ToggleAction)Enum.Parse(typeof(ToggleAction), (string)actionBinding.Value, true);
 			}
 			else if (!string.IsNullOrEmpty(classValue))
-				actionValue = ToggleAction.addClass;
+				actionValue = ToggleAction.AddClass;
 			else
-				actionValue = ToggleAction.show;
+				actionValue = ToggleAction.Show;
 
 			var groupNameBinding = (AttributeBinding)null;
 
@@ -229,9 +230,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					strictModeValue = bool.Parse((string)strictModeBinding.Value);
 			}
 
-			var equals = (bool?)null;
+			bool? equals;
 
-			var whenValue = (object)null;
 			var whenBinding = (AttributeBinding)null;
 
 			// Evaluate whether the on and when conditions are equal or
@@ -244,7 +244,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					if (!(onValue is bool))
 						throw new ApplicationException(string.Format("With strict mode enabled, toggle:on should be a value of type Boolean, actual type \"{0}\".", onValue == null ? "null" : onValue.GetType().Name));
 
-					equals = onValue is bool && (bool)onValue;
+					equals = (bool) onValue;
 				}
 				else if (onValue is System.Collections.IEnumerable)
 				{
@@ -266,7 +266,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			else
 			{
 				whenBinding = When.Evaluate(page);
-				whenValue = whenBinding.Value;
+
+				var whenValue = whenBinding.Value;
 
 				if (whenValue == null)
 					equals = (onValue == null);
@@ -302,13 +303,13 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			// If no class value is defined then abort
-			if ((actionValue == ToggleAction.addClass || actionValue == ToggleAction.removeClass) && string.IsNullOrEmpty(classValue))
+			if ((actionValue == ToggleAction.AddClass || actionValue == ToggleAction.RemoveClass) && string.IsNullOrEmpty(classValue))
 			{
 				Abort(page, templateNames, writer);
 				return;
 			}
 
-			bool render = actionValue == ToggleAction.render || actionValue == ToggleAction.dispose;
+			bool render = actionValue == ToggleAction.Render || actionValue == ToggleAction.Dispose;
 
 			AttributeBinding contentTemplateBinding;
 			if (!TryContentTemplate(page, templateNames, writer, out contentTemplateBinding))
@@ -318,7 +319,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			var ownTemplateNames = contentTemplateBinding != null ?
-				((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+				((string) contentTemplateBinding.Value).Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries) :
 				new string[0];
 
 			using (var context = render ? page.BeginContext(page.Context.DataItem, null) : null)
@@ -326,9 +327,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				RenderStartTag(page, writer, attrs => MergeAttribute(MergeAttribute(MergeAttribute(attrs,
 					"class", value =>
 					{
-						if (actionValue == ToggleAction.addClass || actionValue == ToggleAction.removeClass)
+						if (actionValue == ToggleAction.AddClass || actionValue == ToggleAction.RemoveClass)
 						{
-							if ((actionValue == ToggleAction.addClass && equals.Value) || (actionValue == ToggleAction.removeClass && !equals.Value))
+							if ((actionValue == ToggleAction.AddClass && equals.Value) || (actionValue == ToggleAction.RemoveClass && !equals.Value))
 								value = AttributeHelper.EnsureClassName(value, classValue);
 							else
 								value = AttributeHelper.RemoveClassName(value, classValue);
@@ -342,11 +343,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					}).ToArray(),
 					"style", value =>
 					{
-						if (actionValue == ToggleAction.show || actionValue == ToggleAction.hide ||
-							actionValue == ToggleAction.render || actionValue == ToggleAction.dispose)
+						if (actionValue == ToggleAction.Show || actionValue == ToggleAction.Hide ||
+							actionValue == ToggleAction.Render || actionValue == ToggleAction.Dispose)
 						{
-							if (((actionValue == ToggleAction.show || actionValue == ToggleAction.render) && equals.Value) ||
-								((actionValue == ToggleAction.hide || actionValue == ToggleAction.dispose) && !equals.Value))
+							if (((actionValue == ToggleAction.Show || actionValue == ToggleAction.Render) && equals.Value) ||
+								((actionValue == ToggleAction.Hide || actionValue == ToggleAction.Dispose) && !equals.Value))
 							{
 								if (AttributeHelper.GetCssStyle(value, "display") == "none")
 									value = AttributeHelper.RemoveCssStyle(value, "display");
@@ -359,9 +360,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					}).ToArray(),
 					"disabled", value =>
 					{
-						if (actionValue == ToggleAction.enable || actionValue == ToggleAction.disable)
+						if (actionValue == ToggleAction.Enable || actionValue == ToggleAction.Disable)
 						{
-							if ((actionValue == ToggleAction.enable && equals.Value) || (actionValue == ToggleAction.disable && !equals.Value))
+							if ((actionValue == ToggleAction.Enable && equals.Value) || (actionValue == ToggleAction.Disable && !equals.Value))
 								value = null;
 							else
 								value = "disabled";
@@ -374,10 +375,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					render ? new AttributeBinding(new Attribute() { Name = "data-sys-tcindex", Value = context.Id }, null) : null);
 
 				// Only render the inner blocks if the template would be rendered client-side
-				if (!render || (actionValue == ToggleAction.render && equals.Value) || (actionValue == ToggleAction.dispose && !equals.Value))
+				if (!render || (actionValue == ToggleAction.Render && equals.Value) || (actionValue == ToggleAction.Dispose && !equals.Value))
 				{
 					foreach (var block in Blocks)
-						block.Render(page, templateNames.Concat(ownTemplateNames), writer);
+						block.Render(page, templateNames.Concat(ownTemplateNames).ToArray(), writer);
 				}
 
 				RenderEndTag(writer);
@@ -389,16 +390,51 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return "<toggle on=\"" + On + "\" when=\"" + When + "\" strictmode=\"" + StrictMode + "\" groupname=\"" + GroupName + "\" class=\"" + Class + "\" action=\"" + Action + "\" >";
 		}
 
+		/// <summary>
+		/// Specifies the action that the toggle control will take
+		/// depending on whether or not the condition evaulates to true.
+		/// </summary>
 		internal enum ToggleAction
 		{
-			render,
-			dispose,
-			show,
-			hide,
-			enable,
-			disable,
-			addClass,
-			removeClass
+			/// <summary>
+			/// The toggle element will only render if the condition passses.
+			/// </summary>
+			Render,
+
+			/// <summary>
+			/// The toggle element will NOT render if the condition passses.
+			/// </summary>
+			Dispose,
+
+			/// <summary>
+			/// The toggle element will be shown if the condition passses.
+			/// </summary>
+			Show,
+
+			/// <summary>
+			/// The toggle element will be hidden if the condition passses.
+			/// </summary>
+			Hide,
+
+			/// <summary>
+			/// Children of the toggle element will be enabled if the condition passses.
+			/// </summary>
+			Enable,
+
+			/// <summary>
+			/// Children of the toggle element will be disabled if the condition passses.
+			/// </summary>
+			Disable,
+
+			/// <summary>
+			/// The specified CSS class will be added to the toggle element if the condition passses.
+			/// </summary>
+			AddClass,
+
+			/// <summary>
+			/// The specified CSS class will be removed from the toggle element if the condition passses.
+			/// </summary>
+			RemoveClass
 		}
 	}
 }

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using ExoModel;
 using System.Web;
 using ExoWeb.Templates.JavaScript;
 
@@ -24,7 +22,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return attributes.Select(a => a.Name == "data-sys-attach" ? new AttributeBinding(new Attribute() { Name = "sys:attach", Value = a.DisplayValue }, null) : a);
 		}
 
-		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, string[] templateNames, System.IO.TextWriter writer)
 		{
 			RenderStartTag(page, writer);
 		}
@@ -65,8 +63,10 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			bool foundId = false;
 			bool isTextArea = Tag.Equals("textarea", StringComparison.InvariantCultureIgnoreCase);
 
+			var attrs = attributes.ToArray();
+
 			// Write the attributes to the output stream
-			foreach (var attribute in attributes)
+			foreach (var attribute in attrs)
 			{
 				// Ensure that multiple id attributes are not specified
 				if (!page.Context.IsGlobal && (attribute.Name == "id" || attribute.Name == "sys:id"))
@@ -80,7 +80,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				if (attribute.IsBound)
 				{
 					if (attribute.Name == "sys:innerhtml" || (isTextArea && attribute.Name == "sys:value"))
-						innerContent = (attribute.DisplayValue ?? "").ToString();
+						innerContent = (attribute.DisplayValue ?? "");
 					else if (attribute.Name == "sys:innertext")
 						innerContent = HttpUtility.HtmlEncode(attribute.DisplayValue ?? "");
 				}
@@ -89,7 +89,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				var attributeName = attribute.Name.StartsWith("sys:") ? attribute.Name.Substring(4) : attribute.Name;
 				if (Tag.Equals("input", StringComparison.InvariantCultureIgnoreCase))
 				{
-					var attr = attributes.SingleOrDefault(a => a.Name.Equals("type", StringComparison.InvariantCultureIgnoreCase) && a.IsValid && a.Value != null);
+					var attr = attrs.SingleOrDefault(a => a.Name.Equals("type", StringComparison.InvariantCultureIgnoreCase) && a.IsValid && a.Value != null);
 					if (attr == null)
 						isHtmlBoolean = HtmlHelpers.IsBooleanAttribute(attributeName, Tag, null, true);
 					else
@@ -141,14 +141,14 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			// Close Tag
 			if (IsEmpty)
 			{
-				if (innerContent != null)
+				if (!string.IsNullOrEmpty(innerContent))
 					writer.Write(">" + innerContent + "</" + Tag + ">");
 				else if (HtmlHelpers.IsSelfClosing(Tag))
 					writer.Write(" />");
 				else
 					writer.Write("></" + Tag + ">");
 			}
-			else if (innerContent != null)
+			else if (!string.IsNullOrEmpty(innerContent))
 				writer.Write(">" + innerContent);
 			else
 				writer.Write(">");
@@ -156,8 +156,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		protected void RenderEndTag(System.IO.TextWriter writer)
 		{
-			// Immediately abort if no tag name
-			if (Tag == null)
+			// Immediately abort if no tag name or if tag was already closed.
+			if (Tag == null || IsEmpty)
 				return;
 
 			writer.Write("</" + Tag + ">");

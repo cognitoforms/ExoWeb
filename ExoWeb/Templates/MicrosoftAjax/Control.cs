@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using ExoWeb.Templates.JavaScript;
 
 namespace ExoWeb.Templates.MicrosoftAjax
@@ -23,7 +22,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// Merges the set of attributes defined on the content tag with attributes from the target template.
 		/// </summary>
 		/// <param name="attributes"></param>
-		/// <param name="template"></param>
+		/// <param name="name"></param>
+		/// <param name="transformValue"></param>
 		/// <returns></returns>
 		protected IEnumerable<AttributeBinding> MergeAttribute(IEnumerable<AttributeBinding> attributes, string name, Func<string, string> transformValue)
 		{
@@ -56,21 +56,17 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				canRender = true;
 				return true;
 			}
-			else
-			{
-				ifBinding = If.Evaluate(page);
 
-				if (!ifBinding.IsValid)
-				{
-					canRender = false;
-					return false;
-				}
-				else
-				{
-					canRender = JavaScriptHelpers.IsTruthy(ifBinding.Value);
-					return true;
-				}
+			ifBinding = If.Evaluate(page);
+
+			if (!ifBinding.IsValid)
+			{
+				canRender = false;
+				return false;
 			}
+
+			canRender = JavaScriptHelpers.IsTruthy(ifBinding.Value);
+			return true;
 		}
 
 		protected bool TryContentTemplate(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer, out AttributeBinding contentTemplateBinding)
@@ -80,14 +76,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				contentTemplateBinding = null;
 				return true;
 			}
-			else
-			{
-				contentTemplateBinding = ContentTemplate.Evaluate(page);
-				return contentTemplateBinding.IsValid && contentTemplateBinding.Value is string;
-			}
+
+			contentTemplateBinding = ContentTemplate.Evaluate(page);
+			return contentTemplateBinding.IsValid && contentTemplateBinding.Value is string;
 		}
 
-		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, string[] templateNames, System.IO.TextWriter writer)
 		{
 			bool canRender;
 			AttributeBinding ifBinding;
@@ -96,7 +90,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				Abort(page, templateNames, writer);
 				return;
 			}
-			else if (!canRender)
+
+			if (!canRender)
 				return;
 
 			AttributeBinding contentTemplateBinding;
@@ -107,13 +102,13 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			var ownTemplateNames = contentTemplateBinding != null ?
-				((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+				((string) contentTemplateBinding.Value).Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries) :
 				new string[0];
 
 			RenderStartTag(page, writer, ifBinding, contentTemplateBinding);
 
 			foreach (var block in Blocks)
-				block.Render(page, templateNames.Concat(ownTemplateNames), writer);
+				block.Render(page, templateNames.Concat(ownTemplateNames).ToArray(), writer);
 
 			RenderEndTag(writer);
 		}

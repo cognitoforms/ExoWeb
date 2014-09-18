@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Xml;
 using System.IO;
 
 namespace ExoWeb.Templates.MicrosoftAjax
@@ -12,8 +10,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// </summary>
 	internal class Template : Control, ITemplate
 	{
-		static Dictionary<string, IEnumerable<Template>> templates = new Dictionary<string, IEnumerable<Template>>();
-		static Dictionary<string, FileSystemWatcher> watchers = new Dictionary<string, FileSystemWatcher>();
+		private static readonly Dictionary<string, IEnumerable<Template>> templates = new Dictionary<string, IEnumerable<Template>>();
+
+		private static readonly Dictionary<string, FileSystemWatcher> watchers = new Dictionary<string, FileSystemWatcher>();
 
 		public string Source { get; internal set; }
 
@@ -48,20 +47,18 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			IEnumerable<Template> t;
 			if (templates.TryGetValue(path.ToLower(), out t))
 				return t;
-			else
+
+			t = Block.Parse(Path.GetFileName(path), File.ReadAllText(path)).OfType<Template>().ToArray();
+			templates[path.ToLower()] = t;
+			string directory = Path.GetDirectoryName(path).ToLower();
+			if (!watchers.ContainsKey(directory))
 			{
-				t = Block.Parse(Path.GetFileName(path), File.ReadAllText(path)).OfType<Template>().ToArray();
-				templates[path.ToLower()] = t;
-				string directory = Path.GetDirectoryName(path).ToLower();
-				if (!watchers.ContainsKey(directory))
-				{
-					var watcher = new FileSystemWatcher(directory);
-					watcher.Changed += (s, e) => templates.Remove(e.FullPath.ToLower());
-					watcher.EnableRaisingEvents = true;
-					watchers[directory] = watcher;
-				}
-				return t;
+				var watcher = new FileSystemWatcher(directory);
+				watcher.Changed += (s, e) => templates.Remove(e.FullPath.ToLower());
+				watcher.EnableRaisingEvents = true;
+				watchers[directory] = watcher;
 			}
+			return t;
 		}
 
 		/// <summary>
@@ -73,13 +70,13 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			return String.Format(@"<{0} isadapter=""{1}"" islist=""{2}"" isreference=""{3}"" datatype=""{4}"" name=""{5}"" />", Tag, IsAdapter, IsList, IsReference, DataType, string.Join(", ", Name));
 		}
 
-		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, TextWriter writer)
+		internal override void Render(AjaxPage page, string[] templateNames, TextWriter writer)
 		{
 			try
 			{
 				ExoWeb.OnBeginRender(page, this);
 				foreach (var block in Blocks)
-					block.Render(page, templateNames.Concat(ContentTemplateNames), writer);
+					block.Render(page, templateNames.Concat(ContentTemplateNames).ToArray(), writer);
 			}
 			finally
 			{
@@ -92,10 +89,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// </summary>
 		/// <param name="page"></param>
 		/// <param name="writer"></param>
-		void ITemplate.Render(Page page, System.IO.TextWriter writer)
+		void ITemplate.Render(Page page, TextWriter writer)
 		{
-			var ajaxPage = (AjaxPage)page;
-
 			// Add sys-ignore class to root level controls before rendering the inline template
 			foreach (var control in Blocks.OfType<Control>())
 			{
@@ -105,6 +100,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				else
 					control.Attributes.Add(new Attribute() { Name = "class", Value = "sys-ignore" });
 			}
+
 			Render((AjaxPage)page, new string[0], writer);
 		}
 	}

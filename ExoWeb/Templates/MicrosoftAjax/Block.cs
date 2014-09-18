@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Xml;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -15,11 +14,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	{
 		#region Html Entity Mapping
 
-		static Regex entityParser = new Regex(@"\&(?<entity>[A-Za-z]+)\;", RegexOptions.Compiled);
-		static Regex ampParser = new Regex(@"\&(?!\#\d+\;)");
-		static Regex xmlnsParser = new Regex(@"\sxmlns\:\w+=\"".*?\""");
+		private static readonly Regex entityParser = new Regex(@"\&(?<entity>[A-Za-z]+)\;", RegexOptions.Compiled);
+		private static readonly Regex ampParser = new Regex(@"\&(?!\#\d+\;)");
+		private static readonly Regex xmlnsParser = new Regex(@"\sxmlns\:\w+=\"".*?\""");
 
-		static Dictionary<string, string> entities = new Dictionary<string, string>() 
+		private static readonly Dictionary<string, string> entities = new Dictionary<string, string>() 
 		{
 			{ "quot", "&#34;" },
 			{ "amp", "&#38;" },
@@ -131,6 +130,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <summary>
 		/// Parses and returns the blocks represented by the specified template markup.
 		/// </summary>
+		/// <param name="source"></param>
 		/// <param name="markup"></param>
 		/// <returns></returns>
 		protected internal static List<Block> Parse(string source, string markup)
@@ -160,7 +160,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			{
 				templates.LoadXml(xml);
 			}
-			catch (System.Xml.XmlException e)
+			catch (XmlException e)
 			{
 				throw new ApplicationException("Invalid XML: " + xml, e);
 			}
@@ -170,7 +170,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <summary>
 		/// Parses the children of the specified element into a list of template blocks.
 		/// </summary>
+		/// <param name="source"></param>
 		/// <param name="element"></param>
+		/// <param name="withinTemplate"></param>
 		/// <returns></returns>
 		static List<Block> ParseChildren(string source, XmlElement element, bool withinTemplate)
 		{
@@ -181,11 +183,12 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <summary>
 		/// Parses the children of the specified element into a list of template blocks.
 		/// </summary>
+		/// <param name="source">The original string source of the template.</param>
 		/// <param name="element">The element to parse</param>
 		/// <param name="withinTemplate">Indicates that the children of the given element are within a template control.</param>
 		/// <param name="lastNestedTemplateIndex">Tracks the index of the last template element that was encountered. Passed through to recursive calls excluding templates.</param>
 		/// <param name="nestedTemplates">Out parameter that returns the number of template controls represented by the children of the given element.</param>
-		/// <returns></returns>
+		/// <returns>A list of template blocks.</returns>
 		static List<Block> ParseChildren(string source, XmlElement element, bool withinTemplate, int lastNestedTemplateIndex, out int nestedTemplates)
 		{
 			// Track the blocks represented by the current element
@@ -309,12 +312,14 @@ namespace ExoWeb.Templates.MicrosoftAjax
 								control = new Control()
 								{
 									Attributes = GetAttributes(child, "sys:if", "sys:content-template", "sys:innerhtml", "sys:innertext"),
-									ContentTemplate = GetBinding(child, "sys:content-template")
+									ContentTemplate = GetBinding(child, "sys:content-template"),
+									IsEmpty = child.ChildNodes.Count == 0
 								};
 								if (child.InnerXml.Trim().StartsWith("{") && child.InnerXml.Trim().EndsWith("}"))
 								{
 									parseChildren = false;
 									control.Attributes.Add(new Attribute() { Name = "innerhtml", Binding = Binding.Parse(GetDefaultProperty(child), child.InnerXml.Trim()), Value = child.InnerXml.Trim() });
+									control.IsEmpty = true;
 								}
 							}
 
@@ -500,7 +505,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// <summary>
 		/// Gets the HTML template for the specified <see cref="XmlNode"/>.
 		/// </summary>
-		/// <param name="node"></param>
+		/// <param name="element"></param>
 		/// <returns></returns>
 		static string GetTemplate(XmlElement element)
 		{
@@ -544,7 +549,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		private static string[] GetLiteralTokens(XmlElement element, string attributeName)
 		{
 			string literalValue = GetStringLiteral(element, attributeName);
-			return string.IsNullOrEmpty(literalValue) ? new string[0] : literalValue.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			return string.IsNullOrEmpty(literalValue) ? new string[0] : literalValue.Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries);
 		}
 
 		static Binding GetBinding(XmlElement element, string attributeName)
@@ -589,8 +594,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// Renders the block's markup to the specified writer in the context of the specified page.
 		/// </summary>
 		/// <param name="page"></param>
+		/// <param name="templateNames"></param>
 		/// <param name="writer"></param>
-		internal virtual void Abort(AjaxPage page, IEnumerable<string> templateNames, TextWriter writer)
+		internal virtual void Abort(AjaxPage page, string[] templateNames, TextWriter writer)
 		{
 			writer.Write(Markup);
 		}
@@ -599,10 +605,37 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// Renders the block to the specified writer in the context of the specified page.
 		/// </summary>
 		/// <param name="page"></param>
+		/// <param name="templateNames"></param>
 		/// <param name="writer"></param>
-		internal virtual void Render(AjaxPage page, IEnumerable<string> templateNames, TextWriter writer)
+		internal virtual void Render(AjaxPage page, string[] templateNames, TextWriter writer)
 		{
 			writer.Write(Markup);
+		}
+
+		/// <summary>
+		/// Renders an element that marks the beginning of a template context in rendered HTML.
+		/// </summary>
+		internal static void RenderContextBeginMarker(Context context, string parentTagName, TextWriter writer)
+		{
+			var isWithinSelect = parentTagName.Equals("select", StringComparison.CurrentCultureIgnoreCase);
+
+			if (isWithinSelect)
+				writer.Write("<option style=\"display:none;\" data-sys-ctx=\"{0}\"></option>", context.Id);
+			else
+				writer.Write("<!--item:" + context.Id + "-->");
+		}
+
+		/// <summary>
+		/// Renders an element that marks the end of a template context in rendered HTML.
+		/// </summary>
+		internal static void RenderContextEndMarker(Context context, string parentTagName, TextWriter writer)
+		{
+			var isWithinSelect = parentTagName.Equals("select", StringComparison.CurrentCultureIgnoreCase);
+
+			if (isWithinSelect)
+				writer.Write("<option style=\"display:none;\" data-sys-ctx=\"/{0}\"></option>", context.Id);
+			else
+				writer.Write("<!--/item:" + context.Id + "-->");
 		}
 	}
 }

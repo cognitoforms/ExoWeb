@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using ExoModel;
 using System.Collections;
-using ExoWeb.Templates.JavaScript;
 using ExoWeb.Serialization;
 
 namespace ExoWeb.Templates.MicrosoftAjax
@@ -20,7 +18,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public Binding Template { get; internal set; }
 
-		internal override void Render(AjaxPage page, IEnumerable<string> templateNames, System.IO.TextWriter writer)
+		internal override void Render(AjaxPage page, string[] templateNames, System.IO.TextWriter writer)
 		{
 			bool canRender;
 			AttributeBinding ifBinding;
@@ -29,7 +27,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				Abort(page, templateNames, writer);
 				return;
 			}
-			else if (!canRender)
+
+			if (!canRender)
 				return;
 
 			// Output the original template if data source was not specified
@@ -59,7 +58,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			var ownTemplateNames = contentTemplateBinding != null ?
-				((string)contentTemplateBinding.Value).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries) :
+				((string) contentTemplateBinding.Value).Split(new[] {' '}, StringSplitOptions.RemoveEmptyEntries) :
 				new string[0];
 	
 			// Just render an empty content element if the data is null
@@ -71,21 +70,19 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			}
 
 			// Get the binding data
-			object data = null;
-			object realData = null;
-			ModelProperty property = null;
-			bool isAdapter = false;
-			ModelType referenceType = null;
-			Type valueType = null;
-			bool isList = false;
+			object data;
+			bool isAdapter;
+			ModelType referenceType;
+			Type valueType;
+			bool isList;
 
 			// Valid binding
 			if (dataBinding.IsValid)
 			{
 				data = dataBinding.Value;
 				isAdapter = data is Adapter;
-				realData = isAdapter ? ((Adapter)data).RawValue : data;
-				property = dataBinding.Property;
+				object realData = isAdapter ? ((Adapter)data).RawValue : data;
+				ModelProperty property = dataBinding.Property;
 				referenceType = realData is ModelInstance ? ((ModelInstance)realData).Type :
 								property is ModelReferenceProperty ? ((ModelReferenceProperty)property).PropertyType : null;
 				valueType = realData != null && !(realData is ModelInstance || realData is IEnumerable<ModelInstance>) ? realData.GetType() :
@@ -96,14 +93,14 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			// Datatype hint only
 			else
 			{
-				var dataType = dataTypeBinding.Value as String;
+				var dataType = (string)dataTypeBinding.Value;
 				isAdapter = Data is Binding.AdapterExtension || dataType == "ExoWeb.View.Adapter";
 				isList = dataType.EndsWith("[]");
 				if (isList)
 					dataType = dataType.Substring(0, dataType.Length - 2);
 				valueType =	dataType == "String" ? typeof(string) :	dataType == "Number" ? typeof(decimal) : dataType == "Date" ? typeof(DateTime) : dataType == "Boolean" ? typeof(bool) : null;
-				if (valueType == null)
-					referenceType = ModelContext.Current.GetModelType(dataType);
+				referenceType = valueType == null ? ModelContext.Current.GetModelType(dataType) : null;
+				data = null;
 			}
 		
 			// Evaluate content:template binding to get this content control's declare template(s)
@@ -118,7 +115,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			// Output the original template if a matching template could not be found
 			if (template == null)
 			{
-				writer.Write(string.Format("<!-- A template could not be found matching the specified criteria (TagName={0}, Adapter={1}, Type={2}{3}, IsList={4}, Names='{5}') -->", Tag, isAdapter, referenceType, valueType, isList, string.Join(", ", templates)));
+				writer.Write("<!-- A template could not be found matching the specified criteria (TagName={0}, Adapter={1}, Type={2}{3}, IsList={4}, Names='{5}') -->", Tag, isAdapter, referenceType, valueType, isList, string.Join(", ", templates));
 				Abort(page, templateNames, writer);
 				return;
 			}
@@ -130,7 +127,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 				RenderStartTag(page, writer, attributes => template.Class.Length > 0 ? MergeClassName(attributes, template) : attributes, ifBinding, dataBinding, contentTemplateBinding, templateBinding, new AttributeBinding(new Attribute() { Name = "data-sys-tcindex", Value = context.Id }, null));
 
 				// Render the content template
-				template.Render(page, templates.Where(t => !template.Name.Contains(t)).Concat(template.ContentTemplateNames), writer);
+				template.Render(page, templates.Where(t => !template.Name.Contains(t)).Concat(template.ContentTemplateNames).ToArray(), writer);
 
 				// Render the original content end tag
 				RenderEndTag(writer);
@@ -176,7 +173,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 							// represented as "Object" for minimal functionality. For template matching we really want "Array" instead,
 							// since even in the case of custom serialization the value would be deserialized as an Array client-side
 							// and so if used in template matching the type name would be "Array".
-							if ((type == null || type == "Object") && valueType is IEnumerable)
+							if ((type == null || type == "Object") && typeof(IEnumerable).IsAssignableFrom(valueType))
 								type = "Array";
 
 							if (type == null || type != t.DataType)

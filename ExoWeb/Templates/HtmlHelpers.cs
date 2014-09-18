@@ -76,7 +76,7 @@ namespace ExoWeb.Templates
 		// http://stackoverflow.com/questions/97522/what-are-all-the-valid-self-closing-tags-in-xhtml-as-implemented-by-the-major-b
 		// http://www.w3schools.com/tags/ref_byfunc.asp
 		// http://www.w3.org/TR/html-polyglot/#empty-elements
-		readonly static string[] selfClosingTags = new string[] {
+		private readonly static HashSet<string> selfClosingTags = new HashSet<string> {
 			"area",
 			"base",
 			"basefont",

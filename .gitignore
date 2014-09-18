@@ -11,3 +11,4 @@ obj/
 node_modules/
 ExoWeb/Client/Gruntfile.TfsCheckout.js
 ExoWeb/Client/tools/powershell/TfsSourceControl.ps1
+.tfignore

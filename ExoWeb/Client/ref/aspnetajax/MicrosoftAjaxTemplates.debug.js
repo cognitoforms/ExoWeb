@@ -1381,6 +1381,25 @@
 			while (!!(element = allElements[++i]));
 		}
 
+		function Sys$Application$_elementToString(el) {
+			if (!el.tagName) {
+				return "unknown element";
+			}
+			var str = el.tagName.toLowerCase();
+			if (str === "input") {
+				str += "[" + el.type + "]";
+			}
+			if (el.id) {
+				str += "#" + el.id;
+			}
+			if (el.className) {
+				el.className.split(/\s+/g).forEach(function (c) {
+					str += "." + c;
+				});
+			}
+			return str;
+		}
+
 		// a non-control targeting data attribute, i.e. "data-sys-class"
 		var sysDataAttrExpr = /^data\-sys\-([a-z_]*)$/;
 
@@ -1391,7 +1410,7 @@
 		var sysAttrExpr = /^sys\:([a-z_]*)$/;
 
 		Sys.Application._linkAttributes = function Sys$Application$_linkAttributes(element, parentContext, attachedName) {
-			var i, attr, dataAttr, msDataAttrib, isSelect, isTextArea, match, attrName, value, target, targetProp, link, typeIndex, attrLinksElementContent;
+			var i, attr, dataAttr, msDataAttrib, isSelect, isTextArea, match, attrName, value, target, targetProp, link, typeIndex, attrLinksElementContent, controlType;
 
 			if (element.control && attachedName) {
 				typeIndex = {};
@@ -1427,8 +1446,8 @@
 					target = dataAttr.control ? element.control : element;
 
 					if (target) {
-						isSelect = (/^select$/i.test(element.tagName));
-						isTextArea = (/^textarea$/i.test(element.tagName));
+						isSelect = element.tagName === "SELECT";
+						isTextArea = element.tagName === "TEXTAREA";
 						msDataAttrib = Sys.Application._splitAttribute(dataAttr.prefix + ":" + dataAttr.name, isSelect, typeIndex);
 						targetProp = msDataAttrib.name;
 
@@ -1445,8 +1464,11 @@
 						}
 
 						dataAttr = null;
-						element.removeAttribute(attr.name);
-						i -= 1;
+
+						if (!link) {
+							element.removeAttribute(attr.name);
+							i -= 1;
+						}
 					}
 				}
 			}
@@ -1459,12 +1481,13 @@
 
 		Sys.Application._linkContexts = function Sys$Application$_linkContexts(parentContext, parentControl, parentData, parentElement, currentContext, parentContentTemplates, recursive, generateIds) {
 			var children, newContext, preceedingText, ctxIdx, tcIdx, isSelect, i, node, match, marker, tmplIdx, tmpl, generatesContext, value, foundBinding, isArrayData, generateChildIds,
-				isSingleExternalContext, lastIndex, targetProp, msAttrib, text, trimText, exprRegExp, attachName, isContentTemplate, contentTemplate, childContentTemplates;
+				isSingleExternalContext, lastIndex, targetProp, msAttrib, text, trimText, exprRegExp, attachName, isContentTemplate, contentTemplate, childContentTemplates, ctxAttr,
+				isTextNode, isElementNode, isCommentNode;
 
 			ctxIdx = -1;
 			isSingleExternalContext = !recursive && currentContext;
 			isArrayData = parentData && parentData instanceof Array;
-			isSelect = (/^select$/i.test(parentElement.tagName));
+			isSelect = parentElement.tagName === "SELECT";
 			exprRegExp = Sys.UI.Template._expressionRegExp;
 
 			// Copy child nodes into array to isolate from external changes to the DOM
@@ -1479,10 +1502,13 @@
 				marker = tmplIdx = tmpl = match = value = null;
 				generatesContext = foundBinding = false;
 				generateChildIds = generateIds;
+				isElementNode = node.nodeType === 1;
+				isTextNode = node.nodeType === 3;
+				isCommentNode = node.nodeType === 8;
 
 				// Look for binding expressions in text nodes
 				// NOTE: based on _buildTemplateCode
-				if (node.nodeType === 3) {
+				if (isTextNode) {
 					text = node.nodeValue;
 					trimText = text.trim();
 
@@ -1518,11 +1544,13 @@
 					if (foundBinding) {
 						node.nodeValue = value || "";
 					}
+
+					continue;
 				}
 
 				// If this is top-level then look for context markers
 				if (!recursive) {
-					if (node.nodeType === 8 && (match = itemCommentExpr.exec(node.nodeValue))) {
+					if (isCommentNode && (match = itemCommentExpr.exec(node.nodeValue))) {
 						if (match[1] === "") {
 							tcIdx = match[3];
 							marker = { begin: true, end: false };
@@ -1531,19 +1559,27 @@
 							marker = { begin: false, end: true };
 						}
 					}
-					else if (isSelect) {
-						if (node.tagName === "BEGIN") {
-							tcIdx = node.id;
-							marker = { begin: true, end: false };
-						}
-						else if (node.tagName === "END") {
+					else if (isElementNode && node.hasAttribute("data-sys-ctx")) {
+						ctxAttr = node.getAttribute("data-sys-ctx");
+
+						if (ctxAttr.indexOf("/") === 0) {
 							marker = { begin: false, end: true };
+						}
+						else {
+							tcIdx = ctxAttr;
+							marker = { begin: true, end: false };
 						}
 					}
 
 					if (marker) {
 						if (isSingleExternalContext) {
-							throw new Error("Unexpected context marker in DOM: context was provided by caller");
+							if (isElementNode) {
+								throw new Error("Unexpected context marker in DOM for element '" + Sys$Application$_elementToString(node) + "': context was provided by caller.");
+							} else if (isCommentNode) {
+								throw new Error("Unexpected context marker in DOM for comment '" + node.nodeValue + "': context was provided by caller.");
+							} else {
+								throw new Error("Unexpected context marker in DOM: context was provided by caller");
+							}
 						}
 
 						// Start a new context after this node
@@ -1557,14 +1593,24 @@
 								throw new Error("There is already a context in use. This may be caused by invalid markup.");
 							}
 
+							if (!tcIdx) {
+								throw new Error("Could not find context id for newly created context.");
+							}
+
 							// Start new context for a new item when a context begin marker is found (mimicks compiled code)
 							newContext = new Sys.UI.TemplateContext(tcIdx);
-							ctxIdx += 1;
+
 							newContext.data = parentData;
 							newContext.components = [];
 
 							// Use the preceeding text nodes if there are any
-							newContext.nodes = preceedingText ? preceedingText.slice() : [];
+							if (preceedingText) {
+								newContext.nodes = preceedingText.slice();
+							} else {
+								newContext.nodes = [];
+							}
+
+							newContext.index = ++ctxIdx;
 
 							// Set the index and use it to retrieve the data item for the context
 							if (isArrayData) {
@@ -1572,14 +1618,12 @@
 									throw new Error("Unexpected number of contexts: expected " + parentData.length + " but found at least " + (ctxIdx + 1));
 								}
 								newContext.dataItem = parentData[ctxIdx];
-							}
-							else if (ctxIdx > 0) {
+							} else if (ctxIdx > 0) {
+
 								throw new Error("Found multiple contexts in DOM, but data is not an array.");
-							}
-							else {
+							} else {
 								newContext.dataItem = parentData;
 							}
-							newContext.index = ctxIdx;
 
 							newContext.parentContext = parentContext;
 							newContext.containerElement = parentElement;
@@ -1607,13 +1651,18 @@
 							currentContext = null;
 						}
 
-						// Remove the marker node and continue to the next
-						parentElement.removeChild(node);
+						// Remove elements since they may still be shown by the browser
+						// in some cases, even if they are hidden (i.e. OPTION).
+						if (isElementNode) {
+							parentElement.removeChild(node);
+						}
+
+						// Continue to the next node if this node was a marker
 						continue;
 					}
 					else {
 						// Save text nodes to be included in the following context
-						if (node.nodeType === 3 && !currentContext) {
+						if (isTextNode && !currentContext) {
 							if (preceedingText) {
 								preceedingText.push(node);
 							}
@@ -1622,6 +1671,16 @@
 							}
 						}
 						else {
+							if (!currentContext) {
+								if (isElementNode) {
+									throw new Error("Found element '" + Sys$Application$_elementToString(node) + "' outside of an active context.");
+								} else if (isCommentNode) {
+									throw new Error("Found comment '" + node.nodeValue + "' outside of an active context.");
+								} else {
+									throw new Error("Found unknown node '" + node.nodeValue + "' outside of an active context.");
+								}
+							}
+
 							// Only top-level (non-recursive) nodes are added to the context nodes list
 							currentContext.nodes.push(node);
 						}
@@ -1629,11 +1688,11 @@
 				}
 
 				// Only elements
-				if (node.nodeType === 1) {
+				if (isElementNode) {
+
 					// If a template index attribute was specified, then us it for templated controls
 					if (node.hasAttribute("data-sys-tmplidx")) {
 						tmplIdx = parseInt(node.getAttribute("data-sys-tmplidx"), 10);
-						node.removeAttribute("data-sys-tmplidx");
 					}
 
 					// Assign context index (mimics compiled code)
@@ -1641,17 +1700,19 @@
 
 					if (node.hasAttribute("data-continue")) {
 						// Children were allowed to continue rendering, so don't start generating ids
-						node.removeAttribute("data-continue");
 					}
 					else if (!generateChildIds) {
 						// Detect special attributes that would have been taken care of by server-side rendering.
-						generateChildIds = node.hasAttribute("sys:attach") || node.hasAttribute("sys:if") || node.hasAttribute("sys:content-template");
+						if (node.hasAttribute("sys:attach") || node.hasAttribute("sys:if") || node.hasAttribute("sys:content-template")) {
+							generateChildIds = true;
+						}
 					}
 
 					// If a sys:if attribute exists, then potentially remove the element from the DOM
 					// don't remove it immediately since its contents could affect linking (e.g. child template index)
 					if (node.hasAttribute("sys:if")) {
-						if (Sys.Application._getPropertyValue(null, null, null, node.getAttribute("sys:if"), currentContext, node, null, true)) {
+						value = node.getAttribute("sys:if");
+						if (Sys.Application._getPropertyValue(null, null, null, value, currentContext, node, null, true)) {
 							node.removeAttribute("sys:if");
 						}
 						else {
@@ -1665,7 +1726,9 @@
 						if (node.id) {
 							throw new Error("Found a sys:id binding in pre-rendered markup, but the element already has an id.");
 						}
+
 						value = node.getAttribute("sys:id");
+
 						// Evaluate expression value in the current context
 						if (value.startsWith("{") && value.endsWith("}")) {
 							msAttrib = Sys.Application._splitAttribute("id", false);
@@ -1675,11 +1738,14 @@
 						else {
 							value = currentContext.getInstanceId(value);
 						}
+
 						node.id = value;
+
 						node.removeAttribute("sys:id");
 					}
 					else if (generateChildIds && node.hasAttribute("id")) {
-						node.id = currentContext.getInstanceId(node.id);
+						value = node.id;
+						node.id = currentContext.getInstanceId(value);
 					}
 
 					// Detect content-template attribute
@@ -1787,7 +1853,7 @@
 
 		Sys.Application._linkControlElement = function Sys$Application$_linkControlElement(element, parentContext) {
 			if (!element.hasAttribute("data-sys-attach")) {
-				throw new Error("Element is not a control.");
+				throw new Error("Element '" + Sys$Application$_elementToString(element) + "' is not a control.");
 			}
 
 			var controlType = element.getAttribute("data-sys-attach"),
@@ -1795,7 +1861,6 @@
 				isContext = type.implementsInterface(Sys.UI.ITemplateContextConsumer),
 				control = new type(element);
 
-			element.removeAttribute("data-sys-attach");
 			control.beginUpdate();
 			control.set_isLinkPending(true);
 			if (isContext) {
