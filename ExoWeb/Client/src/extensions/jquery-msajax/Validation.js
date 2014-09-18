@@ -6,9 +6,9 @@ var isValidationCondition = function (condition) {
 	return condition.type instanceof ExoWeb.Model.ConditionType.Error || condition.type instanceof ExoWeb.Model.ConditionType.Warning;
 };
 
-var onMetaConditionsChanged = function (sender, args) {
+var onMetaConditionsChanged = function (sender, args, property) {
 	if (isValidationCondition(args.conditionTarget.condition)) {
-		$(this).trigger("validated", [meta.conditions(property)]);
+		$(this).trigger("validated", [sender.conditions(property)]);
 	}
 };
 
@@ -39,7 +39,7 @@ var ensureInited = function (element, trackData) {
 			if (meta instanceof ExoWeb.Model.ObjectMeta) {
 				var property = meta.type.property(propName);
 
-				var metaHandler = onMetaConditionsChanged.bind(element);
+				var metaHandler = onMetaConditionsChanged.bind(element).spliceArguments(2, 0, property);
 
 				if (trackData) {
 					validationData = { instance: { type: meta.type.get_fullName(), id: meta.id }, handler: metaHandler };
