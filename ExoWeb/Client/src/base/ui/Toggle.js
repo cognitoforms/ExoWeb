@@ -237,8 +237,8 @@ Toggle.mixin({
 	do_addClass: function Toggle$do_addClass() {
 		var $el = jQuery(this._element);
 
-		if (!$el.is("." + this._class)) {
-			$el.addClass(this._class);
+		if (!$el.is("." + this._className)) {
+			$el.addClass(this._className);
 			this.set_state("on");
 			Sys.Observer.raiseEvent(this, "classAdded");
 		}
@@ -246,8 +246,8 @@ Toggle.mixin({
 	do_removeClass: function Toggle$do_removeClass() {
 		var $el = jQuery(this._element);
 
-		if ($el.is("." + this._class)) {
-			$el.removeClass(this._class);
+		if ($el.is("." + this._className)) {
+			$el.removeClass(this._className);
 			this.set_state("off");
 			Sys.Observer.raiseEvent(this, "classRemoved");
 		}
@@ -338,15 +338,34 @@ Toggle.mixin({
 		this.execute();
 	},
 
+	get_className: function Toggle$get_className() {
+		/// <summary>
+		/// Class to add or remove
+		/// </summary>
+
+		return this._className;
+	},
+	set_className: function Toggle$set_className(value) {
+		this._className = value;
+		if (!this._action)
+			this._action = "addClass";
+		this.execute();
+	},
+
+	// NOTE: Keep these properties around for backwards compatibility.
 	get_class: function Toggle$get_class() {
 		/// <summary>
 		/// Class to add or remove
 		/// </summary>
 
-		return this._class;
+		logWarning("The toggle:class property is deprecated (see issue #1). Consider using toggle:classname instead.");
+
+		return this._className;
 	},
 	set_class: function Toggle$set_class(value) {
-		this._class = value;
+		logWarning("The toggle:class property is deprecated (see issue #1). Consider using toggle:classname instead.");
+
+		this._className = value;
 		if (!this._action)
 			this._action = "addClass";
 		this.execute();
@@ -493,7 +512,7 @@ Toggle.mixin({
 		if (this._context) {
 			this._context.dispose();
 		}
-		this._action = this._class = this._collectionChangedHandler = this._contentTemplate =
+		this._action = this._className = this._collectionChangedHandler = this._contentTemplate =
 			this._context = this._ctxIdx = this._groupName = this._on = this._parentContext =
 			this._state = this._strictMode = this._template = this._visible = this._when = null;
 		ExoWeb.UI.Toggle.callBaseMethod(this, "dispose");

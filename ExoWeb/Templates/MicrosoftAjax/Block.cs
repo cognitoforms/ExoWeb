@@ -265,6 +265,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 											Attributes = GetAttributes(child, "sys:attach", "sys:if", "sys:content-template", "toggle:on", "toggle:action", "toggle:class", "toggle:groupname", "toggle:strictmode", "toggle:when"),
 											On = GetBinding(child, "toggle:on"),
 											Class = GetBinding(child, "toggle:class"),
+											ClassName = GetBinding(child, "toggle:classname"),
 											Action = GetBinding(child, "toggle:action"),
 											GroupName = GetBinding(child, "toggle:groupname"),
 											StrictMode = GetBinding(child, "toggle:strictmode"),

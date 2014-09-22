@@ -2,7 +2,7 @@ function Behavior(element) {
 	/// <summary>
 	/// </summary>
 	/// <example>
-	///		<div sys:attach="behavior" behavior:script="Sys.scripts.Foo" behavior:class="My.Class" behavior:prop-foo="bar"></div>
+	///		<div sys:attach="behavior" behavior:script="Sys.scripts.Foo" behavior:typename="My.Class" behavior:prop-foo="bar"></div>
 	/// </example>
 
 	Behavior.initializeBase(this, [element]);
@@ -26,39 +26,52 @@ Behavior.prototype = {
 
 		return this._scriptObject;
 	},
+	get_typeName: function Behavior$get_typeName() {
+		return this._typeName;
+	},
+	set_typeName: function Behavior$set_typeName(value) {
+		this._typeName = value;
+	},
+
+	// NOTE: Keep these properties around for backwards compatibility.
 	get_class: function Behavior$get_class() {
-		return this._class;
+		logWarning("The behavior:class property is deprecated (see issue #1). Consider using behavior:typename instead.");
+
+		return this._typeName;
 	},
 	set_class: function Behavior$set_class(value) {
-		this._class = value;
+		logWarning("The behavior:class property is deprecated (see issue #1). Consider using behavior:typename instead.");
+
+		this._typeName = value;
 	},
+
 	get_dontForceLoad: function Behavior$get_dontForceLoad() {
 		return this._dontForceLoad;
 	},
 	set_dontForceLoad: function Behavior$set_dontForceLoad(value) {
 		this._dontForceLoad = value;
 	},
-	get_classObject: function Behavior$get_classObject() {
-		if (!this._classObject) {
-			this._classObject = ExoWeb.getCtor(this._class);
+	get_ctorFunction: function Behavior$get_ctorFunction() {
+		if (!this._ctorFunction) {
+			this._ctorFunction = ExoWeb.getCtor(this._typeName);
 		}
 
-		return this._classObject;
+		return this._ctorFunction;
 	},
 	get_properties: function Behavior$get_properties() {
 		if (!this._properties) {
 			this._properties = {};
 			for (var prop in this) {
 				if (prop.startsWith("prop_") && !prop.startsWith("prop_add_")) {
-					var classObj = this.get_classObject();
-					if (!classObj) {
-						throw new Error($format("Could not evaulate type '{0}'.", this._class));
+					var ctor = this.get_ctorFunction();
+					if (!ctor) {
+						throw new Error($format("Could not evaulate type '{0}'.", this._typeName));
 					}
 
-					var name = Sys.Application._mapToPrototype(prop.substring(5), classObj);
+					var name = Sys.Application._mapToPrototype(prop.substring(5), ctor);
 
 					if (!name) {
-						throw new Error($format("Property '{0}' could not be found on type '{1}'.", prop.substring(5), this._class));
+						throw new Error($format("Property '{0}' could not be found on type '{1}'.", prop.substring(5), this._typeName));
 					}
 
 					this._properties[name] = this[prop];
@@ -73,10 +86,15 @@ Behavior.prototype = {
 			this._events = {};
 			for (var prop in this) {
 				if (prop.startsWith("prop_add_")) {
-					var name = Sys.Application._mapToPrototype(prop.substring(9), this.get_classObject());
+					var ctor = this.get_ctorFunction();
+					if (!ctor) {
+						throw new Error($format("Could not evaulate type '{0}'.", this._typeName));
+					}
+
+					var name = Sys.Application._mapToPrototype(prop.substring(9), ctor);
 
 					if (!name) {
-						throw new Error($format("Event '{0}' could not be found on type '{1}'.", prop.substring(9), this._class));
+						throw new Error($format("Event '{0}' could not be found on type '{1}'.", prop.substring(9), this._typeName));
 					}
 
 					this._events[name] = this[prop];
@@ -93,7 +111,7 @@ Behavior.prototype = {
 			return;
 		}
 
-		this._behavior = $create(this.get_classObject(), this.get_properties(), this.get_events(), null, this._element);
+		this._behavior = $create(this.get_ctorFunction(), this.get_properties(), this.get_events(), null, this._element);
 	},
 	initialize: function Behavior$initialize() {
 		Behavior.callBaseMethod(this, "initialize");

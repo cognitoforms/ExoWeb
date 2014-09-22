@@ -15052,8 +15052,8 @@ window.ExoWeb.DotNet = {};
 		do_addClass: function Toggle$do_addClass() {
 			var $el = jQuery(this._element);
 
-			if (!$el.is("." + this._class)) {
-				$el.addClass(this._class);
+			if (!$el.is("." + this._className)) {
+				$el.addClass(this._className);
 				this.set_state("on");
 				Sys.Observer.raiseEvent(this, "classAdded");
 			}
@@ -15061,8 +15061,8 @@ window.ExoWeb.DotNet = {};
 		do_removeClass: function Toggle$do_removeClass() {
 			var $el = jQuery(this._element);
 
-			if ($el.is("." + this._class)) {
-				$el.removeClass(this._class);
+			if ($el.is("." + this._className)) {
+				$el.removeClass(this._className);
 				this.set_state("off");
 				Sys.Observer.raiseEvent(this, "classRemoved");
 			}
@@ -15153,15 +15153,34 @@ window.ExoWeb.DotNet = {};
 			this.execute();
 		},
 
+		get_className: function Toggle$get_className() {
+			/// <summary>
+			/// Class to add or remove
+			/// </summary>
+
+			return this._className;
+		},
+		set_className: function Toggle$set_className(value) {
+			this._className = value;
+			if (!this._action)
+				this._action = "addClass";
+			this.execute();
+		},
+
+		// NOTE: Keep these properties around for backwards compatibility.
 		get_class: function Toggle$get_class() {
 			/// <summary>
 			/// Class to add or remove
 			/// </summary>
 
-			return this._class;
+			logWarning("The toggle:class property is deprecated (see issue #1). Consider using toggle:classname instead.");
+
+			return this._className;
 		},
 		set_class: function Toggle$set_class(value) {
-			this._class = value;
+			logWarning("The toggle:class property is deprecated (see issue #1). Consider using toggle:classname instead.");
+
+			this._className = value;
 			if (!this._action)
 				this._action = "addClass";
 			this.execute();
@@ -15308,7 +15327,7 @@ window.ExoWeb.DotNet = {};
 			if (this._context) {
 				this._context.dispose();
 			}
-			this._action = this._class = this._collectionChangedHandler = this._contentTemplate =
+			this._action = this._className = this._collectionChangedHandler = this._contentTemplate =
 				this._context = this._ctxIdx = this._groupName = this._on = this._parentContext =
 				this._state = this._strictMode = this._template = this._visible = this._when = null;
 			ExoWeb.UI.Toggle.callBaseMethod(this, "dispose");
@@ -16280,7 +16299,7 @@ window.ExoWeb.DotNet = {};
 		/// <summary>
 		/// </summary>
 		/// <example>
-		///		<div sys:attach="behavior" behavior:script="Sys.scripts.Foo" behavior:class="My.Class" behavior:prop-foo="bar"></div>
+		///		<div sys:attach="behavior" behavior:script="Sys.scripts.Foo" behavior:typename="My.Class" behavior:prop-foo="bar"></div>
 		/// </example>
 
 		Behavior.initializeBase(this, [element]);
@@ -16304,39 +16323,52 @@ window.ExoWeb.DotNet = {};
 
 			return this._scriptObject;
 		},
+		get_typeName: function Behavior$get_typeName() {
+			return this._typeName;
+		},
+		set_typeName: function Behavior$set_typeName(value) {
+			this._typeName = value;
+		},
+
+		// NOTE: Keep these properties around for backwards compatibility.
 		get_class: function Behavior$get_class() {
-			return this._class;
+			logWarning("The behavior:class property is deprecated (see issue #1). Consider using behavior:typename instead.");
+
+			return this._typeName;
 		},
 		set_class: function Behavior$set_class(value) {
-			this._class = value;
+			logWarning("The behavior:class property is deprecated (see issue #1). Consider using behavior:typename instead.");
+
+			this._typeName = value;
 		},
+
 		get_dontForceLoad: function Behavior$get_dontForceLoad() {
 			return this._dontForceLoad;
 		},
 		set_dontForceLoad: function Behavior$set_dontForceLoad(value) {
 			this._dontForceLoad = value;
 		},
-		get_classObject: function Behavior$get_classObject() {
-			if (!this._classObject) {
-				this._classObject = ExoWeb.getCtor(this._class);
+		get_ctorFunction: function Behavior$get_ctorFunction() {
+			if (!this._ctorFunction) {
+				this._ctorFunction = ExoWeb.getCtor(this._typeName);
 			}
 
-			return this._classObject;
+			return this._ctorFunction;
 		},
 		get_properties: function Behavior$get_properties() {
 			if (!this._properties) {
 				this._properties = {};
 				for (var prop in this) {
 					if (prop.startsWith("prop_") && !prop.startsWith("prop_add_")) {
-						var classObj = this.get_classObject();
-						if (!classObj) {
-							throw new Error($format("Could not evaulate type '{0}'.", this._class));
+						var ctor = this.get_ctorFunction();
+						if (!ctor) {
+							throw new Error($format("Could not evaulate type '{0}'.", this._typeName));
 						}
 
-						var name = Sys.Application._mapToPrototype(prop.substring(5), classObj);
+						var name = Sys.Application._mapToPrototype(prop.substring(5), ctor);
 
 						if (!name) {
-							throw new Error($format("Property '{0}' could not be found on type '{1}'.", prop.substring(5), this._class));
+							throw new Error($format("Property '{0}' could not be found on type '{1}'.", prop.substring(5), this._typeName));
 						}
 
 						this._properties[name] = this[prop];
@@ -16351,10 +16383,15 @@ window.ExoWeb.DotNet = {};
 				this._events = {};
 				for (var prop in this) {
 					if (prop.startsWith("prop_add_")) {
-						var name = Sys.Application._mapToPrototype(prop.substring(9), this.get_classObject());
+						var ctor = this.get_ctorFunction();
+						if (!ctor) {
+							throw new Error($format("Could not evaulate type '{0}'.", this._typeName));
+						}
+
+						var name = Sys.Application._mapToPrototype(prop.substring(9), ctor);
 
 						if (!name) {
-							throw new Error($format("Event '{0}' could not be found on type '{1}'.", prop.substring(9), this._class));
+							throw new Error($format("Event '{0}' could not be found on type '{1}'.", prop.substring(9), this._typeName));
 						}
 
 						this._events[name] = this[prop];
@@ -16371,7 +16408,7 @@ window.ExoWeb.DotNet = {};
 				return;
 			}
 
-			this._behavior = $create(this.get_classObject(), this.get_properties(), this.get_events(), null, this._element);
+			this._behavior = $create(this.get_ctorFunction(), this.get_properties(), this.get_events(), null, this._element);
 		},
 		initialize: function Behavior$initialize() {
 			Behavior.callBaseMethod(this, "initialize");

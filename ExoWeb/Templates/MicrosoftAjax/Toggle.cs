@@ -10,6 +10,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 	/// </summary>
 	internal class Toggle : Control
 	{
+		private Binding className;
+
 		/// <summary>
 		/// Gets or sets the value that will be toggled on
 		/// </summary>
@@ -19,7 +21,39 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		/// When using addClass/removeClass mode, gets or sets
 		/// the value of the css class that will be added or removed
 		/// </summary>
-		public Binding Class { get; internal set; }
+		public Binding ClassName
+		{
+			get { return className; }
+			internal set
+			{
+				if (value != null)
+				{
+					if (className != null)
+						throw new Exception("Property toggle:classname has already been set.");
+
+					className = value;
+				}
+			}
+		}
+
+		/// <summary>
+		/// When using addClass/removeClass mode, gets or sets
+		/// the value of the css class that will be added or removed
+		/// </summary>
+		public Binding Class
+		{
+			get { return className; }
+			internal set
+			{
+				if (value != null)
+				{
+					if (className != null)
+						throw new Exception("Toggle has both toggle:class and toggle:classname attributes.");
+
+					className = value;
+				}
+			}
+		}
 
 		/// <summary>
 		/// Gets or sets the toggling action
@@ -109,7 +143,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					// pass in all binding attributes
 					If == null ? null : If.Evaluate(page),
 					On == null ? null : On.Evaluate(page),
-					Class == null ? null : Class.Evaluate(page),
+					ClassName == null ? null : ClassName.Evaluate(page),
 					Action == null ? null : Action.Evaluate(page),
 					GroupName == null ? null : GroupName.Evaluate(page),
 					StrictMode == null ? null : StrictMode.Evaluate(page),
@@ -159,9 +193,9 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			var classValue = "";
 			var classBinding = (AttributeBinding)null;
 
-			if (Class != null)
+			if (ClassName != null)
 			{
-				classBinding = Class.Evaluate(page);
+				classBinding = ClassName.Evaluate(page);
 
 				// Output the original template if no data for class was found
 				if (!classBinding.IsValid)
@@ -387,7 +421,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 		public override string ToString()
 		{
-			return "<toggle on=\"" + On + "\" when=\"" + When + "\" strictmode=\"" + StrictMode + "\" groupname=\"" + GroupName + "\" class=\"" + Class + "\" action=\"" + Action + "\" >";
+			return "<toggle on=\"" + On + "\" when=\"" + When + "\" strictmode=\"" + StrictMode + "\" groupname=\"" + GroupName + "\" classname=\"" + ClassName + "\" action=\"" + Action + "\" >";
 		}
 
 		/// <summary>
