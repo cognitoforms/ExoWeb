@@ -14,7 +14,7 @@ namespace ExoWeb
 	/// <summary>
 	/// Builds a JavaScript expression based on an <see cref="Expression"/> tree.
 	/// </summary>
-	public class JavaScriptExpressionTranslator 
+	public class JavaScriptExpressionTranslator
 	{
 		#region Fields
 
@@ -592,9 +592,9 @@ namespace ExoWeb
 		{
 			string typeName;
 			return
-				type.IsEnum ? type.Name : 
+				type.IsEnum ? type.Name :
 				type.IsArray ? GetTypeName(type.GetElementType()) + "[]" :
-				supportedTypes.TryGetValue(type, out typeName) ? typeName : 
+				supportedTypes.TryGetValue(type, out typeName) ? typeName :
 				type.FullName;
 		}
 
@@ -707,7 +707,7 @@ namespace ExoWeb
 			protected override Expression VisitBinary(BinaryExpression node)
 			{
 				builder.Append("(");
-				
+
 
 				// Create TimeSpan if subtracting two DateTime instances
 				if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
@@ -902,12 +902,26 @@ namespace ExoWeb
 				// First translate the lambda body
 				if (lambda.Parameters.Any())
 					thisParams.Add(lambda.Parameters[0]);
-				base.Visit(lambda.Body);
+
+				// Ensure converted numeric equations do not result in Infinity or NaN
+				if (IsNumericType(lambda.Body.Type))
+				{
+					builder.Append("function(){");
+					builder.Append("var result = ");
+					base.Visit(lambda.Body);
+					builder.Append(";");
+					builder.Append("return isFinite(result) ? result : null; }.call(this)");
+				}
+				else
+					base.Visit(lambda.Body);
+
+
 				translation.Body = builder.ToString();
 
 				// Then wrap the expression in a function
 				if (lambda.Body.Type != typeof(void))
 					builder.Insert(0, "return ");
+
 				builder.Insert(0, ") {");
 				for (int i = lambda.Parameters.Count - 1; i > 0; i--)
 				{
@@ -920,6 +934,30 @@ namespace ExoWeb
 				builder.Append("; }");
 				translation.Function = builder.ToString();
 				return lambda;
+			}
+
+			static bool IsNumericType(Type type)
+			{
+				type = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) ? type.GetGenericArguments()[0] : type;
+				if (type.IsEnum) return false;
+
+				switch (Type.GetTypeCode(type))
+				{
+					case TypeCode.Single:
+					case TypeCode.Double:
+					case TypeCode.Decimal:
+					case TypeCode.SByte:
+					case TypeCode.Int16:
+					case TypeCode.Int32:
+					case TypeCode.Int64:
+					case TypeCode.Byte:
+					case TypeCode.UInt16:
+					case TypeCode.UInt32:
+					case TypeCode.UInt64:
+						return true;
+					default:
+						return false;
+				}
 			}
 
 			protected override IEnumerable<MemberBinding> VisitBindingList(System.Collections.ObjectModel.ReadOnlyCollection<MemberBinding> original)
