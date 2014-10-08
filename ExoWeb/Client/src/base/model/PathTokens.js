@@ -11,7 +11,7 @@ function PathTokens(expression) {
 
 	if (expression.length > 0) {
 		this.steps = expression.split(".").map(function(step) {
-			var parsed = step.match(/^([a-z0-9_]+)(<([a-z0-9_$]+)>)?$/i);
+			var parsed = step.match(/^(\w+)(<([\w$]+)>)?$/i);
 
 			if (!parsed) {
 				return null;
