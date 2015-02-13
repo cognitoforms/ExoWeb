@@ -37,7 +37,16 @@ namespace ExoWeb
 			ExpressionTranslator = new JavaScriptExpressionTranslator();
 
 			// Cache the .NET 4.0 method info to create HTML strings when using MVC
-			var assembly = Assembly.LoadWithPartialName("System.Web.Mvc");
+            Assembly assembly = null;
+            try
+            {
+                assembly = Assembly.Load("System.Web.Mvc");
+            }
+            catch (Exception e)
+            { 
+                // If unable to load MVC properly, keep going.
+            }
+
 			if (assembly != null)
 			{
 				var type = assembly.GetType("System.Web.Mvc.MvcHtmlString");
