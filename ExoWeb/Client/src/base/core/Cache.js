@@ -12,7 +12,18 @@ if (match) {
 
 ExoWeb.cacheHash = cacheHash;
 
-if (window.localStorage) {
+// Determine if local storage is supported, understanding 
+var useLocalStorage = false;
+try {
+	var testLS = "c-localStorage";
+	window.localStorage.setItem(testLS, testLS);
+	window.localStorage.removeItem(testLS);
+	useLocalStorage = true;
+}
+catch (e)
+{ }
+
+if (useLocalStorage) {
 
 	ExoWeb.cache = function (key, value) {
 		var localKey = key;

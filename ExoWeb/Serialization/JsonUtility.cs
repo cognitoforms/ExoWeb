@@ -672,8 +672,22 @@ namespace ExoWeb.Serialization
 						(rule, json) =>
 						{
 							SerializePropertyRule(rule, json);
-							json.Set("min", rule.Minimum);
-							json.Set("max", rule.Maximum);
+
+							// Min
+							if (rule.MinExpression != null)
+								json.Set("minFn", rule.MinExpression.Expression);
+							else
+								json.Set("min", rule.Minimum);
+
+							// Max
+							if (rule.MaxExpression != null)
+								json.Set("maxFn", rule.MaxExpression.Expression);
+							else
+								json.Set("max", rule.Maximum);
+
+							// OnChangeOf
+							if (!String.IsNullOrEmpty(rule.Path))
+								json.Set("onChangeOf", new string[] { rule.Path });
 						},
 						json => { throw new NotSupportedException("RangeRule cannot be deserialized."); }),
 
