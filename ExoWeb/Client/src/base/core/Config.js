@@ -30,7 +30,9 @@ var config = {
 	// Specifies the default defaultIfError value for CalculatedPropertyRule instances
 	calculationErrorDefault: undefined,
 
-	autoReformat: true
+	autoReformat: true,
+
+	enableBatchChanges: true
 };
 
 exports.config = config;

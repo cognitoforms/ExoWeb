@@ -24,7 +24,7 @@
 		// Batch changes that may occur due to the target element changing.
 		var source = this.get_source(),
 			sourceType,
-			batchChanges = true;
+			batchChanges = ExoWeb.config.enableBatchChanges;
 
 		if (source === null) {
 			sourceType = "null";

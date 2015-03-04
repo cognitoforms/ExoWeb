@@ -403,9 +403,15 @@ Adapter.mixin({
 				} else {
 					targetType = parseFunctionName(target.constructor);
 				}
-				context.server.batchChanges($format("adapter: {0}.{1}", targetType, this._propertyPath), function () {
+
+				if (ExoWeb.config.enableBatchChanges) {
+					context.server.batchChanges($format("adapter: {0}.{1}", targetType, this._propertyPath), function () {
+						prop.value(target, value);
+					});
+				}
+				else {
 					prop.value(target, value);
-				});
+				}
 			}
 			finally {
 				this._ignoreTargetEvents = false;

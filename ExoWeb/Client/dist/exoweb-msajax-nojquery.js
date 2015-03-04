@@ -42,7 +42,9 @@ window.ExoWeb.DotNet = {};
 		// Specifies the default defaultIfError value for CalculatedPropertyRule instances
 		calculationErrorDefault: undefined,
 
-		autoReformat: true
+		autoReformat: true,
+
+		enableBatchChanges: true
 	};
 
 	ExoWeb.config = config;
@@ -17634,9 +17636,15 @@ window.ExoWeb.DotNet = {};
 					} else {
 						targetType = parseFunctionName(target.constructor);
 					}
-					context.server.batchChanges($format("adapter: {0}.{1}", targetType, this._propertyPath), function () {
+
+					if (ExoWeb.config.enableBatchChanges) {
+						context.server.batchChanges($format("adapter: {0}.{1}", targetType, this._propertyPath), function () {
+							prop.value(target, value);
+						});
+					}
+					else {
 						prop.value(target, value);
-					});
+					}
 				}
 				finally {
 					this._ignoreTargetEvents = false;
@@ -18334,7 +18342,7 @@ window.ExoWeb.DotNet = {};
 			// Batch changes that may occur due to the target element changing.
 			var source = this.get_source(),
 				sourceType,
-				batchChanges = true;
+				batchChanges = ExoWeb.config.enableBatchChanges;
 
 			if (source === null) {
 				sourceType = "null";

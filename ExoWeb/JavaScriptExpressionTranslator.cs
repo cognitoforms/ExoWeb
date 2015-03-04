@@ -171,6 +171,7 @@ namespace ExoWeb
 			{ "Number.ToString() as String", new string[] {@"({0}).toString()", "", @""} },
 			{ "Number.ToString(String) as String", new string[] {@"{0}.localeFormat({1})", "", ""} },
 			{ "static Number.Equals(Number, Number) as Boolean", new string[] {@"{0} === {1}", "", @""} },
+			{ "static Number.Parse(String) as Number", new string[] {@"parseFloat({0})", "", @""} },
 			{ "Object.Equals(Object) as Boolean", new string[] {@"{0} === {1}", "", @""} },
 			{ "Object.ToString() as String", new string[] {@"({0}).toString()", "", @""} },
 			{ "static Object.Equals(Object, Object) as Boolean", new string[] {@"{0} === {1}", "", @""} },
