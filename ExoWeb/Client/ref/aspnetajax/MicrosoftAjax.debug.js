@@ -3711,7 +3711,11 @@ _setup: function() {
 			cultureInfo = window.eval("(" + cultureInfo + ")");
 		case "object":
 			this.CurrentCulture = this._parse(cultureInfo);
-			delete __cultureInfo;
+			try {
+				delete __cultureInfo;
+			} catch(e) {
+				__cultureInfo = null;
+			}
 			break;
 		default:
 			cultureInfo = clone(invariant);
