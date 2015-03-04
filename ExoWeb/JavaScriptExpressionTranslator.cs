@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using ExoModel;
 using System.Collections;
+using System.Globalization;
 
 namespace ExoWeb
 {
@@ -129,9 +130,9 @@ namespace ExoWeb
 			{ "static Date.Equals(Date, Date) as Boolean", new string[] {@"({0}.getTime() === {1}.getTime())", "", @""} },
 			{ "static Date.IsLeapYear(Number) as Boolean", new string[] {@"(new Date({0}, 1, 29).getDate() == 29)", "", @""} },
 			{ "static Date.Now as Date", new string[] {@"new Date()", "", @""} },
-			{ "static Date.Parse(String) as Date", new string[] {@"new Date(Date.parse({0}) || Date.parse(""1/1/1970 ""+{0}))", "", @""} },
+			{ "static Date.Parse(String) as Date", new string[] {@"new Date(Date.parseLocale({0}) || Date.parseLocale(""1/1/1970 ""+{0}))", "", @""} },
 			{ "static Date.Today as Date", new string[] {@"new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())", "", @""} },
-			{ "static Date.TryParse(String, Date&) as Boolean", new string[] {@"!isNaN(Date.parse({0})) || !isNaN(Date.parse(""1/1/1970 ""+{0}))", "", @""} },
+			{ "static Date.TryParse(String, Date&) as Boolean", new string[] {@"!isNaN(Date.parseLocale({0})) || !isNaN(Date.parseLocale(""1/1/1970 ""+{0}))", "", @""} },
 			{ "static Date.UtcNow as Date", new string[] {@"Date_toUTC(new Date())", "Date_toUTC", @"function Date_toUTC(d) { return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds()); }"} },
 			{ "Guid.CompareTo(Guid) as Number", new string[] {@"Guid.compareTo({0}, {1})", "", @""} },
 			{ "Guid.CompareTo(Object) as Number", new string[] {@"Guid.compareTo({0}, {1})", "", @""} },
@@ -171,7 +172,7 @@ namespace ExoWeb
 			{ "Number.ToString() as String", new string[] {@"({0}).toString()", "", @""} },
 			{ "Number.ToString(String) as String", new string[] {@"{0}.localeFormat({1})", "", ""} },
 			{ "static Number.Equals(Number, Number) as Boolean", new string[] {@"{0} === {1}", "", @""} },
-			{ "static Number.Parse(String) as Number", new string[] {@"parseFloat({0})", "", @""} },
+			{ "static Number.Parse(String) as Number", new string[] {@"parseLocale({0})", "", @""} },
 			{ "Object.Equals(Object) as Boolean", new string[] {@"{0} === {1}", "", @""} },
 			{ "Object.ToString() as String", new string[] {@"({0}).toString()", "", @""} },
 			{ "static Object.Equals(Object, Object) as Boolean", new string[] {@"{0} === {1}", "", @""} },
@@ -838,6 +839,8 @@ namespace ExoWeb
 				}
 				else if (c.Type == typeof(bool))
 					builder.Append(((bool)c.Value).ToString().ToLower());
+				else if (c.Type == typeof(decimal) || c.Type == typeof(double) || c.Type == typeof(float) || c.Type == typeof(decimal?) || c.Type == typeof(double?) || c.Type == typeof(float?))
+					builder.AppendFormat(CultureInfo.InvariantCulture, "{0}", c.Value);
 				else
 					builder.Append(c.Value);
 				return c;
@@ -1466,5 +1469,3 @@ namespace ExoWeb
 		#endregion
 	}
 }
-
-

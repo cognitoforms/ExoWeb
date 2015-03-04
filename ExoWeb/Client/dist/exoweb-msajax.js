@@ -7397,6 +7397,19 @@ window.ExoWeb.DotNet = {};
 		Object.defineProperty(this, "min", { value: options.minFn, writable: true });
 		Object.defineProperty(this, "max", { value: options.maxFn, writable: true });
 
+		// ensure the error message is specified
+		if (!options.message) {
+			options.message = Resource.get(
+				(this.min !== undefined && this.max !== undefined ? "range-between" : // between date or ordinal
+					property.get_jstype() === Date ?
+						this.min !== undefined ?
+							"range-on-or-after" : // on or after date
+							"range-on-or-before" : // on or before date
+						this.min !== undefined ?
+							"range-at-least" : // at least ordinal
+							"range-at-most")).replace('{min}', this.min).replace('{max}', this.max); // at most ordinal
+		}
+
 		// call the base type constructor
 		ValidatedPropertyRule.apply(this, [rootType, options]);
 	}
@@ -7430,7 +7443,7 @@ window.ExoWeb.DotNet = {};
 		},
 
 		// returns true if the property is valid, otherwise false
-		isValid: function RangeRule$isValid(obj, prop, val) {
+		isValid: function RangeRule$isValid(obj, prop, val) { 
 
 			var range = this.range(obj);
 
@@ -7800,7 +7813,7 @@ window.ExoWeb.DotNet = {};
 			options.message = options.message || Resource.get("required");
 		}
 
-		// comparison-based rule
+			// comparison-based rule
 		else {
 			Object.defineProperty(this, "comparePath", { value: options.compareSource });
 			Object.defineProperty(this, "compareOperator", {
@@ -19510,14 +19523,15 @@ window.ExoWeb.DotNet = {};
 					// Time value, set default date to 1/1/1970 to easily compare time values
 					if (format === "t") {
 						var timeFormat = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "t");
-						date = Date.parseLocale("1/1/1970 " + str, timeFormat);
+						var startDate = new Date(1970, 1, 1).localeFormat("d");
+						date = Date.parseLocale(startDate + " " + str, timeFormat);
 					}
 					else
 						date = Date.parseLocale(str, format);
 
 					if (date === null)
 						throw new Error("Invalid date format");
-					return date; 
+					return date;
 				}
 			});
 		}
@@ -19528,14 +19542,14 @@ window.ExoWeb.DotNet = {};
 			var isPercentageFormat = format.match(/[%p]+/i);
 			var isIntegerFormat = format.match(/[dnfg]0/i);
 			var currencyDecimalDigits = Sys.CultureInfo.CurrentCulture.numberFormat.CurrencyDecimalDigits;
-		
+
 			return new Format({
-			    description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
+				description: isCurrencyFormat ? Resource["format-currency"] : isPercentageFormat ? Resource["format-percentage"] : isIntegerFormat ? Resource["format-integer"] : Resource["format-decimal"],
 				specifier: format,
 				convert: function (val) {
 					// Default to browser formatting for general format
 					if (format.toLowerCase() === "g")
-						return val.toString(); 
+						return val.toString();
 
 					// Otherwise, use the localized format
 					return val.localeFormat(format);
@@ -19551,26 +19565,26 @@ window.ExoWeb.DotNet = {};
 
 					// Remove currency symbols before parsing
 					if (isCurrencyFormat) {
-					    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
+						result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.CurrencySymbol, "")) * sign;
 
 						// if there is a decimal place, check the precision isnt greater than allowed for currency. 
 						// Floating points in js can be skewed under certain circumstances, we are just checking the decimals instead of multiplying results.
-					    var resultStr = result.toString();
-					    if (resultStr.indexOf('.') > -1 && (resultStr.length - (resultStr.indexOf('.') + 1)) > currencyDecimalDigits) {
-					    	result = NaN;
-					    }
+						var resultStr = result.toString();
+						if (resultStr.indexOf('.') > -1 && (resultStr.length - (resultStr.indexOf('.') + 1)) > currencyDecimalDigits) {
+							result = NaN;
+						}
 					}
-					    // Remove percentage symbols before parsing and divide by 100
+						// Remove percentage symbols before parsing and divide by 100
 					else if (isPercentageFormat)
-					    result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
+						result = Number.parseLocale(str.replace(Sys.CultureInfo.CurrentCulture.numberFormat.PercentSymbol, "")) / 100 * sign;
 
-					    // Ensure integers are actual whole numbers
+						// Ensure integers are actual whole numbers
 					else if (isIntegerFormat && !isInteger(Number.parseLocale(str)))
-					    result = NaN;
+						result = NaN;
 
-					    // Just parse a simple number
+						// Just parse a simple number
 					else
-					    result = Number.parseLocale(str) * sign;
+						result = Number.parseLocale(str) * sign;
 
 					if (isNaN(result))
 						throw new Error("Invalid format");

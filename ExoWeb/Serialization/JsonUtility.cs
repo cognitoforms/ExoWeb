@@ -772,7 +772,7 @@ namespace ExoWeb.Serialization
 				writer.Set("type", rule.Name.Substring(0, 1).ToLower() + rule.Name.Substring(1));
 
 			// Embed the condition type, if present, along with the rule
-			if (rule.ConditionType != null)
+			if (writer.SerializePropertyConditionType && rule.ConditionType != null)
 			{
 				if (rule.ConditionType.Category != ConditionCategory.Error)
 					writer.Set("category", rule.ConditionType.Category.ToString());
@@ -818,9 +818,9 @@ namespace ExoWeb.Serialization
 			}
 		}
 
-		public static void Serialize(TextWriter writer, object value)
+		public static void Serialize(TextWriter writer, object value, bool serializePropertyConditionType = true)
 		{
-			using (var jsonWriter = new JsonWriter(writer, serializer))
+			using (var jsonWriter = new JsonWriter(writer, serializer, serializePropertyConditionType))
 			{
 				serializer.Serialize(jsonWriter, value);
 				jsonWriter.Flush();

@@ -12,11 +12,14 @@ namespace ExoWeb.Serialization
 	{
 		JsonSerializer serializer;
 
-		internal JsonWriter(TextWriter writer, JsonSerializer serializer)
+		internal bool SerializePropertyConditionType { get; set; }
+
+		internal JsonWriter(TextWriter writer, JsonSerializer serializer, bool serializePropertyConditionType = true)
 			: base(writer)
 		{
 			this.serializer = serializer;
 			this.CloseOutput = false;
+			this.SerializePropertyConditionType = serializePropertyConditionType;
 		}
 
 		public void Set(string name, object value)

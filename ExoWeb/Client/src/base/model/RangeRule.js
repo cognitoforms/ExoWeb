@@ -50,6 +50,19 @@ function RangeRule(rootType, options) {
 	Object.defineProperty(this, "min", { value: options.minFn, writable: true });
 	Object.defineProperty(this, "max", { value: options.maxFn, writable: true });
 
+	// ensure the error message is specified
+	if (!options.message) {
+		options.message = Resource.get(
+			(this.min !== undefined && this.max !== undefined ? "range-between" : // between date or ordinal
+				property.get_jstype() === Date ?
+					this.min !== undefined ?
+						"range-on-or-after" : // on or after date
+						"range-on-or-before" : // on or before date
+					this.min !== undefined ?
+						"range-at-least" : // at least ordinal
+						"range-at-most")).replace('{min}', this.min).replace('{max}', this.max); // at most ordinal
+	}
+
 	// call the base type constructor
 	ValidatedPropertyRule.apply(this, [rootType, options]);
 }
@@ -83,7 +96,7 @@ RangeRule.mixin({
 	},
 
 	// returns true if the property is valid, otherwise false
-	isValid: function RangeRule$isValid(obj, prop, val) {
+	isValid: function RangeRule$isValid(obj, prop, val) { 
 
 		var range = this.range(obj);
 
