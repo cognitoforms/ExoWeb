@@ -5074,12 +5074,17 @@ window.ExoWeb.DotNet = {};
 					Observer.raisePropertyChanged(target, _this._name);
 				}
 			});
+			val.toString = Property$_arrayToString.bind(val);
 		}
 
 		Observer.raisePropertyChanged(target, this._name);
 
 		// Return the property to support method chaining
 		return this;
+	}
+
+	function Property$_arrayToString() {
+		return this.join(", ");
 	}
 
 	function Property$_ensureInited(obj) {
