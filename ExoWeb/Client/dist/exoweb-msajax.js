@@ -246,12 +246,12 @@ window.ExoWeb.DotNet = {};
 		/// ===============================
 		///
 		/// The event handler is passed four arguments in total: the original three arguments
-		/// of the global error handler (message, url, lineNumber), as well as the "errorData"
+		/// of the global error handler (message, url, lineNumber, colNumber, errorObj), as well as the "errorData"
 		/// object, which will ultimately be passed to the "log error" provider. The event
 		/// handler may choose to modified any of the errorData object's properties.
 		/// 
 		/// </remarks>
-		/// <param name="fn" type="Function">The error event function. Signature: f (message, url, lineNumber).</param>
+		/// <param name="fn" type="Function">The error event function. Signature: f (message, url, lineNumber, colNumber, errorObj, errorData).</param>
 
 		if (fn == null) throw new ArgumentNullError("fn");
 		if (typeof(fn) !== "function") throw new ArgumentTypeError("fn", "function", fn);
@@ -282,7 +282,7 @@ window.ExoWeb.DotNet = {};
 	/*
 	* Handles an error that 
 	*/
-	function handleError(message, url, lineNumber, customErrorData, raiseEvents, onSuccess, onFailure) {
+	function handleError(message, url, lineNumber, colNumber, errorObj, customErrorData, raiseEvents, onSuccess, onFailure) {
 
 		// Initialize the default error data based on the error.
 		var cancelled = false,
@@ -291,9 +291,11 @@ window.ExoWeb.DotNet = {};
 				type: "Error",
 				url: window.location.href,
 				refererUrl: document.referrer,
+				stackTrace: errorObj ? errorObj.stack : "",
 				additionalInfo: {
 					url: url,
-					lineNumber: lineNumber
+					lineNumber: lineNumber,
+					columnNumber: colNumber
 				}
 			}, customErrorData);
 
@@ -305,7 +307,7 @@ window.ExoWeb.DotNet = {};
 					return;
 				}
 
-				var result = fn(message, url, lineNumber, errorData);
+				var result = fn(message, url, lineNumber, colNumber, errorObj, errorData);
 				if (result === true) {
 					// Cancel the event if the result indicates that the event was handled.
 					cancelled = true;
@@ -324,7 +326,7 @@ window.ExoWeb.DotNet = {};
 	* Explicitly logs an error without throwing.
 	* Raising the 'error' event is optional.
 	*/
-	function logError(message, url, lineNumber, errorData, raiseEvents, onSuccess, onFailure) {
+	function logError(message, url, lineNumber, colNumber, errorObj, errorData, raiseEvents, onSuccess, onFailure) {
 		/// <summary>
 		/// Logs an error.
 		/// 
@@ -334,14 +336,18 @@ window.ExoWeb.DotNet = {};
 		/// Examples:
 		/// 
 		/// ExoWeb.logError(e);
-		/// ExoWeb.logError('Message', 4, 'http://...');
+		/// ExoWeb.logError('Message', 'http://...', 14);
+		/// ExoWeb.logError('Message', 'http://...', 14, 12);
+		/// ExoWeb.logError('Message', 'http://...', 14, 12, e);
 		/// ExoWeb.logError(e, { foo: "bar" }, function () { /* on success */ });
-		/// ExoWeb.logError('Message', 14, 'http://...', true, function () { /* on success */ }, function () { /* on failure */ });
-		/// ExoWeb.logError('Message', 14, 'http://...', { foo: "bar" }, true);
+		/// ExoWeb.logError('Message', 'http://...', 14, 12, true, function () { /* on success */ }, function () { /* on failure */ });
+		/// ExoWeb.logError('Message', 'http://...', 14, 12, { foo: "bar" }, true);
 		/// </summary>
 		/// <param name="message" type="String">The error message.</param>
 		/// <param name="url" type="String" optional="true">The url where the error occurred.</param>
 		/// <param name="lineNumber" type="Number" integer="true" optional="true">The line number where the error occurred.</param>
+		/// <param name="colNumber" type="Number" integer="true" optional="true">The column number where the error occurred.</param>
+		/// <param name="errorObj" type="Error" optional="true">Native Error object.</param>
 		/// <param name="errorData" type="Object" optional="true">Custom data to include with the error.</param>
 		/// <param name="raiseEvents" type="Boolean" optional="true">
 		/// Whether or not to raise the error event when handling the error. When called via internal framework
@@ -354,8 +360,8 @@ window.ExoWeb.DotNet = {};
 		// Ensure that the message (or error) argument was passed in
 		if (message == null) throw new ArgumentNullError("message");
 
-		if (arguments.length > 5) {
-			throw new ArgumentsLengthError(5, arguments.length);
+		if (arguments.length > 9) {
+			throw new ArgumentsLengthError(9, arguments.length);
 		}
 
 		var args = Array.prototype.slice.call(arguments),
@@ -377,49 +383,38 @@ window.ExoWeb.DotNet = {};
 			raiseErrorEvents = args.pop();
 		}
 
-		if (args.length > 1 && args[args.length - 1] instanceof Object) {
+		if (args.length > 1 && args[args.length - 1] instanceof Object && !(args[args.length - 1] instanceof Error)) {
 			customErrorData = args.pop();
 		}
 
-		// Check for {message, url, lineNumber} mode
-		if (args.length === 3) {
-
-			// Validate args
-			if (!(message.constructor === String)) throw new ArgumentTypeError("message", "string", message);
-			if (url.constructor !== String) throw new ArgumentTypeError("url", "string", url);
-			if (lineNumber != null && typeof(lineNumber) !== "number") throw new ArgumentTypeError("lineNumber", "number", lineNumber);
-
-			// Pass along the information
-			handleError(message, url, lineNumber, customErrorData, raiseErrorEvents, successCallback, failureCallback);
-
-		}
-
-		// Otherwise, attempt {error} mode
-		else if (args.length === 1) {
-
+		// An Error or string was passed in
+		if (args.length === 1) {
 			if (message instanceof Error) {
-
 				// Rewrite arguments
 				error = message;
 
 				// Pass along the information from the error
-				handleError(error.message, error.fileName, error.lineNumber, customErrorData, raiseErrorEvents, successCallback, failureCallback);
-
+				handleError(error.message, error.fileName, error.lineNumber, error.columnNumber, message, customErrorData, raiseErrorEvents, successCallback, failureCallback);
 			}
 			else {
-
 				// Pass along the message and simulate the other information
-				handleError(message.toString(), "?", "-1", customErrorData, raiseErrorEvents, successCallback, failureCallback);
-
+				handleError(message.toString(), "?", "-1", "-1", null, customErrorData, raiseErrorEvents, successCallback, failureCallback);
 			}
-
 		}
+		// Check for {message, url, lineNumber} mode
+		else if (args.length >= 3) {
+			// Validate args
+			if (!(message.constructor === String)) throw new ArgumentTypeError("message", "string", message);
+			if (url.constructor !== String) throw new ArgumentTypeError("url", "string", url);
+			if (lineNumber != null && typeof (lineNumber) !== "number") throw new ArgumentTypeError("lineNumber", "number", lineNumber);
 
+			// Pass along the information
+			handleError(message, url, lineNumber, typeof colNumber === "number" ? colNumber : -1, errorObj instanceof Error ? errorObj : null, customErrorData, raiseErrorEvents, successCallback, failureCallback);
+		}
 		// Incorrect number of arguments
 		else {
 			throw new ArgumentsLengthError(3, arguments.length);
 		}
-
 	}
 
 	ExoWeb.logError = logError;
@@ -429,7 +424,7 @@ window.ExoWeb.DotNet = {};
 	* logging is implemented and the error is not handled.
 	*/
 	var oldOnError = window.onerror;
-	window.onerror = function (message, url, lineNumber) {
+	window.onerror = function (message, url, lineNumber, colNumber, errorObj) {
 
 		if (!window.ExoWeb || ExoWeb.windowIsUnloading) {
 			return false;
@@ -442,7 +437,7 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// Pass the error along to event subscribers and then log.
-		handleError(message, url, lineNumber, null, true);
+		handleError(message, url, lineNumber, colNumber, errorObj, null, true);
 
 		// Let default handler run.
 		return false;
