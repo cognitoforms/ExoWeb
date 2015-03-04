@@ -5074,6 +5074,8 @@ window.ExoWeb.DotNet = {};
 					Observer.raisePropertyChanged(target, _this._name);
 				}
 			});
+
+			// Override the default toString on arrays so that we get a comma-delimited list
 			val.toString = Property$_arrayToString.bind(val);
 		}
 
