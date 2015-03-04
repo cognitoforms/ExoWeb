@@ -17702,7 +17702,10 @@ window.ExoWeb.DotNet = {};
 				}
 			}
 			else if (this.isType(String)) {
-				this._setValue(value);
+				if (!value) 
+					this._setValue(null);
+				else
+					this._setValue(value);
 			}
 			else {
 				throw new Error("Cannot set systemValue property of Adapters for non-entity types.");
