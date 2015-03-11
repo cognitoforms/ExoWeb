@@ -96,15 +96,22 @@ Binding.mixin({
 		// Use a default value if the source value is null. NOTE: Because of the way LazyLoader.eval and evalPath are used,
 		// the result should never be undefined. Undefined would indicate that a property did not exist, which would be an
 		// error. This also has the side-effect of being more compatible with server-side rendering.
-		if (value === null) {
+		if (value == null) {
 			if (this._options.hasOwnProperty("nullValue")) {
 				return this._options.nullValue;
 			}
 		}
 		else {
 			// Attempt to format the source value using a format specifier
-			if (this._options.format) {
-				return getFormat(value.constructor, this._options.format).convert(value);
+			var format = this._options.format;
+			if (format) {
+				if (typeof format === "function") {
+					return format(value);
+				} else if (typeof format === "string") {
+					return getFormat(value.constructor, format).convert(value);
+				} else {
+					throw new Error("Unknown format option '" + format + "' of type '" + (typeof format) + "'.");
+				}
 			}
 			else if (this._options.transform) {
 				// Generate the transform function

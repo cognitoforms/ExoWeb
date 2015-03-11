@@ -490,6 +490,14 @@ Adapter.mixin({
 		var displayValue;
 		var rawValue = this.get_rawValue();
 
+		if (ExoWeb.config.displayTimeInServerTimeZone === true && this._propertyChain.get_jstype() === Date && rawValue instanceof Date && hasTimeFormat.test(this._propertyChain.get_format().toString())) {
+			// Convert to the local time that results in the entered value in the server's time zone.
+			var serverOffset = context.server.get_ServerTimezoneOffset();
+			var localOffset = -(new Date().getTimezoneOffset() / 60);
+			var difference = localOffset - serverOffset;
+			rawValue = rawValue.addHours(-difference);
+		}
+
 		if (this._format) {
 			// Use a markup or property format if available
 			if (rawValue instanceof Array) {
@@ -528,8 +536,19 @@ Adapter.mixin({
 		}
 		else {
 			var initialValue = value;
+
 			value = this._format ? this._format.convertBack(value) : value;
+
+			if (ExoWeb.config.displayTimeInServerTimeZone === true && this._propertyChain.get_jstype() === Date && value instanceof Date && hasTimeFormat.test(this._propertyChain.get_format().toString())) {
+				// Convert to the local time that results in the entered value in the server's time zone.
+				var serverOffset = context.server.get_ServerTimezoneOffset();
+				var localOffset = -(new Date().getTimezoneOffset() / 60);
+				var difference = localOffset - serverOffset;
+				value = value.addHours(difference);
+			}
+
 			this._setValue(value);
+
 			if (ExoWeb.config.autoReformat && !(value instanceof ExoWeb.Model.FormatError)) {
 				var newValue = this.get_displayValue();
 				if (initialValue != newValue) {

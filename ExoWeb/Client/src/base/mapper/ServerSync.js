@@ -1973,6 +1973,20 @@ ServerSync.mixin({
 
 		return timezoneOffset;
 	},
+	get_ServerTimezoneStandardName: function ServerSync$get_ServerTimezoneStandardName() {
+		if (!this._serverInfo) {
+			return null;
+		}
+
+		return this._serverInfo.TimeZoneStandardName;
+	},
+	get_ServerTimezoneDaylightName: function ServerSync$get_ServerTimezoneDaylightName() {
+		if (!this._serverInfo) {
+			return null;
+		}
+
+		return this._serverInfo.TimeZoneDaylightName;
+	},
 	set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
 		//join the new server info with the information that you are adding.
 		this._serverInfo = this._serverInfo ? jQuery.extend(this._serverInfo, newInfo) : newInfo;

@@ -44,7 +44,15 @@ window.ExoWeb.DotNet = {};
 
 		autoReformat: true,
 
-		enableBatchChanges: true
+		enableBatchChanges: true,
+
+		// Use this setting to specify that Date & Time objects should be displayed
+		// according to the server time zone, not the client time zone. If this is
+		// enabled and a user is in a different time zone from the server, when
+		// they modify a time field the value will be interpreted as server time
+		// and converted to the equivelent time in their local time zone. Note that
+		// this is a natural default choice when server rendering is in use.
+		displayTimeInServerTimeZone: false
 	};
 
 	ExoWeb.config = config;
@@ -3269,6 +3277,14 @@ window.ExoWeb.DotNet = {};
 			bWeek += (new Date(i, 11, 31)).weekOfYear(startOfWeek);
 
 		return isNegative ? aWeek - bWeek : bWeek - aWeek;
+	};
+
+	Date.prototype.isDaylightSavingTime = function() {
+		// http://stackoverflow.com/a/11888430/170990
+		var jan = new Date(this.getFullYear(), 0, 1);
+		var jul = new Date(this.getFullYear(), 6, 1);
+		var stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+		return this.getTimezoneOffset() < stdOffset;
 	};
 
 	// #endregion
@@ -12369,6 +12385,20 @@ window.ExoWeb.DotNet = {};
 
 			return timezoneOffset;
 		},
+		get_ServerTimezoneStandardName: function ServerSync$get_ServerTimezoneStandardName() {
+			if (!this._serverInfo) {
+				return null;
+			}
+
+			return this._serverInfo.TimeZoneStandardName;
+		},
+		get_ServerTimezoneDaylightName: function ServerSync$get_ServerTimezoneDaylightName() {
+			if (!this._serverInfo) {
+				return null;
+			}
+
+			return this._serverInfo.TimeZoneDaylightName;
+		},
 		set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
 			//join the new server info with the information that you are adding.
 			this._serverInfo = this._serverInfo ? jQuery.extend(this._serverInfo, newInfo) : newInfo;
@@ -17007,15 +17037,22 @@ window.ExoWeb.DotNet = {};
 			// Use a default value if the source value is null. NOTE: Because of the way LazyLoader.eval and evalPath are used,
 			// the result should never be undefined. Undefined would indicate that a property did not exist, which would be an
 			// error. This also has the side-effect of being more compatible with server-side rendering.
-			if (value === null) {
+			if (value == null) {
 				if (this._options.hasOwnProperty("nullValue")) {
 					return this._options.nullValue;
 				}
 			}
 			else {
 				// Attempt to format the source value using a format specifier
-				if (this._options.format) {
-					return getFormat(value.constructor, this._options.format).convert(value);
+				var format = this._options.format;
+				if (format) {
+					if (typeof format === "function") {
+						return format(value);
+					} else if (typeof format === "string") {
+						return getFormat(value.constructor, format).convert(value);
+					} else {
+						throw new Error("Unknown format option '" + format + "' of type '" + (typeof format) + "'.");
+					}
 				}
 				else if (this._options.transform) {
 					// Generate the transform function
@@ -17788,6 +17825,14 @@ window.ExoWeb.DotNet = {};
 			var displayValue;
 			var rawValue = this.get_rawValue();
 
+			if (ExoWeb.config.displayTimeInServerTimeZone === true && this._propertyChain.get_jstype() === Date && rawValue instanceof Date && hasTimeFormat.test(this._propertyChain.get_format().toString())) {
+				// Convert to the local time that results in the entered value in the server's time zone.
+				var serverOffset = context.server.get_ServerTimezoneOffset();
+				var localOffset = -(new Date().getTimezoneOffset() / 60);
+				var difference = localOffset - serverOffset;
+				rawValue = rawValue.addHours(-difference);
+			}
+
 			if (this._format) {
 				// Use a markup or property format if available
 				if (rawValue instanceof Array) {
@@ -17826,8 +17871,19 @@ window.ExoWeb.DotNet = {};
 			}
 			else {
 				var initialValue = value;
+
 				value = this._format ? this._format.convertBack(value) : value;
+
+				if (ExoWeb.config.displayTimeInServerTimeZone === true && this._propertyChain.get_jstype() === Date && value instanceof Date && hasTimeFormat.test(this._propertyChain.get_format().toString())) {
+					// Convert to the local time that results in the entered value in the server's time zone.
+					var serverOffset = context.server.get_ServerTimezoneOffset();
+					var localOffset = -(new Date().getTimezoneOffset() / 60);
+					var difference = localOffset - serverOffset;
+					value = value.addHours(difference);
+				}
+
 				this._setValue(value);
+
 				if (ExoWeb.config.autoReformat && !(value instanceof ExoWeb.Model.FormatError)) {
 					var newValue = this.get_displayValue();
 					if (initialValue != newValue) {

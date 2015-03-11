@@ -94,3 +94,11 @@ Date.prototype.weekDifference = function (other, startOfWeek) {
 
 	return isNegative ? aWeek - bWeek : bWeek - aWeek;
 };
+
+Date.prototype.isDaylightSavingTime = function() {
+	// http://stackoverflow.com/a/11888430/170990
+	var jan = new Date(this.getFullYear(), 0, 1);
+	var jul = new Date(this.getFullYear(), 6, 1);
+	var stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+	return this.getTimezoneOffset() < stdOffset;
+};

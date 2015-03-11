@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace ExoWeb
 {
@@ -9,9 +6,15 @@ namespace ExoWeb
 	{
 		public int TimeZoneOffset { get; set; }
 
+		public string TimeZoneStandardName { get; set; }
+
+		public string TimeZoneDaylightName { get; set; }
+
 		public ServerInformation()
 		{
 			TimeZoneOffset = TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).Hours;
+			TimeZoneStandardName = TimeZone.CurrentTimeZone.StandardName;
+			TimeZoneDaylightName = TimeZone.CurrentTimeZone.DaylightName;
 		}
 	}
 }
