@@ -12044,7 +12044,7 @@ window.ExoWeb.DotNet = {};
 											});
 										}
 									}, after), this);
-								}, after)), this, true);
+								}, after), this, true), this);
 							} else {
 								ListLazyLoader.allowModification(list, function () {
 									list.add(item);
@@ -12066,7 +12066,7 @@ window.ExoWeb.DotNet = {};
 										list.remove(itemObj);
 									});
 								}, after), this);
-							}, after), this, true);
+							}, after), this);
 						} else {
 							ListLazyLoader.allowModification(list, function () {
 								list.remove(item);
