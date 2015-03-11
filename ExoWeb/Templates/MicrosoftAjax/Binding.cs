@@ -286,11 +286,11 @@ namespace ExoWeb.Templates.MicrosoftAjax
 					}
 					else
 					{
-						ExoWeb.OnBeforeCreateAdapter(this, result.Source, result.Property);
+						var args = ExoWeb.OnBeforeCreateAdapter(this, result.Source, result.Property);
 
 						result = new BindingResult()
 						{
-							Value = new Adapter(result, Parameters),
+							Value = new Adapter(result, args != null ? args.ModifiedParameters ?? Parameters : Parameters),
 							IsValid = result.IsValid,
 							Property = result.Property,
 							Source = result.Source

@@ -145,10 +145,16 @@ namespace ExoWeb
 				BeginRequest(request, new ServiceRequestEventArgs(request, null));
 		}
 
-		internal static void OnBeforeCreateAdapter(Binding binding, ModelInstance source, ModelProperty property)
+		internal static CreateAdapterEventArgs OnBeforeCreateAdapter(Binding binding, ModelInstance source, ModelProperty property)
 		{
 			if (BeforeCreateAdapter != null)
-				BeforeCreateAdapter(binding, new CreateAdapterEventArgs(binding, source, property));
+			{
+				var args = new CreateAdapterEventArgs(binding, source, property);
+				BeforeCreateAdapter(binding, args);
+				return args;
+			}
+
+			return null;
 		}
 
 		/// <summary>
