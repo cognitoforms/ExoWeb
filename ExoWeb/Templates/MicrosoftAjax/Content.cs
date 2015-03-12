@@ -137,7 +137,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		Template FindTemplate(AjaxPage page, bool isAdapter, ModelType entityType, Type valueType, bool isList, string[] names)
 		{
 			// Find the appropriate template
-			return page.Templates.OfType<Template>().Reverse().FirstOrDefault(
+			var results = page.Templates.OfType<Template>().Reverse().Where(
 				t =>
 				{
 					// First ensure the template tags match
@@ -198,6 +198,8 @@ namespace ExoWeb.Templates.MicrosoftAjax
 
 					return true;
 				});
+
+			return results.FirstOrDefault();
 		}
 
 		/// <summary>
