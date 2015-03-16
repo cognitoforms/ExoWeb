@@ -18864,7 +18864,7 @@ window.ExoWeb.DotNet = {};
 					// Time value, set default date to 1/1/1970 to easily compare time values
 					if (format === "t") {
 						var timeFormat = Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "d") + " " + Date._expandFormat(Sys.CultureInfo.CurrentCulture.dateTimeFormat, "t");
-						var startDate = new Date(1970, 1, 1).localeFormat("d");
+						var startDate = new Date(1970, 0, 1).localeFormat("d");
 						date = Date.parseLocale(startDate + " " + str, timeFormat);
 					}
 					else
