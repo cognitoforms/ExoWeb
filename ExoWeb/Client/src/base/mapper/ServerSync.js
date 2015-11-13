@@ -165,6 +165,8 @@ function ServerSync(model) {
 	// Assign backing fields as needed
 	this._changeLog = changeLog;
 	this._scopeQueries = [];
+	this._scopeQueriesLookup = {};
+	this._scopeQueriesNewObjects = [];
 	this._objectsExcludedFromSave = [];
 	this._objectsDeleted = objectsDeleted;
 	this._translator = translator;
@@ -196,45 +198,71 @@ registerActivity("ServerSync: request", function() {
 	return pendingRequests > 0;
 });
 
+function ensureInitEvent(changes, obj) {
+	function isRootInitChange(change) {
+		return change.type === "InitNew" && change.instance.type === obj.type &&
+			(change.instance.id === obj.id || this._translator.reverse(change.instance.type, change.instance.id) === obj.id);
+	}
+
+	var found = false;
+	var initSet = changes.filter(function (set) { return set.source === "init"; })[0];
+	if (!initSet || !initSet.changes.some(isRootInitChange, this)) {
+		changes.forEach(function (set) {
+			if (found === true) return;
+			set.changes.forEach(function (change, index) {
+				if (found === true) return;
+				else if (isRootInitChange.call(this, change)) {
+					set.changes.splice(index, 1);
+					if (!initSet) {
+						initSet = { changes: [change], source: "init" };
+						changes.splice(0, 0, initSet);
+					}
+					else {
+						initSet.changes.push(change);
+					}
+					found = true;
+				}
+			}, this);
+		}, this);
+	}
+}
+
 function serializeChanges(includeAllChanges, simulateInitRoot) {
 	var changes = this._changeLog.serialize(includeAllChanges ? this.canSend : this.canSave, this);
 
-	// temporary HACK (no, really): splice InitNew changes into init transaction
 	if (simulateInitRoot && simulateInitRoot.meta.isNew) {
-		function isRootInitChange(change) {
-			return change.type === "InitNew" && change.instance.type === simulateInitRoot.meta.type.get_fullName() &&
-				(change.instance.id === simulateInitRoot.meta.id || this._translator.reverse(change.instance.type, change.instance.id) === simulateInitRoot.meta.id);
-		}
-
-		var found = false;
-		var initSet = changes.filter(function(set) { return set.source === "init"; })[0];
-		if (!initSet || !initSet.changes.some(isRootInitChange, this)) {
-			changes.forEach(function(set) {
-				if (found === true) return;
-				set.changes.forEach(function(change, index) {
-					if (found === true) return;
-					else if (isRootInitChange.call(this, change)) {
-						set.changes.splice(index, 1);
-						if (!initSet) {
-							initSet = { changes: [change], source: "init" };
-							changes.splice(0, 0, initSet);
-						}
-						else {
-							initSet.changes.push(change);
-						}
-						found = true;
-					}
-				}, this);
-			}, this);
-		}
+		ensureInitEvent.call(this, changes, { type: simulateInitRoot.meta.type.get_fullName(), id: simulateInitRoot.meta.id });
 	}
+
+	this._scopeQueriesNewObjects.forEach(function(obj) {
+		ensureInitEvent.call(this, changes, obj);
+	}, this);
 
 	return changes;
 }
 
 // when ServerSync is made singleton, this data will be referenced via closure
-function ServerSync$addScopeQuery(query) {
+function ServerSync$addScopeQuery(name, query) {
+	this._scopeQueriesLookup[name] = query;
 	this._scopeQueries.push(query);
+}
+
+function ServerSync$removeFromScopeQuery(name, id, isNew) {
+	var query = this._scopeQueriesLookup[name];
+	if (isNew) {
+		this._scopeQueriesNewObjects.purge(function(obj) {
+			return obj.type === query.from && obj.id === id;
+		});
+	}
+	query.ids.purge(function (i) { return id === i; });
+}
+
+function ServerSync$addToScopeQuery(name, id, isNew) {
+	var query = this._scopeQueriesLookup[name];
+	if (isNew) {
+		this._scopeQueriesNewObjects.push({ type: query.from, id: id });
+	}
+	query.ids.push(id);
 }
 
 function ServerSync$storeInitChanges(changes) {
@@ -1230,9 +1258,20 @@ ServerSync.mixin({
 						var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 							this._translator.reverse(idChange.type, serverOldId) :
 							idChange.oldId;
+						var obj = jstype.meta.get(clientOldId);
 						this._scopeQueries.forEach(function (query) {
 							query.ids = query.ids.map(function (id) {
-								return (id === clientOldId) ? idChange.newId : id;
+								if (id === clientOldId) {
+									var fromJsType = ExoWeb.Model.Model.getJsType(query.from, true);
+									if (obj && fromJsType && obj instanceof fromJsType) {
+										this._scopeQueriesNewObjects.purge(function (o) {
+											return o.type === query.from && o.id === obj.meta.id;
+										});
+
+										return idChange.newId;
+									}
+								}
+								return id;
 							}, this);
 						}, this);
 					}
@@ -1383,7 +1422,17 @@ ServerSync.mixin({
 					// Update affected scope queries
 					this._scopeQueries.forEach(function (query) {
 						query.ids = query.ids.map(function (id) {
-							return (id === clientOldId) ? idChange.newId : id;
+							if (id === clientOldId) {
+								var fromJsType = ExoWeb.Model.Model.getJsType(query.from, true);
+								if (fromJsType && obj instanceof fromJsType) {
+									this._scopeQueriesNewObjects.purge(function (o) {
+										return o.type === query.from && o.id === obj.meta.id;
+									});
+
+									return idChange.newId;
+								}
+							}
+							return id;
 						}, this);
 					}, this);
 

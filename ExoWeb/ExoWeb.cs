@@ -426,11 +426,30 @@ namespace ExoWeb
 					{
 						if (p.Name.Equals(root.Key, StringComparison.InvariantCultureIgnoreCase))
 						{
-							// List parameter
-							if (p.ParameterType.IsArray)
-								parameters[p.Position] = root.Value.Roots.Select(r => r.Instance).ToArray();
+							Type enumerableInterfaceType = null;
 
-							// Instance parameter
+							if (p.ParameterType.IsArray)
+								enumerableInterfaceType = p.ParameterType.GetInterface("IEnumerable`1");
+							else if (p.ParameterType.IsGenericType && p.ParameterType.GetGenericTypeDefinition() == typeof (IEnumerable<>))
+								enumerableInterfaceType = p.ParameterType;
+
+							if (enumerableInterfaceType != null)
+							{
+								var itemType = enumerableInterfaceType.GetGenericArguments()[0];
+
+								var list = root.Value.Roots.Select(r => r.Instance);
+
+								//var selectMethod = typeof (Enumerable).GetMethod("Select", BindingFlags.Public | BindingFlags.Static, null, new[] {typeof (ModelInstance), typeof (Func<,>).MakeGenericType(typeof (ModelInstance), itemType)}, null);
+
+								var castMethod = typeof (Enumerable).GetMethod("Cast", BindingFlags.Public | BindingFlags.Static).MakeGenericMethod(itemType);
+								var toArrayMethod = typeof (Enumerable).GetMethod("ToArray", BindingFlags.Public | BindingFlags.Static).MakeGenericMethod(itemType);
+
+								//selectMethod.Invoke(null, new object[] { modelInstanceList, (object)(delegate (ModelInstance i) { return i.Instance; }))
+
+								parameters[p.Position] = toArrayMethod.Invoke(null, new[] {castMethod.Invoke(null, new object[] {list})});
+							}
+
+								// Instance parameter
 							else
 								parameters[p.Position] = root.Value.Roots.Select(r => r.Instance).FirstOrDefault();
 
@@ -527,10 +546,6 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		/// <param name="type"></param>
-		/// <param name="id"></param>
-		/// <param name="paths"></param>
-		/// <returns></returns>
 		public static ServiceRequest.Query Query(string type, string id, params string[] paths)
 		{
 			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, true, false, paths);
@@ -539,10 +554,6 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="id"></param>
-		/// <param name="paths"></param>
-		/// <returns></returns>
 		public static ServiceRequest.Query Query<T>(string id, params string[] paths)
 		{
 			return Query(typeof(T), id, paths);
@@ -551,11 +562,6 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		/// <param name="type"></param>
-		/// <param name="scope"></param>
-		/// <param name="id"></param>
-		/// <param name="paths"></param>
-		/// <returns></returns>
 		public static ServiceRequest.Query Query(string type, string id, ViewScope scope, params string[] paths)
 		{
 			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, scope == ViewScope.InScope, false, paths);
@@ -564,11 +570,6 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="id"></param>
-		/// <param name="scope"></param>
-		/// <param name="paths"></param>
-		/// <returns></returns>
 		public static ServiceRequest.Query Query<T>(string id, ViewScope scope, params string[] paths)
 		{
 			return Query(typeof(T), id, scope, paths);
@@ -577,10 +578,6 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		/// <param name="type"></param>
-		/// <param name="id"></param>
-		/// <param name="paths"></param>
-		/// <returns></returns>
 		public static ServiceRequest.Query Query(Type type, string id, params string[] paths)
 		{
 			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, true, false, paths);
@@ -589,11 +586,6 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="id"></param>
-		/// <param name="scope"></param>
-		/// <param name="paths"></param>
-		/// <returns></returns>
 		public static ServiceRequest.Query Query(Type type, string id, ViewScope scope, params string[] paths)
 		{
 			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, scope == ViewScope.InScope, false, paths);
@@ -602,9 +594,22 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		/// <param name="instance"></param>
-		/// <param name="paths"></param>
-		/// <returns></returns>
+		public static ServiceRequest.Query Query<T>(string[] ids, params string[] paths)
+		{
+			return Query(typeof(T), ids, ViewScope.InScope, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
+		public static ServiceRequest.Query Query(Type type, string[] ids, ViewScope scope, params string[] paths)
+		{
+			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), ids, scope == ViewScope.InScope, true, paths);
+		}
+
+		/// <summary>
+		/// Creates a query to load an instance and a set of options paths.
+		/// </summary>
 		public static ServiceRequest.Query Query(object instance, params string[] paths)
 		{
 			return Query(instance, ViewScope.InScope, paths);
@@ -613,10 +618,6 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		/// <param name="instance"></param>
-		/// <param name="scope"></param>
-		/// <param name="paths"></param>
-		/// <returns></returns>
 		public static ServiceRequest.Query Query(object instance, ViewScope scope, params string[] paths)
 		{
 			ModelType type;

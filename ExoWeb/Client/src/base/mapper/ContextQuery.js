@@ -83,6 +83,21 @@ ContextQuery.mixin({
 						var arr = [];
 						Observer.makeObservable(arr);
 						this.context.model[varName] = arr;
+
+						Observer.addCollectionChanged(arr, function(sender, args) {
+							args.get_changes().forEach(function (c) {
+								if (c.oldItems) {
+									c.oldItems.forEach(function(removed) {
+										ServerSync$removeFromScopeQuery.call(this.context.server, varName, removed.meta.id, removed.meta.isNew);
+									});
+								}
+								if (c.newItems) {
+									c.newItems.forEach(function(added) {
+										ServerSync$addToScopeQuery.call(this.context.server, varName, added.meta.id, added.meta.isNew);
+									});
+								}
+							});
+						});
 					}
 
 					// get rid of junk (null/undefined/empty) ids
@@ -97,16 +112,14 @@ ContextQuery.mixin({
 
 					// use temporary config setting to enable/disable scope-of-work functionality
 					if (query.inScope !== false) {
-						if (query.ids.length > 0) {
-							this.state[varName].scopeQuery = {
-								from: query.from,
-								ids: query.ids,
-								// TODO: this will be subset of paths interpreted as scope-of-work
-								include: query.include ? query.include : [],
-								inScope: true,
-								forLoad: false
-							};
-						}
+						this.state[varName].scopeQuery = {
+							from: query.from,
+							ids: query.ids,
+							// TODO: this will be subset of paths interpreted as scope-of-work
+							include: query.include ? query.include : [],
+							inScope: true,
+							forLoad: false
+						};
 					}
 				}, this);
 			}
@@ -526,7 +539,7 @@ ContextQuery.mixin({
 			if (this.options.model) {
 				ExoWeb.eachProp(this.options.model, function (varName, query) {
 					if (this.state[varName].scopeQuery) {
-						ServerSync$addScopeQuery.call(this.context.server, this.state[varName].scopeQuery);
+						ServerSync$addScopeQuery.call(this.context.server, varName, this.state[varName].scopeQuery);
 					}
 				}, this);
 			}
