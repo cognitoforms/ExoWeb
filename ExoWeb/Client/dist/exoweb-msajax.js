@@ -18122,11 +18122,28 @@ window.ExoWeb.DotNet = {};
 			return;
 		}
 
+		if (this._signalOptionsPending) {
+			return;
+		}
+
 		// Delete backing fields so that options can be recalculated (and loaded)
 		delete this._options;
 
-		// Raise events in order to cause subscribers to fetch the new value
-		ExoWeb.Observer.raisePropertyChanged(this, "options");
+		this._signalOptionsPending = true;
+
+		// Don't signal that the adapter's options are ready until any batch work
+		// is complete in order to avoid accessing the property in the middle of
+		// a batch process such as response handling, i.e. object loading.
+		Batch.whenDone(function () {
+			if (this._disposed) {
+				return;
+			}
+
+			delete this._signalOptionsPending;
+
+			// Raise events in order to cause subscribers to fetch the new value
+			ExoWeb.Observer.raisePropertyChanged(this, "options");
+		}, this);
 	}
 
 	// If the given rule is allowed values, signal options ready
