@@ -1258,22 +1258,24 @@ ServerSync.mixin({
 						var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 							this._translator.reverse(idChange.type, serverOldId) :
 							idChange.oldId;
-						var obj = jstype.meta.get(clientOldId);
-						this._scopeQueries.forEach(function (query) {
-							query.ids = query.ids.map(function (id) {
-								if (id === clientOldId) {
-									var fromJsType = ExoWeb.Model.Model.getJsType(query.from, true);
-									if (obj && fromJsType && obj instanceof fromJsType) {
-										this._scopeQueriesNewObjects.purge(function (o) {
-											return o.type === query.from && o.id === obj.meta.id;
-										});
+						if (clientOldId) {
+							var obj = jstype.meta.get(clientOldId);
+							this._scopeQueries.forEach(function(query) {
+								query.ids = query.ids.map(function(id) {
+									if (id === clientOldId) {
+										var fromJsType = ExoWeb.Model.Model.getJsType(query.from, true);
+										if (obj && fromJsType && obj instanceof fromJsType) {
+											this._scopeQueriesNewObjects.purge(function(o) {
+												return o.type === query.from && o.id === obj.meta.id;
+											});
 
-										return idChange.newId;
+											return idChange.newId;
+										}
 									}
-								}
-								return id;
+									return id;
+								}, this);
 							}, this);
-						}, this);
+						}
 					}
 				}, this);
 			}
