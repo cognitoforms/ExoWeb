@@ -15853,10 +15853,11 @@ window.ExoWeb.DotNet = {};
 			Sys.Application.activateElement(this);
 		}));
 
-		jQuery(function ($) {
+		jQuery(function () {
 			var tmpl = jQuery("<div id='" + id + "'/>")
+				.appendTo(jQuery("<div class='sys-ignore'/>")
 					.hide()
-					.appendTo("body");
+					.appendTo("body"));
 
 			//if the template is stored locally look for the path as a div on the page rather than the cache
 			if (options && options.isLocal === true) {
