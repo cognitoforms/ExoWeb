@@ -17583,15 +17583,27 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		_initPropertyChain: function Adapter$_initPropertyChain() {
-			// start with the target or its raw value in the case of an adapter
-			var sourceObject = (this._target instanceof Adapter) ? this._target.get_rawValue() : this._target;
+			var sourceType;
 
-			if (!(sourceObject instanceof Entity)) {
-				throw new Error("Adapter source is not an entity.");
+			if (this._target instanceof Adapter) {
+				if (!this._target.get_isEntity()) {
+					throw new Error("Adapter source is not an entity.");
+				}
+
+				sourceType = this._target._propertyChain.get_jstype().meta;
+			}
+			else {
+				var sourceObject = this._target;
+
+				if (!(sourceObject instanceof Entity)) {
+					throw new Error("Adapter source is not an entity, found " + (sourceObject != null ? typeof (sourceObject) : "null"));
+				}
+
+				sourceType = sourceObject.meta.type;
 			}
 
 			// get the property chain for this adapter starting at the source object
-			this._propertyChain = Model.property(this._propertyPath, sourceObject.meta.type);
+			this._propertyChain = Model.property(this._propertyPath, sourceType);
 			if (!this._propertyChain) {
 				throw new Error($format("Property \"{0}\" could not be found.", this._propertyPath));
 			}
