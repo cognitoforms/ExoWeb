@@ -13,10 +13,14 @@ function CompareRule(rootType, options) {
 	/// </param>
 	/// <returns type="CompareRule">The new compare rule.</returns>
 
+	// exit immediately if called with no arguments
+	if (arguments.length == 0) return;
+
 	options.name = options.name || "Compare";
 	
 	// ensure changes to the compare source triggers rule execution
-	options.onChangeOf = [options.compareSource];
+	if (options.compareSource)
+		options.onChangeOf = [options.compareSource];
 
 	// define properties for the rule
 	Object.defineProperty(this, "compareOperator", { value: options.compareOperator });
@@ -105,7 +109,7 @@ CompareRule.mixin({
 	onRegister: function () {
 
 		// get the compare source, if only the path was specified
-		if (!this.compareSource) {
+		if (!this.compareSource && this.comparePath) {
 			Object.defineProperty(this, "compareSource", { value: Model.property(this.comparePath, this.rootType) });
 		}
 

@@ -3672,12 +3672,9 @@ window.ExoWeb.DotNet = {};
 		"compare-not-equal":						"{property} must be different from {compareSource}.",
 		"compare-on-or-after":						"{property} must be on or after {compareSource}.",
 		"compare-on-or-before":						"{property} must be on or before {compareSource}.",
-		"listlength-compare-equal":					"{property} length must be the same as {compareSource}.",
-		"listlength-compare-greater-than":			"{property} length must be greater than {compareSource}.",
-		"listlength-compare-greater-than-or-equal":	"{property} length must be greater than or equal to {compareSource}.",
-		"listlength-compare-less-than":				"{property} length must be less than {compareSource}.",
-		"listlength-compare-less-than-or-equal":	"{property} length must be less than or equal to {compareSource}.",
-		"listlength-compare-not-equal":				"{property} length must be different from {compareSource}.",
+		"listlength-at-least":						"Please specify at least {min} {property}.",
+		"listlength-at-most":						"Please specify no more than {max} {property}.",
+		"listlength-between":						"Please specify between {min} and {max} {property}.",
 		"range-at-least":							"{property} must be at least {min}.",
 		"range-at-most":							"{property} must be at most {max}.",
 		"range-between":							"{property} must be between {min} and {max}.",
@@ -7398,6 +7395,9 @@ window.ExoWeb.DotNet = {};
 		/// </param>
 		/// <returns type="RangeRule">The new range rule.</returns>
 
+		// exit immediately if called with no arguments
+		if (arguments.length == 0) return;
+
 		// ensure the rule name is specified
 		options.name = options.name || "Range";
 
@@ -7689,10 +7689,14 @@ window.ExoWeb.DotNet = {};
 		/// </param>
 		/// <returns type="CompareRule">The new compare rule.</returns>
 
+		// exit immediately if called with no arguments
+		if (arguments.length == 0) return;
+
 		options.name = options.name || "Compare";
 	
 		// ensure changes to the compare source triggers rule execution
-		options.onChangeOf = [options.compareSource];
+		if (options.compareSource)
+			options.onChangeOf = [options.compareSource];
 
 		// define properties for the rule
 		Object.defineProperty(this, "compareOperator", { value: options.compareOperator });
@@ -7781,7 +7785,7 @@ window.ExoWeb.DotNet = {};
 		onRegister: function () {
 
 			// get the compare source, if only the path was specified
-			if (!this.compareSource) {
+			if (!this.compareSource && this.comparePath) {
 				Object.defineProperty(this, "compareSource", { value: Model.property(this.comparePath, this.rootType) });
 			}
 
@@ -8100,106 +8104,61 @@ window.ExoWeb.DotNet = {};
 	//////////////////////////////////////////////////
 
 	function ListLengthRule(rootType, options) {
-		/// <summary>Creates a rule that validates whether a list contains the correct number of items.</summary>
+		/// <summary>Creates a rule that validates a list property contains a specific range of items.</summary>
 		/// <param name="rootType" type="Type">The model type the rule is for.</param>
 		/// <param name="options" type="Object">
 		///		The options for the rule, including:
 		///			property:			the property being validated (either a Property instance or string property name)
-		///			compareSource:		the optional source property to compare the list length to (either a Property or PropertyChain instance or a string property path)
-		///			compareOperator:	the relational comparison operator to use (one of "Equal", "NotEqual", "GreaterThan", "GreaterThanEqual", "LessThan" or "LessThanEqual")
-		///			compareValue:		the optional list length value to compare to
+		///			min:				the minimum valid value of the property
+		///			max:				the maximum valid value of the property
+		///			minFn:				a function returning the minimum valid value of the property
+		///			maxFn:				a function returning the maximum valid value of the property
 		///			name:				the optional unique name of the type of validation rule
 		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
 		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
 		///			message:			the message to show the user when the validation fails
+		///		    onChangeOf:			an array of property paths (strings, Property or PropertyChain instances) that drive when the rule should execute due to property changes
 		/// </param>
 		/// <returns type="ListLengthRule">The new list length rule.</returns>
 
+		// ensure the rule name is specified
+		options.name = options.name || "ListLength";
 
+		// call the base type constructor
+		RangeRule.apply(this, [rootType, options]);
 	}
 
-	ListLengthRule.load = function ListLengthRule$load(rule, loadedType, mtype, callback, thisPtr) {
-		if (!loadedType.meta.baseType || LazyLoader.isLoaded(loadedType.meta.baseType)) {
-			var inputs = [];
+	// setup the inheritance chain
+	ListLengthRule.prototype = new RangeRule();
+	ListLengthRule.prototype.constructor = ListLengthRule;
 
-			var targetInput = new RuleInput(rule.prop);
-			targetInput.set_isTarget(true);
-			if (rule.prop.get_origin() === "client")
-				targetInput.set_dependsOnInit(true);
-			inputs.push(targetInput);
+	// extend the base type
+	ListLengthRule.mixin({
 
-			//no need to register the rule with the comparePath if you are using a static length
-			if (rule._comparePath != "") {
-				Model.property(rule._comparePath, rule.prop.get_containingType(), true, function (chain) {
-					rule._compareProperty = chain;
+		// returns true if the property is valid, otherwise false
+		isValid: function ListLengthRule$isValid(obj, prop, val) {
 
-					var compareInput = new RuleInput(rule._compareProperty);
-					inputs.push(compareInput);
+			var range = this.range(obj);
 
-					rule._inited = true;
-
-					if (chain.get_jstype() === Boolean && rule._compareOp == "NotEqual" && (rule._compareValue === undefined || rule._compareValue === null)) {
-						rule._compareOp = "Equal";
-						rule._compareValue = true;
-					}
-
-					Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-				});
-			}
-			else {
-				//register the rule without reference to compareSource
-				rule._inited = true;
-				Rule.register(rule, inputs, false, mtype, callback, thisPtr);
-			}
-		}
-		else {
-			$extend(loadedType.meta.baseType.get_fullName(), function (baseType) {
-				ListLengthRule.load(rule, baseType, mtype, callback, thisPtr);
-			});
-		}
-	};
-
-	ListLengthRule.prototype = {
-		isValid: function Compare$isValid(obj) {
-			if (!this._compareProperty && this._staticLength < 0) {
-				return true;
-			}
-
-			var srcValue = this.prop.value(obj);
-			var cmpValue = this._staticLength >= 0 ? this._staticLength : this._compareProperty.value(obj);
-
-			//if the src value is not a list we are not comparing a valid object
-			if (!isArray(srcValue))
-				return true;
-
-			//if the value we are comparing against is not numeric, this is not a valid comparison
-			if (!isWhole(parseInt(cmpValue)))
-				return true;
-
-			return CompareRule.compare(srcValue.length, this._compareOp, parseInt(cmpValue), true);
+			return val === null || val === undefined || ((!range.min || val.length >= range.min) && (!range.max || val.length <= range.max));
 		},
-		execute: function ListLengthRule$execute(obj) {
-			if (this._inited === true) {
 
-				var isValid = this.isValid(obj);
+		message: function ListLengthRule$message(obj, prop, val) {
 
-				var message = isValid ? '' : $format("{0} length must be {1}{2} {3}", [
-						this.prop.get_label(),
-						ExoWeb.makeHumanReadable(this._compareOp).toLowerCase(),
-						(this._compareOp === "GreaterThan" || this._compareOp == "LessThan") ? "" : " to",
-						this._staticLength >= 0 ? this._staticLength : this._compareProperty.get_label()
-					]);
-				this.err = new Condition(this.conditionType, message, [this.prop], this);
+			var range = this.range(obj);
 
-				obj.meta.conditionIf(this.err, !isValid);
-			}
-			else {
-				logWarning("List Length rule on type \"" + this.prop.get_containingType().get_fullName() + "\" has not been initialized.");
-			}
+			// ensure the error message is specified
+			var message =
+				(range.min && range.max ? Resource.get("listlength-between").replace("{min}", this.property.format(range.min)).replace("{max}", this.property.format(range.max)) : 
+						range.min ?
+							Resource.get("listlength-at-least").replace("{min}", this.property.format(range.min)) : // at least ordinal
+							Resource.get("listlength-at-most").replace("{max}", this.property.format(range.max))); // at most ordinal
+
+			return message.replace('{property}', this.property.get_label());
 		}
-	};
+	});
 
-	// expose the rule publicly
+	// Expose the rule publicly
 	Rule.listLength = ListLengthRule;
 	ExoWeb.Model.ListLengthRule = ListLengthRule;
 

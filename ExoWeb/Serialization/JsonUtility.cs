@@ -659,11 +659,22 @@ namespace ExoWeb.Serialization
 						(rule, json) =>
 						{
 							SerializePropertyRule(rule, json);
-							json.Set("compareOperator", rule.CompareOperator.ToString());
-							if (!String.IsNullOrEmpty(rule.CompareSource))
-								json.Set("compareSource", rule.CompareSource);
+
+							// Min
+							if (rule.MinExpression != null)
+								json.Set("minFn", rule.MinExpression.Expression);
 							else
-								json.Set("compareValue", rule.CompareValue.ToString());
+								json.Set("min", rule.Minimum);
+
+							// Max
+							if (rule.MaxExpression != null)
+								json.Set("maxFn", rule.MaxExpression.Expression);
+							else
+								json.Set("max", rule.Maximum);
+
+							// OnChangeOf
+							if (!String.IsNullOrEmpty(rule.Path))
+								json.Set("onChangeOf", new string[] { rule.Path });
 						},
 						json => { throw new NotSupportedException("ListLengthRule cannot be deserialized."); }),
 

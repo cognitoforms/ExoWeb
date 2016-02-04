@@ -16,6 +16,9 @@ function RangeRule(rootType, options) {
 	/// </param>
 	/// <returns type="RangeRule">The new range rule.</returns>
 
+	// exit immediately if called with no arguments
+	if (arguments.length == 0) return;
+
 	// ensure the rule name is specified
 	options.name = options.name || "Range";
 
