@@ -8559,7 +8559,7 @@ window.ExoWeb.DotNet = {};
 							if (child instanceof Entity)
 								childInstances.push(child);
 							else if (child instanceof Array && child.length > 0 && child[0] instanceof Entity)
-								childInstances.concat(child);
+								childInstances = childInstances.concat(child);
 						}
 
 						// assign the set of instances to process for the next step
@@ -8578,8 +8578,14 @@ window.ExoWeb.DotNet = {};
 			// raise events on condition targets
 			for (var t = targets.length - 1; t >= 0; t--) {
 				var conditionTarget = targets[t];
+
+				// instance events
 				conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false }]);
-				conditionTarget.target.meta.type._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false }]);
+
+				// type events
+				for (var type = conditionTarget.target.meta.type; type; type = type.baseType) {
+					type._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false }]);
+				}
 			}
 
 			// raise events on condition types
@@ -8618,7 +8624,14 @@ window.ExoWeb.DotNet = {};
 			for (var t = this.targets.length - 1; t >= 0; t--) {
 				var conditionTarget = this.targets[t];
 				conditionTarget.target.meta.clearCondition(conditionTarget.condition.type);
-				conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: false, remove: true}]);
+
+				// instance events
+				conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: false, remove: true }]);
+
+				// type events
+				for (var type = conditionTarget.target.meta.type; type; type = type.baseType) {
+					type._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: false, remove: true }]);
+				}
 			}
 
 			// remove references to all condition targets
@@ -17722,7 +17735,9 @@ window.ExoWeb.DotNet = {};
 				// Add the conditions for the new target and subscribe to changes
 				if (this.get_conditions() && newLastTarget) {
 					this.get_conditions().addRange(newLastTarget.meta.conditions(this.get_propertyChain().lastProperty()));
-					newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this.get_propertyChain());
+					if (this._conditionsChangedHandler) {
+						newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this.get_propertyChain());
+					}
 				}
 			}
 

@@ -83,7 +83,7 @@ function Condition(type, message, target, properties, origin) {
 						if (child instanceof Entity)
 							childInstances.push(child);
 						else if (child instanceof Array && child.length > 0 && child[0] instanceof Entity)
-							childInstances.concat(child);
+							childInstances = childInstances.concat(child);
 					}
 
 					// assign the set of instances to process for the next step
@@ -102,8 +102,14 @@ function Condition(type, message, target, properties, origin) {
 		// raise events on condition targets
 		for (var t = targets.length - 1; t >= 0; t--) {
 			var conditionTarget = targets[t];
+
+			// instance events
 			conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false }]);
-			conditionTarget.target.meta.type._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false }]);
+
+			// type events
+			for (var type = conditionTarget.target.meta.type; type; type = type.baseType) {
+				type._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false }]);
+			}
 		}
 
 		// raise events on condition types
@@ -142,7 +148,14 @@ Condition.mixin({
 		for (var t = this.targets.length - 1; t >= 0; t--) {
 			var conditionTarget = this.targets[t];
 			conditionTarget.target.meta.clearCondition(conditionTarget.condition.type);
-			conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: false, remove: true}]);
+
+			// instance events
+			conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: false, remove: true }]);
+
+			// type events
+			for (var type = conditionTarget.target.meta.type; type; type = type.baseType) {
+				type._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: false, remove: true }]);
+			}
 		}
 
 		// remove references to all condition targets

@@ -234,7 +234,9 @@ Adapter.mixin({
 			// Add the conditions for the new target and subscribe to changes
 			if (this.get_conditions() && newLastTarget) {
 				this.get_conditions().addRange(newLastTarget.meta.conditions(this.get_propertyChain().lastProperty()));
-				newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this.get_propertyChain());
+				if (this._conditionsChangedHandler) {
+					newLastTarget.meta.addConditionsChanged(this._conditionsChangedHandler, this.get_propertyChain());
+				}
 			}
 		}
 
