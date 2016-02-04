@@ -757,7 +757,8 @@
 		Sys.UI.Template._expressionRegExp = /\{\{\s*([\w\W]*?)\s*\}\}/g;
 		Sys.UI.Template.allowedProtocols = [
 	"http",
-	"https"
+	"https",
+	"data"
 ];
 		Sys.UI.Template.restrictedAttributes = [
 	"src",
