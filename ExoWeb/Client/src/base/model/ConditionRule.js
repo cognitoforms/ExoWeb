@@ -27,7 +27,9 @@ function ConditionRule(rootType, options) {
 	}
 
 	// automatically run the condition rule during initialization of new instances
-	options.onInitNew = true;
+	if (!options.hasOwnProperty("onInitNew")) {
+		options.onInitNew = true;
+	}
 
 	// coerce string to condition type
 	var conditionType = options.conditionType;
@@ -41,7 +43,7 @@ function ConditionRule(rootType, options) {
 	});
 
 	// automatically run the condition rule during initialization of existing instances if the condition type was defined on the client
-	if (this.conditionType.origin !== "server") {
+	if (!options.hasOwnProperty("onInitExisting") && this.conditionType.origin !== "server") {
 		options.onInitExisting = true;
 	}
 

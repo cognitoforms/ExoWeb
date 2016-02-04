@@ -5657,7 +5657,7 @@ window.ExoWeb.DotNet = {};
 			return this;
 		},
 		optionValues: function (source, error) {
-		    var options = preparePropertyRuleOptions(this, { source: source }, error);
+		    var options = preparePropertyRuleOptions(this, { source: source, onInit: false, onInitNew: false, onInitExisting: false }, error);
 		    options.ignoreValidation = true;
 		    new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
 		    return this;
@@ -7104,7 +7104,9 @@ window.ExoWeb.DotNet = {};
 		}
 
 		// automatically run the condition rule during initialization of new instances
-		options.onInitNew = true;
+		if (!options.hasOwnProperty("onInitNew")) {
+			options.onInitNew = true;
+		}
 
 		// coerce string to condition type
 		var conditionType = options.conditionType;
@@ -7118,7 +7120,7 @@ window.ExoWeb.DotNet = {};
 		});
 
 		// automatically run the condition rule during initialization of existing instances if the condition type was defined on the client
-		if (this.conditionType.origin !== "server") {
+		if (!options.hasOwnProperty("onInitExisting") && this.conditionType.origin !== "server") {
 			options.onInitExisting = true;
 		}
 
@@ -7731,11 +7733,16 @@ window.ExoWeb.DotNet = {};
 		    Object.defineProperty(this, "ignoreValidation", { value: options.ignoreValidation });
 		}
 
-		// call the base type constructor
-		ValidatedPropertyRule.apply(this, [rootType, options]);
+		// create a property specified condition type if not passed in, defaulting to Error if a condition category was not specified
+		options.conditionType = options.conditionType || Rule.ensureConditionType(options.name, this.property, options.category || ConditionType.Error);
 
 		// never run allowed values rules during initialization of existing instances
-		options.onInitExisting = false;
+		if (!options.hasOwnProperty("onInitExisting") && options.conditionType.origin === "server") {
+			options.onInitExisting = false;
+		}
+
+		// call the base type constructor
+		ValidatedPropertyRule.apply(this, [rootType, options]);
 	}
 
 	// setup the inheritance chain

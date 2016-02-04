@@ -559,7 +559,7 @@ Property.mixin({
 		return this;
 	},
 	optionValues: function (source, error) {
-	    var options = preparePropertyRuleOptions(this, { source: source }, error);
+	    var options = preparePropertyRuleOptions(this, { source: source, onInit: false, onInitNew: false, onInitExisting: false }, error);
 	    options.ignoreValidation = true;
 	    new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
 	    return this;

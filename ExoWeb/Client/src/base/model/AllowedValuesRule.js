@@ -37,11 +37,16 @@ function AllowedValuesRule(rootType, options) {
 	    Object.defineProperty(this, "ignoreValidation", { value: options.ignoreValidation });
 	}
 
-	// call the base type constructor
-	ValidatedPropertyRule.apply(this, [rootType, options]);
+	// create a property specified condition type if not passed in, defaulting to Error if a condition category was not specified
+	options.conditionType = options.conditionType || Rule.ensureConditionType(options.name, this.property, options.category || ConditionType.Error);
 
 	// never run allowed values rules during initialization of existing instances
-	options.onInitExisting = false;
+	if (!options.hasOwnProperty("onInitExisting") && options.conditionType.origin === "server") {
+		options.onInitExisting = false;
+	}
+
+	// call the base type constructor
+	ValidatedPropertyRule.apply(this, [rootType, options]);
 }
 
 // setup the inheritance chain
