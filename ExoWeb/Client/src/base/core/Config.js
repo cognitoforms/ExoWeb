@@ -30,8 +30,11 @@ var config = {
 	// Specifies the default defaultIfError value for CalculatedPropertyRule instances
 	calculationErrorDefault: undefined,
 
+	// Specifies whether the adapter should update a control's value when the display
+	// value is updated while being set, for example due to applying a format.
 	autoReformat: true,
 
+	// Specifies whether changes should be collected in logical batches.
 	enableBatchChanges: true,
 
 	// Use this setting to specify that Date & Time objects should be displayed
@@ -40,7 +43,17 @@ var config = {
 	// they modify a time field the value will be interpreted as server time
 	// and converted to the equivelent time in their local time zone. Note that
 	// this is a natural default choice when server rendering is in use.
-	displayTimeInServerTimeZone: false
+	displayTimeInServerTimeZone: false,
+
+	// Specifies whether "runaway" rules should be detected, e.g. the case where a
+	// rule causes itself to be re-entered continually (wheter directly or indirectly).
+	detectRunawayRules: false,
+
+	// Controls the maximum number of times that a child event scope can transfer events
+	// to its parent while the parent scope is exiting. A large number indicates that
+	// rules are not reaching steady-state. Technically something other than rules could
+	// cause this scenario, but in practice they are the primary use-case for event scope. 
+	nonExitingScopeNestingCount: 100
 };
 
 exports.config = config;

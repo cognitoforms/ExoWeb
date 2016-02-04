@@ -1,5 +1,15 @@
+/// <reference path="../core/Observer.js" />
 /// <reference path="../core/Utilities.js" />
+/// <reference path="../core/Signal.js" />
 /// <reference path="../core/EventScope.js" />
+/// <reference path="../core/Warnings.js" />
+/// <reference path="../model/Model.js" />
+/// <reference path="../model/Type.js" />
+/// <reference path="../model/Property.js" />
+/// <reference path="../model/PropertyChain.js" />
+/// <reference path="../model/PathTokens.js" />
+/// <reference path="../model/RuleInvocationType.js" />
+/// <reference path="../model/ConditionType.js" />
 
 var customRuleIndex = 0;
 
@@ -9,7 +19,7 @@ function Rule(rootType, options) {
 	/// <param name="options" type="Object">
 	///		The options for the rule, including:
 	///			name:				the optional unique name of the type of validation rule
-	//			execute:			a function to execute when the rule is triggered
+	///			execute:			a function to execute when the rule is triggered
 	///			onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
 	///			onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
 	///			onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
@@ -216,6 +226,24 @@ Rule.mixin({
 			if (!canExecute(rule, obj, args)) return;
 
 			EventScope$perform(function() {
+				if (window.ExoWeb.config.detectRunawayRules) {
+					if (currentEventScope.parent && currentEventScope.parent._exitEventVersion) {
+						// Determine the maximum number nested calls to EventScope$perform
+						// before considering a rule to be a "runaway" rule. 
+						var maxNesting;
+						if (typeof window.ExoWeb.config.nonExitingScopeNestingCount === "number") {
+							maxNesting = window.ExoWeb.config.nonExitingScopeNestingCount - 1;
+						} else {
+							maxNesting = 99;
+						}
+
+						if (currentEventScope.parent._exitEventVersion > maxNesting) {
+							logWarning("Aborting rule '" + rule.name + "'.");
+							return;
+						}
+					}
+				}
+
 				rule.execute.call(rule, obj, args);
 			});
 		};
@@ -250,6 +278,9 @@ Rule.mixin({
 								EventScope$onExit(function() {
 									sender.meta.pendingInvocation(rule, false);
 									execute(rule, sender, args);
+								});
+								EventScope$onAbort(function() {
+									sender.meta.pendingInvocation(rule, false);
 								});
 							}
 						},
@@ -288,6 +319,9 @@ Rule.mixin({
 										sender.meta.pendingInvocation(rule, false);
 										execute(rule, sender, args);
 									});
+									EventScope$onAbort(function() {
+										sender.meta.pendingInvocation(rule, false);
+									});
 								}
 							}
 
@@ -299,8 +333,8 @@ Rule.mixin({
 								// Defer change notification until the scope of work has completed
 								EventScope$onExit(function () {
 									rule.returnValues.forEach(function (returnValue) { 
-									Observer.raisePropertyChanged(sender, returnValue.get_name());
-								});
+										Observer.raisePropertyChanged(sender, returnValue.get_name());
+									});
 								}, this);
 							}
 						},

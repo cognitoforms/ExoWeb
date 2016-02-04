@@ -42,8 +42,11 @@ window.ExoWeb.DotNet = {};
 		// Specifies the default defaultIfError value for CalculatedPropertyRule instances
 		calculationErrorDefault: undefined,
 
+		// Specifies whether the adapter should update a control's value when the display
+		// value is updated while being set, for example due to applying a format.
 		autoReformat: true,
 
+		// Specifies whether changes should be collected in logical batches.
 		enableBatchChanges: true,
 
 		// Use this setting to specify that Date & Time objects should be displayed
@@ -52,7 +55,17 @@ window.ExoWeb.DotNet = {};
 		// they modify a time field the value will be interpreted as server time
 		// and converted to the equivelent time in their local time zone. Note that
 		// this is a natural default choice when server rendering is in use.
-		displayTimeInServerTimeZone: false
+		displayTimeInServerTimeZone: false,
+
+		// Specifies whether "runaway" rules should be detected, e.g. the case where a
+		// rule causes itself to be re-entered continually (wheter directly or indirectly).
+		detectRunawayRules: false,
+
+		// Controls the maximum number of times that a child event scope can transfer events
+		// to its parent while the parent scope is exiting. A large number indicates that
+		// rules are not reaching steady-state. Technically something other than rules could
+		// cause this scenario, but in practice they are the primary use-case for event scope. 
+		nonExitingScopeNestingCount: 100
 	};
 
 	ExoWeb.config = config;
@@ -2149,60 +2162,124 @@ window.ExoWeb.DotNet = {};
 	EventScope.mixin(Functor.eventing);
 
 	EventScope.mixin({
-		exit: function() {
+		abort: function () {
 			if (!this.isActive) {
-				throw new Error("The event scope has already exited.");
+				throw new Error("The event scope cannot be aborted because it is not active.");
 			}
 
 			try {
-				var handler = this._getEventHandler("exit");
-				if (handler && !handler.isEmpty()) {
+				var abortHandler = this._getEventHandler("abort");
+				if (abortHandler && !abortHandler.isEmpty()) {
+					// Invoke all subscribers
+					abortHandler();
+				}
+
+				// Clear the events to ensure that they aren't
+				// inadvertantly raised again through this scope
+				this._clearEvent("abort");
+				this._clearEvent("exit");
+			}
+			finally {
+				// The event scope is no longer active
+				this.isActive = false;
+
+				if (currentEventScope && currentEventScope === this) {
+					// Roll back to the closest active scope
+					while (currentEventScope && !currentEventScope.isActive) {
+						currentEventScope = currentEventScope.parent;
+					}
+				}
+			}
+		},
+		exit: function() {
+			if (!this.isActive) {
+				throw new Error("The event scope cannot be exited because it is not active.");
+			}
+
+			try {
+				var exitHandler = this._getEventHandler("exit");
+				if (exitHandler && !exitHandler.isEmpty()) {
+
+					// If there is no parent scope, then go ahead and execute the 'exit' event
 					if (this.parent === null || !this.parent.isActive) {
+
+						// Record the initial version and initial number of subscribers
+						this._exitEventVersion = 0;
+						this._exitEventHandlerCount = exitHandler._funcs.length;
+
 						// Invoke all subscribers
-						handler();
+						exitHandler();
+
+						// Delete the fields to indicate that raising the exit event suceeded
+						delete this._exitEventHandlerCount;
+						delete this._exitEventVersion;
+
 					}
 					else {
+						if (typeof window.ExoWeb.config.nonExitingScopeNestingCount === "number") {
+							var maxNesting = window.ExoWeb.config.nonExitingScopeNestingCount - 1;
+							if (this.parent.hasOwnProperty("_exitEventVersion") && this.parent._exitEventVersion >= maxNesting) {
+								this.abort();
+								logWarning("Event scope 'exit' subscribers were discarded due to non-exiting.");
+								return;
+							}
+						}
+
 						// Move subscribers to the parent scope
-						this.parent._addEvent("exit", handler);
+						this.parent._addEvent("exit", exitHandler);
+
+						if (this.parent.hasOwnProperty("_exitEventVersion")) {
+							this.parent._exitEventVersion++;
+						}
 					}
 
-					// Clear the event to ensure that it isn't
+					// Clear the events to ensure that they aren't
 					// inadvertantly raised again through this scope
 					this._clearEvent("exit");
+					this._clearEvent("abort");
 				}
 			}
 			finally {
 				// The event scope is no longer active
 				this.isActive = false;
 
-				// Roll back to the closest active scope
-				while (currentEventScope && !currentEventScope.isActive) {
-					currentEventScope = currentEventScope.parent;
+				if (currentEventScope && currentEventScope === this) {
+					// Roll back to the closest active scope
+					while (currentEventScope && !currentEventScope.isActive) {
+						currentEventScope = currentEventScope.parent;
+					}
 				}
 			}
 		}
 	});
 
-	function EventScope$invoke(callback, thisPtr) {
-		if (thisPtr) {
-			callback.call(thisPtr);
-		}
-		else {
-			callback();
-		}
-	}
-
 	function EventScope$onExit(callback, thisPtr) {
 		if (currentEventScope === null) {
 			// Immediately invoke the callback
-			EventScope$invoke(callback, thisPtr);
+			if (thisPtr) {
+				callback.call(thisPtr);
+			}
+			else {
+				callback();
+			}
 		}
 		else if (!currentEventScope.isActive) {
 			throw new Error("The current event scope cannot be inactive.");
 		}
 		else {
 			// Subscribe to the exit event
-			currentEventScope._addEvent("exit", EventScope$invoke.bind(null, callback, thisPtr));
+			currentEventScope._addEvent("exit", callback.bind(thisPtr));
+		}
+	}
+
+	function EventScope$onAbort(callback, thisPtr) {
+		if (currentEventScope !== null) {
+			if (!currentEventScope.isActive) {
+				throw new Error("The current event scope cannot be inactive.");
+			}
+
+			// Subscribe to the abort event
+			currentEventScope._addEvent("abort", callback.bind(thisPtr));
 		}
 	}
 
@@ -2211,7 +2288,12 @@ window.ExoWeb.DotNet = {};
 		var scope = new EventScope();
 		try {
 			// Invoke the callback
-			EventScope$invoke(callback, thisPtr);
+			if (thisPtr) {
+				callback.call(thisPtr);
+			}
+			else {
+				callback();
+			}
 		}
 		finally {
 			// Exit the event scope
@@ -2222,6 +2304,7 @@ window.ExoWeb.DotNet = {};
 	// Export public functions
 	var eventScopeApi = {
 		onExit: EventScope$onExit,
+		onAbort: EventScope$onAbort,
 		perform: EventScope$perform
 	};
 
@@ -6533,7 +6616,7 @@ window.ExoWeb.DotNet = {};
 		/// <param name="options" type="Object">
 		///		The options for the rule, including:
 		///			name:				the optional unique name of the type of validation rule
-		//			execute:			a function to execute when the rule is triggered
+		///			execute:			a function to execute when the rule is triggered
 		///			onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
 		///			onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
 		///			onInitExisting:		true to indicate the rule should run when an existing instance of the root type is initialized, otherwise false
@@ -6740,6 +6823,24 @@ window.ExoWeb.DotNet = {};
 				if (!canExecute(rule, obj, args)) return;
 
 				EventScope$perform(function() {
+					if (window.ExoWeb.config.detectRunawayRules) {
+						if (currentEventScope.parent && currentEventScope.parent._exitEventVersion) {
+							// Determine the maximum number nested calls to EventScope$perform
+							// before considering a rule to be a "runaway" rule. 
+							var maxNesting;
+							if (typeof window.ExoWeb.config.nonExitingScopeNestingCount === "number") {
+								maxNesting = window.ExoWeb.config.nonExitingScopeNestingCount - 1;
+							} else {
+								maxNesting = 99;
+							}
+
+							if (currentEventScope.parent._exitEventVersion > maxNesting) {
+								logWarning("Aborting rule '" + rule.name + "'.");
+								return;
+							}
+						}
+					}
+
 					rule.execute.call(rule, obj, args);
 				});
 			};
@@ -6774,6 +6875,9 @@ window.ExoWeb.DotNet = {};
 									EventScope$onExit(function() {
 										sender.meta.pendingInvocation(rule, false);
 										execute(rule, sender, args);
+									});
+									EventScope$onAbort(function() {
+										sender.meta.pendingInvocation(rule, false);
 									});
 								}
 							},
@@ -6812,6 +6916,9 @@ window.ExoWeb.DotNet = {};
 											sender.meta.pendingInvocation(rule, false);
 											execute(rule, sender, args);
 										});
+										EventScope$onAbort(function() {
+											sender.meta.pendingInvocation(rule, false);
+										});
 									}
 								}
 
@@ -6823,8 +6930,8 @@ window.ExoWeb.DotNet = {};
 									// Defer change notification until the scope of work has completed
 									EventScope$onExit(function () {
 										rule.returnValues.forEach(function (returnValue) { 
-										Observer.raisePropertyChanged(sender, returnValue.get_name());
-									});
+											Observer.raisePropertyChanged(sender, returnValue.get_name());
+										});
 									}, this);
 								}
 							},
