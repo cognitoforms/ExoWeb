@@ -1101,6 +1101,8 @@ namespace ExoWeb
 						return " >= ";
 					case ExpressionType.Coalesce:
 						return " || ";
+					case ExpressionType.Modulo:
+						return " % "; 
 				}
 				throw new NotImplementedException("Operator not implemented");
 			}
