@@ -7460,7 +7460,7 @@ window.ExoWeb.DotNet = {};
 						range.min !== undefined ?
 							Resource.get("range-on-or-after").replace("{min}", this.property.format(range.min)) : // on or after date
 							Resource.get("range-on-or-before").replace("{max}", this.property.format(range.max)) : // on or before date
-						range.max !== undefined ?
+						range.min !== undefined ?
 							Resource.get("range-at-least").replace("{min}", this.property.format(range.min)) : // at least ordinal
 							Resource.get("range-at-most").replace("{max}", this.property.format(range.max))); // at most ordinal
 
