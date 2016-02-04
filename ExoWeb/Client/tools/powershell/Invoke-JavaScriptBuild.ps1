@@ -29,8 +29,10 @@ try {
 
 	$dir = Split-Path $MyInvocation.MyCommand.Path -Parent
 
+	$rootDir = Split-Path (Split-Path $dir -Parent) -Parent
+
 	if (!$Force.IsPresent) {
-		if (!(ShouldBuild)) {
+		if (!(ShouldBuild -SourceRoot (Join-Path $rootDir 'src') -DestinationPath (Join-Path $dir $DestinationPath))) {
 			Write-Host "No changes detected."
 			return
 		}

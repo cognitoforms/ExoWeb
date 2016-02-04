@@ -3,6 +3,8 @@ $dir = Split-Path $MyInvocation.MyCommand.Path -Parent
 function ShouldBuild {
 	[CmdletBinding()]
 	param(
+		[string]$SourceRoot,
+		[string]$DestinationPath
 	)
 
 	return $true

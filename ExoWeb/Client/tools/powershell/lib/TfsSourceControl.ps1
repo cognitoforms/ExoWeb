@@ -64,21 +64,52 @@ function IsLocalWorkspace {
 function ShouldBuild {
 	[CmdletBinding()]
 	param(
+		[string]$SourceRoot,
+		[string]$DestinationPath
 	)
 
 	$isLocal = IsLocalWorkspace
 	if ($isLocal) {
-		return $true
+		Write-Verbose "Determining whether to build based on file modification dates..."
+		Write-Verbose "Source: $SourceRoot"
+		Write-Verbose "Destination: $SourceRoot"
+
+		if (!(Test-Path $DestinationPath)) {
+			Write-Verbose "Destination file '$($DestinationPath)' doesn't exist, so build will proceed."
+			return $true
+		}
+
+		Write-Verbose "Checking last write time of source  and destination files..."
+		$sourceChangedDate = (Get-ChildItem $SourceRoot -Filter "*.js" -Recurse | ForEach-Object -MemberName LastWriteTime | Measure-Object -Maximum).Maximum
+		$destinationChangedDate = (Get-Item $DestinationPath).LastWriteTime
+		if ($sourceChangedDate -gt $destinationChangedDate) {
+			Write-Verbose "Source file(s) were modified on '$($sourceChangedDate.ToString())', which is more recent than destination modified date of '$($destinationChangedDate.ToString())', so build will proceed."
+			return $true
+		}
+		else {
+			Write-Verbose "Source file(s) were modified on '$($sourceChangedDate.ToString())', which is older than destination modified date of '$($destinationChangedDate.ToString())', so build is not necessary."
+			return $false
+		}
 	}
 
-	$target = (Resolve-Path (Join-Path $dir '..\..\src')).Path + '\*.js'
+	Write-Verbose "Determining whether to build based on the existence of pending changes..."
+	Write-Verbose "Source: $SourceRoot"
+
+	$target = (Resolve-Path $SourceRoot).Path + '\*.js'
 
 	Write-Verbose "Getting status '$($target)'..."
 
 	$exe = GetTfExePath
 	$output = RunExe -FilePath $exe -Arguments "status ""$target"" /recursive"
 
-	return $output.Trim() -ne "There are no pending changes."
+	if ($output.Trim() -eq "There are no pending changes.") {
+		Write-Verbose "Source files do not have pending changes, so build is not necessary."
+		return $false
+	}
+	else {
+		Write-Verbose "Source files have pending changes, so build will proceed."
+		return $true
+	}
 }
 
 function CheckoutFile {

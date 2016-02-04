@@ -65,10 +65,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Client\dist\exoweb-compat.js" />
+    <EmbeddedResource Include="Client\dist\exoweb-compat.js" />
     <Content Include="Client\dist\exoweb-devtools.js" />
     <Content Include="Client\docs.htm" />
-    <Content Include="Client\dist\jqueryui.exoweb-dialog.js" />
+    <EmbeddedResource Include="Client\dist\jqueryui.exoweb-dialog.js" />
     <Content Include="Client\Gruntfile.js" />
     <Content Include="Client\Gruntfile.TfsCheckout.js" />
     <Content Include="Client\ref\jquery\jquery-1.5.1.js" />
@@ -184,18 +184,18 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Client\dist\exoweb-templates.htm" />
+    <EmbeddedResource Include="Client\dist\exoweb-templates.htm" />
     <Content Include="Client\dist\exoweb-mock.js" />
-    <Content Include="Client\dist\exoweb-msajax-nojquery.js" />
-    <Content Include="Client\dist\exoweb-msajax.js" />
-    <Content Include="Client\dist\jquery.exoweb-msajax.js" />
+    <EmbeddedResource Include="Client\dist\exoweb-msajax-nojquery.js" />
+    <EmbeddedResource Include="Client\dist\exoweb-msajax.js" />
+    <EmbeddedResource Include="Client\dist\jquery.exoweb-msajax.js" />
     <Content Include="Client\dist\json2.js" />
-    <Content Include="Client\ref\aspnetajax\MicrosoftAjax.debug.js" />
-    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxComponentModel.debug.js" />
-    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxCore.debug.js" />
-    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxOpenData.debug.js" />
-    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxTemplates.debug.js" />
-    <Content Include="Client\ref\aspnetajax\MicrosoftAjaxWebForms.debug.js" />
+    <EmbeddedResource Include="Client\ref\aspnetajax\MicrosoftAjax.debug.js" />
+    <EmbeddedResource Include="Client\ref\aspnetajax\MicrosoftAjaxComponentModel.debug.js" />
+    <EmbeddedResource Include="Client\ref\aspnetajax\MicrosoftAjaxCore.debug.js" />
+    <EmbeddedResource Include="Client\ref\aspnetajax\MicrosoftAjaxOpenData.debug.js" />
+    <EmbeddedResource Include="Client\ref\aspnetajax\MicrosoftAjaxTemplates.debug.js" />
+    <EmbeddedResource Include="Client\ref\aspnetajax\MicrosoftAjaxWebForms.debug.js" />
     <Content Include="Client\ref\jshint\jshint.js" />
     <Content Include="Client\ref\jsmin\jsmin.exe" />
     <Content Include="Client\tools\javascript\runjshint.js" />
@@ -384,12 +384,7 @@
     <Folder Include="Client\ref\syntaxhighlighter\scripts\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  -->
-  <Target Name="AfterBuild" Condition=" '$(Configuration)' == 'Debug' ">
+  <Target Name="BeforeBuild" Condition=" '$(Configuration)' == 'Debug' ">
     <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp; '$(ProjectDir)\Client\tools\powershell\BuildAll.ps1' -ErrorAction Stop&quot;" />
   </Target>
 </Project>
