@@ -164,7 +164,9 @@ function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 
 	// Update lists as batch remove/add operations
 	if (this.get_isList()) {
+		old.beginUpdate();
 		update(old, val);
+		old.endUpdate();
 	}
 	else {
 

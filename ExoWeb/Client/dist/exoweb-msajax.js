@@ -5264,7 +5264,9 @@ window.ExoWeb.DotNet = {};
 
 		// Update lists as batch remove/add operations
 		if (this.get_isList()) {
+			old.beginUpdate();
 			update(old, val);
+			old.endUpdate();
 		}
 		else {
 
