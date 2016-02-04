@@ -3033,11 +3033,11 @@ Date._parseExact = function Date$_parseExact(value, format, cultureInfo) {
 		}
 	}
 	var result = new Date(), defaultYear, convert = dtf.Calendar.convert;
-	// If none are specified, set to todays date to emulate .NET implementation
+	// If none are specified, set to todays date to 1/1/1970
 	if (year == null && month == null && date == null) {
-		year = result.getFullYear();
-		month = result.getMonth();
-		date = result.getDate();
+		year = 1970;
+		month = 0;
+		date = 1;
 	}
 	else {
 		if (convert) {
