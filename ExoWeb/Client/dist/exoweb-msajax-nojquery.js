@@ -10588,6 +10588,12 @@ window.ExoWeb.DotNet = {};
 				changeLog.start({ user: this._localUser });
 			}
 		};
+		this.stopCapturingChanges = function () {
+			if (isCapturingChanges) {
+				isCapturingChanges = false;
+				changeLog.stop();
+			}
+		};
 		this.ignoreChanges = function (before, callback, after, thisPtr) {
 			if (arguments.length === 1) {
 				callback = arguments[0];
