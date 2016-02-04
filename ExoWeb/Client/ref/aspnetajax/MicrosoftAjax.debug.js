@@ -1809,6 +1809,11 @@ if (agent.indexOf(' MSIE ') > -1) {
 	browser.hasDebuggerStatement = true;
 	browser.name = 'InternetExplorer';
 }
+else if (agent.indexOf(' Edge/') > -1) {
+	browser.agent = browser.InternetExplorer;
+	browser.version = parseFloat(agent.match(/ Edge\/(\d+\.\d+)/)[1]);
+	browser.hasDebuggerStatement = true;
+}
 else if (agent.indexOf(' Firefox/') > -1) {
 	browser.agent = browser.Firefox;
 	browser.version = parseFloat(agent.match(/ Firefox\/(\d+\.\d+)/)[1]);

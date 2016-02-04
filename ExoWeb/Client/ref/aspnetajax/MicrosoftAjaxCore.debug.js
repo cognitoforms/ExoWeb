@@ -1972,13 +1972,18 @@ var agent = navigator.userAgent,
         version: parseFloat(navigator.appVersion),
         documentMode: 0 };
 
-if (agent.indexOf(' MSIE ') > -1) {
+if (agent.indexOf(' MSIE ') > -1 ) {
     browser.agent = browser.InternetExplorer;
     browser.version = parseFloat(agent.match(/MSIE (\d+\.\d+)/)[1]);
     if ((browser.version > 7) && (document.documentMode > 6)) {
         browser.documentMode = document.documentMode;    
     }
     browser.hasDebuggerStatement = true;
+}
+else if (agent.indexOf(' Edge/') > -1) {
+	browser.agent = browser.InternetExplorer;
+	browser.version = parseFloat(agent.match(/ Edge\/(\d+\.\d+)/)[1]);
+	browser.hasDebuggerStatement = true;
 }
 else if (agent.indexOf(' Firefox/') > -1) {
     browser.agent = browser.Firefox;
