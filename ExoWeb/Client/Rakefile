@@ -114,6 +114,7 @@ end
 		ValidatedPropertyRule
 		CalculatedPropertyRule
 		RequiredRule
+		ValidationRule
 		RangeRule
 		AllowedValuesRule
 		CompareRule

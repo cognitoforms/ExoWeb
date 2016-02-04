@@ -67,6 +67,7 @@ ValidatedPropertyRule.mixin({
 
 	// returns false if the property is valid, true if invalid, or undefined if unknown
 	assert: function ValidatedPropertyRule$assert(obj) {
+
 		var isValid = this.isValid(obj, this.property, this.property.value(obj));
 		return isValid === undefined ? isValid : !isValid;
 	},

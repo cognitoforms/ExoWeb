@@ -702,6 +702,24 @@ namespace ExoWeb.Serialization
 						},
 						json => { throw new NotSupportedException("RangeRule cannot be deserialized."); }),
 
+					// ValidationRule
+					new JsonConverter<ValidationRule>(
+						(rule, json) =>
+						{
+							SerializePropertyRule(rule, json);
+
+							// Validation
+							json.Set("isError", rule.ValidationExpression.Expression);
+
+							// ErrorMessage
+							json.Set("message", rule.ErrorMessageExpression.Expression);
+
+							// OnChangeOf
+							if (!String.IsNullOrEmpty(rule.Path))
+								json.Set("onChangeOf", new string[] { rule.Path });
+						},
+						json => { throw new NotSupportedException("ValidationRule cannot be deserialized."); }),
+
 					// RequiredRule
 					new JsonConverter<RequiredRule>(
 						(rule, json) =>	
