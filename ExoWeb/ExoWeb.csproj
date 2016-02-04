@@ -356,6 +356,7 @@
     <Content Include="Dependencies\Jurassic.pdb" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Client\.vscode\launch.json" />
     <None Include="Client\scripts.json" />
     <None Include="Client\tools\.jshintrc" />
     <None Include="Client\AutoBuildScripts.bat" />

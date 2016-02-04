@@ -114,7 +114,7 @@ namespace ExoWeb
 			{ "Date.Date as Date", new string[] {@"Date_date({0})", "Date_date", @"function Date_date(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }"} },
 			{ "Date.Day as Number", new string[] {@"{0}.getDate()", "", @""} },
 			{ "Date.DayOfWeek as DayOfWeek", new string[] {@"[""Sunday"", ""Monday"", ""Tuesday"", ""Wednesday"", ""Thursday"", ""Friday"", ""Saturday""][{0}.getDay()]", "", @""} },
-			{ "Date.DayOfYear as Number", new string[] {@"Date_dayOfYear({0})", "Date_dayOfYear", @"function Date_dayOfYear(d) { return Math.round(((d - new Date(d.getFullYear(), 0, 1)) / 1000 / 60 / 60 / 24) + .5, 0); }"} },
+			{ "Date.DayOfYear as Number", new string[] {@"Date_dayOfYear({0})", "Date_dayOfYear", @"function Date_dayOfYear(d) { return Math.round(((d - new Date(d.getFullYear(), 0, 1)) / 1000 / 60 / 60 / 24) + (((new Date(d.getFullYear(), 0, 1).getTimezoneOffset() - d.getTimezoneOffset())) / (60 * 24))) + 1; }"} },
 			{ "Date.Equals(Date) as Boolean", new string[] {@"{0}.getTime() === {1}.getTime()", "", @""} },
 			{ "Date.Equals(Object) as Boolean", new string[] {@"{0}.getTime() === {1}.getTime()", "", @""} },
 			{ "Date.Hour as Number", new string[] {@"{0}.getHours()", "", @""} },
@@ -124,6 +124,7 @@ namespace ExoWeb
 			{ "Date.Second as Number", new string[] {@"{0}.getSeconds()", "", @""} },
 			{ "Date.Subtract(Date) as TimeSpan", new string[] {"new TimeSpan({0}.getTime() - {1}.getTime())", "", ""} },
 			{ "Date.Ticks as Number", new string[] {@"Date_ticks({0})", "Date_ticks", @"function (d) { return ((d.getTime() - (d.getTimezoneOffset() * 60000)) * 10000) + 621355968000000000; }"} },
+			{ "Date.ToShortDateString() as String", new string[] {@"{0}.localeFormat(""d"")", "", ""} },
 			{ "Date.ToString(String) as String", new string[] {@"{0}.localeFormat({1})", "", ""} },
 			{ "Date.ToString() as String", new string[] {@"{0}.toString()", "", @""} },
 			{ "Date.Year as Number", new string[] {@"{0}.getFullYear()", "", @""} },
@@ -156,7 +157,7 @@ namespace ExoWeb
 			{ "static Math.Min(Number, Number) as Number", new string[] {@"Math.min({0}, {1})", "", @""} },
 			{ "static Math.PI as Number", new string[] {@"Math.PI", "", @""} },
 			{ "static Math.Pow(Number, Number) as Number", new string[] {@"Math.pow({0}, {1})", "", @""} },
-			{ "static Math.Round(Number) as Number", new string[] {@"Math.round({0})", "", @""} },
+			{ "static Math.Round(Number) as Number", new string[] {@"{0} < 0 ? -Math.round(0 - {0}) : Math.round({0})", "", @""} },
 			{ "static Math.Round(Number, Number) as Number", new string[] {@"Math.round({0}*Math.pow(10, {1}))/Math.pow(10, {1})", "", @""} },
 			{ "static Math.Sign(Number) as Number", new string[] {@"Math_sign({0})", "Math_sign", @"function(n) { return n === 0 ? 0 : (n > 0 ? 1 : -1); }"} },
 			{ "static Math.Sin(Number) as Number", new string[] {@"Math.sin({0})", "", @""} },
@@ -396,6 +397,14 @@ namespace ExoWeb
 				// Properties
 				if (m is PropertyInfo)
 				{
+					if (m.DeclaringType == typeof(IModelInstance) && m.Name == "Instance")
+					{
+						// Allow accessing `((IModelInstance)i).Instance`. If the result is subsequently used to
+						// access a translatable member of `ModelInstance`, then all will be well (see translations
+						// for `ModelInstance` below), if not, then it won't translate anyway.
+						return new PropertyTranslation((PropertyInfo)m, "{0}", null);
+					}
+
 					// See if the property is a model property
 					ModelType type;
 					if ((type = ModelContext.Current.GetModelType(m.DeclaringType)) != null && type.Properties.Contains(m.Name))
@@ -431,7 +440,46 @@ namespace ExoWeb
 						if (method.Name == "GetModelInstance")
 							return new MethodTranslation(method, "{0}");
 						if (method.Name == "ToString" && method.GetParameters().Length == 1)
+							return new MethodTranslation(method, "{0}.toString()");
+						if (method.Name == "ToString" && method.GetParameters().Length >= 2)
 							return new MethodTranslation(method, "{0}.toString({1})");
+						return null;
+					}
+
+					// See if the method is from ModelInstanceFormatter
+					if (method.DeclaringType == typeof(ModelExpression.ModelInstanceFormatter))
+					{
+						if (method.Name == "ToString")
+						{
+							if (method.GetParameters().Length == 1)
+								return new MethodTranslation(method, "{0}.toString()");
+							if (method.GetParameters().Length == 2)
+								return new MethodTranslation(method, "{0}.toString({1})");
+						}
+					}
+
+					// Translate EnumTypeProvider members
+					if (method.DeclaringType == typeof (EnumExtensions))
+					{
+						// Translate a call to 'EnumExtensions.GetId(o)' into 'o.Id'.
+						if (method.Name == "GetId")
+							return new MethodTranslation(method, "{0}.get_Id()");
+						// Translate a call to 'EnumExtensions.GetName(o)' into 'o.Name'.
+						if (method.Name == "GetName")
+							return new MethodTranslation(method, "{0}.get_Name()");
+						// Translate a call to 'EnumExtensions.GetDisplayName(o)' into 'o.DisplayName'.
+						if (method.Name == "GetDisplayName")
+							return new MethodTranslation(method, "{0}.get_DisplayName()");
+
+						return null;
+					}
+
+					// Translate BooleanFormatter.ToString(val, format) as Exo boolean formatting.
+					if (method.DeclaringType == typeof(ModelExpression.BooleanFormatter))
+					{
+						if (method.Name == "ToString")
+							return new MethodTranslation(method, "ExoWeb.Model.getFormat(Boolean, {1}).convert({0})");
+
 						return null;
 					}
 
@@ -517,6 +565,7 @@ namespace ExoWeb
 						switch (method.Name.ToLower())
 						{
 							case "contains": return new MethodTranslation(method, "{0}.indexOf({1}) >= 0");
+							case "except": return new MethodTranslation(method, "{0}.filter(function(i) { return {1}.indexOf(i) < 0; })");
 						}
 					}
 				}
@@ -563,6 +612,8 @@ namespace ExoWeb
 			{
 				var method = member as MethodInfo;
 				var parameters = method.GetParameters();
+				if (!method.IsStatic && method.Name == "ToString" && parameters.Length == 2 && parameters[0].ParameterType == typeof (string) && parameters[1].ParameterType == typeof (IFormatProvider))
+					return GetTypeName(method.DeclaringType) + "." + numberRegex.Replace(method.Name, "Number") + "(" + GetTypeName(typeof (string)) + ") as " + GetTypeName(method.ReturnType);
 				if (IsSupported(method.ReturnType) && parameters.All(p => IsSupported(p.ParameterType)) && !method.IsSpecialName)
 				{
 					var signature = method.IsStatic ? "static " : "";
@@ -1464,8 +1515,43 @@ namespace ExoWeb
 			void Average(double? selector);
 			void Average(decimal selector);
 			void Average(decimal? selector);
-			void OrderBy(object selector);
-			void OrderByDescending(object selector);
+			void OrderBy(object comparer);
+			void OrderByDescending(object comparer);
+			void Except(IEnumerable items);
+
+			//void Max();
+			//void Min();
+			//void AsEnumerable();
+			//void Aggregate(object func);
+			//void Average();
+			//void Cast(???);
+			//void Concat(object items);
+			//void DefaultIfEmpty();
+			//void DefaultIfEmpty(object value);
+			//void Distinct();
+			//void Distinct(object comparer);
+			//void ElementAt(int index);
+			//void ElementAtOrDefault(int index);
+			//void GroupBy(object selector);
+			//void Intersect(object selector);
+			//void LongCount();
+			//void LongCount(bool predicate);
+			//void OfType(???);
+			//void Reverse();
+			//void SelectMany(object selector);
+			//void SequenceEqual(object items);
+			//void Single();
+			//void Single(bool predicate);
+			//void SingleOrDefault();
+			//void SingleOrDefault(bool predicate);
+			//void Skip(int selector);
+			//void SkipWhile(bool predicate);
+			//void Sum();
+			//void Take(int selector);
+			//void TakeWhile(bool predicate);
+			//void ToDictionary(object selector);
+			//void ToLookup(object selector);
+			//void Union(object items);
 		}
 
 		#endregion

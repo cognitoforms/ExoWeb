@@ -1,0 +1,181 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{390E2A10-D560-4DF0-8342-B1B686F74189}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ExoWeb.UnitTests</RootNamespace>
+    <AssemblyName>ExoWeb.UnitTests</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="FluentAssertions">
+      <HintPath>..\Dependencies\FluentAssertions1.6.0\.NetFramework 4.0\FluentAssertions.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.SHDocVw">
+      <HintPath>..\Dependencies\WatiN\net20\Interop.SHDocVw.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Jurassic, Version=2.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\ExoWeb\Dependencies\Jurassic.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.mshtml, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <SpecificVersion>False</SpecificVersion>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+      <HintPath>..\Dependencies\WatiN\net20\Microsoft.mshtml.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(SolutionDir)\packages\Newtonsoft.Json.7.0.1\lib\net40\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.Linq" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.ServiceModel.Web" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Web.Mobile" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="WatiN.Core">
+      <HintPath>..\Dependencies\WatiN\net20\WatiN.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <CodeAnalysisDependentAssemblyPaths Condition=" '$(VS100COMNTOOLS)' != '' " Include="$(VS100COMNTOOLS)..\IDE\PrivateAssemblies">
+      <Visible>False</Visible>
+    </CodeAnalysisDependentAssemblyPaths>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssertLists.cs" />
+    <Compile Include="JavaScriptExpressionTranslatorTests.cs" />
+    <Compile Include="JavaScriptExpressionTranslatorTests.Helpers.cs">
+      <DependentUpon>JavaScriptExpressionTranslatorTests.cs</DependentUpon>
+    </Compile>
+    <Compile Include="JavascriptHelpersTests.cs" />
+    <Compile Include="JavaScriptTests.Helpers.cs">
+      <DependentUpon>JavaScriptTests.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Models\Movies\Actor.cs" />
+    <Compile Include="Models\Movies\Director.cs" />
+    <Compile Include="Models\Movies\Genre.cs" />
+    <Compile Include="Models\Movies\Movie.cs" />
+    <Compile Include="Models\Movies\Person.cs" />
+    <Compile Include="Models\Movies\Role.cs" />
+    <Compile Include="Models\Requests\Category.cs" />
+    <Compile Include="Models\Requests\Priority.cs" />
+    <Compile Include="Models\Requests\Request.cs" />
+    <Compile Include="Models\Requests\User.cs" />
+    <Compile Include="Models\Shopping\Cart.cs" />
+    <Compile Include="Models\Shopping\CartItem.cs" />
+    <Compile Include="Models\Shopping\Item.cs" />
+    <Compile Include="Models\Shopping\Product.cs" />
+    <Compile Include="Templates\JavaScript\EvaluatorTests.cs" />
+    <Compile Include="Jasmine\ViewSpecTests.cs" />
+    <Compile Include="Jasmine\ModelSpecTests.cs" />
+    <Compile Include="Jasmine\MapperSpecTests.cs" />
+    <Compile Include="Jasmine\CoreSpecTests.cs" />
+    <Compile Include="Jasmine\BaseJasmineSpecTests.cs" />
+    <Compile Include="JavaScriptTests.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QUnit\UiQUnitTests.cs" />
+    <Compile Include="QUnit\CoreQUnitTests.cs" />
+    <Compile Include="QUnit\BaseQUnitTests.cs" />
+    <Compile Include="Templates\MicrosoftAjax\AttributeHelperTests.cs" />
+    <Compile Include="Templates\MicrosoftAjax\ToggleTests.cs" />
+    <Compile Include="Templates\MicrosoftAjax\TransformTests.cs" />
+    <Compile Include="Templates\MicrosoftAjax\TransformTest.Helpers.cs">
+      <DependentUpon>TransformTests.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\ExoModel\ExoModel.Json\ExoModel.Json.csproj">
+      <Project>{67E8A5CD-DEFB-47C7-9B2E-48A142EEC404}</Project>
+      <Name>ExoModel.Json</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ExoModel\ExoModel.UnitTests\ExoModel.UnitTests.csproj">
+      <Project>{943D65C3-5E48-4771-8BA8-A8494C0FFB32}</Project>
+      <Name>ExoModel.UnitTests</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ExoModel\ExoModel\ExoModel.csproj">
+      <Project>{F1D92AF4-9E97-4D29-8A24-B3C3011F2A42}</Project>
+      <Name>ExoModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ExoWeb\ExoWeb.csproj">
+      <Project>{4B14422C-751C-42AE-832A-B474A4AD0D95}</Project>
+      <Name>ExoWeb</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Models\Movies\DataFiles\Actor.json" />
+    <None Include="Models\Movies\DataFiles\Director.json" />
+    <None Include="Models\Movies\DataFiles\Genre.json" />
+    <None Include="Models\Movies\DataFiles\Movie.json" />
+    <None Include="Models\Movies\DataFiles\Person.json" />
+    <None Include="Models\Movies\DataFiles\Role.json" />
+    <None Include="Models\Shopping\DataFiles\Cart.json" />
+    <None Include="Models\Shopping\DataFiles\CartItem.json" />
+    <None Include="Models\Shopping\DataFiles\Item.json" />
+    <None Include="Models\Shopping\DataFiles\Product.json" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <UsingTask TaskName="Amender" AssemblyFile="$(ProjectDir)\..\..\ExoModel\ExoModel.Json.Amender\Dependencies\Afterthought\Afterthought.Amender.exe" />
+  <Target Name="AfterCompile">
+    <Amender TargetAssembly="@(IntermediateAssembly->'%(FullPath)')" AmendmentAssemblies="$(ProjectDir)\..\..\ExoModel\ExoModel.Json.Amender\Output\ExoModel.Json.Amender.dll" ReferenceAssemblies="@(ReferencePath)" />
+  </Target>
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -153,7 +153,7 @@ describe("ResponseHandler", function () {
 
 				callback.call(thisPtr || this);
 			},
-			applyChanges: function (checkpoint, changesArg, source, user, setId, serverSync, beforeApply, afterApply, callback, thisPtr) {
+			applyChanges: function (checkpoint, changesArg, source, user, setId, description, filter, beforeApply, afterApply, callback, thisPtr) {
 				expect(typeSpy).toHaveBeenCalled();
 				expect(source).toBe("init");
 				arrayEquals(changesArg, changes);

@@ -77,7 +77,7 @@ exports.init = function () {
 	"core.EventScope".dependsOn("core.Function", "core.Functor");
 	"model.Model".dependsOn("core.Functor", "core.Function", "model.PathTokens");
 	"model.Type".dependsOn("core.Function", "model.Model", "core.Array", "model.Entity", "model.ObjectMeta");
-	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type", "core.Observer", "core.TimeSpan");
+	"model.Property".dependsOn("core.Utilities", "model.LazyLoader", "model.Type", "core.Observer", "core.TimeSpan", "core.TypeChecking");
 	"model.PropertyChain".dependsOn("core.Functor", "core.Function", "core.Signal", "core.Object", "model.Property", "core.Observer");
 	"model.PathTokens".dependsOn("core.Function", "model.Property", "model.PropertyChain", "core.Observer");
 	"mapper.Internals".dependsOn("core.Warnings");

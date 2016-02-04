@@ -1,0 +1,12 @@
+﻿{
+    "1": { "Name": "Milk", "ListPrice": 3.89 },
+    "2": { "Name": "Eggs", "ListPrice": 1.73 },
+    "3": { "Name": "Bread", "ListPrice": 1.98 },
+    "4": { "Name": "Asparagus", "ListPrice": 6.50 },
+    "5": { "Name": "Ground Beef", "ListPrice": 4.74 },
+    "6": { "Name": "Fruit Loops", "ListPrice": 4.50 },
+    "7": { "Name": "Shredded Cheddar Cheese", "ListPrice": 3.25 },
+    "8": { "Name": "Ice Cream", "ListPrice": 3.99 },
+    "9": { "Name": "Cucumber", "ListPrice": 1.25 },
+    "10": { "Name": "Watermelon", "ListPrice": 3.00 }
+}

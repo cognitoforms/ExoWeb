@@ -323,15 +323,6 @@ describe("ChangeLog.addSet", function () {
 describe("ChangeLog.compress", function () {
 	beforeEach(setup);
 
-	it("throws an error if any arguments are provided", function () {
-		expect(function () {
-			(new ChangeLog()).compress(1);
-		}).toThrow("The number of arguments is not correct, expected 0, actual 1.");
-		expect(function () {
-			(new ChangeLog()).compress(1, "two", 3);
-		}).toThrow("The number of arguments is not correct, expected 0, actual 3.");
-	});
-
 	it("removes any empty sets", function () {
 		expect(this.log.sets.length).toBe(2);
 		this.log.start("empty");

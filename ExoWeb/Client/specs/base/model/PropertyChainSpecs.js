@@ -124,7 +124,6 @@ describe("PropertyChain", function() {
 	describe("addChanged", function() {
 
 		it("executes if all property values are initialized", function() {
-			debugger;
 			var handler = jasmine.jasmine.createSpy();
 			this.barsTypeNameProp.addChanged(handler);
 

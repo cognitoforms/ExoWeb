@@ -1,0 +1,12 @@
+﻿{
+    "1": { "Product": 1, "Price": 3.89, "InStock": true, "OnSale": false },
+    "2": { "Product": 2, "Price": 1.00, "InStock": true, "OnSale": true },
+    "3": { "Product": 3, "Price": 1.98, "InStock": true, "OnSale": false },
+    "4": { "Product": 4, "Price": 6.50, "InStock": true, "OnSale": false },
+    "5": { "Product": 5, "Price": 4.74, "InStock": true, "OnSale": false },
+    "6": { "Product": 6, "Price": 4.50, "InStock": true, "OnSale": false },
+    "7": { "Product": 7, "Price": 3.25, "InStock": true, "OnSale": false },
+    "8": { "Product": 8, "Price": 3.99, "InStock": true, "OnSale": false },
+    "9": { "Product": 9, "Price": 1.05, "InStock": true, "OnSale": false },
+    "10": { "Product": 10, "Price": 3.00, "InStock": true, "OnSale": false }
+}

@@ -1,0 +1,13 @@
+﻿{
+    "1": { "Cart": 1, "Item": 1, "Quantity": 1 },
+    "2": { "Cart": 2, "Item": 2, "Quantity": 2 },
+    "3": { "Cart": 2, "Item": 3, "Quantity": 1 },
+    "4": { "Cart": 3, "Item": 1, "Quantity": 1 },
+    "5": { "Cart": 3, "Item": 4, "Quantity": 1 },
+    "6": { "Cart": 3, "Item": 5, "Quantity": 2 },
+    "7": { "Cart": 3, "Item": 6, "Quantity": 1 },
+    "8": { "Cart": 3, "Item": 7, "Quantity": 1 },
+    "9": { "Cart": 3, "Item": 8, "Quantity": 1 },
+    "10": { "Cart": 3, "Item": 9, "Quantity": 3 },
+    "11": { "Cart": 3, "Item": 10, "Quantity": 1 }
+}
