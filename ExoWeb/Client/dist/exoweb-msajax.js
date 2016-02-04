@@ -17687,7 +17687,7 @@ window.ExoWeb.DotNet = {};
 					}
 
 					// Remove and re-add validation handlers if the last target has changed
-					if (oldLastTarget !== newLastTarget) {
+					if (oldLastTarget && oldLastTarget !== newLastTarget) {
 						this.get_conditions().clear();
 						if (this._conditionsChangedHandler) {
 							oldLastTarget.meta.removeConditionsChanged(this._conditionsChangedHandler);
