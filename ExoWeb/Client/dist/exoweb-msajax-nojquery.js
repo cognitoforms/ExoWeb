@@ -8193,6 +8193,7 @@ window.ExoWeb.DotNet = {};
 		Object.defineProperty(this, "name", { value: name });
 		Object.defineProperty(this, "types", { value: [] });
 		Object.defineProperty(this, "active", { value: false, writable: true });
+		Object.defineProperty(this, "conditions", { value: [] });
 
 		allConditionTypeSets[name] = this;
 	}
@@ -8247,6 +8248,19 @@ window.ExoWeb.DotNet = {};
 		},
 		removeDeactivated: function ConditionTypeSet$removeDeactivated(handler) {
 			this._removeEvent("deactivated", handler);
+		},
+
+		addConditionsChanged: function ConditionTypeSet$addConditionsChanged(handler) {
+
+			// subscribe to the event
+			this._addEvent("conditionsChanged", handler);
+
+			// Return the condition type to support method chaining
+			return this;
+		},
+
+		removeConditionsChanged: function ConditionTypeSet$removeConditionsChanged(handler) {
+			this._removeEvent("conditionsChanged", handler);
 		}
 	};
 
@@ -8274,6 +8288,7 @@ window.ExoWeb.DotNet = {};
 		Object.defineProperty(this, "message", { value: message });
 		Object.defineProperty(this, "sets", { value: sets || [] });
 		Object.defineProperty(this, "rules", { value: [] });
+		Object.defineProperty(this, "conditions", { value: [] });
 		Object.defineProperty(this, "origin", { value: origin });
 
 		if (sets && sets.length > 0) {
@@ -8363,8 +8378,23 @@ window.ExoWeb.DotNet = {};
 					}
 				}
 			}
+		},
+	
+		addConditionsChanged: function ConditionType$addConditionsChanged(handler) {
+
+			// subscribe to the event
+			this._addEvent("conditionsChanged", handler);
+
+			// Return the condition type to support method chaining
+			return this;
+		},
+
+		removeConditionsChanged: function ConditionType$removeConditionsChanged(handler) {
+			this._removeEvent("conditionsChanged", handler);
 		}
 	}
+
+	ConditionType.mixin(Functor.eventing);
 
 	ExoWeb.Model.ConditionType = ConditionType;
 
@@ -8521,9 +8551,24 @@ window.ExoWeb.DotNet = {};
 
 		// raise events for the new condition
 		if (this.type != formatConditionType) {
+
+			// raise events on condition targets
 			for (var t = targets.length - 1; t >= 0; t--) {
 				var conditionTarget = targets[t];
 				conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false}]);
+			}
+
+			// raise events on condition types
+			this.type.conditions.push(this);
+			this.type._raiseEvent("conditionsChanged", [this.type, { condition: this, add: true, remove: false }]);
+
+			// raise events on condition type sets
+			if (this.type.sets) {
+				for (var s = this.type.sets.length - 1; s >= 0; s--) {
+					var set = this.type.sets[s];
+					set.conditions.push(this);
+					set._raiseEvent("conditionsChanged", [set, { condition: this, add: true, remove: false }]);
+				}
 			}
 		}
 	}
@@ -8532,6 +8577,19 @@ window.ExoWeb.DotNet = {};
 	Condition.mixin({
 		destroy: function Condition$destroy() {
 			/// <summary>Removes the condition targets from all target instances and raises condition change events.</summary>
+
+			// raise events on condition type sets
+			if (this.type.sets) {
+				for (var s = this.type.sets.length - 1; s >= 0; s--) {
+					var set = this.type.sets[s];
+					set.conditions.remove(this);
+					set._raiseEvent("conditionsChanged", [set, { condition: this, add: false, remove: true }]);
+				}
+			}
+
+			// raise events on condition types
+			this.type.conditions.remove(this);
+			this.type._raiseEvent("conditionsChanged", [this.type, { condition: this, add: false, remove: true }]);
 
 			for (var t = this.targets.length - 1; t >= 0; t--) {
 				var conditionTarget = this.targets[t];

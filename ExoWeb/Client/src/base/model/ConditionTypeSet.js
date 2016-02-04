@@ -6,6 +6,7 @@ function ConditionTypeSet(name) {
 	Object.defineProperty(this, "name", { value: name });
 	Object.defineProperty(this, "types", { value: [] });
 	Object.defineProperty(this, "active", { value: false, writable: true });
+	Object.defineProperty(this, "conditions", { value: [] });
 
 	allConditionTypeSets[name] = this;
 }
@@ -60,6 +61,19 @@ ConditionTypeSet.prototype = {
 	},
 	removeDeactivated: function ConditionTypeSet$removeDeactivated(handler) {
 		this._removeEvent("deactivated", handler);
+	},
+
+	addConditionsChanged: function ConditionTypeSet$addConditionsChanged(handler) {
+
+		// subscribe to the event
+		this._addEvent("conditionsChanged", handler);
+
+		// Return the condition type to support method chaining
+		return this;
+	},
+
+	removeConditionsChanged: function ConditionTypeSet$removeConditionsChanged(handler) {
+		this._removeEvent("conditionsChanged", handler);
 	}
 };
 

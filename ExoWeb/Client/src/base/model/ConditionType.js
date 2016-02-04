@@ -13,6 +13,7 @@ function ConditionType(code, category, message, sets, origin) {
 	Object.defineProperty(this, "message", { value: message });
 	Object.defineProperty(this, "sets", { value: sets || [] });
 	Object.defineProperty(this, "rules", { value: [] });
+	Object.defineProperty(this, "conditions", { value: [] });
 	Object.defineProperty(this, "origin", { value: origin });
 
 	if (sets && sets.length > 0) {
@@ -102,8 +103,23 @@ ConditionType.prototype = {
 				}
 			}
 		}
+	},
+	
+	addConditionsChanged: function ConditionType$addConditionsChanged(handler) {
+
+		// subscribe to the event
+		this._addEvent("conditionsChanged", handler);
+
+		// Return the condition type to support method chaining
+		return this;
+	},
+
+	removeConditionsChanged: function ConditionType$removeConditionsChanged(handler) {
+		this._removeEvent("conditionsChanged", handler);
 	}
 }
+
+ConditionType.mixin(Functor.eventing);
 
 ExoWeb.Model.ConditionType = ConditionType;
 
