@@ -101,11 +101,11 @@ namespace ExoWeb
 			{ "Date(Number, Number, Number, Number, Number, Number, Number)", new string[] {@"new Date({0}, {1} - 1, {2}, {3}, {4}, {5})", "", @""} },
 			{ "Date(Number, Number, Number, Number, Number, Number, Number, DateTimeKind)", new string[] {@"new Date({0}, {1} - 1, {2}, {3}, {4}, {5}, ({6} === ""Utc"" ? 0 : new Date().getTimezoneOffset()*60000))", "", @""} },
 			{ "Date.Add(TimeSpan) as Date", new string[] {@"{0}.add({1})", "", @""} },
-			{ "Date.AddDays(Number) as Date", new string[] {@"new Date({0}.getTime() + {1}*86400000)", "", @""} },
+			{ "Date.AddDays(Number) as Date", new string[] {@"Date_addDays({0}, {1})", "Date_addDays", @"function (d, days) { d = new Date(d.getTime()); d.setDate(d.getDate() + days * 1); return d; }"} },
 			{ "Date.AddHours(Number) as Date", new string[] {@"new Date({0}.getTime() + {1}*3600000)", "", @""} },
 			{ "Date.AddMilliseconds(Number) as Date", new string[] {@"new Date({0}.getTime() + {1})", "", @""} },
 			{ "Date.AddMinutes(Number) as Date", new string[] {@"new Date({0}.getTime() + {1}*60000)", "", @""} },
-			{ "Date.AddMonths(Number) as Date", new string[] {@"Date_addMonths({0}, {1})", "Date_addMonths", @"function (d, m) { var r = new Date(d.getTime()); r.setMonth(r.getMonth() + m); return r; }"} },
+			{ "Date.AddMonths(Number) as Date", new string[] {@"Date_addMonths({0}, {1})", "Date_addMonths", @"function (d, m) { d = new Date(d.getTime()); var cd = d.getDate(); var y = d.getFullYear(); d.setDate(1); d.setMonth(d.getMonth() + m * 1); d.setDate(Math.min(cd, [31, (((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][d.getMonth()])); return d; }"} },
 			{ "Date.AddSeconds(Number) as Date", new string[] {@"new Date({0}.getTime() + {1}*1000)", "", @""} },
 			{ "Date.AddTicks(Number) as Date", new string[] {@"new Date({0}.getTime() + {1}/10000)", "", @""} },
 			{ "Date.AddYears(Number) as Date", new string[] {@"Date_addYears({0}, {1})", "Date_addYears", @"function (d, y) { var r = new Date(d.getTime()); r.setFullYear(r.getFullYear() + y); return r; }"} },
@@ -324,41 +324,6 @@ namespace ExoWeb
 
 		public JavaScriptExpressionTranslator()
 		{
-			//if (isFirst)
-			//{
-			//    Char lastChar = Char.MinValue;
-			//    bool sequence = false;
-			//    for (var c = Char.MinValue; c < Char.MaxValue; c++)
-			//    {
-			//        if (Char.IsSeparator(c))
-			//        {
-			//            if (lastChar != (char)(c - 1))
-			//                Console.Write("\\u" + ((uint)c).ToString("x4"));
-			//            else
-			//                sequence = true;
-			//            lastChar = c;
-			//        }
-			//        else
-			//        {
-			//            if (sequence)
-			//                Console.Write("-\\u" + ((uint)lastChar).ToString("x4"));
-			//            sequence = false;
-			//        }
-			//    }
-			//    var members = new HashSet<string>();
-			//    foreach (var member in supportedTypes.Keys.SelectMany(t => t.GetMembers()))
-			//    {
-			//        var signature = GetSignature(member);
-			//        if (!String.IsNullOrEmpty(signature))
-			//            members.Add(signature);
-			//    }
-			//    foreach (var member in members.OrderBy(s => s))
-			//        Console.WriteLine(member);
-			//    isFirst = false;
-			//}
-
-
-
 			AddMemberTranslator(m =>
 			{
 				// First see if the member is explicitly supported
@@ -459,7 +424,7 @@ namespace ExoWeb
 					}
 
 					// Translate EnumTypeProvider members
-					if (method.DeclaringType == typeof (EnumExtensions))
+					if (method.DeclaringType == typeof(EnumExtensions))
 					{
 						// Translate a call to 'EnumExtensions.GetId(o)' into 'o.Id'.
 						if (method.Name == "GetId")
@@ -612,8 +577,8 @@ namespace ExoWeb
 			{
 				var method = member as MethodInfo;
 				var parameters = method.GetParameters();
-				if (!method.IsStatic && method.Name == "ToString" && parameters.Length == 2 && parameters[0].ParameterType == typeof (string) && parameters[1].ParameterType == typeof (IFormatProvider))
-					return GetTypeName(method.DeclaringType) + "." + numberRegex.Replace(method.Name, "Number") + "(" + GetTypeName(typeof (string)) + ") as " + GetTypeName(method.ReturnType);
+				if (!method.IsStatic && method.Name == "ToString" && parameters.Length == 2 && parameters[0].ParameterType == typeof(string) && parameters[1].ParameterType == typeof(IFormatProvider))
+					return GetTypeName(method.DeclaringType) + "." + numberRegex.Replace(method.Name, "Number") + "(" + GetTypeName(typeof(string)) + ") as " + GetTypeName(method.ReturnType);
 				if (IsSupported(method.ReturnType) && parameters.All(p => IsSupported(p.ParameterType)) && !method.IsSpecialName)
 				{
 					var signature = method.IsStatic ? "static " : "";
@@ -1153,7 +1118,7 @@ namespace ExoWeb
 					case ExpressionType.Coalesce:
 						return " || ";
 					case ExpressionType.Modulo:
-						return " % "; 
+						return " % ";
 				}
 				throw new NotImplementedException("Operator not implemented");
 			}
