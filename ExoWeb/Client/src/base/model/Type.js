@@ -684,6 +684,29 @@ Type.prototype = {
 	},
 	toString: function Type$toString() {
 		return this.get_fullName();
+	},
+	addConditionsChanged: function Type$addConditionsChanged(handler, criteria) {
+		var filter;
+
+		// condition type filter
+		if (criteria instanceof ConditionType) {
+			filter = function (sender, args) { return args.conditionTarget.condition.type === criteria; };
+		}
+
+			// property filter
+		else if (criteria instanceof Property || criteria instanceof PropertyChain) {
+			criteria = criteria.lastProperty();
+			filter = function (sender, args) { return args.conditionTarget.properties.indexOf(criteria) >= 0; };
+		}
+
+		// subscribe to the event
+		this._addEvent("conditionsChanged", handler, filter);
+
+		// Return the type meta to support method chaining
+		return this;
+	},
+	removeConditionsChanged: function Type$removeConditionsChanged(handler) {
+		this._removeEvent("conditionsChanged", handler);
 	}
 };
 

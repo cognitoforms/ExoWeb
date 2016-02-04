@@ -102,7 +102,8 @@ function Condition(type, message, target, properties, origin) {
 		// raise events on condition targets
 		for (var t = targets.length - 1; t >= 0; t--) {
 			var conditionTarget = targets[t];
-			conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false}]);
+			conditionTarget.target.meta._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false }]);
+			conditionTarget.target.meta.type._raiseEvent("conditionsChanged", [conditionTarget.target.meta, { conditionTarget: conditionTarget, add: true, remove: false }]);
 		}
 
 		// raise events on condition types
