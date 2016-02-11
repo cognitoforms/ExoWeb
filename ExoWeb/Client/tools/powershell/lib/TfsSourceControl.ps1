@@ -7,18 +7,22 @@ $programFiles = if (Test-Path "C:\Program Files (x86)") { "C:\Program Files (x86
 $tf2010 = "$programFiles\Microsoft Visual Studio 10.0\Common7\IDE\TF.exe"
 $tf2012 = "$programFiles\Microsoft Visual Studio 11.0\Common7\IDE\TF.exe"
 $tf2013 = "$programFiles\Microsoft Visual Studio 12.0\Common7\IDE\TF.exe"
+$tf2015 = "$programFiles\Microsoft Visual Studio 14.0\Common7\IDE\TF.exe"
 
 function GetTfExePath
 {
 	param (
 		[Parameter(Mandatory=$false)]
-		[ValidateSet("*", "2010", "2012", "2013")]
+		[ValidateSet("*", "2010", "2012", "2013", "2015")]
 		[string]$Version="*"
 	)
 
 	if ($Version -eq "*") {
 		# Automatically detect supported versions
-		if (Test-Path $tf2013) {
+		if (Test-Path $tf2015) {
+			return $tf2015
+		}
+		elseif (Test-Path $tf2013) {
 			return $tf2013
 		}
 		elseif (Test-Path $tf2012) {
@@ -34,6 +38,9 @@ function GetTfExePath
 	}
 	elseif ($Version -eq 2013) {
 		return $tf2013
+	}
+	elseif ($Version -eq 2015) {
+		return $tf2015
 	}
 }
 
