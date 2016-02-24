@@ -2760,10 +2760,15 @@ Date._appendPreOrPostMatch = function Date$_appendPreOrPostMatch(preMatch, strBu
 			return dtf["LongDatePattern"] + " " + dtf["ShortTimePattern"];
 		case "F":
 			return dtf["FullDatePattern"];
+		case "g":
+			return dtf["ShortDatePattern"] + " " + dtf["ShortTimePattern"];
+		case "G":
+			return dtf["ShortDatePattern"] + " " + dtf["LongTimePattern"];
 		case "M": case "m":
 			return dtf["MonthDayPattern"];
 		case "s":
 			return dtf["SortableDateTimePattern"];
+		
 		case "Y": case "y":
 			return dtf["YearMonthPattern"];
 		default:

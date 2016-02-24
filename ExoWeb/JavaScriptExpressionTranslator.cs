@@ -448,6 +448,15 @@ namespace ExoWeb
 						return null;
 					}
 
+					// Translate DateTimeFormatter.ToString(val, format) as Exo date/time formatting.
+					if (method.DeclaringType == typeof(ModelExpression.DateTimeFormatter))
+					{
+						if (method.Name == "ToString")
+							return new MethodTranslation(method, "{0}.localeFormat({1})");
+
+						return null;
+					}
+
 					// See if the method represents a linq enumeration expression, such as Sum() or Where()
 					var parameters = method.GetParameters();
 

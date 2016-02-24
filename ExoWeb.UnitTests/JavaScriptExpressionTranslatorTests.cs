@@ -482,6 +482,30 @@ namespace ExoWeb.UnitTests
 		}
 
 		[TestMethod]
+		public void Expression_DateTime_Format()
+		{
+			var movie = Context.Fetch<Movie>(1);
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"d\")", "1/31/2016", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"D\")", "Sunday, January 31, 2016", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"f\")", "Sunday, January 31, 2016 12:00 AM", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"F\")", "Sunday, January 31, 2016 12:00:00 AM", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"g\")", "1/31/2016 12:00 AM", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"G\")", "1/31/2016 12:00:00 AM", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"m\")", "January 31", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"M\")", "January 31", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"o\")", "2016-01-31T00:00:00.0000000", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"O\")", "2016-01-31T00:00:00.0000000", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"r\")", "Sun, 31 Jan 2016 00:00:00 GMT", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"R\")", "Sun, 31 Jan 2016 00:00:00 GMT", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"s\")", "2016-01-31T00:00:00", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"t\")", "12:00 AM", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"u\")", "2016-01-31 00:00:00Z", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"U\")", "Sunday, January 31, 2016 5:00:00 AM", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"y\")", "January 2016", "");
+			TestExpression(movie, "DateTime.Parse(\"1/31/16\").ToString(\"Y\")", "January 2016", "");
+		}
+
+		[TestMethod]
 		public void Expression_TimeSpan_Instance()
 		{
 			// Get the 2010 "Robin Hood" movie
