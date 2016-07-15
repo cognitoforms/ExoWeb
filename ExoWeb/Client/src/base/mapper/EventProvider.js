@@ -8,7 +8,7 @@ var eventProviderFn = function eventProviderFn() {
 function eventProvider(eventType, eventInstance, event, paths, changes, onSuccess, onFailure, thisPtr) {
 	"use strict";
 
-	var scopeQueries, batch;
+	var scopeQueries, maxKnownId, batch;
 
 	// ensure correct value of "scopeQueries" argument
 	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -29,7 +29,10 @@ function eventProvider(eventType, eventInstance, event, paths, changes, onSucces
 	}
 
 	batch = Batch.suspendCurrent("eventProvider");
-	eventProviderFn(eventType, eventInstance, event, paths, changes, scopeQueries,
+
+	maxKnownId = context.server._maxServerIdNumber;
+
+	eventProviderFn(eventType, eventInstance, event, paths, changes, scopeQueries, maxKnownId,
 		function () {
 			Batch.resume(batch);
 			if (onSuccess) {

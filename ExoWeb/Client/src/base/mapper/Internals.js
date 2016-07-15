@@ -570,9 +570,11 @@ function getObject(model, propType, id, finalType, forLoading) {
 		// If an exact type exists then it should be specified in the call to getObject.
 		true);
 
-	// If it doesn't exist, create a ghosted instance.
+	// If it doesn't exist, create a ghosted instance (supress events).
 	if (!obj) {
 		obj = new (mtype.get_jstype())(id, null, true);
+		obj.meta.source = "server";
+		context.server.model.notifyObjectRegistered(obj);
 		obj.wasGhosted = true;
 		if (!forLoading) {
 			// If the instance is not being loaded, then attach a lazy loader.

@@ -9382,7 +9382,7 @@ window.ExoWeb.DotNet = {};
 	};
 
 	function objectProvider(type, ids, paths, inScope, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries, batch;
+		var scopeQueries, maxKnownId, batch;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -9404,7 +9404,9 @@ window.ExoWeb.DotNet = {};
 
 		batch = Batch.suspendCurrent("objectProvider");
 
-		objectProviderFn(type, ids, paths, inScope, changes, scopeQueries,
+		maxKnownId = context.server._maxServerIdNumber;
+
+		objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, maxKnownId,
 			function () {
 				Batch.resume(batch);
 				if (onSuccess) {
@@ -9435,7 +9437,7 @@ window.ExoWeb.DotNet = {};
 	};
 
 	function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries, batch;
+		var scopeQueries, maxKnownId, batch;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -9457,7 +9459,9 @@ window.ExoWeb.DotNet = {};
 
 		batch = Batch.suspendCurrent("queryProvider");
 
-		queryProviderFn(queries, changes, scopeQueries,
+		maxKnownId = context.server._maxServerIdNumber;
+
+		queryProviderFn(queries, changes, scopeQueries, maxKnownId,
 			function () {
 				Batch.resume(batch);
 				if (onSuccess) {
@@ -9578,7 +9582,7 @@ window.ExoWeb.DotNet = {};
 	};
 
 	function listProvider(ownerType, owner, listProp, paths, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries, batch, listPath, pathsToLoad, ownerId;
+		var scopeQueries, maxKnownId, batch, listPath, pathsToLoad, ownerId;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -9598,8 +9602,6 @@ window.ExoWeb.DotNet = {};
 			onFailure = null;
 		}
 
-		batch = Batch.suspendCurrent("listProvider");
-
 		ownerId = owner === "static" ? null : owner;
 		listPath = owner === "static" ? ownerType + "." + listProp : listProp;
 		pathsToLoad = [listPath];
@@ -9611,7 +9613,11 @@ window.ExoWeb.DotNet = {};
 			});
 		}
 
-		listProviderFn(ownerType, ownerId, pathsToLoad, changes, scopeQueries,
+		batch = Batch.suspendCurrent("listProvider");
+
+		maxKnownId = context.server._maxServerIdNumber;
+
+		listProviderFn(ownerType, ownerId, pathsToLoad, changes, scopeQueries, maxKnownId,
 			function () {
 				Batch.resume(batch);
 				if (onSuccess) {
@@ -9642,7 +9648,7 @@ window.ExoWeb.DotNet = {};
 	};
 
 	function roundtripProvider(root, paths, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries, batch;
+		var scopeQueries, maxKnownId, batch;
 	
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -9664,7 +9670,9 @@ window.ExoWeb.DotNet = {};
 
 		batch = Batch.suspendCurrent("roundtripProvider");
 
-		roundtripProviderFn(root, paths, changes, scopeQueries,
+		maxKnownId = context.server._maxServerIdNumber;
+
+		roundtripProviderFn(root, paths, changes, scopeQueries, maxKnownId,
 			function () {
 				Batch.resume(batch);
 				if (onSuccess) {
@@ -9695,7 +9703,7 @@ window.ExoWeb.DotNet = {};
 	};
 
 	function saveProvider(root, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries, batch;
+		var scopeQueries, maxKnownId, batch;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -9716,7 +9724,10 @@ window.ExoWeb.DotNet = {};
 		}
 
 		batch = Batch.suspendCurrent("saveProvider");
-		saveProviderFn(root, changes, scopeQueries,
+
+		maxKnownId = context.server._maxServerIdNumber;
+
+		saveProviderFn(root, changes, scopeQueries, maxKnownId,
 			function () {
 				Batch.resume(batch);
 				if (onSuccess) {
@@ -9747,7 +9758,7 @@ window.ExoWeb.DotNet = {};
 	};
 
 	function eventProvider(eventType, eventInstance, event, paths, changes, onSuccess, onFailure, thisPtr) {
-		var scopeQueries, batch;
+		var scopeQueries, maxKnownId, batch;
 
 		// ensure correct value of "scopeQueries" argument
 		if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -9768,7 +9779,10 @@ window.ExoWeb.DotNet = {};
 		}
 
 		batch = Batch.suspendCurrent("eventProvider");
-		eventProviderFn(eventType, eventInstance, event, paths, changes, scopeQueries,
+
+		maxKnownId = context.server._maxServerIdNumber;
+
+		eventProviderFn(eventType, eventInstance, event, paths, changes, scopeQueries, maxKnownId,
 			function () {
 				Batch.resume(batch);
 				if (onSuccess) {
@@ -10825,8 +10839,10 @@ window.ExoWeb.DotNet = {};
 			return isObjectDeleted(objectsDeleted, obj, isChange);
 		};
 
-		// If an existing object is registered then register it for lazy loading.
 		model.addObjectRegistered(function (obj) {
+			ServerSync$notifyCreated.call(self, obj);
+
+			// If an existing object is registered then register it for lazy loading.
 			if (!obj.meta.isNew && obj.meta.type.get_origin() === "server" && isCapturingChanges === true && !applyingChanges) {
 				ObjectLazyLoader.register(obj);
 			}
@@ -10837,6 +10853,7 @@ window.ExoWeb.DotNet = {};
 		Object.defineProperty(model, "server", { value: this });
 
 		// Assign backing fields as needed
+		this._maxServerIdNumber = null;
 		this._changeLog = changeLog;
 		this._scopeQueries = [];
 		this._scopeQueriesLookup = {};
@@ -10957,6 +10974,28 @@ window.ExoWeb.DotNet = {};
 		}
 	}
 
+	function ServerSync$notifyCreated(obj) {
+		if (obj.meta.source === "server") {
+			var serverId = context.server._translator.forward(obj.meta.type.get_fullName(), obj.meta.id) || obj.meta.id;
+			if (serverId && serverId[0] === "?") {
+				var serverIdNumber = parseInt(serverId.substring(1), 10);
+				if (!isNaN(serverIdNumber) && (this._maxServerIdNumber === null || serverIdNumber > this._maxServerIdNumber)) {
+					this._maxServerIdNumber = serverIdNumber;
+				}
+			}
+		}
+	}
+
+	function ServerSync$notifyDeleted(obj) {
+		if (!(obj instanceof Entity)) {
+			throw new Error("Notified of deleted object that is not an entity.");
+		}
+
+		if (!Array.contains(this._objectsDeleted, obj)) {
+			this._objectsDeleted.push(obj);
+		}
+	}
+
 	ServerSync.mixin({
 		// Enable/disable save & related functions
 		///////////////////////////////////////////////////////////////////////
@@ -11008,18 +11047,6 @@ window.ExoWeb.DotNet = {};
 				}
 				return true;
 			}
-		},
-		notifyDeleted: function ServerSync$notifyDeleted(obj) {
-			if (!(obj instanceof Entity)) {
-				throw new Error("Notified of deleted object that is not an entity.");
-			}
-
-			if (!Array.contains(this._objectsDeleted, obj)) {
-				this._objectsDeleted.push(obj);
-				return true;
-			}
-
-			return false;
 		},
 		canSend: function (change) {
 
@@ -12045,7 +12072,7 @@ window.ExoWeb.DotNet = {};
 				tryGetJsType(this.model, instance.type, null, false, function (type) {
 					tryGetEntity(this.model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
 						// Notify server object that the instance is deleted
-						this.notifyDeleted(obj);
+						ServerSync$notifyDeleted.call(this, obj);
 						// Simply a marker flag for debugging purposes
 						obj.meta.isDeleted = true;
 						// Unregister the object so that it can't be retrieved via get, known, or have rules execute against it
@@ -12165,6 +12192,15 @@ window.ExoWeb.DotNet = {};
 			}
 		},
 		applyInitChange: function (change, before, after, callback, thisPtr) {
+			// Go ahead and record the server id number before attempting to apply, to account
+			// for the possibility that the object may not need to be created on the client.
+			if (change.instance.id && change.instance.id[0] === "?") {
+				var instanceIdNumber = parseInt(change.instance.id.substring(1), 10);
+				if (!isNaN(instanceIdNumber) && (this._maxServerIdNumber === null || instanceIdNumber > this._maxServerIdNumber)) {
+					this._maxServerIdNumber = instanceIdNumber;
+				}
+			}
+
 			tryGetJsType(this.model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
 
 				// Attempt to fetch the object in case it has already been created.
@@ -12189,6 +12225,8 @@ window.ExoWeb.DotNet = {};
 
 						// Remember the object's client-generated new id and the corresponding server-generated new id
 						this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+
+						newObj.meta.source = "server";
 
 						// Raise event after recording id mapping so that listeners can leverage it
 						this.model.notifyObjectRegistered(newObj);
@@ -13304,9 +13342,11 @@ window.ExoWeb.DotNet = {};
 			// If an exact type exists then it should be specified in the call to getObject.
 			true);
 
-		// If it doesn't exist, create a ghosted instance.
+		// If it doesn't exist, create a ghosted instance (supress events).
 		if (!obj) {
 			obj = new (mtype.get_jstype())(id, null, true);
+			obj.meta.source = "server";
+			context.server.model.notifyObjectRegistered(obj);
 			obj.wasGhosted = true;
 			if (!forLoading) {
 				// If the instance is not being loaded, then attach a lazy loader.
@@ -19737,11 +19777,12 @@ window.ExoWeb.DotNet = {};
 		});
 	}
 
-	ExoWeb.Mapper.setEventProvider(function (eventType, eventInstance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setEventProvider(function (eventType, eventInstance, event, paths, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests && eventType !== "GetType" && eventType !== "LogError" ? eventType : "Request",
 			data: {
+				maxKnownId: maxKnownId,
 				events: [{ type: eventType, include: paths, instance: eventInstance, event: event }],
 				queries: scopeQueries,
 				changes: changes
@@ -19751,7 +19792,7 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setRoundtripProvider(function (root, paths, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setRoundtripProvider(function (root, paths, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
 		var queries = [];
 
 		if (root) {
@@ -19770,6 +19811,7 @@ window.ExoWeb.DotNet = {};
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "Roundtrip" : "Request",
 			data: {
+				maxKnownId: maxKnownId,
 				changes: changes,
 				queries: queries
 			},
@@ -19778,11 +19820,12 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setObjectProvider(function (type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setObjectProvider(function (type, ids, paths, inScope, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "LoadObject" : "Request",
 			data: {
+				maxKnownId: maxKnownId,
 				queries:[{
 					from: type,
 					ids: ids,
@@ -19797,11 +19840,12 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setQueryProvider(function (queries, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setQueryProvider(function (queries, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "Query" : "Request",
 			data: {
+				maxKnownId: maxKnownId,
 				changes: changes,
 				queries: queries.concat(scopeQueries)
 			},
@@ -19810,11 +19854,12 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setSaveProvider(function (root, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setSaveProvider(function (root, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "Save" : "Request",
 			data: {
+				maxKnownId: maxKnownId,
 				events:[{type: "Save", instance: root}],
 				queries: scopeQueries,
 				changes:changes
@@ -19824,11 +19869,12 @@ window.ExoWeb.DotNet = {};
 		});
 	});
 
-	ExoWeb.Mapper.setListProvider(function (ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
+	ExoWeb.Mapper.setListProvider(function (ownerType, ownerId, paths, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
 		sendRequest({
 			type: "Post",
 			path: webServiceConfig.aliasRequests ? "LoadList" : "Request",
 			data: {
+				maxKnownId: maxKnownId,
 				queries: [{
 					from: ownerType,
 					ids: ownerId === null ? [] : [ownerId],

@@ -157,8 +157,10 @@ function ServerSync(model) {
 		return isObjectDeleted(objectsDeleted, obj, isChange);
 	};
 
-	// If an existing object is registered then register it for lazy loading.
 	model.addObjectRegistered(function (obj) {
+		ServerSync$notifyCreated.call(self, obj);
+
+		// If an existing object is registered then register it for lazy loading.
 		if (!obj.meta.isNew && obj.meta.type.get_origin() === "server" && isCapturingChanges === true && !applyingChanges) {
 			ObjectLazyLoader.register(obj);
 		}
@@ -169,6 +171,7 @@ function ServerSync(model) {
 	Object.defineProperty(model, "server", { value: this });
 
 	// Assign backing fields as needed
+	this._maxServerIdNumber = null;
 	this._changeLog = changeLog;
 	this._scopeQueries = [];
 	this._scopeQueriesLookup = {};
@@ -289,6 +292,28 @@ function ServerSync$retroactivelyFixChangeWhereIdChanged(changeInstance, obj) {
 	}
 }
 
+function ServerSync$notifyCreated(obj) {
+	if (obj.meta.source === "server") {
+		var serverId = context.server._translator.forward(obj.meta.type.get_fullName(), obj.meta.id) || obj.meta.id;
+		if (serverId && serverId[0] === "?") {
+			var serverIdNumber = parseInt(serverId.substring(1), 10);
+			if (!isNaN(serverIdNumber) && (this._maxServerIdNumber === null || serverIdNumber > this._maxServerIdNumber)) {
+				this._maxServerIdNumber = serverIdNumber;
+			}
+		}
+	}
+}
+
+function ServerSync$notifyDeleted(obj) {
+	if (!(obj instanceof Entity)) {
+		throw new Error("Notified of deleted object that is not an entity.");
+	}
+
+	if (!Array.contains(this._objectsDeleted, obj)) {
+		this._objectsDeleted.push(obj);
+	}
+}
+
 ServerSync.mixin({
 	// Enable/disable save & related functions
 	///////////////////////////////////////////////////////////////////////
@@ -340,18 +365,6 @@ ServerSync.mixin({
 			}
 			return true;
 		}
-	},
-	notifyDeleted: function ServerSync$notifyDeleted(obj) {
-		if (!(obj instanceof Entity)) {
-			throw new Error("Notified of deleted object that is not an entity.");
-		}
-
-		if (!Array.contains(this._objectsDeleted, obj)) {
-			this._objectsDeleted.push(obj);
-			return true;
-		}
-
-		return false;
 	},
 	canSend: function (change) {
 
@@ -1377,7 +1390,7 @@ ServerSync.mixin({
 			tryGetJsType(this.model, instance.type, null, false, function (type) {
 				tryGetEntity(this.model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
 					// Notify server object that the instance is deleted
-					this.notifyDeleted(obj);
+					ServerSync$notifyDeleted.call(this, obj);
 					// Simply a marker flag for debugging purposes
 					obj.meta.isDeleted = true;
 					// Unregister the object so that it can't be retrieved via get, known, or have rules execute against it
@@ -1497,6 +1510,15 @@ ServerSync.mixin({
 		}
 	},
 	applyInitChange: function (change, before, after, callback, thisPtr) {
+		// Go ahead and record the server id number before attempting to apply, to account
+		// for the possibility that the object may not need to be created on the client.
+		if (change.instance.id && change.instance.id[0] === "?") {
+			var instanceIdNumber = parseInt(change.instance.id.substring(1), 10);
+			if (!isNaN(instanceIdNumber) && (this._maxServerIdNumber === null || instanceIdNumber > this._maxServerIdNumber)) {
+				this._maxServerIdNumber = instanceIdNumber;
+			}
+		}
+
 		tryGetJsType(this.model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
 
 			// Attempt to fetch the object in case it has already been created.
@@ -1521,6 +1543,8 @@ ServerSync.mixin({
 
 					// Remember the object's client-generated new id and the corresponding server-generated new id
 					this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
+
+					newObj.meta.source = "server";
 
 					// Raise event after recording id mapping so that listeners can leverage it
 					this.model.notifyObjectRegistered(newObj);
