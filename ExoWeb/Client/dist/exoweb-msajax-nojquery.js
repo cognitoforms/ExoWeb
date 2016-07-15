@@ -9999,10 +9999,15 @@ window.ExoWeb.DotNet = {};
 		// If the object does not exist, assume it is an existing object that is not
 		// yet in memory client-side, so create a ghosted instance.
 		if (!obj) {
-			obj = new jstype(ids[1]);
+		    // Supress events so that the registered event doesn't fire before the lazy loader is attached.
+		    obj = new jstype(ids[1], null, true);
+
 			if (jstype.meta.get_origin() === "server") {
 				ObjectLazyLoader.register(obj);
 			}
+
+		    // Raise event after attaching the lazy loader so that listeners know that the object has not been loaded
+			context.model.meta.notifyObjectRegistered(obj);
 		}
 
 		return obj;
@@ -10069,10 +10074,15 @@ window.ExoWeb.DotNet = {};
 				}
 
 				if (!obj && create) {
-					obj = new type(id);
+				    // Supress events so that the registered event doesn't fire before the lazy loader is attached.
+				    obj = new type(id, null, true);
+
 					if (type.meta.get_origin() === "server") {
 						ObjectLazyLoader.register(obj);
 					}
+
+				    // Raise event after attaching the lazy loader so that listeners know that the object has not been loaded
+					context.model.meta.notifyObjectRegistered(obj);
 				}
 
 				return obj;
@@ -13296,12 +13306,14 @@ window.ExoWeb.DotNet = {};
 
 		// If it doesn't exist, create a ghosted instance.
 		if (!obj) {
-			obj = new (mtype.get_jstype())(id);
+			obj = new (mtype.get_jstype())(id, null, true);
 			obj.wasGhosted = true;
 			if (!forLoading) {
 				// If the instance is not being loaded, then attach a lazy loader.
 				ObjectLazyLoader.register(obj);
 			}
+		    // Raise event after attaching the lazy loader so that listeners know that the object has not been loaded
+			model.notifyObjectRegistered(obj);
 		}
 
 		return obj;

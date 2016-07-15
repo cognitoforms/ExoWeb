@@ -572,12 +572,14 @@ function getObject(model, propType, id, finalType, forLoading) {
 
 	// If it doesn't exist, create a ghosted instance.
 	if (!obj) {
-		obj = new (mtype.get_jstype())(id);
+		obj = new (mtype.get_jstype())(id, null, true);
 		obj.wasGhosted = true;
 		if (!forLoading) {
 			// If the instance is not being loaded, then attach a lazy loader.
 			ObjectLazyLoader.register(obj);
 		}
+	    // Raise event after attaching the lazy loader so that listeners know that the object has not been loaded
+		model.notifyObjectRegistered(obj);
 	}
 
 	return obj;

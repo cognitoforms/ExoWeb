@@ -21,10 +21,15 @@ Entity.fromIdString = function Entity$fromIdString(id) {
 	// If the object does not exist, assume it is an existing object that is not
 	// yet in memory client-side, so create a ghosted instance.
 	if (!obj) {
-		obj = new jstype(ids[1]);
+	    // Supress events so that the registered event doesn't fire before the lazy loader is attached.
+	    obj = new jstype(ids[1], null, true);
+
 		if (jstype.meta.get_origin() === "server") {
 			ObjectLazyLoader.register(obj);
 		}
+
+	    // Raise event after attaching the lazy loader so that listeners know that the object has not been loaded
+		context.model.meta.notifyObjectRegistered(obj);
 	}
 
 	return obj;
@@ -91,10 +96,15 @@ function fromExoModel(val, translator, create, supplementalObjectsArray) {
 			}
 
 			if (!obj && create) {
-				obj = new type(id);
+			    // Supress events so that the registered event doesn't fire before the lazy loader is attached.
+			    obj = new type(id, null, true);
+
 				if (type.meta.get_origin() === "server") {
 					ObjectLazyLoader.register(obj);
 				}
+
+			    // Raise event after attaching the lazy loader so that listeners know that the object has not been loaded
+				context.model.meta.notifyObjectRegistered(obj);
 			}
 
 			return obj;
