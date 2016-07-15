@@ -355,6 +355,16 @@
 			}
 			return !!value;
 		}
+
+		var sysClassAffectedByClass = (function() {
+			var e = document.createElement("span");
+			var sysClassValue = "detect-" + Math.random().toString().replace(/\D/g, "").substring(8);
+			e.setAttribute('sys:class', sysClassValue);
+			e.getAttributeNode('class');
+			var sysClassAttr = e.getAttributeNode('sys:class');
+			return !sysClassAttr || !sysClassAttr.value || sysClassAttr.value != sysClassValue;
+		}());
+
 		function Sys$UI$Template$_getExplicitAttribute(code, typeIndex, element, name, processName, isNative, attrib) {
 			var e, node, value;
 			if (name === "style" && element.style) {
@@ -362,15 +372,19 @@
 			}
 			else {
 				try {
-					// JBP: In IE9 the getAttributeNode method handles 'class' special, in that it appears to actually create
-					// a new 'class' attribute and sets the value to empty string if it doesn't exist on the element.  
-					// This behavior appears to affect the sys:class attribute value, as it is also set to empty string after the getAttributeNode method is called.
+					// 8/30/2011, JBP: In IE9 the getAttributeNode method handles 'class' special, in that it appears
+					// to actually create a new 'class' attribute and sets the value to empty string if it doesn't
+					// exist on the element. This behavior appears to affect the sys:class attribute value, as it is
+					// also set to empty string after the getAttributeNode method is called.
 
-					if (name.toLowerCase() === "class" && Sys.Browser.agent === Sys.Browser['InternetExplorer'] && Sys.Browser.version >= 9) {
+					// 8/6/2015, WBM: Since browser detection is prone to error, use "feature" detected to determine
+					// if accessing the 'class' attribute impacts the ability to access the 'sys:class' attribute.
+
+					if (name.toLowerCase() === "class" && sysClassAffectedByClass) {
 						if (!element.className) {
 							return;
 						} else {
-							// HACK: evaluate the sys:class attribute, which somehow sets the class attribute equal to sys:class value
+							// HACK: Evaluate the sys:class attribute, which somehow sets the class attribute equal to sys:class value.
 							element.getAttributeNode("sys:class");
 						}
 					}
