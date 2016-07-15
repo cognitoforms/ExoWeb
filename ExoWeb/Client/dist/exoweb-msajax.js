@@ -4805,10 +4805,10 @@ window.ExoWeb.DotNet = {};
 				};
 
 				var argCount = arguments.length - (onSuccess === undefined ? 0 : 1) - (onFail === undefined ? 0 : 1);
-				var firstArgCouldBeParameterSet = argCount > 0 && arguments[0] instanceof Object && !(def.parameters.length === 0 || arguments[0][def.parameters[0]] === undefined);
+				var firstArgCouldBeParameterSet = argCount > 0 && Object.prototype.toString.call(arguments[0]).match(/\s([a-z|A-Z]+)/)[1].toLowerCase() === "object" && !(def.parameters.length === 0 || arguments[0][def.parameters[0]] === undefined);
 				var instance = this instanceof Entity ? this : null;
 
-				if (argCount >= 1 && argCount <= 2 && arguments[0] instanceof Object &&
+				if (argCount >= 1 && argCount <= 2 && Object.prototype.toString.call(arguments[0]).match(/\s([a-z|A-Z]+)/)[1].toLowerCase() === "object" &&
 						((argCount == 1 && (def.parameters.length != 1 || firstArgCouldBeParameterSet)) ||
 						((argCount == 2 && (def.parameters.length != 2 || (firstArgCouldBeParameterSet && arguments[1] instanceof Array)))))) {
 
