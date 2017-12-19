@@ -8,6 +8,7 @@ $tf2010 = "$programFiles\Microsoft Visual Studio 10.0\Common7\IDE\TF.exe"
 $tf2012 = "$programFiles\Microsoft Visual Studio 11.0\Common7\IDE\TF.exe"
 $tf2013 = "$programFiles\Microsoft Visual Studio 12.0\Common7\IDE\TF.exe"
 $tf2015 = "$programFiles\Microsoft Visual Studio 14.0\Common7\IDE\TF.exe"
+$tf2017 = "$programFiles\Microsoft Visual Studio\2017\Enterprise\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\TF.exe"
 
 function GetTfExePath
 {
@@ -19,7 +20,10 @@ function GetTfExePath
 
 	if ($Version -eq "*") {
 		# Automatically detect supported versions
-		if (Test-Path $tf2015) {
+		if (Test-Path $tf2017) {
+			return $tf2017
+		}
+		elseif (Test-Path $tf2015) {
 			return $tf2015
 		}
 		elseif (Test-Path $tf2013) {
@@ -41,6 +45,9 @@ function GetTfExePath
 	}
 	elseif ($Version -eq 2015) {
 		return $tf2015
+	}
+	elseif ($Version -eq 2017) {
+		return $tf2017
 	}
 }
 
