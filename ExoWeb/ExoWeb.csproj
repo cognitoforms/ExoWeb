@@ -385,7 +385,4 @@
     <Folder Include="Client\ref\syntaxhighlighter\scripts\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <Target Name="BeforeBuild" Condition=" '$(Configuration)' == 'Debug' ">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp; '$(ProjectDir)\Client\tools\powershell\BuildAll.ps1' -ErrorAction Stop&quot;" />
-  </Target>
 </Project>
