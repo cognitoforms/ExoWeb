@@ -20,8 +20,12 @@ function StringFormatRule(rootType, options) {
 	// ensure the rule name is specified
 	options.name = options.name || "StringFormat";
 
+
 	// ensure the error message is specified
-	options.message = options.message || Resource.get("string-format").replace("{formatDescription}", options.description);
+	if (Resource.get(options.message))
+        options.message = Resource.get(options.message);
+    else
+        options.message = options.message || Resource.get("string-format").replace("{formatDescription}", options.description);
 
 	// define properties for the rule
 	Object.defineProperty(this, "description", { value: options.description });

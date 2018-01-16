@@ -693,6 +693,29 @@ Adapter.mixin({
 
 		// return the first error
 		return this._firstError;
+	},
+	get_hasError: function Adapter$get_hasError() {
+		// initialize on first access
+		if (!this.hasOwnProperty("_hasError")) {
+
+			var conditions = this.get_conditions();
+			this._hasError = !!this.get_firstError();
+
+			// automatically update when condition changes occur
+			var adapter = this;
+			conditions.add_collectionChanged(function (sender, args) {
+
+				var val = !!adapter.get_firstError();
+
+				// store the first error and raise property change if it differs from the previous first error
+				if (adapter._hasError !== val) {
+					adapter._hasError = val;
+					Observer.raisePropertyChanged(adapter, "hasError");
+				}
+			});
+		}
+
+		return this._hasError;
 	}
 });
 

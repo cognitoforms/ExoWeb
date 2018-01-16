@@ -7507,7 +7507,10 @@ window.ExoWeb.DotNet = {};
 		options.name = options.name || "Validation";
 
 		// ensure the error message is specified
-		options.message = options.message || Resource.get("validation");
+        if (Resource.get(options.message))
+            options.message = "\"" + Resource.get(options.message) + "\"";
+        else
+            options.message = options.message || Resource.get("validation");
 
 		// predicate-based rule
 		if (options.isError || options.fn) {
@@ -8238,8 +8241,12 @@ window.ExoWeb.DotNet = {};
 		// ensure the rule name is specified
 		options.name = options.name || "StringFormat";
 
+
 		// ensure the error message is specified
-		options.message = options.message || Resource.get("string-format").replace("{formatDescription}", options.description);
+		if (Resource.get(options.message))
+	        options.message = Resource.get(options.message);
+	    else
+	        options.message = options.message || Resource.get("string-format").replace("{formatDescription}", options.description);
 
 		// define properties for the rule
 		Object.defineProperty(this, "description", { value: options.description });
@@ -8669,6 +8676,8 @@ window.ExoWeb.DotNet = {};
 					var steps = properties[p].steps;
 					var instances = [target];
 
+					var leaf = steps.length - 1;
+
 					// iterate over each step along the path
 					for (var s = 0; s < steps.length; s++) {
 						var step = steps[s].property;
@@ -8678,30 +8687,33 @@ window.ExoWeb.DotNet = {};
 						for (var i = instances.length - 1; i >= 0; i--) {
 							var instance = instances[i];
 
-							// see if a target already exists for the current instance
-							var conditionTarget = null;
-							for (var t = targets.length - 1; t >= 0; t--) {
-								if (targets[t].target === instance) {
-									conditionTarget = targets[t];
-									break;
-								}
-							}
-
 							// get the property for the current step and instance type and skip if the property cannot be found
 							var property = instance.meta.type.property(step);
 							if (!property) {
 								continue;
 							}
 
-							// create the condition target if it does not already exist
-							if (!conditionTarget) {
-								conditionTarget = new ConditionTarget(this, instance, [property]);
-								targets.push(conditionTarget);
-							}
+							// only create conditions on the last step, the leaf node
+							if (s === leaf) {
+								// see if a target already exists for the current instance
+								var conditionTarget = null;
+								for (var t = targets.length - 1; t >= 0; t--) {
+									if (targets[t].target === instance) {
+										conditionTarget = targets[t];
+										break;
+									}
+								}
 
-							// otherwise, just ensure it references the current step
-							else if (conditionTarget.properties.indexOf(property) < 0)
-								conditionTarget.properties.push(property);
+								// create the condition target if it does not already exist
+								if (!conditionTarget) {
+									conditionTarget = new ConditionTarget(this, instance, [property]);
+									targets.push(conditionTarget);
+								}
+
+								// otherwise, just ensure it references the current step
+								else if (conditionTarget.properties.indexOf(property) < 0)
+									conditionTarget.properties.push(property);
+							}
 
 							// get the value of the current step
 							var child = property.value(instance);
@@ -10186,9 +10198,9 @@ window.ExoWeb.DotNet = {};
 			if (this._filters && this._filters.objectUnregistered && this._filters.objectUnregistered(obj) !== true)
 				return;
 
-			if (obj.meta.type.get_origin() === "server") {
-				throw new Error($format("Unregistering server-type objects is not currently supported: {0}|{1}", obj.meta.type.fullName, obj.meta.id));
-			}
+			//if (obj.meta.type.get_origin() === "server") {
+			//	throw new Error($format("Unregistering server-type objects is not currently supported: {0}|{1}", obj.meta.type.fullName, obj.meta.id));
+			//}
 		},
 		onPropertyChanged: function ExoModelEventListener$onPropertyChanged(obj, property, newValue, oldValue) {
 			if (this._filters && this._filters.propertyChanged && this._filters.propertyChanged(obj, property, newValue, oldValue) !== true)
@@ -18397,6 +18409,29 @@ window.ExoWeb.DotNet = {};
 
 			// return the first error
 			return this._firstError;
+		},
+		get_hasError: function Adapter$get_hasError() {
+			// initialize on first access
+			if (!this.hasOwnProperty("_hasError")) {
+
+				var conditions = this.get_conditions();
+				this._hasError = !!this.get_firstError();
+
+				// automatically update when condition changes occur
+				var adapter = this;
+				conditions.add_collectionChanged(function (sender, args) {
+
+					var val = !!adapter.get_firstError();
+
+					// store the first error and raise property change if it differs from the previous first error
+					if (adapter._hasError !== val) {
+						adapter._hasError = val;
+						Observer.raisePropertyChanged(adapter, "hasError");
+					}
+				});
+			}
+
+			return this._hasError;
 		}
 	});
 

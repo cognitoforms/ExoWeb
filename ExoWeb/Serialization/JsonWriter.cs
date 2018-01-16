@@ -11,15 +11,17 @@ namespace ExoWeb.Serialization
 	public class JsonWriter : JsonTextWriter
 	{
 		JsonSerializer serializer;
+		bool throwOnError;
 
-		internal bool SerializePropertyConditionType { get; set; }
+		internal bool SerializePropertyConditionType { get; set; }		
 
-		internal JsonWriter(TextWriter writer, JsonSerializer serializer, bool serializePropertyConditionType = true)
+		internal JsonWriter(TextWriter writer, JsonSerializer serializer, bool serializePropertyConditionType = true, bool throwOnError = true)
 			: base(writer)
 		{
 			this.serializer = serializer;
 			this.CloseOutput = false;
 			this.SerializePropertyConditionType = serializePropertyConditionType;
+			this.throwOnError = throwOnError;
 		}
 
 		public void Set(string name, object value)
@@ -33,14 +35,25 @@ namespace ExoWeb.Serialization
 		{
 			// Translate the assert expression to javascript
 			var exp = ExoWeb.ExpressionTranslator.Translate(expression);
-			if (exp.Exceptions.Any())
+			if (throwOnError && exp.Exceptions.Any())
 				throw exp.Exceptions.Last();
-			WritePropertyName(name);
-			serializer.Serialize(this, exp.Body);
 
-			// Record dependency exports globally
-			foreach (var export in exp.Exports)
-				Global<Dictionary<string, string>>("exports")[export.Key] = export.Value;
+			WritePropertyName(name);
+
+			if (!exp.Exceptions.Any())
+			{
+				// Output expression body
+				serializer.Serialize(this, exp.Body);
+
+				// Record dependency exports globally
+				foreach (var export in exp.Exports)
+					Global<Dictionary<string, string>>("exports")[export.Key] = export.Value;
+			}
+			else
+			{
+				// If there were any exceptions in translation, output null
+				serializer.Serialize(this, ExoWeb.ExpressionTranslator.Translate(Expression.Lambda(Expression.Constant(null))).Body);
+			}
 		}
 
 		public void Serialize(object value)

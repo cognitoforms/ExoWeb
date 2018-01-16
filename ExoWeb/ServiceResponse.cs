@@ -73,7 +73,7 @@ namespace ExoWeb
 			// Create and cache the type json if it does not yet exist
 			ModelType value = ModelContext.Current.GetModelType(type);
 			json = JsonUtility.Serialize(value);
-			if(value != null && value.Provider.IsCachable)
+			if(value != null && value.IsCachable)
 				typeJson[type] = json;
 
 			return json;

@@ -367,7 +367,7 @@ namespace ExoWeb.Serialization
 							json.Set("isPersisted", false);
 
 						// IsCalculated
-						if (ExoWeb.IsCalculated(property))
+						if (property.IsCalculated)
 							json.Set("isCalculated", true);
 
 						// Index
@@ -607,7 +607,17 @@ namespace ExoWeb.Serialization
 							{
 								var calculation = (ICalculationRule)rule;
 								json.Set("onChangeOf", calculation.Predicates);
-								json.Set("calculate", calculation.Calculation);
+								if (rule is IClientCalculationRule)
+								{
+									var clientCalc = (IClientCalculationRule)rule;
+									json.Set("calculate", clientCalc.FunctionBody);
+									foreach (var export in clientCalc.Exports)
+										json.Global<Dictionary<string, string>>("exports")[export.Key] = export.Value;
+								}
+								else
+								{
+									json.Set("calculate", calculation.Calculation);
+								}
 							}
 
 							else if (rule is IConditionRule)
@@ -712,7 +722,12 @@ namespace ExoWeb.Serialization
 							json.Set("isError", rule.ValidationExpression.Expression);
 
 							// ErrorMessage
-							json.Set("message", rule.ErrorMessageExpression.Expression);
+                            if (rule.ErrorMessageResource != null)
+                                json.Set("message",   rule.ErrorMessageResource);
+                            else
+                                json.Set("message", rule.ErrorMessageExpression.Expression);
+
+							json.Set("properties", rule.AdditionalTargets);
 
 							// OnChangeOf
 							if (!String.IsNullOrEmpty(rule.Path))
@@ -801,7 +816,7 @@ namespace ExoWeb.Serialization
 				writer.Set("type", rule.Name.Substring(0, 1).ToLower() + rule.Name.Substring(1));
 
 			// Embed the condition type, if present, along with the rule
-			if (writer.SerializePropertyConditionType && rule.ConditionType != null)
+			if (rule.ConditionType != null && (writer.SerializePropertyConditionType || rule.ConditionType.AlwaysSerialize))
 			{
 				if (rule.ConditionType.Category != ConditionCategory.Error)
 					writer.Set("category", rule.ConditionType.Category.ToString());
@@ -847,9 +862,9 @@ namespace ExoWeb.Serialization
 			}
 		}
 
-		public static void Serialize(TextWriter writer, object value, bool serializePropertyConditionType = true)
+		public static void Serialize(TextWriter writer, object value, bool serializePropertyConditionType = true, bool throwOnError = true)
 		{
-			using (var jsonWriter = new JsonWriter(writer, serializer, serializePropertyConditionType))
+			using (var jsonWriter = new JsonWriter(writer, serializer, serializePropertyConditionType, throwOnError))
 			{
 				serializer.Serialize(jsonWriter, value);
 				jsonWriter.Flush();

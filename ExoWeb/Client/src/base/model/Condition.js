@@ -42,6 +42,8 @@ function Condition(type, message, target, properties, origin) {
 				var steps = properties[p].steps;
 				var instances = [target];
 
+				var leaf = steps.length - 1;
+
 				// iterate over each step along the path
 				for (var s = 0; s < steps.length; s++) {
 					var step = steps[s].property;
@@ -51,30 +53,33 @@ function Condition(type, message, target, properties, origin) {
 					for (var i = instances.length - 1; i >= 0; i--) {
 						var instance = instances[i];
 
-						// see if a target already exists for the current instance
-						var conditionTarget = null;
-						for (var t = targets.length - 1; t >= 0; t--) {
-							if (targets[t].target === instance) {
-								conditionTarget = targets[t];
-								break;
-							}
-						}
-
 						// get the property for the current step and instance type and skip if the property cannot be found
 						var property = instance.meta.type.property(step);
 						if (!property) {
 							continue;
 						}
 
-						// create the condition target if it does not already exist
-						if (!conditionTarget) {
-							conditionTarget = new ConditionTarget(this, instance, [property]);
-							targets.push(conditionTarget);
-						}
+						// only create conditions on the last step, the leaf node
+						if (s === leaf) {
+							// see if a target already exists for the current instance
+							var conditionTarget = null;
+							for (var t = targets.length - 1; t >= 0; t--) {
+								if (targets[t].target === instance) {
+									conditionTarget = targets[t];
+									break;
+								}
+							}
 
-						// otherwise, just ensure it references the current step
-						else if (conditionTarget.properties.indexOf(property) < 0)
-							conditionTarget.properties.push(property);
+							// create the condition target if it does not already exist
+							if (!conditionTarget) {
+								conditionTarget = new ConditionTarget(this, instance, [property]);
+								targets.push(conditionTarget);
+							}
+
+							// otherwise, just ensure it references the current step
+							else if (conditionTarget.properties.indexOf(property) < 0)
+								conditionTarget.properties.push(property);
+						}
 
 						// get the value of the current step
 						var child = property.value(instance);

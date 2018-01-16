@@ -16,7 +16,10 @@ function ValidationRule(rootType, options) {
 	options.name = options.name || "Validation";
 
 	// ensure the error message is specified
-	options.message = options.message || Resource.get("validation");
+	if (Resource.get(options.message))
+        options.message = "\"" + Resource.get(options.message) + "\"";
+    else
+        options.message = options.message || Resource.get("validation");
 
 	// predicate-based rule
 	if (options.isError || options.fn) {

@@ -84,7 +84,7 @@ namespace ExoWeb
 			{ "static Char.ToLower(Char) as Char", new string[] {@"{0}.toLowerCase()", "", @""} },
 			{ "static Char.ToUpper(Char) as Char", new string[] {@"{0}.toUpperCase()", "", @""} },
 			{ "static Convert.ToNumber(Boolean) as Number", new string[] {@"Number({0})", "", @""} },
-			{ "static Convert.ToNumber(Char) as Number", new string[] {@"Number({0})", "", @""} },
+			{ "static Convert.ToNumber(Char) as Number", new string[] {@"{0}.charCodeAt()", "", @""} },
 			{ "static Convert.ToNumber(Date) as Number", new string[] {@"Number({0})", "", @""} },
 			{ "static Convert.ToNumber(String, Number) as Number", new string[] {@"parseInt({0}, {1})", "", @""} },
 			{ "static Convert.ToString(Boolean) as String", new string[] {@"String({0})", "", @""} },
@@ -157,8 +157,8 @@ namespace ExoWeb
 			{ "static Math.Min(Number, Number) as Number", new string[] {@"Math.min({0}, {1})", "", @""} },
 			{ "static Math.PI as Number", new string[] {@"Math.PI", "", @""} },
 			{ "static Math.Pow(Number, Number) as Number", new string[] {@"Math.pow({0}, {1})", "", @""} },
-			{ "static Math.Round(Number) as Number", new string[] {@"{0} < 0 ? -Math.round(0 - {0}) : Math.round({0})", "", @""} },
-			{ "static Math.Round(Number, Number) as Number", new string[] {@"Math.round({0}*Math.pow(10, {1}))/Math.pow(10, {1})", "", @""} },
+			{ "static Math.Round(Number) as Number", new string[] {@"Math_round({0})", "Math_round", @"function (num, d) { d = d || 0; var m = Math.pow(10, d); var n = +(d ? num * m : num).toFixed(8); var i = Math.floor(n), f = n - i; var e = 1e-8; var r = (f > 0.5 - e && f < 0.5 + e) ? ((i % 2 == 0) ? i : i + 1) : Math.round(n); return d ? r / m : r; }"} },
+			{ "static Math.Round(Number, Number) as Number", new string[] {@"Math_round({0}, {1})", "Math_round", @"function (num, d) { d = d || 0; var m = Math.pow(10, d); var n = +(d ? num * m : num).toFixed(8); var i = Math.floor(n), f = n - i; var e = 1e-8; var r = (f > 0.5 - e && f < 0.5 + e) ? ((i % 2 == 0) ? i : i + 1) : Math.round(n); return d ? r / m : r; }"} },
 			{ "static Math.Sign(Number) as Number", new string[] {@"Math_sign({0})", "Math_sign", @"function(n) { return n === 0 ? 0 : (n > 0 ? 1 : -1); }"} },
 			{ "static Math.Sin(Number) as Number", new string[] {@"Math.sin({0})", "", @""} },
 			{ "static Math.Sinh(Number) as Number", new string[] {@"Math_sinh({0})", "Math_sinh", @"function(n) { return (Math.exp(n) - Math.exp(-(n)))/2; }"} },
@@ -408,6 +408,8 @@ namespace ExoWeb
 							return new MethodTranslation(method, "{0}.toString()");
 						if (method.Name == "ToString" && method.GetParameters().Length >= 2)
 							return new MethodTranslation(method, "{0}.toString({1})");
+						if (method.Name == "GetFormattedValue" && method.GetParameters().Length == 1)
+							return new MethodTranslation(method, "{0}.toString('[{1}]')");
 						return null;
 					}
 
@@ -734,58 +736,75 @@ namespace ExoWeb
 
 			protected override Expression VisitBinary(BinaryExpression node)
 			{
-				builder.Append("(");
-
-
-				// Create TimeSpan if subtracting two DateTime instances
-				if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
-					builder.Append("new TimeSpan(");
-
-				// Handle concatenation of strings to ensure correct implicit conversion
-				if (node.NodeType == ExpressionType.Add && node.Left.Type == typeof(string) && node.Left.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Left.GetType()))
+				// Array Index
+				if (node.NodeType == ExpressionType.ArrayIndex)
 				{
-					Translation.Exports["str"] = @"function (o) { if (o === undefined || o === null) return """"; return o.toString(); }";
-					builder.Append("str(");
 					Visit(node.Left);
-					builder.Append(")");
+					builder.Append("[");
+					Visit(node.Right);
+					builder.Append("]");
 				}
-				else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
+
+				// Binary Expression, like && or ||
+				else
 				{
 					builder.Append("(");
-					Visit(node.Left);
-					builder.Append(" ? ");
-					Visit(node.Left);
-					builder.Append(".getTime() : null)");
-				}
-				else
-					Visit(node.Left);
 
-				builder.Append(GetOperator(node.NodeType));
+					// Create TimeSpan if subtracting two DateTime instances
+					if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
+						builder.Append("new TimeSpan(");
 
-				// Handle concatenation of strings to ensure correct implicit conversion
-				if (node.NodeType == ExpressionType.Add && node.Right.Type == typeof(string) && node.Right.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Right.GetType()))
-				{
-					Translation.Exports["str"] = @"function (o) { if (o === undefined || o === null) return """"; return o.toString(); }";
-					builder.Append("str(");
-					Visit(node.Right);
+					// Handle concatenation of strings to ensure correct implicit conversion
+					if (node.NodeType == ExpressionType.Add && node.Left.Type == typeof(string) && node.Left.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Left.GetType()))
+					{
+						Translation.Exports["str"] = @"function (o) { if (o === undefined || o === null) return """"; return o.toString(); }";
+						builder.Append("str(");
+						Visit(node.Left);
+						builder.Append(")");
+					}
+					else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
+					{
+						builder.Append("(");
+						Visit(node.Left);
+						builder.Append(" ? ");
+						Visit(node.Left);
+						builder.Append(".getTime() : null)");
+					}
+					else if (node.Left.Type.IsEnum && node.Left.Type != typeof(DayOfWeek))
+					{
+						Visit(node.Left);
+						builder.Append(".get_Name()");
+					}
+					else
+						Visit(node.Left);
+
+					builder.Append(GetOperator(node.NodeType));
+
+					// Handle concatenation of strings to ensure correct implicit conversion
+					if (node.NodeType == ExpressionType.Add && node.Right.Type == typeof(string) && node.Right.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Right.GetType()))
+					{
+						Translation.Exports["str"] = @"function (o) { if (o === undefined || o === null) return """"; return o.toString(); }";
+						builder.Append("str(");
+						Visit(node.Right);
+						builder.Append(")");
+					}
+					else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
+					{
+						builder.Append("(");
+						Visit(node.Right);
+						builder.Append(" ? ");
+						Visit(node.Right);
+						builder.Append(".getTime() : null)");
+					}
+					else
+						Visit(node.Right);
+
+					// Create TimeSpan if subtracting two DateTime instances
+					if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
+						builder.Append(")");
+
 					builder.Append(")");
 				}
-				else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
-				{
-					builder.Append("(");
-					Visit(node.Right);
-					builder.Append(" ? ");
-					Visit(node.Right);
-					builder.Append(".getTime() : null)");
-				}
-				else
-					Visit(node.Right);
-
-				// Create TimeSpan if subtracting two DateTime instances
-				if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
-					builder.Append(")");
-
-				builder.Append(")");
 
 				return node;
 			}
