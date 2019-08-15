@@ -8,7 +8,7 @@ var objectProviderFn = function objectProviderFn() {
 function objectProvider(type, ids, paths, inScope, changes, onSuccess, onFailure, thisPtr) {
 	"use strict";
 
-	var scopeQueries, maxKnownId, batch;
+	var scopeQueries, batch;
 
 	// ensure correct value of "scopeQueries" argument
 	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -30,9 +30,7 @@ function objectProvider(type, ids, paths, inScope, changes, onSuccess, onFailure
 
 	batch = Batch.suspendCurrent("objectProvider");
 
-	maxKnownId = context.server._maxServerIdNumber;
-
-	objectProviderFn(type, ids, paths, inScope, changes, scopeQueries, maxKnownId,
+	objectProviderFn(type, ids, paths, inScope, changes, scopeQueries,
 		function () {
 			Batch.resume(batch);
 			if (onSuccess) {

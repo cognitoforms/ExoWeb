@@ -8,7 +8,7 @@ var listProviderFn = function listProvider() {
 function listProvider(ownerType, owner, listProp, paths, changes, onSuccess, onFailure, thisPtr) {
 	"use strict";
 
-	var scopeQueries, maxKnownId, batch, listPath, pathsToLoad, ownerId;
+	var scopeQueries, batch, listPath, pathsToLoad, ownerId;
 
 	// ensure correct value of "scopeQueries" argument
 	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -28,6 +28,8 @@ function listProvider(ownerType, owner, listProp, paths, changes, onSuccess, onF
 		onFailure = null;
 	}
 
+	batch = Batch.suspendCurrent("listProvider");
+
 	ownerId = owner === "static" ? null : owner;
 	listPath = owner === "static" ? ownerType + "." + listProp : listProp;
 	pathsToLoad = [listPath];
@@ -39,11 +41,7 @@ function listProvider(ownerType, owner, listProp, paths, changes, onSuccess, onF
 		});
 	}
 
-	batch = Batch.suspendCurrent("listProvider");
-
-	maxKnownId = context.server._maxServerIdNumber;
-
-	listProviderFn(ownerType, ownerId, pathsToLoad, changes, scopeQueries, maxKnownId,
+	listProviderFn(ownerType, ownerId, pathsToLoad, changes, scopeQueries,
 		function () {
 			Batch.resume(batch);
 			if (onSuccess) {

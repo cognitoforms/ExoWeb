@@ -753,7 +753,10 @@ namespace ExoWeb.Serialization
 							if (rule.RequiredExpression != null)
 							{
 								json.Set("fn", rule.RequiredExpression.Expression);
-								json.Set("onChangeOf", new string[] { rule.Path });
+
+								// OnChangeOf
+								if (!String.IsNullOrEmpty(rule.Path))
+									json.Set("onChangeOf", new string[] { rule.Path });
 							}
 							else
 							{

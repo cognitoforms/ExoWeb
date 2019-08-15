@@ -157,10 +157,8 @@ function ServerSync(model) {
 		return isObjectDeleted(objectsDeleted, obj, isChange);
 	};
 
+	// If an existing object is registered then register it for lazy loading.
 	model.addObjectRegistered(function (obj) {
-		ServerSync$notifyCreated.call(self, obj);
-
-		// If an existing object is registered then register it for lazy loading.
 		if (!obj.meta.isNew && obj.meta.type.get_origin() === "server" && isCapturingChanges === true && !applyingChanges) {
 			ObjectLazyLoader.register(obj);
 		}
@@ -171,11 +169,8 @@ function ServerSync(model) {
 	Object.defineProperty(model, "server", { value: this });
 
 	// Assign backing fields as needed
-	this._maxServerIdNumber = null;
 	this._changeLog = changeLog;
 	this._scopeQueries = [];
-	this._scopeQueriesLookup = {};
-	this._scopeQueriesNewObjects = [];
 	this._objectsExcludedFromSave = [];
 	this._objectsDeleted = objectsDeleted;
 	this._translator = translator;
@@ -207,71 +202,45 @@ registerActivity("ServerSync: request", function() {
 	return pendingRequests > 0;
 });
 
-function ensureInitEvent(changes, obj) {
-	function isRootInitChange(change) {
-		return change.type === "InitNew" && change.instance.type === obj.type &&
-			(change.instance.id === obj.id || this._translator.reverse(change.instance.type, change.instance.id) === obj.id);
-	}
-
-	var found = false;
-	var initSet = changes.filter(function (set) { return set.source === "init"; })[0];
-	if (!initSet || !initSet.changes.some(isRootInitChange, this)) {
-		changes.forEach(function (set) {
-			if (found === true) return;
-			set.changes.forEach(function (change, index) {
-				if (found === true) return;
-				else if (isRootInitChange.call(this, change)) {
-					set.changes.splice(index, 1);
-					if (!initSet) {
-						initSet = { changes: [change], source: "init" };
-						changes.splice(0, 0, initSet);
-					}
-					else {
-						initSet.changes.push(change);
-					}
-					found = true;
-				}
-			}, this);
-		}, this);
-	}
-}
-
 function serializeChanges(includeAllChanges, simulateInitRoot) {
 	var changes = this._changeLog.serialize(includeAllChanges ? this.canSend : this.canSave, this);
 
+	// temporary HACK (no, really): splice InitNew changes into init transaction
 	if (simulateInitRoot && simulateInitRoot.meta.isNew) {
-		ensureInitEvent.call(this, changes, { type: simulateInitRoot.meta.type.get_fullName(), id: simulateInitRoot.meta.id });
-	}
+		function isRootInitChange(change) {
+			return change.type === "InitNew" && change.instance.type === simulateInitRoot.meta.type.get_fullName() &&
+				(change.instance.id === simulateInitRoot.meta.id || this._translator.reverse(change.instance.type, change.instance.id) === simulateInitRoot.meta.id);
+		}
 
-	this._scopeQueriesNewObjects.forEach(function(obj) {
-		ensureInitEvent.call(this, changes, obj);
-	}, this);
+		var found = false;
+		var initSet = changes.filter(function(set) { return set.source === "init"; })[0];
+		if (!initSet || !initSet.changes.some(isRootInitChange, this)) {
+			changes.forEach(function(set) {
+				if (found === true) return;
+				set.changes.forEach(function(change, index) {
+					if (found === true) return;
+					else if (isRootInitChange.call(this, change)) {
+						set.changes.splice(index, 1);
+						if (!initSet) {
+							initSet = { changes: [change], source: "init" };
+							changes.splice(0, 0, initSet);
+						}
+						else {
+							initSet.changes.push(change);
+						}
+						found = true;
+					}
+				}, this);
+			}, this);
+		}
+	}
 
 	return changes;
 }
 
 // when ServerSync is made singleton, this data will be referenced via closure
-function ServerSync$addScopeQuery(name, query) {
-	this._scopeQueriesLookup[name] = query;
+function ServerSync$addScopeQuery(query) {
 	this._scopeQueries.push(query);
-}
-
-function ServerSync$removeFromScopeQuery(name, id, isNew) {
-	var query = this._scopeQueriesLookup[name];
-	if (isNew) {
-		this._scopeQueriesNewObjects.purge(function(obj) {
-			return obj.type === query.from && obj.id === id;
-		});
-	}
-	query.ids.purge(function (i) { return id === i; });
-}
-
-function ServerSync$addToScopeQuery(name, id, isNew) {
-	var query = this._scopeQueriesLookup[name];
-	if (isNew) {
-		this._scopeQueriesNewObjects.push({ type: query.from, id: id });
-	}
-	query.ids.push(id);
 }
 
 function ServerSync$storeInitChanges(changes) {
@@ -289,28 +258,6 @@ function ServerSync$retroactivelyFixChangeWhereIdChanged(changeInstance, obj) {
 	if (changeInstance.id === obj.meta.legacyId) {
 		changeInstance.id = obj.meta.id;
 		changeInstance.isNew = false;
-	}
-}
-
-function ServerSync$notifyCreated(obj) {
-	if (obj.meta.source === "server") {
-		var serverId = context.server._translator.forward(obj.meta.type.get_fullName(), obj.meta.id) || obj.meta.id;
-		if (serverId && serverId[0] === "?") {
-			var serverIdNumber = parseInt(serverId.substring(1), 10);
-			if (!isNaN(serverIdNumber) && (this._maxServerIdNumber === null || serverIdNumber > this._maxServerIdNumber)) {
-				this._maxServerIdNumber = serverIdNumber;
-			}
-		}
-	}
-}
-
-function ServerSync$notifyDeleted(obj) {
-	if (!(obj instanceof Entity)) {
-		throw new Error("Notified of deleted object that is not an entity.");
-	}
-
-	if (!Array.contains(this._objectsDeleted, obj)) {
-		this._objectsDeleted.push(obj);
 	}
 }
 
@@ -365,6 +312,18 @@ ServerSync.mixin({
 			}
 			return true;
 		}
+	},
+	notifyDeleted: function ServerSync$notifyDeleted(obj) {
+		if (!(obj instanceof Entity)) {
+			throw new Error("Notified of deleted object that is not an entity.");
+		}
+
+		if (!Array.contains(this._objectsDeleted, obj)) {
+			this._objectsDeleted.push(obj);
+			return true;
+		}
+
+		return false;
 	},
 	canSend: function (change) {
 
@@ -1277,24 +1236,11 @@ ServerSync.mixin({
 						var clientOldId = !(idChange.oldId in jstype.meta._pool) ?
 							this._translator.reverse(idChange.type, serverOldId) :
 							idChange.oldId;
-						if (clientOldId) {
-							var obj = jstype.meta.get(clientOldId);
-							this._scopeQueries.forEach(function(query) {
-								query.ids = query.ids.map(function(id) {
-									if (id === clientOldId) {
-										var fromJsType = ExoWeb.Model.Model.getJsType(query.from, true);
-										if (obj && fromJsType && obj instanceof fromJsType) {
-											this._scopeQueriesNewObjects.purge(function(o) {
-												return o.type === query.from && o.id === obj.meta.id;
-											});
-
-											return idChange.newId;
-										}
-									}
-									return id;
-								}, this);
+						this._scopeQueries.forEach(function (query) {
+							query.ids = query.ids.map(function (id) {
+								return (id === clientOldId) ? idChange.newId : id;
 							}, this);
-						}
+						}, this);
 					}
 				}, this);
 			}
@@ -1390,7 +1336,7 @@ ServerSync.mixin({
 			tryGetJsType(this.model, instance.type, null, false, function (type) {
 				tryGetEntity(this.model, this._translator, type, instance.id, null, LazyLoadEnum.None, this.ignoreChanges(before, function (obj) {
 					// Notify server object that the instance is deleted
-					ServerSync$notifyDeleted.call(this, obj);
+					this.notifyDeleted(obj);
 					// Simply a marker flag for debugging purposes
 					obj.meta.isDeleted = true;
 					// Unregister the object so that it can't be retrieved via get, known, or have rules execute against it
@@ -1443,17 +1389,7 @@ ServerSync.mixin({
 					// Update affected scope queries
 					this._scopeQueries.forEach(function (query) {
 						query.ids = query.ids.map(function (id) {
-							if (id === clientOldId) {
-								var fromJsType = ExoWeb.Model.Model.getJsType(query.from, true);
-								if (fromJsType && obj instanceof fromJsType) {
-									this._scopeQueriesNewObjects.purge(function (o) {
-										return o.type === query.from && o.id === obj.meta.id;
-									});
-
-									return idChange.newId;
-								}
-							}
-							return id;
+							return (id === clientOldId) ? idChange.newId : id;
 						}, this);
 					}, this);
 
@@ -1510,15 +1446,6 @@ ServerSync.mixin({
 		}
 	},
 	applyInitChange: function (change, before, after, callback, thisPtr) {
-		// Go ahead and record the server id number before attempting to apply, to account
-		// for the possibility that the object may not need to be created on the client.
-		if (change.instance.id && change.instance.id[0] === "?") {
-			var instanceIdNumber = parseInt(change.instance.id.substring(1), 10);
-			if (!isNaN(instanceIdNumber) && (this._maxServerIdNumber === null || instanceIdNumber > this._maxServerIdNumber)) {
-				this._maxServerIdNumber = instanceIdNumber;
-			}
-		}
-
 		tryGetJsType(this.model, change.instance.type, null, false, this.ignoreChanges(before, function (jstype) {
 
 			// Attempt to fetch the object in case it has already been created.
@@ -1543,8 +1470,6 @@ ServerSync.mixin({
 
 					// Remember the object's client-generated new id and the corresponding server-generated new id
 					this._translator.add(change.instance.type, newObj.meta.id, serverOldId);
-
-					newObj.meta.source = "server";
 
 					// Raise event after recording id mapping so that listeners can leverage it
 					this.model.notifyObjectRegistered(newObj);
@@ -1729,7 +1654,7 @@ ServerSync.mixin({
 										});
 									}
 								}, after), this);
-							}, after), this, true), this);
+							}, after)), this, true);
 						} else {
 							ListLazyLoader.allowModification(list, function () {
 								list.add(item);
@@ -1751,7 +1676,7 @@ ServerSync.mixin({
 									list.remove(itemObj);
 								});
 							}, after), this);
-						}, after), this);
+						}, after), this, true);
 					} else {
 						ListLazyLoader.allowModification(list, function () {
 							list.remove(item);
@@ -2053,20 +1978,6 @@ ServerSync.mixin({
 		}
 
 		return timezoneOffset;
-	},
-	get_ServerTimezoneStandardName: function ServerSync$get_ServerTimezoneStandardName() {
-		if (!this._serverInfo) {
-			return null;
-		}
-
-		return this._serverInfo.TimeZoneStandardName;
-	},
-	get_ServerTimezoneDaylightName: function ServerSync$get_ServerTimezoneDaylightName() {
-		if (!this._serverInfo) {
-			return null;
-		}
-
-		return this._serverInfo.TimeZoneDaylightName;
 	},
 	set_ServerInfo: function ServerSync$set_ServerTimezoneOffset(newInfo) {
 		//join the new server info with the information that you are adding.

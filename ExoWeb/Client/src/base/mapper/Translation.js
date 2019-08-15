@@ -1,17 +1,18 @@
 /// <reference path="..\model\Type.js" />
 
 // Gets or loads the entity with the specified typed string id
-Entity.fromIdString = function Entity$fromIdString(id) {
+Entity.fromIdString = function Entity$fromIdString(idString) {
 	// Typed identifiers take the form "type|id".
-	var ids = id.split("|");
+    var type = idString.substring(0, idString.indexOf("|"));
+    var id = idString.substring(type.length + 1);
 
 	// Use the left-hand portion of the id string as the object's type.
-	var jstype = ExoWeb.Model.Model.getJsType(ids[0]);
+	var jstype = ExoWeb.Model.Model.getJsType(type);
 
 	// Attempt to retrieve the object with the given id.
 	var obj = jstype.meta.get(
 		// Use the right-hand portion of the id string as the object's id.
-		ids[1],
+		id,
 
 		// Typed identifiers may or may not be the exact type of the instance.
 		// An id string may be constructed with only knowledge of the base type.
@@ -21,15 +22,10 @@ Entity.fromIdString = function Entity$fromIdString(id) {
 	// If the object does not exist, assume it is an existing object that is not
 	// yet in memory client-side, so create a ghosted instance.
 	if (!obj) {
-	    // Supress events so that the registered event doesn't fire before the lazy loader is attached.
-	    obj = new jstype(ids[1], null, true);
-
+		obj = new jstype(id);
 		if (jstype.meta.get_origin() === "server") {
 			ObjectLazyLoader.register(obj);
 		}
-
-	    // Raise event after attaching the lazy loader so that listeners know that the object has not been loaded
-		context.model.meta.notifyObjectRegistered(obj);
 	}
 
 	return obj;
@@ -96,15 +92,10 @@ function fromExoModel(val, translator, create, supplementalObjectsArray) {
 			}
 
 			if (!obj && create) {
-			    // Supress events so that the registered event doesn't fire before the lazy loader is attached.
-			    obj = new type(id, null, true);
-
+				obj = new type(id);
 				if (type.meta.get_origin() === "server") {
 					ObjectLazyLoader.register(obj);
 				}
-
-			    // Raise event after attaching the lazy loader so that listeners know that the object has not been loaded
-				context.model.meta.notifyObjectRegistered(obj);
 			}
 
 			return obj;

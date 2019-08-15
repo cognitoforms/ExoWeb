@@ -105,6 +105,7 @@
 		"LazyMarkupExtension",
 		"Adapter",
 		"OptionAdapter",
+		"ListValueAdapter",
 		"OptionGroupAdapter",
 		"MsAjax"
 	],

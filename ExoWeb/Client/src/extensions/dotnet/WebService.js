@@ -58,12 +58,11 @@ function sendRequest(options) {
 	});
 }
 
-ExoWeb.Mapper.setEventProvider(function (eventType, eventInstance, event, paths, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
+ExoWeb.Mapper.setEventProvider(function (eventType, eventInstance, event, paths, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests && eventType !== "GetType" && eventType !== "LogError" ? eventType : "Request",
 		data: {
-			maxKnownId: maxKnownId,
 			events: [{ type: eventType, include: paths, instance: eventInstance, event: event }],
 			queries: scopeQueries,
 			changes: changes
@@ -73,7 +72,7 @@ ExoWeb.Mapper.setEventProvider(function (eventType, eventInstance, event, paths,
 	});
 });
 
-ExoWeb.Mapper.setRoundtripProvider(function (root, paths, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
+ExoWeb.Mapper.setRoundtripProvider(function (root, paths, changes, scopeQueries, onSuccess, onFailure) {
 	var queries = [];
 
 	if (root) {
@@ -92,7 +91,6 @@ ExoWeb.Mapper.setRoundtripProvider(function (root, paths, changes, scopeQueries,
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "Roundtrip" : "Request",
 		data: {
-			maxKnownId: maxKnownId,
 			changes: changes,
 			queries: queries
 		},
@@ -101,12 +99,11 @@ ExoWeb.Mapper.setRoundtripProvider(function (root, paths, changes, scopeQueries,
 	});
 });
 
-ExoWeb.Mapper.setObjectProvider(function (type, ids, paths, inScope, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
+ExoWeb.Mapper.setObjectProvider(function (type, ids, paths, inScope, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "LoadObject" : "Request",
 		data: {
-			maxKnownId: maxKnownId,
 			queries:[{
 				from: type,
 				ids: ids,
@@ -121,12 +118,11 @@ ExoWeb.Mapper.setObjectProvider(function (type, ids, paths, inScope, changes, sc
 	});
 });
 
-ExoWeb.Mapper.setQueryProvider(function (queries, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
+ExoWeb.Mapper.setQueryProvider(function (queries, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "Query" : "Request",
 		data: {
-			maxKnownId: maxKnownId,
 			changes: changes,
 			queries: queries.concat(scopeQueries)
 		},
@@ -135,12 +131,11 @@ ExoWeb.Mapper.setQueryProvider(function (queries, changes, scopeQueries, maxKnow
 	});
 });
 
-ExoWeb.Mapper.setSaveProvider(function (root, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
+ExoWeb.Mapper.setSaveProvider(function (root, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "Save" : "Request",
 		data: {
-			maxKnownId: maxKnownId,
 			events:[{type: "Save", instance: root}],
 			queries: scopeQueries,
 			changes:changes
@@ -150,12 +145,11 @@ ExoWeb.Mapper.setSaveProvider(function (root, changes, scopeQueries, maxKnownId,
 	});
 });
 
-ExoWeb.Mapper.setListProvider(function (ownerType, ownerId, paths, changes, scopeQueries, maxKnownId, onSuccess, onFailure) {
+ExoWeb.Mapper.setListProvider(function (ownerType, ownerId, paths, changes, scopeQueries, onSuccess, onFailure) {
 	sendRequest({
 		type: "Post",
 		path: webServiceConfig.aliasRequests ? "LoadList" : "Request",
 		data: {
-			maxKnownId: maxKnownId,
 			queries: [{
 				from: ownerType,
 				ids: ownerId === null ? [] : [ownerId],

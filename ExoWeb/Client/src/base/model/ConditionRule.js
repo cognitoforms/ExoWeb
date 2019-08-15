@@ -82,7 +82,7 @@ ConditionRule.mixin({
 	},
 
 	// asserts the condition and adds or removes it from the model if necessary
-	execute: function ConditionRule$execute(obj) {
+	execute: function ConditionRule$execute(obj, args) {
 
 		var assert;
 
@@ -93,7 +93,7 @@ ConditionRule.mixin({
 			if (this.assert.constructor === String) {
 				this.assert = this.rootType.compileExpression(this.assert);
 			}
-			assert = this.assert.call(obj, obj);
+			assert = this.assert.call(obj, obj, args);
 		}
 
 		// otherwise, allow "this" to be the current rule to support subclasses that override assert

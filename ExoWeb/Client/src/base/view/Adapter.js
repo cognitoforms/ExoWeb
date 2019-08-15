@@ -3,7 +3,7 @@ function Adapter(target, propertyPath, format, options) {
 
 	this._target = target instanceof OptionAdapter ? target.get_rawValue() : target;
 	this._propertyPath = propertyPath;
-	this._ignoreTargetEvents = false;
+	this._settingRawValue = false;
 	this._readySignal = new ExoWeb.Signal("Adapter Ready");
 
 	if (options.allowedValuesTransform) {
@@ -188,32 +188,18 @@ Adapter.mixin({
 		}
 	},
 	_onTargetChanged: function Adapter$_onTargetChanged(sender, args) {
-		if (this._ignoreTargetEvents) {
-			return;
-		}
-
 		var _this = this;
 		var rawValue = this.get_rawValue();
 
-		// raise raw value changed event
-		LazyLoader.eval(rawValue, null, function () {
-			Observer.raisePropertyChanged(_this, "rawValue");
-		});
+		if (!this._settingRawValue) {
+			// raise raw value changed event
+			LazyLoader.eval(rawValue, null, function () {
+				Observer.raisePropertyChanged(_this, "rawValue");
+			});
+		}
 
 		// raise value changed event
 		this._loadForFormatAndRaiseChange(rawValue);
-
-		// Raise change on options representing the old and new value in the event that the property 
-		// has be changed by non-UI code or another UI component.  This will result in double raising 
-		// events if the value was set by changing selected on one of the OptionAdapter objects.
-		if (this._options) {
-			Array.forEach(this._options, function (o) {
-				// Always reload selected for options in an array since we don't know what the old values in the list were
-				if (args.newValue instanceof Array || o.get_rawValue() == args.newValue || o.get_rawValue() == args.oldValue) {
-					Observer.raisePropertyChanged(o, "selected");
-				}
-			});
-		}
 
 		// Re-attach validation handlers if needed
 		var properties = this._propertyChain.properties();
@@ -252,9 +238,23 @@ Adapter.mixin({
 			}
 		}
 
-		// Dispose of existing event handlers related to allowed value loading
-		disposeOptions.call(this);
-		signalOptionsReady.call(this);
+		if (!this._settingRawValue) {
+			// Raise change on options representing the old and new value in the event that the property 
+			// has be changed by non-UI code or another UI component.  This will result in double raising 
+			// events if the value was set by changing selected on one of the OptionAdapter objects.
+			if (this._options) {
+				Array.forEach(this._options, function (o) {
+					// Always reload selected for options in an array since we don't know what the old values in the list were
+					if (args.newValue instanceof Array || o.get_rawValue() == args.newValue || o.get_rawValue() == args.oldValue) {
+						Observer.raisePropertyChanged(o, "selected");
+					}
+				});
+			}
+
+			// Dispose of existing event handlers related to allowed value loading
+			disposeOptions.call(this);
+			signalOptionsReady.call(this);
+		}
 	},
 	_setValue: function Adapter$_setValue(value) {
 		var prop = this._propertyChain;
@@ -386,6 +386,17 @@ Adapter.mixin({
 
 		return true;
 	},
+	get_values: function Adapter$get_values() {
+		this._ensureObservable();
+		if (this.get_isList()) {
+			var _this = this;
+			var values = this._propertyChain.value(this._target);
+			return values.map(function (v, i) { return new ListValueAdapter(_this, i) });
+		}
+		else {
+			throw new Error("Adapter values are only available for list properties.");
+		}
+	},
 	get_rawValue: function Adapter$get_rawValue() {
 		this._ensureObservable();
 		return this._propertyChain.value(this._target);
@@ -398,7 +409,7 @@ Adapter.mixin({
 		}
 
 		if (changed) {
-			this._ignoreTargetEvents = true;
+			this._settingRawValue = true;
 
 			try {
 				target = this._target;
@@ -428,7 +439,7 @@ Adapter.mixin({
 				}
 			}
 			finally {
-				this._ignoreTargetEvents = false;
+				this._settingRawValue = false;
 			}
 		}
 	},
@@ -504,14 +515,6 @@ Adapter.mixin({
 		var displayValue;
 		var rawValue = this.get_rawValue();
 
-		if (ExoWeb.config.displayTimeInServerTimeZone === true && this._propertyChain.get_jstype() === Date && rawValue instanceof Date && hasTimeFormat.test(this._propertyChain.get_format().toString())) {
-			// Convert to the local time that results in the entered value in the server's time zone.
-			var serverOffset = context.server.get_ServerTimezoneOffset();
-			var localOffset = -(new Date().getTimezoneOffset() / 60);
-			var difference = localOffset - serverOffset;
-			rawValue = rawValue.addHours(-difference);
-		}
-
 		if (this._format) {
 			// Use a markup or property format if available
 			if (rawValue instanceof Array) {
@@ -550,19 +553,8 @@ Adapter.mixin({
 		}
 		else {
 			var initialValue = value;
-
 			value = this._format ? this._format.convertBack(value) : value;
-
-			if (ExoWeb.config.displayTimeInServerTimeZone === true && this._propertyChain.get_jstype() === Date && value instanceof Date && hasTimeFormat.test(this._propertyChain.get_format().toString())) {
-				// Convert to the local time that results in the entered value in the server's time zone.
-				var serverOffset = context.server.get_ServerTimezoneOffset();
-				var localOffset = -(new Date().getTimezoneOffset() / 60);
-				var difference = localOffset - serverOffset;
-				value = value.addHours(difference);
-			}
-
 			this._setValue(value);
-
 			if (ExoWeb.config.autoReformat && !(value instanceof ExoWeb.Model.FormatError)) {
 				var newValue = this.get_displayValue();
 				if (initialValue != newValue) {
@@ -600,7 +592,7 @@ Adapter.mixin({
 				}
 			}
 			this._allowedValues = this._allowedValuesMayBeNull = this._aspects =
-				this._format = this._formatSubscribers = this._helptext = this._jstype = this._ignoreTargetEvents = this._label =
+				this._format = this._formatSubscribers = this._helptext = this._jstype = this._settingRawValue = this._label =
 				this._observable = this._options = this._allowedValuesTransform = this._parentAdapter = this._propertyChain =
 				this._propertyPath = this._readySignal = this._target = null;
 		}
@@ -627,6 +619,24 @@ function conditionsChangedHandler(conditions, sender, args) {
 	}
 }
 
+function getFirstError(conditions, includeWarnings) {
+	var firstError = null;
+	for (var c = 0; c < conditions.length; c++) {
+		var condition = conditions[c];
+		if (condition.type instanceof ConditionType.Error || (includeWarnings === true && condition.type instanceof ConditionType.Warning)) {
+			if (firstError === null || /FormatError/i.test(condition.type.code)) {
+				firstError = condition;
+			}
+			// Ensures a format error takes precedence over a required field error
+			else if (!/FormatError/i.test(firstError.type.code) && /Required/i.test(condition.type.code))
+			{
+				firstError = condition;
+			}
+		}
+	}
+	return firstError;
+}
+
 Adapter.mixin({
 	get_conditions: function Adapter$get_conditions() {
 
@@ -650,27 +660,33 @@ Adapter.mixin({
 		}
 		return this._conditions;
 	},
-	get_firstError: function Adapter$get_firstError() {
+	get_firstErrorOrWarning: function Adapter$get_firstErrorOrWarning() {
+		// gets the first error or warning in a set of conditions, always returning format errors first followed by required field errors, and null if no errors exist
+		// initialize on first access
+		if (!this.hasOwnProperty("_firstErrorOrWarning")) {
 
-		// gets the first error in a set of conditions, always returning format errors first followed by required field errors, and null if no errors exist
-		var getFirstError = function (conditions) {
-			var firstError = null;
-			for (var c = 0; c < conditions.length; c++) {
-				var condition = conditions[c];
-				if (condition.type instanceof ConditionType.Error) {
-					if (firstError === null || /FormatError/i.test(condition.type.code)) {
-						firstError = condition;
-					}
-					// Ensures a format error takes precedence over a required field error
-					else if (!/FormatError/i.test(firstError.type.code) && /Required/i.test(condition.type.code))
-					{
-						firstError = condition;
-					}
+			var conditions = this.get_conditions();
+			this._firstErrorOrWarning = getFirstError(conditions, true);
+
+			// automatically update when condition changes occur
+			var adapter = this;
+			conditions.add_collectionChanged(function (sender, args) {
+
+				var err = getFirstError(conditions, true);
+
+				// store the first error and raise property change if it differs from the previous first error
+				if (adapter._firstErrorOrWarning !== err) {
+					adapter._firstErrorOrWarning = err;
+					Observer.raisePropertyChanged(adapter, "firstErrorOrWarning");
 				}
-			}
-			return firstError;
-		};
+			});
+		}
 
+		// return the first error
+		return this._firstErrorOrWarning;
+	},
+	get_firstError: function Adapter$get_firstError() {
+		// gets the first error in a set of conditions, always returning format errors first followed by required field errors, and null if no errors exist
 		// initialize on first access
 		if (!this.hasOwnProperty("_firstError")) {
 
@@ -759,28 +775,11 @@ function signalOptionsReady() {
 		return;
 	}
 
-	if (this._signalOptionsPending) {
-		return;
-	}
-
 	// Delete backing fields so that options can be recalculated (and loaded)
 	delete this._options;
 
-	this._signalOptionsPending = true;
-
-	// Don't signal that the adapter's options are ready until any batch work
-	// is complete in order to avoid accessing the property in the middle of
-	// a batch process such as response handling, i.e. object loading.
-	Batch.whenDone(function () {
-		if (this._disposed) {
-			return;
-		}
-
-		delete this._signalOptionsPending;
-
-		// Raise events in order to cause subscribers to fetch the new value
-		ExoWeb.Observer.raisePropertyChanged(this, "options");
-	}, this);
+	// Raise events in order to cause subscribers to fetch the new value
+	ExoWeb.Observer.raisePropertyChanged(this, "options");
 }
 
 // If the given rule is allowed values, signal options ready
@@ -811,7 +810,9 @@ function refreshOptionsFromAllowedValues(optionsSourceArray) {
 	var targetObj = this._propertyChain.lastTarget(this._target);
 	var allowedValues = allowedValuesRule.values(targetObj, !!this._allowedValuesMayBeNull);
 	if (allowedValues) {
+		optionsSourceArray.beginUpdate();
 		update(optionsSourceArray, allowedValues);
+		optionsSourceArray.endUpdate();
 	}
 	else {
 		signalOptionsReady.call(this);

@@ -119,7 +119,12 @@ Format.fromTemplate = function Format$fromTemplate(type, template, formatEval) {
 						if (token.format.constructor === String) {
 							token.format = getFormat(value.constructor, token.format);
 						}
-						value = token.format.convert(value);
+
+						if (value instanceof Array)
+							value = value.map(function (v) { return token.format.convert(v); }).join(", ");
+						else
+							value = token.format.convert(value);
+
 						if (this._formatEval)
 							value = this._formatEval(value);
 					}

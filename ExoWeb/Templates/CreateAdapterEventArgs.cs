@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using ExoModel;
 using ExoWeb.Templates.MicrosoftAjax;
 
@@ -10,7 +12,6 @@ namespace ExoWeb.Templates
 		Binding binding;
 		ModelInstance source;
 		ModelProperty property;
-		private IDictionary<string, string> modifiedParameters;
 
 		internal CreateAdapterEventArgs(Binding binding, ModelInstance source, ModelProperty property)
 		{
@@ -43,34 +44,21 @@ namespace ExoWeb.Templates
 			}
 		}
 
-		internal IDictionary<string, string> ModifiedParameters
-		{
-			get
-			{
-				return modifiedParameters;
-			}
-		}
-
 		public bool HasParameter(string key)
 		{
-			return (modifiedParameters ?? binding.Parameters).ContainsKey(key);
+			return binding.Parameters.ContainsKey(key);
 		}
 
 		public string GetParameterValue(string key)
 		{
 			string value;
-
-			(modifiedParameters ?? binding.Parameters).TryGetValue(key, out value);
-
+			binding.Parameters.TryGetValue(key, out value);
 			return value;
 		}
 
 		public void SetParameterValue(string key, string value)
 		{
-			if (modifiedParameters == null)
-				modifiedParameters = new Dictionary<string, string>(binding.Parameters);
-
-			modifiedParameters[key] = value;
+			binding.Parameters[key] = value;
 		}
 	}
 }

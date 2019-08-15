@@ -59,11 +59,6 @@ namespace ExoWeb
 		/// </summary>
 		public Dictionary<string, object> Config { get; private set; }
 
-		/// <summary>
-		/// The maximum known generated ID number.
-		/// </summary>
-		public int? MaxKnownId { get; private set; }
-
 		#endregion
 
 		#region Methods
@@ -226,11 +221,11 @@ namespace ExoWeb
 
 			// Apply changes and raise domain events
 			if (transaction != null)
-				response.Changes = transaction.Perform(() => RaiseEvents(response, transaction), MaxKnownId);
+				response.Changes = transaction.Perform(() => RaiseEvents(response, transaction));
 
 			// Otherwise, just raise events
 			else
-				response.Changes = (response.Changes ?? new ModelTransaction()).Record(() => RaiseEvents(response, null), MaxKnownId);
+				response.Changes = (response.Changes ?? new ModelTransaction()).Record(() => RaiseEvents(response, null));
 		}
 
 		/// <summary>
@@ -932,11 +927,8 @@ namespace ExoWeb
 					case "config":
 						Config = reader.ReadValue<Dictionary<string, object>>() ?? new Dictionary<string, object>(0);
 						break;
-					case "maxKnownId":
-						MaxKnownId = reader.ReadValue<int?>();
-						break;
 					default:
-						throw new ArgumentException(@"The specified property could not be deserialized.", property);
+						throw new ArgumentException("The specified property could not be deserialized.", property);
 				}
 			}
 

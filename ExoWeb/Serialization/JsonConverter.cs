@@ -198,8 +198,8 @@ namespace ExoWeb.Serialization
 
 			// Assume all enumerations of intrinsic types are supported and map to Array
 			var enumerableType = type.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
-			if (enumerableType != null && jsonIntrinsicTypes.ContainsKey(enumerableType.GetGenericArguments()[0]))
-				return "Array";
+			if (enumerableType != null && jsonIntrinsicTypes.TryGetValue(enumerableType.GetGenericArguments()[0], out jsonType))
+				return jsonType;
 
 			// For unknown values types, return the object type
 			if (JsonUtility.IsSerializable(type))

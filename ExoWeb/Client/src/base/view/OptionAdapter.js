@@ -55,7 +55,7 @@ OptionAdapter.prototype = {
 		return this._obj;
 	},
 	get_displayValue: function OptionAdapter$get_displayValue() {
-		var format = this._parent._format;
+		var format = this._parent.get_format();
 		return format ? format.convert(this._obj) : this._obj;
 	},
 	set_displayValue: function OptionAdapter$set_displayValue(value) {
@@ -97,11 +97,18 @@ OptionAdapter.prototype = {
 		var rawValue = this._parent.get_rawValue();
 
 		if (rawValue instanceof Array) {
-			if (value && !Array.contains(rawValue, this._obj)) {
-				rawValue.add(this._obj);
-			}
-			else if (!value && Array.contains(rawValue, this._obj)) {
-				rawValue.remove(this._obj);
+			this._parent._settingRawValue = true;
+
+			try {
+				if (value && !Array.contains(rawValue, this._obj)) {
+					rawValue.add(this._obj);
+				}
+				else if (!value && Array.contains(rawValue, this._obj)) {
+					rawValue.remove(this._obj);
+				}
+
+			} finally {
+				this._parent._settingRawValue = false;
 			}
 		}
 		else {

@@ -48,8 +48,13 @@ Toggle.mixin({
 
 			showingArgs.waitForAll(function () {
 				this._pendingEventArgs = null;
-				
-				jQuery(this._element).show();
+
+				if (this._effect == "slide" && this._visible === false)
+					jQuery(this._element).slideDown();
+				else if (this._effect == "fade" && this._visible === false)
+					jQuery(this._element).fadeIn();
+				else
+					jQuery(this._element).show();
 
 				this.set_state("on");
 
@@ -77,7 +82,12 @@ Toggle.mixin({
 			hidingArgs.waitForAll(function () {
 				this._pendingEventArgs = null;
 
-				jQuery(this._element).hide();
+				if (this._effect == "slide" && this._visible === true)
+					jQuery(this._element).slideUp();
+				else if (this._effect == "fade" && this._visible === true)
+					jQuery(this._element).fadeOut();
+				else
+					jQuery(this._element).hide();
 
 				this.set_state("off");
 
@@ -433,6 +443,13 @@ Toggle.mixin({
 	},
 	set_groupName: function Toggle$set_groupName(value) {
 		this._groupName = value;
+	},
+
+	get_effect: function Toggle$get_effect() {
+		return this._effect;
+	},
+	set_effect: function Toggle$set_effect(value) {
+		this._effect = value;
 	},
 
 	get_state: function Toggle$get_state() {

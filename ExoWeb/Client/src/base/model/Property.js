@@ -23,10 +23,10 @@ function Property(containingType, name, jstype, label, helptext, format, isList,
 	this._index = index;
 	this._defaultValue =
 		defaultValue !== undefined ? defaultValue :
-		isList ? [] :
-		jstype === Boolean ? false :
-		jstype === Number ? 0 :
-		null;
+			isList ? [] :
+				jstype === Boolean ? false :
+					jstype === Number ? 0 :
+						null;
 	this._rules = [];
 
 	if (containingType.get_originForNewProperties()) {
@@ -86,13 +86,13 @@ function Property$_init(obj, val, force) {
 			var changes = args.get_changes();
 
 			// Don't raise the change event unless there is actually a change to the collection
-			if (changes && changes.some(function(change) { return (change.newItems && change.newItems.length > 0) || (change.oldItems && change.oldItems.length > 0); })) {
+			if (changes && changes.some(function (change) { return (change.newItems && change.newItems.length > 0) || (change.oldItems && change.oldItems.length > 0); })) {
 				// NOTE: property change should be broadcast before rules are run so that if 
 				// any rule causes a roundtrip to the server these changes will be available
 				_this._containingType.model.notifyListChanged(target, _this, changes);
 
 				// NOTE: oldValue is not currently implemented for lists
-				_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: changes, collectionChanged: true}]);
+				_this._raiseEvent("changed", [target, { property: _this, newValue: val, oldValue: undefined, changes: changes, collectionChanged: true }]);
 
 				Observer.raisePropertyChanged(target, _this._name);
 			}
@@ -117,8 +117,10 @@ function Property$_ensureInited(obj) {
 	// and initialize the property if necessary
 	if (!obj.hasOwnProperty(this._fieldName)) {
 
-		// Initialize to the defined default value
-		Property$_init.call(this, obj, this.get_defaultValue());
+		// Do not initialize calculated properties. Calculated properties should be initialized using a property get rule.  
+		if (!this.get_isCalculated()) {
+			Property$_init.call(this, obj, this.get_defaultValue());
+		}
 
 		// Mark the property as pending initialization
 		obj.meta.pendingInit(this, true);
@@ -183,7 +185,10 @@ function Property$_setter(obj, val, skipTypeCheck, additionalArgs) {
 
 			obj.meta.pendingInit(this, false);
 
-			this.raiseChanged(obj, val, old, additionalArgs);
+			// Do not raise change if the property has not been initialized. 
+			if (old !== undefined) {
+				this.raiseChanged(obj, val, old, additionalArgs);
+			}
 		}
 	}
 }
@@ -236,7 +241,7 @@ Property.mixin({
 
 	rule: function (type) {
 		if (type == null) throw new ArgumentNullError("type");
-		if (typeof(type) !== "function") throw new ArgumentTypeError("type", "function", type);
+		if (typeof (type) !== "function") throw new ArgumentTypeError("type", "function", type);
 
 		return first(this._rules, function (rule) {
 			if (rule instanceof type) {
@@ -300,9 +305,9 @@ Property.mixin({
 		// clone array and date defaults since they are mutable javascript types
 		return this._defaultValue instanceof Array ? this._defaultValue.slice() :
 			this._defaultValue instanceof Date ? new Date(+this._defaultValue) :
-			this._defaultValue instanceof TimeSpan ? new TimeSpan(this._defaultValue.totalMilliseconds) :
-			this._defaultValue instanceof Function ? this._defaultValue() :
-			this._defaultValue;
+				this._defaultValue instanceof TimeSpan ? new TimeSpan(this._defaultValue.totalMilliseconds) :
+					this._defaultValue instanceof Function ? this._defaultValue() :
+						this._defaultValue;
 	},
 
 	get_origin: function Property$get_origin() {
@@ -346,7 +351,7 @@ Property.mixin({
 	get_label: function Property$get_label() {
 		return this._label;
 	},
-	
+
 	get_helptext: function Property$get_helptext() {
 		return this._helptext;
 	},
@@ -385,28 +390,28 @@ Property.mixin({
 
 			return false;
 		}
-		
+
 		//Data types
 		else {
 			var valObjectType = val.constructor;
 
 			//"Normalize" data type in case it came from another frame as well as ensure that the types are the same
 			switch (type(val)) {
-			case "string":
-				valObjectType = String;
-				break;
-			case "number":
-				valObjectType = Number;
-				break;
-			case "boolean":
-				valObjectType = Boolean;
-				break;
-			case "date":
-				valObjectType = Date;
-				break;
-			case "array":
-				valObjectType = Array;
-				break;
+				case "string":
+					valObjectType = String;
+					break;
+				case "number":
+					valObjectType = Number;
+					break;
+				case "boolean":
+					valObjectType = Boolean;
+					break;
+				case "date":
+					valObjectType = Date;
+					break;
+				case "array":
+					valObjectType = Array;
+					break;
 			}
 
 			// value property type check
@@ -414,16 +419,15 @@ Property.mixin({
 
 				// entity array type check
 				(valObjectType === Array && this.get_isList() && val.every(function (child) {
-				if (child.constructor && child.constructor.meta) {
-					for (var childType = child.constructor.meta; childType; childType = childType.baseType) {
-						if (childType._jstype === this._jstype) {
-							return true;
+					if (child.constructor && child.constructor.meta) {
+						for (var childType = child.constructor.meta; childType; childType = childType.baseType) {
+							if (childType._jstype === this._jstype) {
+								return true;
+							}
 						}
 					}
-
-					return false;
-				}
-			}, this));
+					return child.constructor === this._jstype;
+				}, this));
 		}
 	},
 
@@ -534,8 +538,8 @@ Property.mixin({
 		this._label = label;
 		return this;
 	},
-	
-	helptext: function(helptext) {
+
+	helptext: function (helptext) {
 		this._helptext = helptext;
 		return this;
 	},
@@ -547,7 +551,7 @@ Property.mixin({
 		delete options.rootType;
 
 		new CalculatedPropertyRule(definedType, options);
-		
+
 		return this;
 	},
 	required: function (error) {
@@ -561,10 +565,10 @@ Property.mixin({
 		return this;
 	},
 	optionValues: function (source, error) {
-	    var options = preparePropertyRuleOptions(this, { source: source, onInit: false, onInitNew: false, onInitExisting: false }, error);
-	    options.ignoreValidation = true;
-	    new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
-	    return this;
+		var options = preparePropertyRuleOptions(this, { source: source, onInit: false, onInitNew: false, onInitExisting: false }, error);
+		options.ignoreValidation = true;
+		new ExoWeb.Model.Rule.allowedValues(this._containingType, options);
+		return this;
 	},
 	compare: function (operator, source, error) {
 		var options = preparePropertyRuleOptions(this, { compareOperator: operator, compareSource: source }, error);

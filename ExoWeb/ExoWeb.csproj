@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ExoWeb</RootNamespace>
     <AssemblyName>ExoWeb</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <SccProjectName>SAK</SccProjectName>
     <SccLocalPath>SAK</SccLocalPath>
     <SccAuxPath>SAK</SccAuxPath>
@@ -45,8 +45,8 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Dependencies\Jurassic.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>Dependencies\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\..\..\packages\Newtonsoft.Json.11.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -82,6 +82,7 @@
     <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
     <Content Include="Client\src\base\model\ValidationRule.js" />
+    <Content Include="Client\src\base\view\ListValueAdapter.js" />
     <Content Include="Client\tools\javascript\detectSurface.js" />
     <Content Include="Client\tools\javascript\fakeDom.js" />
     <Content Include="Client\tools\javascript\ScriptBuilder.js" />
@@ -372,7 +373,6 @@
     <None Include="Client\tools\powershell\lib\Common.ps1" />
     <None Include="Client\tools\powershell\lib\ScriptBuilder.ps1" />
     <None Include="Client\tools\powershell\lib\SourceControl.ps1" />
-    <None Include="Client\tools\powershell\lib\TfsSourceControl.ps1" />
     <None Include="Client\tools\TestAPI.bat" />
     <None Include="NuGet\ExoWeb.Scripts.nuspec" />
     <None Include="NuGet\ExoWeb.nuspec" />
@@ -380,6 +380,7 @@
     <None Include="NuGet\Web.config.transform">
       <SubType>Designer</SubType>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Client\ref\syntaxhighlighter\scripts\" />

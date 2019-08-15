@@ -21,6 +21,9 @@ function ValidationRule(rootType, options) {
     else
         options.message = options.message || Resource.get("validation");
 
+	var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
+	options.message = options.message.replace('{property}', prop.get_label().replace(/\"/g, "\\\""));
+
 	// predicate-based rule
 	if (options.isError || options.fn) {
 		Object.defineProperty(this, "isError", { value: options.isError || options.fn, writable: true });

@@ -8,7 +8,7 @@ var saveProviderFn = function saveProviderFn() {
 function saveProvider(root, changes, onSuccess, onFailure, thisPtr) {
 	"use strict";
 
-	var scopeQueries, maxKnownId, batch;
+	var scopeQueries, batch;
 
 	// ensure correct value of "scopeQueries" argument
 	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -29,10 +29,7 @@ function saveProvider(root, changes, onSuccess, onFailure, thisPtr) {
 	}
 
 	batch = Batch.suspendCurrent("saveProvider");
-
-	maxKnownId = context.server._maxServerIdNumber;
-
-	saveProviderFn(root, changes, scopeQueries, maxKnownId,
+	saveProviderFn(root, changes, scopeQueries,
 		function () {
 			Batch.resume(batch);
 			if (onSuccess) {

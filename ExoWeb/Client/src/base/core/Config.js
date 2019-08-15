@@ -37,14 +37,6 @@ var config = {
 	// Specifies whether changes should be collected in logical batches.
 	enableBatchChanges: true,
 
-	// Use this setting to specify that Date & Time objects should be displayed
-	// according to the server time zone, not the client time zone. If this is
-	// enabled and a user is in a different time zone from the server, when
-	// they modify a time field the value will be interpreted as server time
-	// and converted to the equivelent time in their local time zone. Note that
-	// this is a natural default choice when server rendering is in use.
-	displayTimeInServerTimeZone: false,
-
 	// Specifies whether "runaway" rules should be detected, e.g. the case where a
 	// rule causes itself to be re-entered continually (wheter directly or indirectly).
 	detectRunawayRules: false,

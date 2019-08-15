@@ -14,6 +14,7 @@ using ExoWeb.Templates.JavaScript;
 using System.Web;
 using ExoWeb.Templates.MicrosoftAjax;
 using ExoWeb.Serialization;
+using System.Text;
 
 namespace ExoWeb
 {
@@ -21,6 +22,7 @@ namespace ExoWeb
 	{
 		#region Fields
 
+		static readonly Random random = new Random();
 		static readonly Regex dateRegex = new Regex("\"\\\\/Date\\((?<ticks>-?[0-9]+)(?:[a-zA-Z]|(?:\\+|-)[0-9]{4})?\\)\\\\/\"", RegexOptions.Compiled);
 		static string cacheHash;
 		static long minJsonTicks = new DateTime(0x7b2, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
@@ -145,16 +147,10 @@ namespace ExoWeb
 				BeginRequest(request, new ServiceRequestEventArgs(request, null));
 		}
 
-		internal static CreateAdapterEventArgs OnBeforeCreateAdapter(Binding binding, ModelInstance source, ModelProperty property)
+		internal static void OnBeforeCreateAdapter(Binding binding, ModelInstance source, ModelProperty property)
 		{
 			if (BeforeCreateAdapter != null)
-			{
-				var args = new CreateAdapterEventArgs(binding, source, property);
-				BeforeCreateAdapter(binding, args);
-				return args;
-			}
-
-			return null;
+				BeforeCreateAdapter(binding, new CreateAdapterEventArgs(binding, source, property));
 		}
 
 		/// <summary>
@@ -426,30 +422,11 @@ namespace ExoWeb
 					{
 						if (p.Name.Equals(root.Key, StringComparison.InvariantCultureIgnoreCase))
 						{
-							Type enumerableInterfaceType = null;
-
+							// List parameter
 							if (p.ParameterType.IsArray)
-								enumerableInterfaceType = p.ParameterType.GetInterface("IEnumerable`1");
-							else if (p.ParameterType.IsGenericType && p.ParameterType.GetGenericTypeDefinition() == typeof (IEnumerable<>))
-								enumerableInterfaceType = p.ParameterType;
+								parameters[p.Position] = root.Value.Roots.Select(r => r.Instance).ToArray();
 
-							if (enumerableInterfaceType != null)
-							{
-								var itemType = enumerableInterfaceType.GetGenericArguments()[0];
-
-								var list = root.Value.Roots.Select(r => r.Instance);
-
-								//var selectMethod = typeof (Enumerable).GetMethod("Select", BindingFlags.Public | BindingFlags.Static, null, new[] {typeof (ModelInstance), typeof (Func<,>).MakeGenericType(typeof (ModelInstance), itemType)}, null);
-
-								var castMethod = typeof (Enumerable).GetMethod("Cast", BindingFlags.Public | BindingFlags.Static).MakeGenericMethod(itemType);
-								var toArrayMethod = typeof (Enumerable).GetMethod("ToArray", BindingFlags.Public | BindingFlags.Static).MakeGenericMethod(itemType);
-
-								//selectMethod.Invoke(null, new object[] { modelInstanceList, (object)(delegate (ModelInstance i) { return i.Instance; }))
-
-								parameters[p.Position] = toArrayMethod.Invoke(null, new[] {castMethod.Invoke(null, new object[] {list})});
-							}
-
-								// Instance parameter
+							// Instance parameter
 							else
 								parameters[p.Position] = root.Value.Roots.Select(r => r.Instance).FirstOrDefault();
 
@@ -502,7 +479,7 @@ namespace ExoWeb
 		/// <returns></returns>
 		public static object LoadTemplates(params string[] paths)
 		{
-			Templates.Page.Current.Templates.AddRange(paths.SelectMany(p => Templates.Page.Current.LoadTemplates(System.Web.HttpContext.Current.Server.MapPath(p))));
+			Templates.Page.Current.Templates.AddRange(paths.SelectMany(p => Templates.Page.Current.LoadTemplates(System.Web.HttpContext.Current.Server.MapPath(p))).Reverse());
 			var urls = paths.Select(p => p.StartsWith("~") ? System.Web.VirtualPathUtility.ToAbsolute(p) : p).Select(p => p + (p.Contains("?") ? "&" : "?") + "cachehash=" + ExoWeb.CacheHash);
 			return GetHtmlString("<script type=\"text/javascript\">$exoweb(function () {" + urls.Aggregate("", (js, url) => js + "ExoWeb.UI.Template.load(\"" + url + "\"); ") + "});</script>");
 		}
@@ -546,6 +523,10 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="id"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
 		public static ServiceRequest.Query Query(string type, string id, params string[] paths)
 		{
 			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, true, false, paths);
@@ -554,6 +535,10 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="id"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
 		public static ServiceRequest.Query Query<T>(string id, params string[] paths)
 		{
 			return Query(typeof(T), id, paths);
@@ -562,6 +547,11 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="scope"></param>
+		/// <param name="id"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
 		public static ServiceRequest.Query Query(string type, string id, ViewScope scope, params string[] paths)
 		{
 			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, scope == ViewScope.InScope, false, paths);
@@ -570,6 +560,11 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="id"></param>
+		/// <param name="scope"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
 		public static ServiceRequest.Query Query<T>(string id, ViewScope scope, params string[] paths)
 		{
 			return Query(typeof(T), id, scope, paths);
@@ -578,6 +573,10 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
+		/// <param name="type"></param>
+		/// <param name="id"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
 		public static ServiceRequest.Query Query(Type type, string id, params string[] paths)
 		{
 			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, true, false, paths);
@@ -586,6 +585,11 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="id"></param>
+		/// <param name="scope"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
 		public static ServiceRequest.Query Query(Type type, string id, ViewScope scope, params string[] paths)
 		{
 			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), new string[] { id }, scope == ViewScope.InScope, false, paths);
@@ -594,22 +598,9 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
-		public static ServiceRequest.Query Query<T>(string[] ids, params string[] paths)
-		{
-			return Query(typeof(T), ids, ViewScope.InScope, paths);
-		}
-
-		/// <summary>
-		/// Creates a query to load an instance and a set of options paths.
-		/// </summary>
-		public static ServiceRequest.Query Query(Type type, string[] ids, ViewScope scope, params string[] paths)
-		{
-			return new ServiceRequest.Query(ModelContext.Current.GetModelType(type), ids, scope == ViewScope.InScope, true, paths);
-		}
-
-		/// <summary>
-		/// Creates a query to load an instance and a set of options paths.
-		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
 		public static ServiceRequest.Query Query(object instance, params string[] paths)
 		{
 			return Query(instance, ViewScope.InScope, paths);
@@ -618,6 +609,10 @@ namespace ExoWeb
 		/// <summary>
 		/// Creates a query to load an instance and a set of options paths.
 		/// </summary>
+		/// <param name="instance"></param>
+		/// <param name="scope"></param>
+		/// <param name="paths"></param>
+		/// <returns></returns>
 		public static ServiceRequest.Query Query(object instance, ViewScope scope, params string[] paths)
 		{
 			ModelType type;
@@ -786,6 +781,38 @@ namespace ExoWeb
 		static string GetTypes(params ModelType[] types)
 		{
 			return GetTypes(types.Select(t => t.Name).ToArray());
+		}
+
+		public static int RandomInteger(uint min, uint max)
+		{
+			if (min >= max)
+				throw new ArgumentException("Minimum argument must be less than maximum argument.");
+			return random.Next((int)min, (int)max);
+		}
+
+		public static string RandomText(int len, bool includeDigits)
+		{
+			var random = new Random();
+			var result = new StringBuilder();
+			for (var i = 0; i < len; i++)
+			{
+				var min = (uint)0;
+				var max = includeDigits ? (uint)35 : 25;
+				var rand = RandomInteger(min, max);
+				int charCode;
+				if (rand <= 25)
+				{
+					// Alpha: add 97 for 'a'
+					charCode = rand + 97;
+				}
+				else
+				{
+					// Num: start at 0 and add 48 for 0
+					charCode = (rand - 26) + 48;
+				}
+				result.Append((char)charCode);
+			}
+			return result.ToString();
 		}
 
 		#endregion

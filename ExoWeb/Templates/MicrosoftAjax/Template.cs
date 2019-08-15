@@ -48,7 +48,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 			if (templates.TryGetValue(path.ToLower(), out t))
 				return t;
 
-			t = Block.Parse(Path.GetFileName(path), File.ReadAllText(path)).OfType<Template>().Reverse().ToArray();
+			t = Block.Parse(Path.GetFileName(path), File.ReadAllText(path)).OfType<Template>().ToArray();
 			templates[path.ToLower()] = t;
 			string directory = Path.GetDirectoryName(path).ToLower();
 			if (!watchers.ContainsKey(directory))

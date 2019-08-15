@@ -8,7 +8,7 @@ var queryProviderFn = function queryProviderFn() {
 function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
 	"use strict";
 
-	var scopeQueries, maxKnownId, batch;
+	var scopeQueries, batch;
 
 	// ensure correct value of "scopeQueries" argument
 	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -30,9 +30,7 @@ function queryProvider(queries, changes, onSuccess, onFailure, thisPtr) {
 
 	batch = Batch.suspendCurrent("queryProvider");
 
-	maxKnownId = context.server._maxServerIdNumber;
-
-	queryProviderFn(queries, changes, scopeQueries, maxKnownId,
+	queryProviderFn(queries, changes, scopeQueries,
 		function () {
 			Batch.resume(batch);
 			if (onSuccess) {

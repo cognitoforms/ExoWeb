@@ -8,7 +8,7 @@ var roundtripProviderFn = function roundtripProviderFn() {
 function roundtripProvider(root, paths, changes, onSuccess, onFailure, thisPtr) {
 	"use strict";
 
-	var scopeQueries, maxKnownId, batch;
+	var scopeQueries, batch;
 	
 	// ensure correct value of "scopeQueries" argument
 	if (onSuccess !== undefined && onSuccess !== null && !(onSuccess instanceof Function)) {
@@ -30,9 +30,7 @@ function roundtripProvider(root, paths, changes, onSuccess, onFailure, thisPtr) 
 
 	batch = Batch.suspendCurrent("roundtripProvider");
 
-	maxKnownId = context.server._maxServerIdNumber;
-
-	roundtripProviderFn(root, paths, changes, scopeQueries, maxKnownId,
+	roundtripProviderFn(root, paths, changes, scopeQueries,
 		function () {
 			Batch.resume(batch);
 			if (onSuccess) {
