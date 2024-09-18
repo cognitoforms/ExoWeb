@@ -1,0 +1,41 @@
+---
+title: DataView control
+description: A control use to render a template for one or more data objects.
+---
+
+In simple terms, a `DataView` is used to render a template for one or more data objects.
+
+Example:
+
+```html
+<ul class="sys-template" sys:attach="dataview" dataview:data="{{ items }}">
+	<li>{{ $dataItem.label }}</li>
+</ul>
+```
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside>
+The `sys-template` class must be used for two reasons: 1) to indicate that the element is a _template_
+element and its child nodes should not be activated, and 2) to apply CSS styling to hide the element
+until it is activated and rendered.
+</Aside>
+
+The `DataView` object is attached to the target element, and its child nodes are compiled to produce
+a template function and are removed from the DOM. The template is then rendered for each data item,
+appending the resulting DOM elements to the dataview's root element.
+
+## Attributes
+
+- `data`: The data that will be used to render the dataview. This can be a single object, or an
+	array of objects.
+- `useOptimalUpdates`: _(optional)_ - If enabled, minimal DOM updates are performed when items are
+	added or removed.
+
+## Events
+
+- `command`
+- `rendering`
+- `rendered`
+- `itemRendering`
+- `itemRendered`

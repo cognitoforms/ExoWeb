@@ -1,0 +1,42 @@
+---
+title: sys:if attribute
+description: An attribute that can be used to conditionally render an element in a template.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution">
+The `sys:if` syntax only works when used within a _template context_.
+
+You cannot use reactive `{binding}` extensions with `sys:if` - only literal `{{ }}` expressions.
+</Aside>
+
+The `sys:if` syntax can be used to conditionally render a particular element in a template.
+
+If the expression in the attribute represents a _truthy_ value, then the element will be present in
+the DOM, otherwise it will not be present in the DOM.
+
+Example:
+
+```html
+<div sys:if="{{ $context.data.showContent }}">
+	Some content
+</div>
+```
+
+---
+
+As with everything in MS Ajax templates, the template markup is initially present in the DOM. When
+the DOM is activated the template is compiled and the original template elements are removed from
+the DOM. The compiled template function is then used to generate new data-driven DOM content, and
+the `sys:if` translates directly into a JavaScript `if` statement in the template function, i.e.:
+
+```js
+if ( $context.data.showContent ) {
+	// Create and append <div> to the DOM
+	// Set div content to "Some content"
+}
+```
+
+For this reason, the `sys:if` expression can't be a dynamic binding. There is nothing for the
+binding to target. Either the template produced a DOM element or it did not.

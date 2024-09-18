@@ -1,0 +1,9 @@
+---
+title: Literal expressions
+description: Expressions withing double curly braces are treated as literal JavaScript.
+---
+
+When a `sys:*` attribute or control (`x:*`) attribute contains a value wrapped in two opening and closing
+curly braces, ex: `{{ true }}`, then that value is treated as a literal JavaScript expressions.
+It can reference globals, such as the `window` object, as well as special variables that are available
+in certain contexts, typically prefixed with `$`.
