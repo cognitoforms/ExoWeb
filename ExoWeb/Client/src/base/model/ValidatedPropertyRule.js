@@ -8,7 +8,7 @@ function ValidatedPropertyRule(rootType, options) {
 	///			name:				the optional unique name of the type of validation rule
 	///			conditionType:		the optional condition type to use, which will be automatically created if not specified
 	///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
-	///			message:			the message to show the user when the validation fails
+	///			message:			the message to show the user when the validation fails	
 	///			properties:			an array of property paths the validation condition should be attached to when asserted, in addition to the target property
 	///			onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
 	///			onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
@@ -49,9 +49,41 @@ function ValidatedPropertyRule(rootType, options) {
 	// create a property specified condition type if not passed in, defaulting to Error if a condition category was not specified
 	options.conditionType = options.conditionType || Rule.ensureConditionType(options.name, this.property, options.category || ConditionType.Error);
 
-	// replace the property label token in the validation message if present
-	if (options.message && typeof (options.message) !== "function") {
-	    options.message = options.message.replace('{property}', prop.get_label());
+	// Replace the property label token in the validation message if present
+	if (options.message) {
+		var rule = this;
+		var message = options.message;
+		var hasTokens = Format.hasTokens(prop.get_label());
+		
+		if (typeof (message) === "function") {
+			// Create a function to apply the format to the property label when generating the message
+			options.message = function (obj) {
+				var messageTemplate = message.apply(this, [obj]);
+				return messageTemplate.replace("{property}", hasTokens ? rule.getPropertyLabelFormat().convert(this) : prop.get_label());
+			};
+		}
+		else if (typeof (message) === "string" && hasTokens) {
+			// Create a function to apply the format to the property label when generating the message
+			options.message = function (obj) {
+				return message.replace("{property}", rule.getPropertyLabelFormat().convert(this));
+			};
+		}
+		else {
+			var label = prop.get_label();
+			// Escaped unescaped quotes
+			if (label.indexOf("\"") >= 0) {
+				var text = ""; var prev = "";
+				label.split("").forEach(function (c) {
+					if (c === "\"" && prev !== "\\")
+						text += "\\" + c;
+					else
+						text += c;
+					prev = c;
+				});
+				label = text;
+			}
+			options.message = message.replace('{property}', label);
+		}
 	}
 
 	// call the base rule constructor
@@ -77,8 +109,68 @@ ValidatedPropertyRule.mixin({
 
 		// register the rule with the target property
 		registerPropertyRule(this.property, this);
-	}
+	},
 
+	getPropertyLabelFormat: function () {
+		// convert the property label into a model format
+		if (!this._propertyLabelFormat)
+			this._propertyLabelFormat = ExoWeb.Model.getFormat(this.rootType.get_jstype(), this.property.get_label());
+		return this._propertyLabelFormat;
+	},
+
+	getPropertyLabel: function (obj) {
+		if (Format.hasTokens(this.property.get_label())) {
+			return this.getPropertyLabelFormat().convert(obj);
+		} else {
+			return this.property.get_label();
+		}
+	},
+
+	preRegister: function (callback, thisPtr) {
+		// Exit if the rule is no tin a valid state
+		if (!this.rootType) {
+			return false;
+		}
+
+		// Exit if the property label does not contain tokens
+		if (!Format.hasTokens(this.property.get_label())) {
+			return false;
+		}
+
+		var registerFormatPaths = function (formatPaths) {
+			if (formatPaths.length <= 0)
+				return;
+
+			if (!this._options)
+				this._options = {};
+
+			if (!this._options.onChangeOf)
+				this._options.onChangeOf = [];
+
+			formatPaths.forEach(function (p) {
+				this.rootType.getPaths(p).forEach(function(prop) {
+					if (this._options.onChangeOf.indexOf(prop) < 0) {
+						if (typeof this._options.onChangeOf === "string")
+							this._options.onChangeOf = [this._options.onChangeOf];
+
+						this._options.onChangeOf.push(prop);
+					}
+				}, this);
+			}, this);
+		};
+
+		// Ensure tokens included in the format trigger rule execution
+		if (callback && callback instanceof Function) {
+			this.getPropertyLabelFormat().getPaths(function (formatPaths) {
+				registerFormatPaths.call(this, formatPaths);
+				callback.call(thisPtr || this);
+			}, this);
+		} else {
+			var formatPaths = this.getPropertyLabelFormat().getPaths();
+			registerFormatPaths.call(this, formatPaths);
+			return true;
+		}
+	}
 });
 
 // Expose the rule publicly

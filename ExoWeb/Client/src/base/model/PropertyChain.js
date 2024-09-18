@@ -12,20 +12,31 @@ function PropertyChain(rootType, properties, filters) {
 	function onStepChanged(priorProp, sender, args) {
 		// scan all known objects of this type and raise event for any instance connected
 		// to the one that sent the event.
-		this._rootType.known().forEach(function(known) {
-			if (this.connects(known, sender, priorProp)) {
-				// Copy the original arguments so that we don't affect other code
-				var newArgs = Object.copy(args);
+		if (priorProp != undefined) {
+			this._rootType.known().forEach(function(known) {
+				if (this.connects(known, sender, priorProp)) {
+					// Copy the original arguments so that we don't affect other code
+					var newArgs = Object.copy(args);
 
 				// Reset property to be the chain, but store the original property as "triggeredBy"
 				newArgs.originalSender = sender;
 				newArgs.triggeredBy = newArgs.property;
 				newArgs.property = this;
 
-				// Call the handler, passing through the arguments
-				this._raiseEvent("changed", [known, newArgs]);
-			}
-		}, this);
+					// Call the handler, passing through the arguments
+					this._raiseEvent("changed", [known, newArgs]);
+				}
+			}, this);
+		}
+		else {
+			var newArgs = Object.copy(args);
+			// Reset property to be the chain, but store the original property as "triggeredBy"
+			newArgs.originalSender = sender;
+			newArgs.triggeredBy = newArgs.property;
+			newArgs.property = this;
+
+			this._raiseEvent("changed", [sender, newArgs]);
+		}
 	}
 
 	this._updatePropertyChangeSubscriptions = function() {

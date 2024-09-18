@@ -78,6 +78,7 @@ function Rule(rootType, options) {
 	Object.defineProperty(this, "invocationTypes", { value: 0, writable: true });
 	Object.defineProperty(this, "predicates", { value: [], writable: true });
 	Object.defineProperty(this, "returnValues", { value: [], writable: true });
+	Object.defineProperty(this, "isRegistered", { value: false, writable: true });
 
 	// register the rule after loading has completed
 	rootType.model.registerRule(this);
@@ -180,50 +181,57 @@ Rule.mixin({
 	// registers the rule based on the configured invocation types, predicates, and return values
 	register: function Rule$register() {
 
+		// create a scope variable to reference the current rule when creating event handlers
+		var rule = this;
+
 		// track the rule with the root type
 		this.rootType.rules.push(this);
 
-		// configure the rule based on any specified options
-		if (this._options) {
-			if (this._options.onInit)
-				this.onInit();
-			if (this._options.onInitNew)
-				this.onInitNew();
-			if (this._options.onInitExisting)
-				this.onInitExisting();
-			if (this._options.onChangeOf)
-				this.onChangeOf(this._options.onChangeOf);
-			if (this._options.returns)
-				this.returns(this._options.returns);
+		// create a function to process the rule's options
+		var processOptions = function () {
+			// configure the rule based on any specified options
+			if (this._options) {
+				if (this._options.onInit)
+					this.onInit();
+				if (this._options.onInitNew)
+					this.onInitNew();
+				if (this._options.onInitExisting)
+					this.onInitExisting();
+				if (this._options.onChangeOf)
+					this.onChangeOf(this._options.onChangeOf);
+				if (this._options.returns)
+					this.returns(this._options.returns);
 
-			// legacy support for basedOn option syntax
-			if (this._options.basedOn) {
-				this._options.basedOn.forEach(function (input) {
-					var parts = input.split(" of ");
-					if (parts.length >= 2) {
-						if (parts[0].split(",").indexOf("change") >= 0) {
-							this.onChangeOf([parts[1]]);
+				// legacy support for basedOn option syntax
+				if (this._options.basedOn) {
+					this._options.basedOn.forEach(function (input) {
+						var parts = input.split(" of ");
+						if (parts.length >= 2) {
+							if (parts[0].split(",").indexOf("change") >= 0) {
+								this.onChangeOf([parts[1]]);
+							}
 						}
-					}
-					else {
-						this.onChangeOf(input);
-					}
-				}, this);
+						else {
+							this.onChangeOf(input);
+						}
+					}, this);
+				}
 			}
+
+			// indicate that the rule should now be considered registered and cannot be reconfigured
+			delete this._options;
 		}
 
-		// indicate that the rule should now be considered registered and cannot be reconfigured
-		delete this._options;
-
-		var canExecute = function(rule, obj, args) {
+		// create a function to determine whether the rule can execute for the given arguments
+		var canExecute = function(obj, args) {
 			// ensure the rule target is a valid rule root type
 			return obj instanceof rule.rootType.get_jstype();
 		};
 
 		// create a function to safely execute the rule
-		var execute = function (rule, obj, args) {
+		var execute = function (obj, args) {
 			// Ensure that the rule can be executed.
-			if (!canExecute(rule, obj, args)) return;
+			if (!canExecute.call(this, obj, args)) return;
 
 			EventScope$perform(function() {
 				if (window.ExoWeb.config.detectRunawayRules) {
@@ -251,20 +259,17 @@ Rule.mixin({
 		// create function to perform rule registration once predicates and return values have been prepared
 		var register = function () {
 
-			// create a scope variable to reference the current rule when creating event handlers
-			var rule = this;
-
 			// register for init new
 			if (this.invocationTypes & RuleInvocationType.InitNew) {
 				this.rootType.addInitNew(function (sender, args) {
-					execute(rule, sender, args);
+					execute.call(this, sender, args);
 				});
 			}
 
 			// register for init existing
 			if (this.invocationTypes & RuleInvocationType.InitExisting) {
 				this.rootType.addInitExisting(function (sender, args) {
-					execute(rule, sender, args);
+					execute.call(this, sender, args);
 				});
 			}
 
@@ -273,11 +278,11 @@ Rule.mixin({
 				this.predicates.forEach(function (predicate) {
 					predicate.addChanged(
 						function (sender, args) {
-							if (canExecute(rule, sender, args) && !sender.meta.pendingInvocation(rule)) {
+							if (canExecute.call(this, sender, args) && !sender.meta.pendingInvocation(rule)) {
 								sender.meta.pendingInvocation(rule, true);
 								EventScope$onExit(function() {
 									sender.meta.pendingInvocation(rule, false);
-									execute(rule, sender, args);
+									execute.call(this, sender, args);
 								});
 								EventScope$onAbort(function() {
 									sender.meta.pendingInvocation(rule, false);
@@ -299,9 +304,9 @@ Rule.mixin({
 					returnValue.addGet(function (sender, args) {
 
 						// run the rule to initialize the property if it is pending initialization
-						if (canExecute(rule, sender, args) && sender.meta.pendingInit(returnValue)) {
+						if (canExecute.call(this, sender, args) && sender.meta.pendingInit(returnValue)) {
 							sender.meta.pendingInit(returnValue, false);
-							execute(rule, sender, args);
+							execute.call(this, sender, args);
 						}
 					});
 				});
@@ -313,11 +318,11 @@ Rule.mixin({
 
 							// immediately execute the rule if there are explicit event subscriptions for the property
 							if (rule.returnValues.some(function (returnValue) { return hasPropertyChangedSubscribers(returnValue, sender); })) {
-								if (canExecute(rule, sender, args) && !sender.meta.pendingInvocation(rule)) {
+								if (canExecute.call(this, sender, args) && !sender.meta.pendingInvocation(rule)) {
 									sender.meta.pendingInvocation(rule, true);
 									EventScope$onExit(function() {
 										sender.meta.pendingInvocation(rule, false);
-										execute(rule, sender, args);
+										execute.call(this, sender, args);
 									});
 									EventScope$onAbort(function() {
 										sender.meta.pendingInvocation(rule, false);
@@ -349,61 +354,80 @@ Rule.mixin({
 			if (this.onRegister instanceof Function) {
 				this.onRegister();
 			}
+
+			// Mark the rule as successfully registered
+			this.isRegistered = true;
 		};
 
-		// resolve return values, which should all be loaded since the root type is now definitely loaded
-		if (this.returnValues) {
-			this.returnValues.forEach(function (returnValue, i) {
-				if (!(returnValue instanceof Property)) {
-					this.returnValues[i] = this.rootType.property(returnValue);
-				}
-			}, this);
-		}
+		// create a function to kick off the registration process
+		var startRegister = function () {
+			// process the rule options, this is only done once
+			processOptions.call(this);
 
-		// resolve all predicates, because the rule cannot run until the dependent types have all been loaded
-		if (this.predicates) {
-			var signal;
-			var predicates = [];
+			// resolve return values, which should all be loaded since the root type is now definitely loaded
+			if (this.returnValues) {
+				this.returnValues.forEach(function (returnValue, i) {
+					if (!(returnValue instanceof Property)) {
+						this.returnValues[i] = this.rootType.property(returnValue);
+					}
+				}, this);
+			}
 
-			// setup loading of each property path that the calculation is based on
-			this.predicates.forEach(function (predicate, i) {
+			// resolve all predicates, because the rule cannot run until the dependent types have all been loaded
+			if (this.predicates) {
+				var signal;
+				var predicates = [];
 
-				// simply copy the predicate over if has already a valid property or property chain
-				if (predicate instanceof Property || predicate instanceof PropertyChain) {
-					predicates.push(predicate);
-				}
+				// setup loading of each property path that the calculation is based on
+				this.predicates.forEach(function (predicate, i) {
 
-				// parse string inputs, which may be paths containing nesting {} hierarchial syntax
-				else if (predicate.constructor === String) {
-
-					// create a signal if this is the first string-based input
-					if (!signal) {
-						signal = new Signal("prepare rule predicates");
+					// simply copy the predicate over if has already a valid property or property chain
+					if (predicate instanceof Property || predicate instanceof PropertyChain) {
+						predicates.push(predicate);
 					}
 
-					// normalize the paths to accommodate {} hierarchial syntax
-					PathTokens.normalizePaths([predicate]).forEach(function (path) {
-						Model.property(path, this.rootType, false, signal.pending(function (chain) {
-							// add the prepared property or property chain
-							predicates.push(chain);
-						}, this, true), this);
-					}, this);
-				}
-			}, this);
+					// parse string inputs, which may be paths containing nesting {} hierarchial syntax
+					else if (predicate.constructor === String) {
 
-			// wait until all property information is available to initialize the rule
-			if (signal) {
-				signal.waitForAll(function () {
+						// create a signal if this is the first string-based input
+						if (!signal) {
+							signal = new Signal("prepare rule predicates");
+						}
+
+						// normalize the paths to accommodate {} hierarchial syntax
+						PathTokens.normalizePaths([predicate]).forEach(function (path) {
+							Model.property(path, this.rootType, false, signal.pending(function (chain) {
+								// add the prepared property or property chain
+								predicates.push(chain);
+							}, this, true), this);
+						}, this);
+					}
+				}, this);
+
+				// wait until all property information is available to initialize the rule
+				if (signal) {
+					signal.waitForAll(function () {
+						this.predicates = predicates;
+						register.call(this);
+					}, this, true);
+				}
+
+				// otherwise, just immediately proceed with rule registration
+				else {
 					this.predicates = predicates;
 					register.call(this);
-				}, this, true);
+				}
 			}
+		};
 
-			// otherwise, just immediately proceed with rule registration
-			else {
-				this.predicates = predicates;
-				register.call(this);
+		// Optionally perform async pre-registration logic, then kick off the registration process
+		if (this.preRegister) {
+			// Invoke the rule's pre-register logic if it exists
+			if (this.preRegister(function () { startRegister.call(this); }, this) === false) {
+				startRegister.call(this);
 			}
+		} else {
+			startRegister.call(this);
 		}
 	}
 });

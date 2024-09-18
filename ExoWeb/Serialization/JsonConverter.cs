@@ -21,7 +21,8 @@ namespace ExoWeb.Serialization
 	{
 		#region Fields
 
-		static Dictionary<Type, string> jsonIntrinsicTypes = new Dictionary<Type, string>() 
+		// Uses locking to prevent concurrency issues
+		static IDictionary<Type, string> jsonIntrinsicTypes = new Dictionary<Type, string>() 
 		{ 
 			{ typeof(string),		    "String"  },
 			{ typeof(char),			    "String"  },
@@ -52,7 +53,7 @@ namespace ExoWeb.Serialization
 		Func<JsonReader, object> deserialize;
 
 		internal Type Type { get; set; }
-		internal IEnumerable<Newtonsoft.Json.JsonConverter> Converters { get; set; }
+		protected internal IEnumerable<Newtonsoft.Json.JsonConverter> Converters { get; set; }
 
 		#endregion
 
@@ -213,7 +214,7 @@ namespace ExoWeb.Serialization
 		/// </summary>
 		/// <param name="type"></param>
 		/// <returns></returns>
-		internal static string GetJsonReferenceType(ModelType type)
+		public static string GetJsonReferenceType(ModelType type)
 		{
 			string jsonType = "";
 			for (ModelType t = type; t != null; t = t.BaseType)
@@ -228,7 +229,8 @@ namespace ExoWeb.Serialization
 		/// <param name="clientType"></param>
 		public static void AddInstrinsicType(Type serverType, string clientType)
 		{
-			jsonIntrinsicTypes[serverType] = clientType;
+			lock(jsonIntrinsicTypes)
+				jsonIntrinsicTypes[serverType] = clientType;
 		}
 		#endregion
 	}

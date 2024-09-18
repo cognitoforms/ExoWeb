@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using ExoModel;
 using System.Collections;
 using System.Globalization;
+using System.Collections.Concurrent;
 
 namespace ExoWeb
 {
@@ -19,7 +20,7 @@ namespace ExoWeb
 	{
 		#region Fields
 
-		static readonly Dictionary<Type, string> supportedTypes = new Dictionary<Type, string>
+		static readonly IReadOnlyDictionary<Type, string> supportedTypes = new Dictionary<Type, string>
 		{
             { typeof(Object),	"Object" },		{ typeof(Boolean),	"Boolean" },	{ typeof(Char),		"Char" },
 			{ typeof(String),	"String" },		{ typeof(SByte),	"Number" },		{ typeof(Byte),		"Number" }, 
@@ -48,7 +49,7 @@ namespace ExoWeb
 
 		#region Supported Members
 
-		static readonly Dictionary<string, string[]> supportedMembers = new Dictionary<string, string[]>()
+		static readonly IReadOnlyDictionary<string, string[]> supportedMembers = new Dictionary<string, string[]>()
 		{
 			{ "Boolean.CompareTo(Boolean) as Number", new string[] {@"Boolean_compareTo({0}, {1})", "Boolean_compareTo", @"function (a, b) { if (a === b) return 0; if (b === null || (a === true && b === false)) return 1; if (a === false && b === true) return -1; return undefined; }"} },
 			{ "Boolean.CompareTo(Object) as Number", new string[] {@"Boolean_compareTo({0}, {1})", "Boolean_compareTo", @"function (a, b) { if (a === b) return 0; if (b === null || (a === true && b === false)) return 1; if (a === false && b === true) return -1; return undefined; }"} },
@@ -122,7 +123,7 @@ namespace ExoWeb
 			{ "Date.Minute as Number", new string[] {@"{0}.getMinutes()", "", @""} },
 			{ "Date.Month as Number", new string[] {@"({0}.getMonth()+1)", "", @""} },
 			{ "Date.Second as Number", new string[] {@"{0}.getSeconds()", "", @""} },
-			{ "Date.Subtract(Date) as TimeSpan", new string[] {"new TimeSpan({0}.getTime() - {1}.getTime())", "", ""} },
+			{ "Date.Subtract(Date) as TimeSpan", new string[] {@"Date_subtract({0}, {1})", "Date_subtract", @"function (d1, d2) { return new TimeSpan(d1.getTime() - d2.getTime() - 60000 * (d1.getTimezoneOffset() - d2.getTimezoneOffset())); }" } },
 			{ "Date.Ticks as Number", new string[] {@"Date_ticks({0})", "Date_ticks", @"function (d) { return ((d.getTime() - (d.getTimezoneOffset() * 60000)) * 10000) + 621355968000000000; }"} },
 			{ "Date.ToShortDateString() as String", new string[] {@"{0}.localeFormat(""d"")", "", ""} },
 			{ "Date.ToString(String) as String", new string[] {@"{0}.localeFormat({1})", "", ""} },
@@ -316,7 +317,7 @@ namespace ExoWeb
 		static Regex expressionRegex = new Regex(@"\{(?<index>\d+)\}", RegexOptions.Compiled);
 
 		IList<Func<MemberInfo, MemberTranslation>> translators = new List<Func<MemberInfo, MemberTranslation>>();
-		Dictionary<MemberInfo, MemberTranslation> translations = new Dictionary<MemberInfo, MemberTranslation>();
+		IDictionary<MemberInfo, MemberTranslation> translations = new ConcurrentDictionary<MemberInfo, MemberTranslation>();
 
 		#endregion
 
@@ -752,56 +753,61 @@ namespace ExoWeb
 
 					// Create TimeSpan if subtracting two DateTime instances
 					if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
-						builder.Append("new TimeSpan(");
-
-					// Handle concatenation of strings to ensure correct implicit conversion
-					if (node.NodeType == ExpressionType.Add && node.Left.Type == typeof(string) && node.Left.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Left.GetType()))
 					{
-						Translation.Exports["str"] = @"function (o) { if (o === undefined || o === null) return """"; return o.toString(); }";
-						builder.Append("str(");
+						Translation.Exports["Date_subtract"] = @"function(d1, d2) { return new TimeSpan(d1.getTime() - d2.getTime() - 60000 * (d1.getTimezoneOffset() - d2.getTimezoneOffset())); }";
+						builder.Append("Date_subtract(");
 						Visit(node.Left);
+						builder.Append(",");
+						Visit(node.Right);
 						builder.Append(")");
-					}
-					else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
-					{
-						builder.Append("(");
-						Visit(node.Left);
-						builder.Append(" ? ");
-						Visit(node.Left);
-						builder.Append(".getTime() : null)");
-					}
-					else if (node.Left.Type.IsEnum && node.Left.Type != typeof(DayOfWeek))
-					{
-						Visit(node.Left);
-						builder.Append(".get_Name()");
 					}
 					else
-						Visit(node.Left);
-
-					builder.Append(GetOperator(node.NodeType));
-
-					// Handle concatenation of strings to ensure correct implicit conversion
-					if (node.NodeType == ExpressionType.Add && node.Right.Type == typeof(string) && node.Right.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Right.GetType()))
 					{
-						Translation.Exports["str"] = @"function (o) { if (o === undefined || o === null) return """"; return o.toString(); }";
-						builder.Append("str(");
-						Visit(node.Right);
-						builder.Append(")");
-					}
-					else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
-					{
-						builder.Append("(");
-						Visit(node.Right);
-						builder.Append(" ? ");
-						Visit(node.Right);
-						builder.Append(".getTime() : null)");
-					}
-					else
-						Visit(node.Right);
+						// Handle concatenation of strings to ensure correct implicit conversion
+						if (node.NodeType == ExpressionType.Add && node.Left.Type == typeof(string) && node.Left.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Left.GetType()))
+						{
+							Translation.Exports["str"] = @"function (o) { if (o === undefined || o === null) return """"; return o.toString(); }";
+							builder.Append("str(");
+							Visit(node.Left);
+							builder.Append(")");
+						}
+						else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
+						{
+							builder.Append("(");
+							Visit(node.Left);
+							builder.Append(" ? ");
+							Visit(node.Left);
+							builder.Append(".getTime() : null)");
+						}
+						else if (node.Left.Type.IsEnum && node.Left.Type != typeof(DayOfWeek))
+						{
+							Visit(node.Left);
+							builder.Append(".get_Name()");
+						}
+						else
+							Visit(node.Left);
 
-					// Create TimeSpan if subtracting two DateTime instances
-					if (node.Left.Type == typeof(DateTime) && node.Right.Type == typeof(DateTime) && node.Type == typeof(TimeSpan))
-						builder.Append(")");
+						builder.Append(GetOperator(node.NodeType));
+
+						// Handle concatenation of strings to ensure correct implicit conversion
+						if (node.NodeType == ExpressionType.Add && node.Right.Type == typeof(string) && node.Right.GetType() != typeof(ConstantExpression) && !typeof(BinaryExpression).IsAssignableFrom(node.Right.GetType()))
+						{
+							Translation.Exports["str"] = @"function (o) { if (o === undefined || o === null) return """"; return o.toString(); }";
+							builder.Append("str(");
+							Visit(node.Right);
+							builder.Append(")");
+						}
+						else if ((node.Left.Type == typeof(DateTime) || node.Left.Type == typeof(DateTime?)) && (node.NodeType == ExpressionType.Equal || node.NodeType == ExpressionType.NotEqual))
+						{
+							builder.Append("(");
+							Visit(node.Right);
+							builder.Append(" ? ");
+							Visit(node.Right);
+							builder.Append(".getTime() : null)");
+						}
+						else
+							Visit(node.Right);
+					}
 
 					builder.Append(")");
 				}
@@ -1043,7 +1049,29 @@ namespace ExoWeb
 				//	}
 				//}
 
-				TranslateMember(m.Method, (MethodTranslation t) => t.Expression, () => m.Object == null ? m.Arguments : new Expression[] { m.Object }.Concat(m.Arguments));
+				// If this method call is a cumulative and/or expression, serialize ands/ors normally
+				if (m.Method.Name == "AnyConditionTrue" || m.Method.Name == "AllConditionsTrue")
+				{
+					builder.Append("(");
+					bool isFirst = true;
+					var joiningOp = m.Method.Name == "AnyConditionTrue" ? "||" : "&&";
+					var newArrayExpr = m.Arguments.First() as NewArrayExpression;
+					foreach (LambdaExpression expr in newArrayExpr.Expressions)
+					{
+						if (isFirst)
+							isFirst = false;
+						else
+							builder.Append(joiningOp);
+
+						var nestedExpr = expr.Body;
+						Visit(nestedExpr);
+					}
+					builder.Append(")");
+				}
+				// Otherwise, translate method call
+				else
+					TranslateMember(m.Method, (MethodTranslation t) => t.Expression, () => m.Object == null ? m.Arguments : new Expression[] { m.Object }.Concat(m.Arguments));
+
 				return m;
 			}
 

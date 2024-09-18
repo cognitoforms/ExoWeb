@@ -92,11 +92,11 @@ RequiredIfRule.mixin({
 		else {
 			throw new Error("Invalid comparison operator for compare rule.");
 		}
-		message = message
-			.replace('{property}', this.property.get_label())
-			.replace("{compareSource}", this.compareSource.get_label())
+
+		message = message.replace("{compareSource}", this.compareSource.get_label())
 			.replace("{compareValue}", this.compareSource.format(this.compareValue));
-		return message;
+
+		return message.replace('{property}', this.getPropertyLabel(obj));
 	},
 
 	// returns false if the property is valid, true if invalid, or undefined if unknown

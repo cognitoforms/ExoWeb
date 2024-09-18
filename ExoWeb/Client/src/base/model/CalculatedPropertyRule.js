@@ -18,6 +18,8 @@ function CalculatedPropertyRule(rootType, options) {
 	var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
 	Object.defineProperty(this, "property", { value: prop });
 
+	Object.defineProperty(this, "useOptimalUpdates", { value: options.useOptimalUpdates !== false });
+
 	// ensure the rule name is specified
 	options.name = options.name || (rootType.get_fullName() + "." + prop.get_name() + ".Calculated");
 
@@ -90,7 +92,12 @@ CalculatedPropertyRule.mixin({
 
 			// update the current list so observers will receive the change events
 			curList.beginUpdate();
-			update(curList, newList);
+			if (this.useOptimalUpdates)
+				update(curList, newList);
+			else {
+				curList.clear();
+				curList.addRange(newList);
+			}
 			curList.endUpdate();
 		}
 

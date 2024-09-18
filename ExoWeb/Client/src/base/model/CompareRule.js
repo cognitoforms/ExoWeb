@@ -99,10 +99,10 @@ CompareRule.mixin({
 		else {
 			throw new Error("Invalid comparison operator for compare rule.");
 		}
-		message = message
-			.replace('{property}', this.property.get_label())
-			.replace("{compareSource}", this.compareSource.get_label());
-		return message;
+
+		message = message.replace("{compareSource}", this.compareSource.get_label());
+
+		return message.replace('{property}', this.getPropertyLabel(obj));
 	},
 
 	// perform addition initialization of the rule when it is registered

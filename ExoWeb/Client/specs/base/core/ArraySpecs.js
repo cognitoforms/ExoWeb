@@ -9,7 +9,7 @@ specs.ensureWindow();
 // Imports
 ///////////////////////////////////////
 
-var batchModule = specs.require("core.Array");
+var arrayMethods = specs.require("core.Array");
 
 // Test Suites
 ///////////////////////////////////////
@@ -100,6 +100,28 @@ describe("intersect", function() {
 	});
 });
 
+describe("find", function () {
+	it("returns the first element in the provided array that satisfies the provided testing function", function () {
+		var arr = [5, 12, 8, 130, 44];
+		expect(arrayMethods.find(arr, function(element) { return element > 10; })).toBe(12);
+	});
+	it("returns undefined if no values satisfy the testing function", function () {
+		var arr = [5, 12, 8, 130, 44];
+		expect(arrayMethods.find(arr, function(element) { return element < 0; })).toBe(undefined);
+	});
+});
+
+describe("findIndex", function () {
+	it("returns the index of the first element in the array that satisfies the provided testing function", function () {
+		var arr = [5, 12, 8, 130, 44];
+		expect(arrayMethods.findIndex(arr, function (element) { return element > 13; })).toBe(3);
+	});
+	it("returns -1 if no element in the array satisfies the provided testing function", function () {
+		var arr = [5, 12, 8, 130, 44];
+		expect(arrayMethods.findIndex(arr, function (element) { return element > 1000; })).toBe(-1);
+	});
+});
+
 describe("first", function() {
 	it("returns the first item in the list that passes the given filter", function() {
 		var arr = [0, 54, 23, 5];
@@ -113,6 +135,23 @@ describe("first", function() {
 		expect(arr.first(function(i) { return i > 54; })).toBe(null);
 		expect(arr.first(function(i) { return i > 0 && i < 10; })).toBe(5);
 		expect(arr.first()).toBe(0);
+	});
+});
+
+describe("flat", function () {
+	it("creates a new array with all sub-array elements concatenated into it recursively up to the specified depth", function () {
+		var arr1 = [0, 1, 2, [3, 4]];
+		expect(arrayMethods.flat(arr1)).toEqual([0, 1, 2, 3, 4]);
+
+		var arr2 = [0, 1, 2, [[[3, 4]]]];
+		expect(arrayMethods.flat(arr2, 2)).toEqual([0, 1, 2, [3, 4]]);
+	});
+});
+
+describe("flatMap", function () {
+	it("returns a new array formed by applying a given callback function to each element of the array, and then flattening the result by one level", function () {
+		var arr1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+		expect(arrayMethods.flatMap(arr1, function (e) { return [e, e * e]; })).toEqual([0, 0, 1, 1, 2, 4, 3, 9, 4, 16, 5, 25, 6, 36, 7, 49, 8, 64, 9, 81]);
 	});
 });
 
@@ -143,13 +182,21 @@ describe("lastIndexOf", function () {
 
 
 describe("fill", function () {
-	it("pushes a given number of items into the array with the given value", function () {
-		var arr = ["A", "B", "C"];
-		arr.fill("D", 3);
-		expect(arr[3]).toBe("D");
-		expect(arr[4]).toBe("D");
-		expect(arr[5]).toBe("D");
-		expect(arr[6]).toBe(undefined);
+	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fill#try_it
+	it("fills from position x until position y", function () {
+		var arr = [1, 2, 3, 4];
+		arrayMethods.fill(arr, 0, 2, 4);
+		expect(arr).toEqual([1, 2, 0, 0]);
+	});
+	it("fills from position x", function () {
+		var arr = [1, 2, 3, 4];
+		arrayMethods.fill(arr, 5, 1);
+		expect(arr).toEqual([1, 5, 5, 5]);
+	});
+	it("fills all positions", function () {
+		var arr = [1, 2, 3, 4];
+		arrayMethods.fill(arr, 6);
+		expect(arr).toEqual([6, 6, 6, 6]);
 	});
 });
 
@@ -180,6 +227,28 @@ describe("filter", function () {
 	it("filter function result can be truthy", function () {
 		var arr = [5, 2, 3, -4, 0];
 		specs.arrayEquals(filter(arr, function(i) { return i; }), [5, 2, 3, -4]);
+	});
+});
+
+describe("from", function () {
+	it("creates a new, shallow-copied Array instance from an array-like or iterable object", function () {
+		var args = (function () {
+			return arguments;
+		}).apply(this, [5, 2, 3, -4, 0]);
+		expect(Array.isArray(args)).toBe(false);
+		var fromArgs = arrayMethods.from(args);
+		specs.arrayEquals(fromArgs, [5, 2, 3, -4, 0]);
+		expect(Array.isArray(fromArgs)).toBe(true);
+	});
+});
+
+describe("isArray", function () {
+	it("determines whether the passed value is an Array", function () {
+		var args = (function () {
+			return arguments;
+		}).apply(this, [5, 2, 3, -4, 0]);
+		expect(arrayMethods.isArray(args)).toBe(false);
+		expect(arrayMethods.isArray([0, 1, 2])).toBe(true);
 	});
 });
 
@@ -271,6 +340,14 @@ describe("insertRange", function() {
 		var target = [0, 1, 2];
 		insertRange(target, 1, [0.5, 0.75, 0.9]);
 		specs.arrayEquals(target, [0, 0.5, 0.75, 0.9, 1, 2]);
+	});
+});
+
+describe("of", function () {
+	it("creates a new Array instance from a variable number of arguments, regardless of number or type of the arguments", function () {
+		specs.arrayEquals(arrayMethods.of(1), [1]);
+		specs.arrayEquals(arrayMethods.of(1, 2, 3), [1, 2, 3]);
+		specs.arrayEquals(arrayMethods.of(undefined), [undefined]);
 	});
 });
 

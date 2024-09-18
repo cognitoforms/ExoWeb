@@ -53,3 +53,47 @@ Object.copy = function Object$Copy(obj, options/*, level*/) {
 		}
 	}
 };
+
+// Based on https://vanillajstoolkit.com/polyfills/objectassign/
+function assign(target, varArgs) {
+	if (target == null) { // TypeError if undefined or null
+		throw new TypeError('Cannot convert undefined or null to object');
+	}
+
+	var to = Object(target);
+
+	for (var index = 1; index < arguments.length; index++) {
+		var nextSource = arguments[index];
+
+		if (nextSource != null) { // Skip over if undefined or null
+			for (var nextKey in nextSource) {
+				// Avoid bugs when hasOwnProperty is shadowed
+				if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+					to[nextKey] = nextSource[nextKey];
+				}
+			}
+		}
+	}
+	return to;
+}
+
+// Based on https://vanillajstoolkit.com/polyfills/objectentries/
+function entries(obj) {
+	var ownProps = Object.keys(obj),
+		i = ownProps.length,
+		resArray = new Array(i); // preallocate the Array
+
+	while (i--)
+		resArray[i] = [ownProps[i], obj[ownProps[i]]];
+
+	return resArray;
+}
+
+if (!Object.assign)
+	Object.assign = assign;
+if (!Object.entries)
+	Object.entries = entries;
+
+exports.assign = assign; // IGNORE
+exports.entries = entries; // IGNORE
+

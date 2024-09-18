@@ -38,7 +38,7 @@ ListLengthRule.mixin({
 		return val === null || val === undefined || ((!range.min || val.length >= range.min) && (!range.max || val.length <= range.max));
 	},
 
-	message: function ListLengthRule$message(obj, prop, val) {
+	message: function ListLengthRule$message(obj) {
 
 		var range = this.range(obj);
 
@@ -49,7 +49,7 @@ ListLengthRule.mixin({
 						Resource.get("listlength-at-least").replace("{min}", this.property.format(range.min)) : // at least ordinal
 						Resource.get("listlength-at-most").replace("{max}", this.property.format(range.max))); // at most ordinal
 
-		return message.replace('{property}', this.property.get_label());
+		return message.replace('{property}', this.getPropertyLabel(obj));
 	}
 });
 

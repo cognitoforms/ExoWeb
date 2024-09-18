@@ -157,6 +157,7 @@ end
 	"base/ui" => %w{
 		Toggle
 		ToggleGroup
+		VueComponent
 		Template
 		Content
 		DataView

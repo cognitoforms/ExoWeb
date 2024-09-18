@@ -25,7 +25,7 @@ function ConditionType(code, category, message, sets, origin) {
 	allConditionTypes[code] = this;
 }
 
-var allConditionTypes = {};
+var allConditionTypes = ConditionType.allConditionTypes = {};
 
 ConditionType.all = function ConditionType$all() {
 	/// <summary>

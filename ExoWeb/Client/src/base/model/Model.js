@@ -137,15 +137,16 @@ function ensureType(type, forceLoad, callback) {
 
 exports.ensureType = ensureType; // IGNORE
 
-Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
+Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr, waitForGlobals*/) {
 
 	var type,
 		loadProperty,
 		singlePropertyName,
 		tokens = null,
-		forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false,
+		forceLoadTypes = arguments.length >= 3 && typeof arguments[2] === "boolean" ? arguments[2] : false,
 		callback = arguments[3],
-		thisPtr = arguments[4];
+		thisPtr = arguments[4],
+		waitForGlobals = arguments.length >= 6 && typeof arguments[5] === "boolean" ? arguments[5] : true;
 
 	// Allow the path argument to be either a string or PathTokens instance.
 	if (path.constructor === PathTokens) {
@@ -194,7 +195,12 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 		if (callback) {
 			loadProperty(type, singlePropertyName, callback);
 		} else {
-			return type.property(singlePropertyName);
+			var singleProperty = type.property(singlePropertyName);
+			if (singleProperty) {
+				return singleProperty;
+			} else {
+				throw new Error("Path '" + path + "' is not valid.");
+			}
 		}
 	}
 
@@ -221,11 +227,16 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 			// Handle non-existant or non-loaded type.
 			if (!type) {
 				if (callback) {
-					// Retry when type is loaded
-					$extend(globalTypeName, Model.property.prepare(Model, outerArgs));
-					return null;
+					if (waitForGlobals) {
+						// Retry when type is loaded
+						$extend(globalTypeName, Model.property.prepare(Model, outerArgs));
+						return null;
+					} else {
+						callback(null);
+						return null;
+					}
 				} else {
-					throw new Error(instanceParseError ? instanceParseError : ("Error getting type \"" + globalTypeName + "\"."));
+					return null;
 				}
 			}
 
@@ -243,7 +254,12 @@ Model.property = function Model$property(path, thisType/*, forceLoadTypes, callb
 		if (callback) {
 			PropertyChain.create(type, tokens, forceLoadTypes, thisPtr ? callback.bind(thisPtr) : callback, processGlobal);
 		} else {
-			return PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal(null);
+			var result = PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal();
+			if (result) {
+				return result;
+			} else {
+				throw new Error("Path '" + path + "' is not valid.");
+			}
 		}
 	}
 };

@@ -312,7 +312,7 @@ namespace ExoWeb.Serialization
 						if (modelType.BaseType != null)
 							json.Set("baseType", JsonConverter.GetJsonReferenceType(modelType.BaseType));
 
-						// Base Type
+						// Format
 						if (!String.IsNullOrEmpty(modelType.Format))
 							json.Set("format", modelType.Format);
 
@@ -369,6 +369,9 @@ namespace ExoWeb.Serialization
 						// IsCalculated
 						if (property.IsCalculated)
 							json.Set("isCalculated", true);
+
+						if (property.Constant != null)
+							json.Set("constant", property.Constant);
 
 						// Index
 						int index = 0;
@@ -725,10 +728,10 @@ namespace ExoWeb.Serialization
                             if (rule.ErrorMessageResource != null)
                                 json.Set("message",   rule.ErrorMessageResource);
                             else
-                                json.Set("message", rule.ErrorMessageExpression.Expression);
+                                json.Set("messageFn", rule.ErrorMessageExpression.Expression);
 
 							json.Set("properties", rule.AdditionalTargets);
-
+							
 							// OnChangeOf
 							if (!String.IsNullOrEmpty(rule.Path))
 								json.Set("onChangeOf", new string[] { rule.Path });
@@ -741,7 +744,7 @@ namespace ExoWeb.Serialization
 						{
 							SerializePropertyRule(rule, json);
 							if (rule.RequiredValue != null)
-								json.Set("requiredValue", rule.RequiredValue);
+								json.Set("requiredValue", rule.RequiredValue);							
 						},
 						json => { throw new NotSupportedException("RequiredRule cannot be deserialized."); }),
 
@@ -783,7 +786,7 @@ namespace ExoWeb.Serialization
 							if (rule.Minimum > 0)
 								json.Set("min", rule.Minimum);
 							if (rule.Maximum > 0)
-								json.Set("max", rule.Maximum);
+								json.Set("max", rule.Maximum);							
 						},
 						json => { throw new NotSupportedException("StringLengthRule cannot be deserialized."); }),
 
@@ -796,7 +799,7 @@ namespace ExoWeb.Serialization
 								json.Set("description", rule.FormatDescription);
 							json.Set("expression", rule.FormatExpression.ToString());
 							if (!String.IsNullOrEmpty(rule.ReformatExpression))
-								json.Set("reformat", rule.ReformatExpression);
+								json.Set("reformat", rule.ReformatExpression);							
 						},
 						json => { throw new NotSupportedException("StringFormatRule cannot be deserialized."); }),
 
@@ -817,7 +820,7 @@ namespace ExoWeb.Serialization
 			// Assume the type does not need to be included if the name can be inferred from context
 			if (String.Format("{0}.{1}.{2}", ((Rule)rule).RootType.Name, rule.Property, rule.Name) != ((Rule)rule).Name)
 				writer.Set("type", rule.Name.Substring(0, 1).ToLower() + rule.Name.Substring(1));
-
+			
 			// Embed the condition type, if present, along with the rule
 			if (rule.ConditionType != null && (writer.SerializePropertyConditionType || rule.ConditionType.AlwaysSerialize))
 			{

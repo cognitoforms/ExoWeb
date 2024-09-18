@@ -142,7 +142,7 @@ namespace ExoWeb.UnitTests.Templates.MicrosoftAjax
 		#region Helpers
 		void TestRequest(Action<Request> action, string template, string expected)
 		{
-			ExoWeb.Model(new { request = ExoWeb.Query<Request>((string)null) }, action);
+			ExoWeb.Model(new { request = ExoWeb.Query<Request>(null) }, action);
 
 			string output = Accessors.Render(template);
 

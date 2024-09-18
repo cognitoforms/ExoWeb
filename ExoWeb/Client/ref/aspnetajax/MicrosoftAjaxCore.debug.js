@@ -871,26 +871,31 @@ Object.getTypeName = function Object$getTypeName(instance) {
 String.__typeName = 'String';
 String.__class = true;
 
-String.prototype.endsWith = function String$endsWith(suffix) {
-    /// <summary locid="M:J#String.endsWith" />
-    /// <param name="suffix" type="String"></param>
-    /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "suffix", type: String}
-    ]);
-    if (e) throw e;
-    return (this.substr(this.length - suffix.length) === suffix);
+String.prototype.endsWith = function String$endsWith(searchStr, position) {
+	/// <summary locid="M:J#String.endsWith" />
+	/// <param name="searchStr" type="String"></param>
+	/// <param name="position" type="Number"></param>
+	/// <returns type="Boolean"></returns>
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringendswith/
+	// This works much better than >= because
+	// it compensates for NaN:
+	if (!(position < this.length)) {
+		position = this.length;
+	} else {
+		position |= 0; // round position
+	}
+	return this.substr(position - searchStr.length, searchStr.length) === searchStr;
 }
 
-String.prototype.startsWith = function String$startsWith(prefix) {
-    /// <summary locid="M:J#String.startsWith" />
-    /// <param name="prefix" type="String"></param>
-    /// <returns type="Boolean"></returns>
-    var e = Function._validateParams(arguments, [
-        {name: "prefix", type: String}
-    ]);
-    if (e) throw e;
-    return (this.substr(0, prefix.length) === prefix);
+String.prototype.startsWith = function String$startsWith(prefix, position) {
+	/// <summary locid="M:J#String.startsWith" />
+	/// <param name="prefix" type="String"></param>
+	/// <param name="position" type="String"></param>
+	/// <returns type="Boolean"></returns>
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringstartswith/
+	return (this.substr(position || 0, prefix.length) === prefix);
 }
 
 String.prototype.trim = function String$trim() {

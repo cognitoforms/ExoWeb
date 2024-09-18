@@ -816,20 +816,31 @@ Object.getTypeName = function Object$getTypeName(instance) {
 String.__typeName = 'String';
 String.__class = true;
 
-String.prototype.endsWith = function String$endsWith(suffix) {
+String.prototype.endsWith = function String$endsWith(searchStr, position) {
 	/// <summary locid="M:J#String.endsWith" />
-	/// <param name="suffix" type="String"></param>
+	/// <param name="searchStr" type="String"></param>
+	/// <param name="position" type="Number"></param>
 	/// <returns type="Boolean"></returns>
 
-	return (this.substr(this.length - suffix.length) === suffix);
+	// Based on https://vanillajstoolkit.com/polyfills/stringendswith/
+	// This works much better than >= because
+	// it compensates for NaN:
+	if (!(position < this.length)) {
+		position = this.length;
+	} else {
+		position |= 0; // round position
+	}
+	return this.substr(position - searchStr.length, searchStr.length) === searchStr;
 }
 
-String.prototype.startsWith = function String$startsWith(prefix) {
+String.prototype.startsWith = function String$startsWith(prefix, position) {
 	/// <summary locid="M:J#String.startsWith" />
 	/// <param name="prefix" type="String"></param>
+	/// <param name="position" type="String"></param>
 	/// <returns type="Boolean"></returns>
 
-	return (this.substr(0, prefix.length) === prefix);
+	// Based on https://vanillajstoolkit.com/polyfills/stringstartswith/
+	return (this.substr(position || 0, prefix.length) === prefix);
 }
 
 String.prototype.trim = function String$trim() {
@@ -4568,7 +4579,7 @@ $simulateMutationEvent = Sys.UI.DomEvent.simulate = function Sys$UI$DomEvent$sim
 	try {
 		simulatingEvent = true;
 		if (element.dispatchEvent) {
-			var evt = document.createEvent("MutationEvents");
+			var evt = document.createEvent("events");
 			evt.initEvent(eventName, bubbles, cancelable);
 			element.dispatchEvent(evt);
 		}

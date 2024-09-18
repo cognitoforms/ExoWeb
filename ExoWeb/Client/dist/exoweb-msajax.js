@@ -1118,10 +1118,45 @@ window.ExoWeb.DotNet = {};
 		return true;
 	}
 
-	function fill(arr, value, times) {
-		for (var i = 0; i < times; i++)
-			arr.push(value);
-		return arr;
+	// Based on https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fill#polyfill
+	function fill(arr, value) {
+		// Steps 1-2.
+		if (arr == null) {
+			throw new TypeError('Array is null or not defined');
+		}
+
+		var O = Object(arr);
+
+		// Steps 3-5.
+		var len = O.length >>> 0;
+
+		// Steps 6-7.
+		var start = arguments[2];
+		var relativeStart = start >> 0;
+
+		// Step 8.
+		var k = relativeStart < 0 ?
+			Math.max(len + relativeStart, 0) :
+			Math.min(relativeStart, len);
+
+		// Steps 9-10.
+		var end = arguments[3];
+		var relativeEnd = end === undefined ?
+			len : end >> 0;
+
+		// Step 11.
+		var finalValue = relativeEnd < 0 ?
+			Math.max(len + relativeEnd, 0) :
+			Math.min(relativeEnd, len);
+
+		// Step 12.
+		while (k < finalValue) {
+			O[k] = value;
+			k++;
+		}
+
+		// Step 13.
+		return O;
 	}
 
 	function filter(arr, callback, thisPtr) {
@@ -1137,6 +1172,88 @@ window.ExoWeb.DotNet = {};
 		return result;
 	}
 
+	// Based on https://vanillajstoolkit.com/polyfills/arrayfind/
+	function find(arr, callback) {
+		// 1. Let O be ? ToObject(this value).
+		if (arr == null) {
+			throw new TypeError('Array is null or not defined');
+		}
+
+		var o = Object(arr);
+
+		// 2. Let len be ? ToLength(? Get(O, "length")).
+		var len = o.length >>> 0;
+
+		// 3. If IsCallable(callback) is false, throw a TypeError exception.
+		if (typeof callback !== 'function') {
+			throw new TypeError('callback must be a function');
+		}
+
+		// 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
+		var thisArg = arguments[2];
+
+		// 5. Let k be 0.
+		var k = 0;
+
+		// 6. Repeat, while k < len
+		while (k < len) {
+			// a. Let Pk be ! ToString(k).
+			// b. Let kValue be ? Get(O, Pk).
+			// c. Let testResult be ToBoolean(? Call(callback, T, « kValue, k, O »)).
+			// d. If testResult is true, return kValue.
+			var kValue = o[k];
+			if (callback.call(thisArg, kValue, k, o)) {
+				return kValue;
+			}
+			// e. Increase k by 1.
+			k++;
+		}
+
+		// 7. Return undefined.
+		return undefined;
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/arrayfindindex/
+	function findIndex(arr, predicate) {
+		if (arr == null) {
+			throw new TypeError('Array is null or not defined');
+		}
+
+		// 1. Let O be ? ToObject(this value).
+		var o = Object(arr);
+
+		// 2. Let len be ? ToLength(? Get(O, "length")).
+		var len = o.length >>> 0;
+
+		// 3. If IsCallable(predicate) is false, throw a TypeError exception.
+		if (typeof predicate !== 'function') {
+			throw new TypeError('predicate must be a function');
+		}
+
+		// 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
+		var thisArg = arguments[2];
+
+		// 5. Let k be 0.
+		var k = 0;
+
+		// 6. Repeat, while k < len
+		while (k < len) {
+			// a. Let Pk be ! ToString(k).
+			// b. Let kValue be ? Get(O, Pk).
+			// c. Let testResult be ToBoolean(? Call(predicate, T, « kValue, k, O »)).
+			// d. If testResult is true, return k.
+			var kValue = o[k];
+			if (predicate.call(thisArg, kValue, k, o)) {
+				return k;
+			}
+			// e. Increase k by 1.
+			k++;
+		}
+
+		// 7. Return -1.
+		return -1;
+	}
+
 	function first(arr, callback, thisPtr) {
 		for (var i = 0, len = arr.length; i < len; i++) {
 			if (i in arr) {
@@ -1148,6 +1265,35 @@ window.ExoWeb.DotNet = {};
 		}
 
 		return null;
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/arrayflat/
+	function flat(arr, depth) {
+		// If no depth is specified, default to 1
+		if (depth === undefined) {
+			depth = 1;
+		}
+
+		// Recursively reduce sub-arrays to the specified depth
+		var flatten = function (arr, depth) {
+
+			// If depth is 0, return the array as-is
+			if (depth < 1) {
+				return arr.slice();
+			}
+
+			// Otherwise, concatenate into the parent array
+			return arr.reduce(function (acc, val) {
+				return acc.concat(Array.isArray(val) ? flatten(val, depth - 1) : val);
+			}, []);
+
+		};
+
+		return flatten(arr, depth);
+	}
+
+	function flatMap(arr, callbackFn) {
+		return flat(Array.prototype.map.apply(arr, Array.prototype.slice.call(arguments, 1)), 1);
 	}
 
 	function forEach(arr, callback, thisPtr) {
@@ -1452,8 +1598,16 @@ window.ExoWeb.DotNet = {};
 		Array.prototype.fill = function(value, times) { return fill(this, value, times); };
 	if (!Array.prototype.filter)
 		Array.prototype.filter = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
+	if (!Array.prototype.find)
+		Array.prototype.find = function(callbackFn, thisArg) { return find(this, callbackFn, thisArg); };
+	if (!Array.prototype.findIndex)
+		Array.prototype.findIndex = function(predicate, thisArg) { return findIndex(this, predicate, thisArg); };
 	if (!Array.prototype.first)
 		Array.prototype.first = function(fun/*, thisp */) { return first(this, fun, arguments[1]); };
+	if (!Array.prototype.flat)
+		Array.prototype.flat = function(depth) { return flat(this, depth); };
+	if (!Array.prototype.flatMap)
+		Array.prototype.flatMap = function(callbackFn) { return flatMap(this, callbackFn); };
 	if (!Array.prototype.forEach)
 		Array.prototype.forEach = function(fun /*, thisp*/) { forEach(this, fun, arguments[1]); };
 	if (!Array.prototype.indexOf)
@@ -1481,6 +1635,156 @@ window.ExoWeb.DotNet = {};
 	if (!Array.prototype.some)
 		Array.prototype.some = function(fun /*, thisp*/) { return some(this, fun, arguments[1]); };
 
+	// Based on https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from#polyfill
+	var from = (function () {
+		var symbolIterator;
+		try {
+			symbolIterator = Symbol.iterator
+				? Symbol.iterator
+				: 'Symbol(Symbol.iterator)';
+		} catch (e) {
+			symbolIterator = 'Symbol(Symbol.iterator)';
+		}
+
+		var toStr = Object.prototype.toString;
+		var isCallable = function (fn) {
+			return (
+				typeof fn === 'function' ||
+				toStr.call(fn) === '[object Function]'
+			);
+		};
+		var toInteger = function (value) {
+			var number = Number(value);
+			if (isNaN(number)) return 0;
+			if (number === 0 || !isFinite(number)) return number;
+			return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
+		};
+		var maxSafeInteger = Math.pow(2, 53) - 1;
+		var toLength = function (value) {
+			var len = toInteger(value);
+			return Math.min(Math.max(len, 0), maxSafeInteger);
+		};
+
+		var setGetItemHandler = function setGetItemHandler(isIterator, items) {
+			var iterator = isIterator && items[symbolIterator]();
+			return function getItem(k) {
+				return isIterator ? iterator.next() : items[k];
+			};
+		};
+
+		var getArray = function getArray(
+			T,
+			A,
+			len,
+			getItem,
+			isIterator,
+			mapFn
+		) {
+			// 16. Let k be 0.
+			var k = 0;
+
+			// 17. Repeat, while k < len… or while iterator is done (also steps a - h)
+			while (k < len || isIterator) {
+				var item = getItem(k);
+				var kValue = isIterator ? item.value : item;
+
+				if (isIterator && item.done) {
+					return A;
+				} else {
+					if (mapFn) {
+						A[k] =
+							typeof T === 'undefined'
+								? mapFn(kValue, k)
+								: mapFn.call(T, kValue, k);
+					} else {
+						A[k] = kValue;
+					}
+				}
+				k += 1;
+			}
+
+			if (isIterator) {
+				throw new TypeError(
+					'Array.from: provided arrayLike or iterator has length more then 2 ** 52 - 1'
+				);
+			} else {
+				A.length = len;
+			}
+
+			return A;
+		};
+
+		// The length property of the from method is 1.
+		return function from(arrayLikeOrIterator /*, mapFn, thisArg */) {
+			// 1. Let C be the this value.
+			var C = this;
+
+			// 2. Let items be ToObject(arrayLikeOrIterator).
+			var items = Object(arrayLikeOrIterator);
+			var isIterator = isCallable(items[symbolIterator]);
+
+			// 3. ReturnIfAbrupt(items).
+			if (arrayLikeOrIterator == null && !isIterator) {
+				throw new TypeError(
+					'Array.from requires an array-like object or iterator - not null or undefined'
+				);
+			}
+
+			// 4. If mapfn is undefined, then let mapping be false.
+			var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
+			var T;
+			if (typeof mapFn !== 'undefined') {
+				// 5. else
+				// 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
+				if (!isCallable(mapFn)) {
+					throw new TypeError(
+						'Array.from: when provided, the second argument must be a function'
+					);
+				}
+
+				// 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+				if (arguments.length > 2) {
+					T = arguments[2];
+				}
+			}
+
+			// 10. Let lenValue be Get(items, "length").
+			// 11. Let len be ToLength(lenValue).
+			var len = toLength(items.length);
+
+			// 13. If IsConstructor(C) is true, then
+			// 13. a. Let A be the result of calling the [[Construct]] internal method
+			// of C with an argument list containing the single item len.
+			// 14. a. Else, Let A be ArrayCreate(len).
+			var A = isCallable(C) ? Object(new C(len)) : new Array(len);
+
+			return getArray(
+				T,
+				A,
+				len,
+				setGetItemHandler(isIterator, items),
+				isIterator,
+				mapFn
+			);
+		};
+	})();
+
+	// Based on https://vanillajstoolkit.com/polyfills/arrayisarray/
+	function isArray(value) {
+		return Object.prototype.toString.call(value) === '[object Array]';
+	}
+
+	function of() {
+		return Array.prototype.slice.call(arguments);
+	}
+
+	if (!Array.from)
+		Array.from = from;
+	if (!Array.isArray)
+		Array.isArray = isArray;
+	if (!Array.of)
+		Array.of = of;
+
 	// #endregion
 
 	// #region ExoWeb.String
@@ -1495,6 +1799,153 @@ window.ExoWeb.DotNet = {};
 	function isNullOrEmpty(str) {
 		return str === null || str === undefined || str === "";
 	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringendswith/
+	function endsWith(str, searchStr, position) {
+		// This works much better than >= because
+		// it compensates for NaN:
+		if (!(position < str.length)) {
+			position = str.length;
+		} else {
+			position |= 0; // round position
+		}
+		return str.substr(position - searchStr.length, searchStr.length) === searchStr;
+	}
+
+	function includes(str, search, start) {
+		if (search instanceof RegExp) {
+			throw TypeError('first argument must not be a RegExp');
+		}
+		if (start === undefined) { start = 0; }
+		return str.indexOf(search, start) !== -1;
+	}
+
+	// https://gist.github.com/TheBrenny/039add509c87a3143b9c077f76aa550b
+	function matchAll (str, rx) {
+		if (typeof rx === "string") rx = new RegExp(rx, "g"); // coerce a string to be a global regex
+		rx = new RegExp(rx); // Clone the regex so we don't update the last index on the regex they pass us
+		var cap = []; // the single capture
+		var all = []; // all the captures (return this)
+		while ((cap = rx.exec(str)) !== null) all.push(cap); // execute and add
+		return all; // profit!
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringpadend/
+	function padEnd(str, targetLength, padString) {
+		targetLength = targetLength >> 0; //floor if number or convert non-number to 0;
+		padString = String((typeof padString !== 'undefined' ? padString : ' '));
+		if (str.length > targetLength) {
+			return String(str);
+		}
+		else {
+			targetLength = targetLength - str.length;
+			if (targetLength > padString.length) {
+				padString += repeat(padString, targetLength / padString.length); //append to original to ensure we are longer than needed
+			}
+			return String(str) + padString.slice(0, targetLength);
+		}
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringpadstart/
+	function padStart(str, targetLength, padString) {
+		targetLength = targetLength >> 0; //truncate if number or convert non-number to 0;
+		padString = String((typeof padString !== 'undefined' ? padString : ' '));
+		if (str.length > targetLength) {
+			return String(str);
+		}
+		else {
+			targetLength = targetLength - str.length;
+			if (targetLength > padString.length) {
+				padString += repeat(padString, targetLength / padString.length); //append to original to ensure we are longer than needed
+			}
+			return padString.slice(0, targetLength) + String(str);
+		}
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringrepeat/
+	function repeat(str, count) {
+		if (str == null)
+			throw new TypeError('can\'t convert ' + str + ' to object');
+
+		var result = '' + str;
+		// To convert string to integer.
+		count = +count;
+		// Check NaN
+		if (count != count)
+			count = 0;
+
+		if (count < 0)
+			throw new RangeError('repeat count must be non-negative');
+
+		if (count == Infinity)
+			throw new RangeError('repeat count must be less than infinity');
+
+		count = Math.floor(count);
+		if (result.length == 0 || count == 0)
+			return '';
+
+		// Ensuring count is a 31-bit integer allows us to heavily optimize the
+		// main part. But anyway, most current (August 2014) browsers can't handle
+		// strings 1 << 28 chars or longer, so:
+		if (result.length * count >= 1 << 28)
+			throw new RangeError('repeat count must not overflow maximum string size');
+
+		var maxCount = result.length * count;
+		count = Math.floor(Math.log(count) / Math.log(2));
+		while (count) {
+			result += result;
+			count--;
+		}
+		result += result.substring(0, maxCount - result.length);
+		return result;
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringreplaceall/
+	function replaceAll(str, substr, newSubstr) {
+		// If a regex pattern
+		if (Object.prototype.toString.call(substr).toLowerCase() === '[object regexp]') {
+			return str.replace(substr, newSubstr);
+		}
+
+		// If a string
+		return str.replace(new RegExp(substr, 'g'), newSubstr);
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringstartswith/
+	function startsWith(str, searchString, position) {
+		return str.slice(position || 0, searchString.length) === searchString;
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringtrimend/
+	function trimEnd(str) {
+		return str.replace(new RegExp(/[\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF]+/.source + '$', 'g'), '');
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/stringtrimstart/
+	function trimStart(str) {
+		return str.replace(new RegExp('^' + /[\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF]+/.source, 'g'), '');
+	}
+
+	if (!String.prototype.endsWith)
+		String.prototype.endsWith = function (searchStr /*, position*/) { return endsWith(this, rx, arguments[1]); };
+	if (!String.prototype.includes)
+		String.prototype.includes = function (search /*, start*/) { return includes(this, search, arguments[1]); };
+	if (!String.prototype.matchAll)
+		String.prototype.matchAll = function (regexp) { return matchAll(this, regexp); };
+	if (!String.prototype.padEnd)
+		String.prototype.padEnd = function (targetLength /*, padString*/) { return padEnd(this, targetLength, arguments[1]); };
+	if (!String.prototype.padStart)
+		String.prototype.padStart = function (targetLength /*, padString*/) { return padStart(this, targetLength, arguments[1]); };
+	if (!String.prototype.repeat)
+		String.prototype.repeat = function (count) { return repeat(this, count); };
+	if (!String.prototype.replaceAll)
+		String.prototype.replaceAll = function (substr, newSubstr) { return replaceAll(this, substr, newSubstr); };
+	if (!String.prototype.startsWith)
+		String.prototype.startsWith = function (searchString /*, position*/) { return startsWith(this, searchString, arguments[1]); };
+	if (!String.prototype.trimEnd)
+		String.prototype.trimEnd = function () { return trimEnd(this); };
+	if (!String.prototype.trimStart)
+		String.prototype.trimStart = function () { return trimStart(this); };
 
 	// #endregion
 
@@ -3415,6 +3866,46 @@ window.ExoWeb.DotNet = {};
 		}
 	};
 
+	// Based on https://vanillajstoolkit.com/polyfills/objectassign/
+	function assign(target, varArgs) {
+		if (target == null) { // TypeError if undefined or null
+			throw new TypeError('Cannot convert undefined or null to object');
+		}
+
+		var to = Object(target);
+
+		for (var index = 1; index < arguments.length; index++) {
+			var nextSource = arguments[index];
+
+			if (nextSource != null) { // Skip over if undefined or null
+				for (var nextKey in nextSource) {
+					// Avoid bugs when hasOwnProperty is shadowed
+					if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+						to[nextKey] = nextSource[nextKey];
+					}
+				}
+			}
+		}
+		return to;
+	}
+
+	// Based on https://vanillajstoolkit.com/polyfills/objectentries/
+	function entries(obj) {
+		var ownProps = Object.keys(obj),
+			i = ownProps.length,
+			resArray = new Array(i); // preallocate the Array
+
+		while (i--)
+			resArray[i] = [ownProps[i], obj[ownProps[i]]];
+
+		return resArray;
+	}
+
+	if (!Object.assign)
+		Object.assign = assign;
+	if (!Object.entries)
+		Object.entries = entries;
+
 	// #endregion
 
 	// #region ExoWeb.Observer
@@ -3782,6 +4273,165 @@ window.ExoWeb.DotNet = {};
 
 	// #endregion
 
+	// #region ExoWeb.Model.FormatCompiler
+	//////////////////////////////////////////////////
+
+	var formatTemplateParser = /\[([_a-zA-Z\u00aa\u00b5\u00ba\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02b8\u02bb-\u02c1\u02d0-\u02d1\u02e0-\u02e4\u02ee\u0370-\u0373\u0376-\u0377\u037a-\u037d\u0386\u0388-\u038a\u038c\u038e-\u03a1\u03a3-\u03f5\u03f7-\u0481\u048a-\u0523\u0531-\u0556\u0559\u0561-\u0587\u05d0-\u05ea\u05f0-\u05f2\u0621-\u064a\u0660-\u0669\u066e-\u066f\u0671-\u06d3\u06d5\u06e5-\u06e6\u06ee-\u06fc\u06ff\u0710\u0712-\u072f\u074d-\u07a5\u07b1\u07c0-\u07ea\u07f4-\u07f5\u07fa\u0904-\u0939\u093d\u0950\u0958-\u0961\u0966-\u096f\u0971-\u0972\u097b-\u097f\u0985-\u098c\u098f-\u0990\u0993-\u09a8\u09aa-\u09b0\u09b2\u09b6-\u09b9\u09bd\u09ce\u09dc-\u09dd\u09df-\u09e1\u09e6-\u09f1\u0a05-\u0a0a\u0a0f-\u0a10\u0a13-\u0a28\u0a2a-\u0a30\u0a32-\u0a33\u0a35-\u0a36\u0a38-\u0a39\u0a59-\u0a5c\u0a5e\u0a66-\u0a6f\u0a72-\u0a74\u0a85-\u0a8d\u0a8f-\u0a91\u0a93-\u0aa8\u0aaa-\u0ab0\u0ab2-\u0ab3\u0ab5-\u0ab9\u0abd\u0ad0\u0ae0-\u0ae1\u0ae6-\u0aef\u0b05-\u0b0c\u0b0f-\u0b10\u0b13-\u0b28\u0b2a-\u0b30\u0b32-\u0b33\u0b35-\u0b39\u0b3d\u0b5c-\u0b5d\u0b5f-\u0b61\u0b66-\u0b6f\u0b71\u0b83\u0b85-\u0b8a\u0b8e-\u0b90\u0b92-\u0b95\u0b99-\u0b9a\u0b9c\u0b9e-\u0b9f\u0ba3-\u0ba4\u0ba8-\u0baa\u0bae-\u0bb9\u0bd0\u0be6-\u0bef\u0c05-\u0c0c\u0c0e-\u0c10\u0c12-\u0c28\u0c2a-\u0c33\u0c35-\u0c39\u0c3d\u0c58-\u0c59\u0c60-\u0c61\u0c66-\u0c6f\u0c85-\u0c8c\u0c8e-\u0c90\u0c92-\u0ca8\u0caa-\u0cb3\u0cb5-\u0cb9\u0cbd\u0cde\u0ce0-\u0ce1\u0ce6-\u0cef\u0d05-\u0d0c\u0d0e-\u0d10\u0d12-\u0d28\u0d2a-\u0d39\u0d3d\u0d60-\u0d61\u0d66-\u0d6f\u0d7a-\u0d7f\u0d85-\u0d96\u0d9a-\u0db1\u0db3-\u0dbb\u0dbd\u0dc0-\u0dc6\u0e01-\u0e30\u0e32-\u0e33\u0e40-\u0e46\u0e50-\u0e59\u0e81-\u0e82\u0e84\u0e87-\u0e88\u0e8a\u0e8d\u0e94-\u0e97\u0e99-\u0e9f\u0ea1-\u0ea3\u0ea5\u0ea7\u0eaa-\u0eab\u0ead-\u0eb0\u0eb2-\u0eb3\u0ebd\u0ec0-\u0ec4\u0ec6\u0ed0-\u0ed9\u0edc-\u0edd\u0f00\u0f20-\u0f29\u0f40-\u0f47\u0f49-\u0f6c\u0f88-\u0f8b\u1000-\u102a\u103f-\u1049\u1050-\u1055\u105a-\u105d\u1061\u1065-\u1066\u106e-\u1070\u1075-\u1081\u108e\u1090-\u1099\u10a0-\u10c5\u10d0-\u10fa\u10fc\u1100-\u1159\u115f-\u11a2\u11a8-\u11f9\u1200-\u1248\u124a-\u124d\u1250-\u1256\u1258\u125a-\u125d\u1260-\u1288\u128a-\u128d\u1290-\u12b0\u12b2-\u12b5\u12b8-\u12be\u12c0\u12c2-\u12c5\u12c8-\u12d6\u12d8-\u1310\u1312-\u1315\u1318-\u135a\u1380-\u138f\u13a0-\u13f4\u1401-\u166c\u166f-\u1676\u1681-\u169a\u16a0-\u16ea\u1700-\u170c\u170e-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176c\u176e-\u1770\u1780-\u17b3\u17d7\u17dc\u17e0-\u17e9\u1810-\u1819\u1820-\u1877\u1880-\u18a8\u18aa\u1900-\u191c\u1946-\u196d\u1970-\u1974\u1980-\u19a9\u19c1-\u19c7\u19d0-\u19d9\u1a00-\u1a16\u1b05-\u1b33\u1b45-\u1b4b\u1b50-\u1b59\u1b83-\u1ba0\u1bae-\u1bb9\u1c00-\u1c23\u1c40-\u1c49\u1c4d-\u1c7d\u1d00-\u1dbf\u1e00-\u1f15\u1f18-\u1f1d\u1f20-\u1f45\u1f48-\u1f4d\u1f50-\u1f57\u1f59\u1f5b\u1f5d\u1f5f-\u1f7d\u1f80-\u1fb4\u1fb6-\u1fbc\u1fbe\u1fc2-\u1fc4\u1fc6-\u1fcc\u1fd0-\u1fd3\u1fd6-\u1fdb\u1fe0-\u1fec\u1ff2-\u1ff4\u1ff6-\u1ffc\u2071\u207f\u2090-\u2094\u2102\u2107\u210a-\u2113\u2115\u2119-\u211d\u2124\u2126\u2128\u212a-\u212d\u212f-\u2139\u213c-\u213f\u2145-\u2149\u214e\u2183-\u2184\u2c00-\u2c2e\u2c30-\u2c5e\u2c60-\u2c6f\u2c71-\u2c7d\u2c80-\u2ce4\u2d00-\u2d25\u2d30-\u2d65\u2d6f\u2d80-\u2d96\u2da0-\u2da6\u2da8-\u2dae\u2db0-\u2db6\u2db8-\u2dbe\u2dc0-\u2dc6\u2dc8-\u2dce\u2dd0-\u2dd6\u2dd8-\u2dde\u3005-\u3006\u3031-\u3035\u303b-\u303c\u3041-\u3096\u309d-\u309f\u30a1-\u30fa\u30fc-\u30ff\u3105-\u312d\u3131-\u318e\u31a0-\u31b7\u31f0-\u31ff\u3400-\u4db5\u4e00-\u9fc3\ua000-\ua48c\ua500-\ua60c\ua610-\ua62b\ua640-\ua65f\ua662-\ua66e\ua680-\ua697\ua722-\ua788\ua78b-\ua78c\ua7fb-\ua801\ua803-\ua805\ua807-\ua80a\ua80c-\ua822\ua840-\ua873\ua882-\ua8b3\ua8d0-\ua8d9\ua900-\ua925\ua930-\ua946\uaa00-\uaa28\uaa40-\uaa42\uaa44-\uaa4b\uaa50-\uaa59\uac00-\ud7a3\uf900-\ufa2d\ufa30-\ufa6a\ufa70-\ufad9\ufb00-\ufb06\ufb13-\ufb17\ufb1d\ufb1f-\ufb28\ufb2a-\ufb36\ufb38-\ufb3c\ufb3e\ufb40-\ufb41\ufb43-\ufb44\ufb46-\ufbb1\ufbd3-\ufd3d\ufd50-\ufd8f\ufd92-\ufdc7\ufdf0-\ufdfb\ufe70-\ufe74\ufe76-\ufefc\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uffbe\uffc2-\uffc7\uffca-\uffcf\uffd2-\uffd7\uffda-\uffdc][_.0-9a-zA-Z\u00aa\u00b5\u00ba\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02b8\u02bb-\u02c1\u02d0-\u02d1\u02e0-\u02e4\u02ee\u0370-\u0373\u0376-\u0377\u037a-\u037d\u0386\u0388-\u038a\u038c\u038e-\u03a1\u03a3-\u03f5\u03f7-\u0481\u048a-\u0523\u0531-\u0556\u0559\u0561-\u0587\u05d0-\u05ea\u05f0-\u05f2\u0621-\u064a\u0660-\u0669\u066e-\u066f\u0671-\u06d3\u06d5\u06e5-\u06e6\u06ee-\u06fc\u06ff\u0710\u0712-\u072f\u074d-\u07a5\u07b1\u07c0-\u07ea\u07f4-\u07f5\u07fa\u0904-\u0939\u093d\u0950\u0958-\u0961\u0966-\u096f\u0971-\u0972\u097b-\u097f\u0985-\u098c\u098f-\u0990\u0993-\u09a8\u09aa-\u09b0\u09b2\u09b6-\u09b9\u09bd\u09ce\u09dc-\u09dd\u09df-\u09e1\u09e6-\u09f1\u0a05-\u0a0a\u0a0f-\u0a10\u0a13-\u0a28\u0a2a-\u0a30\u0a32-\u0a33\u0a35-\u0a36\u0a38-\u0a39\u0a59-\u0a5c\u0a5e\u0a66-\u0a6f\u0a72-\u0a74\u0a85-\u0a8d\u0a8f-\u0a91\u0a93-\u0aa8\u0aaa-\u0ab0\u0ab2-\u0ab3\u0ab5-\u0ab9\u0abd\u0ad0\u0ae0-\u0ae1\u0ae6-\u0aef\u0b05-\u0b0c\u0b0f-\u0b10\u0b13-\u0b28\u0b2a-\u0b30\u0b32-\u0b33\u0b35-\u0b39\u0b3d\u0b5c-\u0b5d\u0b5f-\u0b61\u0b66-\u0b6f\u0b71\u0b83\u0b85-\u0b8a\u0b8e-\u0b90\u0b92-\u0b95\u0b99-\u0b9a\u0b9c\u0b9e-\u0b9f\u0ba3-\u0ba4\u0ba8-\u0baa\u0bae-\u0bb9\u0bd0\u0be6-\u0bef\u0c05-\u0c0c\u0c0e-\u0c10\u0c12-\u0c28\u0c2a-\u0c33\u0c35-\u0c39\u0c3d\u0c58-\u0c59\u0c60-\u0c61\u0c66-\u0c6f\u0c85-\u0c8c\u0c8e-\u0c90\u0c92-\u0ca8\u0caa-\u0cb3\u0cb5-\u0cb9\u0cbd\u0cde\u0ce0-\u0ce1\u0ce6-\u0cef\u0d05-\u0d0c\u0d0e-\u0d10\u0d12-\u0d28\u0d2a-\u0d39\u0d3d\u0d60-\u0d61\u0d66-\u0d6f\u0d7a-\u0d7f\u0d85-\u0d96\u0d9a-\u0db1\u0db3-\u0dbb\u0dbd\u0dc0-\u0dc6\u0e01-\u0e30\u0e32-\u0e33\u0e40-\u0e46\u0e50-\u0e59\u0e81-\u0e82\u0e84\u0e87-\u0e88\u0e8a\u0e8d\u0e94-\u0e97\u0e99-\u0e9f\u0ea1-\u0ea3\u0ea5\u0ea7\u0eaa-\u0eab\u0ead-\u0eb0\u0eb2-\u0eb3\u0ebd\u0ec0-\u0ec4\u0ec6\u0ed0-\u0ed9\u0edc-\u0edd\u0f00\u0f20-\u0f29\u0f40-\u0f47\u0f49-\u0f6c\u0f88-\u0f8b\u1000-\u102a\u103f-\u1049\u1050-\u1055\u105a-\u105d\u1061\u1065-\u1066\u106e-\u1070\u1075-\u1081\u108e\u1090-\u1099\u10a0-\u10c5\u10d0-\u10fa\u10fc\u1100-\u1159\u115f-\u11a2\u11a8-\u11f9\u1200-\u1248\u124a-\u124d\u1250-\u1256\u1258\u125a-\u125d\u1260-\u1288\u128a-\u128d\u1290-\u12b0\u12b2-\u12b5\u12b8-\u12be\u12c0\u12c2-\u12c5\u12c8-\u12d6\u12d8-\u1310\u1312-\u1315\u1318-\u135a\u1380-\u138f\u13a0-\u13f4\u1401-\u166c\u166f-\u1676\u1681-\u169a\u16a0-\u16ea\u1700-\u170c\u170e-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176c\u176e-\u1770\u1780-\u17b3\u17d7\u17dc\u17e0-\u17e9\u1810-\u1819\u1820-\u1877\u1880-\u18a8\u18aa\u1900-\u191c\u1946-\u196d\u1970-\u1974\u1980-\u19a9\u19c1-\u19c7\u19d0-\u19d9\u1a00-\u1a16\u1b05-\u1b33\u1b45-\u1b4b\u1b50-\u1b59\u1b83-\u1ba0\u1bae-\u1bb9\u1c00-\u1c23\u1c40-\u1c49\u1c4d-\u1c7d\u1d00-\u1dbf\u1e00-\u1f15\u1f18-\u1f1d\u1f20-\u1f45\u1f48-\u1f4d\u1f50-\u1f57\u1f59\u1f5b\u1f5d\u1f5f-\u1f7d\u1f80-\u1fb4\u1fb6-\u1fbc\u1fbe\u1fc2-\u1fc4\u1fc6-\u1fcc\u1fd0-\u1fd3\u1fd6-\u1fdb\u1fe0-\u1fec\u1ff2-\u1ff4\u1ff6-\u1ffc\u2071\u207f\u2090-\u2094\u2102\u2107\u210a-\u2113\u2115\u2119-\u211d\u2124\u2126\u2128\u212a-\u212d\u212f-\u2139\u213c-\u213f\u2145-\u2149\u214e\u2183-\u2184\u2c00-\u2c2e\u2c30-\u2c5e\u2c60-\u2c6f\u2c71-\u2c7d\u2c80-\u2ce4\u2d00-\u2d25\u2d30-\u2d65\u2d6f\u2d80-\u2d96\u2da0-\u2da6\u2da8-\u2dae\u2db0-\u2db6\u2db8-\u2dbe\u2dc0-\u2dc6\u2dc8-\u2dce\u2dd0-\u2dd6\u2dd8-\u2dde\u3005-\u3006\u3031-\u3035\u303b-\u303c\u3041-\u3096\u309d-\u309f\u30a1-\u30fa\u30fc-\u30ff\u3105-\u312d\u3131-\u318e\u31a0-\u31b7\u31f0-\u31ff\u3400-\u4db5\u4e00-\u9fc3\ua000-\ua48c\ua500-\ua60c\ua610-\ua62b\ua640-\ua65f\ua662-\ua66e\ua680-\ua697\ua722-\ua788\ua78b-\ua78c\ua7fb-\ua801\ua803-\ua805\ua807-\ua80a\ua80c-\ua822\ua840-\ua873\ua882-\ua8b3\ua8d0-\ua8d9\ua900-\ua925\ua930-\ua946\uaa00-\uaa28\uaa40-\uaa42\uaa44-\uaa4b\uaa50-\uaa59\uac00-\ud7a3\uf900-\ufa2d\ufa30-\ufa6a\ufa70-\ufad9\ufb00-\ufb06\ufb13-\ufb17\ufb1d\ufb1f-\ufb28\ufb2a-\ufb36\ufb38-\ufb3c\ufb3e\ufb40-\ufb41\ufb43-\ufb44\ufb46-\ufbb1\ufbd3-\ufd3d\ufd50-\ufd8f\ufd92-\ufdc7\ufdf0-\ufdfb\ufe70-\ufe74\ufe76-\ufefc\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uffbe\uffc2-\uffc7\uffca-\uffcf\uffd2-\uffd7\uffda-\uffdc]*)(\:(.+?))?\]/ig;
+
+	var metaPathParser = /^(.*\.|)meta(\..*|)$/;
+
+	function createTemplateParser(template) {
+	    var parse = function parseFormatTemplate() {
+	        if (!this._tokens) {
+	            this._tokens = [];
+
+	            // Replace escaped \, [ or ] characters with placeholders
+	            template = template.replace(/\\\\/g, '\u0000').replace(/\\\[/g, '\u0001').replace(/\\\]/g, '\u0002');
+	            var index = 0;
+	            formatTemplateParser.lastIndex = 0;
+	            var match = formatTemplateParser.exec(template);
+
+	            // Process each token match
+	            while (match) {
+	                var path = match[1];
+
+	                // Create a token for the current match, including the prefix, path and format
+	                this._tokens.push({
+	                    prefix: template.substring(index, formatTemplateParser.lastIndex - match[0].length).replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']'),
+	                    path: path,
+	                    format: match[3] ? match[3].replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']') : null
+	                });
+
+	                // Track the last index and find the next match
+	                index = formatTemplateParser.lastIndex;
+	                match = formatTemplateParser.exec(template);
+	            }
+
+	            // Capture any trailing literal text as a token without a path
+	            if (index < template.length) {
+	                this._tokens.push({
+	                    prefix: template.substring(index).replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']')
+	                });
+	            }
+	        }
+	    };
+	    return parse;
+	}
+
+	function createTemplateCompiler(type) {
+		var logWarning = function logCompileFormatTemplateWarning(message) {
+			if (typeof console !== "undefined") {
+				if (console.warn && typeof console.warn === "function")
+					console.warn(message);
+				else if (console.log && typeof console.log === "function")
+					console.log("WARN: " + message);
+			}
+		};
+
+	    var compile = function compileFormatTemplate(callback, thisPtr) {
+	        // First, ensure that the template is parsed
+	        this._parse.call(this);
+
+	        // Detect whether the template is being compiled in async mode
+	        var isAsync = callback && callback instanceof Function;
+
+	        // If the template is currently being compiled, then wait for it to complete
+	        if (this._compileSignal && isAsync) {
+	            this._compileSignal.waitForAll(callback, thisPtr);
+	            return;
+	        }
+
+	        // If the template has already been compiled, then invoke the callback immediately
+	        if (this._paths && isAsync) {
+	            callback.call(thisPtr || this);
+	            return;
+	        }
+
+	        if (!this._paths) {
+	            if (isAsync) {
+	                this._compileSignal = new Signal("compileFormatTemplate");
+	            }
+
+	            this._paths = [];
+
+	            this._tokens.forEach(function (token) {
+	                var path = token.path;
+	                if (path) {
+	                    var propertyPath = path;
+
+	                    // See if the path represents a property path in the model
+	                    try {
+	                        // Detect property path followed by ".meta..."
+	                        propertyPath = propertyPath.replace(metaPathParser, "$1");
+	                        var isMetaPath = propertyPath.length > 0 && propertyPath.length < path.length;
+	                        var allowFormat = !isMetaPath;
+	                        if (isMetaPath) {
+	                            propertyPath = propertyPath.substring(0, propertyPath.length - 1);
+	                        }
+
+	                        // If a property path remains, then attempt to find a default format and paths for the format
+	                        if (propertyPath) {
+	                            var processFormatProperty = function (property) {
+									if (property) {
+										// Only allow formats for a property path that is not followed by ".meta..."
+										if (allowFormat) {
+											// Determine the default property format
+											var defaultFormat = property.get_format();
+
+											// If the path references one or more entity properties, include paths for the property format. Otherwise, just add the path.
+											var lastIndex = formatTemplateParser.lastIndex;
+											if (defaultFormat && defaultFormat.constructor === Format && defaultFormat !== this && defaultFormat.getPaths().length > 0)
+												this._paths.addRange(defaultFormat.getPaths().map(function (p) { return propertyPath + "." + p; }));
+											else
+												this._paths.push(propertyPath);
+											formatTemplateParser.lastIndex = lastIndex;
+											// Use the default format for the property
+											if (!token.format) {
+												token.format = defaultFormat;
+											}
+										}
+										// Formats are not allowed, so just add the path
+										else {
+											this._paths.push(propertyPath);
+										}
+									} else {
+										logWarning("Path '" + propertyPath + "' is not valid.");
+									}
+	                            };
+
+								// Get the property and process it either immediately, or when the path is available (if compiling in async mode)
+								if (isAsync) {
+									Model.property(propertyPath, type, false, this._compileSignal.pending(processFormatProperty, this), this, false);
+								} else {
+									var property = Model.property(propertyPath, type);
+									if (property) {
+										processFormatProperty.call(this, property);
+									} else {
+										logWarning("Path '" + propertyPath + "' is not valid.");
+									}
+								}
+	                        }
+	                    }
+						catch (e) {
+							logWarning(e);
+	                    }
+	                }
+	            }, this);
+
+	            // If the format is being compiled async, then invoke the callback when complete
+	            if (isAsync) {
+	                this._compileSignal.waitForAll(function () {
+	                    callback.call(thisPtr || this);
+	                    delete this._compileSignal;
+	                }, this);
+	            }
+	        }
+	    };
+	    return compile;
+	}
+
+	// #endregion
+
 	// #region ExoWeb.Model.Format
 	//////////////////////////////////////////////////
 
@@ -3793,97 +4443,53 @@ window.ExoWeb.DotNet = {};
 		this._paths = options.paths;
 		this._convert = options.convert;
 		this._convertBack = options.convertBack;
+		this._parse = options.parse;
 		this._compile = options.compile;
 		this._description = options.description;
 		this._nullString = options.nullString || "";
 		this._undefinedString = options.undefinedString || "";
+		this._getFormattedValue = function (obj) {
+			var result = "";
+			for (var index = 0; index < this._tokens.length; index++) {
+				var token = this._tokens[index];
+				if (token.prefix)
+					result = result + token.prefix;
+				if (token.path) {
+					var value = evalPath(obj, token.path);
+					if (value === undefined || value === null)
+						value = "";
+					else if (token.format) {
+						if (token.format.constructor === String) {
+							token.format = getFormat(value.constructor, token.format);
+						}
+
+						if (value instanceof Array)
+							value = value.map(function (v) { return token.format.convert(v); }).join(", ");
+						else
+							value = token.format.convert(value);
+
+						if (this._formatEval)
+							value = this._formatEval(value);
+					}
+					result = result + value;
+				}
+			}
+
+			return result;
+		};
 
 		// function to perform additional post formatting
 		this._formatEval = options.formatEval;
 	}
-
-	var formatTemplateParser = /\[([_a-zA-Z\u00aa\u00b5\u00ba\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02b8\u02bb-\u02c1\u02d0-\u02d1\u02e0-\u02e4\u02ee\u0370-\u0373\u0376-\u0377\u037a-\u037d\u0386\u0388-\u038a\u038c\u038e-\u03a1\u03a3-\u03f5\u03f7-\u0481\u048a-\u0523\u0531-\u0556\u0559\u0561-\u0587\u05d0-\u05ea\u05f0-\u05f2\u0621-\u064a\u0660-\u0669\u066e-\u066f\u0671-\u06d3\u06d5\u06e5-\u06e6\u06ee-\u06fc\u06ff\u0710\u0712-\u072f\u074d-\u07a5\u07b1\u07c0-\u07ea\u07f4-\u07f5\u07fa\u0904-\u0939\u093d\u0950\u0958-\u0961\u0966-\u096f\u0971-\u0972\u097b-\u097f\u0985-\u098c\u098f-\u0990\u0993-\u09a8\u09aa-\u09b0\u09b2\u09b6-\u09b9\u09bd\u09ce\u09dc-\u09dd\u09df-\u09e1\u09e6-\u09f1\u0a05-\u0a0a\u0a0f-\u0a10\u0a13-\u0a28\u0a2a-\u0a30\u0a32-\u0a33\u0a35-\u0a36\u0a38-\u0a39\u0a59-\u0a5c\u0a5e\u0a66-\u0a6f\u0a72-\u0a74\u0a85-\u0a8d\u0a8f-\u0a91\u0a93-\u0aa8\u0aaa-\u0ab0\u0ab2-\u0ab3\u0ab5-\u0ab9\u0abd\u0ad0\u0ae0-\u0ae1\u0ae6-\u0aef\u0b05-\u0b0c\u0b0f-\u0b10\u0b13-\u0b28\u0b2a-\u0b30\u0b32-\u0b33\u0b35-\u0b39\u0b3d\u0b5c-\u0b5d\u0b5f-\u0b61\u0b66-\u0b6f\u0b71\u0b83\u0b85-\u0b8a\u0b8e-\u0b90\u0b92-\u0b95\u0b99-\u0b9a\u0b9c\u0b9e-\u0b9f\u0ba3-\u0ba4\u0ba8-\u0baa\u0bae-\u0bb9\u0bd0\u0be6-\u0bef\u0c05-\u0c0c\u0c0e-\u0c10\u0c12-\u0c28\u0c2a-\u0c33\u0c35-\u0c39\u0c3d\u0c58-\u0c59\u0c60-\u0c61\u0c66-\u0c6f\u0c85-\u0c8c\u0c8e-\u0c90\u0c92-\u0ca8\u0caa-\u0cb3\u0cb5-\u0cb9\u0cbd\u0cde\u0ce0-\u0ce1\u0ce6-\u0cef\u0d05-\u0d0c\u0d0e-\u0d10\u0d12-\u0d28\u0d2a-\u0d39\u0d3d\u0d60-\u0d61\u0d66-\u0d6f\u0d7a-\u0d7f\u0d85-\u0d96\u0d9a-\u0db1\u0db3-\u0dbb\u0dbd\u0dc0-\u0dc6\u0e01-\u0e30\u0e32-\u0e33\u0e40-\u0e46\u0e50-\u0e59\u0e81-\u0e82\u0e84\u0e87-\u0e88\u0e8a\u0e8d\u0e94-\u0e97\u0e99-\u0e9f\u0ea1-\u0ea3\u0ea5\u0ea7\u0eaa-\u0eab\u0ead-\u0eb0\u0eb2-\u0eb3\u0ebd\u0ec0-\u0ec4\u0ec6\u0ed0-\u0ed9\u0edc-\u0edd\u0f00\u0f20-\u0f29\u0f40-\u0f47\u0f49-\u0f6c\u0f88-\u0f8b\u1000-\u102a\u103f-\u1049\u1050-\u1055\u105a-\u105d\u1061\u1065-\u1066\u106e-\u1070\u1075-\u1081\u108e\u1090-\u1099\u10a0-\u10c5\u10d0-\u10fa\u10fc\u1100-\u1159\u115f-\u11a2\u11a8-\u11f9\u1200-\u1248\u124a-\u124d\u1250-\u1256\u1258\u125a-\u125d\u1260-\u1288\u128a-\u128d\u1290-\u12b0\u12b2-\u12b5\u12b8-\u12be\u12c0\u12c2-\u12c5\u12c8-\u12d6\u12d8-\u1310\u1312-\u1315\u1318-\u135a\u1380-\u138f\u13a0-\u13f4\u1401-\u166c\u166f-\u1676\u1681-\u169a\u16a0-\u16ea\u1700-\u170c\u170e-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176c\u176e-\u1770\u1780-\u17b3\u17d7\u17dc\u17e0-\u17e9\u1810-\u1819\u1820-\u1877\u1880-\u18a8\u18aa\u1900-\u191c\u1946-\u196d\u1970-\u1974\u1980-\u19a9\u19c1-\u19c7\u19d0-\u19d9\u1a00-\u1a16\u1b05-\u1b33\u1b45-\u1b4b\u1b50-\u1b59\u1b83-\u1ba0\u1bae-\u1bb9\u1c00-\u1c23\u1c40-\u1c49\u1c4d-\u1c7d\u1d00-\u1dbf\u1e00-\u1f15\u1f18-\u1f1d\u1f20-\u1f45\u1f48-\u1f4d\u1f50-\u1f57\u1f59\u1f5b\u1f5d\u1f5f-\u1f7d\u1f80-\u1fb4\u1fb6-\u1fbc\u1fbe\u1fc2-\u1fc4\u1fc6-\u1fcc\u1fd0-\u1fd3\u1fd6-\u1fdb\u1fe0-\u1fec\u1ff2-\u1ff4\u1ff6-\u1ffc\u2071\u207f\u2090-\u2094\u2102\u2107\u210a-\u2113\u2115\u2119-\u211d\u2124\u2126\u2128\u212a-\u212d\u212f-\u2139\u213c-\u213f\u2145-\u2149\u214e\u2183-\u2184\u2c00-\u2c2e\u2c30-\u2c5e\u2c60-\u2c6f\u2c71-\u2c7d\u2c80-\u2ce4\u2d00-\u2d25\u2d30-\u2d65\u2d6f\u2d80-\u2d96\u2da0-\u2da6\u2da8-\u2dae\u2db0-\u2db6\u2db8-\u2dbe\u2dc0-\u2dc6\u2dc8-\u2dce\u2dd0-\u2dd6\u2dd8-\u2dde\u3005-\u3006\u3031-\u3035\u303b-\u303c\u3041-\u3096\u309d-\u309f\u30a1-\u30fa\u30fc-\u30ff\u3105-\u312d\u3131-\u318e\u31a0-\u31b7\u31f0-\u31ff\u3400-\u4db5\u4e00-\u9fc3\ua000-\ua48c\ua500-\ua60c\ua610-\ua62b\ua640-\ua65f\ua662-\ua66e\ua680-\ua697\ua722-\ua788\ua78b-\ua78c\ua7fb-\ua801\ua803-\ua805\ua807-\ua80a\ua80c-\ua822\ua840-\ua873\ua882-\ua8b3\ua8d0-\ua8d9\ua900-\ua925\ua930-\ua946\uaa00-\uaa28\uaa40-\uaa42\uaa44-\uaa4b\uaa50-\uaa59\uac00-\ud7a3\uf900-\ufa2d\ufa30-\ufa6a\ufa70-\ufad9\ufb00-\ufb06\ufb13-\ufb17\ufb1d\ufb1f-\ufb28\ufb2a-\ufb36\ufb38-\ufb3c\ufb3e\ufb40-\ufb41\ufb43-\ufb44\ufb46-\ufbb1\ufbd3-\ufd3d\ufd50-\ufd8f\ufd92-\ufdc7\ufdf0-\ufdfb\ufe70-\ufe74\ufe76-\ufefc\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uffbe\uffc2-\uffc7\uffca-\uffcf\uffd2-\uffd7\uffda-\uffdc][_.0-9a-zA-Z\u00aa\u00b5\u00ba\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02b8\u02bb-\u02c1\u02d0-\u02d1\u02e0-\u02e4\u02ee\u0370-\u0373\u0376-\u0377\u037a-\u037d\u0386\u0388-\u038a\u038c\u038e-\u03a1\u03a3-\u03f5\u03f7-\u0481\u048a-\u0523\u0531-\u0556\u0559\u0561-\u0587\u05d0-\u05ea\u05f0-\u05f2\u0621-\u064a\u0660-\u0669\u066e-\u066f\u0671-\u06d3\u06d5\u06e5-\u06e6\u06ee-\u06fc\u06ff\u0710\u0712-\u072f\u074d-\u07a5\u07b1\u07c0-\u07ea\u07f4-\u07f5\u07fa\u0904-\u0939\u093d\u0950\u0958-\u0961\u0966-\u096f\u0971-\u0972\u097b-\u097f\u0985-\u098c\u098f-\u0990\u0993-\u09a8\u09aa-\u09b0\u09b2\u09b6-\u09b9\u09bd\u09ce\u09dc-\u09dd\u09df-\u09e1\u09e6-\u09f1\u0a05-\u0a0a\u0a0f-\u0a10\u0a13-\u0a28\u0a2a-\u0a30\u0a32-\u0a33\u0a35-\u0a36\u0a38-\u0a39\u0a59-\u0a5c\u0a5e\u0a66-\u0a6f\u0a72-\u0a74\u0a85-\u0a8d\u0a8f-\u0a91\u0a93-\u0aa8\u0aaa-\u0ab0\u0ab2-\u0ab3\u0ab5-\u0ab9\u0abd\u0ad0\u0ae0-\u0ae1\u0ae6-\u0aef\u0b05-\u0b0c\u0b0f-\u0b10\u0b13-\u0b28\u0b2a-\u0b30\u0b32-\u0b33\u0b35-\u0b39\u0b3d\u0b5c-\u0b5d\u0b5f-\u0b61\u0b66-\u0b6f\u0b71\u0b83\u0b85-\u0b8a\u0b8e-\u0b90\u0b92-\u0b95\u0b99-\u0b9a\u0b9c\u0b9e-\u0b9f\u0ba3-\u0ba4\u0ba8-\u0baa\u0bae-\u0bb9\u0bd0\u0be6-\u0bef\u0c05-\u0c0c\u0c0e-\u0c10\u0c12-\u0c28\u0c2a-\u0c33\u0c35-\u0c39\u0c3d\u0c58-\u0c59\u0c60-\u0c61\u0c66-\u0c6f\u0c85-\u0c8c\u0c8e-\u0c90\u0c92-\u0ca8\u0caa-\u0cb3\u0cb5-\u0cb9\u0cbd\u0cde\u0ce0-\u0ce1\u0ce6-\u0cef\u0d05-\u0d0c\u0d0e-\u0d10\u0d12-\u0d28\u0d2a-\u0d39\u0d3d\u0d60-\u0d61\u0d66-\u0d6f\u0d7a-\u0d7f\u0d85-\u0d96\u0d9a-\u0db1\u0db3-\u0dbb\u0dbd\u0dc0-\u0dc6\u0e01-\u0e30\u0e32-\u0e33\u0e40-\u0e46\u0e50-\u0e59\u0e81-\u0e82\u0e84\u0e87-\u0e88\u0e8a\u0e8d\u0e94-\u0e97\u0e99-\u0e9f\u0ea1-\u0ea3\u0ea5\u0ea7\u0eaa-\u0eab\u0ead-\u0eb0\u0eb2-\u0eb3\u0ebd\u0ec0-\u0ec4\u0ec6\u0ed0-\u0ed9\u0edc-\u0edd\u0f00\u0f20-\u0f29\u0f40-\u0f47\u0f49-\u0f6c\u0f88-\u0f8b\u1000-\u102a\u103f-\u1049\u1050-\u1055\u105a-\u105d\u1061\u1065-\u1066\u106e-\u1070\u1075-\u1081\u108e\u1090-\u1099\u10a0-\u10c5\u10d0-\u10fa\u10fc\u1100-\u1159\u115f-\u11a2\u11a8-\u11f9\u1200-\u1248\u124a-\u124d\u1250-\u1256\u1258\u125a-\u125d\u1260-\u1288\u128a-\u128d\u1290-\u12b0\u12b2-\u12b5\u12b8-\u12be\u12c0\u12c2-\u12c5\u12c8-\u12d6\u12d8-\u1310\u1312-\u1315\u1318-\u135a\u1380-\u138f\u13a0-\u13f4\u1401-\u166c\u166f-\u1676\u1681-\u169a\u16a0-\u16ea\u1700-\u170c\u170e-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176c\u176e-\u1770\u1780-\u17b3\u17d7\u17dc\u17e0-\u17e9\u1810-\u1819\u1820-\u1877\u1880-\u18a8\u18aa\u1900-\u191c\u1946-\u196d\u1970-\u1974\u1980-\u19a9\u19c1-\u19c7\u19d0-\u19d9\u1a00-\u1a16\u1b05-\u1b33\u1b45-\u1b4b\u1b50-\u1b59\u1b83-\u1ba0\u1bae-\u1bb9\u1c00-\u1c23\u1c40-\u1c49\u1c4d-\u1c7d\u1d00-\u1dbf\u1e00-\u1f15\u1f18-\u1f1d\u1f20-\u1f45\u1f48-\u1f4d\u1f50-\u1f57\u1f59\u1f5b\u1f5d\u1f5f-\u1f7d\u1f80-\u1fb4\u1fb6-\u1fbc\u1fbe\u1fc2-\u1fc4\u1fc6-\u1fcc\u1fd0-\u1fd3\u1fd6-\u1fdb\u1fe0-\u1fec\u1ff2-\u1ff4\u1ff6-\u1ffc\u2071\u207f\u2090-\u2094\u2102\u2107\u210a-\u2113\u2115\u2119-\u211d\u2124\u2126\u2128\u212a-\u212d\u212f-\u2139\u213c-\u213f\u2145-\u2149\u214e\u2183-\u2184\u2c00-\u2c2e\u2c30-\u2c5e\u2c60-\u2c6f\u2c71-\u2c7d\u2c80-\u2ce4\u2d00-\u2d25\u2d30-\u2d65\u2d6f\u2d80-\u2d96\u2da0-\u2da6\u2da8-\u2dae\u2db0-\u2db6\u2db8-\u2dbe\u2dc0-\u2dc6\u2dc8-\u2dce\u2dd0-\u2dd6\u2dd8-\u2dde\u3005-\u3006\u3031-\u3035\u303b-\u303c\u3041-\u3096\u309d-\u309f\u30a1-\u30fa\u30fc-\u30ff\u3105-\u312d\u3131-\u318e\u31a0-\u31b7\u31f0-\u31ff\u3400-\u4db5\u4e00-\u9fc3\ua000-\ua48c\ua500-\ua60c\ua610-\ua62b\ua640-\ua65f\ua662-\ua66e\ua680-\ua697\ua722-\ua788\ua78b-\ua78c\ua7fb-\ua801\ua803-\ua805\ua807-\ua80a\ua80c-\ua822\ua840-\ua873\ua882-\ua8b3\ua8d0-\ua8d9\ua900-\ua925\ua930-\ua946\uaa00-\uaa28\uaa40-\uaa42\uaa44-\uaa4b\uaa50-\uaa59\uac00-\ud7a3\uf900-\ufa2d\ufa30-\ufa6a\ufa70-\ufad9\ufb00-\ufb06\ufb13-\ufb17\ufb1d\ufb1f-\ufb28\ufb2a-\ufb36\ufb38-\ufb3c\ufb3e\ufb40-\ufb41\ufb43-\ufb44\ufb46-\ufbb1\ufbd3-\ufd3d\ufd50-\ufd8f\ufd92-\ufdc7\ufdf0-\ufdfb\ufe70-\ufe74\ufe76-\ufefc\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uffbe\uffc2-\uffc7\uffca-\uffcf\uffd2-\uffd7\uffda-\uffdc]*)(\:(.+?))?\]/ig;
-	var metaPathParser = /^(.*\.|)meta(\..*|)$/;
 
 	Format.fromTemplate = function Format$fromTemplate(type, template, formatEval) {
 
 		return new Format({
 			specifier: template,
 
-			compile: function compile() {
+			parse: createTemplateParser(template),
 
-				if (!this._tokens) {
-					this._paths = [];
-					this._tokens = [];
-
-					// Replace escaped \, [ or ] characters with placeholders
-					template = template.replace(/\\\\/g, '\u0000').replace(/\\\[/g, '\u0001').replace(/\\\]/g, '\u0002');
-					var index = 0;
-					formatTemplateParser.lastIndex = 0;
-					var match = formatTemplateParser.exec(template);
-
-					// Process each token match
-					while (match) {
-						var path = match[1];
-						var propertyPath = path;
-
-						// See if the path represents a property path in the model
-						var defaultFormat = null;
-						try {
-							// Detect property path followed by ".meta..."
-							propertyPath = propertyPath.replace(metaPathParser, "$1");
-							var isMetaPath = propertyPath.length > 0 && propertyPath.length < path.length;
-							var allowFormat = !isMetaPath;
-							if (isMetaPath) {
-								propertyPath = propertyPath.substring(0, propertyPath.length - 1);
-							}
-
-							// If a property path remains, then attempt to find a default format and paths for the format
-							if (propertyPath) {
-								var property = Model.property(propertyPath, type);
-								if (property) {
-									// Only allow formats for a property path that is not followed by ".meta..."
-									if (allowFormat) {
-										// Determine the default property format
-										defaultFormat = property.get_format();
-		
-										// If the path references one or more entity properties, include paths for the property format. Otherwise, just add the path.
-										var lastIndex = formatTemplateParser.lastIndex;
-										if (defaultFormat && defaultFormat.constructor === Format && defaultFormat !== this && defaultFormat.getPaths().length > 0)
-											this._paths.addRange(defaultFormat.getPaths().map(function(p) { return propertyPath + "." + p; }));
-										else
-											this._paths.push(propertyPath);
-										formatTemplateParser.lastIndex = lastIndex;
-									}
-									// Formats are not allowed, so just add the path
-									else {
-										this._paths.push(propertyPath);
-									}
-								}
-							}
-						}
-						catch (e) { }
-
-						// Create a token for the current match, including the prefix, path and format
-						this._tokens.push({
-							prefix: template.substring(index, formatTemplateParser.lastIndex - match[0].length).replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']'),
-							path: path,
-							format: match[3] ? match[3].replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']') : defaultFormat
-						});
-
-						// Track the last index and find the next match
-						index = formatTemplateParser.lastIndex;
-						match = formatTemplateParser.exec(template);
-					}
-
-					// Capture any trailing literal text as a token without a path
-					if (index < template.length) {
-						this._tokens.push({
-							prefix: template.substring(index).replace(/\u0000/g, '\\').replace(/\u0001/g, '[').replace(/\u0002/g, ']')
-						});
-					}
-				}
-			},
+			compile: createTemplateCompiler(type),
 
 			convert: function convert(obj) {
 				if (obj === null || obj === undefined) {
@@ -3894,30 +4500,18 @@ window.ExoWeb.DotNet = {};
 				this._compile();
 
 				var result = "";
-				for (var index = 0; index < this._tokens.length; index++) {
-					var token = this._tokens[index];
-					if (token.prefix)
-						result = result + token.prefix;
-					if (token.path) {
-						var value = evalPath(obj, token.path);
-						if (value === undefined || value === null)
-							value = "";
-						else if (token.format) {
-							if (token.format.constructor === String) {
-								token.format = getFormat(value.constructor, token.format);
-							}
+				if (obj instanceof Array)
+					for (var i = 0; i < obj.length; i++) {
+						var value = this._getFormattedValue(obj[i]);
 
-							if (value instanceof Array)
-								value = value.map(function (v) { return token.format.convert(v); }).join(", ");
-							else
-								value = token.format.convert(value);
-
-							if (this._formatEval)
-								value = this._formatEval(value);
-						}
-						result = result + value;
+						if (result !== "" && value !== "")
+							result = result + ", " + value;
+						else
+							result = result + value;
 					}
-				}
+				else
+					result = this._getFormattedValue(obj);
+
 				return result;
 			},
 
@@ -3926,10 +4520,25 @@ window.ExoWeb.DotNet = {};
 	};
 
 	Format.mixin({
-		getPaths: function () {
-			if (this._compile)
-				this._compile();
-			return this._paths || [];
+		getTokens: function () {
+			if (this._parse)
+				this._parse();
+			return this._tokens || [];
+		},
+		getPaths: function (callback, thisPtr) {
+			if (this._compile) {
+				if (callback && callback instanceof Function) {
+					this._compile.call(this, function () {
+						var paths = this._paths || [];
+						callback.call(thisPtr || this, paths);
+					}, this);
+				} else {
+					this._compile();
+					return this._paths || [];
+				}
+			} else {
+				return this._paths || [];
+			}
 		},
 		convert: function (val) {
 			if (val === undefined) {
@@ -3988,8 +4597,13 @@ window.ExoWeb.DotNet = {};
 		},
 		toString: function() {
 			return this._specifier;
-		}
+		}	
 	});
+
+	Format.hasTokens = function hasTokens(template) {
+		formatTemplateParser.lastIndex = 0;
+		return formatTemplateParser.test(template);
+	}
 
 	ExoWeb.Model.Format = Format;
 
@@ -4135,15 +4749,16 @@ window.ExoWeb.DotNet = {};
 		return null;
 	}
 
-	Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr*/) {
+	Model.property = function Model$property(path, thisType/*, forceLoadTypes, callback, thisPtr, waitForGlobals*/) {
 
 		var type,
 			loadProperty,
 			singlePropertyName,
 			tokens = null,
-			forceLoadTypes = arguments.length >= 3 && arguments[2] && arguments[2].constructor === Boolean ? arguments[2] : false,
+			forceLoadTypes = arguments.length >= 3 && typeof arguments[2] === "boolean" ? arguments[2] : false,
 			callback = arguments[3],
-			thisPtr = arguments[4];
+			thisPtr = arguments[4],
+			waitForGlobals = arguments.length >= 6 && typeof arguments[5] === "boolean" ? arguments[5] : true;
 
 		// Allow the path argument to be either a string or PathTokens instance.
 		if (path.constructor === PathTokens) {
@@ -4192,7 +4807,12 @@ window.ExoWeb.DotNet = {};
 			if (callback) {
 				loadProperty(type, singlePropertyName, callback);
 			} else {
-				return type.property(singlePropertyName);
+				var singleProperty = type.property(singlePropertyName);
+				if (singleProperty) {
+					return singleProperty;
+				} else {
+					throw new Error("Path '" + path + "' is not valid.");
+				}
 			}
 		}
 
@@ -4219,11 +4839,16 @@ window.ExoWeb.DotNet = {};
 				// Handle non-existant or non-loaded type.
 				if (!type) {
 					if (callback) {
-						// Retry when type is loaded
-						$extend(globalTypeName, Model.property.prepare(Model, outerArgs));
-						return null;
+						if (waitForGlobals) {
+							// Retry when type is loaded
+							$extend(globalTypeName, Model.property.prepare(Model, outerArgs));
+							return null;
+						} else {
+							callback(null);
+							return null;
+						}
 					} else {
-						throw new Error(instanceParseError ? instanceParseError : ("Error getting type \"" + globalTypeName + "\"."));
+						return null;
 					}
 				}
 
@@ -4241,7 +4866,12 @@ window.ExoWeb.DotNet = {};
 			if (callback) {
 				PropertyChain.create(type, tokens, forceLoadTypes, thisPtr ? callback.bind(thisPtr) : callback, processGlobal);
 			} else {
-				return PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal(null);
+				var result = PropertyChain.create(type, tokens, forceLoadTypes) || processGlobal();
+				if (result) {
+					return result;
+				} else {
+					throw new Error("Path '" + path + "' is not valid.");
+				}
 			}
 		}
 	};
@@ -4725,7 +5355,7 @@ window.ExoWeb.DotNet = {};
 				format = getFormat(def.type, format);
 			}
 
-			var prop = new Property(this, def.name, def.type, def.label, def.helptext, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index, def.defaultValue);
+			var prop = new Property(this, def.name, def.type, def.label, def.helptext, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index, def.defaultValue, def.constant);
 
 			this._properties[def.name] = prop;
 			(def.isStatic ? this._staticProperties : this._instanceProperties)[def.name] = prop;
@@ -4838,6 +5468,77 @@ window.ExoWeb.DotNet = {};
 				this._jstype.prototype[def.name] = method;
 			}
 
+		},	
+		getPath: function(path) {
+			// Get single property
+			var property = this.property(path);
+		
+			// Create property chain
+			if (!property) {
+				property = PropertyChain.create(this, new ExoWeb.Model.PathTokens(path));
+			}
+
+			// Return the property path
+			return property;
+		},
+		getPaths: function(path) {
+			var start = 0;
+			var paths = [];
+
+			// Process the path
+			if (/{|,|}/g.test(path)) {
+				var stack = [];
+				var parent;
+
+				for (var i = 0, len = path.length; i < len; ++i) {
+					var c = path.charAt(i);
+
+					if (c === "{" || c === "," || c === "}") {
+						var seg = path.substring(start, i).trim();
+						start = i + 1;
+
+						if (c === "{") {
+							if (parent) {
+								stack.push(parent);
+								parent += "." + seg;
+							}
+							else {
+								parent = seg;
+							}
+						}
+						else { // ',' or '}'
+							if (seg.length > 0) {
+								paths.push(this.getPath(parent ? parent + "." + seg : seg));
+							}
+
+							if (c === "}") {
+								parent = (stack.length === 0) ? undefined : stack.pop();
+							}
+						}
+					}
+				}
+
+				if (stack.length > 0 || parent) {
+					throw new Error("Unclosed '{' in path: " + path);
+				}
+
+				if (start < path.length) {
+					var _seg = path.substring(start).trim();
+					if (_seg.length > 0) {
+						paths.push(this.getPath(_seg));
+					}
+
+					// Set start to past the end of the list to indicate that the entire string was processed
+					start = path.length;
+				}
+			}
+
+			// If the input is a simple property or path, then add the single property or chain
+			if (start === 0) {
+				paths.push(this.getPath(path.trim()));
+			}
+
+			return paths;
 		},
 		_makeGetter: function Type$_makeGetter(property, getter, skipTypeCheck) {
 			return function () {
@@ -5100,7 +5801,7 @@ window.ExoWeb.DotNet = {};
 	/// that can be treated as a single property.
 	/// </remarks>
 	///////////////////////////////////////////////////////////////////////////////
-	function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index, defaultValue) {
+	function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index, defaultValue, constant) {
 		this._containingType = containingType;
 		this._name = name;
 		this._fieldName = "_" + name;
@@ -5119,6 +5820,24 @@ window.ExoWeb.DotNet = {};
 					jstype === Boolean ? false :
 						jstype === Number ? 0 :
 							null;
+
+		this._constant = null;
+		if (constant !== null && constant !== undefined) {
+			// constant value should be lazily initialized to ensure any type dependencies have been resolved
+			if (isList && constant instanceof Array) {
+				this._constant = function () {
+					return constant.map(function (i) {
+						return new jstype(i);
+					});
+				};
+			}
+			else if (!isList && typeof constant === "object") {
+				this._constant = function () {
+					new jstype(i);
+				};
+			}
+		}
+
 		this._rules = [];
 
 		if (containingType.get_originForNewProperties()) {
@@ -5211,7 +5930,8 @@ window.ExoWeb.DotNet = {};
 
 			// Do not initialize calculated properties. Calculated properties should be initialized using a property get rule.  
 			if (!this.get_isCalculated()) {
-				Property$_init.call(this, obj, this.get_defaultValue());
+				var value = this.get_constant() !== null ? this.get_constant() : this.get_defaultValue();
+				Property$_init.call(this, obj, value);
 			}
 
 			// Mark the property as pending initialization
@@ -5426,6 +6146,13 @@ window.ExoWeb.DotNet = {};
 
 		get_isStatic: function Property$get_isStatic() {
 			return this._isStatic;
+		},
+
+		get_constant: function Property$get_constant() {
+			// initialize and cache the constant value if we have not already
+			if (typeof this._constant === "function")
+				this._constant = this._constant();
+			return this._constant;
 		},
 
 		get_isPersisted: function Property$get_isPersisted() {
@@ -5843,20 +6570,31 @@ window.ExoWeb.DotNet = {};
 		function onStepChanged(priorProp, sender, args) {
 			// scan all known objects of this type and raise event for any instance connected
 			// to the one that sent the event.
-			this._rootType.known().forEach(function(known) {
-				if (this.connects(known, sender, priorProp)) {
-					// Copy the original arguments so that we don't affect other code
-					var newArgs = Object.copy(args);
+			if (priorProp != undefined) {
+				this._rootType.known().forEach(function(known) {
+					if (this.connects(known, sender, priorProp)) {
+						// Copy the original arguments so that we don't affect other code
+						var newArgs = Object.copy(args);
 
 					// Reset property to be the chain, but store the original property as "triggeredBy"
 					newArgs.originalSender = sender;
 					newArgs.triggeredBy = newArgs.property;
 					newArgs.property = this;
 
-					// Call the handler, passing through the arguments
-					this._raiseEvent("changed", [known, newArgs]);
-				}
-			}, this);
+						// Call the handler, passing through the arguments
+						this._raiseEvent("changed", [known, newArgs]);
+					}
+				}, this);
+			}
+			else {
+				var newArgs = Object.copy(args);
+				// Reset property to be the chain, but store the original property as "triggeredBy"
+				newArgs.originalSender = sender;
+				newArgs.triggeredBy = newArgs.property;
+				newArgs.property = this;
+
+				this._raiseEvent("changed", [sender, newArgs]);
+			}
 		}
 
 		this._updatePropertyChangeSubscriptions = function() {
@@ -6671,6 +7409,7 @@ window.ExoWeb.DotNet = {};
 		Object.defineProperty(this, "invocationTypes", { value: 0, writable: true });
 		Object.defineProperty(this, "predicates", { value: [], writable: true });
 		Object.defineProperty(this, "returnValues", { value: [], writable: true });
+		Object.defineProperty(this, "isRegistered", { value: false, writable: true });
 
 		// register the rule after loading has completed
 		rootType.model.registerRule(this);
@@ -6773,50 +7512,57 @@ window.ExoWeb.DotNet = {};
 		// registers the rule based on the configured invocation types, predicates, and return values
 		register: function Rule$register() {
 
+			// create a scope variable to reference the current rule when creating event handlers
+			var rule = this;
+
 			// track the rule with the root type
 			this.rootType.rules.push(this);
 
-			// configure the rule based on any specified options
-			if (this._options) {
-				if (this._options.onInit)
-					this.onInit();
-				if (this._options.onInitNew)
-					this.onInitNew();
-				if (this._options.onInitExisting)
-					this.onInitExisting();
-				if (this._options.onChangeOf)
-					this.onChangeOf(this._options.onChangeOf);
-				if (this._options.returns)
-					this.returns(this._options.returns);
+			// create a function to process the rule's options
+			var processOptions = function () {
+				// configure the rule based on any specified options
+				if (this._options) {
+					if (this._options.onInit)
+						this.onInit();
+					if (this._options.onInitNew)
+						this.onInitNew();
+					if (this._options.onInitExisting)
+						this.onInitExisting();
+					if (this._options.onChangeOf)
+						this.onChangeOf(this._options.onChangeOf);
+					if (this._options.returns)
+						this.returns(this._options.returns);
 
-				// legacy support for basedOn option syntax
-				if (this._options.basedOn) {
-					this._options.basedOn.forEach(function (input) {
-						var parts = input.split(" of ");
-						if (parts.length >= 2) {
-							if (parts[0].split(",").indexOf("change") >= 0) {
-								this.onChangeOf([parts[1]]);
+					// legacy support for basedOn option syntax
+					if (this._options.basedOn) {
+						this._options.basedOn.forEach(function (input) {
+							var parts = input.split(" of ");
+							if (parts.length >= 2) {
+								if (parts[0].split(",").indexOf("change") >= 0) {
+									this.onChangeOf([parts[1]]);
+								}
 							}
-						}
-						else {
-							this.onChangeOf(input);
-						}
-					}, this);
+							else {
+								this.onChangeOf(input);
+							}
+						}, this);
+					}
 				}
+
+				// indicate that the rule should now be considered registered and cannot be reconfigured
+				delete this._options;
 			}
 
-			// indicate that the rule should now be considered registered and cannot be reconfigured
-			delete this._options;
-
-			var canExecute = function(rule, obj, args) {
+			// create a function to determine whether the rule can execute for the given arguments
+			var canExecute = function(obj, args) {
 				// ensure the rule target is a valid rule root type
 				return obj instanceof rule.rootType.get_jstype();
 			};
 
 			// create a function to safely execute the rule
-			var execute = function (rule, obj, args) {
+			var execute = function (obj, args) {
 				// Ensure that the rule can be executed.
-				if (!canExecute(rule, obj, args)) return;
+				if (!canExecute.call(this, obj, args)) return;
 
 				EventScope$perform(function() {
 					if (window.ExoWeb.config.detectRunawayRules) {
@@ -6844,20 +7590,17 @@ window.ExoWeb.DotNet = {};
 			// create function to perform rule registration once predicates and return values have been prepared
 			var register = function () {
 
-				// create a scope variable to reference the current rule when creating event handlers
-				var rule = this;
-
 				// register for init new
 				if (this.invocationTypes & RuleInvocationType.InitNew) {
 					this.rootType.addInitNew(function (sender, args) {
-						execute(rule, sender, args);
+						execute.call(this, sender, args);
 					});
 				}
 
 				// register for init existing
 				if (this.invocationTypes & RuleInvocationType.InitExisting) {
 					this.rootType.addInitExisting(function (sender, args) {
-						execute(rule, sender, args);
+						execute.call(this, sender, args);
 					});
 				}
 
@@ -6866,11 +7609,11 @@ window.ExoWeb.DotNet = {};
 					this.predicates.forEach(function (predicate) {
 						predicate.addChanged(
 							function (sender, args) {
-								if (canExecute(rule, sender, args) && !sender.meta.pendingInvocation(rule)) {
+								if (canExecute.call(this, sender, args) && !sender.meta.pendingInvocation(rule)) {
 									sender.meta.pendingInvocation(rule, true);
 									EventScope$onExit(function() {
 										sender.meta.pendingInvocation(rule, false);
-										execute(rule, sender, args);
+										execute.call(this, sender, args);
 									});
 									EventScope$onAbort(function() {
 										sender.meta.pendingInvocation(rule, false);
@@ -6892,9 +7635,9 @@ window.ExoWeb.DotNet = {};
 						returnValue.addGet(function (sender, args) {
 
 							// run the rule to initialize the property if it is pending initialization
-							if (canExecute(rule, sender, args) && sender.meta.pendingInit(returnValue)) {
+							if (canExecute.call(this, sender, args) && sender.meta.pendingInit(returnValue)) {
 								sender.meta.pendingInit(returnValue, false);
-								execute(rule, sender, args);
+								execute.call(this, sender, args);
 							}
 						});
 					});
@@ -6906,11 +7649,11 @@ window.ExoWeb.DotNet = {};
 
 								// immediately execute the rule if there are explicit event subscriptions for the property
 								if (rule.returnValues.some(function (returnValue) { return hasPropertyChangedSubscribers(returnValue, sender); })) {
-									if (canExecute(rule, sender, args) && !sender.meta.pendingInvocation(rule)) {
+									if (canExecute.call(this, sender, args) && !sender.meta.pendingInvocation(rule)) {
 										sender.meta.pendingInvocation(rule, true);
 										EventScope$onExit(function() {
 											sender.meta.pendingInvocation(rule, false);
-											execute(rule, sender, args);
+											execute.call(this, sender, args);
 										});
 										EventScope$onAbort(function() {
 											sender.meta.pendingInvocation(rule, false);
@@ -6942,61 +7685,80 @@ window.ExoWeb.DotNet = {};
 				if (this.onRegister instanceof Function) {
 					this.onRegister();
 				}
+
+				// Mark the rule as successfully registered
+				this.isRegistered = true;
 			};
 
-			// resolve return values, which should all be loaded since the root type is now definitely loaded
-			if (this.returnValues) {
-				this.returnValues.forEach(function (returnValue, i) {
-					if (!(returnValue instanceof Property)) {
-						this.returnValues[i] = this.rootType.property(returnValue);
-					}
-				}, this);
-			}
+			// create a function to kick off the registration process
+			var startRegister = function () {
+				// process the rule options, this is only done once
+				processOptions.call(this);
 
-			// resolve all predicates, because the rule cannot run until the dependent types have all been loaded
-			if (this.predicates) {
-				var signal;
-				var predicates = [];
+				// resolve return values, which should all be loaded since the root type is now definitely loaded
+				if (this.returnValues) {
+					this.returnValues.forEach(function (returnValue, i) {
+						if (!(returnValue instanceof Property)) {
+							this.returnValues[i] = this.rootType.property(returnValue);
+						}
+					}, this);
+				}
 
-				// setup loading of each property path that the calculation is based on
-				this.predicates.forEach(function (predicate, i) {
+				// resolve all predicates, because the rule cannot run until the dependent types have all been loaded
+				if (this.predicates) {
+					var signal;
+					var predicates = [];
 
-					// simply copy the predicate over if has already a valid property or property chain
-					if (predicate instanceof Property || predicate instanceof PropertyChain) {
-						predicates.push(predicate);
-					}
+					// setup loading of each property path that the calculation is based on
+					this.predicates.forEach(function (predicate, i) {
 
-					// parse string inputs, which may be paths containing nesting {} hierarchial syntax
-					else if (predicate.constructor === String) {
-
-						// create a signal if this is the first string-based input
-						if (!signal) {
-							signal = new Signal("prepare rule predicates");
+						// simply copy the predicate over if has already a valid property or property chain
+						if (predicate instanceof Property || predicate instanceof PropertyChain) {
+							predicates.push(predicate);
 						}
 
-						// normalize the paths to accommodate {} hierarchial syntax
-						PathTokens.normalizePaths([predicate]).forEach(function (path) {
-							Model.property(path, this.rootType, false, signal.pending(function (chain) {
-								// add the prepared property or property chain
-								predicates.push(chain);
-							}, this, true), this);
-						}, this);
-					}
-				}, this);
+						// parse string inputs, which may be paths containing nesting {} hierarchial syntax
+						else if (predicate.constructor === String) {
 
-				// wait until all property information is available to initialize the rule
-				if (signal) {
-					signal.waitForAll(function () {
+							// create a signal if this is the first string-based input
+							if (!signal) {
+								signal = new Signal("prepare rule predicates");
+							}
+
+							// normalize the paths to accommodate {} hierarchial syntax
+							PathTokens.normalizePaths([predicate]).forEach(function (path) {
+								Model.property(path, this.rootType, false, signal.pending(function (chain) {
+									// add the prepared property or property chain
+									predicates.push(chain);
+								}, this, true), this);
+							}, this);
+						}
+					}, this);
+
+					// wait until all property information is available to initialize the rule
+					if (signal) {
+						signal.waitForAll(function () {
+							this.predicates = predicates;
+							register.call(this);
+						}, this, true);
+					}
+
+					// otherwise, just immediately proceed with rule registration
+					else {
 						this.predicates = predicates;
 						register.call(this);
-					}, this, true);
+					}
 				}
+			};
 
-				// otherwise, just immediately proceed with rule registration
-				else {
-					this.predicates = predicates;
-					register.call(this);
+			// Optionally perform async pre-registration logic, then kick off the registration process
+			if (this.preRegister) {
+				// Invoke the rule's pre-register logic if it exists
+				if (this.preRegister(function () { startRegister.call(this); }, this) === false) {
+					startRegister.call(this);
 				}
+			} else {
+				startRegister.call(this);
 			}
 		}
 	});
@@ -7092,6 +7854,9 @@ window.ExoWeb.DotNet = {};
 
 		// exit immediately if called with no arguments
 		if (arguments.length === 0) return;
+
+		// ensure the rule name is specified
+		options.name = options.name || "Condition";
 
 		// store the condition predicate
 		var assert = options.assert || options.fn;
@@ -7218,7 +7983,7 @@ window.ExoWeb.DotNet = {};
 		///			name:				the optional unique name of the type of validation rule
 		///			conditionType:		the optional condition type to use, which will be automatically created if not specified
 		///			category:			ConditionType.Error || ConditionType.Warning (defaults to ConditionType.Error)
-		///			message:			the message to show the user when the validation fails
+		///			message:			the message to show the user when the validation fails	
 		///			properties:			an array of property paths the validation condition should be attached to when asserted, in addition to the target property
 		///			onInit:				true to indicate the rule should run when an instance of the root type is initialized, otherwise false
 		///			onInitNew:			true to indicate the rule should run when a new instance of the root type is initialized, otherwise false
@@ -7259,9 +8024,41 @@ window.ExoWeb.DotNet = {};
 		// create a property specified condition type if not passed in, defaulting to Error if a condition category was not specified
 		options.conditionType = options.conditionType || Rule.ensureConditionType(options.name, this.property, options.category || ConditionType.Error);
 
-		// replace the property label token in the validation message if present
-		if (options.message && typeof (options.message) !== "function") {
-		    options.message = options.message.replace('{property}', prop.get_label());
+		// Replace the property label token in the validation message if present
+		if (options.message) {
+			var rule = this;
+			var message = options.message;
+			var hasTokens = Format.hasTokens(prop.get_label());
+		
+			if (typeof (message) === "function") {
+				// Create a function to apply the format to the property label when generating the message
+				options.message = function (obj) {
+					var messageTemplate = message.apply(this, [obj]);
+					return messageTemplate.replace("{property}", hasTokens ? rule.getPropertyLabelFormat().convert(this) : prop.get_label());
+				};
+			}
+			else if (typeof (message) === "string" && hasTokens) {
+				// Create a function to apply the format to the property label when generating the message
+				options.message = function (obj) {
+					return message.replace("{property}", rule.getPropertyLabelFormat().convert(this));
+				};
+			}
+			else {
+				var label = prop.get_label();
+				// Escaped unescaped quotes
+				if (label.indexOf("\"") >= 0) {
+					var text = ""; var prev = "";
+					label.split("").forEach(function (c) {
+						if (c === "\"" && prev !== "\\")
+							text += "\\" + c;
+						else
+							text += c;
+						prev = c;
+					});
+					label = text;
+				}
+				options.message = message.replace('{property}', label);
+			}
 		}
 
 		// call the base rule constructor
@@ -7287,8 +8084,68 @@ window.ExoWeb.DotNet = {};
 
 			// register the rule with the target property
 			registerPropertyRule(this.property, this);
-		}
+		},
 
+		getPropertyLabelFormat: function () {
+			// convert the property label into a model format
+			if (!this._propertyLabelFormat)
+				this._propertyLabelFormat = ExoWeb.Model.getFormat(this.rootType.get_jstype(), this.property.get_label());
+			return this._propertyLabelFormat;
+		},
+
+		getPropertyLabel: function (obj) {
+			if (Format.hasTokens(this.property.get_label())) {
+				return this.getPropertyLabelFormat().convert(obj);
+			} else {
+				return this.property.get_label();
+			}
+		},
+
+		preRegister: function (callback, thisPtr) {
+			// Exit if the rule is no tin a valid state
+			if (!this.rootType) {
+				return false;
+			}
+
+			// Exit if the property label does not contain tokens
+			if (!Format.hasTokens(this.property.get_label())) {
+				return false;
+			}
+
+			var registerFormatPaths = function (formatPaths) {
+				if (formatPaths.length <= 0)
+					return;
+
+				if (!this._options)
+					this._options = {};
+
+				if (!this._options.onChangeOf)
+					this._options.onChangeOf = [];
+
+				formatPaths.forEach(function (p) {
+					this.rootType.getPaths(p).forEach(function(prop) {
+						if (this._options.onChangeOf.indexOf(prop) < 0) {
+							if (typeof this._options.onChangeOf === "string")
+								this._options.onChangeOf = [this._options.onChangeOf];
+
+							this._options.onChangeOf.push(prop);
+						}
+					}, this);
+				}, this);
+			};
+
+			// Ensure tokens included in the format trigger rule execution
+			if (callback && callback instanceof Function) {
+				this.getPropertyLabelFormat().getPaths(function (formatPaths) {
+					registerFormatPaths.call(this, formatPaths);
+					callback.call(thisPtr || this);
+				}, this);
+			} else {
+				var formatPaths = this.getPropertyLabelFormat().getPaths();
+				registerFormatPaths.call(this, formatPaths);
+				return true;
+			}
+		}
 	});
 
 	// Expose the rule publicly
@@ -7319,6 +8176,8 @@ window.ExoWeb.DotNet = {};
 		// store the property being validated
 		var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
 		Object.defineProperty(this, "property", { value: prop });
+
+		Object.defineProperty(this, "useOptimalUpdates", { value: options.useOptimalUpdates !== false });
 
 		// ensure the rule name is specified
 		options.name = options.name || (rootType.get_fullName() + "." + prop.get_name() + ".Calculated");
@@ -7392,7 +8251,12 @@ window.ExoWeb.DotNet = {};
 
 				// update the current list so observers will receive the change events
 				curList.beginUpdate();
-				update(curList, newList);
+				if (this.useOptimalUpdates)
+					update(curList, newList);
+				else {
+					curList.clear();
+					curList.addRange(newList);
+				}
 				curList.endUpdate();
 			}
 
@@ -7499,16 +8363,19 @@ window.ExoWeb.DotNet = {};
 
 		// ensure the rule name is specified
 		options.name = options.name || "Validation";
-
-		// ensure the error message is specified
-		if (Resource.get(options.message))
-	        options.message = "\"" + Resource.get(options.message) + "\"";
-	    else
-	        options.message = options.message || Resource.get("validation");
-
-		var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
-		options.message = options.message.replace('{property}', prop.get_label().replace(/\"/g, "\\\""));
-
+	
+		if (options.message) {
+			// Evaluate the message as a localizable resource
+			if (Resource.get(options.message))
+				options.message = Resource.get(options.message);
+		} else if (options.messageFn) {
+			// Store the message function if specified
+			Object.defineProperty(this, "messageFn", { value: options.messageFn, writable: true });
+		} else {
+			// Set a default error message is one is not specified
+			options.message = Resource.get("validation");
+		}
+	
 		// predicate-based rule
 		if (options.isError || options.fn) {
 			Object.defineProperty(this, "isError", { value: options.isError || options.fn, writable: true });
@@ -7525,26 +8392,70 @@ window.ExoWeb.DotNet = {};
 	// extend the base type
 	ValidationRule.mixin({
 
-		// returns true if the property is valid, otherwise false
-		isValid: function ValidationRule$isValid(obj, prop, val) {
+		message: function (obj) {
+			var message = "";
+			var prop = this.property;
+			var hasTokens = Format.hasTokens(prop.get_label());
 
+			if (this.messageFn) {
+				// convert string functions into compiled functions on first execution
+				if (this.messageFn.constructor === String) {
+					this.messageFn = this.rootType.compileExpression(this.messageFn);
+				}
+
+				// Invoke the function bound to the entity, and also pass the entity as the argument
+				// This is consitent with how rule 'message' option that is an own property is called in this manner (see: ConditionRule.js)
+				message = this.messageFn.apply(obj, [obj]);
+
+				// Convert a non-string message into a string
+				if (message != null && typeof message !== "string") {
+					logWarning("Converting message of type '" + (typeof message) + "' for rule '" + this.name + "' to a string.");
+					message = message.toString();
+				}
+			} else {
+				// Fall back to the default validation message
+				message = Resource.get("validation");
+			}
+
+			// Replace the {property} token with the property label (or evaluated label format)
+			message = message.replace("{property}", hasTokens ? this.getPropertyLabelFormat().convert(obj) : prop.get_label());
+
+			return message;
+		},
+
+		// returns true if the property is valid, otherwise false
+		isValid: function ValidationRule$isValid(obj, prop, val) {		
 			// convert string functions into compiled functions on first execution
 			if (this.isError.constructor === String) {
 				this.isError = this.rootType.compileExpression(this.isError);
 			}
 
-			// convert string functions into compiled functions on first execution
-			if (this.message.constructor === String) {
-				var message = this.rootType.compileExpression(this.message);
-				this.message = function (root) {
-					try { return message.apply(root, [root]); } catch (e) { return ""; }
-				};
-			}
-
 			try {
-				return !this.isError.apply(obj, [obj]) || !this.message.apply(obj, [obj]);
+				if (!this.isError.apply(obj, [obj])) {
+					// The 'isError' function returned false, so consider the object to be valid
+					return true;
+				} else {
+					var message = this.message;
+					if (message instanceof Function) {
+						if (this.hasOwnProperty("message")) {
+							// When message is overriden, use the root object as this (see: ConditionRule.js)
+							message = message.bind(obj);
+						}
+						else {
+							message = message.bind(this);
+						}
+
+						// Invoke the message function to ensure that it will produce a value
+						message = message(obj);
+					}
+
+					// If there is no message, then consider the object to be valid
+					return !message;
+				}
 			}
 			catch (e) {
+				// If 'isError' or 'messageFn' throws an error, then consider the object to be valid
+				logWarning(e);
 				return true;
 			}
 		},
@@ -7659,7 +8570,7 @@ window.ExoWeb.DotNet = {};
 			return val === null || val === undefined || ((range.min === undefined || val >= range.min) && (range.max === undefined || val <= range.max));
 		},
 
-		message: function RangeRule$message(obj, prop, val) {
+		message: function RangeRule$message(obj) {
 
 			var range = this.range(obj);
 
@@ -7674,7 +8585,7 @@ window.ExoWeb.DotNet = {};
 							Resource.get("range-at-least").replace("{min}", this.property.format(range.min)) : // at least ordinal
 							Resource.get("range-at-most").replace("{max}", this.property.format(range.max))); // at most ordinal
 
-			return message.replace('{property}', this.property.get_label());
+			return message.replace('{property}', this.getPropertyLabel(obj));		
 		},
 
 		// get the string representation of the rule
@@ -7967,10 +8878,10 @@ window.ExoWeb.DotNet = {};
 			else {
 				throw new Error("Invalid comparison operator for compare rule.");
 			}
-			message = message
-				.replace('{property}', this.property.get_label())
-				.replace("{compareSource}", this.compareSource.get_label());
-			return message;
+
+			message = message.replace("{compareSource}", this.compareSource.get_label());
+
+			return message.replace('{property}', this.getPropertyLabel(obj));
 		},
 
 		// perform addition initialization of the rule when it is registered
@@ -8089,11 +9000,11 @@ window.ExoWeb.DotNet = {};
 			else {
 				throw new Error("Invalid comparison operator for compare rule.");
 			}
-			message = message
-				.replace('{property}', this.property.get_label())
-				.replace("{compareSource}", this.compareSource.get_label())
+
+			message = message.replace("{compareSource}", this.compareSource.get_label())
 				.replace("{compareValue}", this.compareSource.format(this.compareValue));
-			return message;
+
+			return message.replace('{property}', this.getPropertyLabel(obj));
 		},
 
 		// returns false if the property is valid, true if invalid, or undefined if unknown
@@ -8339,7 +9250,7 @@ window.ExoWeb.DotNet = {};
 			return val === null || val === undefined || ((!range.min || val.length >= range.min) && (!range.max || val.length <= range.max));
 		},
 
-		message: function ListLengthRule$message(obj, prop, val) {
+		message: function ListLengthRule$message(obj) {
 
 			var range = this.range(obj);
 
@@ -8350,7 +9261,7 @@ window.ExoWeb.DotNet = {};
 							Resource.get("listlength-at-least").replace("{min}", this.property.format(range.min)) : // at least ordinal
 							Resource.get("listlength-at-most").replace("{max}", this.property.format(range.max))); // at most ordinal
 
-			return message.replace('{property}', this.property.get_label());
+			return message.replace('{property}', this.getPropertyLabel(obj));
 		}
 	});
 
@@ -8376,7 +9287,7 @@ window.ExoWeb.DotNet = {};
 		allConditionTypeSets[name] = this;
 	}
 
-	var allConditionTypeSets = {};
+	var allConditionTypeSets = ConditionTypeSet.allConditionTypeSets = {};
 
 	ConditionTypeSet.all = function ConditionTypeSet$all() {
 		/// <summary>
@@ -8478,7 +9389,7 @@ window.ExoWeb.DotNet = {};
 		allConditionTypes[code] = this;
 	}
 
-	var allConditionTypes = {};
+	var allConditionTypes = ConditionType.allConditionTypes = {};
 
 	ConditionType.all = function ConditionType$all() {
 		/// <summary>
@@ -13035,7 +13946,8 @@ window.ExoWeb.DotNet = {};
 				isPersisted: propJson.isPersisted !== false,
 				isCalculated: propJson.isCalculated === true,
 				index: propJson.index,
-				defaultValue: propJson.defaultValue ? mtype.compileExpression(propJson.defaultValue) : undefined
+				defaultValue: propJson.defaultValue ? mtype.compileExpression(propJson.defaultValue) : undefined,
+				constant: propJson.constant
 			});
 		
 			// setup static properties for lazy loading
@@ -15829,6 +16741,256 @@ window.ExoWeb.DotNet = {};
 
 	// #endregion
 
+	// #region ExoWeb.UI.VueComponent
+	//////////////////////////////////////////////////
+
+	function VueComponent(element) {
+		VueComponent.initializeBase(this, [element]);
+		this._vm = null;
+		this._eventHandlers = [];
+	}
+
+	function toKebabCase(str) {
+		return str.replace(/[A-Z]/g, function (x) {
+			return "-" + x.toLowerCase();
+		});
+	}
+
+	VueComponent.prototype = {
+
+		get_templateContext: function VueComponent$get_templateContext() {
+			/// <value mayBeNull="false" type="Sys.UI.TemplateContext" locid="P:J#ExoWeb.UI.VueComponent.templateContext"></value>
+			if (!this._parentContext) {
+				this._parentContext = Sys.UI.Template.findContext(this._element);
+			}
+			return this._parentContext;
+		},
+		set_templateContext: function VueComponent$set_templateContext(value) {
+			this._parentContext = value;
+		},
+
+		get_component: function() {
+			return this._componentName;
+		},
+		set_component: function(value) {
+			this._componentName = value;
+		},
+
+		get_parent: function() {
+			if (!this._parent) {
+				var parentVm = null;
+				for (var tc = this.get_templateContext(); tc; tc = tc.parentContext) {
+					if (tc.vm) {
+						parentVm = tc.vm;
+						break;
+					}
+				}
+				this._parent = parentVm;
+			}
+			return this._parent;
+		},
+		set_parent: function(value) {
+			this._parent = value;
+		},
+
+		get_model: function() {
+			return this._model;
+		},
+		set_model: function(value) {
+			this._model = value;
+		},
+
+		get_props: function() {
+			return this._props || {};
+		},
+		set_props: function(value) {
+			this._props = value;
+			if (this._vm)
+				this._bindProps();
+		},
+
+		get_setup: function() {
+			return this._setup;
+		},
+		set_setup: function(value) {
+			this._setup = value;
+		},
+
+		_bindProps: function () {
+			// setup ad hoc prop bindings
+			// Example: vuecomponent:xyz="{binding SomeProperty}"
+			// Establishes a one way binding of SomeProperty -> component's xyz prop
+			for (var prop in this._vm.$options.props) {
+				if (Object.getPrototypeOf(this).hasOwnProperty("get_" + prop))
+					console.warn("Prop '" + prop + "' will not be bound to " + this.get_component() + " component because it is a reserved property of the VueComponent control.");
+				else
+					this._bindProp(prop, this._getValue(prop));
+			}
+		},
+
+		_setProp: function (propName, value) {
+			this._vm[propName] = value;
+		},
+
+		_preventVueObservability: function(value) {
+			if (value && typeof value === 'object') {
+				if (value.length && Array.isArray(value)) {
+					var _this = this;
+					var hasExoWebEntities = false;
+					value.forEach(function (o) {
+						if (_this._preventVueObservability(o))
+							hasExoWebEntities = true;
+					});
+					return hasExoWebEntities;
+				}
+				else if (value instanceof ExoWeb.Model.Entity) {
+					preventVueObservability(value);
+					return true;
+				}
+				else if (value instanceof ExoWeb.View.Adapter) {
+					var hasExoWebEntities = this._preventVueObservability(value.get_rawValue());
+					return hasExoWebEntities || value.get_isEntity() || value.get_isEntityList();
+				}
+			}
+		},
+
+		_getValue: function(vueProp) {
+			var value = this[toKebabCase(vueProp)];
+			if (this._preventVueObservability(value)) {
+				if (ExoWeb.config.debug)
+					console.warn("Don't pass ExoWeb objects to Vue components, component = " + this.get_component() + ", prop=" + vueProp + ".", value);
+			}
+			return value;
+		},
+
+		_bindProp: function(propName, value) {
+			if (value instanceof ExoWeb.View.Adapter) {
+				this._setProp(propName, value.get_rawValue());
+				value.add_propertyChanged(function () {
+					var rawValue = value.get_rawValue();
+					this._preventVueObservability(rawValue);
+					this._setProp(propName, rawValue);
+				}.bind(this));
+			}
+			else {
+				if (value !== undefined)
+					this._setProp(propName, value);
+
+				ExoWeb.Observer.addPropertyChanged(this, toKebabCase(propName), function () {
+					this._setProp(propName, this._getValue(propName));
+				}.bind(this));
+			}
+		},
+
+		_bindModel: function() {
+			// setup v-model binding
+			// vuecomponent:model="{@ Property}" establishes a two way binding between Property and the component's
+			// model prop. Property will be updated with the value emitted on the component's model event.
+			// https://vuejs.org/v2/guide/components-custom-events.html#Customizing-Component-v-model
+			var model = this.get_model();
+			if (model instanceof ExoWeb.View.Adapter) {
+				var modelOptions = this._vm.$options.model || { prop: "value", event: "input" };
+				this._bindProp(modelOptions.prop, model);
+				this._vm.$on(modelOptions.event, function (val) {
+					model.set_rawValue(val);
+				});
+			}
+		},
+
+		_bindEventHandler: function(propName) {
+			var that = this;
+			this._vm.$on(propName.substring(1), function() {
+				that._getValue(propName).apply(null, arguments);
+			});
+
+		},
+
+		_bindEventHandlers: function() {
+			for (var prop in this) {
+				if (prop.indexOf("@") === 0 && typeof this[prop] === "function") {
+					this._bindEventHandler(prop);
+				}
+			}
+		},
+
+		initialize: function() {
+			VueComponent.callBaseMethod(this, "initialize");
+
+			var element = this.get_element();
+			var mountPoint = document.createElement(element.tagName);
+			element.appendChild(mountPoint);
+
+			if (!window.VueComponents)
+				console.error("VueComponents global was not found. Please make sure the component library is loaded correctly before trying to use this control.");
+			else if (!VueComponents[this.get_component()])
+				console.error("No component named '" + this.get_component() + "' was found in the component library.");
+			else {
+				VueComponents[this.get_component()].load().then(function (Component) {
+					var propsData = {};
+					// ensure props are provided to component constructor
+					for (var prop in Component.options.props) {
+						var value = this._getValue(prop);
+						if (value instanceof ExoWeb.View.Adapter)
+							value = value.get_rawValue();
+						propsData[prop] = value;
+					}
+
+					if (Component.options.functional) {
+						this._vm = new Vue({
+							parent: this.get_parent(),
+							template: '<c-component-wrapper ref="component" v-bind="$props" />',
+							components: { 'c-component-wrapper': Component },
+							props: Object.keys(propsData),
+							propsData: propsData
+						});
+					}
+					else {
+						this._vm = new Component({
+							parent: this.get_parent(),
+							propsData: propsData
+						});
+					}
+
+					this._bindModel();
+					this._bindProps();
+					this._bindEventHandlers();
+
+					if (typeof this._setup === "function")
+						this._setup(this._vm, this._model);
+					this._vm.$mount(mountPoint);
+				}.bind(this));
+			}
+		},
+
+		dispose: function () {
+			if (this._vm) {
+				try {
+					this._vm.$destroy();
+				}
+				catch (e) {
+					// Ignore error destroying component
+				}
+			}
+		}
+	};
+
+	/**
+	 * Prevent Vue from making an object observable.
+	 * Adapted from VueModel -  https://github.com/cognitoforms/VueModel/blob/master/src/vue-model-observability.ts
+	 */
+	function preventVueObservability(obj) {
+		if (obj && !obj.hasOwnProperty("__ob__")) {
+			// Mark the object as "raw" so that Vue won't try to make it observable
+			Vue.markRaw(obj);
+			return true;
+		}
+	}
+
+	ExoWeb.UI.VueComponent = VueComponent;
+	VueComponent.registerClass("ExoWeb.UI.VueComponent", Sys.UI.Control, Sys.UI.ITemplateContextConsumer);
+
+	// #endregion
+
 	// #region ExoWeb.UI.Template
 	//////////////////////////////////////////////////
 
@@ -18430,13 +19592,25 @@ window.ExoWeb.DotNet = {};
 
 	function clearInvalidOptions(allowedValues) {
 		var rawValue = this.get_rawValue();
-		if (allowedValues) {
+		var isDateProp = this.isType(Date);
+
+		function isAllowedValue(value) {
+			if (isDateProp) {
+				return allowedValues.some(function (v) {
+					return v instanceof Date && value.valueOf() === v.valueOf();
+				});
+			}
+
+			return allowedValues.indexOf(value) !== -1;
+		}
+
+		if (rawValue !== null && allowedValues) {
 			// Remove option values that are no longer valid
 			if (rawValue instanceof Array) {
 				purge(rawValue, function (item) {
-					return allowedValues.indexOf(item) < 0;
+					return !isAllowedValue(item);
 				}, this);
-			} else if (allowedValues.indexOf(rawValue) < 0 && this._propertyChain.value(this._target) !== null) {
+			} else if (!isAllowedValue(rawValue) && this._propertyChain.value(this._target) !== null) {
 				this._propertyChain.value(this._target, null);
 			}
 		} else if (rawValue instanceof Array) {

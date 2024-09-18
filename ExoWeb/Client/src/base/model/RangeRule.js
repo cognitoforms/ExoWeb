@@ -93,7 +93,7 @@ RangeRule.mixin({
 		return val === null || val === undefined || ((range.min === undefined || val >= range.min) && (range.max === undefined || val <= range.max));
 	},
 
-	message: function RangeRule$message(obj, prop, val) {
+	message: function RangeRule$message(obj) {
 
 		var range = this.range(obj);
 
@@ -108,7 +108,7 @@ RangeRule.mixin({
 						Resource.get("range-at-least").replace("{min}", this.property.format(range.min)) : // at least ordinal
 						Resource.get("range-at-most").replace("{max}", this.property.format(range.max))); // at most ordinal
 
-		return message.replace('{property}', this.property.get_label());
+		return message.replace('{property}', this.getPropertyLabel(obj));		
 	},
 
 	// get the string representation of the rule

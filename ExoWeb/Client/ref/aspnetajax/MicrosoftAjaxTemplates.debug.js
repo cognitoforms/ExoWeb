@@ -221,7 +221,7 @@
 									  "  $component.", map.setterName, '(typeof(__f) === "function" ? __f : new Function("sender", "args", __f));\n');
 							}
 							else {
-								code.push("  $component.", map.name, " = ", expression, ";\n");
+								code.push("  $component['", map.name, "'] = ", expression, ";\n");
 							}
 						}
 						else {
@@ -363,7 +363,7 @@
 			else {
 				try {
 					// JBP: In IE9 the getAttributeNode method handles 'class' special, in that it appears to actually create
-					// a new 'class' attribute and sets the value to empty string if it doesn't exist on the element.  
+					// a new 'class' attribute and sets the value to empty string if it doesn't exist on the element.
 					// This behavior appears to affect the sys:class attribute value, as it is also set to empty string after the getAttributeNode method is called.
 
 					if (name.toLowerCase() === "class" && Sys.Browser.agent === Sys.Browser['InternetExplorer'] && Sys.Browser.version >= 9) {
@@ -632,12 +632,12 @@
 		function Sys$UI$Template$recompile() {
 			/// <summary locid="M:J#Sys.UI.Template.recompile" />
 			var element = this.get_element(),
-			code = [" $index = (typeof($index) === 'number' ? $index : __instanceId);\n var fragment=document.createDocumentFragment(), $component, __componentIndex, __e, __f, __topElements = [], __d = 0, __p = [fragment], $element = __containerElement, container = fragment, $context = new Sys.UI.TemplateContext(), __contentTemplates = [], $id = function(prefix) { return $context.getInstanceId(prefix); };\n $context.data = (typeof(__data) === 'undefined' ? null : __data);\n $context.components = [];\n $context.nodes = __topElements;\n $context.dataItem = $dataItem;\n $context.index = $index;\n $context.parentContext = __parentContext;\n $context.containerElement = __containerElement;\n $context.insertBeforeNode = __referenceNode;\n $context.template = this;\n with($dataItem || {}) {\n"],
+			code = [" $index = (typeof($index) === 'number' ? $index : __instanceId);\n var fragment=document.createDocumentFragment(), $component, __componentIndex, __e, __f, __topElements = [], __d = 0, __p = [fragment], $element = __containerElement, container = fragment, $context = new Sys.UI.TemplateContext(), __contentTemplates = [], $id = function(prefix) { return $context.getInstanceId(prefix); };\n $context.data = (typeof(__data) === 'undefined' ? null : __data);\n $context.components = [];\n $context.nodes = __topElements;\n $context.dataItem = $dataItem;\n $context.index = $index;\n $context.parentContext = __parentContext;\n $context.rootContext = __parentContext.rootContext;\n $context.containerElement = __containerElement;\n $context.insertBeforeNode = __referenceNode;\n $context.template = this;\n with($dataItem || {}) {\n"],
 			nestedTemplates = [];
 			this._buildTemplateCode(nestedTemplates, element, code, 0);
 			code.push("}\n __containerElement.appendChild(fragment);\n $context._onInstantiated(__referenceNode);\n return $context;");
 			code = code.join('');
-			element._msajaxtemplate = [this._instantiateIn = new Function("__containerElement", "__data", "$dataItem", "$index", "__referenceNode", "__parentContext", "__parentContentTemplate", "__instanceId", code), element, nestedTemplates];
+			element._msajaxtemplate = [this._instantiateIn = new Function("__containerElement", "$rootContext", "$vm", "$emit", "__data", "$dataItem", "$index", "__referenceNode", "__parentContext", "__parentContentTemplate", "__instanceId", code), element, nestedTemplates];
 		}
 		function Sys$UI$Template$instantiateIn(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext, parentContentTemplate) {
 			/// <summary locid="M:J#$id" />
@@ -652,7 +652,7 @@
 			containerElement = Sys.UI.DomElement._ensureGet(containerElement, null, "containerElement");
 			nodeToInsertTemplateBefore = Sys.UI.DomElement._ensureGet(nodeToInsertTemplateBefore, null, "nodeToInsertTemplateBefore");
 			this._ensureCompiled();
-			return this._instantiateIn(containerElement, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext, parentContentTemplate, this._instanceId++);
+			return this._instantiateIn(containerElement, parentContext.rootContext, parentContext.rootContext.vm, parentContext.rootContext.vm ? parentContext.rootContext.vm.$emit.bind(parentContext.rootContext.vm) : null, data, dataItem, dataIndex, nodeToInsertTemplateBefore, parentContext, parentContentTemplate, this._instanceId++);
 		}
 
 		Sys.UI.Template.prototype = {
@@ -1055,26 +1055,29 @@
 
 		Sys.Application._context = new Sys.UI.TemplateContext();
 		Sys.Application._context._global = true;
+		Sys.Application._context.rootContext = Sys.Application._context;
 
-		Sys.Application.activateElement = function Sys$Application$activateElement(element, bindingContext, recursive) {
+		Sys.Application.activateElement = function Sys$Application$activateElement(element, bindingContext, recursive, useGlobalContext, vm) {
 			/// <summary locid="M:J#Sys.Application.activateElement" />
 			/// <param name="element" domElement="true"></param>
 			/// <param name="bindingContext" type="Object" optional="true" mayBeNull="true"></param>
 			/// <param name="recursive" optional="true" mayBeNull="true"></param>
 			/// <returns type="Sys.UI.TemplateContext"></returns>
-			return Sys.Application.activateElements(element, bindingContext || null, (recursive !== false));
+			return Sys.Application.activateElements(element, bindingContext || null, (recursive !== false), (useGlobalContext !== false), vm);
 		};
 
-		Sys.Application.activateElements = function Sys$Application$activateElements(elements, bindingContext, recursive) {
+		Sys.Application.activateElements = function Sys$Application$activateElements(elements, bindingContext, recursive, useGlobalContext, vm) {
 			/// <summary locid="M:J#Sys.Application.activateElements" />
 			/// <param name="elements"></param>
 			/// <param name="bindingContext" optional="true" mayBeNull="true"></param>
 			/// <param name="recursive" optional="true" mayBeNull="true"></param>
 			/// <returns type="Sys.UI.TemplateContext"></returns>
 			var app = Sys.Application,
-		tc = app._context,
-		useDirect = isBrowser("InternetExplorer") && Sys.Browser.version < 9;
-			tc.dataItem = typeof (bindingContext) === "undefined" ? null : bindingContext;
+				tc = useGlobalContext === false ? new Sys.UI.TemplateContext() : app._context,
+				useDirect = isBrowser("InternetExplorer") && Sys.Browser.version < 9;
+			tc.dataItem = tc.data = typeof (bindingContext) === "undefined" ? null : bindingContext;
+			tc.rootContext = tc;
+			tc.vm = vm;
 			tc.components = tc.components || [];
 			tc.nodes = elements;
 			recursive = (recursive !== false);
@@ -1288,7 +1291,12 @@
 									switch (attrib.type) {
 										case 0:
 											if (/^on/i.test(name)) {
-												element[name] = document.attachEvent ? new Function(value) : new Function("event", value);
+												if (typeof value === 'function') {
+													element[name] = value;
+												}
+												else {
+													element[name] = document.attachEvent ? new Function(value) : new Function("event", value);
+												}
 												break;
 											}
 											if (isSelect && (name === "value")) {
@@ -2160,8 +2168,8 @@
 			}
 		};
 		Sys.Application._evaluateExpression = function Sys$Application$_evaluateExpression(expression, $context, $element) {
-			var fn = new Function("$context", "$element", "$dataItem", "$index", "$id", "return " + expression + ";");
-			return fn($context, $element, $context.dataItem, $context.index, function (prefix) { return $context.getInstanceId(prefix); });
+			var fn = new Function("$rootContext", "$context", "$element", "$dataItem", "$index", "$id", "$vm", "$emit", "return " + expression + ";");
+			return fn($context.rootContext, $context, $element, $context.dataItem, $context.index, $context.rootContext.vm, $context.rootContext.vm ? $context.rootContext.vm.$emit.bind($context.rootContext.vm) : null, function (prefix) { return $context.getInstanceId(prefix); });
 		};
 
 		Sys.Application._registerComponent = function Sys$Application$_registerComponent(element, component) {
@@ -2338,7 +2346,7 @@
 				this._convert = this._convertBack = this._convertFn = this._convertBackFn = this._lastSource = this._lastTarget =
 					this._source = this._target = this._path = this._pathArray = this._defaultValue = this._targetProperty =
 					this._targetPropertyArray = this._templateContext = this._updateSource = this._sourceOption = this._updateTarget =
-					this._targetOption = this._mode = this._onOptionsUpdated = this._onTargetChanged = this._onSourceChanged = 
+					this._targetOption = this._mode = this._onOptionsUpdated = this._onTargetChanged = this._onSourceChanged =
 					this._onDispose = null;
 			}
 			Sys.Binding.callBaseMethod(this, 'dispose');
@@ -2365,7 +2373,7 @@
 			handlers = isSource ? this._sourceHandlers : this._targetHandlers,
 			observable = !!object;
 			if (path) {
-				for (var i = 0, l = path.length; i < l; i++) {
+				for (var i = 0; i < path.length; i++) {
 					var property = path[i],
 					handler = handlers[i];
 					if (!handler || handler.object !== object) {
@@ -2375,14 +2383,27 @@
 						}
 						if (observable) {
 							handlers[i] = this._listen(object, property, isSource);
+
+							// if the leaf of the path is a vue ref, listen to the value as well
+							if (i === path.length - 1 && _isVueRef(object[property])) {
+								path.push('value');
+							}
 						}
 					}
 					if (observable) {
 						object = this._getPropertyData(object, property);
-						observable = (object && (typeof (object) === "object" || (object instanceof Array) || Sys._isDomElement(object)));
+						observable = (object && (typeof (object) === "object" || (object instanceof Array) || Sys._isDomElement(object)) || _isVueType(object));
 					}
 					else {
 						object = null;
+					}
+				}
+
+				// clean up orphaned leaf handlers
+				for (var i = path.length; i < handlers.length; i++) {
+					if (handlers[i]) {
+						this._forget(handlers[i]);
+						handlers[i] = null;
 					}
 				}
 			}
@@ -2401,6 +2422,15 @@
 			}
 			return ret;
 		}
+		function _isVueRef(value) {
+			return window.Vue && Vue.isRef(value);
+		}
+		function _isVueReactive(value) {
+			return window.Vue && Vue.isReactive(value);
+		}
+		function _isVueType(value) {
+			return _isVueRef(value) || _isVueReactive(value);
+		}
 		function Sys$Binding$_listen(object, property, isSource) {
 			var _this = this,
 			listener = isSource ? this._onSourceChanged : this._onTargetChanged,
@@ -2417,7 +2447,21 @@
 			};
 			Sys.Observer._addEventHandler(object, "propertyChanged", handlers.pc);
 			var isInput = this._isInput(object, property),
-			adder = Sys.UI.DomEvent.addHandler;
+				adder = Sys.UI.DomEvent.addHandler;
+			if (_isVueType(object) || _isVueType(object[property])) {
+				var o = object;
+				var deps = [function () { return o[property]; }];
+				var isList = false;
+				if (Array.isArray(object[property])) {
+					isList = true;
+					deps.push(function () { return o[property].length; });
+				}
+				handlers.dispose = Vue.watch(deps, function (newVals) {
+					listener();
+					if (isList)
+						Sys.Observer.raiseCollectionChanged(newVals[0]);
+				}.bind(this));
+			}
 			if (isInput) {
 				handlers.dom.push("change");
 				adder(object, "change", listener);
@@ -2436,10 +2480,13 @@
 		function Sys$Binding$_forget(handler) {
 			var object = handler.object,
 			dom = handler.dom;
-			Sys.Observer._removeEventHandler(object, "propertyChanged", handler.pc);
+			if (handler.pc)
+				Sys.Observer._removeEventHandler(object, "propertyChanged", handler.pc);
 			for (var i = 0, l = dom.length; i < l; i++) {
 				Sys.UI.DomEvent.removeHandler(object, dom[i], handler.listener);
 			}
+			if (handler.dispose)
+				handler.dispose();
 		}
 		function Sys$Binding$_resolveFunction(value) {
 			var e, ret;
@@ -2588,6 +2635,9 @@
 			source = (source && this._pathArray)
 					? this._getPropertyFromIndex(source, this._pathArray, 0, this._pathArray.length - 1)
 					: source;
+			if (_isVueRef(source)) {
+				source = source.value;
+			}
 			if (!this._updateSource && (force || link || (source !== this._lastSource))) {
 				try {
 					this._updateTarget = true;

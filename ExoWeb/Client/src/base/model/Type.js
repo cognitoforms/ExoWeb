@@ -350,7 +350,7 @@ Type.prototype = {
 			format = getFormat(def.type, format);
 		}
 
-		var prop = new Property(this, def.name, def.type, def.label, def.helptext, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index, def.defaultValue);
+		var prop = new Property(this, def.name, def.type, def.label, def.helptext, format, def.isList, def.isStatic, def.isPersisted, def.isCalculated, def.index, def.defaultValue, def.constant);
 
 		this._properties[def.name] = prop;
 		(def.isStatic ? this._staticProperties : this._instanceProperties)[def.name] = prop;
@@ -463,6 +463,77 @@ Type.prototype = {
 			this._jstype.prototype[def.name] = method;
 		}
 
+	},	
+	getPath: function(path) {
+		// Get single property
+		var property = this.property(path);
+		
+		// Create property chain
+		if (!property) {
+			property = PropertyChain.create(this, new ExoWeb.Model.PathTokens(path));
+		}
+
+		// Return the property path
+		return property;
+	},
+	getPaths: function(path) {
+		var start = 0;
+		var paths = [];
+
+		// Process the path
+		if (/{|,|}/g.test(path)) {
+			var stack = [];
+			var parent;
+
+			for (var i = 0, len = path.length; i < len; ++i) {
+				var c = path.charAt(i);
+
+				if (c === "{" || c === "," || c === "}") {
+					var seg = path.substring(start, i).trim();
+					start = i + 1;
+
+					if (c === "{") {
+						if (parent) {
+							stack.push(parent);
+							parent += "." + seg;
+						}
+						else {
+							parent = seg;
+						}
+					}
+					else { // ',' or '}'
+						if (seg.length > 0) {
+							paths.push(this.getPath(parent ? parent + "." + seg : seg));
+						}
+
+						if (c === "}") {
+							parent = (stack.length === 0) ? undefined : stack.pop();
+						}
+					}
+				}
+			}
+
+			if (stack.length > 0 || parent) {
+				throw new Error("Unclosed '{' in path: " + path);
+			}
+
+			if (start < path.length) {
+				var _seg = path.substring(start).trim();
+				if (_seg.length > 0) {
+					paths.push(this.getPath(_seg));
+				}
+
+				// Set start to past the end of the list to indicate that the entire string was processed
+				start = path.length;
+			}
+		}
+
+		// If the input is a simple property or path, then add the single property or chain
+		if (start === 0) {
+			paths.push(this.getPath(path.trim()));
+		}
+
+		return paths;
 	},
 	_makeGetter: function Type$_makeGetter(property, getter, skipTypeCheck) {
 		return function () {

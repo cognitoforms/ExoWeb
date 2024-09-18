@@ -13,6 +13,7 @@ namespace ExoWeb.Templates.JavaScript
 	/// </summary>
 	class ScriptFunction
 	{
+		// Uses locking to prevent concurrency issues
 		static IDictionary<string, string> functionNames = new Dictionary<string, string>();
 
 		IScriptEngineFactory engineFactory;

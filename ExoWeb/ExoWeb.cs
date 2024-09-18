@@ -751,7 +751,7 @@ namespace ExoWeb
 		/// </summary>
 		/// <param name="property">The model property that may be included.</param>
 		/// <returns>A boolean value indicating whether to include the property.</returns>
-		internal static bool IncludeInClientModel(ModelProperty property)
+		public static bool IncludeInClientModel(ModelProperty property)
 		{
 			return !(property is ModelValueProperty) ||
 				JsonConverter.GetJsonValueType(((ModelValueProperty)property).PropertyType) != null;

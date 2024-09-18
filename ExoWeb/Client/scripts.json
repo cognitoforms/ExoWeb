@@ -29,6 +29,7 @@
 
 	"model": [
 		"Resource",
+		"FormatCompiler",
 		"Format",
 		"Model",
 		"Entity",
@@ -89,6 +90,7 @@
 	"ui": [
 		"Toggle",
 		"ToggleGroup",
+		"VueComponent",
 		"Template",
 		"Content",
 		"DataView",

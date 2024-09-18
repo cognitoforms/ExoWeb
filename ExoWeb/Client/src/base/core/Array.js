@@ -30,10 +30,45 @@ function every(arr, callback, thisPtr) {
 	return true;
 }
 
-function fill(arr, value, times) {
-	for (var i = 0; i < times; i++)
-		arr.push(value);
-	return arr;
+// Based on https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/fill#polyfill
+function fill(arr, value) {
+	// Steps 1-2.
+	if (arr == null) {
+		throw new TypeError('Array is null or not defined');
+	}
+
+	var O = Object(arr);
+
+	// Steps 3-5.
+	var len = O.length >>> 0;
+
+	// Steps 6-7.
+	var start = arguments[2];
+	var relativeStart = start >> 0;
+
+	// Step 8.
+	var k = relativeStart < 0 ?
+		Math.max(len + relativeStart, 0) :
+		Math.min(relativeStart, len);
+
+	// Steps 9-10.
+	var end = arguments[3];
+	var relativeEnd = end === undefined ?
+		len : end >> 0;
+
+	// Step 11.
+	var finalValue = relativeEnd < 0 ?
+		Math.max(len + relativeEnd, 0) :
+		Math.min(relativeEnd, len);
+
+	// Step 12.
+	while (k < finalValue) {
+		O[k] = value;
+		k++;
+	}
+
+	// Step 13.
+	return O;
 }
 
 function filter(arr, callback, thisPtr) {
@@ -49,6 +84,88 @@ function filter(arr, callback, thisPtr) {
 	return result;
 }
 
+// Based on https://vanillajstoolkit.com/polyfills/arrayfind/
+function find(arr, callback) {
+	// 1. Let O be ? ToObject(this value).
+	if (arr == null) {
+		throw new TypeError('Array is null or not defined');
+	}
+
+	var o = Object(arr);
+
+	// 2. Let len be ? ToLength(? Get(O, "length")).
+	var len = o.length >>> 0;
+
+	// 3. If IsCallable(callback) is false, throw a TypeError exception.
+	if (typeof callback !== 'function') {
+		throw new TypeError('callback must be a function');
+	}
+
+	// 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
+	var thisArg = arguments[2];
+
+	// 5. Let k be 0.
+	var k = 0;
+
+	// 6. Repeat, while k < len
+	while (k < len) {
+		// a. Let Pk be ! ToString(k).
+		// b. Let kValue be ? Get(O, Pk).
+		// c. Let testResult be ToBoolean(? Call(callback, T, « kValue, k, O »)).
+		// d. If testResult is true, return kValue.
+		var kValue = o[k];
+		if (callback.call(thisArg, kValue, k, o)) {
+			return kValue;
+		}
+		// e. Increase k by 1.
+		k++;
+	}
+
+	// 7. Return undefined.
+	return undefined;
+}
+
+// Based on https://vanillajstoolkit.com/polyfills/arrayfindindex/
+function findIndex(arr, predicate) {
+	if (arr == null) {
+		throw new TypeError('Array is null or not defined');
+	}
+
+	// 1. Let O be ? ToObject(this value).
+	var o = Object(arr);
+
+	// 2. Let len be ? ToLength(? Get(O, "length")).
+	var len = o.length >>> 0;
+
+	// 3. If IsCallable(predicate) is false, throw a TypeError exception.
+	if (typeof predicate !== 'function') {
+		throw new TypeError('predicate must be a function');
+	}
+
+	// 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
+	var thisArg = arguments[2];
+
+	// 5. Let k be 0.
+	var k = 0;
+
+	// 6. Repeat, while k < len
+	while (k < len) {
+		// a. Let Pk be ! ToString(k).
+		// b. Let kValue be ? Get(O, Pk).
+		// c. Let testResult be ToBoolean(? Call(predicate, T, « kValue, k, O »)).
+		// d. If testResult is true, return k.
+		var kValue = o[k];
+		if (predicate.call(thisArg, kValue, k, o)) {
+			return k;
+		}
+		// e. Increase k by 1.
+		k++;
+	}
+
+	// 7. Return -1.
+	return -1;
+}
+
 function first(arr, callback, thisPtr) {
 	for (var i = 0, len = arr.length; i < len; i++) {
 		if (i in arr) {
@@ -60,6 +177,35 @@ function first(arr, callback, thisPtr) {
 	}
 
 	return null;
+}
+
+// Based on https://vanillajstoolkit.com/polyfills/arrayflat/
+function flat(arr, depth) {
+	// If no depth is specified, default to 1
+	if (depth === undefined) {
+		depth = 1;
+	}
+
+	// Recursively reduce sub-arrays to the specified depth
+	var flatten = function (arr, depth) {
+
+		// If depth is 0, return the array as-is
+		if (depth < 1) {
+			return arr.slice();
+		}
+
+		// Otherwise, concatenate into the parent array
+		return arr.reduce(function (acc, val) {
+			return acc.concat(Array.isArray(val) ? flatten(val, depth - 1) : val);
+		}, []);
+
+	};
+
+	return flatten(arr, depth);
+}
+
+function flatMap(arr, callbackFn) {
+	return flat(Array.prototype.map.apply(arr, Array.prototype.slice.call(arguments, 1)), 1);
 }
 
 function forEach(arr, callback, thisPtr) {
@@ -364,8 +510,16 @@ if (!Array.prototype.fill)
 	Array.prototype.fill = function(value, times) { return fill(this, value, times); };
 if (!Array.prototype.filter)
 	Array.prototype.filter = function(fun/*, thisp */) { return filter(this, fun, arguments[1]); };
+if (!Array.prototype.find)
+	Array.prototype.find = function(callbackFn, thisArg) { return find(this, callbackFn, thisArg); };
+if (!Array.prototype.findIndex)
+	Array.prototype.findIndex = function(predicate, thisArg) { return findIndex(this, predicate, thisArg); };
 if (!Array.prototype.first)
 	Array.prototype.first = function(fun/*, thisp */) { return first(this, fun, arguments[1]); };
+if (!Array.prototype.flat)
+	Array.prototype.flat = function(depth) { return flat(this, depth); };
+if (!Array.prototype.flatMap)
+	Array.prototype.flatMap = function(callbackFn) { return flatMap(this, callbackFn); };
 if (!Array.prototype.forEach)
 	Array.prototype.forEach = function(fun /*, thisp*/) { forEach(this, fun, arguments[1]); };
 if (!Array.prototype.indexOf)
@@ -393,20 +547,178 @@ if (!Array.prototype.single)
 if (!Array.prototype.some)
 	Array.prototype.some = function(fun /*, thisp*/) { return some(this, fun, arguments[1]); };
 
+// Based on https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from#polyfill
+var from = (function () {
+	var symbolIterator;
+	try {
+		symbolIterator = Symbol.iterator
+			? Symbol.iterator
+			: 'Symbol(Symbol.iterator)';
+	} catch (e) {
+		symbolIterator = 'Symbol(Symbol.iterator)';
+	}
+
+	var toStr = Object.prototype.toString;
+	var isCallable = function (fn) {
+		return (
+			typeof fn === 'function' ||
+			toStr.call(fn) === '[object Function]'
+		);
+	};
+	var toInteger = function (value) {
+		var number = Number(value);
+		if (isNaN(number)) return 0;
+		if (number === 0 || !isFinite(number)) return number;
+		return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
+	};
+	var maxSafeInteger = Math.pow(2, 53) - 1;
+	var toLength = function (value) {
+		var len = toInteger(value);
+		return Math.min(Math.max(len, 0), maxSafeInteger);
+	};
+
+	var setGetItemHandler = function setGetItemHandler(isIterator, items) {
+		var iterator = isIterator && items[symbolIterator]();
+		return function getItem(k) {
+			return isIterator ? iterator.next() : items[k];
+		};
+	};
+
+	var getArray = function getArray(
+		T,
+		A,
+		len,
+		getItem,
+		isIterator,
+		mapFn
+	) {
+		// 16. Let k be 0.
+		var k = 0;
+
+		// 17. Repeat, while k < len… or while iterator is done (also steps a - h)
+		while (k < len || isIterator) {
+			var item = getItem(k);
+			var kValue = isIterator ? item.value : item;
+
+			if (isIterator && item.done) {
+				return A;
+			} else {
+				if (mapFn) {
+					A[k] =
+						typeof T === 'undefined'
+							? mapFn(kValue, k)
+							: mapFn.call(T, kValue, k);
+				} else {
+					A[k] = kValue;
+				}
+			}
+			k += 1;
+		}
+
+		if (isIterator) {
+			throw new TypeError(
+				'Array.from: provided arrayLike or iterator has length more then 2 ** 52 - 1'
+			);
+		} else {
+			A.length = len;
+		}
+
+		return A;
+	};
+
+	// The length property of the from method is 1.
+	return function from(arrayLikeOrIterator /*, mapFn, thisArg */) {
+		// 1. Let C be the this value.
+		var C = this;
+
+		// 2. Let items be ToObject(arrayLikeOrIterator).
+		var items = Object(arrayLikeOrIterator);
+		var isIterator = isCallable(items[symbolIterator]);
+
+		// 3. ReturnIfAbrupt(items).
+		if (arrayLikeOrIterator == null && !isIterator) {
+			throw new TypeError(
+				'Array.from requires an array-like object or iterator - not null or undefined'
+			);
+		}
+
+		// 4. If mapfn is undefined, then let mapping be false.
+		var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
+		var T;
+		if (typeof mapFn !== 'undefined') {
+			// 5. else
+			// 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
+			if (!isCallable(mapFn)) {
+				throw new TypeError(
+					'Array.from: when provided, the second argument must be a function'
+				);
+			}
+
+			// 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+			if (arguments.length > 2) {
+				T = arguments[2];
+			}
+		}
+
+		// 10. Let lenValue be Get(items, "length").
+		// 11. Let len be ToLength(lenValue).
+		var len = toLength(items.length);
+
+		// 13. If IsConstructor(C) is true, then
+		// 13. a. Let A be the result of calling the [[Construct]] internal method
+		// of C with an argument list containing the single item len.
+		// 14. a. Else, Let A be ArrayCreate(len).
+		var A = isCallable(C) ? Object(new C(len)) : new Array(len);
+
+		return getArray(
+			T,
+			A,
+			len,
+			setGetItemHandler(isIterator, items),
+			isIterator,
+			mapFn
+		);
+	};
+})();
+
+// Based on https://vanillajstoolkit.com/polyfills/arrayisarray/
+function isArray(value) {
+	return Object.prototype.toString.call(value) === '[object Array]';
+}
+
+function of() {
+	return Array.prototype.slice.call(arguments);
+}
+
+if (!Array.from)
+	Array.from = from;
+if (!Array.isArray)
+	Array.isArray = isArray;
+if (!Array.of)
+	Array.of = of;
+
 exports.contains = contains; // IGNORE
 exports.distinct = distinct; // IGNORE
 exports.every = every; // IGNORE
+exports.fill = fill; // IGNORE
 exports.filter = filter; // IGNORE
+exports.find = find; // IGNORE
+exports.findIndex = findIndex; // IGNORE
 exports.first = first; // IGNORE
+exports.flat = flat; // IGNORE
+exports.flatMap = flatMap; // IGNORE
 exports.forEach = forEach; // IGNORE
+exports.from = from; // IGNORE
 exports.indexOf = indexOf; // IGNORE
 exports.insert = insert; // IGNORE
 exports.insertRange = insertRange; // IGNORE
 exports.intersect = intersect; // IGNORE
+exports.isArray = isArray; // IGNORE
 exports.last = last; // IGNORE
 exports.lastIndexOf = lastIndexOf; // IGNORE
 exports.map = map; // IGNORE
 exports.mapToArray = mapToArray; // IGNORE
+exports.of = of; // IGNORE
 exports.peek = peek; // IGNORE
 exports.purge = purge; // IGNORE
 exports.remove = remove; // IGNORE

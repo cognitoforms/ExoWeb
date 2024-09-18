@@ -18,7 +18,7 @@ namespace ExoWeb.Templates.MicrosoftAjax
 		private static readonly Regex ampParser = new Regex(@"\&(?!\#\d+\;)");
 		private static readonly Regex xmlnsParser = new Regex(@"\sxmlns\:\w+=\"".*?\""");
 
-		private static readonly Dictionary<string, string> entities = new Dictionary<string, string>() 
+		private static readonly IReadOnlyDictionary<string, string> entities = new Dictionary<string, string>() 
 		{
 			{ "quot", "&#34;" },
 			{ "amp", "&#38;" },

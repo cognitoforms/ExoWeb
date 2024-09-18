@@ -8,7 +8,7 @@
 /// that can be treated as a single property.
 /// </remarks>
 ///////////////////////////////////////////////////////////////////////////////
-function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index, defaultValue) {
+function Property(containingType, name, jstype, label, helptext, format, isList, isStatic, isPersisted, isCalculated, index, defaultValue, constant) {
 	this._containingType = containingType;
 	this._name = name;
 	this._fieldName = "_" + name;
@@ -27,6 +27,24 @@ function Property(containingType, name, jstype, label, helptext, format, isList,
 				jstype === Boolean ? false :
 					jstype === Number ? 0 :
 						null;
+
+	this._constant = null;
+	if (constant !== null && constant !== undefined) {
+		// constant value should be lazily initialized to ensure any type dependencies have been resolved
+		if (isList && constant instanceof Array) {
+			this._constant = function () {
+				return constant.map(function (i) {
+					return new jstype(i);
+				});
+			};
+		}
+		else if (!isList && typeof constant === "object") {
+			this._constant = function () {
+				new jstype(i);
+			};
+		}
+	}
+
 	this._rules = [];
 
 	if (containingType.get_originForNewProperties()) {
@@ -119,7 +137,8 @@ function Property$_ensureInited(obj) {
 
 		// Do not initialize calculated properties. Calculated properties should be initialized using a property get rule.  
 		if (!this.get_isCalculated()) {
-			Property$_init.call(this, obj, this.get_defaultValue());
+			var value = this.get_constant() !== null ? this.get_constant() : this.get_defaultValue();
+			Property$_init.call(this, obj, value);
 		}
 
 		// Mark the property as pending initialization
@@ -338,6 +357,13 @@ Property.mixin({
 
 	get_isStatic: function Property$get_isStatic() {
 		return this._isStatic;
+	},
+
+	get_constant: function Property$get_constant() {
+		// initialize and cache the constant value if we have not already
+		if (typeof this._constant === "function")
+			this._constant = this._constant();
+		return this._constant;
 	},
 
 	get_isPersisted: function Property$get_isPersisted() {

@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ExoWeb</RootNamespace>
     <AssemblyName>ExoWeb</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <SccProjectName>SAK</SccProjectName>
     <SccLocalPath>SAK</SccLocalPath>
     <SccAuxPath>SAK</SccAuxPath>
@@ -45,8 +45,8 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Dependencies\Jurassic.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\..\..\packages\Newtonsoft.Json.11.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\..\..\packages\Newtonsoft.Json.13.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -81,7 +81,9 @@
     <Content Include="Client\ref\syntaxhighlighter\shBrushJScript.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCore.js" />
     <Content Include="Client\ref\syntaxhighlighter\shCoreDefault.css" />
+    <Content Include="Client\src\base\model\FormatCompiler.js" />
     <Content Include="Client\src\base\model\ValidationRule.js" />
+    <Content Include="Client\src\base\ui\VueComponent.js" />
     <Content Include="Client\src\base\view\ListValueAdapter.js" />
     <Content Include="Client\tools\javascript\detectSurface.js" />
     <Content Include="Client\tools\javascript\fakeDom.js" />

@@ -14,16 +14,19 @@ function ValidationRule(rootType, options) {
 
 	// ensure the rule name is specified
 	options.name = options.name || "Validation";
-
-	// ensure the error message is specified
-	if (Resource.get(options.message))
-        options.message = "\"" + Resource.get(options.message) + "\"";
-    else
-        options.message = options.message || Resource.get("validation");
-
-	var prop = options.property instanceof Property ? options.property : rootType.property(options.property);
-	options.message = options.message.replace('{property}', prop.get_label().replace(/\"/g, "\\\""));
-
+	
+	if (options.message) {
+		// Evaluate the message as a localizable resource
+		if (Resource.get(options.message))
+			options.message = Resource.get(options.message);
+	} else if (options.messageFn) {
+		// Store the message function if specified
+		Object.defineProperty(this, "messageFn", { value: options.messageFn, writable: true });
+	} else {
+		// Set a default error message is one is not specified
+		options.message = Resource.get("validation");
+	}
+	
 	// predicate-based rule
 	if (options.isError || options.fn) {
 		Object.defineProperty(this, "isError", { value: options.isError || options.fn, writable: true });
@@ -40,26 +43,70 @@ ValidationRule.prototype.constructor = ValidationRule;
 // extend the base type
 ValidationRule.mixin({
 
-	// returns true if the property is valid, otherwise false
-	isValid: function ValidationRule$isValid(obj, prop, val) {
+	message: function (obj) {
+		var message = "";
+		var prop = this.property;
+		var hasTokens = Format.hasTokens(prop.get_label());
 
+		if (this.messageFn) {
+			// convert string functions into compiled functions on first execution
+			if (this.messageFn.constructor === String) {
+				this.messageFn = this.rootType.compileExpression(this.messageFn);
+			}
+
+			// Invoke the function bound to the entity, and also pass the entity as the argument
+			// This is consitent with how rule 'message' option that is an own property is called in this manner (see: ConditionRule.js)
+			message = this.messageFn.apply(obj, [obj]);
+
+			// Convert a non-string message into a string
+			if (message != null && typeof message !== "string") {
+				logWarning("Converting message of type '" + (typeof message) + "' for rule '" + this.name + "' to a string.");
+				message = message.toString();
+			}
+		} else {
+			// Fall back to the default validation message
+			message = Resource.get("validation");
+		}
+
+		// Replace the {property} token with the property label (or evaluated label format)
+		message = message.replace("{property}", hasTokens ? this.getPropertyLabelFormat().convert(obj) : prop.get_label());
+
+		return message;
+	},
+
+	// returns true if the property is valid, otherwise false
+	isValid: function ValidationRule$isValid(obj, prop, val) {		
 		// convert string functions into compiled functions on first execution
 		if (this.isError.constructor === String) {
 			this.isError = this.rootType.compileExpression(this.isError);
 		}
 
-		// convert string functions into compiled functions on first execution
-		if (this.message.constructor === String) {
-			var message = this.rootType.compileExpression(this.message);
-			this.message = function (root) {
-				try { return message.apply(root, [root]); } catch (e) { return ""; }
-			};
-		}
-
 		try {
-			return !this.isError.apply(obj, [obj]) || !this.message.apply(obj, [obj]);
+			if (!this.isError.apply(obj, [obj])) {
+				// The 'isError' function returned false, so consider the object to be valid
+				return true;
+			} else {
+				var message = this.message;
+				if (message instanceof Function) {
+					if (this.hasOwnProperty("message")) {
+						// When message is overriden, use the root object as this (see: ConditionRule.js)
+						message = message.bind(obj);
+					}
+					else {
+						message = message.bind(this);
+					}
+
+					// Invoke the message function to ensure that it will produce a value
+					message = message(obj);
+				}
+
+				// If there is no message, then consider the object to be valid
+				return !message;
+			}
 		}
 		catch (e) {
+			// If 'isError' or 'messageFn' throws an error, then consider the object to be valid
+			logWarning(e);
 			return true;
 		}
 	},

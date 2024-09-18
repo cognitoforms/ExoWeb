@@ -837,13 +837,25 @@ function ensureAllowedValuesLoaded(newItems, callback, thisPtr) {
 
 function clearInvalidOptions(allowedValues) {
 	var rawValue = this.get_rawValue();
-	if (allowedValues) {
+	var isDateProp = this.isType(Date);
+
+	function isAllowedValue(value) {
+		if (isDateProp) {
+			return allowedValues.some(function (v) {
+				return v instanceof Date && value.valueOf() === v.valueOf();
+			});
+		}
+
+		return allowedValues.indexOf(value) !== -1;
+	}
+
+	if (rawValue !== null && allowedValues) {
 		// Remove option values that are no longer valid
 		if (rawValue instanceof Array) {
 			purge(rawValue, function (item) {
-				return allowedValues.indexOf(item) < 0;
+				return !isAllowedValue(item);
 			}, this);
-		} else if (allowedValues.indexOf(rawValue) < 0 && this._propertyChain.value(this._target) !== null) {
+		} else if (!isAllowedValue(rawValue) && this._propertyChain.value(this._target) !== null) {
 			this._propertyChain.value(this._target, null);
 		}
 	} else if (rawValue instanceof Array) {

@@ -20,6 +20,9 @@ function ConditionRule(rootType, options) {
 	// exit immediately if called with no arguments
 	if (arguments.length === 0) return;
 
+	// ensure the rule name is specified
+	options.name = options.name || "Condition";
+
 	// store the condition predicate
 	var assert = options.assert || options.fn;
 	if (assert) {

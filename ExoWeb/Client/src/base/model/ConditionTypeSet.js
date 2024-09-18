@@ -11,7 +11,7 @@ function ConditionTypeSet(name) {
 	allConditionTypeSets[name] = this;
 }
 
-var allConditionTypeSets = {};
+var allConditionTypeSets = ConditionTypeSet.allConditionTypeSets = {};
 
 ConditionTypeSet.all = function ConditionTypeSet$all() {
 	/// <summary>

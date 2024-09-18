@@ -366,7 +366,8 @@ function typeFromJson(model, typeName, json) {
 			isPersisted: propJson.isPersisted !== false,
 			isCalculated: propJson.isCalculated === true,
 			index: propJson.index,
-			defaultValue: propJson.defaultValue ? mtype.compileExpression(propJson.defaultValue) : undefined
+			defaultValue: propJson.defaultValue ? mtype.compileExpression(propJson.defaultValue) : undefined,
+			constant: propJson.constant
 		});
 		
 		// setup static properties for lazy loading
