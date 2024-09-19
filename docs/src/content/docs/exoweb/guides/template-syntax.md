@@ -8,10 +8,10 @@ work by "activating" HTML elements in the DOM. This means that by default **all 
 that is parsed by the browser, and any additional behavior is a result of this template activation.
 
 The following are a few primary ways that activation augments the raw markup:
-- Execute JavaScript (one-time) via [literal `{{ }}` expression](/reference/templates/literal-expressions) syntax, ex: `{{ alert('test') }}`
-- Two-way data binding using the ["{binding}" markup extension](/reference/templates/binding-markup-extension), ex: `{binding SomeProperty}`
-- Conditionally render elements via the [`sys:if` attribute](/reference/templates/sys-if-attribute)
-- Conditionally add/remove class names via [`sys:class-*` attribute](/reference/templates/conditional-class-attribute)
+- Execute JavaScript (one-time) via [literal `{{ }}` expression](/exoweb/reference/templates/literal-expressions) syntax, ex: `{{ alert('test') }}`
+- Two-way data binding using the ["{binding}" markup extension](/exoweb/reference/templates/binding-markup-extension), ex: `{binding SomeProperty}`
+- Conditionally render elements via the [`sys:if` attribute](/exoweb/reference/templates/sys-if-attribute)
+- Conditionally add/remove class names via [`sys:class-*` attribute](/exoweb/reference/templates/conditional-class-attribute)
 - Create and activate _controls_, specified via `sys:attach="x"` and `x:*` attributes
 
 Example:
@@ -43,7 +43,7 @@ not recurse into its children.
 
 ## Templates
 
-Template controls (those marked with `sys-template`, ex: [DataView](/reference/templates/dataview-control)) are expected to treat
+Template controls (those marked with `sys-template`, ex: [DataView](/exoweb/reference/templates/dataview-control)) are expected to treat
 their child nodes as a template, which is why activation skips over them. The control will typically create a `Template`
 object targeting its root element, which will scan the element's children to produce a template function. The original
 DOM elements will be removed, and the control will use the template function to render the template for one or more data

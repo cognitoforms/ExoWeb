@@ -15,12 +15,12 @@ export default defineConfig({
 					label: 'Guides',
 					items: [
 						// Each item here is one entry in the navigation menu.
-						{ label: 'Template Syntax', slug: 'guides/template-syntax' },
+						{ label: 'Template Syntax', slug: 'exoweb/guides/template-syntax' },
 					],
 				},
 				{
 					label: 'Reference',
-					autogenerate: { directory: 'reference' },
+					autogenerate: { directory: 'exoweb/reference' },
 				},
 			],
 		}),
