@@ -4,9 +4,7 @@ import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
-	build: {
-		assets: 'exoweb/_astro'
-	},
+	base: '/ExoWeb',
 	integrations: [
 		starlight({
 			title: 'ExoWeb & MS Ajax',
@@ -18,12 +16,12 @@ export default defineConfig({
 					label: 'Guides',
 					items: [
 						// Each item here is one entry in the navigation menu.
-						{ label: 'Template Syntax', slug: 'exoweb/guides/template-syntax' },
+						{ label: 'Template Syntax', slug: 'guides/template-syntax', link: 'ExoWeb/guides/template-syntax' },
 					],
 				},
 				{
 					label: 'Reference',
-					autogenerate: { directory: 'exoweb/reference' },
+					autogenerate: { directory: 'reference' },
 				},
 			],
 		}),
