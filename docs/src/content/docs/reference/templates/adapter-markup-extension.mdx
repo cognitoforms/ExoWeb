@@ -1,0 +1,22 @@
+---
+title: Adapter markup extension
+description: A model-aware binding markup extension.
+---
+
+The `{@}` markup extension provides enhanced binding to a model property.
+
+Example:
+```html
+<div dataview:data="{@ Some.Path}">
+```
+
+The value that is provided to the dataview has a number of properties that can be used in nested
+data binding expressions:
+
+- `displayValue`: The value of the property, formatted as human-readable text.
+- `rawValue`: The raw value of the property.
+- `systemValue`: A unique value, ex: the id if the source is an entity.
+- `options`: A list of option adapters if the property supports allowed values.
+- `firstError`: The first error condition, if there are any.
+- `label`: The property's label.
+- `helptext`: The property's help text.

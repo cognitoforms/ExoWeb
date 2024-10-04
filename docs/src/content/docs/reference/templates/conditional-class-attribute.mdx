@@ -2,3 +2,12 @@
 title: Conditional class attribute
 description: An attribute that adds a css class if an expression is truthy.
 ---
+
+CSS classes can be dynamically applied to an element using the following syntax:
+
+```html
+<div sys:class-classname="{binding}">
+```
+
+If the value of the binding or expression is true, then the value after "class-"
+is _added_ to the element as a CSS class, if it is false, then the class name is removed.
