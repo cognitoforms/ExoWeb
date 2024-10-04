@@ -6,8 +6,8 @@ description: A guide to defining and working with the client-side entity model.
 ## Model
 
 A model consists of a collection of types. It is typically created by calling the
-`$exoweb` function. It can be accessed off of the global context variable -
-`window.context.model.meta`.
+[$exoweb](/ExoWeb/reference/model/dollar-exoweb-function) function. It can be accessed off of the global
+context variable - `window.context.model.meta`.
 
 ## Type
 
@@ -25,6 +25,9 @@ They can also be created by passing the type(s) schema into a call to `$exoweb`.
 ```js
 $exoweb({ types: { 'MyNamespace.MyType': { properties: { ... } } }});
 ```
+
+Types can be extended by registering a callback with the
+[$extend](/ExoWeb/reference/model/dollar-extend-function) function.
 
 A type is realized as a JavaScript constructor function. Given the example above, you can
 construct an instance of `MyType` like so:
