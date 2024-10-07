@@ -3,31 +3,34 @@ title: Binding markup extension
 description: A markup extension that supports two-way data binding.
 ---
 
-The `{binding}` markup extension supports two-way reactive data binding for a named property or path.
+The `{binding}` markup extension supports two-way reactive data binding for a named property or path
+(similar to `v-model` in Vue.js).
+
+It sets the target attribute to the initial value of the specified property and then updates it when
+the source value changes. It is also smart enough to figure out how to subscribe to change events on
+the target attribute and update the data source appropriately. For DOM elements it will subscribe to
+the change event in the case of an input element. When the input element raises the change event,
+for example due to the user typing in a value and then blurring, the source property will be set to
+the new value.
 
 Example:
 ```html
 <input type="text" sys:value="{binding Text}" />
 ```
 
-Binding sets the target attribute to the initial value of the specified property and then updates it
-when the source value, ex: `Text`, changes.
-
-It is also smart enough to figure out how to subscribe to change events on the target attribute.
-For DOM elements it will subscribe to the change event in the case of an input element. When the input
-element raises the change event, for example due to the user typing in a value and then blurring, the
-source property (`Text`) will be set to the new value.
-
 Additional options:
 - `source` - By default the source property or path is evaluated against the current template data
 source, i.e. `$dataItem`. You can pass a `source` object to override this behavior. The value of
 this option must be the actual object, so typically it must be surrounded with `{{ }}` in order to
 evaluate the source as a JavaScript expression.
+	- `sys:value="{ binding SomeProperty, source={{ window.data }} }"`
 - `mode` - Specify `oneWay` or `oneTime` if reactivity is not desired.
 - `convert`: Function to convert the path value into the desired format, for example to produce an
 appropriate string value (i.e. custom formatting).
+	- `sys:value="{ binding SomeNumber, convert={{ function(n) { return n*5; } }} }"`
 - `convertBack`: Function to convert a new value from the target (ex: new text that was typed in)
 into the desired source value (i.e. custom parsing).
+	- `sys:value="{ binding Num, convertBack={{ function(t) { return parseNumber(t); } }} }"`
 
 ---
 

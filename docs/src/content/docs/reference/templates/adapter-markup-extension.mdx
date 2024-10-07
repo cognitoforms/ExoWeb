@@ -3,7 +3,13 @@ title: Adapter markup extension
 description: A model-aware binding markup extension.
 ---
 
-The `{@}` markup extension provides enhanced binding to a model property.
+The `{@}` markup extension (known as "Adapter") provides enhanced binding to a model property.
+
+It serves as a way of interfacing with the property that is referenced. It does not represent just
+the value of the property, though that can be obtained in a nested template using various properties
+(`rawValue`, `systemValue`, `displayValue`). The purpose of the adapter is to provide metadata about
+the property, such as the label, the data type, its options, validation, etc., which can be used to
+implement more general purpose UI (which is really useful for dynamic forms).
 
 Example:
 ```html
