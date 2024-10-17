@@ -1,0 +1,16 @@
+---
+title: visible attribute
+description: An attribute that can be used to conditionally hide/show an element in a template.
+---
+
+The `visible` attribute is available on all controls (ex: `DataView`) and can be used to
+dynamically hide/show the underyling DOM element.
+
+Example:
+```html
+<div ... sys:attach="dataview" ... dataview:visible="{binding show}">
+```
+
+---
+
+For an overview of templates, see [Template Syntax](/ExoWeb/guides/template-syntax).

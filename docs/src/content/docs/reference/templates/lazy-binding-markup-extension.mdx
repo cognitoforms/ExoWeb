@@ -1,0 +1,26 @@
+---
+title: Lazy binding markup extension
+description: A markup extension that supports lazy loading.
+---
+
+The `{~}` markup extension (called "lazy binding") supports one-way reactive data binding with
+support for lazy loading.
+
+It was originally created as a way to lazy-load data when needed, but additional functionality was
+also added over time which make it useful for other reasons
+
+Example:
+```html
+<div dataview:data="{~ Some.Path}">
+```
+
+Additional options:
+- `format`: how to format the property value
+- `transform`: for transforming list properties using functions like where, select, orderBy, etc. -
+  see [available transforms](https://github.com/cognitoforms/ExoWeb/blob/master/ExoWeb/Client/src/base/core/Transform.js#L102).
+- `nullValue`: value to use if the value is null
+- `required`: allows for loading and watching for changes to additional values
+
+---
+
+For an overview of templates, see [Template Syntax](/ExoWeb/guides/template-syntax).

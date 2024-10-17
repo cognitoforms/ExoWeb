@@ -1,0 +1,35 @@
+---
+title: The $extend function
+description: A function that can be used to extend one or more client-side types once created.
+---
+
+The `$extend` function allows you to register code to extend one or more client-side types in the model
+once they are created (see [Entity Model Overview](/ExoWeb/guides/entity-model-overview)).
+
+When the function is invoked, the resulting types are _applied_ to the function as its arguments.
+
+A simple example:
+
+```js
+$extend('MyType', function (MyType) {
+	// Do something with MyType
+});
+```
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside>
+If multiple types are specified, then the callback is not invoked until _all_ of those types have been created.
+</Aside>
+
+Example with multiple types:
+
+```js
+$extend(['Type1', 'Type2', 'Type3'], function (Type1, Type2, Type3) {
+	// Do something with any of the types
+});
+```
+
+Note that the function arguments are the types' "JS types", i.e. the constructor functions.
+Existing properties can be augumented using "dollar properties", ex: `MyType.$Prop.addChanged(function() { });`, and
+the type can be otherwise augmented by accessing the `meta` property, ex: `MyType.meta.addProperty({ ... });`.
